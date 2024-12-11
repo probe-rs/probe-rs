@@ -1,7 +1,8 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 2036
+assertion_line: 2020
 expression: static_variables
+snapshot_kind: text
 ---
 Child Variables:
   name: StaticScopeRoot
@@ -12,10 +13,20 @@ Child Variables:
         Named: exception_table
       type_name: Unknown
       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+      source_location:
+        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
+        line: 239
+        column:
+          Column: 21
     - name:
         Named: _aTerminalId
       type_name: Unknown
       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+      source_location:
+        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+        line: 258
+        column:
+          Column: 22
     - name:
         Named: _SEGGER_RTT
       type_name:
@@ -23,6 +34,11 @@ Child Variables:
           - Typedef: SEGGER_RTT_CB
           - Struct: "<unnamed struct>"
       value: SEGGER_RTT_CB @ 0x20002000
+      source_location:
+        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+        line: 348
+        column:
+          Column: 22
       children:
         - name:
             Named: acID
@@ -32,97 +48,192 @@ Child Variables:
                 Base: char
               count: 16
           value: "char[16] = [\n\tS,\n\tE,\n\tG,\n\tG,\n\tE,\n\tR,\n\t ,\n\tR,\n\tT,\n\tT,\n\t... and 6 more]"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+            line: 332
+            column:
+              Column: 27
           children:
             - name:
                 Named: __0
               type_name:
                 Base: char
               value: S
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __1
               type_name:
                 Base: char
               value: E
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __2
               type_name:
                 Base: char
               value: G
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __3
               type_name:
                 Base: char
               value: G
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __4
               type_name:
                 Base: char
               value: E
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __5
               type_name:
                 Base: char
               value: R
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __6
               type_name:
                 Base: char
               value: " "
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __7
               type_name:
                 Base: char
               value: R
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __8
               type_name:
                 Base: char
               value: T
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __9
               type_name:
                 Base: char
               value: T
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __10
               type_name:
                 Base: char
               value: "\u0000"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __11
               type_name:
                 Base: char
               value: "\u0000"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __12
               type_name:
                 Base: char
               value: "\u0000"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __13
               type_name:
                 Base: char
               value: "\u0000"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __14
               type_name:
                 Base: char
               value: "\u0000"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
             - name:
                 Named: __15
               type_name:
                 Base: char
               value: "\u0000"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 332
+                column:
+                  Column: 27
         - name:
             Named: MaxNumUpBuffers
           type_name:
             Base: int
           value: "1"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+            line: 333
+            column:
+              Column: 27
         - name:
             Named: MaxNumDownBuffers
           type_name:
             Base: int
           value: "1"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+            line: 334
+            column:
+              Column: 27
         - name:
             Named: aUp
           type_name:
@@ -133,6 +244,11 @@ Child Variables:
                   - Struct: "<unnamed struct>"
               count: 1
           value: "SEGGER_RTT_BUFFER_UP[1] = [\n\tSEGGER_RTT_BUFFER_UP @ 0x20002018]"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+            line: 335
+            column:
+              Column: 27
           children:
             - name:
                 Named: __0
@@ -141,12 +257,22 @@ Child Variables:
                   - Typedef: SEGGER_RTT_BUFFER_UP
                   - Struct: "<unnamed struct>"
               value: SEGGER_RTT_BUFFER_UP @ 0x20002018
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 335
+                column:
+                  Column: 27
               children:
                 - name:
                     Named: sName
                   type_name:
                     Pointer: char
                   value: char* @ 0x20002018
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 305
+                    column:
+                      Column: 22
                   children:
                     - name:
                         Named: "*sName"
@@ -160,6 +286,11 @@ Child Variables:
                   type_name:
                     Pointer: char
                   value: char* @ 0x2000201C
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 306
+                    column:
+                      Column: 22
                   children:
                     - name:
                         Named: "*pBuffer"
@@ -171,11 +302,21 @@ Child Variables:
                   type_name:
                     Base: unsigned int
                   value: "1024"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 307
+                    column:
+                      Column: 22
                 - name:
                     Named: WrOff
                   type_name:
                     Base: unsigned int
                   value: "113"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 308
+                    column:
+                      Column: 22
                 - name:
                     Named: RdOff
                   type_name:
@@ -183,11 +324,21 @@ Child Variables:
                       - Volatile
                       - Base: unsigned int
                   value: "113"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 309
+                    column:
+                      Column: 22
                 - name:
                     Named: Flags
                   type_name:
                     Base: unsigned int
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 310
+                    column:
+                      Column: 22
         - name:
             Named: aDown
           type_name:
@@ -198,6 +349,11 @@ Child Variables:
                   - Struct: "<unnamed struct>"
               count: 1
           value: "SEGGER_RTT_BUFFER_DOWN[1] = [\n\tSEGGER_RTT_BUFFER_DOWN @ 0x20002030]"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+            line: 336
+            column:
+              Column: 27
           children:
             - name:
                 Named: __0
@@ -206,12 +362,22 @@ Child Variables:
                   - Typedef: SEGGER_RTT_BUFFER_DOWN
                   - Struct: "<unnamed struct>"
               value: SEGGER_RTT_BUFFER_DOWN @ 0x20002030
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                line: 336
+                column:
+                  Column: 27
               children:
                 - name:
                     Named: sName
                   type_name:
                     Pointer: char
                   value: char* @ 0x20002030
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 318
+                    column:
+                      Column: 22
                   children:
                     - name:
                         Named: "*sName"
@@ -225,6 +391,11 @@ Child Variables:
                   type_name:
                     Pointer: char
                   value: char* @ 0x20002034
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 319
+                    column:
+                      Column: 22
                   children:
                     - name:
                         Named: "*pBuffer"
@@ -236,6 +407,11 @@ Child Variables:
                   type_name:
                     Base: unsigned int
                   value: "16"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 320
+                    column:
+                      Column: 22
                 - name:
                     Named: WrOff
                   type_name:
@@ -243,16 +419,31 @@ Child Variables:
                       - Volatile
                       - Base: unsigned int
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 321
+                    column:
+                      Column: 22
                 - name:
                     Named: RdOff
                   type_name:
                     Base: unsigned int
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 322
+                    column:
+                      Column: 22
                 - name:
                     Named: Flags
                   type_name:
                     Base: unsigned int
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
+                    line: 323
+                    column:
+                      Column: 22
     - name:
         Named: _acUpBuffer
       type_name:
@@ -261,257 +452,512 @@ Child Variables:
             Base: char
           count: 1024
       value: "char[1024] = [\n\tH,\n\te,\n\tl,\n\tl,\n\to,\n\t ,\n\tH,\n\te,\n\tl,\n\tl,\n\t... and 1014 more]"
+      source_location:
+        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+        line: 280
+        column:
+          Column: 3
       children:
         - name:
             Named: __0
           type_name:
             Base: char
           value: H
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __1
           type_name:
             Base: char
           value: e
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __2
           type_name:
             Base: char
           value: l
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __3
           type_name:
             Base: char
           value: l
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __4
           type_name:
             Base: char
           value: o
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __5
           type_name:
             Base: char
           value: " "
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __6
           type_name:
             Base: char
           value: H
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __7
           type_name:
             Base: char
           value: e
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __8
           type_name:
             Base: char
           value: l
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __9
           type_name:
             Base: char
           value: l
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __10
           type_name:
             Base: char
           value: o
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __11
           type_name:
             Base: char
           value: ","
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __12
           type_name:
             Base: char
           value: " "
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __13
           type_name:
             Base: char
           value: W
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __14
           type_name:
             Base: char
           value: o
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __15
           type_name:
             Base: char
           value: r
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __16
           type_name:
             Base: char
           value: l
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __17
           type_name:
             Base: char
           value: d
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __18
           type_name:
             Base: char
           value: "!"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __19
           type_name:
             Base: char
           value: "\r"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __20
           type_name:
             Base: char
           value: "\n"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __21
           type_name:
             Base: char
           value: v
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __22
           type_name:
             Base: char
           value: o
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __23
           type_name:
             Base: char
           value: i
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __24
           type_name:
             Base: char
           value: d
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __25
           type_name:
             Base: char
           value: "*"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __26
           type_name:
             Base: char
           value: " "
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __27
           type_name:
             Base: char
           value: "5"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __28
           type_name:
             Base: char
           value: "3"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __29
           type_name:
             Base: char
           value: "6"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __30
           type_name:
             Base: char
           value: "8"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __31
           type_name:
             Base: char
           value: "7"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __32
           type_name:
             Base: char
           value: "0"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __33
           type_name:
             Base: char
           value: "9"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __34
           type_name:
             Base: char
           value: "1"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __35
           type_name:
             Base: char
           value: "2"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __36
           type_name:
             Base: char
           value: "\r"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __37
           type_name:
             Base: char
           value: "\n"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __38
           type_name:
             Base: char
           value: v
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __39
           type_name:
             Base: char
           value: o
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __40
           type_name:
             Base: char
           value: i
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __41
           type_name:
             Base: char
           value: d
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __42
           type_name:
             Base: char
           value: "*"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __43
           type_name:
             Base: char
           value: " "
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __44
           type_name:
             Base: char
           value: c
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __45
           type_name:
             Base: char
           value: o
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __46
           type_name:
             Base: char
           value: n
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __47
           type_name:
             Base: char
           value: s
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __48
           type_name:
             Base: char
           value: t
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name:
             Named: __49
           type_name:
             Base: char
           value: " "
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 280
+            column:
+              Column: 3
         - name: Artifical
           type_name: Unknown
           value: "... and 974 more"
@@ -523,91 +969,181 @@ Child Variables:
             Base: char
           count: 16
       value: "char[16] = [\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t\u0000,\n\t... and 6 more]"
+      source_location:
+        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+        line: 281
+        column:
+          Column: 3
       children:
         - name:
             Named: __0
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __1
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __2
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __3
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __4
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __5
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __6
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __7
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __8
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __9
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __10
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __11
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __12
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __13
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __14
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
         - name:
             Named: __15
           type_name:
             Base: char
           value: "\u0000"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+            line: 281
+            column:
+              Column: 3
     - name:
         Named: _ActiveTerminal
       type_name: Unknown
       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+      source_location:
+        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
+        line: 284
+        column:
+          Column: 22
     - name:
         Named: foo
       type_name:
@@ -615,6 +1151,11 @@ Child Variables:
           - Typedef: Foo_t
           - Struct: "<unnamed struct>"
       value: Foo_t @ 0x20000000
+      source_location:
+        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+        line: 38
+        column:
+          Column: 14
       children:
         - name: Unknown
           type_name:
@@ -635,6 +1176,11 @@ Child Variables:
                           - Typedef: __uint8_t
                           - Base: unsigned char
                   value: "128"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 19
+                    column:
+                      Column: 21
                 - name:
                     Named: b
                   type_name:
@@ -644,6 +1190,11 @@ Child Variables:
                           - Typedef: __uint8_t
                           - Base: unsigned char
                   value: "79"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 20
+                    column:
+                      Column: 21
                 - name:
                     Named: c
                   type_name:
@@ -653,6 +1204,11 @@ Child Variables:
                           - Typedef: __uint8_t
                           - Base: unsigned char
                   value: "18"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 21
+                    column:
+                      Column: 21
                 - name:
                     Named: d
                   type_name:
@@ -662,6 +1218,11 @@ Child Variables:
                           - Typedef: __uint8_t
                           - Base: unsigned char
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 22
+                    column:
+                      Column: 21
             - name:
                 Named: x
               type_name:
@@ -671,11 +1232,21 @@ Child Variables:
                       - Typedef: __uint32_t
                       - Base: long unsigned int
               value: "1200000"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 24
+                column:
+                  Column: 18
         - name:
             Named: unsigned_bitfields
           type_name:
             Struct: "<unnamed struct>"
           value: "<unnamed struct> @ 0x20000004"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 30
+            column:
+              Column: 7
           children:
             - name:
                 Named: f
@@ -690,6 +1261,11 @@ Child Variables:
                           - Typedef: __uint8_t
                           - Base: unsigned char
               value: "31"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 28
+                column:
+                  Column: 17
             - name:
                 Named: g
               type_name:
@@ -703,11 +1279,21 @@ Child Variables:
                           - Typedef: __uint8_t
                           - Base: unsigned char
               value: "7"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 29
+                column:
+                  Column: 17
         - name:
             Named: signed_bitfields
           type_name:
             Struct: "<unnamed struct>"
           value: "<unnamed struct> @ 0x20000005"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 35
+            column:
+              Column: 7
           children:
             - name:
                 Named: f
@@ -722,6 +1308,11 @@ Child Variables:
                           - Typedef: __int8_t
                           - Base: signed char
               value: "15"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 33
+                column:
+                  Column: 16
             - name:
                 Named: g
               type_name:
@@ -735,6 +1326,11 @@ Child Variables:
                           - Typedef: __int8_t
                           - Base: signed char
               value: "-1"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 34
+                column:
+                  Column: 16
     - name:
         Named: foo_array
       type_name:
@@ -749,6 +1345,11 @@ Child Variables:
                       - Struct: "<unnamed struct>"
               count: 2
       value: "const Foo_t[2] = [\n\tFoo_t @ 0x00001684,\n\tFoo_t @ 0x0000168C]"
+      source_location:
+        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+        line: 53
+        column:
+          Column: 13
       children:
         - name:
             Named: __0
@@ -759,6 +1360,11 @@ Child Variables:
                   - Typedef: Foo_t
                   - Struct: "<unnamed struct>"
           value: Foo_t @ 0x00001684
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 53
+            column:
+              Column: 13
           children:
             - name: Unknown
               type_name:
@@ -779,6 +1385,11 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                       value: "0"
+                      source_location:
+                        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                        line: 19
+                        column:
+                          Column: 21
                     - name:
                         Named: b
                       type_name:
@@ -788,6 +1399,11 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                       value: "0"
+                      source_location:
+                        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                        line: 20
+                        column:
+                          Column: 21
                     - name:
                         Named: c
                       type_name:
@@ -797,6 +1413,11 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                       value: "0"
+                      source_location:
+                        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                        line: 21
+                        column:
+                          Column: 21
                     - name:
                         Named: d
                       type_name:
@@ -806,6 +1427,11 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                       value: "0"
+                      source_location:
+                        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                        line: 22
+                        column:
+                          Column: 21
                 - name:
                     Named: x
                   type_name:
@@ -815,11 +1441,21 @@ Child Variables:
                           - Typedef: __uint32_t
                           - Base: long unsigned int
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 24
+                    column:
+                      Column: 18
             - name:
                 Named: unsigned_bitfields
               type_name:
                 Struct: "<unnamed struct>"
               value: "<unnamed struct> @ 0x00001688"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 30
+                column:
+                  Column: 7
               children:
                 - name:
                     Named: f
@@ -834,6 +1470,11 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 28
+                    column:
+                      Column: 17
                 - name:
                     Named: g
                   type_name:
@@ -847,11 +1488,21 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 29
+                    column:
+                      Column: 17
             - name:
                 Named: signed_bitfields
               type_name:
                 Struct: "<unnamed struct>"
               value: "<unnamed struct> @ 0x00001689"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 35
+                column:
+                  Column: 7
               children:
                 - name:
                     Named: f
@@ -866,6 +1517,11 @@ Child Variables:
                               - Typedef: __int8_t
                               - Base: signed char
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 33
+                    column:
+                      Column: 16
                 - name:
                     Named: g
                   type_name:
@@ -879,6 +1535,11 @@ Child Variables:
                               - Typedef: __int8_t
                               - Base: signed char
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 34
+                    column:
+                      Column: 16
         - name:
             Named: __1
           type_name:
@@ -888,6 +1549,11 @@ Child Variables:
                   - Typedef: Foo_t
                   - Struct: "<unnamed struct>"
           value: Foo_t @ 0x0000168C
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 53
+            column:
+              Column: 13
           children:
             - name: Unknown
               type_name:
@@ -908,6 +1574,11 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                       value: "0"
+                      source_location:
+                        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                        line: 19
+                        column:
+                          Column: 21
                     - name:
                         Named: b
                       type_name:
@@ -917,6 +1588,11 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                       value: "0"
+                      source_location:
+                        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                        line: 20
+                        column:
+                          Column: 21
                     - name:
                         Named: c
                       type_name:
@@ -926,6 +1602,11 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                       value: "0"
+                      source_location:
+                        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                        line: 21
+                        column:
+                          Column: 21
                     - name:
                         Named: d
                       type_name:
@@ -935,6 +1616,11 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                       value: "0"
+                      source_location:
+                        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                        line: 22
+                        column:
+                          Column: 21
                 - name:
                     Named: x
                   type_name:
@@ -944,11 +1630,21 @@ Child Variables:
                           - Typedef: __uint32_t
                           - Base: long unsigned int
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 24
+                    column:
+                      Column: 18
             - name:
                 Named: unsigned_bitfields
               type_name:
                 Struct: "<unnamed struct>"
               value: "<unnamed struct> @ 0x00001690"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 30
+                column:
+                  Column: 7
               children:
                 - name:
                     Named: f
@@ -963,6 +1659,11 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 28
+                    column:
+                      Column: 17
                 - name:
                     Named: g
                   type_name:
@@ -976,11 +1677,21 @@ Child Variables:
                               - Typedef: __uint8_t
                               - Base: unsigned char
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 29
+                    column:
+                      Column: 17
             - name:
                 Named: signed_bitfields
               type_name:
                 Struct: "<unnamed struct>"
               value: "<unnamed struct> @ 0x00001691"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 35
+                column:
+                  Column: 7
               children:
                 - name:
                     Named: f
@@ -995,6 +1706,11 @@ Child Variables:
                               - Typedef: __int8_t
                               - Base: signed char
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 33
+                    column:
+                      Column: 16
                 - name:
                     Named: g
                   type_name:
@@ -1008,6 +1724,11 @@ Child Variables:
                               - Typedef: __int8_t
                               - Base: signed char
                   value: "0"
+                  source_location:
+                    path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                    line: 34
+                    column:
+                      Column: 16
     - name:
         Named: nested_array
       type_name:
@@ -1023,6 +1744,11 @@ Child Variables:
               count: 9
           count: 6
       value: "uint8_t[9][6] = [\n\tuint8_t[9] = [\n\t\t0,\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\tuint8_t[9] = [\n\t\t10,\n\t\t11,\n\t\t12,\n\t\t13,\n\t\t14,\n\t\t15,\n\t\t16,\n\t\t17,\n\t\t18\n\t],\n\tuint8_t[9] = [\n\t\t20,\n\t\t21,\n\t\t22,\n\t\t23,\n\t\t24,\n\t\t25,\n\t\t26,\n\t\t27,\n\t\t28\n\t],\n\tuint8_t[9] = [\n\t\t30,\n\t\t31,\n\t\t32,\n\t\t33,\n\t\t34,\n\t\t35,\n\t\t36,\n\t\t37,\n\t\t38\n\t],\n\tuint8_t[9] = [\n\t\t40,\n\t\t41,\n\t\t42,\n\t\t43,\n\t\t44,\n\t\t45,\n\t\t46,\n\t\t47,\n\t\t48\n\t],\n\tuint8_t[9] = [\n\t\t50,\n\t\t51,\n\t\t52,\n\t\t53,\n\t\t54,\n\t\t55,\n\t\t56,\n\t\t57,\n\t\t58\n\t]]"
+      source_location:
+        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+        line: 54
+        column:
+          Column: 16
       children:
         - name:
             Named: __0
@@ -1036,6 +1762,11 @@ Child Variables:
                       - Base: unsigned char
               count: 9
           value: "uint8_t[9] = [\n\t0,\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8]"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 54
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -1046,6 +1777,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "0"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -1055,6 +1791,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "1"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -1064,6 +1805,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "2"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -1073,6 +1819,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "3"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -1082,6 +1833,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "4"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -1091,6 +1847,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "5"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -1100,6 +1861,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "6"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -1109,6 +1875,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "7"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -1118,6 +1889,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "8"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
         - name:
             Named: __1
           type_name:
@@ -1130,6 +1906,11 @@ Child Variables:
                       - Base: unsigned char
               count: 9
           value: "uint8_t[9] = [\n\t10,\n\t11,\n\t12,\n\t13,\n\t14,\n\t15,\n\t16,\n\t17,\n\t18]"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 54
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -1140,6 +1921,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "10"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -1149,6 +1935,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "11"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -1158,6 +1949,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "12"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -1167,6 +1963,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "13"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -1176,6 +1977,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "14"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -1185,6 +1991,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "15"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -1194,6 +2005,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "16"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -1203,6 +2019,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "17"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -1212,6 +2033,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "18"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
         - name:
             Named: __2
           type_name:
@@ -1224,6 +2050,11 @@ Child Variables:
                       - Base: unsigned char
               count: 9
           value: "uint8_t[9] = [\n\t20,\n\t21,\n\t22,\n\t23,\n\t24,\n\t25,\n\t26,\n\t27,\n\t28]"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 54
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -1234,6 +2065,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "20"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -1243,6 +2079,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "21"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -1252,6 +2093,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "22"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -1261,6 +2107,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "23"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -1270,6 +2121,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "24"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -1279,6 +2135,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "25"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -1288,6 +2149,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "26"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -1297,6 +2163,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "27"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -1306,6 +2177,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "28"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
         - name:
             Named: __3
           type_name:
@@ -1318,6 +2194,11 @@ Child Variables:
                       - Base: unsigned char
               count: 9
           value: "uint8_t[9] = [\n\t30,\n\t31,\n\t32,\n\t33,\n\t34,\n\t35,\n\t36,\n\t37,\n\t38]"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 54
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -1328,6 +2209,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "30"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -1337,6 +2223,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "31"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -1346,6 +2237,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "32"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -1355,6 +2251,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "33"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -1364,6 +2265,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "34"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -1373,6 +2279,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "35"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -1382,6 +2293,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "36"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -1391,6 +2307,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "37"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -1400,6 +2321,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "38"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
         - name:
             Named: __4
           type_name:
@@ -1412,6 +2338,11 @@ Child Variables:
                       - Base: unsigned char
               count: 9
           value: "uint8_t[9] = [\n\t40,\n\t41,\n\t42,\n\t43,\n\t44,\n\t45,\n\t46,\n\t47,\n\t48]"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 54
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -1422,6 +2353,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "40"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -1431,6 +2367,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "41"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -1440,6 +2381,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "42"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -1449,6 +2395,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "43"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -1458,6 +2409,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "44"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -1467,6 +2423,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "45"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -1476,6 +2437,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "46"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -1485,6 +2451,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "47"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -1494,6 +2465,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "48"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
         - name:
             Named: __5
           type_name:
@@ -1506,6 +2482,11 @@ Child Variables:
                       - Base: unsigned char
               count: 9
           value: "uint8_t[9] = [\n\t50,\n\t51,\n\t52,\n\t53,\n\t54,\n\t55,\n\t56,\n\t57,\n\t58]"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 54
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -1516,6 +2497,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "50"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -1525,6 +2511,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "51"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -1534,6 +2525,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "52"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -1543,6 +2539,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "53"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -1552,6 +2553,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "54"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -1561,6 +2567,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "55"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -1570,6 +2581,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "56"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -1579,6 +2595,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "57"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -1588,6 +2609,11 @@ Child Variables:
                       - Typedef: __uint8_t
                       - Base: unsigned char
               value: "58"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 54
+                column:
+                  Column: 16
     - name:
         Named: nested_array2
       type_name:
@@ -1603,6 +2629,11 @@ Child Variables:
               count: 3
           count: 2
       value: "uint16_t[3][2] = [\n\tuint16_t[3] = [\n\t\t0,\n\t\t1,\n\t\t2\n\t],\n\tuint16_t[3] = [\n\t\t3,\n\t\t4,\n\t\t5\n\t]]"
+      source_location:
+        path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+        line: 65
+        column:
+          Column: 17
       children:
         - name:
             Named: __0
@@ -1616,6 +2647,11 @@ Child Variables:
                       - Base: short unsigned int
               count: 3
           value: "uint16_t[3] = [\n\t0,\n\t1,\n\t2]"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 65
+            column:
+              Column: 17
           children:
             - name:
                 Named: __0
@@ -1626,6 +2662,11 @@ Child Variables:
                       - Typedef: __uint16_t
                       - Base: short unsigned int
               value: "0"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 65
+                column:
+                  Column: 17
             - name:
                 Named: __1
               type_name:
@@ -1635,6 +2676,11 @@ Child Variables:
                       - Typedef: __uint16_t
                       - Base: short unsigned int
               value: "1"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 65
+                column:
+                  Column: 17
             - name:
                 Named: __2
               type_name:
@@ -1644,6 +2690,11 @@ Child Variables:
                       - Typedef: __uint16_t
                       - Base: short unsigned int
               value: "2"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 65
+                column:
+                  Column: 17
         - name:
             Named: __1
           type_name:
@@ -1656,6 +2707,11 @@ Child Variables:
                       - Base: short unsigned int
               count: 3
           value: "uint16_t[3] = [\n\t3,\n\t4,\n\t5]"
+          source_location:
+            path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+            line: 65
+            column:
+              Column: 17
           children:
             - name:
                 Named: __0
@@ -1666,6 +2722,11 @@ Child Variables:
                       - Typedef: __uint16_t
                       - Base: short unsigned int
               value: "3"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 65
+                column:
+                  Column: 17
             - name:
                 Named: __1
               type_name:
@@ -1675,6 +2736,11 @@ Child Variables:
                       - Typedef: __uint16_t
                       - Base: short unsigned int
               value: "4"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 65
+                column:
+                  Column: 17
             - name:
                 Named: __2
               type_name:
@@ -1684,3 +2750,8 @@ Child Variables:
                       - Typedef: __uint16_t
                       - Base: short unsigned int
               value: "5"
+              source_location:
+                path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
+                line: 65
+                column:
+                  Column: 17

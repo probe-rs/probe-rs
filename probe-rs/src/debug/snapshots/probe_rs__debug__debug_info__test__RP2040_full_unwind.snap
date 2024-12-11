@@ -1,14 +1,15 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 1987
 expression: stack_frames
+snapshot_kind: text
 ---
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 344
     column:
       Column: 13
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 0
@@ -219,19 +220,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "5"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "6"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 536883184
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 338
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 0
@@ -434,19 +442,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "4"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "5"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 536883328
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 338
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 0
@@ -649,19 +664,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "3"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "4"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 536883472
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 338
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 0
@@ -864,19 +886,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "2"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "3"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 536883616
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 338
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 0
@@ -1079,19 +1108,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "1"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "2"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 536883760
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 338
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 0
@@ -1294,19 +1330,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "0"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "1"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 536883904
 - function_name: setup_data_types
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 325
     column:
       Column: 5
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 0
@@ -1509,11 +1552,19 @@ expression: stack_frames
           type_name:
             Base: i8
           value: "-23"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 204
+            column: ~
         - name:
             Named: local_reference_to_global_const
           type_name:
             Struct: "&str"
           value: "This global `const` value will only show up in the debugger in the variables where it is referenced"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 207
+            column: ~
           children:
             - name:
                 Named: data_ptr
@@ -1536,6 +1587,10 @@ expression: stack_frames
           type_name:
             Struct: "&str"
           value: "A 'global' static variable"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 208
+            column: ~
           children:
             - name:
                 Named: data_ptr
@@ -1558,6 +1613,10 @@ expression: stack_frames
           type_name:
             Pointer: "*const probe_rs_debugger_test::ComplexEnum"
           value: "*const probe_rs_debugger_test::ComplexEnum @ 0x20003CC4"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 209
+            column: ~
           children:
             - name:
                 Named: "*local_reference_to_global_static_struct"
@@ -1602,11 +1661,19 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "0"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 210
+            column: ~
         - name:
             Named: ghosted_variable
           type_name:
             Struct: "&str"
           value: New value and type for a different name
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 211
+            column: ~
           children:
             - name:
                 Named: data_ptr
@@ -1629,26 +1696,46 @@ expression: stack_frames
           type_name:
             Base: i8
           value: "26"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 212
+            column: ~
         - name:
             Named: int128
           type_name:
             Base: i128
           value: "-196710231994021419720322"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 213
+            column: ~
         - name:
             Named: u_int128
           type_name:
             Base: u128
           value: "340282366920938266753142613410348491134"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 214
+            column: ~
         - name:
             Named: float64
           type_name:
             Base: f64
           value: "1.7608695652173911"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 215
+            column: ~
         - name:
             Named: float64_ptr
           type_name:
             Pointer: "&f64"
           value: "&f64 @ 0x20003CDC"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 216
+            column: ~
           children:
             - name:
                 Named: "*float64_ptr"
@@ -1660,11 +1747,19 @@ expression: stack_frames
           type_name:
             Base: char
           value: 💩
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 217
+            column: ~
         - name:
             Named: emoji_ptr
           type_name:
             Pointer: "&char"
           value: "&char @ 0x20003CE0"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 218
+            column: ~
           children:
             - name:
                 Named: "*emoji_ptr"
@@ -1676,11 +1771,19 @@ expression: stack_frames
           type_name:
             Base: bool
           value: "true"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 219
+            column: ~
         - name:
             Named: any_old_string_slice
           type_name:
             Struct: "&str"
           value: How long is a piece of String.
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 221
+            column: ~
           children:
             - name:
                 Named: data_ptr
@@ -1703,6 +1806,10 @@ expression: stack_frames
           type_name:
             Struct: "Result<(), &str>"
           value: "Result<(), &str> @ 0x20003CE4"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 222
+            column: ~
           children:
             - name:
                 Named: Err
@@ -1737,6 +1844,10 @@ expression: stack_frames
           type_name:
             Struct: "(bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64)"
           value: "(bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x20003448"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 223
+            column: ~
           children:
             - name:
                 Named: __0
@@ -1813,6 +1924,10 @@ expression: stack_frames
           type_name:
             Struct: "Matrix<i32, 2, 3, 4>"
           value: "Matrix<i32, 2, 3, 4> @ 0x20003484"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 224
+            column: ~
           children:
             - name:
                 Named: raw
@@ -2074,6 +2189,10 @@ expression: stack_frames
           type_name:
             Struct: "Matrix<&str, 2, 3, 6>"
           value: "Matrix<&str, 2, 3, 6> @ 0x20003604"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 232
+            column: ~
           children:
             - name:
                 Named: raw
@@ -3067,11 +3186,19 @@ expression: stack_frames
           type_name:
             Enum: SimpleEnum
           value: "SimpleEnum::Two"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 249
+            column: ~
         - name:
             Named: simple_enum_pointer
           type_name:
             Pointer: "&probe_rs_debugger_test::SimpleEnum"
           value: "&probe_rs_debugger_test::SimpleEnum @ 0x20003A88"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 250
+            column: ~
           children:
             - name:
                 Named: "*simple_enum_pointer"
@@ -3083,6 +3210,10 @@ expression: stack_frames
           type_name:
             Struct: RecursiveStruct
           value: RecursiveStruct @ 0x20003A8C
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 252
+            column: ~
           children:
             - name:
                 Named: depth
@@ -3163,6 +3294,10 @@ expression: stack_frames
           type_name:
             Struct: ComplexEnum
           value: ComplexEnum @ 0x20003AB0
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 263
+            column: ~
           children:
             - name:
                 Named: Case1
@@ -3201,6 +3336,10 @@ expression: stack_frames
           type_name:
             Struct: ComplexEnum
           value: ComplexEnum @ 0x20003AE0
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 271
+            column: ~
           children:
             - name:
                 Named: Case2
@@ -3228,6 +3367,10 @@ expression: stack_frames
           type_name:
             Struct: "Option<probe_rs_debugger_test::Univariant>"
           value: "Option<probe_rs_debugger_test::Univariant> @ 0x20003B00"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 273
+            column: ~
           children:
             - name:
                 Named: Some
@@ -3294,6 +3437,10 @@ expression: stack_frames
           type_name:
             Pointer: "&core::option::Option<probe_rs_debugger_test::Univariant>"
           value: "&core::option::Option<probe_rs_debugger_test::Univariant> @ 0x20003CEC"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 285
+            column: ~
           children:
             - name:
                 Named: "*stuct_with_one_variant_pointer"
@@ -3366,6 +3513,10 @@ expression: stack_frames
           type_name:
             Struct: ComplexStruct
           value: ComplexStruct @ 0x20003B68
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 287
+            column: ~
           children:
             - name:
                 Named: x
@@ -3387,6 +3538,10 @@ expression: stack_frames
           type_name:
             Struct: ComplexStruct
           value: ComplexStruct @ 0x20003B78
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 289
+            column: ~
           children:
             - name:
                 Named: x
@@ -3408,6 +3563,10 @@ expression: stack_frames
           type_name:
             Struct: Struct<i32>
           value: Struct<i32> @ 0x20003CF0
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 290
+            column: ~
           children:
             - name:
                 Named: b
@@ -3424,21 +3583,37 @@ expression: stack_frames
           type_name:
             Base: i64
           value: "1"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 291
+            column: ~
         - name:
             Named: a3
           type_name:
             Base: i64
           value: "2"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 292
+            column: ~
         - name:
             Named: a4
           type_name:
             Base: i64
           value: "3"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 293
+            column: ~
         - name:
             Named: a5
           type_name:
             Struct: "(i32, i64)"
           value: "(i32, i64) @ 0x20003D18"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 294
+            column: ~
           children:
             - name:
                 Named: __0
@@ -3455,6 +3630,10 @@ expression: stack_frames
           type_name:
             Struct: Enum<i32>
           value: Enum<i32> @ 0x20003BB8
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 295
+            column: ~
           children:
             - name:
                 Named: Variant2
@@ -3477,6 +3656,10 @@ expression: stack_frames
           type_name:
             Struct: Enum<i32>
           value: Enum<i32> @ 0x20003BD8
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 296
+            column: ~
           children:
             - name:
                 Named: Variant1
@@ -3502,62 +3685,110 @@ expression: stack_frames
                 Base: i32
               count: 10
           value: "[i32; 10] = [\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55]"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 298
+            column: ~
           children:
             - name:
                 Named: __0
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
                 Named: __1
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
                 Named: __2
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
                 Named: __3
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
                 Named: __4
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
                 Named: __5
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
                 Named: __6
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
                 Named: __7
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
                 Named: __8
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
                 Named: __9
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
         - name:
             Named: my_array_ptr
           type_name:
             Pointer: "&[i32; 10]"
           value: "&[i32; 10] @ 0x20003D2C"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 299
+            column: ~
           children:
             - name:
                 Named: "*my_array_ptr"
@@ -3626,62 +3857,110 @@ expression: stack_frames
                 Base: i8
               count: 10
           value: "[i8; 10] = [\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8,\n\t9,\n\t0]"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 300
+            column: ~
           children:
             - name:
                 Named: __0
               type_name:
                 Base: i8
               value: "1"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
                 Named: __1
               type_name:
                 Base: i8
               value: "2"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
                 Named: __2
               type_name:
                 Base: i8
               value: "3"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
                 Named: __3
               type_name:
                 Base: i8
               value: "4"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
                 Named: __4
               type_name:
                 Base: i8
               value: "5"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
                 Named: __5
               type_name:
                 Base: i8
               value: "6"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
                 Named: __6
               type_name:
                 Base: i8
               value: "7"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
                 Named: __7
               type_name:
                 Base: i8
               value: "8"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
                 Named: __8
               type_name:
                 Base: i8
               value: "9"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
                 Named: __9
               type_name:
                 Base: i8
               value: "0"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
         - name:
             Named: heapless_vec
           type_name:
             Struct: "Vec<i8, 10>"
           value: "Vec<i8, 10> @ 0x20003C30"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 301
+            column: ~
           children:
             - name:
                 Named: len
@@ -3922,6 +4201,10 @@ expression: stack_frames
           type_name:
             Struct: Wrapping<u8>
           value: Wrapping<u8> @ 0x20003C40
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 305
+            column: ~
           children:
             - name:
                 Named: __0
@@ -3933,6 +4216,10 @@ expression: stack_frames
           type_name:
             Struct: Channels
           value: Channels @ 0x20003C44
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 306
+            column: ~
           children:
             - name:
                 Named: up
@@ -4135,11 +4422,10 @@ expression: stack_frames
   canonical_frame_address: 536886968
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 55
     column:
       Column: 54
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -4342,6 +4628,10 @@ expression: stack_frames
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003EDF
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
+            line: 24
+            column: ~
           children:
             - name:
                 Named: CBP
@@ -4423,11 +4713,19 @@ expression: stack_frames
           type_name:
             Base: u32
           value: "12000000"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
+            line: 26
+            column: ~
         - name:
             Named: pac
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003EE7
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
+            line: 27
+            column: ~
           children:
             - name:
                 Named: ADC
@@ -4614,6 +4912,10 @@ expression: stack_frames
           type_name:
             Struct: Watchdog
           value: Watchdog @ 0x20003EEC
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
+            line: 28
+            column: ~
           children:
             - name:
                 Named: watchdog
@@ -4630,6 +4932,10 @@ expression: stack_frames
           type_name:
             Struct: ClocksManager
           value: ClocksManager @ 0x20003EF0
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
+            line: 30
+            column: ~
           children:
             - name:
                 Named: clocks
@@ -4919,10 +5225,9 @@ expression: stack_frames
   canonical_frame_address: 536887288
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 22
     column: LeftEdge
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0

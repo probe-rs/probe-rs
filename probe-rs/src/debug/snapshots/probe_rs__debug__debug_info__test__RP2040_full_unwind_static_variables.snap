@@ -1,6 +1,8 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 2023
 expression: static_variables
+snapshot_kind: text
 ---
 Child Variables:
   name: StaticScopeRoot
@@ -20,257 +22,461 @@ Child Variables:
                 Base: u8
               count: 256
           value: "[u8; 256] = [\n\t0,\n\t181,\n\t50,\n\t75,\n\t33,\n\t32,\n\t88,\n\t96,\n\t152,\n\t104,\n\t... and 246 more]"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+            line: 67
+            column: ~
           children:
             - name:
                 Named: __0
               type_name:
                 Base: u8
               value: "0"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __1
               type_name:
                 Base: u8
               value: "181"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __2
               type_name:
                 Base: u8
               value: "50"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __3
               type_name:
                 Base: u8
               value: "75"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __4
               type_name:
                 Base: u8
               value: "33"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __5
               type_name:
                 Base: u8
               value: "32"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __6
               type_name:
                 Base: u8
               value: "88"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __7
               type_name:
                 Base: u8
               value: "96"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __8
               type_name:
                 Base: u8
               value: "152"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __9
               type_name:
                 Base: u8
               value: "104"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __10
               type_name:
                 Base: u8
               value: "2"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __11
               type_name:
                 Base: u8
               value: "33"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __12
               type_name:
                 Base: u8
               value: "136"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __13
               type_name:
                 Base: u8
               value: "67"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __14
               type_name:
                 Base: u8
               value: "152"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __15
               type_name:
                 Base: u8
               value: "96"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __16
               type_name:
                 Base: u8
               value: "216"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __17
               type_name:
                 Base: u8
               value: "96"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __18
               type_name:
                 Base: u8
               value: "24"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __19
               type_name:
                 Base: u8
               value: "97"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __20
               type_name:
                 Base: u8
               value: "88"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __21
               type_name:
                 Base: u8
               value: "97"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __22
               type_name:
                 Base: u8
               value: "46"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __23
               type_name:
                 Base: u8
               value: "75"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __24
               type_name:
                 Base: u8
               value: "0"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __25
               type_name:
                 Base: u8
               value: "33"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __26
               type_name:
                 Base: u8
               value: "153"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __27
               type_name:
                 Base: u8
               value: "96"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __28
               type_name:
                 Base: u8
               value: "2"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __29
               type_name:
                 Base: u8
               value: "33"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __30
               type_name:
                 Base: u8
               value: "89"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __31
               type_name:
                 Base: u8
               value: "97"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __32
               type_name:
                 Base: u8
               value: "1"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __33
               type_name:
                 Base: u8
               value: "33"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __34
               type_name:
                 Base: u8
               value: "240"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __35
               type_name:
                 Base: u8
               value: "34"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __36
               type_name:
                 Base: u8
               value: "153"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __37
               type_name:
                 Base: u8
               value: "80"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __38
               type_name:
                 Base: u8
               value: "43"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __39
               type_name:
                 Base: u8
               value: "73"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __40
               type_name:
                 Base: u8
               value: "25"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __41
               type_name:
                 Base: u8
               value: "96"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __42
               type_name:
                 Base: u8
               value: "1"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __43
               type_name:
                 Base: u8
               value: "33"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __44
               type_name:
                 Base: u8
               value: "153"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __45
               type_name:
                 Base: u8
               value: "96"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __46
               type_name:
                 Base: u8
               value: "53"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __47
               type_name:
                 Base: u8
               value: "32"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __48
               type_name:
                 Base: u8
               value: "0"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name:
                 Named: __49
               type_name:
                 Base: u8
               value: "240"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp-pico-0.8.0/src/lib.rs
+                line: 67
+                column: ~
             - name: Artifical
               type_name: Unknown
               value: "... and 206 more"
@@ -302,6 +508,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 80
+                        column: ~
             - name:
                 Namespace: memset4
               type_name: Namespace
@@ -317,6 +527,10 @@ Child Variables:
                       type_name:
                         Struct: AtomicU16
                       value: AtomicU16 @ 0x20000070
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 132
+                        column: ~
                       children:
                         - name:
                             Named: v
@@ -344,6 +558,10 @@ Child Variables:
                       type_name:
                         Struct: AtomicU16
                       value: AtomicU16 @ 0x20000072
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 132
+                        column: ~
                       children:
                         - name:
                             Named: v
@@ -370,6 +588,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 132
+                        column: ~
             - name:
                 Namespace: float_funcs
               type_name: Namespace
@@ -389,6 +611,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: float_to_ufix
                   type_name: Namespace
@@ -403,6 +629,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: int_to_float
                   type_name: Namespace
@@ -417,6 +647,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: int64_to_float
                   type_name: Namespace
@@ -431,6 +665,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: float_to_int
                   type_name: Namespace
@@ -445,6 +683,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: float_to_fix
                   type_name: Namespace
@@ -459,6 +701,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: uint_to_float
                   type_name: Namespace
@@ -473,6 +719,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: ufix64_to_float
                   type_name: Namespace
@@ -487,6 +737,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fsub
                   type_name: Namespace
@@ -501,6 +755,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fmul
                   type_name: Namespace
@@ -515,6 +773,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: float_to_uint
                   type_name: Namespace
@@ -529,6 +791,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fcos
                   type_name: Namespace
@@ -543,6 +809,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: ftan
                   type_name: Namespace
@@ -557,6 +827,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fexp
                   type_name: Namespace
@@ -571,6 +845,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: uint64_to_float
                   type_name: Namespace
@@ -585,6 +863,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: float_to_fix64
                   type_name: Namespace
@@ -599,6 +881,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fsin
                   type_name: Namespace
@@ -613,6 +899,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fcmp
                   type_name: Namespace
@@ -627,6 +917,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fix64_to_float
                   type_name: Namespace
@@ -641,6 +935,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: float_to_uint64
                   type_name: Namespace
@@ -655,6 +953,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: float_to_ufix64
                   type_name: Namespace
@@ -669,6 +971,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: float_to_double
                   type_name: Namespace
@@ -683,6 +989,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fdiv
                   type_name: Namespace
@@ -697,6 +1007,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fsqrt
                   type_name: Namespace
@@ -711,6 +1025,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fix_to_float
                   type_name: Namespace
@@ -725,6 +1043,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: ufix_to_float
                   type_name: Namespace
@@ -739,6 +1061,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fln
                   type_name: Namespace
@@ -753,6 +1079,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fatan2
                   type_name: Namespace
@@ -767,6 +1097,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: float_to_int64
                   type_name: Namespace
@@ -781,6 +1115,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
             - name:
                 Namespace: double_funcs
               type_name: Namespace
@@ -800,6 +1138,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: dmul
                   type_name: Namespace
@@ -814,6 +1156,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: ddiv
                   type_name: Namespace
@@ -828,6 +1174,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: double_to_float
                   type_name: Namespace
@@ -842,6 +1192,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: double_to_int
                   type_name: Namespace
@@ -856,6 +1210,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: dcmp
                   type_name: Namespace
@@ -870,6 +1228,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: ufix64_to_double
                   type_name: Namespace
@@ -884,6 +1246,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fix_to_double
                   type_name: Namespace
@@ -898,6 +1264,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: ufix_to_double
                   type_name: Namespace
@@ -912,6 +1282,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: dtan
                   type_name: Namespace
@@ -926,6 +1300,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: fix64_to_double
                   type_name: Namespace
@@ -940,6 +1318,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: double_to_fix64
                   type_name: Namespace
@@ -954,6 +1336,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: double_to_fix
                   type_name: Namespace
@@ -968,6 +1354,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: double_to_ufix
                   type_name: Namespace
@@ -982,6 +1372,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: int_to_double
                   type_name: Namespace
@@ -996,6 +1390,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: dcos
                   type_name: Namespace
@@ -1010,6 +1408,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: dsin
                   type_name: Namespace
@@ -1024,6 +1426,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: dexp
                   type_name: Namespace
@@ -1038,6 +1444,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: dln
                   type_name: Namespace
@@ -1052,6 +1462,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: int64_to_double
                   type_name: Namespace
@@ -1066,6 +1480,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: uint64_to_double
                   type_name: Namespace
@@ -1080,6 +1498,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: double_to_int64
                   type_name: Namespace
@@ -1094,6 +1516,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: double_to_uint64
                   type_name: Namespace
@@ -1108,6 +1534,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: dsub
                   type_name: Namespace
@@ -1122,6 +1552,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: dsqrt
                   type_name: Namespace
@@ -1136,6 +1570,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: double_to_uint
                   type_name: Namespace
@@ -1150,6 +1588,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: uint_to_double
                   type_name: Namespace
@@ -1164,6 +1606,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: datan2
                   type_name: Namespace
@@ -1178,6 +1624,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
                 - name:
                     Namespace: double_to_ufix64
                   type_name: Namespace
@@ -1192,6 +1642,10 @@ Child Variables:
                             Named: CACHED_PTR
                           type_name: Unknown
                           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                          source_location:
+                            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                            line: 80
+                            column: ~
             - name:
                 Namespace: popcount32
               type_name: Namespace
@@ -1206,6 +1660,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 80
+                        column: ~
             - name:
                 Namespace: memset
               type_name: Namespace
@@ -1220,6 +1678,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 132
+                        column: ~
             - name:
                 Namespace: flash_exit_xip
               type_name: Namespace
@@ -1234,6 +1696,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 132
+                        column: ~
             - name:
                 Namespace: flash_range_erase
               type_name: Namespace
@@ -1248,6 +1714,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 132
+                        column: ~
             - name:
                 Namespace: reverse32
               type_name: Namespace
@@ -1262,6 +1732,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 80
+                        column: ~
             - name:
                 Namespace: memcpy44
               type_name: Namespace
@@ -1277,6 +1751,10 @@ Child Variables:
                       type_name:
                         Struct: AtomicU16
                       value: AtomicU16 @ 0x20000076
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 132
+                        column: ~
                       children:
                         - name:
                             Named: v
@@ -1303,6 +1781,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 132
+                        column: ~
             - name:
                 Namespace: flash_range_program
               type_name: Namespace
@@ -1317,6 +1799,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 132
+                        column: ~
             - name:
                 Namespace: clz32
               type_name: Namespace
@@ -1332,6 +1818,10 @@ Child Variables:
                       type_name:
                         Struct: AtomicU16
                       value: AtomicU16 @ 0x20000078
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 80
+                        column: ~
                       children:
                         - name:
                             Named: v
@@ -1358,6 +1848,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 132
+                        column: ~
             - name:
                 Namespace: ctz32
               type_name: Namespace
@@ -1372,6 +1866,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 80
+                        column: ~
             - name:
                 Namespace: flash_enter_cmd_xip
               type_name: Namespace
@@ -1386,6 +1884,10 @@ Child Variables:
                         Named: CACHED_PTR
                       type_name: Unknown
                       value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                      source_location:
+                        path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/rom_data.rs
+                        line: 132
+                        column: ~
         - name:
             Namespace: critical_section_impl
           type_name: Namespace
@@ -1396,6 +1898,10 @@ Child Variables:
               type_name:
                 Struct: AtomicU8
               value: AtomicU8 @ 0x20000074
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/critical_section_impl.rs
+                line: 14
+                column: ~
               children:
                 - name:
                     Named: v
@@ -1417,6 +1923,10 @@ Child Variables:
                 Named: ALARMS
               type_name: Unknown
               value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-hal-0.9.2/src/timer.rs
+                line: 25
+                column: ~
     - name:
         Named: "<core::convert::Infallible as core::fmt::Debug>::{vtable}"
       type_name: Unknown
@@ -1438,12 +1948,20 @@ Child Variables:
                 Base: Vector
               count: 32
           value: "[Vector; 32] = [\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000140,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000144,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000148,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000014C,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000150,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000154,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000158,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000015C,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000160,\n\t\t_reserved: u32 = 268461611\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000164,\n\t\t_reserved: u32 = 268461611\n\t},\n\t... and 22 more]"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+            line: 86
+            column: ~
           children:
             - name:
                 Named: __0
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000140,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1465,6 +1983,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000144,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1486,6 +2008,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000148,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1507,6 +2033,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000014C,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1528,6 +2058,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000150,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1549,6 +2083,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000154,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1570,6 +2108,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000158,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1591,6 +2133,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000015C,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1612,6 +2158,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000160,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1633,6 +2183,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000164,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1654,6 +2208,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000168,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1675,6 +2233,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000016C,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1696,6 +2258,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000170,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1717,6 +2283,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000174,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1738,6 +2308,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000178,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1759,6 +2333,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000017C,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1780,6 +2358,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000180,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1801,6 +2383,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000184,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1822,6 +2408,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000188,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1843,6 +2433,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000018C,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1864,6 +2458,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000190,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1885,6 +2483,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000194,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1906,6 +2508,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000198,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1927,6 +2533,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000019C,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1948,6 +2558,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001A0,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1969,6 +2583,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001A4,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1990,6 +2608,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001A8,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -2011,6 +2633,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001AC,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -2032,6 +2658,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001B0,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -2053,6 +2683,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001B4,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -2074,6 +2708,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001B8,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -2095,6 +2733,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001BC,\n\t_reserved: u32 = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+                line: 86
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -2116,6 +2758,10 @@ Child Variables:
           type_name:
             Base: bool
           value: "true"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rp2040-pac-0.5.0/src/lib.rs
+            line: 1598
+            column: ~
     - name:
         Namespace: cortex_m_rt
       type_name: Namespace
@@ -2125,11 +2771,19 @@ Child Variables:
             Named: __ONCE__
           type_name: Unknown
           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+          source_location:
+            path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+            line: 857
+            column: ~
         - name:
             Named: __RESET_VECTOR
           type_name:
             Pointer: "unsafe extern \"C\" fn() -> !"
           value: "*raw unsafe extern \"C\" fn() -> ! @ 0x10000104"
+          source_location:
+            path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+            line: 1048
+            column: ~
           children:
             - name:
                 Named: "*__RESET_VECTOR"
@@ -2144,12 +2798,20 @@ Child Variables:
                 Base: Vector
               count: 14
           value: "[Vector; 14] = [\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000108,\n\t\treserved: usize = 268461611\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000010C,\n\t\treserved: usize = 268482803\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000110,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000114,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000118,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000011C,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000120,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000124,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000128,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000012C,\n\t\treserved: usize = 268436319\n\t},\n\t... and 4 more]"
+          source_location:
+            path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+            line: 1140
+            column: ~
           children:
             - name:
                 Named: __0
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000108,\n\treserved: usize = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2171,6 +2833,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000010C,\n\treserved: usize = 268482803}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2192,6 +2858,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000110,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2213,6 +2883,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000114,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2234,6 +2908,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000118,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2255,6 +2933,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000011C,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2276,6 +2958,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000120,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2297,6 +2983,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000124,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2318,6 +3008,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000128,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2339,6 +3033,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000012C,\n\treserved: usize = 268436319}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2360,6 +3058,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000130,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2381,6 +3083,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000134,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2402,6 +3108,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000138,\n\treserved: usize = 268461611}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2423,6 +3133,10 @@ Child Variables:
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000013C,\n\treserved: usize = 268436301}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -2453,76 +3167,136 @@ Child Variables:
           type_name:
             Base: bool
           value: "false"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 15
+            column: ~
         - name:
             Named: I
           type_name:
             Base: isize
           value: "-1"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 16
+            column: ~
         - name:
             Named: C
           type_name:
             Base: char
           value: a
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 17
+            column: ~
         - name:
             Named: I8
           type_name:
             Base: i8
           value: "68"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 18
+            column: ~
         - name:
             Named: I16
           type_name:
             Base: i16
           value: "-16"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 19
+            column: ~
         - name:
             Named: I32
           type_name:
             Base: i32
           value: "-32"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 20
+            column: ~
         - name:
             Named: I64
           type_name:
             Base: i64
           value: "-64"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 21
+            column: ~
         - name:
             Named: U
           type_name:
             Base: usize
           value: "1"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 22
+            column: ~
         - name:
             Named: U8
           type_name:
             Base: u8
           value: "100"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 23
+            column: ~
         - name:
             Named: U16
           type_name:
             Base: u16
           value: "16"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 24
+            column: ~
         - name:
             Named: U32
           type_name:
             Base: u32
           value: "32"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 25
+            column: ~
         - name:
             Named: U64
           type_name:
             Base: u64
           value: "64"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 26
+            column: ~
         - name:
             Named: F32
           type_name:
             Base: f32
           value: "2.5"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 27
+            column: ~
         - name:
             Named: F64
           type_name:
             Base: f64
           value: "3.5"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 28
+            column: ~
         - name:
             Named: GLOBAL_STATIC
           type_name:
             Struct: "&str"
           value: "A 'global' static variable"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 30
+            column: ~
           children:
             - name:
                 Named: data_ptr
@@ -2545,6 +3319,10 @@ Child Variables:
           type_name:
             Struct: ComplexEnum
           value: ComplexEnum @ 0x20000048
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 64
+            column: ~
           children:
             - name:
                 Named: Case1
@@ -2588,6 +3366,10 @@ Child Variables:
               type_name:
                 Struct: "&str"
               value: "A 'local' to main() static variable ...will be optimized out if not used in the code."
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 205
+                column: ~
               children:
                 - name:
                     Named: data_ptr
@@ -2610,6 +3392,10 @@ Child Variables:
               type_name:
                 Base: "MaybeUninit<probe_rs_debugger_test::setup_data_types::RttControlBlock>"
               value: "MaybeUninit<probe_rs_debugger_test::setup_data_types::RttControlBlock> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock> = ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock> @ 0x2000007C}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
+                line: 138
+                column: ~
               children:
                 - name:
                     Named: uninit
@@ -2923,6 +3709,10 @@ Child Variables:
               type_name:
                 Base: "MaybeUninit<[u8; 1024]>"
               value: "MaybeUninit<[u8; 1024]> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<[u8; 1024]> = ManuallyDrop<[u8; 1024]> @ 0x200000C4}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
+                line: 34
+                column: ~
               children:
                 - name:
                     Named: uninit
@@ -3202,6 +3992,10 @@ Child Variables:
               type_name:
                 Base: "MaybeUninit<[u8; 1024]>"
               value: "MaybeUninit<[u8; 1024]> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<[u8; 1024]> = ManuallyDrop<[u8; 1024]> @ 0x200004C4}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
+                line: 34
+                column: ~
               children:
                 - name:
                     Named: uninit
@@ -3729,6 +4523,10 @@ Child Variables:
               type_name:
                 Struct: "Mutex<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>>"
               value: "Mutex<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>> @ 0x200008C4"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/print.rs
+                line: 7
+                column: ~
               children:
                 - name:
                     Named: inner
@@ -3843,8 +4641,16 @@ Child Variables:
                 Named: CORE_PERIPHERALS
               type_name: Unknown
               value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/peripheral/mod.rs
+                line: 159
+                column: ~
             - name:
                 Named: TAKEN
               type_name:
                 Base: bool
               value: "true"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/peripheral/mod.rs
+                line: 162
+                column: ~

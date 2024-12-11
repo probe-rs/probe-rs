@@ -116,7 +116,7 @@ impl SteppingMode {
                     debug_info
                         .get_source_location(program_counter)
                         .map(|source_location| (
-                            source_location.file,
+                            source_location.path,
                             source_location.line,
                             source_location.column
                         )),
@@ -124,7 +124,7 @@ impl SteppingMode {
                     debug_info
                         .get_source_location(target_address)
                         .map(|source_location| (
-                            source_location.file,
+                            source_location.path,
                             source_location.line,
                             source_location.column
                         )),
