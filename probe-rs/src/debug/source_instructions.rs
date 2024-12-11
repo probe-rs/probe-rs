@@ -270,7 +270,7 @@ pub struct SourceLocation {
     pub path: TypedPathBuf,
     /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,
-    /// The column number in the source file with zero based indexing.
+    /// The column number in the source file.
     pub column: Option<ColumnType>,
 }
 

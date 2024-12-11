@@ -2233,7 +2233,12 @@ impl UnitInfo {
                     }
                 }
                 gimli::DW_AT_decl_column => {
-                    // Unused.
+                    if let Some(column_number) = attr.udata_value() {
+                        // According to the DWARF standard, a value of 0 means no column is specified.
+                        if column_number != 0 {
+                            source_location.column = Some(super::ColumnType::Column(column_number));
+                        }
+                    }
                 }
                 // Other attributes are not relevant for extracting source location.
                 _ => (),

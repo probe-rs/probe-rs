@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1987
+assertion_line: 1984
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -223,7 +223,8 @@ snapshot_kind: text
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 71
-            column: ~
+            column:
+              Column: 24
           children:
             - name:
                 Named: "*const_void_pointer"
@@ -239,7 +240,8 @@ snapshot_kind: text
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 72
-            column: ~
+            column:
+              Column: 30
           children:
             - name:
                 Named: "*const_void_const_pointer"
@@ -457,7 +459,8 @@ snapshot_kind: text
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 84
-            column: ~
+            column:
+              Column: 18
         - name:
             Named: void_const_pointer
           type_name:
@@ -468,7 +471,8 @@ snapshot_kind: text
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 85
-            column: ~
+            column:
+              Column: 24
   canonical_frame_address: 536875104
 - function_name: main
   source_location:
@@ -681,7 +685,8 @@ snapshot_kind: text
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 98
-            column: ~
+            column:
+              Column: 19
           children:
             - name:
                 Named: "*string"
@@ -902,7 +907,8 @@ snapshot_kind: text
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
             line: 501
-            column: ~
+            column:
+              Column: 19
           children:
             - name:
                 Named: "*pSrc"
@@ -921,7 +927,8 @@ snapshot_kind: text
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
             line: 501
-            column: ~
+            column:
+              Column: 26
           children:
             - name:
                 Named: "*pDest"

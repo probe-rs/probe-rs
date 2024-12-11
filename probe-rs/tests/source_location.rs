@@ -108,7 +108,7 @@ fn find_non_existing_unit_by_path() {
     let debug_info = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
     assert!(debug_info
-        .get_breakpoint_location(&unit_path, 14, None)
+        .get_breakpoint_location(unit_path.to_path(), 14, None)
         .is_err());
 }
 
@@ -117,9 +117,9 @@ fn regression_pr2324() {
     let path = "C:\\_Hobby\\probe-rs-test-c-firmware/Atmel/hpl/core/hpl_init.c";
 
     let di = DebugInfo::from_file("tests/debug-unwind-tests/atsamd51p19a.elf").unwrap();
-    let path = TypedPath::derive(path).to_path_buf();
+    let path = TypedPath::derive(path);
 
-    let addr = di.get_breakpoint_location(&path, 58, None).unwrap();
+    let addr = di.get_breakpoint_location(path, 58, None).unwrap();
 
     assert_eq!(addr.address, 0x2e4);
 }

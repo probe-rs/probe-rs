@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 2023
+assertion_line: 2020
 expression: static_variables
 snapshot_kind: text
 ---
@@ -16,7 +16,8 @@ Child Variables:
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
         line: 239
-        column: ~
+        column:
+          Column: 21
     - name:
         Named: _aTerminalId
       type_name: Unknown
@@ -24,7 +25,8 @@ Child Variables:
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
         line: 258
-        column: ~
+        column:
+          Column: 22
     - name:
         Named: _SEGGER_RTT
       type_name:
@@ -35,7 +37,8 @@ Child Variables:
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
         line: 348
-        column: ~
+        column:
+          Column: 22
       children:
         - name:
             Named: acID
@@ -48,7 +51,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
             line: 332
-            column: ~
+            column:
+              Column: 27
           children:
             - name:
                 Named: __0
@@ -58,7 +62,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __1
               type_name:
@@ -67,7 +72,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __2
               type_name:
@@ -76,7 +82,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __3
               type_name:
@@ -85,7 +92,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __4
               type_name:
@@ -94,7 +102,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __5
               type_name:
@@ -103,7 +112,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __6
               type_name:
@@ -112,7 +122,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __7
               type_name:
@@ -121,7 +132,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __8
               type_name:
@@ -130,7 +142,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __9
               type_name:
@@ -139,7 +152,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __10
               type_name:
@@ -148,7 +162,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __11
               type_name:
@@ -157,7 +172,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __12
               type_name:
@@ -166,7 +182,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __13
               type_name:
@@ -175,7 +192,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __14
               type_name:
@@ -184,7 +202,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
             - name:
                 Named: __15
               type_name:
@@ -193,7 +212,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 332
-                column: ~
+                column:
+                  Column: 27
         - name:
             Named: MaxNumUpBuffers
           type_name:
@@ -202,7 +222,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
             line: 333
-            column: ~
+            column:
+              Column: 27
         - name:
             Named: MaxNumDownBuffers
           type_name:
@@ -211,7 +232,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
             line: 334
-            column: ~
+            column:
+              Column: 27
         - name:
             Named: aUp
           type_name:
@@ -225,7 +247,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
             line: 335
-            column: ~
+            column:
+              Column: 27
           children:
             - name:
                 Named: __0
@@ -237,7 +260,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 335
-                column: ~
+                column:
+                  Column: 27
               children:
                 - name:
                     Named: sName
@@ -247,7 +271,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 305
-                    column: ~
+                    column:
+                      Column: 22
                   children:
                     - name:
                         Named: "*sName"
@@ -264,7 +289,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 306
-                    column: ~
+                    column:
+                      Column: 22
                   children:
                     - name:
                         Named: "*pBuffer"
@@ -279,7 +305,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 307
-                    column: ~
+                    column:
+                      Column: 22
                 - name:
                     Named: WrOff
                   type_name:
@@ -288,7 +315,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 308
-                    column: ~
+                    column:
+                      Column: 22
                 - name:
                     Named: RdOff
                   type_name:
@@ -299,7 +327,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 309
-                    column: ~
+                    column:
+                      Column: 22
                 - name:
                     Named: Flags
                   type_name:
@@ -308,7 +337,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 310
-                    column: ~
+                    column:
+                      Column: 22
         - name:
             Named: aDown
           type_name:
@@ -322,7 +352,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
             line: 336
-            column: ~
+            column:
+              Column: 27
           children:
             - name:
                 Named: __0
@@ -334,7 +365,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                 line: 336
-                column: ~
+                column:
+                  Column: 27
               children:
                 - name:
                     Named: sName
@@ -344,7 +376,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 318
-                    column: ~
+                    column:
+                      Column: 22
                   children:
                     - name:
                         Named: "*sName"
@@ -361,7 +394,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 319
-                    column: ~
+                    column:
+                      Column: 22
                   children:
                     - name:
                         Named: "*pBuffer"
@@ -376,7 +410,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 320
-                    column: ~
+                    column:
+                      Column: 22
                 - name:
                     Named: WrOff
                   type_name:
@@ -387,7 +422,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 321
-                    column: ~
+                    column:
+                      Column: 22
                 - name:
                     Named: RdOff
                   type_name:
@@ -396,7 +432,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 322
-                    column: ~
+                    column:
+                      Column: 22
                 - name:
                     Named: Flags
                   type_name:
@@ -405,7 +442,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.h"
                     line: 323
-                    column: ~
+                    column:
+                      Column: 22
     - name:
         Named: _acUpBuffer
       type_name:
@@ -417,7 +455,8 @@ Child Variables:
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
         line: 280
-        column: ~
+        column:
+          Column: 3
       children:
         - name:
             Named: __0
@@ -427,7 +466,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __1
           type_name:
@@ -436,7 +476,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __2
           type_name:
@@ -445,7 +486,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __3
           type_name:
@@ -454,7 +496,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __4
           type_name:
@@ -463,7 +506,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __5
           type_name:
@@ -472,7 +516,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __6
           type_name:
@@ -481,7 +526,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __7
           type_name:
@@ -490,7 +536,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __8
           type_name:
@@ -499,7 +546,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __9
           type_name:
@@ -508,7 +556,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __10
           type_name:
@@ -517,7 +566,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __11
           type_name:
@@ -526,7 +576,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __12
           type_name:
@@ -535,7 +586,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __13
           type_name:
@@ -544,7 +596,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __14
           type_name:
@@ -553,7 +606,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __15
           type_name:
@@ -562,7 +616,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __16
           type_name:
@@ -571,7 +626,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __17
           type_name:
@@ -580,7 +636,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __18
           type_name:
@@ -589,7 +646,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __19
           type_name:
@@ -598,7 +656,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __20
           type_name:
@@ -607,7 +666,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __21
           type_name:
@@ -616,7 +676,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __22
           type_name:
@@ -625,7 +686,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __23
           type_name:
@@ -634,7 +696,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __24
           type_name:
@@ -643,7 +706,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __25
           type_name:
@@ -652,7 +716,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __26
           type_name:
@@ -661,7 +726,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __27
           type_name:
@@ -670,7 +736,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __28
           type_name:
@@ -679,7 +746,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __29
           type_name:
@@ -688,7 +756,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __30
           type_name:
@@ -697,7 +766,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __31
           type_name:
@@ -706,7 +776,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __32
           type_name:
@@ -715,7 +786,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __33
           type_name:
@@ -724,7 +796,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __34
           type_name:
@@ -733,7 +806,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __35
           type_name:
@@ -742,7 +816,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __36
           type_name:
@@ -751,7 +826,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __37
           type_name:
@@ -760,7 +836,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __38
           type_name:
@@ -769,7 +846,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __39
           type_name:
@@ -778,7 +856,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __40
           type_name:
@@ -787,7 +866,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __41
           type_name:
@@ -796,7 +876,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __42
           type_name:
@@ -805,7 +886,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __43
           type_name:
@@ -814,7 +896,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __44
           type_name:
@@ -823,7 +906,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __45
           type_name:
@@ -832,7 +916,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __46
           type_name:
@@ -841,7 +926,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __47
           type_name:
@@ -850,7 +936,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __48
           type_name:
@@ -859,7 +946,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __49
           type_name:
@@ -868,7 +956,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 280
-            column: ~
+            column:
+              Column: 3
         - name: Artifical
           type_name: Unknown
           value: "... and 974 more"
@@ -883,7 +972,8 @@ Child Variables:
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
         line: 281
-        column: ~
+        column:
+          Column: 3
       children:
         - name:
             Named: __0
@@ -893,7 +983,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __1
           type_name:
@@ -902,7 +993,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __2
           type_name:
@@ -911,7 +1003,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __3
           type_name:
@@ -920,7 +1013,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __4
           type_name:
@@ -929,7 +1023,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __5
           type_name:
@@ -938,7 +1033,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __6
           type_name:
@@ -947,7 +1043,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __7
           type_name:
@@ -956,7 +1053,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __8
           type_name:
@@ -965,7 +1063,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __9
           type_name:
@@ -974,7 +1073,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __10
           type_name:
@@ -983,7 +1083,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __11
           type_name:
@@ -992,7 +1093,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __12
           type_name:
@@ -1001,7 +1103,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __13
           type_name:
@@ -1010,7 +1113,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __14
           type_name:
@@ -1019,7 +1123,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
         - name:
             Named: __15
           type_name:
@@ -1028,7 +1133,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
             line: 281
-            column: ~
+            column:
+              Column: 3
     - name:
         Named: _ActiveTerminal
       type_name: Unknown
@@ -1036,7 +1142,8 @@ Child Variables:
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\SEGGER\\RTT\\SEGGER_RTT.c"
         line: 284
-        column: ~
+        column:
+          Column: 22
     - name:
         Named: foo
       type_name:
@@ -1047,7 +1154,8 @@ Child Variables:
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
         line: 38
-        column: ~
+        column:
+          Column: 14
       children:
         - name: Unknown
           type_name:
@@ -1071,7 +1179,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 19
-                    column: ~
+                    column:
+                      Column: 21
                 - name:
                     Named: b
                   type_name:
@@ -1084,7 +1193,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 20
-                    column: ~
+                    column:
+                      Column: 21
                 - name:
                     Named: c
                   type_name:
@@ -1097,7 +1207,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 21
-                    column: ~
+                    column:
+                      Column: 21
                 - name:
                     Named: d
                   type_name:
@@ -1110,7 +1221,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 22
-                    column: ~
+                    column:
+                      Column: 21
             - name:
                 Named: x
               type_name:
@@ -1123,7 +1235,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 24
-                column: ~
+                column:
+                  Column: 18
         - name:
             Named: unsigned_bitfields
           type_name:
@@ -1132,7 +1245,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 30
-            column: ~
+            column:
+              Column: 7
           children:
             - name:
                 Named: f
@@ -1150,7 +1264,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 28
-                column: ~
+                column:
+                  Column: 17
             - name:
                 Named: g
               type_name:
@@ -1167,7 +1282,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 29
-                column: ~
+                column:
+                  Column: 17
         - name:
             Named: signed_bitfields
           type_name:
@@ -1176,7 +1292,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 35
-            column: ~
+            column:
+              Column: 7
           children:
             - name:
                 Named: f
@@ -1194,7 +1311,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 33
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: g
               type_name:
@@ -1211,7 +1329,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 34
-                column: ~
+                column:
+                  Column: 16
     - name:
         Named: foo_array
       type_name:
@@ -1229,7 +1348,8 @@ Child Variables:
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
         line: 53
-        column: ~
+        column:
+          Column: 13
       children:
         - name:
             Named: __0
@@ -1243,7 +1363,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 53
-            column: ~
+            column:
+              Column: 13
           children:
             - name: Unknown
               type_name:
@@ -1267,7 +1388,8 @@ Child Variables:
                       source_location:
                         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                         line: 19
-                        column: ~
+                        column:
+                          Column: 21
                     - name:
                         Named: b
                       type_name:
@@ -1280,7 +1402,8 @@ Child Variables:
                       source_location:
                         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                         line: 20
-                        column: ~
+                        column:
+                          Column: 21
                     - name:
                         Named: c
                       type_name:
@@ -1293,7 +1416,8 @@ Child Variables:
                       source_location:
                         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                         line: 21
-                        column: ~
+                        column:
+                          Column: 21
                     - name:
                         Named: d
                       type_name:
@@ -1306,7 +1430,8 @@ Child Variables:
                       source_location:
                         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                         line: 22
-                        column: ~
+                        column:
+                          Column: 21
                 - name:
                     Named: x
                   type_name:
@@ -1319,7 +1444,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 24
-                    column: ~
+                    column:
+                      Column: 18
             - name:
                 Named: unsigned_bitfields
               type_name:
@@ -1328,7 +1454,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 30
-                column: ~
+                column:
+                  Column: 7
               children:
                 - name:
                     Named: f
@@ -1346,7 +1473,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 28
-                    column: ~
+                    column:
+                      Column: 17
                 - name:
                     Named: g
                   type_name:
@@ -1363,7 +1491,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 29
-                    column: ~
+                    column:
+                      Column: 17
             - name:
                 Named: signed_bitfields
               type_name:
@@ -1372,7 +1501,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 35
-                column: ~
+                column:
+                  Column: 7
               children:
                 - name:
                     Named: f
@@ -1390,7 +1520,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 33
-                    column: ~
+                    column:
+                      Column: 16
                 - name:
                     Named: g
                   type_name:
@@ -1407,7 +1538,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 34
-                    column: ~
+                    column:
+                      Column: 16
         - name:
             Named: __1
           type_name:
@@ -1420,7 +1552,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 53
-            column: ~
+            column:
+              Column: 13
           children:
             - name: Unknown
               type_name:
@@ -1444,7 +1577,8 @@ Child Variables:
                       source_location:
                         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                         line: 19
-                        column: ~
+                        column:
+                          Column: 21
                     - name:
                         Named: b
                       type_name:
@@ -1457,7 +1591,8 @@ Child Variables:
                       source_location:
                         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                         line: 20
-                        column: ~
+                        column:
+                          Column: 21
                     - name:
                         Named: c
                       type_name:
@@ -1470,7 +1605,8 @@ Child Variables:
                       source_location:
                         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                         line: 21
-                        column: ~
+                        column:
+                          Column: 21
                     - name:
                         Named: d
                       type_name:
@@ -1483,7 +1619,8 @@ Child Variables:
                       source_location:
                         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                         line: 22
-                        column: ~
+                        column:
+                          Column: 21
                 - name:
                     Named: x
                   type_name:
@@ -1496,7 +1633,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 24
-                    column: ~
+                    column:
+                      Column: 18
             - name:
                 Named: unsigned_bitfields
               type_name:
@@ -1505,7 +1643,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 30
-                column: ~
+                column:
+                  Column: 7
               children:
                 - name:
                     Named: f
@@ -1523,7 +1662,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 28
-                    column: ~
+                    column:
+                      Column: 17
                 - name:
                     Named: g
                   type_name:
@@ -1540,7 +1680,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 29
-                    column: ~
+                    column:
+                      Column: 17
             - name:
                 Named: signed_bitfields
               type_name:
@@ -1549,7 +1690,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 35
-                column: ~
+                column:
+                  Column: 7
               children:
                 - name:
                     Named: f
@@ -1567,7 +1709,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 33
-                    column: ~
+                    column:
+                      Column: 16
                 - name:
                     Named: g
                   type_name:
@@ -1584,7 +1727,8 @@ Child Variables:
                   source_location:
                     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                     line: 34
-                    column: ~
+                    column:
+                      Column: 16
     - name:
         Named: nested_array
       type_name:
@@ -1603,7 +1747,8 @@ Child Variables:
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
         line: 54
-        column: ~
+        column:
+          Column: 16
       children:
         - name:
             Named: __0
@@ -1620,7 +1765,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
-            column: ~
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -1634,7 +1780,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -1647,7 +1794,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -1660,7 +1808,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -1673,7 +1822,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -1686,7 +1836,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -1699,7 +1850,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -1712,7 +1864,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -1725,7 +1878,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -1738,7 +1892,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
         - name:
             Named: __1
           type_name:
@@ -1754,7 +1909,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
-            column: ~
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -1768,7 +1924,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -1781,7 +1938,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -1794,7 +1952,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -1807,7 +1966,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -1820,7 +1980,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -1833,7 +1994,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -1846,7 +2008,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -1859,7 +2022,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -1872,7 +2036,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
         - name:
             Named: __2
           type_name:
@@ -1888,7 +2053,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
-            column: ~
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -1902,7 +2068,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -1915,7 +2082,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -1928,7 +2096,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -1941,7 +2110,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -1954,7 +2124,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -1967,7 +2138,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -1980,7 +2152,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -1993,7 +2166,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -2006,7 +2180,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
         - name:
             Named: __3
           type_name:
@@ -2022,7 +2197,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
-            column: ~
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -2036,7 +2212,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -2049,7 +2226,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -2062,7 +2240,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -2075,7 +2254,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -2088,7 +2268,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -2101,7 +2282,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -2114,7 +2296,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -2127,7 +2310,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -2140,7 +2324,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
         - name:
             Named: __4
           type_name:
@@ -2156,7 +2341,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
-            column: ~
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -2170,7 +2356,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -2183,7 +2370,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -2196,7 +2384,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -2209,7 +2398,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -2222,7 +2412,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -2235,7 +2426,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -2248,7 +2440,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -2261,7 +2454,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -2274,7 +2468,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
         - name:
             Named: __5
           type_name:
@@ -2290,7 +2485,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 54
-            column: ~
+            column:
+              Column: 16
           children:
             - name:
                 Named: __0
@@ -2304,7 +2500,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __1
               type_name:
@@ -2317,7 +2514,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __2
               type_name:
@@ -2330,7 +2528,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __3
               type_name:
@@ -2343,7 +2542,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __4
               type_name:
@@ -2356,7 +2556,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __5
               type_name:
@@ -2369,7 +2570,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __6
               type_name:
@@ -2382,7 +2584,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __7
               type_name:
@@ -2395,7 +2598,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
             - name:
                 Named: __8
               type_name:
@@ -2408,7 +2612,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 54
-                column: ~
+                column:
+                  Column: 16
     - name:
         Named: nested_array2
       type_name:
@@ -2427,7 +2632,8 @@ Child Variables:
       source_location:
         path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
         line: 65
-        column: ~
+        column:
+          Column: 17
       children:
         - name:
             Named: __0
@@ -2444,7 +2650,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 65
-            column: ~
+            column:
+              Column: 17
           children:
             - name:
                 Named: __0
@@ -2458,7 +2665,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 65
-                column: ~
+                column:
+                  Column: 17
             - name:
                 Named: __1
               type_name:
@@ -2471,7 +2679,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 65
-                column: ~
+                column:
+                  Column: 17
             - name:
                 Named: __2
               type_name:
@@ -2484,7 +2693,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 65
-                column: ~
+                column:
+                  Column: 17
         - name:
             Named: __1
           type_name:
@@ -2500,7 +2710,8 @@ Child Variables:
           source_location:
             path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
             line: 65
-            column: ~
+            column:
+              Column: 17
           children:
             - name:
                 Named: __0
@@ -2514,7 +2725,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 65
-                column: ~
+                column:
+                  Column: 17
             - name:
                 Named: __1
               type_name:
@@ -2527,7 +2739,8 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 65
-                column: ~
+                column:
+                  Column: 17
             - name:
                 Named: __2
               type_name:
@@ -2540,4 +2753,5 @@ Child Variables:
               source_location:
                 path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
                 line: 65
-                column: ~
+                column:
+                  Column: 17
