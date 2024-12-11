@@ -4,7 +4,7 @@ about: Create a report to help us improve
 title: ""
 labels: bug
 assignees: ""
-type: 'bub'
+type: 'bug'
 ---
 
 **Describe the bug**
