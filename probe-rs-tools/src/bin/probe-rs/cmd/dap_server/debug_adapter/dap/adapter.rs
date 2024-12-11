@@ -876,7 +876,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     };
 
                     match target_core.verify_and_set_breakpoint(
-                        &source_path,
+                        source_path.to_path(),
                         requested_breakpoint_line,
                         requested_breakpoint_column,
                         &args.source,

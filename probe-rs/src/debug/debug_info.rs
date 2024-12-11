@@ -778,13 +778,13 @@ impl DebugInfo {
     #[tracing::instrument(skip_all)]
     pub fn get_breakpoint_location(
         &self,
-        path: &TypedPathBuf,
+        path: TypedPath,
         line: u64,
         column: Option<u64>,
     ) -> Result<VerifiedBreakpoint, DebugError> {
         tracing::debug!(
             "Looking for breakpoint location for {}:{}:{}",
-            path.to_path().display(),
+            path.display(),
             line,
             column
                 .map(|c| c.to_string())
@@ -943,10 +943,7 @@ impl DebugInfo {
 }
 
 /// Uses the [`TypedPathBuf::normalize`] function to normalize both paths before comparing them
-pub(crate) fn canonical_path_eq(
-    primary_path: &TypedPathBuf,
-    secondary_path: &TypedPathBuf,
-) -> bool {
+pub(crate) fn canonical_path_eq(primary_path: TypedPath, secondary_path: TypedPath) -> bool {
     primary_path.normalize() == secondary_path.normalize()
 }
 

@@ -10,7 +10,7 @@ use std::{
     num::NonZeroU64,
     ops::Range,
 };
-use typed_path::TypedPathBuf;
+use typed_path::{TypedPath, TypedPathBuf};
 
 /// A verified breakpoint represents an instruction address, and the source location that it corresponds to it,
 /// for locations in the target binary that comply with the DWARF standard terminology for "recommended breakpoint location".
@@ -72,7 +72,7 @@ impl VerifiedBreakpoint {
     ///        on the next available line of the specified file.
     pub(crate) fn for_source_location(
         debug_info: &DebugInfo,
-        path: &TypedPathBuf,
+        path: TypedPath,
         line: u64,
         column: Option<u64>,
     ) -> Result<Self, DebugError> {
@@ -103,11 +103,11 @@ impl VerifiedBreakpoint {
                     debug_info
                         .get_path(&program_unit.unit, file_index)
                         .and_then(|combined_path: TypedPathBuf| {
-                            if canonical_path_eq(path, &combined_path) {
+                            if canonical_path_eq(path, combined_path.to_path()) {
                                 tracing::debug!(
                                     "Found matching file index: {file_index} for path: {path}",
                                     file_index = file_index,
-                                    path = path.to_path().display()
+                                    path = path.display()
                                 );
                                 Some(file_index)
                             } else {
@@ -161,7 +161,7 @@ impl VerifiedBreakpoint {
             }
         }
         // If we get here, we have not found a valid breakpoint location.
-        Err(DebugError::Other(format!("No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}", path.to_path().display())))
+        Err(DebugError::Other(format!("No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}", path.display())))
     }
 }
 
@@ -307,11 +307,6 @@ impl SourceLocation {
         self.path
             .file_name()
             .map(|name| String::from_utf8_lossy(name).to_string())
-    }
-
-    /// Get the full path of the source file
-    pub fn combined_typed_path(&self) -> Option<TypedPathBuf> {
-        Some(self.path.clone())
     }
 }
 

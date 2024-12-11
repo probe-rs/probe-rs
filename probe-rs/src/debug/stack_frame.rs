@@ -54,7 +54,7 @@ impl std::fmt::Display for StackFrame {
         // Header info for the StackFrame
         writeln!(f, "Frame: {}", self.function_name)?;
         if let Some(si) = &self.source_location {
-            write!(f, "\t{}", si.path.to_string_lossy())?;
+            write!(f, "\t{}", si.path.to_path().display())?;
 
             if let (Some(column), Some(line)) = (si.column, si.line) {
                 match column {
