@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 2023
+assertion_line: 2020
 expression: static_variables
 snapshot_kind: text
 ---
@@ -28,7 +28,7 @@ Child Variables:
             column: ~
           children:
             - name:
-                Named: __0
+                Indexed: 0
               type_name:
                 Base: u8
               value: "0"
@@ -37,7 +37,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __1
+                Indexed: 1
               type_name:
                 Base: u8
               value: "181"
@@ -46,7 +46,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __2
+                Indexed: 2
               type_name:
                 Base: u8
               value: "50"
@@ -55,7 +55,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __3
+                Indexed: 3
               type_name:
                 Base: u8
               value: "75"
@@ -64,7 +64,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __4
+                Indexed: 4
               type_name:
                 Base: u8
               value: "33"
@@ -73,7 +73,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __5
+                Indexed: 5
               type_name:
                 Base: u8
               value: "32"
@@ -82,7 +82,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __6
+                Indexed: 6
               type_name:
                 Base: u8
               value: "88"
@@ -91,7 +91,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __7
+                Indexed: 7
               type_name:
                 Base: u8
               value: "96"
@@ -100,7 +100,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __8
+                Indexed: 8
               type_name:
                 Base: u8
               value: "152"
@@ -109,7 +109,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __9
+                Indexed: 9
               type_name:
                 Base: u8
               value: "104"
@@ -118,7 +118,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __10
+                Indexed: 10
               type_name:
                 Base: u8
               value: "2"
@@ -127,7 +127,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __11
+                Indexed: 11
               type_name:
                 Base: u8
               value: "33"
@@ -136,7 +136,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __12
+                Indexed: 12
               type_name:
                 Base: u8
               value: "136"
@@ -145,7 +145,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __13
+                Indexed: 13
               type_name:
                 Base: u8
               value: "67"
@@ -154,7 +154,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __14
+                Indexed: 14
               type_name:
                 Base: u8
               value: "152"
@@ -163,7 +163,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __15
+                Indexed: 15
               type_name:
                 Base: u8
               value: "96"
@@ -172,7 +172,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __16
+                Indexed: 16
               type_name:
                 Base: u8
               value: "216"
@@ -181,7 +181,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __17
+                Indexed: 17
               type_name:
                 Base: u8
               value: "96"
@@ -190,7 +190,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __18
+                Indexed: 18
               type_name:
                 Base: u8
               value: "24"
@@ -199,7 +199,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __19
+                Indexed: 19
               type_name:
                 Base: u8
               value: "97"
@@ -208,7 +208,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __20
+                Indexed: 20
               type_name:
                 Base: u8
               value: "88"
@@ -217,7 +217,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __21
+                Indexed: 21
               type_name:
                 Base: u8
               value: "97"
@@ -226,7 +226,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __22
+                Indexed: 22
               type_name:
                 Base: u8
               value: "46"
@@ -235,7 +235,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __23
+                Indexed: 23
               type_name:
                 Base: u8
               value: "75"
@@ -244,7 +244,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __24
+                Indexed: 24
               type_name:
                 Base: u8
               value: "0"
@@ -253,7 +253,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __25
+                Indexed: 25
               type_name:
                 Base: u8
               value: "33"
@@ -262,7 +262,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __26
+                Indexed: 26
               type_name:
                 Base: u8
               value: "153"
@@ -271,7 +271,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __27
+                Indexed: 27
               type_name:
                 Base: u8
               value: "96"
@@ -280,7 +280,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __28
+                Indexed: 28
               type_name:
                 Base: u8
               value: "2"
@@ -289,7 +289,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __29
+                Indexed: 29
               type_name:
                 Base: u8
               value: "33"
@@ -298,7 +298,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __30
+                Indexed: 30
               type_name:
                 Base: u8
               value: "89"
@@ -307,7 +307,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __31
+                Indexed: 31
               type_name:
                 Base: u8
               value: "97"
@@ -316,7 +316,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __32
+                Indexed: 32
               type_name:
                 Base: u8
               value: "1"
@@ -325,7 +325,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __33
+                Indexed: 33
               type_name:
                 Base: u8
               value: "33"
@@ -334,7 +334,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __34
+                Indexed: 34
               type_name:
                 Base: u8
               value: "240"
@@ -343,7 +343,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __35
+                Indexed: 35
               type_name:
                 Base: u8
               value: "34"
@@ -352,7 +352,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __36
+                Indexed: 36
               type_name:
                 Base: u8
               value: "153"
@@ -361,7 +361,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __37
+                Indexed: 37
               type_name:
                 Base: u8
               value: "80"
@@ -370,7 +370,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __38
+                Indexed: 38
               type_name:
                 Base: u8
               value: "43"
@@ -379,7 +379,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __39
+                Indexed: 39
               type_name:
                 Base: u8
               value: "73"
@@ -388,7 +388,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __40
+                Indexed: 40
               type_name:
                 Base: u8
               value: "25"
@@ -397,7 +397,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __41
+                Indexed: 41
               type_name:
                 Base: u8
               value: "96"
@@ -406,7 +406,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __42
+                Indexed: 42
               type_name:
                 Base: u8
               value: "1"
@@ -415,7 +415,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __43
+                Indexed: 43
               type_name:
                 Base: u8
               value: "33"
@@ -424,7 +424,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __44
+                Indexed: 44
               type_name:
                 Base: u8
               value: "153"
@@ -433,7 +433,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __45
+                Indexed: 45
               type_name:
                 Base: u8
               value: "96"
@@ -442,7 +442,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __46
+                Indexed: 46
               type_name:
                 Base: u8
               value: "53"
@@ -451,7 +451,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __47
+                Indexed: 47
               type_name:
                 Base: u8
               value: "32"
@@ -460,7 +460,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __48
+                Indexed: 48
               type_name:
                 Base: u8
               value: "0"
@@ -469,7 +469,7 @@ Child Variables:
                 line: 67
                 column: ~
             - name:
-                Named: __49
+                Indexed: 49
               type_name:
                 Base: u8
               value: "240"
@@ -1954,7 +1954,7 @@ Child Variables:
             column: ~
           children:
             - name:
-                Named: __0
+                Indexed: 0
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000140,\n\t_reserved: u32 = 268461611}"
@@ -1979,7 +1979,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __1
+                Indexed: 1
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000144,\n\t_reserved: u32 = 268461611}"
@@ -2004,7 +2004,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __2
+                Indexed: 2
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000148,\n\t_reserved: u32 = 268461611}"
@@ -2029,7 +2029,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __3
+                Indexed: 3
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000014C,\n\t_reserved: u32 = 268461611}"
@@ -2054,7 +2054,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __4
+                Indexed: 4
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000150,\n\t_reserved: u32 = 268461611}"
@@ -2079,7 +2079,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __5
+                Indexed: 5
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000154,\n\t_reserved: u32 = 268461611}"
@@ -2104,7 +2104,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __6
+                Indexed: 6
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000158,\n\t_reserved: u32 = 268461611}"
@@ -2129,7 +2129,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __7
+                Indexed: 7
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000015C,\n\t_reserved: u32 = 268461611}"
@@ -2154,7 +2154,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __8
+                Indexed: 8
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000160,\n\t_reserved: u32 = 268461611}"
@@ -2179,7 +2179,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __9
+                Indexed: 9
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000164,\n\t_reserved: u32 = 268461611}"
@@ -2204,7 +2204,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __10
+                Indexed: 10
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000168,\n\t_reserved: u32 = 268461611}"
@@ -2229,7 +2229,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __11
+                Indexed: 11
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000016C,\n\t_reserved: u32 = 268461611}"
@@ -2254,7 +2254,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __12
+                Indexed: 12
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000170,\n\t_reserved: u32 = 268461611}"
@@ -2279,7 +2279,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __13
+                Indexed: 13
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000174,\n\t_reserved: u32 = 268461611}"
@@ -2304,7 +2304,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __14
+                Indexed: 14
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000178,\n\t_reserved: u32 = 268461611}"
@@ -2329,7 +2329,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __15
+                Indexed: 15
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000017C,\n\t_reserved: u32 = 268461611}"
@@ -2354,7 +2354,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __16
+                Indexed: 16
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000180,\n\t_reserved: u32 = 268461611}"
@@ -2379,7 +2379,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __17
+                Indexed: 17
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000184,\n\t_reserved: u32 = 268461611}"
@@ -2404,7 +2404,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __18
+                Indexed: 18
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000188,\n\t_reserved: u32 = 268461611}"
@@ -2429,7 +2429,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __19
+                Indexed: 19
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000018C,\n\t_reserved: u32 = 268461611}"
@@ -2454,7 +2454,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __20
+                Indexed: 20
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000190,\n\t_reserved: u32 = 268461611}"
@@ -2479,7 +2479,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __21
+                Indexed: 21
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000194,\n\t_reserved: u32 = 268461611}"
@@ -2504,7 +2504,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __22
+                Indexed: 22
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000198,\n\t_reserved: u32 = 268461611}"
@@ -2529,7 +2529,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __23
+                Indexed: 23
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000019C,\n\t_reserved: u32 = 268461611}"
@@ -2554,7 +2554,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __24
+                Indexed: 24
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001A0,\n\t_reserved: u32 = 268461611}"
@@ -2579,7 +2579,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __25
+                Indexed: 25
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001A4,\n\t_reserved: u32 = 268461611}"
@@ -2604,7 +2604,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __26
+                Indexed: 26
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001A8,\n\t_reserved: u32 = 268461611}"
@@ -2629,7 +2629,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __27
+                Indexed: 27
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001AC,\n\t_reserved: u32 = 268461611}"
@@ -2654,7 +2654,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __28
+                Indexed: 28
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001B0,\n\t_reserved: u32 = 268461611}"
@@ -2679,7 +2679,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __29
+                Indexed: 29
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001B4,\n\t_reserved: u32 = 268461611}"
@@ -2704,7 +2704,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __30
+                Indexed: 30
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001B8,\n\t_reserved: u32 = 268461611}"
@@ -2729,7 +2729,7 @@ Child Variables:
                     Base: u32
                   value: "268461611"
             - name:
-                Named: __31
+                Indexed: 31
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x100001BC,\n\t_reserved: u32 = 268461611}"
@@ -2804,7 +2804,7 @@ Child Variables:
             column: ~
           children:
             - name:
-                Named: __0
+                Indexed: 0
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000108,\n\treserved: usize = 268461611}"
@@ -2829,7 +2829,7 @@ Child Variables:
                     Base: usize
                   value: "268461611"
             - name:
-                Named: __1
+                Indexed: 1
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000010C,\n\treserved: usize = 268482803}"
@@ -2854,7 +2854,7 @@ Child Variables:
                     Base: usize
                   value: "268482803"
             - name:
-                Named: __2
+                Indexed: 2
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000110,\n\treserved: usize = 0}"
@@ -2879,7 +2879,7 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __3
+                Indexed: 3
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000114,\n\treserved: usize = 0}"
@@ -2904,7 +2904,7 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __4
+                Indexed: 4
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000118,\n\treserved: usize = 0}"
@@ -2929,7 +2929,7 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __5
+                Indexed: 5
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000011C,\n\treserved: usize = 0}"
@@ -2954,7 +2954,7 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __6
+                Indexed: 6
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000120,\n\treserved: usize = 0}"
@@ -2979,7 +2979,7 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __7
+                Indexed: 7
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000124,\n\treserved: usize = 0}"
@@ -3004,7 +3004,7 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __8
+                Indexed: 8
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000128,\n\treserved: usize = 0}"
@@ -3029,7 +3029,7 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __9
+                Indexed: 9
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000012C,\n\treserved: usize = 268436319}"
@@ -3054,7 +3054,7 @@ Child Variables:
                     Base: usize
                   value: "268436319"
             - name:
-                Named: __10
+                Indexed: 10
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000130,\n\treserved: usize = 0}"
@@ -3079,7 +3079,7 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __11
+                Indexed: 11
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000134,\n\treserved: usize = 0}"
@@ -3104,7 +3104,7 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __12
+                Indexed: 12
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x10000138,\n\treserved: usize = 268461611}"
@@ -3129,7 +3129,7 @@ Child Variables:
                     Base: usize
                   value: "268461611"
             - name:
-                Named: __13
+                Indexed: 13
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x1000013C,\n\treserved: usize = 268436301}"
@@ -3430,82 +3430,82 @@ Child Variables:
                               value: "[u8; 16] = [\n\t83,\n\t69,\n\t71,\n\t71,\n\t69,\n\t82,\n\t32,\n\t82,\n\t84,\n\t84,\n\t... and 6 more]"
                               children:
                                 - name:
-                                    Named: __0
+                                    Indexed: 0
                                   type_name:
                                     Base: u8
                                   value: "83"
                                 - name:
-                                    Named: __1
+                                    Indexed: 1
                                   type_name:
                                     Base: u8
                                   value: "69"
                                 - name:
-                                    Named: __2
+                                    Indexed: 2
                                   type_name:
                                     Base: u8
                                   value: "71"
                                 - name:
-                                    Named: __3
+                                    Indexed: 3
                                   type_name:
                                     Base: u8
                                   value: "71"
                                 - name:
-                                    Named: __4
+                                    Indexed: 4
                                   type_name:
                                     Base: u8
                                   value: "69"
                                 - name:
-                                    Named: __5
+                                    Indexed: 5
                                   type_name:
                                     Base: u8
                                   value: "82"
                                 - name:
-                                    Named: __6
+                                    Indexed: 6
                                   type_name:
                                     Base: u8
                                   value: "32"
                                 - name:
-                                    Named: __7
+                                    Indexed: 7
                                   type_name:
                                     Base: u8
                                   value: "82"
                                 - name:
-                                    Named: __8
+                                    Indexed: 8
                                   type_name:
                                     Base: u8
                                   value: "84"
                                 - name:
-                                    Named: __9
+                                    Indexed: 9
                                   type_name:
                                     Base: u8
                                   value: "84"
                                 - name:
-                                    Named: __10
+                                    Indexed: 10
                                   type_name:
                                     Base: u8
                                   value: "0"
                                 - name:
-                                    Named: __11
+                                    Indexed: 11
                                   type_name:
                                     Base: u8
                                   value: "0"
                                 - name:
-                                    Named: __12
+                                    Indexed: 12
                                   type_name:
                                     Base: u8
                                   value: "0"
                                 - name:
-                                    Named: __13
+                                    Indexed: 13
                                   type_name:
                                     Base: u8
                                   value: "0"
                                 - name:
-                                    Named: __14
+                                    Indexed: 14
                                   type_name:
                                     Base: u8
                                   value: "0"
                                 - name:
-                                    Named: __15
+                                    Indexed: 15
                                   type_name:
                                     Base: u8
                                   value: "0"
@@ -3529,7 +3529,7 @@ Child Variables:
                           value: "[RttChannel; 2] = [\n\tRttChannel @ 0x20000094,\n\tRttChannel @ 0x200000AC]"
                           children:
                             - name:
-                                Named: __0
+                                Indexed: 0
                               type_name:
                                 Struct: RttChannel
                               value: RttChannel @ 0x20000094
@@ -3613,7 +3613,7 @@ Child Variables:
                                             Base: usize
                                           value: "1"
                             - name:
-                                Named: __1
+                                Indexed: 1
                               type_name:
                                 Struct: RttChannel
                               value: RttChannel @ 0x200000AC
@@ -3735,252 +3735,252 @@ Child Variables:
                       value: "[u8; 1024] = [\n\t70,\n\t111,\n\t114,\n\t99,\n\t105,\n\t110,\n\t103,\n\t32,\n\t117,\n\t115,\n\t... and 1014 more]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: u8
                           value: "70"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: u8
                           value: "114"
                         - name:
-                            Named: __3
+                            Indexed: 3
                           type_name:
                             Base: u8
                           value: "99"
                         - name:
-                            Named: __4
+                            Indexed: 4
                           type_name:
                             Base: u8
                           value: "105"
                         - name:
-                            Named: __5
+                            Indexed: 5
                           type_name:
                             Base: u8
                           value: "110"
                         - name:
-                            Named: __6
+                            Indexed: 6
                           type_name:
                             Base: u8
                           value: "103"
                         - name:
-                            Named: __7
+                            Indexed: 7
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __8
+                            Indexed: 8
                           type_name:
                             Base: u8
                           value: "117"
                         - name:
-                            Named: __9
+                            Indexed: 9
                           type_name:
                             Base: u8
                           value: "115"
                         - name:
-                            Named: __10
+                            Indexed: 10
                           type_name:
                             Base: u8
                           value: "101"
                         - name:
-                            Named: __11
+                            Indexed: 11
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __12
+                            Indexed: 12
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __13
+                            Indexed: 13
                           type_name:
                             Base: u8
                           value: "102"
                         - name:
-                            Named: __14
+                            Indexed: 14
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __15
+                            Indexed: 15
                           type_name:
                             Base: u8
                           value: "58"
                         - name:
-                            Named: __16
+                            Indexed: 16
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __17
+                            Indexed: 17
                           type_name:
                             Base: u8
                           value: "84"
                         - name:
-                            Named: __18
+                            Indexed: 18
                           type_name:
                             Base: u8
                           value: "119"
                         - name:
-                            Named: __19
+                            Indexed: 19
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __20
+                            Indexed: 20
                           type_name:
                             Base: u8
                           value: "10"
                         - name:
-                            Named: __21
+                            Indexed: 21
                           type_name:
                             Base: u8
                           value: "70"
                         - name:
-                            Named: __22
+                            Indexed: 22
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __23
+                            Indexed: 23
                           type_name:
                             Base: u8
                           value: "114"
                         - name:
-                            Named: __24
+                            Indexed: 24
                           type_name:
                             Base: u8
                           value: "99"
                         - name:
-                            Named: __25
+                            Indexed: 25
                           type_name:
                             Base: u8
                           value: "105"
                         - name:
-                            Named: __26
+                            Indexed: 26
                           type_name:
                             Base: u8
                           value: "110"
                         - name:
-                            Named: __27
+                            Indexed: 27
                           type_name:
                             Base: u8
                           value: "103"
                         - name:
-                            Named: __28
+                            Indexed: 28
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __29
+                            Indexed: 29
                           type_name:
                             Base: u8
                           value: "117"
                         - name:
-                            Named: __30
+                            Indexed: 30
                           type_name:
                             Base: u8
                           value: "115"
                         - name:
-                            Named: __31
+                            Indexed: 31
                           type_name:
                             Base: u8
                           value: "101"
                         - name:
-                            Named: __32
+                            Indexed: 32
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __33
+                            Indexed: 33
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __34
+                            Indexed: 34
                           type_name:
                             Base: u8
                           value: "102"
                         - name:
-                            Named: __35
+                            Indexed: 35
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __36
+                            Indexed: 36
                           type_name:
                             Base: u8
                           value: "58"
                         - name:
-                            Named: __37
+                            Indexed: 37
                           type_name:
                             Base: u8
                           value: "65"
                         - name:
-                            Named: __38
+                            Indexed: 38
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __39
+                            Indexed: 39
                           type_name:
                             Base: u8
                           value: "39"
                         - name:
-                            Named: __40
+                            Indexed: 40
                           type_name:
                             Base: u8
                           value: "108"
                         - name:
-                            Named: __41
+                            Indexed: 41
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __42
+                            Indexed: 42
                           type_name:
                             Base: u8
                           value: "99"
                         - name:
-                            Named: __43
+                            Indexed: 43
                           type_name:
                             Base: u8
                           value: "97"
                         - name:
-                            Named: __44
+                            Indexed: 44
                           type_name:
                             Base: u8
                           value: "108"
                         - name:
-                            Named: __45
+                            Indexed: 45
                           type_name:
                             Base: u8
                           value: "39"
                         - name:
-                            Named: __46
+                            Indexed: 46
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __47
+                            Indexed: 47
                           type_name:
                             Base: u8
                           value: "116"
                         - name:
-                            Named: __48
+                            Indexed: 48
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __49
+                            Indexed: 49
                           type_name:
                             Base: u8
                           value: "32"
@@ -4018,252 +4018,252 @@ Child Variables:
                       value: "[u8; 1024] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t... and 1014 more]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __3
+                            Indexed: 3
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __4
+                            Indexed: 4
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __5
+                            Indexed: 5
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __6
+                            Indexed: 6
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __7
+                            Indexed: 7
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __8
+                            Indexed: 8
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __9
+                            Indexed: 9
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __10
+                            Indexed: 10
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __11
+                            Indexed: 11
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __12
+                            Indexed: 12
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __13
+                            Indexed: 13
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __14
+                            Indexed: 14
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __15
+                            Indexed: 15
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __16
+                            Indexed: 16
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __17
+                            Indexed: 17
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __18
+                            Indexed: 18
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __19
+                            Indexed: 19
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __20
+                            Indexed: 20
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __21
+                            Indexed: 21
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __22
+                            Indexed: 22
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __23
+                            Indexed: 23
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __24
+                            Indexed: 24
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __25
+                            Indexed: 25
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __26
+                            Indexed: 26
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __27
+                            Indexed: 27
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __28
+                            Indexed: 28
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __29
+                            Indexed: 29
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __30
+                            Indexed: 30
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __31
+                            Indexed: 31
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __32
+                            Indexed: 32
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __33
+                            Indexed: 33
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __34
+                            Indexed: 34
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __35
+                            Indexed: 35
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __36
+                            Indexed: 36
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __37
+                            Indexed: 37
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __38
+                            Indexed: 38
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __39
+                            Indexed: 39
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __40
+                            Indexed: 40
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __41
+                            Indexed: 41
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __42
+                            Indexed: 42
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __43
+                            Indexed: 43
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __44
+                            Indexed: 44
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __45
+                            Indexed: 45
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __46
+                            Indexed: 46
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __47
+                            Indexed: 47
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __48
+                            Indexed: 48
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __49
+                            Indexed: 49
                           type_name:
                             Base: u8
                           value: "0"

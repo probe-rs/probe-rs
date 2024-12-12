@@ -1494,9 +1494,7 @@ impl UnitInfo {
         for member_index in explode_range.clone() {
             let mut array_member_variable =
                 cache.create_variable(array_variable.variable_key, Some(self))?;
-            array_member_variable.member_index = Some(member_index as i64);
-            // Override the calculated member name with a more 'array-like' name.
-            array_member_variable.name = VariableName::Named(format!("__{member_index}"));
+            array_member_variable.name = VariableName::Indexed(member_index);
             array_member_variable.source_location = array_variable.source_location.clone();
 
             // Set the byte size and push the element to its correct location.
@@ -1962,12 +1960,11 @@ impl UnitInfo {
         parent_variable: &Variable,
         memory: &mut dyn MemoryInterface,
     ) {
-        let location = if let Some(child_member_index) = child_variable.member_index {
+        let location = if let VariableName::Indexed(child_member_index) = child_variable.name {
             // Push the array member to the proper location according to its index.
             if let VariableLocation::Address(address) = parent_variable.memory_location {
                 if let Some(byte_size) = child_variable.byte_size {
-                    let Some(location) = address.checked_add(child_member_index as u64 * byte_size)
-                    else {
+                    let Some(location) = address.checked_add(child_member_index * byte_size) else {
                         child_variable.set_value(VariableValue::Error(
                             "Overflow calculating variable address".to_string(),
                         ));

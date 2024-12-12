@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1987
+assertion_line: 1984
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -1945,7 +1945,7 @@ snapshot_kind: text
               value: "[[[i32; 3]; 2]; 4] = [\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t3,\n\t\t\t4,\n\t\t\t5\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t9,\n\t\t\t10,\n\t\t\t11\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t12,\n\t\t\t13,\n\t\t\t14\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t15,\n\t\t\t16,\n\t\t\t17\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t18,\n\t\t\t19,\n\t\t\t20\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t21,\n\t\t\t22,\n\t\t\t23\n\t\t]\n\t]]"
               children:
                 - name:
-                    Named: __0
+                    Indexed: 0
                   type_name:
                     Array:
                       item_type_name:
@@ -1957,7 +1957,7 @@ snapshot_kind: text
                   value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t0,\n\t\t1,\n\t\t2\n\t],\n\t[i32; 3] = [\n\t\t3,\n\t\t4,\n\t\t5\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -1966,22 +1966,22 @@ snapshot_kind: text
                       value: "[i32; 3] = [\n\t0,\n\t1,\n\t2]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "0"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "1"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "2"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -1990,22 +1990,22 @@ snapshot_kind: text
                       value: "[i32; 3] = [\n\t3,\n\t4,\n\t5]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "3"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "4"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "5"
                 - name:
-                    Named: __1
+                    Indexed: 1
                   type_name:
                     Array:
                       item_type_name:
@@ -2017,7 +2017,7 @@ snapshot_kind: text
                   value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\t[i32; 3] = [\n\t\t9,\n\t\t10,\n\t\t11\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2026,22 +2026,22 @@ snapshot_kind: text
                       value: "[i32; 3] = [\n\t6,\n\t7,\n\t8]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "7"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "8"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2050,22 +2050,22 @@ snapshot_kind: text
                       value: "[i32; 3] = [\n\t9,\n\t10,\n\t11]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "9"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "10"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "11"
                 - name:
-                    Named: __2
+                    Indexed: 2
                   type_name:
                     Array:
                       item_type_name:
@@ -2077,7 +2077,7 @@ snapshot_kind: text
                   value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t12,\n\t\t13,\n\t\t14\n\t],\n\t[i32; 3] = [\n\t\t15,\n\t\t16,\n\t\t17\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2086,22 +2086,22 @@ snapshot_kind: text
                       value: "[i32; 3] = [\n\t12,\n\t13,\n\t14]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "12"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "13"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "14"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2110,22 +2110,22 @@ snapshot_kind: text
                       value: "[i32; 3] = [\n\t15,\n\t16,\n\t17]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "15"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "16"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "17"
                 - name:
-                    Named: __3
+                    Indexed: 3
                   type_name:
                     Array:
                       item_type_name:
@@ -2137,7 +2137,7 @@ snapshot_kind: text
                   value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t18,\n\t\t19,\n\t\t20\n\t],\n\t[i32; 3] = [\n\t\t21,\n\t\t22,\n\t\t23\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2146,22 +2146,22 @@ snapshot_kind: text
                       value: "[i32; 3] = [\n\t18,\n\t19,\n\t20]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "18"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "19"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "20"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2170,17 +2170,17 @@ snapshot_kind: text
                       value: "[i32; 3] = [\n\t21,\n\t22,\n\t23]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "21"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "22"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "23"
@@ -2210,7 +2210,7 @@ snapshot_kind: text
               value: "[[[&str; 3]; 2]; 6] = [\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tApple,\n\t\t\tBanana,\n\t\t\tCherry\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tDog,\n\t\t\tElephant,\n\t\t\tFish\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tGuitar,\n\t\t\tHorse,\n\t\t\tIce Cream\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tJaguar,\n\t\t\tKangaroo,\n\t\t\tLion\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tMoon,\n\t\t\tNewton,\n\t\t\tOwl\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tPencil,\n\t\t\tQueen,\n\t\t\tRainbow\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tSun,\n\t\t\tTree,\n\t\t\tUmbrella\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tViolin,\n\t\t\tWatch,\n\t\t\tXylophone\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tYellow,\n\t\t\tZebra,\n\t\t\tAlpha\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tBravo,\n\t\t\tCharlie,\n\t\t\tDelta\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tEcho,\n\t\t\tFoxtrot,\n\t\t\tGolf\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tHotel,\n\t\t\tIndia,\n\t\t\tJuliet\n\t\t]\n\t]]"
               children:
                 - name:
-                    Named: __0
+                    Indexed: 0
                   type_name:
                     Array:
                       item_type_name:
@@ -2222,7 +2222,7 @@ snapshot_kind: text
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tApple,\n\t\tBanana,\n\t\tCherry\n\t],\n\t[&str; 3] = [\n\t\tDog,\n\t\tElephant,\n\t\tFish\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2231,7 +2231,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tApple,\n\tBanana,\n\tCherry]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Apple
@@ -2253,7 +2253,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Banana
@@ -2275,7 +2275,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Cherry
@@ -2297,7 +2297,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "6"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2306,7 +2306,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tDog,\n\tElephant,\n\tFish]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Dog
@@ -2328,7 +2328,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "3"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Elephant
@@ -2350,7 +2350,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "8"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Fish
@@ -2372,7 +2372,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "4"
                 - name:
-                    Named: __1
+                    Indexed: 1
                   type_name:
                     Array:
                       item_type_name:
@@ -2384,7 +2384,7 @@ snapshot_kind: text
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tGuitar,\n\t\tHorse,\n\t\tIce Cream\n\t],\n\t[&str; 3] = [\n\t\tJaguar,\n\t\tKangaroo,\n\t\tLion\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2393,7 +2393,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tGuitar,\n\tHorse,\n\tIce Cream]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Guitar
@@ -2415,7 +2415,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Horse
@@ -2437,7 +2437,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Ice Cream
@@ -2459,7 +2459,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "9"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2468,7 +2468,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tJaguar,\n\tKangaroo,\n\tLion]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Jaguar
@@ -2490,7 +2490,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Kangaroo
@@ -2512,7 +2512,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "8"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Lion
@@ -2534,7 +2534,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "4"
                 - name:
-                    Named: __2
+                    Indexed: 2
                   type_name:
                     Array:
                       item_type_name:
@@ -2546,7 +2546,7 @@ snapshot_kind: text
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tMoon,\n\t\tNewton,\n\t\tOwl\n\t],\n\t[&str; 3] = [\n\t\tPencil,\n\t\tQueen,\n\t\tRainbow\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2555,7 +2555,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tMoon,\n\tNewton,\n\tOwl]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Moon
@@ -2577,7 +2577,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "4"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Newton
@@ -2599,7 +2599,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Owl
@@ -2621,7 +2621,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "3"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2630,7 +2630,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tPencil,\n\tQueen,\n\tRainbow]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Pencil
@@ -2652,7 +2652,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Queen
@@ -2674,7 +2674,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Rainbow
@@ -2696,7 +2696,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "7"
                 - name:
-                    Named: __3
+                    Indexed: 3
                   type_name:
                     Array:
                       item_type_name:
@@ -2708,7 +2708,7 @@ snapshot_kind: text
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tSun,\n\t\tTree,\n\t\tUmbrella\n\t],\n\t[&str; 3] = [\n\t\tViolin,\n\t\tWatch,\n\t\tXylophone\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2717,7 +2717,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tSun,\n\tTree,\n\tUmbrella]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Sun
@@ -2739,7 +2739,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "3"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Tree
@@ -2761,7 +2761,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "4"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Umbrella
@@ -2783,7 +2783,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "8"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2792,7 +2792,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tViolin,\n\tWatch,\n\tXylophone]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Violin
@@ -2814,7 +2814,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Watch
@@ -2836,7 +2836,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Xylophone
@@ -2858,7 +2858,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "9"
                 - name:
-                    Named: __4
+                    Indexed: 4
                   type_name:
                     Array:
                       item_type_name:
@@ -2870,7 +2870,7 @@ snapshot_kind: text
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tYellow,\n\t\tZebra,\n\t\tAlpha\n\t],\n\t[&str; 3] = [\n\t\tBravo,\n\t\tCharlie,\n\t\tDelta\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2879,7 +2879,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tYellow,\n\tZebra,\n\tAlpha]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Yellow
@@ -2901,7 +2901,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Zebra
@@ -2923,7 +2923,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Alpha
@@ -2945,7 +2945,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "5"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2954,7 +2954,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tBravo,\n\tCharlie,\n\tDelta]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Bravo
@@ -2976,7 +2976,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Charlie
@@ -2998,7 +2998,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "7"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Delta
@@ -3020,7 +3020,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "5"
                 - name:
-                    Named: __5
+                    Indexed: 5
                   type_name:
                     Array:
                       item_type_name:
@@ -3032,7 +3032,7 @@ snapshot_kind: text
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tEcho,\n\t\tFoxtrot,\n\t\tGolf\n\t],\n\t[&str; 3] = [\n\t\tHotel,\n\t\tIndia,\n\t\tJuliet\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -3041,7 +3041,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tEcho,\n\tFoxtrot,\n\tGolf]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Echo
@@ -3063,7 +3063,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "4"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Foxtrot
@@ -3085,7 +3085,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "7"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Golf
@@ -3107,7 +3107,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "4"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -3116,7 +3116,7 @@ snapshot_kind: text
                       value: "[&str; 3] = [\n\tHotel,\n\tIndia,\n\tJuliet]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Hotel
@@ -3138,7 +3138,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: India
@@ -3160,7 +3160,7 @@ snapshot_kind: text
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Juliet
@@ -3691,7 +3691,7 @@ snapshot_kind: text
             column: ~
           children:
             - name:
-                Named: __0
+                Indexed: 0
               type_name:
                 Base: i32
               value: "55"
@@ -3700,7 +3700,7 @@ snapshot_kind: text
                 line: 298
                 column: ~
             - name:
-                Named: __1
+                Indexed: 1
               type_name:
                 Base: i32
               value: "55"
@@ -3709,7 +3709,7 @@ snapshot_kind: text
                 line: 298
                 column: ~
             - name:
-                Named: __2
+                Indexed: 2
               type_name:
                 Base: i32
               value: "55"
@@ -3718,7 +3718,7 @@ snapshot_kind: text
                 line: 298
                 column: ~
             - name:
-                Named: __3
+                Indexed: 3
               type_name:
                 Base: i32
               value: "55"
@@ -3727,7 +3727,7 @@ snapshot_kind: text
                 line: 298
                 column: ~
             - name:
-                Named: __4
+                Indexed: 4
               type_name:
                 Base: i32
               value: "55"
@@ -3736,7 +3736,7 @@ snapshot_kind: text
                 line: 298
                 column: ~
             - name:
-                Named: __5
+                Indexed: 5
               type_name:
                 Base: i32
               value: "55"
@@ -3745,7 +3745,7 @@ snapshot_kind: text
                 line: 298
                 column: ~
             - name:
-                Named: __6
+                Indexed: 6
               type_name:
                 Base: i32
               value: "55"
@@ -3754,7 +3754,7 @@ snapshot_kind: text
                 line: 298
                 column: ~
             - name:
-                Named: __7
+                Indexed: 7
               type_name:
                 Base: i32
               value: "55"
@@ -3763,7 +3763,7 @@ snapshot_kind: text
                 line: 298
                 column: ~
             - name:
-                Named: __8
+                Indexed: 8
               type_name:
                 Base: i32
               value: "55"
@@ -3772,7 +3772,7 @@ snapshot_kind: text
                 line: 298
                 column: ~
             - name:
-                Named: __9
+                Indexed: 9
               type_name:
                 Base: i32
               value: "55"
@@ -3800,52 +3800,52 @@ snapshot_kind: text
               value: "[i32; 10] = [\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55]"
               children:
                 - name:
-                    Named: __0
+                    Indexed: 0
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __1
+                    Indexed: 1
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __2
+                    Indexed: 2
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __3
+                    Indexed: 3
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __4
+                    Indexed: 4
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __5
+                    Indexed: 5
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __6
+                    Indexed: 6
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __7
+                    Indexed: 7
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __8
+                    Indexed: 8
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __9
+                    Indexed: 9
                   type_name:
                     Base: i32
                   value: "55"
@@ -3863,7 +3863,7 @@ snapshot_kind: text
             column: ~
           children:
             - name:
-                Named: __0
+                Indexed: 0
               type_name:
                 Base: i8
               value: "1"
@@ -3872,7 +3872,7 @@ snapshot_kind: text
                 line: 300
                 column: ~
             - name:
-                Named: __1
+                Indexed: 1
               type_name:
                 Base: i8
               value: "2"
@@ -3881,7 +3881,7 @@ snapshot_kind: text
                 line: 300
                 column: ~
             - name:
-                Named: __2
+                Indexed: 2
               type_name:
                 Base: i8
               value: "3"
@@ -3890,7 +3890,7 @@ snapshot_kind: text
                 line: 300
                 column: ~
             - name:
-                Named: __3
+                Indexed: 3
               type_name:
                 Base: i8
               value: "4"
@@ -3899,7 +3899,7 @@ snapshot_kind: text
                 line: 300
                 column: ~
             - name:
-                Named: __4
+                Indexed: 4
               type_name:
                 Base: i8
               value: "5"
@@ -3908,7 +3908,7 @@ snapshot_kind: text
                 line: 300
                 column: ~
             - name:
-                Named: __5
+                Indexed: 5
               type_name:
                 Base: i8
               value: "6"
@@ -3917,7 +3917,7 @@ snapshot_kind: text
                 line: 300
                 column: ~
             - name:
-                Named: __6
+                Indexed: 6
               type_name:
                 Base: i8
               value: "7"
@@ -3926,7 +3926,7 @@ snapshot_kind: text
                 line: 300
                 column: ~
             - name:
-                Named: __7
+                Indexed: 7
               type_name:
                 Base: i8
               value: "8"
@@ -3935,7 +3935,7 @@ snapshot_kind: text
                 line: 300
                 column: ~
             - name:
-                Named: __8
+                Indexed: 8
               type_name:
                 Base: i8
               value: "9"
@@ -3944,7 +3944,7 @@ snapshot_kind: text
                 line: 300
                 column: ~
             - name:
-                Named: __9
+                Indexed: 9
               type_name:
                 Base: i8
               value: "0"
@@ -3977,7 +3977,7 @@ snapshot_kind: text
               value: "[MaybeUninit<i8>; 10] = [\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C34\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C35\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C36\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C37\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C38\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C39\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3A\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3B\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3C\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3D\n\t}]"
               children:
                 - name:
-                    Named: __0
+                    Indexed: 0
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C34}"
@@ -3999,7 +3999,7 @@ snapshot_kind: text
                             Base: i8
                           value: "1"
                 - name:
-                    Named: __1
+                    Indexed: 1
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C35}"
@@ -4021,7 +4021,7 @@ snapshot_kind: text
                             Base: i8
                           value: "2"
                 - name:
-                    Named: __2
+                    Indexed: 2
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C36}"
@@ -4043,7 +4043,7 @@ snapshot_kind: text
                             Base: i8
                           value: "3"
                 - name:
-                    Named: __3
+                    Indexed: 3
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C37}"
@@ -4065,7 +4065,7 @@ snapshot_kind: text
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __4
+                    Indexed: 4
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C38}"
@@ -4087,7 +4087,7 @@ snapshot_kind: text
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __5
+                    Indexed: 5
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C39}"
@@ -4109,7 +4109,7 @@ snapshot_kind: text
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __6
+                    Indexed: 6
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3A}"
@@ -4131,7 +4131,7 @@ snapshot_kind: text
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __7
+                    Indexed: 7
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3B}"
@@ -4153,7 +4153,7 @@ snapshot_kind: text
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __8
+                    Indexed: 8
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3C}"
@@ -4175,7 +4175,7 @@ snapshot_kind: text
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __9
+                    Indexed: 9
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3D}"
