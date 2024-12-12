@@ -6,7 +6,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use parking_lot::FairMutex;
-use probe_rs::flashing::{FlashCommitInfo, FormatKind};
+use probe_rs::flashing::{BootInfo, FormatKind};
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
@@ -283,7 +283,9 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed")
         }
 
-        let flash_commit_info = run_flash_download(
+        let boot_info = loader.boot_info();
+
+        run_flash_download(
             &mut session,
             &path,
             &download_options,
@@ -292,12 +294,14 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             config.flashing.do_chip_erase,
         )?;
 
-        match flash_commit_info {
-            FlashCommitInfo::BootFromRam { entry_point } => {
+        match boot_info {
+            BootInfo::FromRam {
+                vector_table_addr, ..
+            } => {
                 // core should be already reset and halt by this point.
-                session.prepare_running_on_ram(entry_point)?;
+                session.prepare_running_on_ram(vector_table_addr)?;
             }
-            FlashCommitInfo::Other => {
+            BootInfo::Other => {
                 // reset the core to leave it in a consistent state after flashing
                 session
                     .core(core_id)?

@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
-use probe_rs::flashing::{FileDownloadError, FlashCommitInfo, FormatKind};
+use probe_rs::flashing::{BootInfo, FileDownloadError, FormatKind};
 use probe_rs::{
     exception_handler_for_core,
     probe::list::Lister,
@@ -155,7 +155,9 @@ impl Cmd {
                 tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed")
             }
 
-            let flash_commit_info = run_flash_download(
+            let boot_info = loader.boot_info();
+
+            run_flash_download(
                 &mut session,
                 &self.shared_options.path,
                 &self.shared_options.download_options,
@@ -164,12 +166,14 @@ impl Cmd {
                 self.shared_options.chip_erase,
             )?;
 
-            match flash_commit_info {
-                FlashCommitInfo::BootFromRam { entry_point } => {
+            match boot_info {
+                BootInfo::FromRam {
+                    vector_table_addr, ..
+                } => {
                     // core should be already reset and halt by this point.
-                    session.prepare_running_on_ram(entry_point)?;
+                    session.prepare_running_on_ram(vector_table_addr)?;
                 }
-                FlashCommitInfo::Other => {
+                BootInfo::Other => {
                     // reset the core to leave it in a consistent state after flashing
                     session
                         .core(core_id)?

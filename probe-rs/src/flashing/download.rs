@@ -242,7 +242,7 @@ pub fn download_file(
     session: &mut Session,
     path: impl AsRef<Path>,
     format: impl Into<Format>,
-) -> Result<FlashCommitInfo, FileDownloadError> {
+) -> Result<(), FileDownloadError> {
     download_file_with_options(session, path, format, DownloadOptions::default())
 }
 
@@ -256,7 +256,7 @@ pub fn download_file_with_options(
     path: impl AsRef<Path>,
     format: impl Into<Format>,
     options: DownloadOptions,
-) -> Result<FlashCommitInfo, FileDownloadError> {
+) -> Result<(), FileDownloadError> {
     let loader = build_loader(session, path, format.into(), None)?;
 
     loader

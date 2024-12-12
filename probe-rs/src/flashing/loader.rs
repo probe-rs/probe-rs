@@ -94,6 +94,7 @@ impl ImageLoader for ElfLoader {
         _session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
+        const VECTOR_TABLE_SECTION_NAME: &str = ".vector_table";
         let mut elf_buffer = Vec::new();
         file.read_to_end(&mut elf_buffer)?;
 
@@ -112,6 +113,10 @@ impl ImageLoader for ElfLoader {
                 1 => section.section_names[0].as_str(),
                 _ => "Multiple sections",
             };
+
+            if source == VECTOR_TABLE_SECTION_NAME {
+                flash_loader.set_vector_table_addr(section.address as _);
+            }
 
             tracing::info!(
                 "    {} at {:#010X} ({} byte{})",
@@ -287,15 +292,17 @@ impl ImageLoader for IdfLoader {
     }
 }
 
-/// Status of the successful [`FlashLoader::commit`] operation
-#[derive(Debug, Default)]
-pub enum FlashCommitInfo {
-    /// Relevant for the [`FlashLoader::commit`] caller in order to prepare the chip for booting from RAM
-    BootFromRam {
-        /// Entry point of the program loaded to RAM
-        entry_point: u64,
+/// Current boot information
+#[derive(Clone, Debug, Default)]
+pub enum BootInfo {
+    /// Loaded executable has a vector table in RAM
+    FromRam {
+        /// Address of the vector table in memory
+        vector_table_addr: u64,
+        /// All cores that should be reset and halted before any RAM access
+        cores_to_reset: Vec<String>,
     },
-    /// Core will not be booting from RAM (dry run, boot from flash or just commiting some memory etc.)
+    /// Executable is either not loaded yet or will be booted conventionally (from flash etc.)
     #[default]
     Other,
 }
@@ -313,7 +320,8 @@ pub struct FlashLoader {
     /// Source of the flash description,
     /// used for diagnostics.
     source: TargetDescriptionSource,
-    entry_point: Option<u64>,
+    /// Relevant for manually configured RAM booted executables, available only if given loader supports it
+    vector_table_addr: Option<u64>,
 }
 
 impl FlashLoader {
@@ -323,7 +331,26 @@ impl FlashLoader {
             memory_map,
             builder: FlashBuilder::new(),
             source,
-            entry_point: None,
+            vector_table_addr: None,
+        }
+    }
+
+    fn set_vector_table_addr(&mut self, vector_table_addr: u64) {
+        self.vector_table_addr = Some(vector_table_addr);
+    }
+
+    /// Retrieve available boot information
+    pub fn boot_info(&self) -> BootInfo {
+        let Some(vector_table_addr) = self.vector_table_addr else {
+            return BootInfo::Other;
+        };
+
+        match Self::get_region_for_address(&self.memory_map, vector_table_addr) {
+            Some(MemoryRegion::Ram(region)) => BootInfo::FromRam {
+                vector_table_addr,
+                cores_to_reset: region.cores.clone(),
+            },
+            _ => BootInfo::Other,
         }
     }
 
@@ -357,15 +384,6 @@ impl FlashLoader {
         );
 
         self.check_data_in_memory_map(address..address + data.len() as u64)?;
-        match &mut self.entry_point {
-            Some(current_entry_point) => {
-                if address < *current_entry_point {
-                    *current_entry_point = address;
-                }
-            }
-            None => self.entry_point = Some(address),
-        }
-
         self.builder.add_data(address, data)
     }
 
@@ -453,10 +471,8 @@ impl FlashLoader {
         &self,
         session: &mut Session,
         mut options: DownloadOptions,
-    ) -> Result<FlashCommitInfo, FlashError> {
+    ) -> Result<(), FlashError> {
         tracing::debug!("Committing FlashLoader!");
-        let mut commit_info = FlashCommitInfo::default();
-
         let algos = self.prepare_plan(session)?;
 
         if options.dry_run {
@@ -468,7 +484,7 @@ impl FlashLoader {
                 progress.failed_programming();
             }
 
-            return Ok(commit_info);
+            return Ok(());
         }
 
         let progress = options
@@ -553,6 +569,28 @@ impl FlashLoader {
 
         tracing::debug!("Committing RAM!");
 
+        if let BootInfo::FromRam { cores_to_reset, .. } = self.boot_info() {
+            // If we are booting from RAM, it is important to reset and halt to guarantee a clear state
+            // Normally, flash algorithm loader performs reset and halt - does not happen here.
+            tracing::debug!(
+                " -- action: vector table in RAM, assuming RAM boot, resetting and halting"
+            );
+            for (core_to_reset_index, _) in session
+                .target()
+                .cores
+                .clone()
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| cores_to_reset.contains(&c.name))
+            {
+                session
+                    .core(core_to_reset_index)
+                    .map_err(FlashError::Core)?
+                    .reset_and_halt(Duration::from_millis(500))
+                    .map_err(FlashError::Core)?;
+            }
+        }
+
         // Commit RAM last, because NVM flashing overwrites RAM
         for region in self
             .memory_map
@@ -587,22 +625,12 @@ impl FlashLoader {
             // If this is a RAM only flash, the core might still be running. This can be
             // problematic if the instruction RAM is flashed while an application is running, so
             // the core is halted here in any case.
-            //
-            // Additionally, if entry point is detected in the given RAM region, core should be
-            // reset & halted
             if !core.core_halted().map_err(FlashError::Core)? {
-                match self.entry_point {
-                    Some(entry_point) if region.range.contains(&entry_point) => {
-                        commit_info = FlashCommitInfo::BootFromRam { entry_point };
-                        tracing::debug!("     -- action: core is not halted and entry point in RAM that is being written, resetting and halting");
-                        core.reset_and_halt(Duration::from_millis(500))
-                    }
-                    _ => {
-                        tracing::debug!("     -- action: core is not halted and RAM is being written, halting");
-                        core.halt(Duration::from_millis(500))
-                    },
-                }
-                .map_err(FlashError::Core)?;
+                tracing::debug!(
+                    "     -- action: core is not halted and RAM is being written, halting"
+                );
+                core.halt(Duration::from_millis(500))
+                    .map_err(FlashError::Core)?;
             }
 
             for (address, data) in ranges_in_region {
@@ -621,7 +649,7 @@ impl FlashLoader {
             self.verify_ram(session)?;
         }
 
-        Ok(commit_info)
+        Ok(())
     }
 
     fn prepare_plan(

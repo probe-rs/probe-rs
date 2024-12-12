@@ -1004,7 +1004,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Core should be already `reset_and_halt`ed right before this call.
     fn prepare_running_on_ram(
         &self,
-        vector_table_offset: u64,
+        vector_table_addr: u64,
         session: &mut Session,
     ) -> Result<(), crate::Error> {
         tracing::info!("Performing RAM flash start");
@@ -1029,9 +1029,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 let mut core = session.core(0)?;
                 // See ARMv7-M Architecture Reference Manual Chapter B1.5 for more details. The
                 // process appears to be the same for the other Cortex-M architectures as well.
-                let vtor = Vtor(vector_table_offset as u32);
+                let vtor = Vtor(vector_table_addr as u32);
                 let mut first_table_entries: [u32; 2] = [0; 2];
-                core.read_32(vector_table_offset, &mut first_table_entries)?;
+                core.read_32(vector_table_addr, &mut first_table_entries)?;
                 // The first entry in the vector table is the SP_main reset value of the main stack pointer,
                 // so we set the stack pointer register accordingly.
                 core.write_core_reg(SP.id, first_table_entries[SP_MAIN_OFFSET])?;
