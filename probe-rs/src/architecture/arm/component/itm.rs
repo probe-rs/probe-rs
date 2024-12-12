@@ -3,6 +3,7 @@
 //! ITM = Instrumentation Trace Macrocell
 
 use super::super::memory::romtable::CoresightComponent;
+use super::DebugComponentInterface;
 use crate::architecture::arm::ArmProbeInterface;
 use crate::{Error, MemoryMappedRegister};
 
@@ -29,7 +30,6 @@ pub struct Itm<'a> {
 }
 
 const _REGISTER_OFFSET_ITM_TPR: u32 = 0xE40;
-const REGISTER_OFFSET_ITM_TCR: u32 = 0xE80;
 const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 
 impl<'a> Itm<'a> {
@@ -60,18 +60,16 @@ impl<'a> Itm<'a> {
     ///
     /// This enables the actual TX pin of the overarching TPIU which is the parent peripheral of the ITM that multiplexes all data.
     pub fn tx_enable(&mut self) -> Result<(), Error> {
-        let mut value = self
-            .component
-            .read_reg(self.interface, REGISTER_OFFSET_ITM_TCR)?;
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
 
-        value |= 1 << 0; // ITMENA: enable ITM (master switch)
-        value |= 1 << 1; // TSENA: enable local timestamps
-        value |= 1 << 2; // SYNENA: Enable sync pulses, note DWT_CTRL.SYNCTAP must be configured.
-        value |= 1 << 3; // TXENA: forward DWT packets to ITM
-        value |= 1 << 11; // GTSFREQ: generate global timestamp every 8192 cycles
-        value |= 13 << 16; // 7 bits trace bus ID
-        self.component
-            .write_reg(self.interface, REGISTER_OFFSET_ITM_TCR, value)?;
+        tcr.set_itmena(true); // ITMENA: enable ITM (master switch)
+        tcr.set_tsena(true); // TSENA: enable local timestamps
+        tcr.set_syncena(true); // SYNENA: Enable sync pulses, note DWT_CTRL.SYNCTAP must be configured.
+        tcr.set_txena(true); // TXENA: forward DWT packets to ITM
+        tcr.set_gtsfreq(0b10); // GTSFREQ: generate global timestamp every 8192 cycles
+        tcr.set_trace_bus_id(0b1101); // 7 bits trace bus ID
+
+        tcr.store(self.component, self.interface)?;
 
         // Enable all 32 channels.
         self.component.write_reg(
@@ -82,10 +80,116 @@ impl<'a> Itm<'a> {
 
         Ok(())
     }
+
+    /// Enable all 32 stimulus registers.
+    pub fn enable_stim_all(&mut self) -> Result<(), Error> {
+        self.component.write_reg(
+            self.interface,
+            register::ITM_TER::ADDRESS_OFFSET as u32,
+            register::ITM_TER::enable_all().into(),
+        )?;
+
+        Ok(())
+    }
+
+    /// Disable all 32 stimulus registers.
+    pub fn disable_stim_all(&mut self) -> Result<(), Error> {
+        self.component.write_reg(
+            self.interface,
+            register::ITM_TER::ADDRESS_OFFSET as u32,
+            register::ITM_TER::disable_all().into(),
+        )?;
+
+        Ok(())
+    }
+
+    /// Enable a stimulus register.
+    pub fn enable_stim(&mut self, port: u8) -> Result<(), Error> {
+        let mut value = self
+            .component
+            .read_reg(self.interface, register::ITM_TER::ADDRESS_OFFSET as u32)?;
+        value |= 1 << port;
+        self.component.write_reg(
+            self.interface,
+            register::ITM_TER::ADDRESS_OFFSET as u32,
+            value,
+        )?;
+        Ok(())
+    }
+
+    /// Disable a stimulus register.
+    pub fn disable_stim(&mut self, port: u8) -> Result<(), Error> {
+        let mut value = self
+            .component
+            .read_reg(self.interface, register::ITM_TER::ADDRESS_OFFSET as u32)?;
+        value &= !(1 << port);
+        self.component.write_reg(
+            self.interface,
+            register::ITM_TER::ADDRESS_OFFSET as u32,
+            value,
+        )?;
+        Ok(())
+    }
+
+    /// Enable local timestamps generation.
+    pub fn enable_local_timestamps(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+        tcr.set_tsena(true);
+        tcr.store(self.component, self.interface)?;
+
+        Ok(())
+    }
+
+    /// Disable local timestamps generation.
+    pub fn disable_local_timestamps(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+        tcr.set_tsena(false);
+        tcr.store(self.component, self.interface)?;
+
+        Ok(())
+    }
+
+    /// Enable synchronization packet transmission.  
+    pub fn enable_sync_pulses(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+        tcr.set_syncena(true);
+        tcr.store(self.component, self.interface)?;
+
+        Ok(())
+    }
+
+    /// Disable synchronization packet transmission.  
+    pub fn disable_sync_pulses(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+        tcr.set_syncena(false);
+        tcr.store(self.component, self.interface)?;
+
+        Ok(())
+    }
+
+    /// Enable forwarding DWT packets to the ITM.
+    pub fn enable_forward_dwt(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+        tcr.set_txena(true);
+        tcr.store(self.component, self.interface)?;
+
+        Ok(())
+    }
+
+    /// Disable forwarding DWT packets to the ITM.
+    pub fn disable_forward_dwt(&mut self) -> Result<(), Error> {
+        let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
+        tcr.set_txena(false);
+        tcr.store(self.component, self.interface)?;
+
+        Ok(())
+    }
 }
 
 mod register {
-    use crate::memory_mapped_bitfield_register;
+    use crate::{
+        architecture::arm::component::DebugComponentInterface, memory_mapped_bitfield_register,
+    };
 
     memory_mapped_bitfield_register! {
         pub struct ITM_TER(u32);
@@ -135,4 +239,22 @@ mod register {
             Self(0x0000_0000)
         }
     }
+
+    memory_mapped_bitfield_register! {
+        pub struct ITM_TCR(u32);
+        0xE80, "ITM_TCR",
+        impl From;
+
+        pub busy, set_busy: 23;
+        pub u8, tracebusid, set_trace_bus_id: 22, 16;
+        pub u8, gtsfreq, set_gtsfreq: 11, 10;
+        pub u8, tsprescale, set_tsprescale: 9, 8;
+        pub swoena, set_swoena: 4;
+        pub txena, set_txena: 3;
+        pub syncena, set_syncena: 2;
+        pub tsena, set_tsena: 1;
+        pub itmena, set_itmena: 0;
+    }
+
+    impl DebugComponentInterface for ITM_TCR {}
 }
