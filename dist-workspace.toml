@@ -27,8 +27,7 @@ publish-jobs = ["homebrew"]
 install-updater = false
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
-
-# Enable attestation for built binaries
+# Whether to enable GitHub Attestations
 github-attestations = true
 
 # Select custom runner for ARM Linux
