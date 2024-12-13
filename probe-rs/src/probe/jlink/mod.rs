@@ -1420,6 +1420,51 @@ impl fmt::Display for HardwareType {
 
 const VID_SEGGER: u16 = 0x1366;
 
+// Information about the product IDs is taken from the udev rules file provided by Segger.
+
+/// Product IDS for J-Link devices using the old format
+///
+/// 0x106 is not included on purpose, it is supposed to be serial (CDC) only
+const LEGACY_JLINK_IDS: &[u16] = &[0x0101, 0x0102, 0x0103, 0x0104, 0x0105, 0x0107, 0x108];
+
+/// Flag indicating that the product ID is a J-Link product ID, using the new format
+const PID_JLINK_FLAG: u16 = 0x1000;
+
+/// Indicates that the J-Link is using the (legacy) Segger driver.
+const PID_JLINK_SEGGER_DRV_FLAG: u16 = 1 << 4;
+
+/// Indicates that the J-Link is using the WinUSB driver.
+const PID_JLINK_WINUSB_DRV_FLAG: u16 = 1 << 5;
+
+fn is_jlink_product_id(product_id: u16) -> bool {
+    let old_product_id = LEGACY_JLINK_IDS.contains(&product_id);
+
+    let new_product_id = (product_id & PID_JLINK_FLAG) != 0;
+
+    let jlink_using_segger_driver = (product_id & PID_JLINK_SEGGER_DRV_FLAG) != 0;
+
+    let jlink_using_winusb_driver = (product_id & PID_JLINK_WINUSB_DRV_FLAG) != 0;
+
+    old_product_id || (new_product_id && (jlink_using_segger_driver || jlink_using_winusb_driver))
+}
+
 fn is_jlink(info: &DeviceInfo) -> bool {
-    info.vendor_id() == VID_SEGGER
+    let matching_vendor_id = info.vendor_id() == VID_SEGGER;
+
+    matching_vendor_id && is_jlink_product_id(info.product_id())
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn jlink_pid_cmsisdap() {
+        // J-Link devices configured as CMSIS-DAP should not be detected as J-Link devices.
+        assert!(!super::is_jlink_product_id(0x1008));
+    }
+
+    #[test]
+    fn jlink_pid_segger_driver() {
+        // J-Link device using the legacy Segger driver.
+        assert!(super::is_jlink_product_id(0x1059));
+    }
 }
