@@ -347,6 +347,8 @@ fn check_changelog(pr_number: Option<u64>, comment_error: bool) -> Result<()> {
             return Ok(());
         }
 
+        println!("Labels for PR: {:?}", info.labels);
+
         disallow_editing_main_changelog(&info)?;
         check_new_changelog_fragments(&mut fragment_list, &info)?;
 
@@ -400,7 +402,7 @@ fn require_changelog_fragment(info: &PrInfo) -> Result<()> {
         .any(|f| f.path.starts_with(FRAGMENTS_DIR) && f.additions > 0)
     {
         anyhow::bail!(
-            "No new changelog fragments detected, and 'skip-changelog' label not applied."
+            "No new changelog fragments detected, and '{SKIP_CHANGELOG_LABEL}' label not applied."
         );
     }
 
