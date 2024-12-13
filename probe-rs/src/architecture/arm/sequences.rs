@@ -21,7 +21,7 @@ use crate::{
 };
 
 use super::{
-    ap::AccessPortError,
+    ap_v1::AccessPortError,
     armv6m::Demcr,
     communication_interface::{DapProbe, Initialized},
     component::{TraceFunnel, TraceSink},

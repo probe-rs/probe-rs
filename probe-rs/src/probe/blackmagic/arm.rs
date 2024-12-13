@@ -1,6 +1,6 @@
-use crate::architecture::arm::ap::memory_ap::registers::{AddressIncrement, CSW};
-use crate::architecture::arm::ap::memory_ap::{DataSize, MemoryAp, MemoryApType};
-use crate::architecture::arm::ap::valid_access_ports;
+use crate::architecture::arm::ap_v1::memory_ap::registers::{AddressIncrement, CSW};
+use crate::architecture::arm::ap_v1::memory_ap::{DataSize, MemoryAp, MemoryApType};
+use crate::architecture::arm::ap_v1::valid_access_ports;
 use crate::architecture::arm::communication_interface::{Initialized, SwdSequence};
 use crate::architecture::arm::dp::{Abort, Ctrl, DebugPortError, DpAccess, Select};
 use crate::architecture::arm::memory::{ArmMemoryInterface, Component};

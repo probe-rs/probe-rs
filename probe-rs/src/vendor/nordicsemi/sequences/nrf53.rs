@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use super::nrf::Nrf;
 use crate::architecture::arm::{
-    ap::memory_ap::registers::CSW, sequences::ArmDebugSequence, ArmError, ArmProbeInterface,
+    ap_v1::memory_ap::registers::CSW, sequences::ArmDebugSequence, ArmError, ArmProbeInterface,
     DpAddress, FullyQualifiedApAddress,
 };
 

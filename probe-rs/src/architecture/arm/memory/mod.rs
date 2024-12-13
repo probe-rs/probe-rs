@@ -6,7 +6,7 @@ pub mod romtable;
 use crate::{memory::MemoryInterface, probe::DebugProbeError, CoreStatus};
 
 use super::{
-    ap::memory_ap::MemoryAp,
+    ap_v1::memory_ap::MemoryAp,
     communication_interface::{Initialized, SwdSequence},
     ArmCommunicationInterface, ArmError,
 };

@@ -1,6 +1,6 @@
 use crate::{
     architecture::arm::{
-        ap::valid_access_ports_allowlist,
+        ap_v1::valid_access_ports_allowlist,
         dp::{
             Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, BASEPTR0,
             BASEPTR1, DPIDR, DPIDR1,

@@ -5,7 +5,7 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap::ApClass,
+            ap_v1::ApClass,
             armv6m::Demcr,
             component::Scs,
             dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
@@ -297,7 +297,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
         println!("No access ports found on this chip.");
     } else {
         for ap_address in access_ports {
-            use probe_rs::architecture::arm::ap::IDR;
+            use probe_rs::architecture::arm::ap_v1::IDR;
             let idr: IDR = interface
                 .read_raw_ap_register(&ap_address, IDR::ADDRESS)?
                 .try_into()?;

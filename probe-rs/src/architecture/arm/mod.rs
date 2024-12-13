@@ -1,6 +1,6 @@
 //! All the interface bits for ARM.
 
-pub mod ap;
+pub mod ap_v1;
 pub(crate) mod assembly;
 pub(crate) mod communication_interface;
 pub mod component;
@@ -13,7 +13,7 @@ mod traits;
 
 pub use self::core::{armv6m, armv7a, armv7m, armv8a, armv8m, Dump};
 use self::{
-    ap::AccessPortError,
+    ap_v1::AccessPortError,
     communication_interface::RegisterParseError,
     dp::DebugPortError,
     memory::romtable::RomTableError,

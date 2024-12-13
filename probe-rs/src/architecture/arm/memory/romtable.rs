@@ -1,7 +1,7 @@
 //! CoreSight ROM table parsing and handling.
 
 use crate::architecture::arm::{
-    ap::{AccessPortError, AccessPortType},
+    ap_v1::{AccessPortError, AccessPortType},
     communication_interface::ArmProbeInterface,
     memory::ArmMemoryInterface,
     ArmError, FullyQualifiedApAddress,
