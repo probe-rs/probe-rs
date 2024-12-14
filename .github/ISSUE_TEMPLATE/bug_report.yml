@@ -1,0 +1,47 @@
+name: Bug Report
+description: Create a report to help us improve
+type: bug
+body:
+  - type: textarea
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+
+  - type: textarea
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+
+  - type: textarea
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+
+  - type: textarea
+    attributes:
+      label: Stacktrace
+      description: If applicable, add a stacktrace to help explain your problem.
+      render: shell
+
+  - type: dropdown
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      multiple: false
+      options:
+        - macOS
+        - Windows
+        - Linux (Ubuntu)
+        - Linux (Debian)
+        - Linux (Fedora)
+        - Linux (Gentoo)
+        - Other Linux Distribution
+
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.
