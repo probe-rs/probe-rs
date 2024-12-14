@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
-use probe_rs::flashing::{FileDownloadError, FormatKind};
+use probe_rs::flashing::{BootInfo, FileDownloadError, FormatKind};
 use probe_rs::{
     exception_handler_for_core,
     probe::list::Lister,
@@ -155,6 +155,8 @@ impl Cmd {
                 tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed")
             }
 
+            let boot_info = loader.boot_info();
+
             run_flash_download(
                 &mut session,
                 &self.shared_options.path,
@@ -164,10 +166,20 @@ impl Cmd {
                 self.shared_options.chip_erase,
             )?;
 
-            // reset the core to leave it in a consistent state after flashing
-            session
-                .core(core_id)?
-                .reset_and_halt(Duration::from_millis(100))?;
+            match boot_info {
+                BootInfo::FromRam {
+                    vector_table_addr, ..
+                } => {
+                    // core should be already reset and halt by this point.
+                    session.prepare_running_on_ram(vector_table_addr)?;
+                }
+                BootInfo::Other => {
+                    // reset the core to leave it in a consistent state after flashing
+                    session
+                        .core(core_id)?
+                        .reset_and_halt(Duration::from_millis(100))?;
+                }
+            }
         }
 
         rtt_client.timezone_offset = timestamp_offset;

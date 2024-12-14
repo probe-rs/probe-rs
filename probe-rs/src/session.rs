@@ -624,6 +624,18 @@ impl Session {
         Ok(())
     }
 
+    /// This function can be used to set up an application which was flashed to RAM.
+    pub fn prepare_running_on_ram(&mut self, vector_table_addr: u64) -> Result<(), crate::Error> {
+        match &self.target.debug_sequence.clone() {
+            crate::config::DebugSequence::Arm(arm) => {
+                arm.prepare_running_on_ram(vector_table_addr, self)
+            }
+            _ => Err(crate::Error::NotImplemented(
+                "ram flash non-ARM architectures",
+            )),
+        }
+    }
+
     /// Check if the connected device has a debug erase sequence defined
     pub fn has_sequence_erase_all(&self) -> bool {
         match &self.target.debug_sequence {
