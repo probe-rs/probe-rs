@@ -1,0 +1,1 @@
+Added `rp2040-rescue` target to allow recovering bricked devices.
