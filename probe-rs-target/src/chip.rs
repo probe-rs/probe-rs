@@ -180,6 +180,9 @@ pub struct ArmCoreAccessOptions {
     /// Required in ARMv8-A
     #[serde(serialize_with = "hex_option")]
     pub cti_base: Option<u64>,
+
+    /// The JTAG TAP index of the core's debug module
+    pub jtag_tap: Option<usize>,
 }
 
 /// The data required to access a Risc-V core

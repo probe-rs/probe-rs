@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
-use probe_rs::flashing::{FileDownloadError, FormatKind};
+use probe_rs::flashing::{BootInfo, FileDownloadError, FormatKind};
 use probe_rs::{
     exception_handler_for_core,
     probe::list::Lister,
@@ -78,7 +78,9 @@ pub struct SharedOptions {
     #[clap(flatten)]
     pub(crate) format_options: FormatOptions,
 
-    /// The default format string to use for decoding defmt logs.
+    /// The format string to use when printing defmt encoded log messages from the target.
+    ///
+    /// See https://defmt.ferrous-systems.com/custom-log-output
     #[clap(long)]
     pub(crate) log_format: Option<String>,
 
@@ -153,6 +155,8 @@ impl Cmd {
                 tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed")
             }
 
+            let boot_info = loader.boot_info();
+
             run_flash_download(
                 &mut session,
                 &self.shared_options.path,
@@ -162,10 +166,20 @@ impl Cmd {
                 self.shared_options.chip_erase,
             )?;
 
-            // reset the core to leave it in a consistent state after flashing
-            session
-                .core(core_id)?
-                .reset_and_halt(Duration::from_millis(100))?;
+            match boot_info {
+                BootInfo::FromRam {
+                    vector_table_addr, ..
+                } => {
+                    // core should be already reset and halt by this point.
+                    session.prepare_running_on_ram(vector_table_addr)?;
+                }
+                BootInfo::Other => {
+                    // reset the core to leave it in a consistent state after flashing
+                    session
+                        .core(core_id)?
+                        .reset_and_halt(Duration::from_millis(100))?;
+                }
+            }
         }
 
         rtt_client.timezone_offset = timestamp_offset;
@@ -464,29 +478,19 @@ fn print_stacktrace<S: Write + ?Sized>(
             continue;
         };
 
-        if location.directory.is_none() && location.file.is_none() {
-            continue;
-        }
-
         write!(output_stream, "       ")?;
 
-        if let Some(dir) = &location.directory {
-            write!(output_stream, "{}", dir.to_path().display())?;
-        }
+        write!(output_stream, "{}", location.path.to_path().display())?;
 
-        if let Some(file) = &location.file {
-            write!(output_stream, "/{file}")?;
+        if let Some(line) = location.line {
+            write!(output_stream, ":{line}")?;
 
-            if let Some(line) = location.line {
-                write!(output_stream, ":{line}")?;
-
-                if let Some(col) = location.column {
-                    let col = match col {
-                        probe_rs::debug::ColumnType::LeftEdge => 1,
-                        probe_rs::debug::ColumnType::Column(c) => c,
-                    };
-                    write!(output_stream, ":{col}")?;
-                }
+            if let Some(col) = location.column {
+                let col = match col {
+                    probe_rs::debug::ColumnType::LeftEdge => 1,
+                    probe_rs::debug::ColumnType::Column(c) => c,
+                };
+                write!(output_stream, ":{col}")?;
             }
         }
 

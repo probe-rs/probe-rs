@@ -224,7 +224,7 @@ impl<'probe> Xtensa<'probe> {
     }
 }
 
-impl<'probe> CoreMemoryInterface for Xtensa<'probe> {
+impl CoreMemoryInterface for Xtensa<'_> {
     type ErrorType = Error;
 
     fn memory(&self) -> &dyn MemoryInterface<Self::ErrorType> {
@@ -236,7 +236,7 @@ impl<'probe> CoreMemoryInterface for Xtensa<'probe> {
     }
 }
 
-impl<'probe> CoreInterface for Xtensa<'probe> {
+impl CoreInterface for Xtensa<'_> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         self.interface.wait_for_core_halted(timeout)?;
         self.on_halted()?;

@@ -238,7 +238,7 @@ impl<'a> Frame<'a> {
     }
 }
 
-impl<'a> Iterator for &mut Frame<'a> {
+impl Iterator for &mut Frame<'_> {
     type Item = (Id, u8);
 
     fn next(&mut self) -> Option<Self::Item> {

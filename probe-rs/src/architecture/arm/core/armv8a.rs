@@ -1024,7 +1024,7 @@ impl<'probe> Armv8a<'probe> {
     }
 }
 
-impl<'probe> CoreInterface for Armv8a<'probe> {
+impl CoreInterface for Armv8a<'_> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
         let start = Instant::now();
@@ -1470,7 +1470,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
     }
 }
 
-impl<'probe> MemoryInterface for Armv8a<'probe> {
+impl MemoryInterface for Armv8a<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.state.is_64_bit
     }

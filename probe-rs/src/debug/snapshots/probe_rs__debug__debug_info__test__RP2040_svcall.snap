@@ -1,14 +1,15 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 1987
 expression: stack_frames
+snapshot_kind: text
 ---
 - function_name: software_breakpoint
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 371
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 0
@@ -216,11 +217,10 @@ expression: stack_frames
   canonical_frame_address: 536886920
 - function_name: __cortex_m_rt_SVCall
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 116
     column:
       Column: 5
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -428,11 +428,10 @@ expression: stack_frames
   canonical_frame_address: 536886920
 - function_name: __cortex_m_rt_SVCall_trampoline
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 114
     column:
       Column: 13
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -831,11 +830,10 @@ expression: stack_frames
   canonical_frame_address: ~
 - function_name: trigger_supervisor_call
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 80
     column:
       Column: 2
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -1039,11 +1037,10 @@ expression: stack_frames
   canonical_frame_address: 536886968
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 55
     column:
       Column: 54
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -1246,6 +1243,10 @@ expression: stack_frames
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003EDF
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
+            line: 24
+            column: ~
           children:
             - name:
                 Named: CBP
@@ -1327,11 +1328,19 @@ expression: stack_frames
           type_name:
             Base: u32
           value: "12000000"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
+            line: 26
+            column: ~
         - name:
             Named: pac
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003EE7
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
+            line: 27
+            column: ~
           children:
             - name:
                 Named: ADC
@@ -1518,6 +1527,10 @@ expression: stack_frames
           type_name:
             Struct: Watchdog
           value: Watchdog @ 0x20003EEC
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
+            line: 28
+            column: ~
           children:
             - name:
                 Named: watchdog
@@ -1534,6 +1547,10 @@ expression: stack_frames
           type_name:
             Struct: ClocksManager
           value: ClocksManager @ 0x20003EF0
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
+            line: 30
+            column: ~
           children:
             - name:
                 Named: clocks
@@ -1823,10 +1840,9 @@ expression: stack_frames
   canonical_frame_address: 536887288
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 22
     column: LeftEdge
-    file: RP2040.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0

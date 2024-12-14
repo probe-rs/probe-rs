@@ -1,6 +1,8 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 2020
 expression: static_variables
+snapshot_kind: text
 ---
 Child Variables:
   name: StaticScopeRoot
@@ -25,18 +27,34 @@ Child Variables:
                 Named: BUF0
               type_name: Unknown
               value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.16.1/src/pwm.rs
+                line: 1157
+                column: ~
             - name:
                 Named: BUF1
               type_name: Unknown
               value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.16.1/src/pwm.rs
+                line: 1159
+                column: ~
             - name:
                 Named: BUF2
               type_name: Unknown
               value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.16.1/src/pwm.rs
+                line: 1161
+                column: ~
             - name:
                 Named: BUF3
               type_name: Unknown
               value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.16.1/src/pwm.rs
+                line: 1163
+                column: ~
     - name:
         Named: "<usize as core::fmt::Debug>::{vtable}"
       type_name: Unknown
@@ -63,10 +81,18 @@ Child Variables:
                 Named: LOWER_FLAGS
               type_name: Unknown
               value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/fixed-1.27.0/src/debug_hex.rs
+                line: 33
+                column: ~
             - name:
                 Named: UPPER_FLAGS
               type_name: Unknown
               value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/fixed-1.27.0/src/debug_hex.rs
+                line: 35
+                column: ~
     - name:
         Named: "<core::str::error::Utf8Error as core::fmt::Debug>::{vtable}"
       type_name: Unknown
@@ -88,12 +114,20 @@ Child Variables:
                 Base: Vector
               count: 48
           value: "[Vector; 48] = [\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000040,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000044,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000048,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000004C,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000050,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000054,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000058,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000005C,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000060,\n\t\t_reserved: u32 = 1633\n\t},\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000064,\n\t\t_reserved: u32 = 1633\n\t},\n\t... and 38 more]"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+            line: 88
+            column: ~
           children:
             - name:
-                Named: __0
+                Indexed: 0
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000040,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -111,10 +145,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __1
+                Indexed: 1
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000044,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -132,10 +170,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __2
+                Indexed: 2
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000048,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -153,10 +195,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __3
+                Indexed: 3
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000004C,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -174,10 +220,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __4
+                Indexed: 4
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000050,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -195,10 +245,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __5
+                Indexed: 5
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000054,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -216,10 +270,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __6
+                Indexed: 6
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000058,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -237,10 +295,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __7
+                Indexed: 7
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000005C,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -258,10 +320,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __8
+                Indexed: 8
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000060,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -279,10 +345,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __9
+                Indexed: 9
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000064,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -300,10 +370,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __10
+                Indexed: 10
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000068,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -321,10 +395,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __11
+                Indexed: 11
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000006C,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -342,10 +420,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __12
+                Indexed: 12
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000070,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -363,10 +445,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __13
+                Indexed: 13
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000074,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -384,10 +470,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __14
+                Indexed: 14
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000078,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -405,10 +495,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __15
+                Indexed: 15
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000007C,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -426,10 +520,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __16
+                Indexed: 16
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000080,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -447,10 +545,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __17
+                Indexed: 17
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000084,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -468,10 +570,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __18
+                Indexed: 18
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000088,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -489,10 +595,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __19
+                Indexed: 19
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000008C,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -510,10 +620,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __20
+                Indexed: 20
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000090,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -531,10 +645,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __21
+                Indexed: 21
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000094,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -552,10 +670,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __22
+                Indexed: 22
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000098,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -573,10 +695,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __23
+                Indexed: 23
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000009C,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -594,10 +720,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __24
+                Indexed: 24
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A0,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -615,10 +745,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __25
+                Indexed: 25
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A4,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -636,10 +770,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __26
+                Indexed: 26
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A8,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -657,10 +795,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __27
+                Indexed: 27
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000AC,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -678,10 +820,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __28
+                Indexed: 28
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B0,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -699,10 +845,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __29
+                Indexed: 29
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B4,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -720,10 +870,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __30
+                Indexed: 30
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B8,\n\t_reserved: u32 = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -741,10 +895,14 @@ Child Variables:
                     Base: u32
                   value: "0"
             - name:
-                Named: __31
+                Indexed: 31
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000BC,\n\t_reserved: u32 = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -762,10 +920,14 @@ Child Variables:
                     Base: u32
                   value: "0"
             - name:
-                Named: __32
+                Indexed: 32
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C0,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -783,10 +945,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __33
+                Indexed: 33
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C4,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -804,10 +970,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __34
+                Indexed: 34
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C8,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -825,10 +995,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __35
+                Indexed: 35
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000CC,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -846,10 +1020,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __36
+                Indexed: 36
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D0,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -867,10 +1045,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __37
+                Indexed: 37
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D4,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -888,10 +1070,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __38
+                Indexed: 38
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D8,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -909,10 +1095,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __39
+                Indexed: 39
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000DC,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -930,10 +1120,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __40
+                Indexed: 40
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E0,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -951,10 +1145,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __41
+                Indexed: 41
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E4,\n\t_reserved: u32 = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -972,10 +1170,14 @@ Child Variables:
                     Base: u32
                   value: "0"
             - name:
-                Named: __42
+                Indexed: 42
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E8,\n\t_reserved: u32 = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -993,10 +1195,14 @@ Child Variables:
                     Base: u32
                   value: "0"
             - name:
-                Named: __43
+                Indexed: 43
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000EC,\n\t_reserved: u32 = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1014,10 +1220,14 @@ Child Variables:
                     Base: u32
                   value: "0"
             - name:
-                Named: __44
+                Indexed: 44
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F0,\n\t_reserved: u32 = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1035,10 +1245,14 @@ Child Variables:
                     Base: u32
                   value: "0"
             - name:
-                Named: __45
+                Indexed: 45
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F4,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1056,10 +1270,14 @@ Child Variables:
                     Base: u32
                   value: "1633"
             - name:
-                Named: __46
+                Indexed: 46
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F8,\n\t_reserved: u32 = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1077,10 +1295,14 @@ Child Variables:
                     Base: u32
                   value: "0"
             - name:
-                Named: __47
+                Indexed: 47
               type_name:
                 Base: Vector
               value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000FC,\n\t_reserved: u32 = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+                line: 88
+                column: ~
               children:
                 - name:
                     Named: _handler
@@ -1102,6 +1324,10 @@ Child Variables:
           type_name:
             Base: bool
           value: "true"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
+            line: 2188
+            column: ~
     - name:
         Namespace: cortex_m_rt
       type_name: Namespace
@@ -1111,11 +1337,19 @@ Child Variables:
             Named: __ONCE__
           type_name: Unknown
           value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+          source_location:
+            path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+            line: 857
+            column: ~
         - name:
             Named: __RESET_VECTOR
           type_name:
             Pointer: "unsafe extern \"C\" fn() -> !"
           value: "*raw unsafe extern \"C\" fn() -> ! @ 0x00000004"
+          source_location:
+            path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+            line: 1048
+            column: ~
           children:
             - name:
                 Named: "*__RESET_VECTOR"
@@ -1130,12 +1364,20 @@ Child Variables:
                 Base: Vector
               count: 14
           value: "[Vector; 14] = [\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000008,\n\t\treserved: usize = 1633\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000000C,\n\t\treserved: usize = 24781\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000010,\n\t\treserved: usize = 1633\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000014,\n\t\treserved: usize = 1633\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000018,\n\t\treserved: usize = 1633\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000001C,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000020,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000024,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000028,\n\t\treserved: usize = 0\n\t},\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000002C,\n\t\treserved: usize = 965\n\t},\n\t... and 4 more]"
+          source_location:
+            path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+            line: 1140
+            column: ~
           children:
             - name:
-                Named: __0
+                Indexed: 0
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000008,\n\treserved: usize = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1153,10 +1395,14 @@ Child Variables:
                     Base: usize
                   value: "1633"
             - name:
-                Named: __1
+                Indexed: 1
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000000C,\n\treserved: usize = 24781}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1174,10 +1420,14 @@ Child Variables:
                     Base: usize
                   value: "24781"
             - name:
-                Named: __2
+                Indexed: 2
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000010,\n\treserved: usize = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1195,10 +1445,14 @@ Child Variables:
                     Base: usize
                   value: "1633"
             - name:
-                Named: __3
+                Indexed: 3
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000014,\n\treserved: usize = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1216,10 +1470,14 @@ Child Variables:
                     Base: usize
                   value: "1633"
             - name:
-                Named: __4
+                Indexed: 4
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000018,\n\treserved: usize = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1237,10 +1495,14 @@ Child Variables:
                     Base: usize
                   value: "1633"
             - name:
-                Named: __5
+                Indexed: 5
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000001C,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1258,10 +1520,14 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __6
+                Indexed: 6
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000020,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1279,10 +1545,14 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __7
+                Indexed: 7
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000024,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1300,10 +1570,14 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __8
+                Indexed: 8
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000028,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1321,10 +1595,14 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __9
+                Indexed: 9
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000002C,\n\treserved: usize = 965}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1342,10 +1620,14 @@ Child Variables:
                     Base: usize
                   value: "965"
             - name:
-                Named: __10
+                Indexed: 10
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000030,\n\treserved: usize = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1363,10 +1645,14 @@ Child Variables:
                     Base: usize
                   value: "1633"
             - name:
-                Named: __11
+                Indexed: 11
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000034,\n\treserved: usize = 0}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1384,10 +1670,14 @@ Child Variables:
                     Base: usize
                   value: "0"
             - name:
-                Named: __12
+                Indexed: 12
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000038,\n\treserved: usize = 1633}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1405,10 +1695,14 @@ Child Variables:
                     Base: usize
                   value: "1633"
             - name:
-                Named: __13
+                Indexed: 13
               type_name:
                 Base: Vector
               value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000003C,\n\treserved: usize = 947}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
+                line: 1140
+                column: ~
               children:
                 - name:
                     Named: handler
@@ -1443,11 +1737,19 @@ Child Variables:
                 Named: CORE_PERIPHERALS
               type_name: Unknown
               value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/peripheral/mod.rs
+                line: 159
+                column: ~
             - name:
                 Named: TAKEN
               type_name:
                 Base: bool
               value: "true"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/peripheral/mod.rs
+                line: 162
+                column: ~
     - name:
         Namespace: probe_rs_debugger_test
       type_name: Namespace
@@ -1458,76 +1760,136 @@ Child Variables:
           type_name:
             Base: bool
           value: "false"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 15
+            column: ~
         - name:
             Named: I
           type_name:
             Base: isize
           value: "-1"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 16
+            column: ~
         - name:
             Named: C
           type_name:
             Base: char
           value: a
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 17
+            column: ~
         - name:
             Named: I8
           type_name:
             Base: i8
           value: "68"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 18
+            column: ~
         - name:
             Named: I16
           type_name:
             Base: i16
           value: "-16"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 19
+            column: ~
         - name:
             Named: I32
           type_name:
             Base: i32
           value: "-32"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 20
+            column: ~
         - name:
             Named: I64
           type_name:
             Base: i64
           value: "-64"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 21
+            column: ~
         - name:
             Named: U
           type_name:
             Base: usize
           value: "1"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 22
+            column: ~
         - name:
             Named: U8
           type_name:
             Base: u8
           value: "100"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 23
+            column: ~
         - name:
             Named: U16
           type_name:
             Base: u16
           value: "16"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 24
+            column: ~
         - name:
             Named: U32
           type_name:
             Base: u32
           value: "32"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 25
+            column: ~
         - name:
             Named: U64
           type_name:
             Base: u64
           value: "64"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 26
+            column: ~
         - name:
             Named: F32
           type_name:
             Base: f32
           value: "2.5"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 27
+            column: ~
         - name:
             Named: F64
           type_name:
             Base: f64
           value: "3.5"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 28
+            column: ~
         - name:
             Named: GLOBAL_STATIC
           type_name:
             Struct: "&str"
           value: "A 'global' static variable"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 30
+            column: ~
           children:
             - name:
                 Named: data_ptr
@@ -1550,6 +1912,10 @@ Child Variables:
           type_name:
             Struct: ComplexEnum
           value: ComplexEnum @ 0x20000048
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 64
+            column: ~
           children:
             - name:
                 Named: Case1
@@ -1593,6 +1959,10 @@ Child Variables:
               type_name:
                 Struct: "&str"
               value: "A 'local' to main() static variable ...will be optimized out if not used in the code."
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 205
+                column: ~
               children:
                 - name:
                     Named: data_ptr
@@ -1615,6 +1985,10 @@ Child Variables:
               type_name:
                 Base: "MaybeUninit<probe_rs_debugger_test::setup_data_types::RttControlBlock>"
               value: "MaybeUninit<probe_rs_debugger_test::setup_data_types::RttControlBlock> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock> = ManuallyDrop<probe_rs_debugger_test::setup_data_types::RttControlBlock> @ 0x20000074}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
+                line: 138
+                column: ~
               children:
                 - name:
                     Named: uninit
@@ -1649,82 +2023,82 @@ Child Variables:
                               value: "[u8; 16] = [\n\t83,\n\t69,\n\t71,\n\t71,\n\t69,\n\t82,\n\t32,\n\t82,\n\t84,\n\t84,\n\t... and 6 more]"
                               children:
                                 - name:
-                                    Named: __0
+                                    Indexed: 0
                                   type_name:
                                     Base: u8
                                   value: "83"
                                 - name:
-                                    Named: __1
+                                    Indexed: 1
                                   type_name:
                                     Base: u8
                                   value: "69"
                                 - name:
-                                    Named: __2
+                                    Indexed: 2
                                   type_name:
                                     Base: u8
                                   value: "71"
                                 - name:
-                                    Named: __3
+                                    Indexed: 3
                                   type_name:
                                     Base: u8
                                   value: "71"
                                 - name:
-                                    Named: __4
+                                    Indexed: 4
                                   type_name:
                                     Base: u8
                                   value: "69"
                                 - name:
-                                    Named: __5
+                                    Indexed: 5
                                   type_name:
                                     Base: u8
                                   value: "82"
                                 - name:
-                                    Named: __6
+                                    Indexed: 6
                                   type_name:
                                     Base: u8
                                   value: "32"
                                 - name:
-                                    Named: __7
+                                    Indexed: 7
                                   type_name:
                                     Base: u8
                                   value: "82"
                                 - name:
-                                    Named: __8
+                                    Indexed: 8
                                   type_name:
                                     Base: u8
                                   value: "84"
                                 - name:
-                                    Named: __9
+                                    Indexed: 9
                                   type_name:
                                     Base: u8
                                   value: "84"
                                 - name:
-                                    Named: __10
+                                    Indexed: 10
                                   type_name:
                                     Base: u8
                                   value: "0"
                                 - name:
-                                    Named: __11
+                                    Indexed: 11
                                   type_name:
                                     Base: u8
                                   value: "0"
                                 - name:
-                                    Named: __12
+                                    Indexed: 12
                                   type_name:
                                     Base: u8
                                   value: "0"
                                 - name:
-                                    Named: __13
+                                    Indexed: 13
                                   type_name:
                                     Base: u8
                                   value: "0"
                                 - name:
-                                    Named: __14
+                                    Indexed: 14
                                   type_name:
                                     Base: u8
                                   value: "0"
                                 - name:
-                                    Named: __15
+                                    Indexed: 15
                                   type_name:
                                     Base: u8
                                   value: "0"
@@ -1748,7 +2122,7 @@ Child Variables:
                           value: "[RttChannel; 2] = [\n\tRttChannel @ 0x2000008C,\n\tRttChannel @ 0x200000A4]"
                           children:
                             - name:
-                                Named: __0
+                                Indexed: 0
                               type_name:
                                 Struct: RttChannel
                               value: RttChannel @ 0x2000008C
@@ -1832,7 +2206,7 @@ Child Variables:
                                             Base: usize
                                           value: "1"
                             - name:
-                                Named: __1
+                                Indexed: 1
                               type_name:
                                 Struct: RttChannel
                               value: RttChannel @ 0x200000A4
@@ -1928,6 +2302,10 @@ Child Variables:
               type_name:
                 Base: "MaybeUninit<[u8; 1024]>"
               value: "MaybeUninit<[u8; 1024]> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<[u8; 1024]> = ManuallyDrop<[u8; 1024]> @ 0x200000BC}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
+                line: 34
+                column: ~
               children:
                 - name:
                     Named: uninit
@@ -1950,252 +2328,252 @@ Child Variables:
                       value: "[u8; 1024] = [\n\t70,\n\t111,\n\t114,\n\t99,\n\t105,\n\t110,\n\t103,\n\t32,\n\t117,\n\t115,\n\t... and 1014 more]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: u8
                           value: "70"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: u8
                           value: "114"
                         - name:
-                            Named: __3
+                            Indexed: 3
                           type_name:
                             Base: u8
                           value: "99"
                         - name:
-                            Named: __4
+                            Indexed: 4
                           type_name:
                             Base: u8
                           value: "105"
                         - name:
-                            Named: __5
+                            Indexed: 5
                           type_name:
                             Base: u8
                           value: "110"
                         - name:
-                            Named: __6
+                            Indexed: 6
                           type_name:
                             Base: u8
                           value: "103"
                         - name:
-                            Named: __7
+                            Indexed: 7
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __8
+                            Indexed: 8
                           type_name:
                             Base: u8
                           value: "117"
                         - name:
-                            Named: __9
+                            Indexed: 9
                           type_name:
                             Base: u8
                           value: "115"
                         - name:
-                            Named: __10
+                            Indexed: 10
                           type_name:
                             Base: u8
                           value: "101"
                         - name:
-                            Named: __11
+                            Indexed: 11
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __12
+                            Indexed: 12
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __13
+                            Indexed: 13
                           type_name:
                             Base: u8
                           value: "102"
                         - name:
-                            Named: __14
+                            Indexed: 14
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __15
+                            Indexed: 15
                           type_name:
                             Base: u8
                           value: "58"
                         - name:
-                            Named: __16
+                            Indexed: 16
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __17
+                            Indexed: 17
                           type_name:
                             Base: u8
                           value: "84"
                         - name:
-                            Named: __18
+                            Indexed: 18
                           type_name:
                             Base: u8
                           value: "119"
                         - name:
-                            Named: __19
+                            Indexed: 19
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __20
+                            Indexed: 20
                           type_name:
                             Base: u8
                           value: "10"
                         - name:
-                            Named: __21
+                            Indexed: 21
                           type_name:
                             Base: u8
                           value: "70"
                         - name:
-                            Named: __22
+                            Indexed: 22
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __23
+                            Indexed: 23
                           type_name:
                             Base: u8
                           value: "114"
                         - name:
-                            Named: __24
+                            Indexed: 24
                           type_name:
                             Base: u8
                           value: "99"
                         - name:
-                            Named: __25
+                            Indexed: 25
                           type_name:
                             Base: u8
                           value: "105"
                         - name:
-                            Named: __26
+                            Indexed: 26
                           type_name:
                             Base: u8
                           value: "110"
                         - name:
-                            Named: __27
+                            Indexed: 27
                           type_name:
                             Base: u8
                           value: "103"
                         - name:
-                            Named: __28
+                            Indexed: 28
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __29
+                            Indexed: 29
                           type_name:
                             Base: u8
                           value: "117"
                         - name:
-                            Named: __30
+                            Indexed: 30
                           type_name:
                             Base: u8
                           value: "115"
                         - name:
-                            Named: __31
+                            Indexed: 31
                           type_name:
                             Base: u8
                           value: "101"
                         - name:
-                            Named: __32
+                            Indexed: 32
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __33
+                            Indexed: 33
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __34
+                            Indexed: 34
                           type_name:
                             Base: u8
                           value: "102"
                         - name:
-                            Named: __35
+                            Indexed: 35
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __36
+                            Indexed: 36
                           type_name:
                             Base: u8
                           value: "58"
                         - name:
-                            Named: __37
+                            Indexed: 37
                           type_name:
                             Base: u8
                           value: "65"
                         - name:
-                            Named: __38
+                            Indexed: 38
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __39
+                            Indexed: 39
                           type_name:
                             Base: u8
                           value: "39"
                         - name:
-                            Named: __40
+                            Indexed: 40
                           type_name:
                             Base: u8
                           value: "108"
                         - name:
-                            Named: __41
+                            Indexed: 41
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __42
+                            Indexed: 42
                           type_name:
                             Base: u8
                           value: "99"
                         - name:
-                            Named: __43
+                            Indexed: 43
                           type_name:
                             Base: u8
                           value: "97"
                         - name:
-                            Named: __44
+                            Indexed: 44
                           type_name:
                             Base: u8
                           value: "108"
                         - name:
-                            Named: __45
+                            Indexed: 45
                           type_name:
                             Base: u8
                           value: "39"
                         - name:
-                            Named: __46
+                            Indexed: 46
                           type_name:
                             Base: u8
                           value: "32"
                         - name:
-                            Named: __47
+                            Indexed: 47
                           type_name:
                             Base: u8
                           value: "116"
                         - name:
-                            Named: __48
+                            Indexed: 48
                           type_name:
                             Base: u8
                           value: "111"
                         - name:
-                            Named: __49
+                            Indexed: 49
                           type_name:
                             Base: u8
                           value: "32"
@@ -2207,6 +2585,10 @@ Child Variables:
               type_name:
                 Base: "MaybeUninit<[u8; 1024]>"
               value: "MaybeUninit<[u8; 1024]> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<[u8; 1024]> = ManuallyDrop<[u8; 1024]> @ 0x200004BC}"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
+                line: 34
+                column: ~
               children:
                 - name:
                     Named: uninit
@@ -2229,252 +2611,252 @@ Child Variables:
                       value: "[u8; 1024] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t... and 1014 more]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __3
+                            Indexed: 3
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __4
+                            Indexed: 4
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __5
+                            Indexed: 5
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __6
+                            Indexed: 6
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __7
+                            Indexed: 7
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __8
+                            Indexed: 8
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __9
+                            Indexed: 9
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __10
+                            Indexed: 10
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __11
+                            Indexed: 11
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __12
+                            Indexed: 12
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __13
+                            Indexed: 13
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __14
+                            Indexed: 14
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __15
+                            Indexed: 15
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __16
+                            Indexed: 16
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __17
+                            Indexed: 17
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __18
+                            Indexed: 18
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __19
+                            Indexed: 19
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __20
+                            Indexed: 20
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __21
+                            Indexed: 21
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __22
+                            Indexed: 22
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __23
+                            Indexed: 23
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __24
+                            Indexed: 24
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __25
+                            Indexed: 25
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __26
+                            Indexed: 26
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __27
+                            Indexed: 27
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __28
+                            Indexed: 28
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __29
+                            Indexed: 29
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __30
+                            Indexed: 30
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __31
+                            Indexed: 31
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __32
+                            Indexed: 32
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __33
+                            Indexed: 33
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __34
+                            Indexed: 34
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __35
+                            Indexed: 35
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __36
+                            Indexed: 36
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __37
+                            Indexed: 37
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __38
+                            Indexed: 38
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __39
+                            Indexed: 39
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __40
+                            Indexed: 40
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __41
+                            Indexed: 41
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __42
+                            Indexed: 42
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __43
+                            Indexed: 43
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __44
+                            Indexed: 44
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __45
+                            Indexed: 45
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __46
+                            Indexed: 46
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __47
+                            Indexed: 47
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __48
+                            Indexed: 48
                           type_name:
                             Base: u8
                           value: "0"
                         - name:
-                            Named: __49
+                            Indexed: 49
                           type_name:
                             Base: u8
                           value: "0"
@@ -2734,6 +3116,10 @@ Child Variables:
               type_name:
                 Struct: "Mutex<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>>"
               value: "Mutex<core::cell::RefCell<core::option::Option<rtt_target::TerminalChannel>>> @ 0x200008BC"
+              source_location:
+                path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/print.rs
+                line: 7
+                column: ~
               children:
                 - name:
                     Named: inner

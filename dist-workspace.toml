@@ -1,0 +1,40 @@
+[workspace]
+members = ["cargo:."]
+
+# Config for 'dist'
+[dist]
+# The preferred dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.26.1"
+# CI backends to support
+ci = "github"
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "aarch64-unknown-linux-musl", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-unknown-linux-musl", "x86_64-pc-windows-msvc"]
+# Build only the required packages, and individually
+precise-builds = true
+# The archive format to use for non-windows builds (defaults .tar.xz)
+unix-archive = ".tar.xz"
+# The installers to generate for each app
+installers = ["shell", "powershell", "homebrew"]
+# Which actions to run on pull requests
+pr-run-mode = "plan"
+# A GitHub repo to push Homebrew formulas to
+tap = "probe-rs/homebrew-probe-rs"
+# A prefix git tags must include for dist to care about them
+tag-namespace = "v"
+# Publish jobs to run in CI
+publish-jobs = ["homebrew"]
+# Whether to install an updater program
+install-updater = false
+# Path that installers should place binaries in
+install-path = "CARGO_HOME"
+# Whether to enable GitHub Attestations
+github-attestations = true
+
+# Select custom runner for ARM Linux
+[dist.github-custom-runners]
+aarch64-unknown-linux-gnu = "buildjet-2vcpu-ubuntu-2204-arm"
+aarch64-unknown-linux-musl = "buildjet-2vcpu-ubuntu-2204-arm"
+
+[dist.dependencies.apt]
+libudev-dev = '*'
+libudev1 = { stage = ["run"] }

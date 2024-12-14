@@ -4,9 +4,7 @@ use std::sync::Arc;
 
 use super::nrf::Nrf;
 use crate::architecture::arm::{
-    ap::AccessPortType, communication_interface::Initialized, memory::ArmMemoryInterface,
-    sequences::ArmDebugSequence, ArmCommunicationInterface, ArmError, DapAccess,
-    FullyQualifiedApAddress,
+    sequences::ArmDebugSequence, ArmError, ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
 };
 
 /// The sequence handle for the nRF9160.
@@ -23,18 +21,16 @@ impl Nrf9160 {
 impl Nrf for Nrf9160 {
     fn core_aps(
         &self,
-        memory: &mut dyn ArmMemoryInterface,
+        dp_address: &DpAddress,
     ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)> {
-        let dp = memory.ap().ap_address().dp();
-
         let core_aps = [(0, 4)];
 
         core_aps
             .into_iter()
             .map(|(core_ahb_ap, core_ctrl_ap)| {
                 (
-                    FullyQualifiedApAddress::v1_with_dp(dp, core_ahb_ap),
-                    FullyQualifiedApAddress::v1_with_dp(dp, core_ctrl_ap),
+                    FullyQualifiedApAddress::v1_with_dp(*dp_address, core_ahb_ap),
+                    FullyQualifiedApAddress::v1_with_dp(*dp_address, core_ctrl_ap),
                 )
             })
             .collect()
@@ -42,7 +38,7 @@ impl Nrf for Nrf9160 {
 
     fn is_core_unlocked(
         &self,
-        arm_interface: &mut ArmCommunicationInterface<Initialized>,
+        arm_interface: &mut dyn ArmProbeInterface,
         _ahb_ap_address: &FullyQualifiedApAddress,
         ctrl_ap_address: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
