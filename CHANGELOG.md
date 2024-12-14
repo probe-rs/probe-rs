@@ -1,7 +1,5 @@
 # Changelog
 
-Anger the bot!
-
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -58,7 +56,7 @@ Released 2024-05-22
 
  - `Rtt::up_channels` and `Rtt::down_channels` are now public (#2247) by @bugadani
  - * The `probe-rs dap-server` command now handles the `--log-to-folder` and `--log-file` CLI arguments.
-   * When neither option is supplied, the default behaviour is that logs are written to the DAP client's "Debug Console" window.
+   * When neither option is supplied, the default behaviour is that logs are written to the DAP client's "Debug Console" window. 
      * In order to avoid adversely affecting the DAP client performance, we will disallow "trace" level logging when sending logs to the Debug Console. (#2457) by @noppej
  - Reworked the `rtt` section in `Embed.toml`. (#2249) by @bugadani
  - If no `RUST_LOG` environment variable is set, the probe-rs DAP server will now use a default logging configuration of `probe_rs=warn`. (#2457) by @noppej
