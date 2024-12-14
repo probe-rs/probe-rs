@@ -56,6 +56,13 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
         dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError>;
 
+    /// Returns a sorted set of the FullyQualifiedApAddress of the components available on the given
+    /// Debug Port.
+    ///
+    /// If the target device has multiple debug ports, this will switch the active debug port
+    /// if necessary.
+    fn components(&mut self, dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError>;
+
     /// Closes the interface and returns back the generic probe it consumed.
     fn close(self: Box<Self>) -> Probe;
 
@@ -243,7 +250,8 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
         let memory_interface = match access_port_address.ap() {
-            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?),
+            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?)
+                as Box<dyn ArmMemoryInterface + '_>,
             ApAddress::V2(_) => ap_v2::new_memory_interface(self, access_port_address)?,
         };
         Ok(memory_interface)
@@ -270,14 +278,13 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
             }
             DebugPortVersion::DPv3 => super::ap_v2::enumerate_access_ports(self, dp)?
                 .into_iter()
-                .map(|addr| FullyQualifiedApAddress::v2_with_dp(dp, addr))
                 .collect(),
             DebugPortVersion::Unsupported(_) => unreachable!(),
         };
 
         for access_port in access_ports {
             if let Ok(mut memory) = self.memory_interface(&access_port) {
-                let base_addr = memory.rom_table_address()?;
+                let base_addr = memory.base_address()?;
                 let component = Component::try_parse(&mut *memory, base_addr)?;
                 if let Component::Class1RomTable(component_id, _) = component {
                     if let Some(jep106) = component_id.peripheral_id().jep106() {
@@ -318,11 +325,19 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
                     .into_iter()
                     .collect())
             }
-            DebugPortVersion::DPv3 => ap_v2::enumerate_access_ports(self, dp).map(|r| {
-                r.into_iter()
-                    .map(|addr| FullyQualifiedApAddress::v2_with_dp(dp, addr))
-                    .collect()
-            }),
+            DebugPortVersion::DPv3 => ap_v2::enumerate_access_ports(self, dp),
+            DebugPortVersion::Unsupported(_) => unreachable!(),
+        }
+    }
+
+    fn components(&mut self, dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+        match self.select_dp(dp).map(|state| state.debug_port_version)? {
+            DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
+                Ok(valid_access_ports_allowlist(self, dp, 1..=255)
+                    .into_iter()
+                    .collect())
+            }
+            DebugPortVersion::DPv3 => ap_v2::enumerate_components(self, dp),
             DebugPortVersion::Unsupported(_) => unreachable!(),
         }
     }
@@ -496,7 +511,11 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             }
 
             let idr: DebugPortId = self.read_dp_register::<DPIDR>(dp)?.into();
-            tracing::info!("Debug Port version: {} MinDP: {:?}", idr.version, idr.min_dp_support);
+            tracing::info!(
+                "Debug Port version: {} MinDP: {:?}",
+                idr.version,
+                idr.min_dp_support
+            );
 
             let state = self
                 .state

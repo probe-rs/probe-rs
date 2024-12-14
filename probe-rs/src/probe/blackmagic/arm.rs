@@ -194,6 +194,10 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
         Ok(self.access_ports.clone())
     }
 
+    fn components(&mut self, dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+        todo!()
+    }
+
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
@@ -336,7 +340,7 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
 
         for ap in self.access_ports.clone() {
             if let Ok(mut memory) = self.memory_interface(&ap) {
-                let base_address = memory.rom_table_address()?;
+                let base_address = memory.base_address()?;
                 let component = Component::try_parse(&mut *memory, base_address)?;
 
                 if let Component::Class1RomTable(component_id, _) = component {
@@ -577,6 +581,10 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
         &mut self.current_ap
     }
 
+    fn base_address(&mut self) -> Result<u64, ArmError> {
+        todo!()
+    }
+
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError> {
@@ -600,10 +608,6 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
     }
 
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
-        todo!()
-    }
-
-    fn rom_table_address(&mut self) -> Result<u64, ArmError> {
         todo!()
     }
 }

@@ -181,7 +181,7 @@ impl MemoryInterface<ArmError> for &mut MockCore {
 }
 
 impl ArmMemoryInterface for &mut MockCore {
-    fn rom_table_address(&mut self) -> Result<u64, ArmError> {
+    fn base_address(&mut self) -> Result<u64, ArmError> {
         todo!()
     }
 
@@ -536,6 +536,10 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
         dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
         Ok(BTreeSet::from([FullyQualifiedApAddress::v1_with_dp(dp, 1)]))
+    }
+
+    fn components(&mut self, dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+        todo!()
     }
 
     fn read_chip_info_from_rom_table(

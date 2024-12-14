@@ -21,7 +21,7 @@ pub trait ArmMemoryInterface: SwdSequence + ArmMemoryInterfaceShim {
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress;
 
     /// The underlying memory AP’s base address.
-    fn rom_table_address(&mut self) -> Result<u64, ArmError>;
+    fn base_address(&mut self) -> Result<u64, ArmError>;
 
     /// The underlying `ArmCommunicationInterface` if this is an `ArmCommunicationInterface`.
     fn get_arm_communication_interface(

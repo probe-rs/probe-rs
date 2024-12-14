@@ -136,10 +136,9 @@ impl RomTable {
             .try_collect()?;
 
         // Iterate all entries and get their data.
-        for raw_entry in reader.into_iter() {
+        for (i, raw_entry) in reader.into_iter().enumerate() {
             let entry_base_addr = raw_entry.component_address();
             if raw_entry.entry_present {
-                tracing::debug!("Parsing entry at {:#010x}", entry_base_addr);
                 let component = Component::try_parse(memory, u64::from(entry_base_addr))?;
 
                 // Finally remember the entry.
@@ -150,10 +149,7 @@ impl RomTable {
                     component: CoresightComponent::new(component, memory.fully_qualified_address()),
                 });
             } else {
-                tracing::debug!(
-                    "Entry at {:#010x} is not present, skipping.",
-                    entry_base_addr
-                );
+                tracing::debug!("Entry #{} is not present, skipping.", i);
             }
         }
 
@@ -743,7 +739,6 @@ impl PeripheralID {
             ("ARM Ltd", 0x00D, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM11", PeripheralType::Etm)),
             ("ARM Ltd", 0x00E, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M7 FBP", PeripheralType::Fbp)),
             ("ARM Ltd", 0x101, 0x00, 0x0000) => Some(PartInfo::new("System TSGEN", PeripheralType::Tsgen)),
-            ("Arm Ltd", 0x193, 0x00, 0x0000) => Some(PartInfo::new("Timestamp Generator", PeripheralType::Tsgen)),
             ("ARM Ltd", 0x471, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0  ROM", PeripheralType::Rom)),
             ("ARM Ltd", 0x4C0, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0+ ROM", PeripheralType::Rom)),
             ("ARM Ltd", 0x4C4, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M4 ROM", PeripheralType::Rom)),
@@ -763,10 +758,9 @@ impl PeripheralID {
             ("ARM Ltd", 0x9A1, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M4 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x9A3, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M0 MTB", PeripheralType::Mtb)),
             ("ARM Ltd", 0x9A9, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M7 TPIU", PeripheralType::Tpiu)),
-            ("ARM Ltd", 0x9E7, 0x11, 0x0000) => Some(PartInfo::new("Coresight-600 TPIU", PeripheralType::Tpiu)),
-            ("ARM Ltd", 0x9EB, 0x12, 0x0000) => Some(PartInfo::new("ATB Funnel", PeripheralType::TraceFunnel)),
             ("ARM Ltd", 0xD20, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M23 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0xD20, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M23 ETM", PeripheralType::Etm)),
+            ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Custom)),
             // From Arm Cortex-M55 Processor Technical Reference Manual
             ("ARM Ltd", 0xD22, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M55 TPIU", PeripheralType::Tpiu)),
             // From IHI0029F: Coresight v3.0 architecture Specifciation
@@ -778,7 +772,10 @@ impl PeripheralID {
             ("ARM Ltd", _, _, 0x1A14) => Some(PartInfo::new("CTI architecture", PeripheralType::Cti)),
             ("ARM Ltd", _, _, 0x2A04) => Some(PartInfo::new("Processor debug architecture (ARMv8-M)", PeripheralType::Scs)),
             ("ARM Ltd", _, _, 0x4A13) => Some(PartInfo::new("ETM architecture", PeripheralType::Etm)),
-            ("Atmel", 0xCD0, 1, 0) => Some(PartInfo::new("Atmel DSU", PeripheralType::Custom)),
+            // From Arm CoreSight System-on-Chip SoC-600 Technical Reference Manual
+            ("ARM Ltd", 0x193, _, _) => Some(PartInfo::new("SoC-600 Timestamp Generator", PeripheralType::Tsgen)),
+            ("ARM Ltd", 0x9E7, 0x11, 0x0000) => Some(PartInfo::new("SoC-600 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x9EB, 0x12, 0x0000) => Some(PartInfo::new("SoC-600 ATB Funnel", PeripheralType::TraceFunnel)),
 
             _ => None,
         }

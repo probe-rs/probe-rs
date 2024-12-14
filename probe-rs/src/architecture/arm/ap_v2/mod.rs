@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
     architecture::arm::memory::{
@@ -24,44 +24,40 @@ use root_memory_interface::RootMemoryInterface;
 mod memory_access_port_interface;
 use memory_access_port_interface::MemoryAccessPortInterface;
 
-enum MemoryAccessPortInterfaces<'iface> {
-    Root(RootMemoryInterface<'iface>),
-    Node(Box<MemoryAccessPortInterface<'iface>>),
-}
-impl<'iface> From<RootMemoryInterface<'iface>> for MemoryAccessPortInterfaces<'iface> {
-    fn from(value: RootMemoryInterface<'iface>) -> Self {
-        Self::Root(value)
-    }
-}
-impl<'iface> From<MemoryAccessPortInterface<'iface>> for MemoryAccessPortInterfaces<'iface> {
-    fn from(value: MemoryAccessPortInterface<'iface>) -> Self {
-        Self::Node(Box::new(value))
-    }
+enum MaybeOwned<'i, M: ArmMemoryInterface + 'i> {
+    Reference(&'i mut (dyn ArmMemoryInterface + 'i)),
+    Boxed(Box<dyn ArmMemoryInterface + 'i>),
+    Concrete(M),
 }
 macro_rules! dispatch {
     ($name:ident(&mut self, $($arg:ident : $t:ty),*) -> $r:ty) => {
         fn $name(&mut self, $($arg: $t),*) -> $r {
             match self {
-                MemoryAccessPortInterfaces::Root(r) => r.$name($($arg),*),
-                MemoryAccessPortInterfaces::Node(m) => m.$name($($arg),*),
+                MaybeOwned::Reference(r) => r.$name($($arg),*),
+                MaybeOwned::Boxed(b) => b.$name($($arg),*),
+                MaybeOwned::Concrete(c) => c.$name($($arg),*),
             }
         }
     };
     ($name:ident(&self, $($arg:ident : $t:ty),*) -> $r:ty) => {
         fn $name(&self, $($arg: $t),*) -> $r {
             match self {
-                MemoryAccessPortInterfaces::Root(r) => r.$name($($arg),*),
-                MemoryAccessPortInterfaces::Node(m) => m.$name($($arg),*),
+                MaybeOwned::Reference(r) => r.$name($($arg),*),
+                MaybeOwned::Boxed(b) => b.$name($($arg),*),
+                MaybeOwned::Concrete(c) => c.$name($($arg),*),
             }
         }
     }
 }
 
-impl<'iface> SwdSequence for MemoryAccessPortInterfaces<'iface> {
+impl<'iface, M: ArmMemoryInterface + 'iface> SwdSequence for MaybeOwned<'iface, M> {
     dispatch!(swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), crate::probe::DebugProbeError>);
     dispatch!(swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, crate::probe::DebugProbeError>);
 }
-impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterfaces<'iface> {
+impl<'iface, M> MemoryInterface<ArmError> for MaybeOwned<'iface, M>
+where
+    M: ArmMemoryInterface + 'iface,
+{
     dispatch!(supports_native_64bit_access(&mut self,) -> bool);
     dispatch!(read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError>);
     dispatch!(read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError>);
@@ -74,77 +70,112 @@ impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterfaces<'iface> {
     dispatch!(supports_8bit_transfers(&self,) -> Result<bool, ArmError>);
     dispatch!(flush(&mut self,) -> Result<(), ArmError>);
 }
-impl<'iface> ArmMemoryInterface for MemoryAccessPortInterfaces<'iface> {
-    dispatch!(ap(&mut self,) -> &mut super::ap_v1::memory_ap::MemoryAp);
+impl<'iface, M> ArmMemoryInterface for MaybeOwned<'iface, M>
+where
+    M: ArmMemoryInterface + 'iface,
+{
+    dispatch!(ap(&mut self,) -> &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp);
     dispatch!(fully_qualified_address(&self,) -> FullyQualifiedApAddress);
-    dispatch!(rom_table_address(&mut self,) -> Result<u64, ArmError>);
+    dispatch!(base_address(&mut self,) -> Result<u64, ArmError>);
     dispatch!(get_arm_communication_interface(&mut self,) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError>);
-    dispatch!(try_as_parts(&mut self,) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut super::ap_v1::memory_ap::MemoryAp), crate::probe::DebugProbeError>);
+    dispatch!(try_as_parts(&mut self,) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp), crate::probe::DebugProbeError>);
 }
 
 /// Deeply scans the debug port and returns a list of the addresses the memory access points discovered.
 pub fn enumerate_access_ports<'i>(
     probe: &'i mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
-) -> Result<BTreeSet<ApV2Address>, ArmError> {
+) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+    enumerate_components_internal(probe, dp).map(|res| {
+        res.into_iter()
+            .filter_map(|(k, c)| {
+                c.id()
+                    .peripheral_id()
+                    .is_of_type(PeripheralType::MemAp)
+                    .then_some(k)
+            })
+            .map(|addr| FullyQualifiedApAddress::v2_with_dp(dp, addr))
+            .collect()
+    })
+}
+
+/// Enumerates components attached to this debug port
+pub fn enumerate_components<'i>(
+    probe: &'i mut ArmCommunicationInterface<Initialized>,
+    dp: DpAddress,
+) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+    enumerate_components_internal(probe, dp).map(|res| {
+        res.into_keys()
+            .map(|addr| FullyQualifiedApAddress::v2_with_dp(dp, addr))
+            .collect()
+    })
+}
+
+fn enumerate_components_internal<'i>(
+    probe: &'i mut ArmCommunicationInterface<Initialized>,
+    dp: DpAddress,
+) -> Result<BTreeMap<ApV2Address, Component>, ArmError> {
     let mut root_ap = RootMemoryInterface::new(probe, dp)?;
+    let base_addr = root_ap.base_address()?;
 
-    let mut result = BTreeSet::new();
+    let mut result = BTreeMap::new();
 
-    let component = Component::try_parse(&mut root_ap as &mut dyn ArmMemoryInterface, 0)?;
-    match component {
-        Component::CoresightComponent(c) => {
-            if c.peripheral_id().arch_id() == CORESIGHT_ROM_TABLE_ARCHID {
-                scan_rom_tables_internal(root_ap, &mut result)?;
-            } else if c.peripheral_id().is_of_type(PeripheralType::MemAp) {
-                result.insert(ApV2Address::new_with_tip(0));
-                let subiface = MemoryAccessPortInterface::new(root_ap, 0)?;
-                scan_rom_tables_internal(subiface, &mut result)?;
-            }
-        }
-        _ => {
-            // not a coresight component
-            return Ok(BTreeSet::new());
-        }
-    }
+    let component = Component::try_parse(&mut root_ap as &mut dyn ArmMemoryInterface, base_addr)?;
+    process_component(
+        &mut MaybeOwned::Concrete(root_ap),
+        &ApV2Address::new(),
+        &component,
+        &mut result,
+    )?;
 
-    tracing::info!("Memory APs: {:x?}", result);
     Ok(result)
 }
 
-fn scan_rom_tables_internal<
-    'iface,
-    M: Into<MemoryAccessPortInterfaces<'iface>> + ArmMemoryInterface,
->(
-    iface: M,
-    mem_aps: &mut BTreeSet<ApV2Address>,
-) -> Result<MemoryAccessPortInterfaces<'iface>, ArmError> {
-    let mut iface = iface.into();
-    let rom_table_address = iface.rom_table_address()?;
-
-    let rom_table =
-        RomTable::try_parse(&mut iface as &mut dyn ArmMemoryInterface, rom_table_address)?;
-    for e in rom_table.entries() {
-        if e.component()
-            .id()
-            .peripheral_id()
-            .is_of_type(PeripheralType::MemAp)
+fn process_component<'iface, M: ArmMemoryInterface + 'iface>(
+    iface: &'iface mut M,
+    address: &ApV2Address,
+    component: &Component,
+    result: &mut BTreeMap<ApV2Address, Component>,
+) -> Result<(), ArmError> {
+    match component {
+        Component::CoresightComponent(c)
+            if c.peripheral_id().arch_id() == CORESIGHT_ROM_TABLE_ARCHID =>
         {
-            let base = e.component().id().component_address();
-            tracing::info!("Found a MemAp at {:x?}", base);
+            // read rom table
+            let rom_table =
+                RomTable::try_parse(iface as &mut dyn ArmMemoryInterface, c.component_address())?;
+            // process rom table
+            for e in rom_table.entries() {
+                process_component(iface, address, e.component(), result)?;
+            }
+        }
+        Component::CoresightComponent(c) if c.peripheral_id().is_of_type(PeripheralType::MemAp) => {
+            let base_address = address.clone().append(c.component_address());
 
-            mem_aps.insert(ApV2Address::new_with_tip(base));
+            // this type parameter isn’t used in this case, defaulting to RootMemoryInterface<'iface>.
+            let mut subiface =
+                MemoryAccessPortInterface::<RootMemoryInterface<'iface>>::new_with_ref(
+                    iface as &mut dyn ArmMemoryInterface,
+                    c.component_address(),
+                )?;
+            let base_addr = subiface.base_address()?;
 
-            let subiface = MemoryAccessPortInterface::new(iface, base)?;
-            let MemoryAccessPortInterfaces::Node(subiface) =
-                scan_rom_tables_internal(subiface, mem_aps)?
-            else {
-                unreachable!("scan_rom_tables_internal should return the same iface it was given.");
-            };
-            iface = subiface.release();
+            let memap_base_component =
+                Component::try_parse(&mut subiface as &mut dyn ArmMemoryInterface, base_addr)?;
+            process_component(&mut subiface, &base_address, &memap_base_component, result)?;
+            result.insert(base_address, component.clone());
+        }
+        Component::Class1RomTable(_, rom_table) => {
+            for e in rom_table.entries() {
+                process_component(&mut *iface, address, e.component(), result)?;
+            }
+        }
+        _ => {
+            let address = address.clone().append(component.id().component_address());
+            result.insert(address, component.clone());
         }
     }
-    Ok(iface)
+    Ok(())
 }
 
 /// Returns a Memory Interface accessing the Memory AP at the given `address` through the `iface`
@@ -157,25 +188,25 @@ pub fn new_memory_interface<'i>(
         unimplemented!("this is only for APv2 addresses")
     };
 
-    new_memory_interface_inner(iface, address.dp(), ap_address.as_slice())
-        .map(|iface| Box::new(iface) as Box<dyn ArmMemoryInterface + 'i>)
+    new_memory_interface_internal(iface, address.dp(), ap_address.as_slice())
 }
 
-fn new_memory_interface_inner<'i>(
+fn new_memory_interface_internal<'i>(
     iface: &'i mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
     address: &[u64],
-) -> Result<MemoryAccessPortInterface<'i>, ArmError> {
-    tracing::trace!("address: {:x?}", address);
-    match address {
+) -> Result<Box<dyn ArmMemoryInterface + 'i>, ArmError> {
+    Ok(match address {
         [base] => {
             let root = RootMemoryInterface::new(iface, dp)?;
-            MemoryAccessPortInterface::new(root, *base)
+            Box::new(MemoryAccessPortInterface::new(root, *base)?)
+                as Box<dyn ArmMemoryInterface + 'i>
         }
         [ap @ .., base] => {
-            let subiface = new_memory_interface_inner(iface, dp, ap)?;
-            MemoryAccessPortInterface::new(subiface, *base)
+            let subiface = new_memory_interface_internal(iface, dp, ap)?;
+            Box::new(MemoryAccessPortInterface::<RootMemoryInterface<'i>>::boxed(subiface, *base)?)
+                as Box<dyn ArmMemoryInterface + 'i>
         }
         _ => unreachable!(),
-    }
+    })
 }

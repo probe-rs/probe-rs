@@ -348,7 +348,7 @@ fn handle_memory_ap(
 ) -> Result<Tree<String>, anyhow::Error> {
     let component = {
         let mut memory = interface.memory_interface(access_port)?;
-        let base_address = memory.rom_table_address()?;
+        let base_address = memory.base_address()?;
         let mut demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address())?);
         demcr.set_dwtena(true);
         memory.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
