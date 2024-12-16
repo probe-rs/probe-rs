@@ -79,23 +79,23 @@ Released 2024-12-16
 
 ### Changed
 
- - * The `Core::dump` function has been replaced by `CoreDump::dump_core`, to make the interaction with the `debug` feature clearer. (#2634) by @Tiwalun
+ - The `Core::dump` function has been replaced by `CoreDump::dump_core`, to make the interaction with the `debug` feature clearer. (#2634) by @Tiwalun
  - Updated STM32L0 family information. (#2642) by @bugadani
  - Rename ArmProbe to ArmMemoryInterface (#2704) by @ithinuel
- - * Reorganized exception handling code, introduce `debug` feature to allow
+ - Reorganized exception handling code, introduce `debug` feature to allow
      disabling debug functionality. (#2634) by @Tiwalun
  - Updated STM32L1 family information. Note that this changes the target names by adding a package-specific suffix (e.g. STM32L100RB became STM32L100RBTx) (#2644) by @bugadani
  - Rename the trait `AccessPort` to `AccessPortType` (#2683) by @ithinuel
  - Updated STM32WL family information. (#2647) by @bugadani
  - Debug sequences are now available at `probe_rs::vendor::<VENDOR>::sequences` (#2471) by @bugadani
  - Changed the type returned by `ArmCommunicationInterface` to a collection of addresses (#2683) by @ithinuel
- - * Register names are now lower-case when gdb-debugging through gdbstub. This makes probe-rs compatible with lldb.  (#2879) by @danlehmann
+ - Register names are now lower-case when gdb-debugging through gdbstub. This makes probe-rs compatible with lldb.  (#2879) by @danlehmann
  - The `semihosting` module is now public, and the reexports have been removed from `probe_rs`. (#2740) by @bugadani
  - Updated memory maps for most of STM32 chips. (#2556) by @bugadani
  - Derive `PartialOrd`/`Ord` & `Hash` on addresses (#2683) by @ithinuel
  - `Rtt::{up, down}_channels` now return an immutable slice of chanels. (#2580) by @bugadani
  - Removed the `memory_map` argument from `Rtt::attach` and `Rtt::attach_region`. (#2595) by @bugadani
- - * Upgrade `defmt-decoder` to `v0.4.0` (#2809) by @Urhengulas
+ - Upgrade `defmt-decoder` to `v0.4.0` (#2809) by @Urhengulas
  - Increased the potential throughput of J-Link and FTDI probes when communicating with ARM chips using JTAG. (#2681) by @bugadani
  - `JtagCommandQueue::schedule` now takes a type that impls `Into<JtagCommand>`. (#2689) by @bugadani
  - Updated STM32L4 family information. (#2649) by @bugadani
