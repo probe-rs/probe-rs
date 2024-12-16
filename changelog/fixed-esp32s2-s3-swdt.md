@@ -1,1 +1,0 @@
-probe-rs now correctly disables all watchdogs of ESP32-S2 and ESP32-S3

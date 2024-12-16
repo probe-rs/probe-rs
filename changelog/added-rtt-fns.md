@@ -1,1 +1,0 @@
-Added `Rtt::up_channel` and `Rtt::down_channel`

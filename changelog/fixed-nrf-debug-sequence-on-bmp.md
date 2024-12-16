@@ -1,1 +1,0 @@
-NRF91 and NRF52 debug sequence has been fixed for Black Magic Probe

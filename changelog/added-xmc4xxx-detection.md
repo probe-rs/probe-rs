@@ -1,1 +1,0 @@
-`probe-rs` can now automatically detect XMC4xxx devices without `--chip`

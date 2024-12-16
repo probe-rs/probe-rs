@@ -81,7 +81,7 @@ ratatui = { version = "0.29.0", default-features = false, features = [
 ] }
 ansi-parser = "0.9.0"
 
-probe-rs = { version = "0.24.0", path = "../probe-rs", features = [
+probe-rs = { version = "0.25.0", path = "../probe-rs", features = [
     "gdb-server",
 ] }
 parking_lot = "0.12.2"

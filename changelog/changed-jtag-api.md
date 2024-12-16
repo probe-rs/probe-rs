@@ -1,1 +1,0 @@
-`JtagCommandQueue::schedule` now takes a type that impls `Into<JtagCommand>`.

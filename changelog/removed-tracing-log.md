@@ -1,1 +1,0 @@
-probe-rs should no longer emit `log` events via `tracing`. You can re-enable this by adding `tracing = { version = "0.1", features = ["log"] }` to your crate's Cargo.toml.

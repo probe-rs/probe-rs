@@ -1,1 +1,0 @@
-Fixed ApType names & documentation
