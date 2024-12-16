@@ -138,7 +138,7 @@ Released 2024-12-16
  - Fixed a problem with semihosting on ARM targets affecting embedded-test. (#2604) by @t-moe
  - The debug stack unwind will continue attempting an unwind when encountering a 0(zero) value for the Link Register (LR). (#2509) by @noppej
  - Passing `--protocol jtag` when using an ST-Link probe will now actually use JTAG. (#2675) by @bugadani
- - - Fixed probe-rs-tools compilation panicing when "git" is not installed. (#2492) by @newAM
+ - Fixed probe-rs-tools compilation panicing when "git" is not installed. (#2492) by @newAM
  - Fixed a problem where CMSIS-DAP probes may cause a panic. (#2539) by @bugadani
  - Fixed writing short unaligned data using `MemoryInterface::write` (#2873) by @bugadani
  - Fixed an issue where some low-level JTAG commands may have been incorrectly rerun.
