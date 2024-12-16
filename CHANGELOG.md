@@ -34,7 +34,6 @@ Released 2024-12-16
  - Added support for Digilent HS1, HS2, and HS3 FTDI probes. (#2793) by @craigjb
  - Assign cores to NvmRegions created from flash algorithms (#2887) by @a6f
  - Added support for GigaDevice GD32C1x3 series (#2737) by @guineawheek
- - Provide prebuilts with musl libc (#2502) by @bugadani
  - Added the option to register new debug sequences. To do this, users must implement `probe_rs::vendor::Vendor` and register it using `probe_rs::vendor::register_vendor()`. (#2471) by @bugadani
  - MIMXRT: reset the FlexRAM configuration to the boot fuses when resetting the MCU. (#2510) by @mciantyre
  - Add support for the MIMXRT685S series of chips. (#2560) by @felipebalbi
@@ -213,7 +212,7 @@ Released 2024-05-22
 
  - `Rtt::up_channels` and `Rtt::down_channels` are now public (#2247) by @bugadani
  - * The `probe-rs dap-server` command now handles the `--log-to-folder` and `--log-file` CLI arguments.
-   * When neither option is supplied, the default behaviour is that logs are written to the DAP client's "Debug Console" window. 
+   * When neither option is supplied, the default behaviour is that logs are written to the DAP client's "Debug Console" window.
      * In order to avoid adversely affecting the DAP client performance, we will disallow "trace" level logging when sending logs to the Debug Console. (#2457) by @noppej
  - Reworked the `rtt` section in `Embed.toml`. (#2249) by @bugadani
  - If no `RUST_LOG` environment variable is set, the probe-rs DAP server will now use a default logging configuration of `probe_rs=warn`. (#2457) by @noppej
