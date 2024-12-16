@@ -1,1 +1,0 @@
-Fixed error while trying to write to RTT on a RISC-V chip

@@ -1,1 +1,0 @@
-Added STM32F205RGEx target information

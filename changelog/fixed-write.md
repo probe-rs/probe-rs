@@ -1,1 +1,0 @@
-Fixed writing short unaligned data using `MemoryInterface::write`

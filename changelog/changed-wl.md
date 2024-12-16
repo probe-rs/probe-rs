@@ -1,1 +1,0 @@
-Updated STM32WL family information.

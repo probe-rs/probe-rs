@@ -1,1 +1,0 @@
-Fixed an error where running a non-elf firmware results in a defmt parse error.

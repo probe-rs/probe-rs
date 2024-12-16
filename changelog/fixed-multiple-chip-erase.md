@@ -1,1 +1,0 @@
-Fixed an issue that could cause the chip to be erased in the middle of the flashing process.

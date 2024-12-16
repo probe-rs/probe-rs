@@ -1,1 +1,0 @@
-Added the option to refer to STM32 targets without their package suffix

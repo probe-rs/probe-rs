@@ -1,1 +1,0 @@
-`Rtt::{up, down}_channels` now return an immutable slice of chanels.

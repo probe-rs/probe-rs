@@ -1,1 +1,0 @@
-Removed `rtt::Channels`, replaced with `Vec<T>`

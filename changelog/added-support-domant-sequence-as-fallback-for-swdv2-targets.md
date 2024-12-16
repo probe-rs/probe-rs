@@ -1,1 +1,0 @@
-arm: Fall back on SWDv2 wake from dormant on SWDv1 failure
