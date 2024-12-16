@@ -1,7 +1,6 @@
 use crate::architecture::arm::{
-    ap::{AccessPortType, ApAccess, ApRegAccess},
-    communication_interface::RegisterParseError,
-    ArmError, DapAccess, FullyQualifiedApAddress, Register,
+    ap::v1::{AccessPortType, ApAccess, ApRegAccess, MemoryApType, Register},
+    ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
 
 use super::{AddressIncrement, DataSize};
@@ -23,7 +22,6 @@ impl AmbaAhb3 {
         probe: &mut P,
         address: FullyQualifiedApAddress,
     ) -> Result<Self, ArmError> {
-        use crate::architecture::arm::Register;
         let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
         let cfg = probe.read_raw_ap_register(&address, super::registers::CFG::ADDRESS)?;
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
@@ -44,7 +42,7 @@ impl AmbaAhb3 {
     }
 }
 
-impl super::MemoryApType for AmbaAhb3 {
+impl MemoryApType for AmbaAhb3 {
     type CSW = CSW;
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
@@ -110,7 +108,7 @@ define_ap_register!(
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
     name: CSW,
-    address: 0x00,
+    address_v1: 0x00,
     fields: [
         /// Is debug software access enabled.
         DbgSwEnable: bool,          // [31]

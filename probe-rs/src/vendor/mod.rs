@@ -7,7 +7,7 @@ use probe_rs_target::Chip;
 
 use crate::{
     architecture::{
-        arm::{sequences::DefaultArmSequence, ArmChipInfo, ArmProbeInterface, DpAddress},
+        arm::{dp::DpAddress, sequences::DefaultArmSequence, ArmChipInfo, ArmProbeInterface},
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,

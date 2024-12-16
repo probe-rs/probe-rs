@@ -13,8 +13,7 @@ mod traits;
 
 pub use self::core::{armv6m, armv7a, armv7m, armv8a, armv8m, Dump};
 use self::{
-    ap::AccessPortError,
-    communication_interface::RegisterParseError,
+    ap::v1::AccessPortError,
     dp::DebugPortError,
     memory::romtable::RomTableError,
     sequences::ArmDebugSequenceError,
@@ -26,10 +25,25 @@ use crate::{
     probe::DebugProbeError,
 };
 pub use communication_interface::{
-    ArmChipInfo, ArmCommunicationInterface, ArmProbeInterface, DapError, Register,
+    ArmChipInfo, ArmCommunicationInterface, ArmProbeInterface, DapError,
 };
 pub use swo::{SwoAccess, SwoConfig, SwoMode, SwoReader};
 pub use traits::*;
+
+/// A error that occured while parsing a raw register value.
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to parse register {name} from {value:#010x}")]
+pub struct RegisterParseError {
+    name: &'static str,
+    value: u32,
+}
+
+impl RegisterParseError {
+    /// Creates a new instance of error.
+    pub fn new(name: &'static str, value: u32) -> Self {
+        RegisterParseError { name, value }
+    }
+}
 
 /// ARM-specific errors
 #[derive(Debug, thiserror::Error, docsplay::Display)]

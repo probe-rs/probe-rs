@@ -9,8 +9,9 @@ use itm::TracePacket;
 use probe_rs::{
     architecture::arm::{
         component::{find_component, Dwt, TraceSink},
+        dp::DpAddress,
         memory::PeripheralType,
-        DpAddress, SwoConfig,
+        SwoConfig,
     },
     probe::list::Lister,
 };

@@ -1,4 +1,4 @@
-use crate::architecture::arm::communication_interface::RegisterParseError;
+use crate::architecture::arm::RegisterParseError;
 
 /// The unit of data that is transferred in one transfer via the DRW commands.
 ///
@@ -109,7 +109,7 @@ define_ap_register!(
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
     name: CSW,
-    address: 0x00,
+    address_v1: 0x00,
     fields: [
         /// Is debug software access enabled.
         DbgSwEnable: bool,           // 1 bit
@@ -190,7 +190,8 @@ define_ap_register!(
     /// address which will be accessed through a read or
     /// write of the DRW register.
     name: TAR,
-    address: 0x04,
+    address_v1: 0x04,
+    address_v2: 0xD04,
     fields: [
         /// The register address to be used for the next access to DRW.
         address: u32,
@@ -206,7 +207,8 @@ define_ap_register!(
     /// address which will be accessed through a read or
     /// write of the DRW register.
     name: TAR2,
-    address: 0x08,
+    address_v1: 0x08,
+    address_v2: 0xD08,
     fields: [
         /// The upper 32-bits of the register address to be used for the next access to DRW.
         address: u32,
@@ -226,7 +228,8 @@ define_ap_register!(
     ///
     /// A read from the *DRW* register is translated to a memory read
     name: DRW,
-    address: 0x0C,
+    address_v1: 0x0C,
+    address_v2: 0xD0C,
     fields: [
         /// The data held in the DRW corresponding to the address held in TAR.
         data: u32,
@@ -238,7 +241,8 @@ define_ap_register!(
 define_ap_register!(
     /// Banked Data 0 register
     name: BD0,
-    address: 0x10,
+    address_v1: 0x10,
+    address_v2: 0xD10,
     fields: [
         /// The data held in this bank.
         data: u32,
@@ -250,7 +254,8 @@ define_ap_register!(
 define_ap_register!(
     /// Banked Data 1 register
     name: BD1,
-    address: 0x14,
+    address_v1: 0x14,
+    address_v2: 0xD14,
     fields: [
         /// The data held in this bank.
         data: u32,
@@ -262,7 +267,8 @@ define_ap_register!(
 define_ap_register!(
     /// Banked Data 2 register
     name: BD2,
-    address: 0x18,
+    address_v1: 0x18,
+    address_v2: 0xD18,
     fields: [
         /// The data held in this bank.
         data: u32,
@@ -274,7 +280,8 @@ define_ap_register!(
 define_ap_register!(
     /// Banked Data 3 register
     name: BD3,
-    address: 0x1C,
+    address_v1: 0x1C,
+    address_v2: 0xD1C,
     fields: [
         /// The data held in this bank.
         data: u32,
@@ -293,7 +300,8 @@ define_ap_register!(
     /// Writes to this register only have an effect if
     /// the *Barrier Operations Extension* is implemented
     name: MBT,
-    address: 0x20,
+    address_v1: 0x20,
+    address_v2: 0xD20,
     fields: [
         /// This value is implementation defined and the ADIv5.2 spec does not explain what it does for targets with the Barrier Operations Extension implemented.
         data: u32,
@@ -305,7 +313,8 @@ define_ap_register!(
 define_ap_register!(
     /// Base register
     name: BASE2,
-    address: 0xF0,
+    address_v1: 0xF0,
+    address_v2: 0xDF0,
     fields: [
         /// The second part of the base address of this access point if required.
         BASEADDR: u32
@@ -320,7 +329,8 @@ define_ap_register!(
     /// The configuration register (CFG) is used to determine
     /// which extensions are included in the memory AP.
     name: CFG,
-    address: 0xF4,
+    address_v1: 0xF4,
+    address_v2: 0xDF4,
     fields: [
         /// Specifies whether this access port includes the large data extension (access larger than 32 bits).
         LD: bool,
@@ -340,7 +350,8 @@ define_ap_register!(
 define_ap_register!(
     /// Base register
     name: BASE,
-    address: 0xF8,
+    address_v1: 0xF8,
+    address_v2: 0xDF8,
     fields: [
         /// The base address of this access point.
         BASEADDR: u32,

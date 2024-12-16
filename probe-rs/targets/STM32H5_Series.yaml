@@ -13,7 +13,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -59,7 +59,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -105,7 +105,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -151,7 +151,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -198,7 +198,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -253,7 +253,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -305,7 +305,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -342,7 +342,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -396,7 +396,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -451,7 +451,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -506,7 +506,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -561,7 +561,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -616,7 +616,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -671,7 +671,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -723,7 +723,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -760,7 +760,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -815,7 +815,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -870,7 +870,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -924,7 +924,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -978,7 +978,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1033,7 +1033,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1088,7 +1088,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1143,7 +1143,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1198,7 +1198,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1252,7 +1252,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1306,7 +1306,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1360,7 +1360,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1414,7 +1414,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1468,7 +1468,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1523,7 +1523,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1578,7 +1578,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1635,7 +1635,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1689,7 +1689,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1744,7 +1744,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1799,7 +1799,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1853,7 +1853,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1908,7 +1908,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -1962,7 +1962,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -2017,7 +2017,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -2072,7 +2072,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -2129,7 +2129,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -2183,7 +2183,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -2238,7 +2238,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -2293,7 +2293,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm
@@ -2348,7 +2348,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
+      ap: !v1 1
       psel: 0x0
   memory_map:
   - !Nvm

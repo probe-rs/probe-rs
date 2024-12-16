@@ -1,14 +1,16 @@
-use crate::architecture::arm::ap::memory_ap::registers::{AddressIncrement, CSW};
-use crate::architecture::arm::ap::memory_ap::{DataSize, MemoryAp, MemoryApType};
-use crate::architecture::arm::ap::valid_access_ports;
+use crate::architecture::arm::ap::memory::registers::{AddressIncrement, CSW};
+use crate::architecture::arm::ap::memory::{DataSize, MemoryAp};
+use crate::architecture::arm::ap::v1::{valid_access_ports, MemoryApType};
 use crate::architecture::arm::communication_interface::{Initialized, SwdSequence};
-use crate::architecture::arm::dp::{Abort, Ctrl, DebugPortError, DpAccess, Select};
+use crate::architecture::arm::dp::{
+    Abort, Ctrl, DebugPortError, DpAccess, DpRegisterAddress, SelectV1,
+};
 use crate::architecture::arm::memory::{ArmMemoryInterface, Component};
 use crate::architecture::arm::{
     communication_interface::UninitializedArmProbe, sequences::ArmDebugSequence, ArmProbeInterface,
 };
 use crate::architecture::arm::{
-    ArmChipInfo, ArmCommunicationInterface, ArmError, DapAccess, DpAddress,
+    dp::DpAddress, ArmChipInfo, ArmCommunicationInterface, ArmError, DapAccess,
     FullyQualifiedApAddress, RawDapAccess, SwoAccess,
 };
 use crate::probe::blackmagic::{Align, BlackMagicProbe, ProtocolVersion, RemoteCommand};
@@ -132,7 +134,7 @@ impl BlackMagicProbeArmDebug {
         abort.set_stkcmpclr(true);
         self.write_dp_register(dp, abort)?;
 
-        self.write_dp_register(dp, Select(0))?;
+        self.write_dp_register(dp, SelectV1(0))?;
 
         let ctrl = self.read_dp_register::<Ctrl>(dp)?;
 
@@ -190,6 +192,10 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
         }
 
         Ok(self.access_ports.clone())
+    }
+
+    fn components(&mut self, dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+        todo!()
     }
 
     fn close(self: Box<Self>) -> Probe {
@@ -404,7 +410,11 @@ fn ap_to_bmp(ap: &FullyQualifiedApAddress) -> Result<(u8, u8), ArmError> {
 }
 
 impl DapAccess for BlackMagicProbeArmDebug {
-    fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u8) -> Result<u32, ArmError> {
+    fn read_raw_dp_register(
+        &mut self,
+        dp: DpAddress,
+        addr: DpRegisterAddress,
+    ) -> Result<u32, ArmError> {
         let index = dp_to_bmp(dp)?;
         let command = match self.probe.remote_protocol {
             ProtocolVersion::V0 => {
@@ -414,9 +424,17 @@ impl DapAccess for BlackMagicProbeArmDebug {
                     },
                 ));
             }
-            ProtocolVersion::V0P => RemoteCommand::ReadDpV0P { addr },
-            ProtocolVersion::V1 | ProtocolVersion::V2 => RemoteCommand::ReadDpV1 { index, addr },
-            ProtocolVersion::V3 | ProtocolVersion::V4 => RemoteCommand::ReadDpV3 { index, addr },
+            ProtocolVersion::V0P => RemoteCommand::ReadDpV0P {
+                addr: (addr.bank << 4) | addr.address,
+            },
+            ProtocolVersion::V1 | ProtocolVersion::V2 => RemoteCommand::ReadDpV1 {
+                index,
+                addr: (addr.bank << 4) | addr.address,
+            },
+            ProtocolVersion::V3 | ProtocolVersion::V4 => RemoteCommand::ReadDpV3 {
+                index,
+                addr: (addr.bank << 4) | addr.address,
+            },
         };
         Ok(u32::from_be(
             TryInto::<u32>::try_into(
@@ -432,7 +450,7 @@ impl DapAccess for BlackMagicProbeArmDebug {
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
-        addr: u8,
+        addr: DpRegisterAddress,
         value: u32,
     ) -> Result<(), ArmError> {
         let index = dp_to_bmp(dp)?;
@@ -446,19 +464,19 @@ impl DapAccess for BlackMagicProbeArmDebug {
             }
             ProtocolVersion::V0P => RemoteCommand::RawAccessV0P {
                 rnw: 0,
-                addr,
+                addr: (addr.bank << 4) | addr.address,
                 value,
             },
             ProtocolVersion::V1 | ProtocolVersion::V2 => RemoteCommand::RawAccessV1 {
                 index,
                 rnw: 0,
-                addr,
+                addr: (addr.bank << 4) | addr.address,
                 value,
             },
             ProtocolVersion::V3 | ProtocolVersion::V4 => RemoteCommand::RawAccessV3 {
                 index,
                 rnw: 0,
-                addr,
+                addr: (addr.bank << 4) | addr.address,
                 value,
             },
         };
@@ -559,12 +577,8 @@ impl DapAccess for BlackMagicProbeArmDebug {
 }
 
 impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
-    fn ap(&mut self) -> &mut MemoryAp {
-        &mut self.current_ap
-    }
-
     fn base_address(&mut self) -> Result<u64, ArmError> {
-        self.current_ap.base_address(self.probe)
+        todo!()
     }
 
     fn get_arm_communication_interface(
@@ -581,6 +595,16 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
         Err(DebugProbeError::InterfaceNotAvailable {
             interface_name: "ARM",
         })
+    }
+
+    fn update_core_status(&mut self, state: crate::CoreStatus) {
+        self.get_arm_communication_interface()
+            .map(|iface| iface.core_status_notification(state))
+            .ok();
+    }
+
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        todo!()
     }
 }
 
