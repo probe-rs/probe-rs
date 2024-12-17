@@ -58,10 +58,6 @@ mod dbgmcu {
         /// The offset of the Control register in the DBGMCU block.
         const ADDRESS: u64 = 0x04;
 
-        pub fn from_saved(contents: u32) -> Self {
-            Self(contents)
-        }
-
         /// Read the control register from memory.
         pub fn read(memory: &mut dyn ArmMemoryInterface) -> Result<Self, ArmError> {
             let contents = memory.read_word_32(DBGMCU + Self::ADDRESS)?;
@@ -107,7 +103,7 @@ impl ArmDebugSequence for Stm32Armv7 {
     ) -> Result<(), ArmError> {
         let mut saved_cr_value = self.saved_cr_value.lock().unwrap();
         if let Some(crv) = saved_cr_value.take() {
-            let mut cr = dbgmcu::Control::from_saved(crv);
+            let mut cr = dbgmcu::Control(crv);
             cr.write(&mut *memory)?;
         }
         Ok(())
