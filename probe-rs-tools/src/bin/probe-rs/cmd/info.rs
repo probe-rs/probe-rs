@@ -5,7 +5,7 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap::ApClass,
+            ap::{ApClass, MemoryAp, MemoryApType},
             armv6m::Demcr,
             component::Scs,
             dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
@@ -135,6 +135,7 @@ fn try_show_info(
                 probe = probe_moved;
                 print_err(dp_addr, e);
 
+                /*
                 if dp_addr == DpAddress::Default {
                     println!("Trying alternate multi-drop debug ports");
 
@@ -154,6 +155,7 @@ fn try_show_info(
                         }
                     }
                 }
+                */
             }
         }
     } else {
@@ -342,8 +344,22 @@ fn handle_memory_ap(
     interface: &mut dyn ArmProbeInterface,
     access_port: &FullyQualifiedApAddress,
 ) -> Result<Tree<String>, anyhow::Error> {
+    println!("Handling memory AP {access_port:?}");
+
+    // Check if the AP is accessible
+    //
+
     let component = {
         let mut memory = interface.memory_interface(access_port)?;
+
+        let (interface, ap) = memory.try_as_parts()?;
+
+        let csw = ap.generic_status(interface)?;
+
+        if !csw.DeviceEn {
+            return Ok(Tree::new("Memory AP is disabled".to_string()));
+        }
+
         let base_address = memory.base_address()?;
         let mut demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address())?);
         demcr.set_dwtena(true);

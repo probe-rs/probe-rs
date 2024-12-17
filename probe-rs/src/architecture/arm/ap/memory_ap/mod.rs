@@ -176,7 +176,7 @@ macro_rules! memory_aps {
         })*
 
         impl MemoryAp {
-            pub fn new<I: DapAccess>(
+            pub(crate) fn new<I: DapAccess>(
                 interface: &mut I,
                 address: &FullyQualifiedApAddress,
             ) -> Result<Self, ArmError> {

@@ -14,6 +14,7 @@ use crate::{
     CoreStatus, Error,
 };
 use jep106::JEP106Code;
+use tracing::Level;
 
 use std::{
     collections::{hash_map, BTreeSet, HashMap},
@@ -172,7 +173,7 @@ impl ArmDebugState for Initialized {
         self.sequence.debug_port_stop(probe, self.current_dp).ok();
 
         // Stop all intentionally-connected DPs.
-        for dp in self.dps.keys() {
+        for dp in self.dps.keys().filter(|dp| **dp != self.current_dp) {
             // Try to select the debug port we want to shut down.
             if self.sequence.debug_port_connect(probe, *dp).is_ok() {
                 self.sequence.debug_port_stop(probe, *dp).ok();
@@ -487,13 +488,19 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             }
 
             /* determine the number and type of available APs */
-            tracing::trace!("Searching valid APs");
+            tracing::info!("Searching valid APs");
 
             let ap_span = tracing::debug_span!("AP discovery").entered();
             let allowed_aps = sequence.allowed_access_ports();
             let access_ports = valid_access_ports_allowlist(self, dp, allowed_aps);
             let state = self.state.dps.get_mut(&dp).unwrap();
             state.access_ports = access_ports.into_iter().collect();
+
+            if tracing::enabled!(Level::DEBUG) {
+                for ap in &state.access_ports {
+                    tracing::debug!("Found AP: {:?}", ap);
+                }
+            }
 
             drop(ap_span);
         } else if switched_dp {

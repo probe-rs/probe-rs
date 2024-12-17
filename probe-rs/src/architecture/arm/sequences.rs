@@ -872,7 +872,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         // Time guard for DPIDR register to become readable after line reset
-        const RESET_RECOVERY_TIMEOUT: Duration = Duration::from_secs(1);
+        const RESET_RECOVERY_TIMEOUT: Duration = Duration::from_secs(0);
         const RESET_RECOVERY_RETRY_INTERVAL: Duration = Duration::from_millis(5);
         match interface.active_protocol() {
             Some(WireProtocol::Jtag) => {
