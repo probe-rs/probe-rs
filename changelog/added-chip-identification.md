@@ -1,1 +1,0 @@
-`probe-rs` can now automatically detect nRF, ESP32 and certain ATSAM devices without `--chip`

@@ -1,20 +1,20 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 1700
 expression: printed_backtrace
+snapshot_kind: text
 ---
 Frame:
  function:        __cortex_m_rt_SVCall
  source_location:
-  directory: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src
-  file: Some("main.rs")
+  path: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs
   line: Some(26)
   column: Some(Column(5))
  frame_base:      Some(2001ffc0)
 Frame:
  function:        __cortex_m_rt_SVCall_trampoline
  source_location:
-  directory: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src
-  file: Some("main.rs")
+  path: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs
   line: Some(22)
   column: Some(Column(1))
  frame_base:      Some(2001ffc8)
@@ -26,16 +26,14 @@ None
 Frame:
  function:        __cortex_m_rt_main
  source_location:
-  directory: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src
-  file: Some("main.rs")
+  path: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs
   line: Some(19)
   column: Some(Column(5))
  frame_base:      Some(2001fff0)
 Frame:
  function:        __cortex_m_rt_main_trampoline
  source_location:
-  directory: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src
-  file: Some("main.rs")
+  path: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs
   line: Some(11)
   column: Some(Column(1))
  frame_base:      Some(2001fff8)

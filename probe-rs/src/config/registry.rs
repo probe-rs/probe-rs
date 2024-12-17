@@ -4,6 +4,7 @@ use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use parking_lot::{RwLock, RwLockReadGuard};
 use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::Read;
 use std::ops::Deref;
@@ -98,6 +99,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 part: None,
                 svd: None,
                 documentation: HashMap::new(),
+                package_variants: vec![],
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::Riscv,
@@ -159,32 +161,45 @@ impl Registry {
         &self,
         name: &str,
     ) -> Result<(Target, ChipFamily), RegistryError> {
-        tracing::debug!("Searching registry for chip with name {}", name);
+        tracing::debug!("Searching registry for chip with name {name}");
 
         // Try get the corresponding chip.
         let mut selected_family_and_chip = None;
         let mut exact_matches = 0;
         let mut partial_matches = Vec::new();
         for family in self.families.iter() {
-            for variant in family.variants.iter() {
-                if match_name_prefix(&variant.name, name) {
-                    if variant.name.len() == name.len() {
-                        tracing::debug!("Exact match for chip name: {}", variant.name);
-                        exact_matches += 1;
-                    } else {
-                        tracing::debug!("Partial match for chip name: {}", variant.name);
-                        partial_matches.push(variant.name.as_str());
-                        // Only select partial match if we don't have an exact match yet
-                        if exact_matches > 0 {
+            for (variant, package) in family
+                .variants
+                .iter()
+                .flat_map(|chip| chip.package_variants().map(move |p| (chip, p)))
+            {
+                if match_name_prefix(package, name) {
+                    match package.len().cmp(&name.len()) {
+                        Ordering::Less => {
+                            // The user specified more than the current package name, so we can't
+                            // accept this as a match.
                             continue;
                         }
+                        Ordering::Equal => {
+                            tracing::debug!("Exact match for chip name: {package}");
+                            exact_matches += 1;
+                        }
+                        Ordering::Greater => {
+                            tracing::debug!("Partial match for chip name: {package}");
+                            partial_matches.push(package.as_str());
+                            // Only select partial match if we don't have an exact match yet
+                            if exact_matches > 0 {
+                                continue;
+                            }
+                        }
                     }
-                    selected_family_and_chip = Some((family, variant));
+
+                    selected_family_and_chip = Some((family, variant, package));
                 }
             }
         }
 
-        let Some((family, chip)) = selected_family_and_chip else {
+        let Some((family, chip, package)) = selected_family_and_chip else {
             return Err(RegistryError::ChipNotFound(name.to_string()));
         };
 
@@ -194,7 +209,7 @@ impl Registry {
                 1 => {
                     tracing::warn!(
                         "Found chip {} which matches given partial name {}. Consider specifying its full name.",
-                        chip.name,
+                        package,
                         name,
                     );
                 }
@@ -221,15 +236,16 @@ impl Registry {
             }
         }
 
-        if !chip.name.eq_ignore_ascii_case(name) {
+        if !package.eq_ignore_ascii_case(name) {
             tracing::warn!(
                 "Matching {} based on wildcard. Consider specifying the chip as {} instead.",
                 name,
-                chip.name,
+                package,
             );
         }
 
-        let targ = self.get_target(family, chip);
+        let mut targ = self.get_target(family, chip);
+        targ.name = package.to_string();
         Ok((targ, family.clone()))
     }
 
@@ -258,13 +274,17 @@ impl Registry {
     }
 
     fn search_chips(&self, name: &str) -> Vec<String> {
-        tracing::debug!("Searching registry for chip with name {}", name);
+        tracing::debug!("Searching registry for chip with name {name}");
 
         let mut targets = Vec::new();
 
         for family in &self.families {
-            for variant in family.variants.iter() {
-                if match_name_prefix(name, &variant.name) {
+            for (variant, package) in family
+                .variants
+                .iter()
+                .flat_map(|chip| chip.package_variants().map(move |p| (chip, p)))
+            {
+                if match_name_prefix(name, package.as_str()) {
                     targets.push(variant.name.to_string());
                 }
             }

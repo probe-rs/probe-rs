@@ -58,16 +58,17 @@ object = { version = "0.36", default-features = false, features = [
     "read_core",
     "std",
 ] }
-nusb = "0.1.9"
+nusb = "0.1.12"
 futures-lite = { version = "2", default-features = false }
 async-io = "2"
 scroll = "0.12"
+serialport = { version = "4.6.0", default-features = false, features = ["usbportinfo-interface"] }
 svg = "0.18"
 tracing = "0.1"
 uf2-decode = "0.2"
 espflash = { version = "3", default-features = false }
 parking_lot = "0.12.2"
-zerocopy = { version = "0.7.32", features = ["derive"] }
+zerocopy = { version = "0.8.0", features = ["derive"] }
 
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
@@ -84,7 +85,7 @@ gimli = { version = "0.31", default-features = false, features = [
     "read",
     "std",
 ], optional = true }
-typed-path = { version = "0.9", optional = true }
+typed-path = { version = "0.10", optional = true }
 parse_int = { version = "0.6", optional = true }
 rmp-serde = { version = "1", optional = true }
 dunce = { version = "1", optional = true }

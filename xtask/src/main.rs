@@ -77,7 +77,7 @@ fn fetch_prs() -> Result<()> {
     // Make sure we are on the master branch and we have the latest state pulled from our source of truth, GH.
     cmd!(
         sh,
-        "gh pr list --label 'needs-changelog' --state 'closed' --web --limit 300"
+        "gh pr list --label 'changelog:need' --state 'closed' --web --limit 300"
     )
     .run()?;
 
@@ -100,6 +100,7 @@ fn create_release_pr(version: String) -> Result<()> {
 const CHANGELOG_CATEGORIES: &[&str] = &["Added", "Changed", "Fixed", "Removed"];
 const FRAGMENTS_DIR: &str = "changelog/";
 const CHANGELOG_FILE: &str = "CHANGELOG.md";
+const SKIP_CHANGELOG_LABEL: &str = "changelog:skip";
 
 #[derive(Debug)]
 struct FragmentList {
@@ -341,10 +342,12 @@ fn check_changelog(pr_number: Option<u64>, comment_error: bool) -> Result<()> {
         println!("Checking changelog fragments of PR {pr_number}");
 
         let info = PrInfo::load(pr_number)?;
-        if info.labels.iter().any(|l| l.name == "skip-changelog") {
-            println!("Skipping changelog check because of 'skip-changelog' label");
+        if info.labels.iter().any(|l| l.name == SKIP_CHANGELOG_LABEL) {
+            println!("Skipping changelog check because of '{SKIP_CHANGELOG_LABEL}' label");
             return Ok(());
         }
+
+        println!("Labels for PR: {:?}", info.labels);
 
         disallow_editing_main_changelog(&info)?;
         check_new_changelog_fragments(&mut fragment_list, &info)?;
@@ -399,7 +402,7 @@ fn require_changelog_fragment(info: &PrInfo) -> Result<()> {
         .any(|f| f.path.starts_with(FRAGMENTS_DIR) && f.additions > 0)
     {
         anyhow::bail!(
-            "No new changelog fragments detected, and 'skip-changelog' label not applied."
+            "No new changelog fragments detected, and '{SKIP_CHANGELOG_LABEL}' label not applied."
         );
     }
 

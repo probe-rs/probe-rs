@@ -16,7 +16,7 @@ For a release the following steps are required:
 
 # Required changelog entry for PRs
 
-Generally we require a changelog entry for each PR. If for good reason it is omitted but required for the release, please add a `needs-changelog` label to the PR to make the CI pass. If it's a purely maintenance related PR,, you can also use `skip-changelog` to skip putting a changelog entry now and lateron during the release.
+Generally we require a changelog entry for each PR. If for good reason it is omitted but required for the release, please add a `changelog:need` label to the PR to make the CI pass. If it's a purely maintenance related PR, you can also use `changelog:skip` to skip putting a changelog entry now and lateron during the release.
 
 # The release scripts
 

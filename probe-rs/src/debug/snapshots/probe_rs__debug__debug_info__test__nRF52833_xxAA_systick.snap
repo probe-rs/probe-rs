@@ -1,14 +1,15 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 1987
 expression: stack_frames
+snapshot_kind: text
 ---
 - function_name: software_breakpoint
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 371
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 0
@@ -216,11 +217,10 @@ expression: stack_frames
   canonical_frame_address: 536887048
 - function_name: __cortex_m_rt_SysTick
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 84
     column:
       Column: 5
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -428,11 +428,10 @@ expression: stack_frames
   canonical_frame_address: 536887048
 - function_name: __cortex_m_rt_SysTick_trampoline
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 80
     column:
       Column: 13
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -831,11 +830,10 @@ expression: stack_frames
   canonical_frame_address: ~
 - function_name: __delay
   source_location:
+    path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
     line: 62
     column:
       Column: 5
-    file: inline.rs
-    directory: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm
   registers:
     - core_register:
         id: 0
@@ -1042,19 +1040,26 @@ expression: stack_frames
           type_name:
             Base: u32
           value: "1"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
+            line: 56
+            column: ~
         - name:
             Named: real_cyc
           type_name:
             Base: u32
           value: "85"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
+            line: 61
+            column: ~
   canonical_frame_address: 536887112
 - function_name: delay
   source_location:
+    path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/asm.rs
     line: 29
     column:
       Column: 5
-    file: asm.rs
-    directory: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src
   registers:
     - core_register:
         id: 0
@@ -1261,14 +1266,17 @@ expression: stack_frames
           type_name:
             Base: u32
           value: "500001"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/asm.rs
+            line: 28
+            column: ~
   canonical_frame_address: 536887112
 - function_name: enable_systick
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 76
     column:
       Column: 9
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -1470,6 +1478,10 @@ expression: stack_frames
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003F57
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
+            line: 66
+            column: ~
           children:
             - name:
                 Named: CBP
@@ -1551,6 +1563,10 @@ expression: stack_frames
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003F53
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
+            line: 66
+            column: ~
           children:
             - name:
                 Named: CBP
@@ -1632,14 +1648,17 @@ expression: stack_frames
           type_name:
             Struct: SYST
           value: SYST @ 0x20003F54
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
+            line: 67
+            column: ~
   canonical_frame_address: 536887136
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 38
     column:
       Column: 54
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0
@@ -1842,6 +1861,10 @@ expression: stack_frames
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003F74
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
+            line: 21
+            column: ~
           children:
             - name:
                 Named: FICR
@@ -2193,6 +2216,10 @@ expression: stack_frames
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x20003F75
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
+            line: 22
+            column: ~
           children:
             - name:
                 Named: CBP
@@ -2274,6 +2301,10 @@ expression: stack_frames
           type_name:
             Struct: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped>"
           value: "Clocks<nrf_hal_common::clocks::ExternalOscillator, nrf_hal_common::clocks::Internal, nrf_hal_common::clocks::LfOscStopped> @ 0x20003F76"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
+            line: 23
+            column: ~
           children:
             - name:
                 Named: hfclk
@@ -2298,10 +2329,9 @@ expression: stack_frames
   canonical_frame_address: 536887288
 - function_name: __cortex_m_rt_main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 19
     column: LeftEdge
-    file: nRF52833_xxAA.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 0

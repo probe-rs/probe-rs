@@ -210,7 +210,7 @@ impl ProtocolHandler {
 
         tracing::debug!("Succesfully attached to ESP USB JTAG.");
 
-        Ok(Self {
+        let mut this = Self {
             device_handle: iface,
             command_queue: None,
             output_buffer: Vec::with_capacity(OUT_BUFFER_SIZE),
@@ -222,7 +222,35 @@ impl ProtocolHandler {
             base_speed_khz,
             div_min,
             div_max,
-        })
+        };
+
+        // We need to flush the device's response buffer, but we don't always succeed in doing so.
+        // This nonsense if supposed to help us recover from some errors.
+        // Not bulletproof, but significantly reduces error rate.
+        let flush_ep = |this: &mut Self| {
+            let mut incoming = [0; IN_EP_BUFFER_SIZE];
+            this.device_handle
+                .read_bulk(this.ep_in, &mut incoming, Duration::from_millis(100))
+                .is_ok()
+        };
+
+        if flush_ep(&mut this) {
+            while flush_ep(&mut this) {}
+        } else {
+            // Just returning here would end us up with Invalid IDCODE.
+            for _ in 0..16 {
+                this.shift_bit(true, true, false).unwrap();
+            }
+
+            this.flush().unwrap();
+            this.response.clear();
+
+            if flush_ep(&mut this) {
+                while flush_ep(&mut this) {}
+            }
+        }
+
+        Ok(this)
     }
 
     /// Put a bit on TDI and possibly read one from TDO.
@@ -246,9 +274,6 @@ impl ProtocolHandler {
         }
 
         self.push_command(RepeatableCommand::Clock { cap, tdi, tms })?;
-        if cap {
-            self.pending_in_bits += 1;
-        }
 
         Ok(())
     }
@@ -327,9 +352,20 @@ impl ProtocolHandler {
     ) -> Result<(), DebugProbeError> {
         tracing::trace!("add raw cmd {:?} reps={}", command, repetitions + 1);
 
+        // If the repeated sequence would overflow the buffer, we flush first. This is a bit more
+        // conservative than necessary, but it's simpler than alternatives.
+        if command.captures() && self.pending_in_bits + repetitions + 1 > 128 * 8 {
+            self.send_buffer()?;
+        }
+
         // Send the actual command.
         self.add_raw_command(command.into())?;
         self.add_repetitions(repetitions)?;
+
+        if command.captures() {
+            // Only increment pending bits if a whole command is in the buffer.
+            self.pending_in_bits += repetitions + 1;
+        }
 
         Ok(())
     }
@@ -423,14 +459,14 @@ impl ProtocolHandler {
 
     /// Tries to receive pending in bits from the USB EP.
     fn receive_buffer(&mut self) -> Result<(), DebugProbeError> {
-        let count = self.pending_in_bits.div_ceil(8).min(IN_EP_BUFFER_SIZE);
-        let mut incoming = [0; IN_EP_BUFFER_SIZE];
-
         tracing::trace!("Receiving buffer, pending bits: {}", self.pending_in_bits);
 
         if self.pending_in_bits == 0 {
             return Ok(());
         }
+
+        let count = self.pending_in_bits.div_ceil(8).min(IN_EP_BUFFER_SIZE);
+        let mut incoming = [0; IN_EP_BUFFER_SIZE];
 
         let read_bytes = self
             .device_handle
@@ -445,11 +481,15 @@ impl ProtocolHandler {
                 DebugProbeError::Usb(e)
             })?;
 
+        if read_bytes > count {
+            tracing::warn!("Read more bytes than expected: {} > {}", read_bytes, count);
+        }
+
         let bits_in_buffer = self.pending_in_bits.min(read_bytes * 8);
-        let incoming = &incoming[..count];
+        let incoming = &incoming[..read_bytes];
 
         tracing::trace!("Read: {:?}, length = {}", incoming, bits_in_buffer);
-        self.pending_in_bits -= bits_in_buffer;
+        self.pending_in_bits = self.pending_in_bits.saturating_sub(bits_in_buffer);
 
         let bs: &BitSlice<_, Lsb0> = BitSlice::from_slice(incoming);
         self.response.extend_from_bitslice(&bs[..bits_in_buffer]);
@@ -461,6 +501,14 @@ impl ProtocolHandler {
 #[derive(PartialEq, Debug, Clone, Copy)]
 enum RepeatableCommand {
     Clock { cap: bool, tdi: bool, tms: bool },
+}
+
+impl RepeatableCommand {
+    fn captures(&self) -> bool {
+        match self {
+            RepeatableCommand::Clock { cap, .. } => *cap,
+        }
+    }
 }
 
 impl From<RepeatableCommand> for Command {

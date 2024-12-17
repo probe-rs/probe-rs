@@ -72,7 +72,6 @@ jobs:
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
 
-
       - name: Check semver compliance
         run: |
           cargo semver-checks check-release -p probe-rs -p probe-rs-targets
@@ -86,7 +85,7 @@ jobs:
           gh pr create -B master -H "${BRANCH_NAME}"\
             --title "Release ${{ inputs.version }}"\
             --label "release"\
-            --label "skip-changelog"\
+            --label "changelog:skip"\
             --body "Released packages are:
 
           - probe-rs
@@ -94,4 +93,4 @@ jobs:
           - target-gen
           - rtthost"
         env:
-            GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}

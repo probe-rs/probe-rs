@@ -1,1 +1,0 @@
-- Fixed probe-rs-tools compilation panicing when "git" is not installed.

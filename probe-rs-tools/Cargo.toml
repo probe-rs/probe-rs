@@ -24,7 +24,7 @@ scroll = "0.12"
 serde = { version = "1", features = ["derive"] }
 thiserror = { workspace = true }
 tracing = "0.1"
-typed-path = "0.9"
+typed-path = "0.10"
 # path
 probe-rs-target = { workspace = true }
 probe-rs-mi = { workspace = true }
@@ -35,16 +35,14 @@ itertools = "0.13"
 addr2line = "0.24"
 bytesize = "1"
 capstone = "0.12"
-cargo_metadata = "0.18"
+cargo_metadata = "0.19"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "2"
-defmt-decoder = { version = "=0.3.11", features = [
-    "unstable",
-] } # pinned because "unstable" has potential for breaking changes
+defmt-decoder = "0.4"
 directories = "5"
 dunce = "1"
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
-goblin = { version = "0.8", default-features = false, features = [
+goblin = { version = "0.9", default-features = false, features = [
     "std",
     "elf32",
     "elf64",
@@ -54,13 +52,13 @@ indicatif = "0.17"
 insta = { version = "1.38", default-features = false, features = ["yaml"] }
 itm = { version = "0.9.0-rc.1", default-features = false }
 parse_int = "0.6"
-libtest-mimic = "0.7.2"
+libtest-mimic = "0.8.0"
 fastrand = "2.1"
 rustyline = { version = "14", default-features = false, features = [
     "with-dirs",
     "with-file-history",
 ] }
-sanitize-filename = "0.5"
+sanitize-filename = "0.6"
 schemafy = "0.6"
 serde_json = "1.0.116"
 signal-hook = { version = "0.3", default-features = false }
@@ -78,12 +76,12 @@ time = { version = "0.3", default-features = false, features = [
 ] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
-ratatui = { version = "0.28.0", default-features = false, features = [
+ratatui = { version = "0.29.0", default-features = false, features = [
     "crossterm",
 ] }
 ansi-parser = "0.9.0"
 
-probe-rs = { version = "0.24.0", path = "../probe-rs", features = [
+probe-rs = { version = "0.25.0", path = "../probe-rs", features = [
     "gdb-server",
 ] }
 parking_lot = "0.12.2"

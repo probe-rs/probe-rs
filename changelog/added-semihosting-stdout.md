@@ -1,1 +1,0 @@
-Added support to probe-rs-tools to print messages using `semihosting`.

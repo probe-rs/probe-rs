@@ -2,7 +2,7 @@ use crate::rtt::Error;
 use crate::{Core, MemoryInterface};
 use std::cmp::min;
 use std::ffi::CStr;
-use zerocopy::{FromBytes, FromZeroes};
+use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 /// Trait for channel information shared between up and down channels.
 pub trait RttChannel {
@@ -18,7 +18,7 @@ pub trait RttChannel {
 }
 
 #[repr(C)]
-#[derive(Debug, FromZeroes, FromBytes, Copy, Clone)]
+#[derive(Debug, FromBytes, Immutable, KnownLayout, Clone)]
 pub(crate) struct RttChannelBufferInner<T> {
     standard_name_pointer: T,
     buffer_start_pointer: T,
@@ -46,7 +46,7 @@ impl<T> RttChannelBufferInner<T> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub(crate) enum RttChannelBuffer {
     Buffer32(RttChannelBufferInner<u32>),
     Buffer64(RttChannelBufferInner<u64>),
@@ -518,6 +518,7 @@ fn read_c_string(core: &mut Core, ptr: u64) -> Result<Option<String>, Error> {
         .find_map(|r| r.contains(ptr).then_some(r.address_range()))
     else {
         // If the pointer is not within any valid range, return None.
+        tracing::warn!("RTT channel name points to unrecognized memory. Bad target description?");
         return Ok(None);
     };
 

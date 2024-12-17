@@ -832,7 +832,7 @@ fn as_bytes_mut<T: DataType>(data: &mut [T]) -> &mut [u8] {
     }
 }
 
-impl<'probe> MemoryInterface for XtensaCommunicationInterface<'probe> {
+impl MemoryInterface for XtensaCommunicationInterface<'_> {
     fn read(&mut self, address: u64, dst: &mut [u8]) -> Result<(), crate::Error> {
         self.read_memory(address, dst)?;
 

@@ -1,14 +1,15 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 1984
 expression: stack_frames
+snapshot_kind: text
 ---
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 348
     column:
       Column: 13
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 4096
@@ -358,19 +359,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "5"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "6"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 1070395504
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 338
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 4096
@@ -691,19 +699,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "4"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "5"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 1070395648
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 338
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 4096
@@ -1024,19 +1039,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "3"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "4"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 1070395792
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 338
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 4096
@@ -1357,19 +1379,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "2"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "3"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 1070395936
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 338
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 4096
@@ -1690,19 +1719,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "1"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "2"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 1070396080
 - function_name: test_deep_stack
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 338
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 4096
@@ -2023,19 +2059,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "0"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 331
+            column: ~
         - name:
             Named: internal_depth_measure
           type_name:
             Base: usize
           value: "1"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 332
+            column: ~
   canonical_frame_address: 1070396224
 - function_name: setup_data_types
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
     line: 325
     column:
       Column: 5
-    file: lib.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
   registers:
     - core_register:
         id: 4096
@@ -2356,11 +2399,19 @@ expression: stack_frames
           type_name:
             Base: i8
           value: "-23"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 204
+            column: ~
         - name:
             Named: local_reference_to_global_const
           type_name:
             Struct: "&str"
           value: "This global `const` value will only show up in the debugger in the variables where it is referenced"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 207
+            column: ~
           children:
             - name:
                 Named: data_ptr
@@ -2383,6 +2434,10 @@ expression: stack_frames
           type_name:
             Struct: "&str"
           value: "A 'global' static variable"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 208
+            column: ~
           children:
             - name:
                 Named: data_ptr
@@ -2405,6 +2460,10 @@ expression: stack_frames
           type_name:
             Pointer: "*const probe_rs_debugger_test::ComplexEnum"
           value: "*const probe_rs_debugger_test::ComplexEnum @ 0x3FCCFCEC"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 209
+            column: ~
           children:
             - name:
                 Named: "*local_reference_to_global_static_struct"
@@ -2449,11 +2508,19 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "0"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 210
+            column: ~
         - name:
             Named: ghosted_variable
           type_name:
             Struct: "&str"
           value: New value and type for a different name
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 211
+            column: ~
           children:
             - name:
                 Named: data_ptr
@@ -2476,26 +2543,46 @@ expression: stack_frames
           type_name:
             Base: i8
           value: "26"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 212
+            column: ~
         - name:
             Named: int128
           type_name:
             Base: i128
           value: "-196710231994021419720322"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 213
+            column: ~
         - name:
             Named: u_int128
           type_name:
             Base: u128
           value: "340282366920938266753142613410348491134"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 214
+            column: ~
         - name:
             Named: float64
           type_name:
             Base: f64
           value: "1.7608695652173911"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 215
+            column: ~
         - name:
             Named: float64_ptr
           type_name:
             Pointer: "&f64"
           value: "&f64 @ 0x3FCCFD04"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 216
+            column: ~
           children:
             - name:
                 Named: "*float64_ptr"
@@ -2507,11 +2594,19 @@ expression: stack_frames
           type_name:
             Base: char
           value: 💩
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 217
+            column: ~
         - name:
             Named: emoji_ptr
           type_name:
             Pointer: "&char"
           value: "&char @ 0x3FCCFD08"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 218
+            column: ~
           children:
             - name:
                 Named: "*emoji_ptr"
@@ -2523,11 +2618,19 @@ expression: stack_frames
           type_name:
             Base: bool
           value: "true"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 219
+            column: ~
         - name:
             Named: any_old_string_slice
           type_name:
             Struct: "&str"
           value: How long is a piece of String.
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 221
+            column: ~
           children:
             - name:
                 Named: data_ptr
@@ -2550,6 +2653,10 @@ expression: stack_frames
           type_name:
             Struct: "Result<(), &str>"
           value: "Result<(), &str> @ 0x3FCCFD0C"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 222
+            column: ~
           children:
             - name:
                 Named: Err
@@ -2584,6 +2691,10 @@ expression: stack_frames
           type_name:
             Struct: "(bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64)"
           value: "(bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x3FCCF470"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 223
+            column: ~
           children:
             - name:
                 Named: __0
@@ -2660,6 +2771,10 @@ expression: stack_frames
           type_name:
             Struct: "Matrix<i32, 2, 3, 4>"
           value: "Matrix<i32, 2, 3, 4> @ 0x3FCCF4AC"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 224
+            column: ~
           children:
             - name:
                 Named: raw
@@ -2677,7 +2792,7 @@ expression: stack_frames
               value: "[[[i32; 3]; 2]; 4] = [\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t3,\n\t\t\t4,\n\t\t\t5\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t9,\n\t\t\t10,\n\t\t\t11\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t12,\n\t\t\t13,\n\t\t\t14\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t15,\n\t\t\t16,\n\t\t\t17\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t18,\n\t\t\t19,\n\t\t\t20\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t21,\n\t\t\t22,\n\t\t\t23\n\t\t]\n\t]]"
               children:
                 - name:
-                    Named: __0
+                    Indexed: 0
                   type_name:
                     Array:
                       item_type_name:
@@ -2689,7 +2804,7 @@ expression: stack_frames
                   value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t0,\n\t\t1,\n\t\t2\n\t],\n\t[i32; 3] = [\n\t\t3,\n\t\t4,\n\t\t5\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2698,22 +2813,22 @@ expression: stack_frames
                       value: "[i32; 3] = [\n\t0,\n\t1,\n\t2]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "0"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "1"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "2"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2722,22 +2837,22 @@ expression: stack_frames
                       value: "[i32; 3] = [\n\t3,\n\t4,\n\t5]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "3"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "4"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "5"
                 - name:
-                    Named: __1
+                    Indexed: 1
                   type_name:
                     Array:
                       item_type_name:
@@ -2749,7 +2864,7 @@ expression: stack_frames
                   value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\t[i32; 3] = [\n\t\t9,\n\t\t10,\n\t\t11\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2758,22 +2873,22 @@ expression: stack_frames
                       value: "[i32; 3] = [\n\t6,\n\t7,\n\t8]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "7"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "8"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2782,22 +2897,22 @@ expression: stack_frames
                       value: "[i32; 3] = [\n\t9,\n\t10,\n\t11]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "9"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "10"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "11"
                 - name:
-                    Named: __2
+                    Indexed: 2
                   type_name:
                     Array:
                       item_type_name:
@@ -2809,7 +2924,7 @@ expression: stack_frames
                   value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t12,\n\t\t13,\n\t\t14\n\t],\n\t[i32; 3] = [\n\t\t15,\n\t\t16,\n\t\t17\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2818,22 +2933,22 @@ expression: stack_frames
                       value: "[i32; 3] = [\n\t12,\n\t13,\n\t14]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "12"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "13"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "14"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2842,22 +2957,22 @@ expression: stack_frames
                       value: "[i32; 3] = [\n\t15,\n\t16,\n\t17]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "15"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "16"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "17"
                 - name:
-                    Named: __3
+                    Indexed: 3
                   type_name:
                     Array:
                       item_type_name:
@@ -2869,7 +2984,7 @@ expression: stack_frames
                   value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t18,\n\t\t19,\n\t\t20\n\t],\n\t[i32; 3] = [\n\t\t21,\n\t\t22,\n\t\t23\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2878,22 +2993,22 @@ expression: stack_frames
                       value: "[i32; 3] = [\n\t18,\n\t19,\n\t20]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "18"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "19"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "20"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -2902,17 +3017,17 @@ expression: stack_frames
                       value: "[i32; 3] = [\n\t21,\n\t22,\n\t23]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Base: i32
                           value: "21"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Base: i32
                           value: "22"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Base: i32
                           value: "23"
@@ -2921,6 +3036,10 @@ expression: stack_frames
           type_name:
             Struct: "Matrix<&str, 2, 3, 6>"
           value: "Matrix<&str, 2, 3, 6> @ 0x3FCCF62C"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 232
+            column: ~
           children:
             - name:
                 Named: raw
@@ -2938,7 +3057,7 @@ expression: stack_frames
               value: "[[[&str; 3]; 2]; 6] = [\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tApple,\n\t\t\tBanana,\n\t\t\tCherry\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tDog,\n\t\t\tElephant,\n\t\t\tFish\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tGuitar,\n\t\t\tHorse,\n\t\t\tIce Cream\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tJaguar,\n\t\t\tKangaroo,\n\t\t\tLion\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tMoon,\n\t\t\tNewton,\n\t\t\tOwl\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tPencil,\n\t\t\tQueen,\n\t\t\tRainbow\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tSun,\n\t\t\tTree,\n\t\t\tUmbrella\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tViolin,\n\t\t\tWatch,\n\t\t\tXylophone\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tYellow,\n\t\t\tZebra,\n\t\t\tAlpha\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tBravo,\n\t\t\tCharlie,\n\t\t\tDelta\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tEcho,\n\t\t\tFoxtrot,\n\t\t\tGolf\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tHotel,\n\t\t\tIndia,\n\t\t\tJuliet\n\t\t]\n\t]]"
               children:
                 - name:
-                    Named: __0
+                    Indexed: 0
                   type_name:
                     Array:
                       item_type_name:
@@ -2950,7 +3069,7 @@ expression: stack_frames
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tApple,\n\t\tBanana,\n\t\tCherry\n\t],\n\t[&str; 3] = [\n\t\tDog,\n\t\tElephant,\n\t\tFish\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -2959,7 +3078,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tApple,\n\tBanana,\n\tCherry]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Apple
@@ -2981,7 +3100,7 @@ expression: stack_frames
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Banana
@@ -3003,7 +3122,7 @@ expression: stack_frames
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Cherry
@@ -3025,7 +3144,7 @@ expression: stack_frames
                                 Base: usize
                               value: "6"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -3034,7 +3153,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tDog,\n\tElephant,\n\tFish]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Dog
@@ -3056,7 +3175,7 @@ expression: stack_frames
                                 Base: usize
                               value: "3"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Elephant
@@ -3078,7 +3197,7 @@ expression: stack_frames
                                 Base: usize
                               value: "8"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Fish
@@ -3100,7 +3219,7 @@ expression: stack_frames
                                 Base: usize
                               value: "4"
                 - name:
-                    Named: __1
+                    Indexed: 1
                   type_name:
                     Array:
                       item_type_name:
@@ -3112,7 +3231,7 @@ expression: stack_frames
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tGuitar,\n\t\tHorse,\n\t\tIce Cream\n\t],\n\t[&str; 3] = [\n\t\tJaguar,\n\t\tKangaroo,\n\t\tLion\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -3121,7 +3240,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tGuitar,\n\tHorse,\n\tIce Cream]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Guitar
@@ -3143,7 +3262,7 @@ expression: stack_frames
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Horse
@@ -3165,7 +3284,7 @@ expression: stack_frames
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Ice Cream
@@ -3187,7 +3306,7 @@ expression: stack_frames
                                 Base: usize
                               value: "9"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -3196,7 +3315,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tJaguar,\n\tKangaroo,\n\tLion]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Jaguar
@@ -3218,7 +3337,7 @@ expression: stack_frames
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Kangaroo
@@ -3240,7 +3359,7 @@ expression: stack_frames
                                 Base: usize
                               value: "8"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Lion
@@ -3262,7 +3381,7 @@ expression: stack_frames
                                 Base: usize
                               value: "4"
                 - name:
-                    Named: __2
+                    Indexed: 2
                   type_name:
                     Array:
                       item_type_name:
@@ -3274,7 +3393,7 @@ expression: stack_frames
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tMoon,\n\t\tNewton,\n\t\tOwl\n\t],\n\t[&str; 3] = [\n\t\tPencil,\n\t\tQueen,\n\t\tRainbow\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -3283,7 +3402,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tMoon,\n\tNewton,\n\tOwl]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Moon
@@ -3305,7 +3424,7 @@ expression: stack_frames
                                 Base: usize
                               value: "4"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Newton
@@ -3327,7 +3446,7 @@ expression: stack_frames
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Owl
@@ -3349,7 +3468,7 @@ expression: stack_frames
                                 Base: usize
                               value: "3"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -3358,7 +3477,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tPencil,\n\tQueen,\n\tRainbow]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Pencil
@@ -3380,7 +3499,7 @@ expression: stack_frames
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Queen
@@ -3402,7 +3521,7 @@ expression: stack_frames
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Rainbow
@@ -3424,7 +3543,7 @@ expression: stack_frames
                                 Base: usize
                               value: "7"
                 - name:
-                    Named: __3
+                    Indexed: 3
                   type_name:
                     Array:
                       item_type_name:
@@ -3436,7 +3555,7 @@ expression: stack_frames
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tSun,\n\t\tTree,\n\t\tUmbrella\n\t],\n\t[&str; 3] = [\n\t\tViolin,\n\t\tWatch,\n\t\tXylophone\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -3445,7 +3564,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tSun,\n\tTree,\n\tUmbrella]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Sun
@@ -3467,7 +3586,7 @@ expression: stack_frames
                                 Base: usize
                               value: "3"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Tree
@@ -3489,7 +3608,7 @@ expression: stack_frames
                                 Base: usize
                               value: "4"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Umbrella
@@ -3511,7 +3630,7 @@ expression: stack_frames
                                 Base: usize
                               value: "8"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -3520,7 +3639,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tViolin,\n\tWatch,\n\tXylophone]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Violin
@@ -3542,7 +3661,7 @@ expression: stack_frames
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Watch
@@ -3564,7 +3683,7 @@ expression: stack_frames
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Xylophone
@@ -3586,7 +3705,7 @@ expression: stack_frames
                                 Base: usize
                               value: "9"
                 - name:
-                    Named: __4
+                    Indexed: 4
                   type_name:
                     Array:
                       item_type_name:
@@ -3598,7 +3717,7 @@ expression: stack_frames
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tYellow,\n\t\tZebra,\n\t\tAlpha\n\t],\n\t[&str; 3] = [\n\t\tBravo,\n\t\tCharlie,\n\t\tDelta\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -3607,7 +3726,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tYellow,\n\tZebra,\n\tAlpha]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Yellow
@@ -3629,7 +3748,7 @@ expression: stack_frames
                                 Base: usize
                               value: "6"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Zebra
@@ -3651,7 +3770,7 @@ expression: stack_frames
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Alpha
@@ -3673,7 +3792,7 @@ expression: stack_frames
                                 Base: usize
                               value: "5"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -3682,7 +3801,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tBravo,\n\tCharlie,\n\tDelta]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Bravo
@@ -3704,7 +3823,7 @@ expression: stack_frames
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Charlie
@@ -3726,7 +3845,7 @@ expression: stack_frames
                                 Base: usize
                               value: "7"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Delta
@@ -3748,7 +3867,7 @@ expression: stack_frames
                                 Base: usize
                               value: "5"
                 - name:
-                    Named: __5
+                    Indexed: 5
                   type_name:
                     Array:
                       item_type_name:
@@ -3760,7 +3879,7 @@ expression: stack_frames
                   value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tEcho,\n\t\tFoxtrot,\n\t\tGolf\n\t],\n\t[&str; 3] = [\n\t\tHotel,\n\t\tIndia,\n\t\tJuliet\n\t]]"
                   children:
                     - name:
-                        Named: __0
+                        Indexed: 0
                       type_name:
                         Array:
                           item_type_name:
@@ -3769,7 +3888,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tEcho,\n\tFoxtrot,\n\tGolf]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Echo
@@ -3791,7 +3910,7 @@ expression: stack_frames
                                 Base: usize
                               value: "4"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: Foxtrot
@@ -3813,7 +3932,7 @@ expression: stack_frames
                                 Base: usize
                               value: "7"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Golf
@@ -3835,7 +3954,7 @@ expression: stack_frames
                                 Base: usize
                               value: "4"
                     - name:
-                        Named: __1
+                        Indexed: 1
                       type_name:
                         Array:
                           item_type_name:
@@ -3844,7 +3963,7 @@ expression: stack_frames
                       value: "[&str; 3] = [\n\tHotel,\n\tIndia,\n\tJuliet]"
                       children:
                         - name:
-                            Named: __0
+                            Indexed: 0
                           type_name:
                             Struct: "&str"
                           value: Hotel
@@ -3866,7 +3985,7 @@ expression: stack_frames
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __1
+                            Indexed: 1
                           type_name:
                             Struct: "&str"
                           value: India
@@ -3888,7 +4007,7 @@ expression: stack_frames
                                 Base: usize
                               value: "5"
                         - name:
-                            Named: __2
+                            Indexed: 2
                           type_name:
                             Struct: "&str"
                           value: Juliet
@@ -3914,11 +4033,19 @@ expression: stack_frames
           type_name:
             Enum: SimpleEnum
           value: "SimpleEnum::Two"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 249
+            column: ~
         - name:
             Named: simple_enum_pointer
           type_name:
             Pointer: "&probe_rs_debugger_test::SimpleEnum"
           value: "&probe_rs_debugger_test::SimpleEnum @ 0x3FCCFAB0"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 250
+            column: ~
           children:
             - name:
                 Named: "*simple_enum_pointer"
@@ -3930,6 +4057,10 @@ expression: stack_frames
           type_name:
             Struct: RecursiveStruct
           value: RecursiveStruct @ 0x3FCCFAB4
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 252
+            column: ~
           children:
             - name:
                 Named: depth
@@ -4010,6 +4141,10 @@ expression: stack_frames
           type_name:
             Struct: ComplexEnum
           value: ComplexEnum @ 0x3FCCFAD8
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 263
+            column: ~
           children:
             - name:
                 Named: Case1
@@ -4048,6 +4183,10 @@ expression: stack_frames
           type_name:
             Struct: ComplexEnum
           value: ComplexEnum @ 0x3FCCFB08
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 271
+            column: ~
           children:
             - name:
                 Named: Case2
@@ -4075,6 +4214,10 @@ expression: stack_frames
           type_name:
             Struct: "Option<probe_rs_debugger_test::Univariant>"
           value: "Option<probe_rs_debugger_test::Univariant> @ 0x3FCCFB28"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 273
+            column: ~
           children:
             - name:
                 Named: Some
@@ -4141,6 +4284,10 @@ expression: stack_frames
           type_name:
             Pointer: "&core::option::Option<probe_rs_debugger_test::Univariant>"
           value: "&core::option::Option<probe_rs_debugger_test::Univariant> @ 0x3FCCFD14"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 285
+            column: ~
           children:
             - name:
                 Named: "*stuct_with_one_variant_pointer"
@@ -4213,6 +4360,10 @@ expression: stack_frames
           type_name:
             Struct: ComplexStruct
           value: ComplexStruct @ 0x3FCCFB90
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 287
+            column: ~
           children:
             - name:
                 Named: x
@@ -4234,6 +4385,10 @@ expression: stack_frames
           type_name:
             Struct: ComplexStruct
           value: ComplexStruct @ 0x3FCCFBA0
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 289
+            column: ~
           children:
             - name:
                 Named: x
@@ -4255,6 +4410,10 @@ expression: stack_frames
           type_name:
             Struct: Struct<i32>
           value: Struct<i32> @ 0x3FCCFD18
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 290
+            column: ~
           children:
             - name:
                 Named: b
@@ -4271,21 +4430,37 @@ expression: stack_frames
           type_name:
             Base: i64
           value: "1"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 291
+            column: ~
         - name:
             Named: a3
           type_name:
             Base: i64
           value: "2"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 292
+            column: ~
         - name:
             Named: a4
           type_name:
             Base: i64
           value: "3"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 293
+            column: ~
         - name:
             Named: a5
           type_name:
             Struct: "(i32, i64)"
           value: "(i32, i64) @ 0x3FCCFD40"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 294
+            column: ~
           children:
             - name:
                 Named: __0
@@ -4302,6 +4477,10 @@ expression: stack_frames
           type_name:
             Struct: Enum<i32>
           value: Enum<i32> @ 0x3FCCFBE0
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 295
+            column: ~
           children:
             - name:
                 Named: Variant2
@@ -4324,6 +4503,10 @@ expression: stack_frames
           type_name:
             Struct: Enum<i32>
           value: Enum<i32> @ 0x3FCCFC00
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 296
+            column: ~
           children:
             - name:
                 Named: Variant1
@@ -4349,62 +4532,110 @@ expression: stack_frames
                 Base: i32
               count: 10
           value: "[i32; 10] = [\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55]"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 298
+            column: ~
           children:
             - name:
-                Named: __0
+                Indexed: 0
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
-                Named: __1
+                Indexed: 1
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
-                Named: __2
+                Indexed: 2
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
-                Named: __3
+                Indexed: 3
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
-                Named: __4
+                Indexed: 4
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
-                Named: __5
+                Indexed: 5
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
-                Named: __6
+                Indexed: 6
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
-                Named: __7
+                Indexed: 7
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
-                Named: __8
+                Indexed: 8
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
             - name:
-                Named: __9
+                Indexed: 9
               type_name:
                 Base: i32
               value: "55"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 298
+                column: ~
         - name:
             Named: my_array_ptr
           type_name:
             Pointer: "&[i32; 10]"
           value: "&[i32; 10] @ 0x3FCCFD50"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 299
+            column: ~
           children:
             - name:
                 Named: "*my_array_ptr"
@@ -4416,52 +4647,52 @@ expression: stack_frames
               value: "[i32; 10] = [\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55]"
               children:
                 - name:
-                    Named: __0
+                    Indexed: 0
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __1
+                    Indexed: 1
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __2
+                    Indexed: 2
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __3
+                    Indexed: 3
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __4
+                    Indexed: 4
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __5
+                    Indexed: 5
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __6
+                    Indexed: 6
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __7
+                    Indexed: 7
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __8
+                    Indexed: 8
                   type_name:
                     Base: i32
                   value: "55"
                 - name:
-                    Named: __9
+                    Indexed: 9
                   type_name:
                     Base: i32
                   value: "55"
@@ -4473,62 +4704,110 @@ expression: stack_frames
                 Base: i8
               count: 10
           value: "[i8; 10] = [\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8,\n\t9,\n\t0]"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 300
+            column: ~
           children:
             - name:
-                Named: __0
+                Indexed: 0
               type_name:
                 Base: i8
               value: "1"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
-                Named: __1
+                Indexed: 1
               type_name:
                 Base: i8
               value: "2"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
-                Named: __2
+                Indexed: 2
               type_name:
                 Base: i8
               value: "3"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
-                Named: __3
+                Indexed: 3
               type_name:
                 Base: i8
               value: "4"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
-                Named: __4
+                Indexed: 4
               type_name:
                 Base: i8
               value: "5"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
-                Named: __5
+                Indexed: 5
               type_name:
                 Base: i8
               value: "6"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
-                Named: __6
+                Indexed: 6
               type_name:
                 Base: i8
               value: "7"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
-                Named: __7
+                Indexed: 7
               type_name:
                 Base: i8
               value: "8"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
-                Named: __8
+                Indexed: 8
               type_name:
                 Base: i8
               value: "9"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
             - name:
-                Named: __9
+                Indexed: 9
               type_name:
                 Base: i8
               value: "0"
+              source_location:
+                path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+                line: 300
+                column: ~
         - name:
             Named: heapless_vec
           type_name:
             Struct: "Vec<i8, 10>"
           value: "Vec<i8, 10> @ 0x3FCCFC58"
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 301
+            column: ~
           children:
             - name:
                 Named: len
@@ -4545,7 +4824,7 @@ expression: stack_frames
               value: "[MaybeUninit<i8>; 10] = [\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5C\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5D\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5E\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5F\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC60\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC61\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC62\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC63\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC64\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC65\n\t}]"
               children:
                 - name:
-                    Named: __0
+                    Indexed: 0
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5C}"
@@ -4567,7 +4846,7 @@ expression: stack_frames
                             Base: i8
                           value: "1"
                 - name:
-                    Named: __1
+                    Indexed: 1
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5D}"
@@ -4589,7 +4868,7 @@ expression: stack_frames
                             Base: i8
                           value: "2"
                 - name:
-                    Named: __2
+                    Indexed: 2
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5E}"
@@ -4611,7 +4890,7 @@ expression: stack_frames
                             Base: i8
                           value: "3"
                 - name:
-                    Named: __3
+                    Indexed: 3
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC5F}"
@@ -4633,7 +4912,7 @@ expression: stack_frames
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __4
+                    Indexed: 4
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC60}"
@@ -4655,7 +4934,7 @@ expression: stack_frames
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __5
+                    Indexed: 5
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC61}"
@@ -4677,7 +4956,7 @@ expression: stack_frames
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __6
+                    Indexed: 6
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC62}"
@@ -4699,7 +4978,7 @@ expression: stack_frames
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __7
+                    Indexed: 7
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC63}"
@@ -4721,7 +5000,7 @@ expression: stack_frames
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __8
+                    Indexed: 8
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC64}"
@@ -4743,7 +5022,7 @@ expression: stack_frames
                             Base: i8
                           value: "0"
                 - name:
-                    Named: __9
+                    Indexed: 9
                   type_name:
                     Base: MaybeUninit<i8>
                   value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x3FCCFC65}"
@@ -4769,6 +5048,10 @@ expression: stack_frames
           type_name:
             Struct: Wrapping<u8>
           value: Wrapping<u8> @ 0x3FCCFC6B
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 305
+            column: ~
           children:
             - name:
                 Named: __0
@@ -4780,6 +5063,10 @@ expression: stack_frames
           type_name:
             Struct: Channels
           value: Channels @ 0x3FCCFC6C
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
+            line: 306
+            column: ~
           children:
             - name:
                 Named: up
@@ -4982,11 +5269,10 @@ expression: stack_frames
   canonical_frame_address: 1070399200
 - function_name: __risc_v_rt__main
   source_location:
+    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/esp32c3.rs
     line: 26
     column:
       Column: 54
-    file: esp32c3.rs
-    directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin
   registers:
     - core_register:
         id: 4096
@@ -5312,6 +5598,10 @@ expression: stack_frames
           type_name:
             Struct: Peripherals
           value: Peripherals @ 0x3FCCFEFE
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/esp32c3.rs
+            line: 18
+            column: ~
           children:
             - name:
                 Named: ADC1
@@ -5747,6 +6037,10 @@ expression: stack_frames
           type_name:
             Struct: SystemParts
           value: SystemParts @ 0x3FCCFEFF
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/esp32c3.rs
+            line: 19
+            column: ~
           children:
             - name:
                 Named: _private
@@ -5829,6 +6123,10 @@ expression: stack_frames
           type_name:
             Struct: Clocks
           value: Clocks @ 0x3FCCFF00
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/esp32c3.rs
+            line: 20
+            column: ~
           children:
             - name:
                 Named: _private
@@ -5885,6 +6183,10 @@ expression: stack_frames
           type_name:
             Struct: Delay
           value: Delay @ 0x3FCCFF18
+          source_location:
+            path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/esp32c3.rs
+            line: 23
+            column: ~
           children:
             - name:
                 Named: freq
@@ -5900,11 +6202,10 @@ expression: stack_frames
   canonical_frame_address: 1070399392
 - function_name: hal_main
   source_location:
+    path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-hal-0.17.0/src/lib.rs
     line: 521
     column:
       Column: 9
-    file: lib.rs
-    directory: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-hal-0.17.0/src
   registers:
     - core_register:
         id: 4096
@@ -6225,21 +6526,37 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "0"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-hal-0.17.0/src/lib.rs
+            line: 505
+            column: ~
         - name:
             Named: a1
           type_name:
             Base: usize
           value: "0"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-hal-0.17.0/src/lib.rs
+            line: 505
+            column: ~
         - name:
             Named: a2
           type_name:
             Base: usize
           value: "0"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-hal-0.17.0/src/lib.rs
+            line: 505
+            column: ~
         - name:
             Named: stack_chk_guard
           type_name:
             Pointer: "*mut u32"
           value: "*mut u32 @ 0x3FCCFFC0"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-hal-0.17.0/src/lib.rs
+            line: 516
+            column: ~
           children:
             - name:
                 Named: "*stack_chk_guard"
@@ -6249,11 +6566,10 @@ expression: stack_frames
   canonical_frame_address: 1070399440
 - function_name: start_rust
   source_location:
+    path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-riscv-rt-0.8.0/src/lib.rs
     line: 70
     column:
       Column: 5
-    file: lib.rs
-    directory: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-riscv-rt-0.8.0/src
   registers:
     - core_register:
         id: 4096
@@ -6574,14 +6890,26 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "0"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-riscv-rt-0.8.0/src/lib.rs
+            line: 56
+            column: ~
         - name:
             Named: a1
           type_name:
             Base: usize
           value: "0"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-riscv-rt-0.8.0/src/lib.rs
+            line: 56
+            column: ~
         - name:
             Named: a2
           type_name:
             Base: usize
           value: "0"
+          source_location:
+            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/esp-riscv-rt-0.8.0/src/lib.rs
+            line: 56
+            column: ~
   canonical_frame_address: 1070399472

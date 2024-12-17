@@ -67,7 +67,7 @@ impl Cmd {
                 Zsh.install(&file_name, &script)?;
             }
             Shell::Bash => {
-                Zsh.install(&file_name, &script)?;
+                Bash.install(&file_name, &script)?;
             }
             Shell::PowerShell => {
                 PowerShell.install(&file_name, &script)?;
@@ -249,21 +249,50 @@ impl ShellExt for Zsh {
         };
 
         let path = dir.home_dir().join(".zfunc/").join(file_name);
-        write_script(&path, script)
+        write_script(&path, script)?;
+        use std::io::Write;
+
+        // Check if .zfunc is in FPATH
+        if let Ok(fpath) = std::env::var("FPATH") {
+            if !fpath.split(':').any(|p| p == path.to_str().unwrap()) {
+                let zshrc_path = dir.home_dir().join(".zshrc");
+                let export_cmd = r#"
+# Add .zfunc to FPATH for autocompletion
+export FPATH="$HOME/.zfunc:$FPATH"
+"#;
+                let result = std::fs::OpenOptions::new()
+                    .append(true)
+                    .open(&zshrc_path)
+                    .and_then(|mut file| writeln!(file, "{}", export_cmd))
+                    .context("Failed to update .zshrc with FPATH");
+
+                match result {
+                    Ok(_) => eprintln!("Added .zfunc to FPATH in .zshrc. Please reload your zsh."),
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                        eprintln!("Please add the following line to your .zshrc manually:");
+                        eprintln!("{}", export_cmd);
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
 impl ShellExt for Bash {
     fn install(&self, file_name: &str, script: &str) -> Result<()> {
+        const DEST: &str = ".local/share/bash-completion/completions/";
         let Some(dir) = directories::UserDirs::new() else {
             println!("{script}");
             eprintln!("The user home directory could not be located.");
-            eprintln!("Write the script to ~/.bash_completion/{file_name}");
+            eprintln!("Write the script to ~/{DEST}/{file_name}");
             eprintln!("Install the autocompletion by reloading the bash");
             return Ok(());
         };
 
-        let path = dir.home_dir().join(".bash_completions/").join(file_name);
+        let path = dir.home_dir().join(DEST).join(file_name);
         write_script(&path, script)
     }
 }
@@ -291,15 +320,29 @@ impl ShellExt for PowerShell {
 }
 
 fn write_script(path: &Path, script: &str) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            if let Err(e) = std::fs::create_dir_all(parent).context("Failed to create directory") {
+                println!("{script}");
+                eprintln!("Creating the parent directories failed: {}", e);
+                eprintln!(
+                    "Please create the parent directories and write the above script to {} manually",
+                    path.display()
+                );
+                return Err(e);
+            }
+        }
+    }
+
     let res = std::fs::write(path, script);
     if res.is_err() {
         println!("{script}");
-        println!("Writing the autocompletion script failed");
-        println!(
+        eprintln!("Writing the autocompletion script failed");
+        eprintln!(
             "Please write the above script to {} manually",
             path.display()
         );
     }
 
-    res.context("Writing th script failed")
+    res.context("Writing the script failed")
 }

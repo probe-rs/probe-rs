@@ -1,60 +1,55 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
+assertion_line: 1896
 expression: printed_backtrace
+snapshot_kind: text
 ---
 Frame:
  function:        wait<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
  source_location:
-  directory: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
-  file: Some("timer.rs")
+  path: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(266)
   column: Some(Column(12))
  frame_base:      Some(20003ff0)
 Frame:
  function:        delay<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
  source_location:
-  directory: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
-  file: Some("timer.rs")
+  path: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(145)
   column: Some(Column(22))
  frame_base:      Some(20003ff0)
 Frame:
  function:        delay_us<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
  source_location:
-  directory: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
-  file: Some("timer.rs")
+  path: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(324)
   column: Some(Column(9))
  frame_base:      Some(20003ff0)
 Frame:
  function:        delay_ms<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
  source_location:
-  directory: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
-  file: Some("timer.rs")
+  path: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(297)
   column: Some(Column(14))
  frame_base:      Some(20003ff0)
 Frame:
  function:        delay_ms<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
  source_location:
-  directory: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
-  file: Some("timer.rs")
+  path: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(306)
   column: Some(Column(14))
  frame_base:      Some(20003ff0)
 Frame:
  function:        __cortex_m_rt_main
  source_location:
-  directory: /home/dominik/code/probe-rs/probe-rs-repro/nrf/inlined-functions/src
-  file: Some("main.rs")
+  path: /home/dominik/code/probe-rs/probe-rs-repro/nrf/inlined-functions/src/main.rs
   line: Some(20)
   column: Some(Column(15))
  frame_base:      Some(20003ff0)
 Frame:
  function:        __cortex_m_rt_main_trampoline
  source_location:
-  directory: /home/dominik/code/probe-rs/probe-rs-repro/nrf/inlined-functions/src
-  file: Some("main.rs")
+  path: /home/dominik/code/probe-rs/probe-rs-repro/nrf/inlined-functions/src/main.rs
   line: Some(7)
   column: Some(Column(1))
  frame_base:      Some(20003ff8)

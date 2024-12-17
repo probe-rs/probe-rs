@@ -1,1 +1,0 @@
-Moved `RamRegion::is_boot_memory` to `MemoryAccess::boot`

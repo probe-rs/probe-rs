@@ -88,9 +88,13 @@ impl Target {
                 // EEPROM regions. We probably don't want to erase these regions, so we set
                 // `is_alias`, which then causes "erase all" to skip the region.
                 memory_map.push(MemoryRegion::Nvm(NvmRegion {
-                    name: None,
+                    name: Some(format!("synthesized for {algo_name}")),
                     range: algo_range.clone(),
-                    cores: algo.cores.clone(),
+                    cores: if algo.cores.is_empty() {
+                        chip.cores.iter().map(|core| core.name.clone()).collect()
+                    } else {
+                        algo.cores.clone()
+                    },
                     is_alias: true,
                     access: Some(MemoryAccess {
                         read: false,

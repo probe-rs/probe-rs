@@ -207,6 +207,11 @@ impl Session {
             }
         }
         probe.attach_to_unspecified()?;
+        if probe.scan_chain().iter().len() > 0 {
+            for core in &cores {
+                probe.select_jtag_tap(core.interface_idx())?;
+            }
+        }
 
         let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
@@ -439,9 +444,9 @@ impl Session {
                 other => other?,
             };
             if c.core_halted()? {
-                tracing::debug!("Core {core} already halted");
+                tracing::info!("Core {core} already halted");
             } else {
-                tracing::debug!("Halting core...");
+                tracing::info!("Halting core {core}...");
                 resume_state.push(core);
                 c.halt(Duration::from_millis(100))?;
             }
@@ -619,6 +624,18 @@ impl Session {
         Ok(())
     }
 
+    /// This function can be used to set up an application which was flashed to RAM.
+    pub fn prepare_running_on_ram(&mut self, vector_table_addr: u64) -> Result<(), crate::Error> {
+        match &self.target.debug_sequence.clone() {
+            crate::config::DebugSequence::Arm(arm) => {
+                arm.prepare_running_on_ram(vector_table_addr, self)
+            }
+            _ => Err(crate::Error::NotImplemented(
+                "ram flash non-ARM architectures",
+            )),
+        }
+    }
+
     /// Check if the connected device has a debug erase sequence defined
     pub fn has_sequence_erase_all(&self) -> bool {
         match &self.target.debug_sequence {
@@ -770,10 +787,14 @@ impl Session {
     /// Clears all hardware breakpoints on all cores
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
         self.halted_access(|session| {
-            { 0..session.cores.len() }.try_for_each(|core| match session.core(core) {
-                Ok(mut core) => core.clear_all_hw_breakpoints(),
-                Err(Error::CoreDisabled(_)) => Ok(()),
-                Err(err) => Err(err),
+            { 0..session.cores.len() }.try_for_each(|core| {
+                tracing::info!("Clearing breakpoints for core {core}");
+
+                match session.core(core) {
+                    Ok(mut core) => core.clear_all_hw_breakpoints(),
+                    Err(Error::CoreDisabled(_)) => Ok(()),
+                    Err(err) => Err(err),
+                }
             })
         })
     }

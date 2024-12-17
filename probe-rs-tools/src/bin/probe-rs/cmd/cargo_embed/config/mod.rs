@@ -202,6 +202,21 @@ impl Configs {
         Configs { figment: figments }
     }
 
+    pub fn merge(&mut self, conf_file: PathBuf) -> anyhow::Result<()> {
+        let original = self.figment.clone();
+        self.figment = match conf_file.extension().and_then(|e| e.to_str()) {
+            Some("toml") => original.merge(Toml::file(conf_file).nested()),
+            Some("json") => original.merge(Json::file(conf_file).nested()),
+            Some("yml" | "yaml") => original.merge(Yaml::file(conf_file).nested()),
+            _ => {
+                return Err(anyhow::anyhow!(
+                "File format not recognized from extension (supported: .toml, .json, .yaml / .yml)"
+            ))
+            }
+        };
+        Ok(())
+    }
+
     pub fn prof_names(&self) -> Vec<String> {
         self.figment
             .profiles()
@@ -283,5 +298,15 @@ mod test {
         // Selecting a profile with an invalid item.
         let configs = Configs::new_with_test_data(std::env::current_dir().unwrap());
         let _superfluous: anyhow::Error = configs.select_defined("default").unwrap_err();
+    }
+    #[test]
+    fn file_name_patterns() {
+        // Existence of files is not tested here, so it is fine to use a file that does not exist
+        Configs::new(std::env::current_dir().unwrap())
+            .merge("nonexistent-file.yml".into())
+            .unwrap();
+        Configs::new(std::env::current_dir().unwrap())
+            .merge("nonexistent-file.unknown".into())
+            .unwrap_err();
     }
 }

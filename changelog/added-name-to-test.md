@@ -1,1 +1,0 @@
-Added `--name` option to `target-gen test`

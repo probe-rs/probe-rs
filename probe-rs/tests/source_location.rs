@@ -34,7 +34,7 @@ fn breakpoint_location_absolute() {
 
         assert_eq!(
             *addr,
-            di.get_breakpoint_location(&path, *line, col)
+            di.get_breakpoint_location(path.to_path(), *line, col)
                 .expect("Failed to find breakpoint location.")
                 .address,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
@@ -69,7 +69,7 @@ fn breakpoint_location_inexact() {
 
         assert_eq!(
             *addr,
-            di.get_breakpoint_location(&path, *line, col)
+            di.get_breakpoint_location(path.to_path(), *line, col)
                 .expect("Failed to find valid breakpoint locations.")
                 .address,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
@@ -84,18 +84,15 @@ fn breakpoint_location_inexact() {
 fn source_location() {
     let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
-    let file = "main.rs";
-
-    let dir =
-        UnixPathBuf::from("/Users/jacknoppe/dev/probe-rs-debugger-test/src").to_typed_path_buf();
+    let path = UnixPathBuf::from("/Users/jacknoppe/dev/probe-rs-debugger-test/src/main.rs")
+        .to_typed_path_buf();
 
     for (addr, line, col) in TEST_DATA.iter() {
         assert_eq!(
             Some(SourceLocation {
                 line: Some(*line),
                 column: Some(*col),
-                directory: Some(dir.clone()),
-                file: Some(file.to_owned()),
+                path: path.clone(),
             }),
             di.get_source_location(*addr)
         );
@@ -111,7 +108,7 @@ fn find_non_existing_unit_by_path() {
     let debug_info = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
     assert!(debug_info
-        .get_breakpoint_location(&unit_path, 14, None)
+        .get_breakpoint_location(unit_path.to_path(), 14, None)
         .is_err());
 }
 
@@ -120,9 +117,9 @@ fn regression_pr2324() {
     let path = "C:\\_Hobby\\probe-rs-test-c-firmware/Atmel/hpl/core/hpl_init.c";
 
     let di = DebugInfo::from_file("tests/debug-unwind-tests/atsamd51p19a.elf").unwrap();
-    let path = TypedPath::derive(path).to_path_buf();
+    let path = TypedPath::derive(path);
 
-    let addr = di.get_breakpoint_location(&path, 58, None).unwrap();
+    let addr = di.get_breakpoint_location(path, 58, None).unwrap();
 
     assert_eq!(addr.address, 0x2e4);
 }

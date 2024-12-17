@@ -20,7 +20,7 @@ where
     Directory(&'a Path),
 }
 
-impl<'a, T> Kind<'a, T>
+impl<T> Kind<'_, T>
 where
     T: std::io::Seek + std::io::Read,
 {
@@ -165,6 +165,7 @@ where
             part: None,
             svd: None,
             documentation: HashMap::new(),
+            package_variants: vec![],
             cores,
             memory_map,
             flash_algorithms: flash_algorithm_names,
@@ -206,6 +207,7 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
                 psel: 0,
                 debug_base: None,
                 cti_base: None,
+                jtag_tap: None,
             }),
             Architecture::Riscv => CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
                 hart_id: None,
@@ -266,7 +268,7 @@ fn walk_files(path: &Path, callback: &mut impl FnMut(&Path) -> Result<()>) -> Re
 }
 
 fn has_extension(path: &Path, ext: &str) -> bool {
-    path.extension().map_or(false, |e| e == ext)
+    path.extension().is_some_and(|e| e == ext)
 }
 
 pub fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {

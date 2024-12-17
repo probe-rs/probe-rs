@@ -88,11 +88,13 @@ pub fn cmd_elf(
                         psel: 0,
                         debug_base: None,
                         cti_base: None,
+                        jtag_tap: None,
                     }),
                 }],
                 part: None,
                 svd: None,
                 documentation: HashMap::new(),
+                package_variants: vec![],
                 name: "<chip name>".to_owned(),
                 memory_map: vec![
                     MemoryRegion::Nvm(NvmRegion {

@@ -1,1 +1,0 @@
-probe-rs no longer reserves all remaining memory for the flash algorithm's stack.

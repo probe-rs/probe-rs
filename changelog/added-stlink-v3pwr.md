@@ -1,1 +1,0 @@
-Added support for STLink-V3PWR

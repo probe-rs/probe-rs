@@ -86,6 +86,7 @@ impl<'session> Flasher<'session> {
     fn ensure_loaded(&mut self) -> Result<(), FlashError> {
         if !self.loaded {
             self.load()?;
+            self.loaded = true;
         }
 
         Ok(())
@@ -650,7 +651,13 @@ impl<O: Operation> ActiveFlasher<'_, O> {
         duration: Duration,
     ) -> Result<u32, FlashError> {
         self.call_function(registers, init)?;
-        self.wait_for_completion(duration)
+        let r = self.wait_for_completion(duration);
+
+        if r.is_err() {
+            tracing::debug!("Routine call failed: {:?}", r);
+        }
+
+        r
     }
 
     fn call_function(&mut self, registers: &Registers, init: bool) -> Result<(), FlashError> {
@@ -775,14 +782,19 @@ impl<O: Operation> ActiveFlasher<'_, O> {
 
         self.check_for_stack_overflow()?;
 
-        self.core
+        let r = self
+            .core
             .read_core_reg::<u32>(regs.result_register(0))
             .map_err(|error| {
                 FlashError::Core(Error::ReadRegister {
                     register: regs.result_register(0).to_string(),
                     source: Box::new(error),
                 })
-            })
+            })?;
+
+        tracing::debug!("Routine returned {:x}.", r);
+
+        Ok(r)
     }
 
     fn read_rtt(&mut self) -> Result<(), FlashError> {
@@ -934,7 +946,7 @@ impl<O: Operation> ActiveFlasher<'_, O> {
     }
 }
 
-impl<'probe> ActiveFlasher<'probe, Erase> {
+impl ActiveFlasher<'_, Erase> {
     pub(super) fn erase_all(&mut self) -> Result<(), FlashError> {
         tracing::debug!("Erasing entire chip.");
         let algo = &self.flash_algorithm;
@@ -953,7 +965,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
                     r3: None,
                 },
                 false,
-                Duration::from_secs(30),
+                Duration::from_secs(40),
             )
             .map_err(|error| FlashError::ChipEraseFailed {
                 source: Box::new(error),
@@ -1007,7 +1019,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
     }
 }
 
-impl<'p> ActiveFlasher<'p, Program> {
+impl ActiveFlasher<'_, Program> {
     pub(super) fn program_page(&mut self, page: &FlashPage) -> Result<(), FlashError> {
         let t1 = Instant::now();
 

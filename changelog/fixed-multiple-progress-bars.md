@@ -1,1 +1,0 @@
-Fixed progress bar display issues when programming multiple memory regions.
