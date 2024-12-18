@@ -1,0 +1,1 @@
+the progressbars are now properly reset at the right time to improve the accuracy of the speed and ETA. (#2970) by @diondokter
