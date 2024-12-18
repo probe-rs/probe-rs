@@ -342,20 +342,16 @@ fn handle_memory_ap(
     interface: &mut dyn ArmProbeInterface,
     access_port: &FullyQualifiedApAddress,
 ) -> Result<Tree<String>, anyhow::Error> {
-    println!("Handling memory AP {access_port:?}");
-
-    // Check if the AP is accessible
-    //
-
     let component = {
         let mut memory = interface.memory_interface(access_port)?;
 
+        // Check if the AP is accessible
         let (interface, ap) = memory.try_as_parts()?;
-
         let csw = ap.generic_status(interface)?;
-
         if !csw.DeviceEn {
-            return Ok(Tree::new("Memory AP is disabled".to_string()));
+            return Ok(Tree::new(
+                "Memory AP is not accessible, DeviceEn bit not set".to_string(),
+            ));
         }
 
         let base_address = memory.base_address()?;
