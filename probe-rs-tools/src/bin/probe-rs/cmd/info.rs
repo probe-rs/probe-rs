@@ -5,7 +5,7 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap::{ApClass, MemoryAp, MemoryApType},
+            ap::{ApClass, MemoryApType},
             armv6m::Demcr,
             component::Scs,
             dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
@@ -135,7 +135,6 @@ fn try_show_info(
                 probe = probe_moved;
                 print_err(dp_addr, e);
 
-                /*
                 if dp_addr == DpAddress::Default {
                     println!("Trying alternate multi-drop debug ports");
 
@@ -155,7 +154,6 @@ fn try_show_info(
                         }
                     }
                 }
-                */
             }
         }
     } else {
