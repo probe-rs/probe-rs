@@ -78,20 +78,14 @@ impl ArmDebugSequence for Stm32Armv7 {
         default_ap: &FullyQualifiedApAddress,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
-        let mut saved_cr_value = self.saved_cr_value.lock().unwrap();
-        if saved_cr_value.is_some() {
-            return Ok(());
-        }
-
         let mut memory = interface.memory_interface(default_ap)?;
         let mut cr = dbgmcu::Control::read(&mut *memory)?;
+        self.saved_cr_value.lock().unwrap().replace(cr.0);
 
         cr.enable_standby_debug(true);
         cr.enable_sleep_debug(true);
         cr.enable_stop_debug(true);
         cr.write(&mut *memory)?;
-
-        *saved_cr_value = Some(cr.0);
 
         Ok(())
     }
