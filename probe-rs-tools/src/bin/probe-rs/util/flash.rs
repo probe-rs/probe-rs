@@ -103,10 +103,15 @@ pub fn run_flash_download(
                         .map(|path| visualizer.write_svg(path));
                 }
                 ProgressEvent::StartedProgramming { length } => {
+                    progress_bars.program.mark_start_now();
                     progress_bars.program.set_length(length);
                 }
-                ProgressEvent::StartedErasing => {}
-                ProgressEvent::StartedFilling => {}
+                ProgressEvent::StartedErasing => {
+                    progress_bars.erase.mark_start_now();
+                }
+                ProgressEvent::StartedFilling => {
+                    progress_bars.fill.mark_start_now();
+                }
                 ProgressEvent::PageProgrammed { size, .. } => {
                     progress_bars.program.inc(size as u64);
                 }
@@ -264,5 +269,12 @@ impl ProgressBarGroup {
 
     pub fn append_phase(&mut self) {
         self.append_phase = true;
+    }
+
+    pub fn mark_start_now(&mut self) {
+        if let Some(bar) = self.bars.get(self.selected) {
+            bar.reset_elapsed();
+            bar.reset_eta();
+        }
     }
 }
