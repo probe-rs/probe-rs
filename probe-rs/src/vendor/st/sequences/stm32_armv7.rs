@@ -8,7 +8,7 @@
 //! are ARMv8, or the STM32H7 which is ARMv7 but has a more complicated DBGMCU at a different
 //! address.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use probe_rs_target::CoreType;
 
@@ -21,12 +21,16 @@ use crate::architecture::arm::{
 
 /// Marker structure for most ARMv7 STM32 devices.
 #[derive(Debug)]
-pub struct Stm32Armv7 {}
+pub struct Stm32Armv7 {
+    saved_cr_value: Mutex<Option<u32>>,
+}
 
 impl Stm32Armv7 {
     /// Create the sequencer for most ARMv7 STM32 families.
     pub fn create() -> Arc<Self> {
-        Arc::new(Self {})
+        Arc::new(Self {
+            saved_cr_value: Mutex::new(None),
+        })
     }
 }
 
@@ -75,8 +79,9 @@ impl ArmDebugSequence for Stm32Armv7 {
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(default_ap)?;
-
         let mut cr = dbgmcu::Control::read(&mut *memory)?;
+        self.saved_cr_value.lock().unwrap().replace(cr.0);
+
         cr.enable_standby_debug(true);
         cr.enable_sleep_debug(true);
         cr.enable_stop_debug(true);
@@ -90,12 +95,11 @@ impl ArmDebugSequence for Stm32Armv7 {
         memory: &mut dyn ArmMemoryInterface,
         _core_type: CoreType,
     ) -> Result<(), ArmError> {
-        let mut cr = dbgmcu::Control::read(&mut *memory)?;
-        cr.enable_standby_debug(false);
-        cr.enable_sleep_debug(false);
-        cr.enable_stop_debug(false);
-        cr.write(&mut *memory)?;
-
+        let mut saved_cr_value = self.saved_cr_value.lock().unwrap();
+        if let Some(crv) = saved_cr_value.take() {
+            let mut cr = dbgmcu::Control(crv);
+            cr.write(&mut *memory)?;
+        }
         Ok(())
     }
 
