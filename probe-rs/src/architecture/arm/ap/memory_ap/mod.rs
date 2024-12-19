@@ -52,14 +52,24 @@ macro_rules! attached_regs_to_mem_ap {
     };
 }
 
+/// Common trait for all memory access ports.
 pub trait MemoryApType:
     ApRegAccess<BASE> + ApRegAccess<BASE2> + ApRegAccess<TAR> + ApRegAccess<TAR2> + ApRegAccess<DRW>
 {
     /// This Memory AP’s specific CSW type.
     type CSW: Register;
 
+    /// Returns whether the Memory AP supports the large address extension.
+    ///
+    /// With the large address extension, the address is 64 bits wide.
     fn has_large_address_extension(&self) -> bool;
+
+    /// Returns whether the Memory AP supports the large data extension.
+    ///
+    /// With the large data extension, the data size can be up to 64 bits wide.
     fn has_large_data_extension(&self) -> bool;
+
+    /// Returns whether the Memory AP only supports 32 bit data size.
     fn supports_only_32bit_data_size(&self) -> bool;
 
     /// Attempts to set the requested data size.
@@ -102,6 +112,10 @@ pub trait MemoryApType:
         Ok(base_address)
     }
 
+    /// Set the target address for the next access.
+    ///
+    /// This writes the TAR register, and optionally TAR2 register if the address is larger than 32 bits,
+    /// and the large address extension is supported.
     fn set_target_address<I: ApAccess>(
         &mut self,
         interface: &mut I,
@@ -163,10 +177,19 @@ pub trait MemoryApType:
 }
 
 macro_rules! memory_aps {
-    ($($variant:ident => $type:path),*) => {
+    (
+        $(
+            $(#[$outer:meta])*
+            $variant:ident => $type:path
+        ),*
+    ) => {
+        /// Sum type for all memory access ports.
         #[derive(Debug)]
         pub enum MemoryAp {
-            $($variant($type)),*
+            $(
+                $(#[$outer])*
+                $variant($type)
+            ),*
         }
 
         $(impl From<$type> for MemoryAp {
@@ -176,7 +199,7 @@ macro_rules! memory_aps {
         })*
 
         impl MemoryAp {
-            pub fn new<I: DapAccess>(
+            pub(crate) fn new<I: DapAccess>(
                 interface: &mut I,
                 address: &FullyQualifiedApAddress,
             ) -> Result<Self, ArmError> {
@@ -196,12 +219,19 @@ macro_rules! memory_aps {
 }
 
 memory_aps! {
+    /// AHB3 memory access port.
     AmbaAhb3 => amba_ahb3::AmbaAhb3,
+    /// AHB5 memory access port.
     AmbaAhb5 => amba_ahb5::AmbaAhb5,
+    /// AHB5 memory access port with enhanced HPROT control.
     AmbaAhb5Hprot => amba_ahb5_hprot::AmbaAhb5Hprot,
+    /// APB2 or APB3 memory access port.
     AmbaApb2Apb3 => amba_apb2_apb3::AmbaApb2Apb3,
+    /// APB4 or APB5 memory access port.
     AmbaApb4Apb5 => amba_apb4_apb5::AmbaApb4Apb5,
+    /// AXI3 or AXI4 memory access port.
     AmbaAxi3Axi4 => amba_axi3_axi4::AmbaAxi3Axi4,
+    /// AXI5 memory access port
     AmbaAxi5 => amba_axi5::AmbaAxi5
 }
 

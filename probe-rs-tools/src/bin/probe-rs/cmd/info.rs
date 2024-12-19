@@ -5,7 +5,7 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap::ApClass,
+            ap::{ApClass, MemoryApType},
             armv6m::Demcr,
             component::Scs,
             dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
@@ -344,6 +344,16 @@ fn handle_memory_ap(
 ) -> Result<Tree<String>, anyhow::Error> {
     let component = {
         let mut memory = interface.memory_interface(access_port)?;
+
+        // Check if the AP is accessible
+        let (interface, ap) = memory.try_as_parts()?;
+        let csw = ap.generic_status(interface)?;
+        if !csw.DeviceEn {
+            return Ok(Tree::new(
+                "Memory AP is not accessible, DeviceEn bit not set".to_string(),
+            ));
+        }
+
         let base_address = memory.base_address()?;
         let mut demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address())?);
         demcr.set_dwtena(true);

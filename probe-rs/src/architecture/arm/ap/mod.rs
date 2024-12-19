@@ -5,6 +5,9 @@ pub mod register_generation;
 pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
+pub use memory_ap::MemoryAp;
+pub use memory_ap::MemoryApType;
+
 use crate::architecture::arm::dp::DebugPortError;
 use crate::probe::DebugProbeError;
 
@@ -145,8 +148,9 @@ impl<T: DapAccess> ApAccess for T {
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
         R: Register,
     {
-        tracing::debug!("Writing register {}, value={:x?}", R::NAME, register);
+        tracing::debug!("Writing AP register {}, value={:x?}", R::NAME, register);
         self.write_raw_ap_register(port.ap_address(), R::ADDRESS, register.into())
+            .inspect_err(|err| tracing::warn!("Failed to write AP register {}: {}", R::NAME, err))
     }
 
     fn write_ap_register_repeated<PORT, R>(
