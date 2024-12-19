@@ -248,10 +248,10 @@ impl Session {
                 let reset_hardware_deassert =
                     tracing::debug_span!("reset_hardware_deassert").entered();
 
-                let mut memory_interface = interface.memory_interface(&default_memory_ap)?;
-
                 // A timeout here indicates that the reset pin is probably not properly connected.
-                if let Err(e) = sequence_handle.reset_hardware_deassert(&mut *memory_interface) {
+                if let Err(e) =
+                    sequence_handle.reset_hardware_deassert(&mut *interface, &default_memory_ap)
+                {
                     if matches!(e, ArmError::Timeout) {
                         tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
                     }

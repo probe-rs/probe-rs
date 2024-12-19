@@ -98,7 +98,7 @@ impl AccessPortType for AmbaAhb5 {
 
 impl ApRegAccess<CSW> for AmbaAhb5 {}
 
-crate::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAhb5);
+super::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAhb5);
 
 define_ap_register!(
     /// Control and Status Word register

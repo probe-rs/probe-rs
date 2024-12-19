@@ -3,13 +3,13 @@ use crate::architecture::arm::ap::memory_ap::{DataSize, MemoryAp, MemoryApType};
 use crate::architecture::arm::ap::valid_access_ports;
 use crate::architecture::arm::communication_interface::{Initialized, SwdSequence};
 use crate::architecture::arm::dp::{Abort, Ctrl, DebugPortError, DpAccess, Select};
-use crate::architecture::arm::memory::{ArmMemoryInterface, Component};
+use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::{
     communication_interface::UninitializedArmProbe, sequences::ArmDebugSequence, ArmProbeInterface,
 };
 use crate::architecture::arm::{
-    ArmChipInfo, ArmCommunicationInterface, ArmError, DapAccess, DpAddress,
-    FullyQualifiedApAddress, RawDapAccess, SwoAccess,
+    ArmCommunicationInterface, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress,
+    RawDapAccess, SwoAccess,
 };
 use crate::probe::blackmagic::{Align, BlackMagicProbe, ProtocolVersion, RemoteCommand};
 use crate::probe::{DebugProbeError, Probe};
@@ -322,33 +322,6 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
             apsel: 0,
             csw: csw.into(),
         }) as _)
-    }
-
-    fn read_chip_info_from_rom_table(
-        &mut self,
-        dp: DpAddress,
-    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmError> {
-        if dp != DpAddress::Default {
-            return Err(ArmError::NotImplemented("multidrop not yet implemented"));
-        }
-
-        for ap in self.access_ports.clone() {
-            if let Ok(mut memory) = self.memory_interface(&ap) {
-                let base_address = memory.base_address()?;
-                let component = Component::try_parse(&mut *memory, base_address)?;
-
-                if let Component::Class1RomTable(component_id, _) = component {
-                    if let Some(jep106) = component_id.peripheral_id().jep106() {
-                        return Ok(Some(ArmChipInfo {
-                            manufacturer: jep106,
-                            part: component_id.peripheral_id().part(),
-                        }));
-                    }
-                }
-            }
-        }
-
-        Ok(None)
     }
 }
 

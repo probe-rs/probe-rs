@@ -6,7 +6,7 @@ use crate::{
             memory_ap::{DataSize, MemoryAp, MemoryApType},
             ApAccess,
         },
-        communication_interface::{FlushableArmAccess, Initialized, SwdSequence},
+        communication_interface::{FlushableArmAccess, Initialized},
         dp::DpAccess,
         memory::ArmMemoryInterface,
         ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress,
@@ -47,26 +47,6 @@ where
 }
 
 impl<APA> ADIMemoryInterface<'_, APA> where APA: ApAccess {}
-
-impl<APA> SwdSequence for ADIMemoryInterface<'_, APA>
-where
-    Self: ArmMemoryInterface,
-{
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.get_arm_communication_interface()?
-            .swj_sequence(bit_len, bits)
-    }
-
-    fn swj_pins(
-        &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        self.get_arm_communication_interface()?
-            .swj_pins(pin_out, pin_select, pin_wait)
-    }
-}
 
 impl<AP> MemoryInterface<ArmError> for ADIMemoryInterface<'_, AP>
 where

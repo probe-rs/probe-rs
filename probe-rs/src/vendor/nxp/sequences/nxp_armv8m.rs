@@ -15,7 +15,8 @@ use crate::{
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        ArmCommunicationInterface, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, Pins,
+        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, DpAddress,
+        FullyQualifiedApAddress, Pins,
     },
     core::MemoryMappedRegister,
 };
@@ -684,7 +685,11 @@ impl ArmDebugSequence for MIMXRT5xxS {
         self.wait_for_stop_after_reset(probe)
     }
 
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+    fn reset_hardware_deassert(
+        &self,
+        memory: &mut dyn ArmProbeInterface,
+        _default_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
         tracing::trace!("MIMXRT5xxS reset hardware deassert");
         let n_reset = Pins(0x80).0 as u32;
 

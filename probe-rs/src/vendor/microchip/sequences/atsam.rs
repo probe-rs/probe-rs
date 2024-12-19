@@ -486,11 +486,15 @@ impl ArmDebugSequence for AtSAM {
     ///
     /// Instead of de-asserting `nReset` here (this was already done during the CPU Reset Extension process),
     /// the device is released from Reset Extension.
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+    fn reset_hardware_deassert(
+        &self,
+        probe: &mut dyn ArmProbeInterface,
+        default_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
         let mut pins = Pins(0);
         pins.set_nreset(true);
 
-        let current_pins = Pins(memory.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
+        let current_pins = Pins(probe.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
         if !current_pins.nreset() {
             return Err(ArmDebugSequenceError::SequenceSpecific(
                 "Expected nReset to already be de-asserted".into(),
@@ -498,7 +502,9 @@ impl ArmDebugSequence for AtSAM {
             .into());
         }
 
-        self.release_reset_extension(memory)
+        let mut memory = probe.memory_interface(default_ap)?;
+
+        self.release_reset_extension(memory.as_mut())
     }
 
     /// `debug_device_unlock` for ATSAM devices
