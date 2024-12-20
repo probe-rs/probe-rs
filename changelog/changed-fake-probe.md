@@ -1,0 +1,1 @@
+Added two new methods to `FakeProbe`: `set_arm_read_handler` and `set_arm_write_handler`. These methods allow you to set a callback function that will be called when the probe is read or written to. 
