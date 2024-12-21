@@ -2,7 +2,7 @@ use crate::{
     architecture::arm::{
         ap::valid_access_ports_allowlist,
         dp::{
-            Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, BASEPTR0,
+            Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, BASEPTR0,
             BASEPTR1, DPIDR, DPIDR1,
         },
         memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface, Component},
