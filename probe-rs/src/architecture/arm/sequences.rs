@@ -424,20 +424,31 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// De-Assert a system-wide reset line nRST. This is based on the
     /// `ResetHardwareDeassert` function from the [ARM SVD Debug Description].
     ///
+    /// This function is called _once_ when using the "connect under reset" functionality,
+    /// after a connection to each core has been established, and it is expected that after
+    /// this function is called, the target will start executing code.
+    ///
+    /// The provided `default_ap` is the default access port that should be used for memory
+    /// access, if the sequence requires it.
+    ///
     /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetHardwareDeassert
     #[doc(alias = "ResetHardwareDeassert")]
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+    fn reset_hardware_deassert(
+        &self,
+        probe: &mut dyn ArmProbeInterface,
+        _default_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
         let mut n_reset = Pins(0);
         n_reset.set_nreset(true);
         let n_reset = n_reset.0 as u32;
 
-        let can_read_pins = memory.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff;
+        let can_read_pins = probe.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff;
 
         if can_read_pins {
             let start = Instant::now();
 
             loop {
-                if Pins(memory.swj_pins(n_reset, n_reset, 0)? as u8).nreset() {
+                if Pins(probe.swj_pins(n_reset, n_reset, 0)? as u8).nreset() {
                     return Ok(());
                 }
                 if start.elapsed() >= Duration::from_secs(1) {

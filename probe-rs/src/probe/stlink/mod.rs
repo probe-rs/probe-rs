@@ -13,10 +13,10 @@ use crate::{
         communication_interface::{
             ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
         },
-        memory::{ArmMemoryInterface, Component},
+        memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        valid_32bit_arm_address, ArmChipInfo, ArmError, DapAccess, DpAddress,
-        FullyQualifiedApAddress, Pins, SwoAccess, SwoConfig, SwoMode,
+        valid_32bit_arm_address, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, Pins,
+        SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
@@ -1435,31 +1435,6 @@ impl ArmProbeInterface for StlinkArmDebug {
         };
 
         Ok(Box::new(interface) as _)
-    }
-
-    fn read_chip_info_from_rom_table(
-        &mut self,
-        dp: DpAddress,
-    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmError> {
-        self.select_dp(dp)?;
-
-        for ap in self.access_ports.clone() {
-            if let Ok(mut memory) = self.memory_interface(&ap) {
-                let base_address = memory.base_address()?;
-                let component = Component::try_parse(&mut *memory, base_address)?;
-
-                if let Component::Class1RomTable(component_id, _) = component {
-                    if let Some(jep106) = component_id.peripheral_id().jep106() {
-                        return Ok(Some(ArmChipInfo {
-                            manufacturer: jep106,
-                            part: component_id.peripheral_id().part(),
-                        }));
-                    }
-                }
-            }
-        }
-
-        Ok(None)
     }
 
     fn access_ports(

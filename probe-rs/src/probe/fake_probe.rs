@@ -533,13 +533,6 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
         Ok(BTreeSet::from([FullyQualifiedApAddress::v1_with_dp(dp, 1)]))
     }
 
-    fn read_chip_info_from_rom_table(
-        &mut self,
-        _dp: DpAddress,
-    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmError> {
-        Ok(None)
-    }
-
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }

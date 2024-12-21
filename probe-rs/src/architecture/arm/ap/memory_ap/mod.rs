@@ -25,7 +25,6 @@ use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress, Reg
 /// - `mod_name` is a module name in which the impl an the required use will be expanded to.
 /// - `ApName` a type name that must be available in the current scope to which the registers will
 ///   be attached.
-#[macro_export]
 macro_rules! attached_regs_to_mem_ap {
     ($mod_name:ident => $name:ident) => {
         mod $mod_name {
@@ -51,6 +50,9 @@ macro_rules! attached_regs_to_mem_ap {
         }
     };
 }
+
+// Re-export the macro so that it can be used in this crate.
+pub(crate) use attached_regs_to_mem_ap;
 
 /// Common trait for all memory access ports.
 pub trait MemoryApType:
