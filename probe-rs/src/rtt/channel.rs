@@ -1,5 +1,6 @@
 use crate::rtt::Error;
 use crate::{Core, MemoryInterface};
+use probe_rs_target::RegionMergeIterator;
 use std::cmp::min;
 use std::ffi::CStr;
 use zerocopy::{FromBytes, Immutable, KnownLayout};
@@ -274,17 +275,41 @@ impl Channel {
 
         let (write, read) = self.info.read_buffer_offsets(core, self.metadata_ptr)?;
 
+        // Validate whether the buffers are sensible
         let validate = |which, value| {
-            if value >= self.info.size_of_buffer() {
-                Err(Error::ControlBlockCorrupted(format!(
+            let buffer_offset_larger_than_size_of_buffer = value >= self.info.size_of_buffer();
+
+            if buffer_offset_larger_than_size_of_buffer {
+                return Err(Error::ControlBlockCorrupted(format!(
                     "{which} pointer is {value} while buffer size is {} for {channel_kind}channel {} ({})",
                     self.info.size_of_buffer(),
                     self.number,
                     self.name().unwrap_or("no name"),
-                )))
-            } else {
-                Ok(())
+                )));
             }
+
+            let buffer_fully_in_memory_region = core
+                .target()
+                .memory_map
+                .iter()
+                .filter_map(|mr| mr.as_ram_region())
+                .merge_consecutive()
+                .any(|rr| {
+                    rr.range.contains(&self.info.buffer_start_pointer())
+                        && rr.range.contains(
+                            &(self.info.buffer_start_pointer() + self.info.size_of_buffer()),
+                        )
+                });
+
+            if !buffer_fully_in_memory_region {
+                return Err(Error::ControlBlockCorrupted(format!(
+                    "the {which} buffer doesn't fully fit in any known (consecutive) ram region according to its own pointers: (start_pointer: {:#X}, size: {})",
+                    self.info.buffer_start_pointer(),
+                    self.info.size_of_buffer(),
+                )));
+            }
+
+            Ok(())
         };
 
         validate("write", write)?;
