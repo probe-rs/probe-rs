@@ -723,50 +723,6 @@ pub struct ArmChipInfo {
     pub part: u16,
 }
 
-impl ArmCommunicationInterface<Initialized> {
-    /// Reads the chip info from the romtable of given debug port.
-    pub fn read_chip_info_from_rom_table(
-        &mut self,
-        dp: DpAddress,
-    ) -> Result<Option<ArmChipInfo>, ArmError> {
-        // Check sticky error and cleanup if necessary
-        let ctrl_reg: crate::architecture::arm::dp::Ctrl = self.read_dp_register(dp)?;
-
-        if ctrl_reg.sticky_err() {
-            tracing::trace!("AP Search faulted. Cleaning up");
-            let mut abort = Abort::default();
-            abort.set_stkerrclr(true);
-            self.write_dp_register(dp, abort)?;
-        }
-
-        let state = self.select_dp(dp)?;
-
-        for access_port in state.access_ports.clone() {
-            if let Ok(mut memory) = self.memory_interface(&access_port) {
-                let base_addr = memory.base_address()?;
-                let component = Component::try_parse(&mut *memory, base_addr)?;
-                if let Component::Class1RomTable(component_id, _) = component {
-                    if let Some(jep106) = component_id.peripheral_id().jep106() {
-                        return Ok(Some(ArmChipInfo {
-                            manufacturer: jep106,
-                            part: component_id.peripheral_id().part(),
-                        }));
-                    }
-                }
-            }
-        }
-        // tracing::info!(
-        //     "{}\n{}\n{}\n{}",
-        //     "If you are using a Nordic chip, it might be locked to debug access".yellow(),
-        //     "Run cargo flash with --nrf-recover to unlock".yellow(),
-        //     "WARNING: --nrf-recover will erase the entire code".yellow(),
-        //     "flash and UICR area of the device, in addition to the entire RAM".yellow()
-        // );
-
-        Ok(None)
-    }
-}
-
 impl std::fmt::Display for ArmChipInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let manu = match self.manufacturer.get() {
