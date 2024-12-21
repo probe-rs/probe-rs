@@ -309,6 +309,19 @@ impl Channel {
                 )));
             }
 
+            let name_in_memory_region = core
+                .target()
+                .memory_map
+                .iter()
+                .any(|mr| mr.contains(self.info.standard_name_pointer()));
+
+            if !name_in_memory_region {
+                return Err(Error::ControlBlockCorrupted(format!(
+                    "the {which} buffer name pointer doesn't point to valid memory: (pointer: {:#X})",
+                    self.info.standard_name_pointer(),
+                )));
+            }
+
             Ok(())
         };
 
