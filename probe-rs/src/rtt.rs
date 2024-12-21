@@ -352,11 +352,24 @@ impl Rtt {
     ///
     /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`.
     pub fn attach_region(core: &mut Core, region: &ScanRegion) -> Result<Rtt, Error> {
+        Self::attach_region_with_address(core, region).map_err(|(e, _)| e)
+    }
+
+    /// Internal version of [Self::attach_region] that also returns
+    /// the address of control block. Sometimes we can detect a control block
+    /// without being able to attach to it.
+    #[doc(hidden)]
+    pub fn attach_region_with_address(
+        core: &mut Core,
+        region: &ScanRegion,
+    ) -> Result<Rtt, (Error, Option<u64>)> {
         let ranges = match region.clone() {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: {:#010x}", addr);
 
-                return Rtt::from(core, addr, None)?.ok_or(Error::ControlBlockNotFound);
+                return Rtt::from(core, addr, None)
+                    .map_err(|e| (e, Some(addr)))?
+                    .ok_or((Error::ControlBlockNotFound, Some(addr)));
             }
             ScanRegion::Ram => {
                 tracing::debug!("Scanning whole RAM");
@@ -369,7 +382,7 @@ impl Rtt {
             ScanRegion::Ranges(regions) if regions.is_empty() => {
                 // We have no regions to scan so we cannot initialize RTT.
                 tracing::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
-                return Err(Error::NoControlBlockLocation);
+                return Err((Error::NoControlBlockLocation, None));
             }
             ScanRegion::Ranges(regions) => {
                 tracing::debug!("Scanning regions: {:#010x?}", region);
@@ -399,14 +412,16 @@ impl Rtt {
 
                 let target_ptr = range.start + offset as u64;
 
-                Rtt::from(core, target_ptr, Some(&mem[offset..])).transpose()
+                Rtt::from(core, target_ptr, Some(&mem[offset..]))
+                    .map_err(|e| (e, Some(target_ptr)))
+                    .transpose()
             })
             .collect::<Result<Vec<_>, _>>()?;
 
         match instances.len() {
-            0 => Err(Error::ControlBlockNotFound),
+            0 => Err((Error::ControlBlockNotFound, None)),
             1 => Ok(instances.remove(0)),
-            _ => Err(Error::MultipleControlBlocksFound(instances)),
+            _ => Err((Error::MultipleControlBlocksFound(instances), None)),
         }
     }
 

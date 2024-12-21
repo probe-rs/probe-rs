@@ -6,7 +6,7 @@ use crate::util::rtt::{
 };
 use probe_rs::{
     rtt::{Error, Rtt, ScanRegion},
-    Core, Target,
+    Core, MemoryInterface, Target,
 };
 use time::UtcOffset;
 
@@ -75,6 +75,10 @@ impl RttClient {
     }
 
     pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
+        self.try_attach_with_address(core).map_err(|(e, _)| e)
+    }
+
+    fn try_attach_with_address(&mut self, core: &mut Core) -> Result<bool, (Error, Option<u64>)> {
         if self.target.is_some() {
             return Ok(true);
         }
@@ -83,7 +87,8 @@ impl RttClient {
             return Ok(false);
         }
 
-        match Rtt::attach_region(core, &self.scan_region).and_then(|rtt| {
+        match Rtt::attach_region_with_address(core, &self.scan_region).and_then(|rtt| {
+            let rtt_ptr = rtt.ptr();
             RttActiveTarget::new(
                 core,
                 rtt,
@@ -91,14 +96,12 @@ impl RttClient {
                 &self.rtt_config,
                 self.timezone_offset,
             )
+            .map_err(|e| (e, Some(rtt_ptr)))
             .map(Some)
         }) {
             Ok(rtt) => self.target = rtt,
-            Err(Error::ControlBlockNotFound) => {}
-            Err(Error::ControlBlockCorrupted(error)) => {
-                tracing::debug!("RTT control block corrupted ({error})");
-            }
-            Err(Error::NoControlBlockLocation) => self.try_attaching = false,
+            Err((Error::ControlBlockNotFound, _)) => {}
+            Err((Error::NoControlBlockLocation, _)) => self.try_attaching = false,
             Err(error) => return Err(error),
         };
 
@@ -182,11 +185,17 @@ impl RttClient {
     }
 
     pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
-        self.try_attach(core)?;
+        let backup_address = match self.try_attach_with_address(core) {
+            Ok(_) => 0,
+            Err((e, None)) => return Err(e),
+            Err((_, Some(addr))) => addr,
+        };
 
         let Some(target) = self.target.as_mut() else {
-            // If we can't attach, we don't have a valid
-            // control block and don't have to do anything.
+            // If we can't attach, but we do have the address of the control block
+            let zeros = vec![0; Rtt::control_block_size(core)];
+            core.write(backup_address, &zeros)?;
+
             return Ok(());
         };
 
