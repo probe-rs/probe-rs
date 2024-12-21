@@ -6,14 +6,13 @@ pub mod romtable;
 use crate::{memory::MemoryInterface, probe::DebugProbeError, CoreStatus};
 
 use super::{
-    ap::memory_ap::MemoryAp,
-    communication_interface::{Initialized, SwdSequence},
-    ArmCommunicationInterface, ArmError,
+    ap::memory_ap::MemoryAp, communication_interface::Initialized, ArmCommunicationInterface,
+    ArmError,
 };
 pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType};
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
-pub trait ArmMemoryInterface: SwdSequence + ArmMemoryInterfaceShim {
+pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
     /// The underlying MemoryAp.
     fn ap(&mut self) -> &mut MemoryAp;
 

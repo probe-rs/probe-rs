@@ -3,7 +3,7 @@
 use crate::architecture::arm::armv7m::{Aircr, Dhcsr, FpCtrl, FpRev1CompX, FpRev2CompX};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
-use crate::architecture::arm::ArmError;
+use crate::architecture::arm::{ArmError, ArmProbeInterface, FullyQualifiedApAddress};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
@@ -414,14 +414,20 @@ impl ArmDebugSequence for XMC4000 {
         Ok(())
     }
 
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+    fn reset_hardware_deassert(
+        &self,
+        probe: &mut dyn ArmProbeInterface,
+        default_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
         tracing::trace!("performing XMC4000 ResetHardwareDeassert");
+
+        let mut memory_interface = probe.memory_interface(default_ap)?;
 
         // We already deasserted nRST in ResetHardwareAssert, because that's how Cold Reset Halts
         // work on this platform.
 
         // We should however wait until the SSW is ready.
-        spin_until_dapsa_is_clear(memory)?;
+        spin_until_dapsa_is_clear(memory_interface.as_mut())?;
 
         Ok(())
     }

@@ -95,7 +95,7 @@ impl AccessPortType for AmbaAxi3Axi4 {
 
 impl ApRegAccess<CSW> for AmbaAxi3Axi4 {}
 
-crate::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAxi3Axi4);
+super::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAxi3Axi4);
 
 define_ap_register!(
     /// Control and Status Word register
