@@ -9,29 +9,27 @@ use parking_lot::FairMutex;
 use probe_rs::flashing::{BootInfo, FormatKind};
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
+use probe_rs::probe::DebugProbeSelector;
 use probe_rs::rtt::ScanRegion;
-use probe_rs::{probe::DebugProbeSelector, Session};
+use probe_rs::Session;
 use std::ffi::OsString;
-use std::time::Instant;
-use std::{fs, thread};
-use std::{
-    fs::File,
-    io::Write,
-    panic,
-    path::{Path, PathBuf},
-    process,
-    sync::Arc,
-    time::Duration,
-};
+use std::fs::File;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use std::{fs, panic, process, thread};
 use time::{OffsetDateTime, UtcOffset};
 
-use crate::util::cargo::target_instruction_set;
-use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
+use crate::util::cargo::{build_artifact, target_instruction_set};
+use crate::util::common_options::{
+    BinaryDownloadOptions, CargoOptions, OperationError, ProbeOptions,
+};
 use crate::util::flash::{build_loader, run_flash_download};
+use crate::util::logging;
 use crate::util::logging::setup_logging;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{RttChannelConfig, RttConfig};
-use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
 use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]
@@ -44,7 +42,7 @@ use crate::FormatOptions;
 )]
 struct CliOptions {
     /// Name of the configuration profile to use.
-    #[arg()]
+    #[arg(long)]
     config: Option<String>,
     /// Path of a configuration file outside the default path.
     ///
@@ -56,7 +54,8 @@ struct CliOptions {
     chip: Option<String>,
     ///  Use this flag to select a specific probe in the list.
     ///
-    ///  Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID.
+    ///  Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the
+    /// same VID:PID.
     #[arg(long)]
     probe: Option<DebugProbeSelector>,
     #[arg(long)]
