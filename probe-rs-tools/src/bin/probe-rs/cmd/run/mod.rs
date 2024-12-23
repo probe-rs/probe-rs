@@ -134,6 +134,7 @@ impl Cmd {
             rtt_config,
             rtt_scan_regions,
         )?;
+        rtt_client.timezone_offset = timestamp_offset;
 
         let core_id = rtt_client.core_id();
 
@@ -153,6 +154,16 @@ impl Cmd {
             if let ScanRegion::Exact(address) = rtt_client.scan_region {
                 should_clear_rtt_header = !loader.has_data_for_address(address);
                 tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed")
+            }
+
+            if should_clear_rtt_header {
+                // We ended up resetting the MCU, throw away old RTT data and prevent
+                // printing warnings when it initialises.
+                let mut core = session.core(core_id)?;
+                rtt_client.clear_control_block(&mut core)?;
+                tracing::debug!("Cleared RTT header");
+            } else {
+                tracing::debug!("Skipped clearing RTT header")
             }
 
             let boot_info = loader.boot_info();
@@ -180,18 +191,6 @@ impl Cmd {
                         .reset_and_halt(Duration::from_millis(100))?;
                 }
             }
-        }
-
-        rtt_client.timezone_offset = timestamp_offset;
-
-        if run_download && should_clear_rtt_header {
-            // We ended up resetting the MCU, throw away old RTT data and prevent
-            // printing warnings when it initialises.
-            let mut core = session.core(core_id)?;
-            rtt_client.clear_control_block(&mut core)?;
-            tracing::debug!("Cleared RTT header");
-        } else {
-            tracing::debug!("Skipped clearing RTT header")
         }
 
         run_mode.run(

@@ -212,11 +212,11 @@ impl Channel {
             return Ok(None);
         };
 
-        let this = Channel {
+        let mut this = Channel {
             number,
             core_id: core.id(),
             metadata_ptr,
-            name: read_c_string(core, info.standard_name_pointer())?,
+            name: None,
             info,
             last_read_ptr: None,
         };
@@ -270,8 +270,55 @@ impl Channel {
         Ok(())
     }
 
-    fn read_pointers(&self, core: &mut Core, channel_kind: &str) -> Result<(u64, u64), Error> {
+    fn read_pointers(&mut self, core: &mut Core, channel_kind: &str) -> Result<(u64, u64), Error> {
         self.validate_core_id(core)?;
+
+        // Validate and read channel name
+        let mut name_in_memory_region = core
+            .target()
+            .memory_map
+            .iter()
+            .any(|mr| mr.contains(self.info.standard_name_pointer()));
+
+        if name_in_memory_region {
+            // Memory read can still fail since the memory map does not really correlate with
+            // the particular target. Some memory regions are utterly irrelevant.
+            if let Ok(name) = read_c_string(core, self.info.standard_name_pointer()) {
+                self.name = name;
+            } else {
+                name_in_memory_region = false;
+            }
+        }
+
+        if !name_in_memory_region {
+            return Err(Error::ControlBlockCorrupted(format!(
+                "the channel {channel_kind} buffer name pointer doesn't point to valid memory: (pointer: {:#X})",
+                self.info.standard_name_pointer()
+            )));
+        }
+
+        // Validate buffer fit in memory region
+        let buffer_fully_in_memory_region = core
+            .target()
+            .memory_map
+            .iter()
+            .filter_map(|mr| mr.as_ram_region())
+            .merge_consecutive()
+            .any(|rr| {
+                rr.range.contains(&self.info.buffer_start_pointer())
+                    && rr
+                        .range
+                        .contains(&(self.info.buffer_start_pointer() + self.info.size_of_buffer()))
+            });
+
+        if !buffer_fully_in_memory_region {
+            return Err(Error::ControlBlockCorrupted(format!(
+                "the channel {} buffer doesn't fully fit in any known (consecutive) ram region according to its own pointers: (start_pointer: {:#X}, size: {})",
+                self.number,
+                self.info.buffer_start_pointer(),
+                self.info.size_of_buffer(),
+            )));
+        }
 
         let (write, read) = self.info.read_buffer_offsets(core, self.metadata_ptr)?;
 
@@ -285,40 +332,6 @@ impl Channel {
                     self.info.size_of_buffer(),
                     self.number,
                     self.name().unwrap_or("no name"),
-                )));
-            }
-
-            let buffer_fully_in_memory_region = core
-                .target()
-                .memory_map
-                .iter()
-                .filter_map(|mr| mr.as_ram_region())
-                .merge_consecutive()
-                .any(|rr| {
-                    rr.range.contains(&self.info.buffer_start_pointer())
-                        && rr.range.contains(
-                            &(self.info.buffer_start_pointer() + self.info.size_of_buffer()),
-                        )
-                });
-
-            if !buffer_fully_in_memory_region {
-                return Err(Error::ControlBlockCorrupted(format!(
-                    "the {which} buffer doesn't fully fit in any known (consecutive) ram region according to its own pointers: (start_pointer: {:#X}, size: {})",
-                    self.info.buffer_start_pointer(),
-                    self.info.size_of_buffer(),
-                )));
-            }
-
-            let name_in_memory_region = core
-                .target()
-                .memory_map
-                .iter()
-                .any(|mr| mr.contains(self.info.standard_name_pointer()));
-
-            if !name_in_memory_region {
-                return Err(Error::ControlBlockCorrupted(format!(
-                    "the {which} buffer name pointer doesn't point to valid memory: (pointer: {:#X})",
-                    self.info.standard_name_pointer(),
                 )));
             }
 
