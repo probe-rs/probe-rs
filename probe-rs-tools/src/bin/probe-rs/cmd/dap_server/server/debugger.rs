@@ -1331,6 +1331,20 @@ mod test {
         }
     }
 
+    fn launched_protocol_adapter() -> MockProtocolAdapter {
+        let mut protocol_adapter = initialized_protocol_adapter();
+
+        let launch_args = valid_session_config();
+        protocol_adapter
+            .add_request("launch")
+            .with_arguments(launch_args)
+            .and_succesful_response();
+
+        protocol_adapter.expect_event("initialized", None::<u32>);
+
+        protocol_adapter
+    }
+
     fn fake_probe() -> (DebugProbeInfo, FakeProbe) {
         let probe_info = DebugProbeInfo::new(
             "Mock probe",
@@ -1395,13 +1409,7 @@ mod test {
 
     #[test]
     fn test_launch_and_terminate() {
-        let mut protocol_adapter = initialized_protocol_adapter();
-
-        let launch_args = valid_session_config();
-        protocol_adapter
-            .add_request("launch")
-            .with_arguments(launch_args)
-            .and_succesful_response();
+        let mut protocol_adapter = launched_protocol_adapter();
 
         protocol_adapter.expect_event("initialized", None::<u32>);
 
@@ -1508,15 +1516,7 @@ mod test {
 
     #[test]
     fn launch_and_threads() {
-        let mut protocol_adapter = initialized_protocol_adapter();
-
-        let launch_args = valid_session_config();
-        protocol_adapter
-            .add_request("launch")
-            .with_arguments(launch_args)
-            .and_succesful_response();
-
-        protocol_adapter.expect_event("initialized", None::<u32>);
+        let mut protocol_adapter = launched_protocol_adapter();
 
         protocol_adapter
             .add_request("configurationDone")
