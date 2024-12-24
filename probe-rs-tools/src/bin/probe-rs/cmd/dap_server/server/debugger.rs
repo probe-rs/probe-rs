@@ -1330,17 +1330,38 @@ mod test {
         }
     }
 
+    fn fake_probe() -> (DebugProbeInfo, FakeProbe) {
+        let probe_info = DebugProbeInfo::new(
+            "Mock probe",
+            0x12,
+            0x23,
+            Some("mock_serial".to_owned()),
+            &MockProbeFactory,
+            None,
+        );
+
+        let fake_probe = FakeProbe::with_mocked_core();
+
+        // Indicate that the core is unlocked
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
+            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
+            address: 0xC,
+            result: 1,
+        });
+
+        (probe_info, fake_probe)
+    }
+
     #[test]
     fn test_initalize_request() {
         let protocol_adapter = initialized_protocol_adapter();
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-
         let lister = Lister::with_lister(Box::new(TestLister::new()));
 
         // TODO: Check proper return value
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
         debugger.debug_session(debug_adapter, &lister).unwrap_err();
     }
 
@@ -1359,10 +1380,9 @@ mod test {
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-
         let lister = Lister::with_lister(Box::new(TestLister::new()));
 
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
         debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
@@ -1389,32 +1409,11 @@ mod test {
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-
         let lister = TestLister::new();
-
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &MockProbeFactory,
-            None,
-        );
-
-        let fake_probe = FakeProbe::with_mocked_core();
-
-        // Indicate that the core is unlocked
-        fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
-            address: 0xC,
-            result: 1,
-        });
-
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
-
+        lister.probes.borrow_mut().push(fake_probe());
         let lister = Lister::with_lister(Box::new(lister));
 
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
         debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
@@ -1442,32 +1441,11 @@ mod test {
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-
         let lister = TestLister::new();
-
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &MockProbeFactory,
-            None,
-        );
-
-        let fake_probe = FakeProbe::with_mocked_core();
-
-        // Indicate that the core is unlocked
-        fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
-            address: 0xC,
-            result: 1,
-        });
-
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
-
+        lister.probes.borrow_mut().push(fake_probe());
         let lister = Lister::with_lister(Box::new(lister));
 
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
         debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
@@ -1484,30 +1462,12 @@ mod test {
             .with_body(error_response_body(expected_error));
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
+
         let lister = TestLister::new();
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &MockProbeFactory,
-            None,
-        );
-
-        let fake_probe = FakeProbe::with_mocked_core();
-
-        // Indicate that the core is unlocked
-        fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
-            address: 0xC,
-            result: 1,
-        });
-
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
-
+        lister.probes.borrow_mut().push(fake_probe());
         let lister = Lister::with_lister(Box::new(lister));
 
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
         debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
@@ -1533,30 +1493,12 @@ mod test {
             .and_succesful_response();
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
+
         let lister = TestLister::new();
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &MockProbeFactory,
-            None,
-        );
-
-        let fake_probe = FakeProbe::with_mocked_core();
-
-        // Indicate that the core is unlocked
-        fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
-            address: 0xC,
-            result: 1,
-        });
-
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
-
+        lister.probes.borrow_mut().push(fake_probe());
         let lister = Lister::with_lister(Box::new(lister));
 
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
         debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
@@ -1583,30 +1525,12 @@ mod test {
             .with_body(error_response_body(expected_error));
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
+
         let lister = TestLister::new();
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &MockProbeFactory,
-            None,
-        );
-
-        let fake_probe = FakeProbe::with_mocked_core();
-
-        // Indicate that the core is unlocked
-        fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
-            address: 0xC,
-            result: 1,
-        });
-
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
-
+        lister.probes.borrow_mut().push(fake_probe());
         let lister = Lister::with_lister(Box::new(lister));
 
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
         debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 
@@ -1647,32 +1571,11 @@ mod test {
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-
         let lister = TestLister::new();
-
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &MockProbeFactory,
-            None,
-        );
-
-        let fake_probe = FakeProbe::with_mocked_core();
-
-        // Indicate that the core is unlocked
-        fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
-            address: 0xC,
-            result: 1,
-        });
-
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
-
+        lister.probes.borrow_mut().push(fake_probe());
         let lister = Lister::with_lister(Box::new(lister));
 
+        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
         debugger.debug_session(debug_adapter, &lister).unwrap();
     }
 }
