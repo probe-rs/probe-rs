@@ -1345,6 +1345,17 @@ mod test {
         protocol_adapter
     }
 
+    fn disconnect_protocol_adapter(protocol_adapter: &mut MockProtocolAdapter) {
+        protocol_adapter
+            .add_request("disconnect")
+            .with_arguments(DisconnectArguments {
+                restart: Some(false),
+                suspend_debuggee: Some(false),
+                terminate_debuggee: Some(false),
+            })
+            .and_succesful_response();
+    }
+
     fn fake_probe() -> (DebugProbeInfo, FakeProbe) {
         let probe_info = DebugProbeInfo::new(
             "Mock probe",
@@ -1411,16 +1422,7 @@ mod test {
     fn test_launch_and_terminate() {
         let mut protocol_adapter = launched_protocol_adapter();
 
-        protocol_adapter.expect_event("initialized", None::<u32>);
-
-        protocol_adapter
-            .add_request("disconnect")
-            .with_arguments(DisconnectArguments {
-                restart: Some(false),
-                suspend_debuggee: Some(false),
-                terminate_debuggee: Some(false),
-            })
-            .and_succesful_response();
+        disconnect_protocol_adapter(&mut protocol_adapter);
 
         execute_test(protocol_adapter, true).unwrap();
     }
@@ -1477,14 +1479,7 @@ mod test {
 
         protocol_adapter.expect_event("initialized", None::<u32>);
 
-        protocol_adapter
-            .add_request("disconnect")
-            .with_arguments(DisconnectArguments {
-                restart: Some(false),
-                suspend_debuggee: Some(false),
-                terminate_debuggee: Some(false),
-            })
-            .and_succesful_response();
+        disconnect_protocol_adapter(&mut protocol_adapter);
 
         execute_test(protocol_adapter, true).unwrap();
     }
@@ -1532,14 +1527,7 @@ mod test {
                 }],
             });
 
-        protocol_adapter
-            .add_request("disconnect")
-            .with_arguments(DisconnectArguments {
-                restart: Some(false),
-                suspend_debuggee: Some(false),
-                terminate_debuggee: Some(false),
-            })
-            .and_succesful_response();
+        disconnect_protocol_adapter(&mut protocol_adapter);
 
         execute_test(protocol_adapter, true).unwrap();
     }
