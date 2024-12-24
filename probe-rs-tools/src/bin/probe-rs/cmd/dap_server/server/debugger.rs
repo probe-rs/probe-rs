@@ -966,6 +966,7 @@ mod test {
     #![allow(clippy::unwrap_used, clippy::panic)]
 
     use crate::cmd::dap_server::{
+        DebuggerError,
         debug_adapter::{
             dap::{
                 adapter::DebugAdapter,
@@ -1352,17 +1353,28 @@ mod test {
         (probe_info, fake_probe)
     }
 
+    fn execute_test(
+        protocol_adapter: MockProtocolAdapter,
+        with_probe: bool,
+    ) -> Result<(), DebuggerError> {
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+
+        let lister = TestLister::new();
+        if with_probe {
+            lister.probes.borrow_mut().push(fake_probe());
+        }
+        let lister = Lister::with_lister(Box::new(lister));
+
+        let mut debugger = Debugger::new(UtcOffset::UTC, None)?;
+        debugger.debug_session(debug_adapter, &lister)
+    }
+
     #[test]
     fn test_initalize_request() {
         let protocol_adapter = initialized_protocol_adapter();
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let lister = Lister::with_lister(Box::new(TestLister::new()));
-
         // TODO: Check proper return value
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-        debugger.debug_session(debug_adapter, &lister).unwrap_err();
+        execute_test(protocol_adapter, false).unwrap_err();
     }
 
     #[test]
@@ -1378,12 +1390,7 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let lister = Lister::with_lister(Box::new(TestLister::new()));
-
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, false).unwrap();
     }
 
     #[test]
@@ -1407,14 +1414,7 @@ mod test {
             })
             .and_succesful_response();
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let lister = TestLister::new();
-        lister.probes.borrow_mut().push(fake_probe());
-        let lister = Lister::with_lister(Box::new(lister));
-
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, true).unwrap();
     }
 
     #[test]
@@ -1439,14 +1439,7 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let lister = TestLister::new();
-        lister.probes.borrow_mut().push(fake_probe());
-        let lister = Lister::with_lister(Box::new(lister));
-
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, true).unwrap();
     }
 
     #[test]
@@ -1461,14 +1454,7 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let lister = TestLister::new();
-        lister.probes.borrow_mut().push(fake_probe());
-        let lister = Lister::with_lister(Box::new(lister));
-
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, true).unwrap();
     }
 
     #[test]
@@ -1492,14 +1478,7 @@ mod test {
             })
             .and_succesful_response();
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let lister = TestLister::new();
-        lister.probes.borrow_mut().push(fake_probe());
-        let lister = Lister::with_lister(Box::new(lister));
-
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, true).unwrap();
     }
 
     #[test]
@@ -1524,14 +1503,7 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let lister = TestLister::new();
-        lister.probes.borrow_mut().push(fake_probe());
-        let lister = Lister::with_lister(Box::new(lister));
-
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, true).unwrap();
     }
 
     #[test]
@@ -1569,13 +1541,6 @@ mod test {
             })
             .and_succesful_response();
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let lister = TestLister::new();
-        lister.probes.borrow_mut().push(fake_probe());
-        let lister = Lister::with_lister(Box::new(lister));
-
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, true).unwrap();
     }
 }
