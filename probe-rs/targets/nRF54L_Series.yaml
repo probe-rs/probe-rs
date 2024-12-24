@@ -1,7 +1,7 @@
 # Written by hand because there's no CMSIS pack yet.
 # Uses algo from https://github.com/embassy-rs/nrf54l-flash-algo
 
-name: nRF54 Series
+name: nRF54L Series
 manufacturer:
   id: 0x44
   cc: 0x2
