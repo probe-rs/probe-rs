@@ -1297,8 +1297,7 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_initalize_request() {
+    fn initialized_protocol_adapter() -> MockProtocolAdapter {
         let mut protocol_adapter = MockProtocolAdapter::new();
 
         protocol_adapter
@@ -1310,6 +1309,13 @@ mod test {
         protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
         protocol_adapter
             .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
+
+        protocol_adapter
+    }
+
+    #[test]
+    fn test_initalize_request() {
+        let protocol_adapter = initialized_protocol_adapter();
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
@@ -1323,17 +1329,7 @@ mod test {
 
     #[test]
     fn test_launch_no_probes() {
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
+        let mut protocol_adapter = initialized_protocol_adapter();
 
         let launch_args = SessionConfig::default();
 
@@ -1364,17 +1360,7 @@ mod test {
         let debug_info =
             manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
 
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
+        let mut protocol_adapter = initialized_protocol_adapter();
 
         let launch_args = SessionConfig {
             chip: Some("nrf52833_xxaa".to_owned()),
@@ -1435,17 +1421,7 @@ mod test {
 
     #[test]
     fn launch_with_config_error() {
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
+        let mut protocol_adapter = initialized_protocol_adapter();
 
         let launch_args = SessionConfig {
             chip: Some("nrf52833_xxaa".to_owned()),
@@ -1498,17 +1474,7 @@ mod test {
 
     #[test]
     fn wrong_request_after_init() {
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
+        let mut protocol_adapter = initialized_protocol_adapter();
 
         let expected_error = "Expected request 'launch' or 'attach', but received 'threads'";
         protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
@@ -1548,17 +1514,7 @@ mod test {
 
     #[test]
     fn attach_request() {
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
+        let mut protocol_adapter = initialized_protocol_adapter();
 
         let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
         let debug_info =
@@ -1620,17 +1576,7 @@ mod test {
 
     #[test]
     fn attach_with_flashing() {
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
+        let mut protocol_adapter = initialized_protocol_adapter();
 
         let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
         let debug_info =
@@ -1695,17 +1641,7 @@ mod test {
             manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
         let chip_name = "nRF52833_xxAA";
 
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
+        let mut protocol_adapter = initialized_protocol_adapter();
 
         let launch_args = SessionConfig {
             chip: Some(chip_name.to_owned()),
