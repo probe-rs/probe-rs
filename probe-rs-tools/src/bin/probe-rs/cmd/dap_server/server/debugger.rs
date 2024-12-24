@@ -966,13 +966,13 @@ mod test {
     #![allow(clippy::unwrap_used, clippy::panic)]
 
     use crate::cmd::dap_server::{
-        DebuggerError,
         debug_adapter::{
             dap::{
                 adapter::DebugAdapter,
                 dap_types::{
-                    Capabilities, DisconnectArguments, ErrorResponseBody,
-                    InitializeRequestArguments, Message, Request, Response, Thread,
+                    Capabilities, DisassembleArguments, DisassembleResponseBody,
+                    DisassembledInstruction, DisconnectArguments, ErrorResponseBody,
+                    InitializeRequestArguments, Message, Request, Response, Source, Thread,
                     ThreadsResponseBody,
                 },
             },
@@ -980,6 +980,7 @@ mod test {
         },
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
         test::TestLister,
+        DebuggerError,
     };
     use probe_rs::{
         architecture::arm::FullyQualifiedApAddress,
@@ -995,6 +996,7 @@ mod test {
         fmt::Display,
         path::PathBuf,
     };
+    use test_case::test_case;
     use time::UtcOffset;
 
     const TEST_CHIP_NAME: &str = "nRF52833_xxAA";
@@ -1316,15 +1318,17 @@ mod test {
         protocol_adapter
     }
 
-    fn valid_session_config() -> SessionConfig {
-        let program_binary = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
+    fn program_binary() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf")
+    }
 
+    fn valid_session_config() -> SessionConfig {
         SessionConfig {
             chip: Some(TEST_CHIP_NAME.to_owned()),
             core_configs: vec![CoreConfig {
                 core_index: 0,
-                program_binary: Some(program_binary),
+                program_binary: Some(program_binary()),
                 ..CoreConfig::default()
             }],
             ..SessionConfig::default()
@@ -1366,7 +1370,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core();
+        let fake_probe = FakeProbe::with_mocked_core_and_binary(program_binary().as_path());
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
@@ -1525,6 +1529,139 @@ mod test {
                     id: 0,
                     name: format!("0-{TEST_CHIP_NAME}"),
                 }],
+            });
+
+        disconnect_protocol_adapter(&mut protocol_adapter);
+
+        execute_test(protocol_adapter, true).unwrap();
+    }
+
+    #[test_case(0; "instructions before and not including the ref address, multiple locations")]
+    #[test_case(1; "instructions including the ref address, location cloned from earlier line")]
+    #[test_case(2; "instructions after and not including the ref address")]
+    #[test_case(3; "negative byte offset of exactly one instruction (aligned)")]
+    #[test_case(4; "positive byte offset that lands in the middle of an instruction (unaligned)")]
+    fn disassemble(test_case: usize) {
+        #[rustfmt::skip]
+        mod config {
+            use std::collections::HashMap;
+
+            type TestInstruction = (&'static str, &'static str, &'static str);
+            const TEST_INSTRUCTIONS: [TestInstruction; 10] = [
+                // address, instruction, instruction_bytes
+                ("0x00000772", "b  #0x7a8", "19 E0"),         // 32 bit Thumb-v2 instruction
+                ("0x00000774", "ldr  r0, [sp, #4]", "01 98"), // 16 bit Thumb-v2 instruction
+                ("0x00000776", "mov.w  r1, #0x55555555", "4F F0 55 31"),
+                ("0x0000077A", "and.w  r1, r1, r0, lsr #1", "01 EA 50 01"),
+                ("0x0000077E", "subs  r0, r0, r1", "40 1A"),
+                ("0x00000780", "mov.w  r1, #0x33333333", "4F F0 33 31"),
+                ("0x00000784", "and.w  r1, r1, r0, lsr #2", "01 EA 90 01"),
+                ("0x00000788", "bic  r0, r0, #0xcccccccc", "20 F0 CC 30"),
+                ("0x0000078C", "add  r0, r1", "08 44"),
+                ("0x0000078E", "add.w  r0, r0, r0, lsr #4", "00 EB 10 10"),
+            ];
+
+            type TestLocation = (i64, i64, &'static str, &'static str, &'static str);
+            const TEST_LOCATIONS: [TestLocation; 3] = [
+                // line, column, name, path, presentation_hint
+                (115, 5, "<unavailable>: ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs", "deemphasize"),
+                (0, 5, "<unavailable>: ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs", "deemphasize"),
+                (1244, 5, "<unavailable>: mod.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/num/mod.rs", "deemphasize"),
+            ];
+
+            type TestCase = (&'static str, i64, i64, i64, &'static [TestInstruction], HashMap<&'static str, &'static TestLocation>);
+            pub(super) fn test_cases() -> [TestCase; 5] {[
+                // memory reference, byte offset, instruction_offset, instruction_count, expected instructions,
+                //    hash from instruction addresses to expected locations:
+
+                // Test Case: instructions before and not including the ref address, multiple locations
+                ("0x00000788", 0, -7, 6, &TEST_INSTRUCTIONS[0..6],
+                    HashMap::from([("0x00000772", &TEST_LOCATIONS[0]), ("0x00000774", &TEST_LOCATIONS[1]), ("0x0000077A", &TEST_LOCATIONS[2])])),
+
+                // Test Case: instructions including the ref address, location cloned from earlier line
+                ("0x00000788", 0, -3, 6, &TEST_INSTRUCTIONS[4..10],
+                    HashMap::from([("0x0000077E", &TEST_LOCATIONS[2])])),
+
+                // Test Case: instructions after and not including the ref address
+                ("0x00000772", 0, 3, 6, &TEST_INSTRUCTIONS[3..9],
+                    HashMap::from([("0x0000077A", &TEST_LOCATIONS[2])])),
+
+                // Test Case: negative byte offset of exactly one instruction (aligned)
+                ("0x00000772", -4, 3, 6, &TEST_INSTRUCTIONS[2..8],
+                    HashMap::from([("0x00000776", &TEST_LOCATIONS[1]), ("0x0000077A", &TEST_LOCATIONS[2])])),
+
+                // Test Case: positive byte offset that lands in the middle of an instruction (unaligned):
+                //            automatic instruction alignment and defensive ref address matching
+                ("0x00000776", 6, 0, 6, &TEST_INSTRUCTIONS[4..10],
+                    HashMap::from([("0x0000077E", &TEST_LOCATIONS[2])])),
+            ]}
+        }
+
+        let mut protocol_adapter = launched_protocol_adapter();
+
+        protocol_adapter
+            .add_request("configurationDone")
+            .and_succesful_response();
+
+        let default_instruction_fields = DisassembledInstruction {
+            address: "".to_string(),
+            column: None,
+            end_column: None,
+            end_line: None,
+            instruction: "".to_string(),
+            instruction_bytes: None,
+            line: None,
+            location: None,
+            symbol: None,
+        };
+
+        let default_source_fields = Source {
+            adapter_data: None,
+            checksums: None,
+            name: None,
+            origin: None,
+            path: None,
+            presentation_hint: None,
+            source_reference: None,
+            sources: None,
+        };
+
+        let (mem, off, inst_off, inst_cnt, test_instrs, test_locs) =
+            &config::test_cases()[test_case];
+
+        protocol_adapter
+            .add_request("disassemble")
+            .with_arguments(DisassembleArguments {
+                memory_reference: mem.to_string(),
+                offset: Some(*off),
+                instruction_offset: Some(*inst_off),
+                instruction_count: *inst_cnt,
+                resolve_symbols: None,
+            })
+            .and_succesful_response()
+            .with_body(DisassembleResponseBody {
+                instructions: test_instrs
+                    .iter()
+                    .map(|(address, instruction, instruction_bytes)| {
+                        let mut instruction = DisassembledInstruction {
+                            address: (*address).to_owned(),
+                            instruction: (*instruction).to_owned(),
+                            instruction_bytes: Some((*instruction_bytes).to_owned()),
+                            ..default_instruction_fields.clone()
+                        };
+                        if let Some(&(line, column, name, path, hint)) = test_locs.get(address) {
+                            instruction.line = if *line == 0 { None } else { Some(*line) };
+                            instruction.column = Some(*column);
+                            instruction.location = Some(Source {
+                                name: Some(name.to_string()),
+                                path: Some(path.to_string()),
+                                presentation_hint: Some(hint.to_string()),
+                                ..default_source_fields.clone()
+                            })
+                        }
+                        instruction
+                    })
+                    .collect(),
             });
 
         disconnect_protocol_adapter(&mut protocol_adapter);
