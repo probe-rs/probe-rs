@@ -996,6 +996,8 @@ mod test {
     };
     use time::UtcOffset;
 
+    const TEST_CHIP_NAME: &str = "nRF52833_xxAA";
+
     #[derive(Debug)]
     struct MockProbeFactory;
 
@@ -1313,6 +1315,21 @@ mod test {
         protocol_adapter
     }
 
+    fn valid_session_config() -> SessionConfig {
+        let program_binary = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
+
+        SessionConfig {
+            chip: Some(TEST_CHIP_NAME.to_owned()),
+            core_configs: vec![CoreConfig {
+                core_index: 0,
+                program_binary: Some(program_binary),
+                ..CoreConfig::default()
+            }],
+            ..SessionConfig::default()
+        }
+    }
+
     #[test]
     fn test_initalize_request() {
         let protocol_adapter = initialized_protocol_adapter();
@@ -1331,16 +1348,12 @@ mod test {
     fn test_launch_no_probes() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
-        let launch_args = SessionConfig::default();
-
-        let args = serde_json::to_value(launch_args).unwrap();
-
         let expected_error = "No connected probes were found.";
         protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
 
         protocol_adapter
             .add_request("launch")
-            .with_arguments(args)
+            .with_arguments(SessionConfig::default())
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
@@ -1355,23 +1368,9 @@ mod test {
 
     #[test]
     fn test_launch_and_terminate() {
-        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
-
-        let debug_info =
-            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
-
         let mut protocol_adapter = initialized_protocol_adapter();
 
-        let launch_args = SessionConfig {
-            chip: Some("nrf52833_xxaa".to_owned()),
-            core_configs: vec![CoreConfig {
-                core_index: 0,
-                program_binary: Some(debug_info),
-                ..CoreConfig::default()
-            }],
-            ..SessionConfig::default()
-        };
-
+        let launch_args = valid_session_config();
         protocol_adapter
             .add_request("launch")
             .with_arguments(launch_args)
@@ -1424,7 +1423,7 @@ mod test {
         let mut protocol_adapter = initialized_protocol_adapter();
 
         let launch_args = SessionConfig {
-            chip: Some("nrf52833_xxaa".to_owned()),
+            chip: Some(TEST_CHIP_NAME.to_owned()),
             core_configs: vec![CoreConfig {
                 core_index: 0,
                 ..CoreConfig::default()
@@ -1516,20 +1515,7 @@ mod test {
     fn attach_request() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
-        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
-        let debug_info =
-            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
-
-        let attach_args = SessionConfig {
-            chip: Some("nrf52833_xxaa".to_owned()),
-            core_configs: vec![CoreConfig {
-                core_index: 0,
-                program_binary: Some(debug_info),
-                ..CoreConfig::default()
-            }],
-            ..SessionConfig::default()
-        };
-
+        let attach_args = valid_session_config();
         protocol_adapter
             .add_request("attach")
             .with_arguments(attach_args)
@@ -1578,23 +1564,13 @@ mod test {
     fn attach_with_flashing() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
-        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
-        let debug_info =
-            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
-
         let attach_args = SessionConfig {
-            chip: Some("nrf52833_xxaa".to_owned()),
-            core_configs: vec![CoreConfig {
-                core_index: 0,
-                program_binary: Some(debug_info),
-                ..CoreConfig::default()
-            }],
             flashing_config: FlashingConfig {
                 flashing_enabled: true,
                 halt_after_reset: true,
                 ..Default::default()
             },
-            ..SessionConfig::default()
+            ..valid_session_config()
         };
 
         let expected_error = "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.";
@@ -1636,23 +1612,9 @@ mod test {
 
     #[test]
     fn launch_and_threads() {
-        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
-        let debug_info =
-            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
-        let chip_name = "nRF52833_xxAA";
-
         let mut protocol_adapter = initialized_protocol_adapter();
 
-        let launch_args = SessionConfig {
-            chip: Some(chip_name.to_owned()),
-            core_configs: vec![CoreConfig {
-                core_index: 0,
-                program_binary: Some(debug_info),
-                ..CoreConfig::default()
-            }],
-            ..SessionConfig::default()
-        };
-
+        let launch_args = valid_session_config();
         protocol_adapter
             .add_request("launch")
             .with_arguments(launch_args)
@@ -1670,7 +1632,7 @@ mod test {
             .with_body(ThreadsResponseBody {
                 threads: vec![Thread {
                     id: 0,
-                    name: format!("0-{chip_name}"),
+                    name: format!("0-{TEST_CHIP_NAME}"),
                 }],
             });
 
