@@ -1431,7 +1431,7 @@ mod test {
     fn launch_with_config_error() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
-        let launch_args = SessionConfig {
+        let invalid_launch_args = SessionConfig {
             chip: Some(TEST_CHIP_NAME.to_owned()),
             core_configs: vec![CoreConfig {
                 core_index: 0,
@@ -1445,7 +1445,7 @@ mod test {
 
         protocol_adapter
             .add_request("launch")
-            .with_arguments(launch_args)
+            .with_arguments(invalid_launch_args)
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
