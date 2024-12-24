@@ -8,7 +8,7 @@ use probe_rs::{
             ap::{ApClass, MemoryApType},
             armv6m::Demcr,
             component::Scs,
-            dp::{DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
+            dp::{Ctrl, DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
             memory::{
                 romtable::{PeripheralID, RomTable},
                 Component, ComponentId, CoresightComponent, PeripheralType,
@@ -281,6 +281,11 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
         let instance = dlpidr.tinstance();
 
         write!(dp_node, ", Instance: {:#04x}", instance)?;
+
+        // Read from the CTRL/STAT register, to ensure that the dpbanksel field is set to zero.
+        // This helps with error handling later, because it means the CTRL/AP register can be
+        // read in case of an error.
+        let _ = interface.read_raw_dp_register(dp, Ctrl::ADDRESS)?;
     } else {
         write!(
             dp_node,

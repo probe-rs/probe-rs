@@ -411,6 +411,9 @@ fn perform_swd_transfers<P: RawProtocolIo>(
 /// get the result. This is handled by this function.
 ///
 /// Retries on WAIT responses are automatically handled.
+///
+/// Other errors are not handled, so the debug interface might be in an error state
+/// after this function returns.
 fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
@@ -550,7 +553,9 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     let mut successful_transfers = 0;
     let mut idle_cycles = std::cmp::max(1, probe.swd_settings().num_idle_cycles_between_writes);
 
-    'transfer: for _ in 0..probe.swd_settings().num_retries_after_wait {
+    let num_retries = probe.swd_settings().num_retries_after_wait;
+
+    'transfer: for _ in 0..num_retries {
         let chunk = &mut transfers[successful_transfers..];
         assert!(!chunk.is_empty());
 
@@ -562,7 +567,7 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
                 TransferStatus::Failed(DapError::WaitResponse) => {
                     tracing::debug!("got WAIT on transfer {}, retrying...", successful_transfers);
 
-                    clear_overrun(probe)?;
+                    clear_overrun_and_sticky_err(probe)?;
 
                     // Increase idle cycles of the failed write transfer and the rest of the chunk
                     for transfer in &mut chunk[..] {
@@ -577,7 +582,16 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
                     continue 'transfer;
                 }
-                _ => break 'transfer, // on any other error, we're done.
+                status => {
+                    tracing::debug!(
+                        "Transfer {}/{} failed: {:?}",
+                        successful_transfers + 1,
+                        transfers.len(),
+                        status
+                    );
+
+                    return Ok(());
+                }
             }
         }
 
@@ -587,6 +601,9 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     }
 
     // Timeout, abort transactions
+    tracing::debug!(
+        "Timeout in SWD transaction, aborting AP transactions after {num_retries} retries."
+    );
     write_dp_register(probe, {
         let mut abort = Abort(0);
         abort.set_dapabort(true);
@@ -597,9 +614,10 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     Ok(())
 }
 
-fn clear_overrun<P: DebugProbe + RawProtocolIo + JTAGAccess>(
+fn clear_overrun_and_sticky_err<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     probe: &mut P,
 ) -> Result<(), ArmError> {
+    tracing::debug!("Clearing overrun and sticky error");
     // Build ABORT transfer.
     write_dp_register(probe, {
         let mut abort = Abort(0);
@@ -628,10 +646,10 @@ fn write_dp_register<P: DebugProbe + RawProtocolIo + JTAGAccess, R: DpRegister>(
     Ok(())
 }
 
-/// Perform a batch of raw transfers, retrying on WAIT responses.
+/// Perform a batch of raw transfers.
 ///
-/// Other than that, the transfers are sent as-is. You might want to use `perform_transfers` instead, which
-/// does correction for delayed FAULT responses and other helpful stuff.
+/// This function will just send the transfers as-is, without handling WAIT or FAULT response.
+/// See [`perform_raw_transfers_retry`] for a version that handles WAIT responses
 fn perform_raw_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
@@ -1069,11 +1087,28 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 // if we are *not* currently reading the ctrl register, otherwise
                 // this could end up being an endless recursion.
 
-                if address != Ctrl::ADDRESS {
+                if address == Ctrl::ADDRESS && port == PortType::DebugPort {
+                    //  This is not necessarily the CTRL/STAT register, because the dpbanksel field in the SELECT register
+                    //  might be set so that the read wasn't actually from the CTRL/STAT register.
+                    tracing::debug!("Read might have been from CTRL/STAT register, not reading it again to dermine fault reason");
+
+                    // We still clear the sticky error, otherwise all future accesses will fail.
+                    //
+                    // We also assume that we use overrun detection, so we clear the overrun error as well.
+                    clear_overrun_and_sticky_err(self)?;
+                } else {
+                    // Reading the CTRL/AP register depends on the dpbanksel register, but we don't know
+                    // here what the value of it is. So this will fail if dpbanksel is not set to 0,
+                    // but there is no way of figuring that out here, because reading the SELECT register
+                    // would also fail.
+                    //
+                    // What might happen is that the read fails, but that would then trigger another fault handling,
+                    // so it all ends up working.
+                    tracing::debug!("Reading CTRL/AP register to determine reason for FAULT");
                     let response =
                         RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
                     let ctrl = Ctrl::try_from(response)?;
-                    tracing::warn!(
+                    tracing::debug!(
                         "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
                         ctrl
                     );
@@ -1081,13 +1116,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     // Check the reason for the fault
                     // Other fault reasons than overrun or write error are not handled yet.
                     if ctrl.sticky_orun() || ctrl.sticky_err() {
-                        // We did not handle a WAIT state properly
-
-                        // Because we use overrun detection, we now have to clear the overrun error
-                        clear_overrun(self)?;
+                        // Clear the error state
+                        clear_overrun_and_sticky_err(self)?;
                     }
-                } else {
-                    tracing::warn!("Error reading CTRL/STAT register. This should not happen...");
                 }
 
                 Err(DapError::FaultResponse.into())
@@ -1115,12 +1146,19 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
             match result.status {
                 TransferStatus::Ok => values[i] = result.value,
                 TransferStatus::Failed(err) => {
-                    tracing::warn!(
+                    tracing::info!(
                         "Error in access {}/{} of block access: {:?}",
                         i + 1,
                         values.len(),
                         err
                     );
+
+                    // TODO: The error reason could be investigated by reading the CTRL/STAT register here,
+
+                    if err == DapError::FaultResponse {
+                        clear_overrun_and_sticky_err(self)?;
+                    }
+
                     return Err(err.into());
                 }
                 other => panic!(
@@ -1151,6 +1189,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
 
+                // This read might fail because the dpbanksel register is not set to 0.
                 let response =
                     RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
 
@@ -1166,7 +1205,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     // We did not handle a WAIT state properly
 
                     // Because we use overrun detection, we now have to clear the overrun error
-                    clear_overrun(self)?;
+                    clear_overrun_and_sticky_err(self)?;
                 }
 
                 Err(DapError::FaultResponse.into())
@@ -1203,6 +1242,11 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         values.len(),
                         err
                     );
+
+                    // TODO: The error reason could be investigated by reading the CTRL/STAT register here,
+                    if err == DapError::FaultResponse {
+                        clear_overrun_and_sticky_err(self)?;
+                    }
 
                     return Err(err.into());
                 }
