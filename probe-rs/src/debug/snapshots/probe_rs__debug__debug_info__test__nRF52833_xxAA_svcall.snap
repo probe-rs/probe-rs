@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1987
+assertion_line: 1998
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -10,6 +10,7 @@ snapshot_kind: text
     line: 371
     column:
       Column: 9
+    address: 1242
   registers:
     - core_register:
         id: 0
@@ -221,6 +222,7 @@ snapshot_kind: text
     line: 99
     column:
       Column: 5
+    address: 1242
   registers:
     - core_register:
         id: 0
@@ -432,6 +434,7 @@ snapshot_kind: text
     line: 97
     column:
       Column: 13
+    address: 1236
   registers:
     - core_register:
         id: 0
@@ -834,6 +837,7 @@ snapshot_kind: text
     line: 63
     column:
       Column: 2
+    address: 938
   registers:
     - core_register:
         id: 0
@@ -1041,6 +1045,7 @@ snapshot_kind: text
     line: 38
     column:
       Column: 54
+    address: 1026
   registers:
     - core_register:
         id: 0
@@ -1247,6 +1252,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 21
             column: ~
+            address: ~
           children:
             - name:
                 Named: FICR
@@ -1602,6 +1608,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 22
             column: ~
+            address: ~
           children:
             - name:
                 Named: CBP
@@ -1687,6 +1694,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 23
             column: ~
+            address: ~
           children:
             - name:
                 Named: hfclk
@@ -1714,6 +1722,7 @@ snapshot_kind: text
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 19
     column: LeftEdge
+    address: 948
   registers:
     - core_register:
         id: 0

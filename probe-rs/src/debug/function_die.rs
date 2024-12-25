@@ -177,7 +177,15 @@ impl<'a> FunctionDie<'a> {
                     None => ColumnType::LeftEdge,
                     Some(c) => ColumnType::Column(c),
                 });
-        Some(SourceLocation { line, column, path })
+
+        let address = self.low_pc();
+
+        Some(SourceLocation {
+            line,
+            column,
+            path,
+            address,
+        })
     }
 
     /// Resolve an attribute by looking through both the specification and die, or abstract specification and die, entries.

@@ -182,6 +182,7 @@ impl DebugInfo {
                                         line: previous_row.line().map(NonZeroU64::get),
                                         column: Some(previous_row.column().into()),
                                         path,
+                                        address: Some(previous_row.address()),
                                     });
                                 }
                             }
@@ -196,6 +197,7 @@ impl DebugInfo {
                                     line: row.line().map(NonZeroU64::get),
                                     column: Some(row.column().into()),
                                     path,
+                                    address: Some(row.address()),
                                 });
                             }
                         }

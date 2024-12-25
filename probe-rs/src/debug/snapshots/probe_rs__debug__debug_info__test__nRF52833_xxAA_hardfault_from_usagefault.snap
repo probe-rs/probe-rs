@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1987
+assertion_line: 1998
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -10,6 +10,7 @@ snapshot_kind: text
     line: 371
     column:
       Column: 9
+    address: 24798
   registers:
     - core_register:
         id: 0
@@ -221,6 +222,7 @@ snapshot_kind: text
     line: 93
     column:
       Column: 9
+    address: 24798
   registers:
     - core_register:
         id: 0
@@ -635,6 +637,7 @@ snapshot_kind: text
     line: 181
     column:
       Column: 5
+    address: 1586
   registers:
     - core_register:
         id: 0
@@ -846,6 +849,7 @@ snapshot_kind: text
     line: 43
     column:
       Column: 5
+    address: 1586
   registers:
     - core_register:
         id: 0
@@ -1056,6 +1060,7 @@ snapshot_kind: text
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 18
     column: LeftEdge
+    address: 390
   registers:
     - core_register:
         id: 0
