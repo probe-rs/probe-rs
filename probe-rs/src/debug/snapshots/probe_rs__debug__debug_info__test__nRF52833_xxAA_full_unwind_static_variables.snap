@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 2020
+assertion_line: 2034
 expression: static_variables
 snapshot_kind: text
 ---
@@ -31,6 +31,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.16.1/src/pwm.rs
                 line: 1157
                 column: ~
+                address: ~
             - name:
                 Named: BUF1
               type_name: Unknown
@@ -39,6 +40,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.16.1/src/pwm.rs
                 line: 1159
                 column: ~
+                address: ~
             - name:
                 Named: BUF2
               type_name: Unknown
@@ -47,6 +49,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.16.1/src/pwm.rs
                 line: 1161
                 column: ~
+                address: ~
             - name:
                 Named: BUF3
               type_name: Unknown
@@ -55,6 +58,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.16.1/src/pwm.rs
                 line: 1163
                 column: ~
+                address: ~
     - name:
         Named: "<usize as core::fmt::Debug>::{vtable}"
       type_name: Unknown
@@ -85,6 +89,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/fixed-1.27.0/src/debug_hex.rs
                 line: 33
                 column: ~
+                address: ~
             - name:
                 Named: UPPER_FLAGS
               type_name: Unknown
@@ -93,6 +98,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/fixed-1.27.0/src/debug_hex.rs
                 line: 35
                 column: ~
+                address: ~
     - name:
         Named: "<core::str::error::Utf8Error as core::fmt::Debug>::{vtable}"
       type_name: Unknown
@@ -118,6 +124,7 @@ Child Variables:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
             line: 88
             column: ~
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -128,6 +135,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -153,6 +161,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -178,6 +187,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -203,6 +213,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -228,6 +239,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -253,6 +265,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -278,6 +291,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -303,6 +317,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -328,6 +343,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -353,6 +369,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -378,6 +395,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -403,6 +421,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -428,6 +447,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -453,6 +473,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -478,6 +499,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -503,6 +525,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -528,6 +551,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -553,6 +577,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -578,6 +603,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -603,6 +629,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -628,6 +655,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -653,6 +681,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -678,6 +707,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -703,6 +733,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -728,6 +759,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -753,6 +785,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -778,6 +811,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -803,6 +837,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -828,6 +863,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -853,6 +889,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -878,6 +915,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -903,6 +941,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -928,6 +967,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -953,6 +993,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -978,6 +1019,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1003,6 +1045,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1028,6 +1071,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1053,6 +1097,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1078,6 +1123,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1103,6 +1149,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1128,6 +1175,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1153,6 +1201,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1178,6 +1227,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1203,6 +1253,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1228,6 +1279,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1253,6 +1305,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1278,6 +1331,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1303,6 +1357,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
                 line: 88
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: _handler
@@ -1328,6 +1383,7 @@ Child Variables:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf52833-pac-0.12.2/src/lib.rs
             line: 2188
             column: ~
+            address: ~
     - name:
         Namespace: cortex_m_rt
       type_name: Namespace
@@ -1341,6 +1397,7 @@ Child Variables:
             path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
             line: 857
             column: ~
+            address: ~
         - name:
             Named: __RESET_VECTOR
           type_name:
@@ -1350,6 +1407,7 @@ Child Variables:
             path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
             line: 1048
             column: ~
+            address: ~
           children:
             - name:
                 Named: "*__RESET_VECTOR"
@@ -1368,6 +1426,7 @@ Child Variables:
             path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
             line: 1140
             column: ~
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -1378,6 +1437,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1403,6 +1463,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1428,6 +1489,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1453,6 +1515,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1478,6 +1541,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1503,6 +1567,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1528,6 +1593,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1553,6 +1619,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1578,6 +1645,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1603,6 +1671,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1628,6 +1697,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1653,6 +1723,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1678,6 +1749,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1703,6 +1775,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/git/checkouts/cortex-m-6c400ec63ab46e19/d85d9c8/cortex-m-rt/src/lib.rs
                 line: 1140
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: handler
@@ -1741,6 +1814,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/peripheral/mod.rs
                 line: 159
                 column: ~
+                address: ~
             - name:
                 Named: TAKEN
               type_name:
@@ -1750,6 +1824,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/peripheral/mod.rs
                 line: 162
                 column: ~
+                address: ~
     - name:
         Namespace: probe_rs_debugger_test
       type_name: Namespace
@@ -1764,6 +1839,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 15
             column: ~
+            address: ~
         - name:
             Named: I
           type_name:
@@ -1773,6 +1849,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 16
             column: ~
+            address: ~
         - name:
             Named: C
           type_name:
@@ -1782,6 +1859,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 17
             column: ~
+            address: ~
         - name:
             Named: I8
           type_name:
@@ -1791,6 +1869,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 18
             column: ~
+            address: ~
         - name:
             Named: I16
           type_name:
@@ -1800,6 +1879,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 19
             column: ~
+            address: ~
         - name:
             Named: I32
           type_name:
@@ -1809,6 +1889,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 20
             column: ~
+            address: ~
         - name:
             Named: I64
           type_name:
@@ -1818,6 +1899,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 21
             column: ~
+            address: ~
         - name:
             Named: U
           type_name:
@@ -1827,6 +1909,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 22
             column: ~
+            address: ~
         - name:
             Named: U8
           type_name:
@@ -1836,6 +1919,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 23
             column: ~
+            address: ~
         - name:
             Named: U16
           type_name:
@@ -1845,6 +1929,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 24
             column: ~
+            address: ~
         - name:
             Named: U32
           type_name:
@@ -1854,6 +1939,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 25
             column: ~
+            address: ~
         - name:
             Named: U64
           type_name:
@@ -1863,6 +1949,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 26
             column: ~
+            address: ~
         - name:
             Named: F32
           type_name:
@@ -1872,6 +1959,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 27
             column: ~
+            address: ~
         - name:
             Named: F64
           type_name:
@@ -1881,6 +1969,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 28
             column: ~
+            address: ~
         - name:
             Named: GLOBAL_STATIC
           type_name:
@@ -1890,6 +1979,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 30
             column: ~
+            address: ~
           children:
             - name:
                 Named: data_ptr
@@ -1916,6 +2006,7 @@ Child Variables:
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 64
             column: ~
+            address: ~
           children:
             - name:
                 Named: Case1
@@ -1963,6 +2054,7 @@ Child Variables:
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 205
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: data_ptr
@@ -1989,6 +2081,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
                 line: 138
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: uninit
@@ -2306,6 +2399,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
                 line: 34
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: uninit
@@ -2589,6 +2683,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/init.rs
                 line: 34
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: uninit
@@ -3120,6 +3215,7 @@ Child Variables:
                 path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/rtt-target-0.5.0/src/print.rs
                 line: 7
                 column: ~
+                address: ~
               children:
                 - name:
                     Named: inner

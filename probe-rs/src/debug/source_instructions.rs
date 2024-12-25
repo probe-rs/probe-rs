@@ -272,6 +272,8 @@ pub struct SourceLocation {
     pub line: Option<u64>,
     /// The column number in the source file.
     pub column: Option<ColumnType>,
+    /// The address of the source location.
+    pub address: Option<u64>,
 }
 
 impl Debug for SourceLocation {
@@ -299,6 +301,7 @@ impl SourceLocation {
                 line: instruction_location.line.map(std::num::NonZeroU64::get),
                 column: Some(instruction_location.column),
                 path,
+                address: Some(instruction_location.address),
             })
     }
 

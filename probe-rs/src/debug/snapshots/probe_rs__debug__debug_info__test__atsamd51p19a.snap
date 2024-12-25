@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1984
+assertion_line: 1998
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -10,6 +10,7 @@ snapshot_kind: text
     line: 80
     column:
       Column: 5
+    address: 5236
   registers:
     - core_register:
         id: 0
@@ -225,6 +226,7 @@ snapshot_kind: text
             line: 71
             column:
               Column: 24
+            address: ~
           children:
             - name:
                 Named: "*const_void_pointer"
@@ -242,6 +244,7 @@ snapshot_kind: text
             line: 72
             column:
               Column: 30
+            address: ~
           children:
             - name:
                 Named: "*const_void_const_pointer"
@@ -254,6 +257,7 @@ snapshot_kind: text
     line: 94
     column:
       Column: 1
+    address: 5340
   registers:
     - core_register:
         id: 0
@@ -461,6 +465,7 @@ snapshot_kind: text
             line: 84
             column:
               Column: 18
+            address: ~
         - name:
             Named: void_const_pointer
           type_name:
@@ -473,6 +478,7 @@ snapshot_kind: text
             line: 85
             column:
               Column: 24
+            address: ~
   canonical_frame_address: 536875104
 - function_name: main
   source_location:
@@ -480,6 +486,7 @@ snapshot_kind: text
     line: 111
     column:
       Column: 9
+    address: 5434
   registers:
     - core_register:
         id: 0
@@ -687,6 +694,7 @@ snapshot_kind: text
             line: 98
             column:
               Column: 19
+            address: ~
           children:
             - name:
                 Named: "*string"
@@ -702,6 +710,7 @@ snapshot_kind: text
     line: 536
     column:
       Column: 15
+    address: 2426
   registers:
     - core_register:
         id: 0
@@ -909,6 +918,7 @@ snapshot_kind: text
             line: 501
             column:
               Column: 19
+            address: ~
           children:
             - name:
                 Named: "*pSrc"
@@ -929,6 +939,7 @@ snapshot_kind: text
             line: 501
             column:
               Column: 26
+            address: ~
           children:
             - name:
                 Named: "*pDest"
