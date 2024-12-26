@@ -179,7 +179,6 @@ impl Debugger {
 
                 match request.command.as_ref() {
                     "configurationDone"
-                    | "setBreakpoint"
                     | "setBreakpoints"
                     | "setInstructionBreakpoints"
                     | "clearBreakpoint"
