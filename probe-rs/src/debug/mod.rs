@@ -33,9 +33,9 @@ pub use self::{
 };
 use crate::{core::Core, MemoryInterface};
 
-use gimli::AttributeValue;
 use gimli::DebuggingInformationEntry;
 use gimli::EvaluationResult;
+use gimli::{AttributeValue, RunTimeEndian};
 use serde::Serialize;
 use typed_path::TypedPathBuf;
 
@@ -49,7 +49,7 @@ use std::{
 };
 
 /// A simplified type alias of the [`gimli::EndianReader`] type.
-pub type EndianReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
+pub type EndianReader = gimli::EndianReader<RunTimeEndian, std::rc::Rc<[u8]>>;
 
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
