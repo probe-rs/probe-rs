@@ -162,7 +162,7 @@ pub(crate) fn disassemble_target_memory(
     start_from_address &= !(min_instruction_size - 1);
     read_until_address &= !(min_instruction_size - 1);
 
-    let cs = get_capstone(target_core)?;
+    let cs_le = get_capstone_le(target_core)?;
     let mut code_buffer_le: Vec<u8> = vec![];
     let mut disassembled_instructions: Vec<DisassembledInstruction> = vec![];
     let mut maybe_previous_source_location = None;
@@ -252,7 +252,7 @@ pub(crate) fn disassemble_target_memory(
         // We read a single instruction as otherwise capstone will try to make sense
         // of possibly incomplete instructions at the end of the buffer and render those
         // as byte data or other garbage.
-        match cs.disasm_count(&code_buffer_le, instruction_pointer, 1) {
+        match cs_le.disasm_count(&code_buffer_le, instruction_pointer, 1) {
             // TODO: Deal with mixed ARM/Thumbv2 encoded sources.
             // Note: The DWARF line number state machine isa register (see DWARF5,
             //       section 6.2.2, table 6.3) could be used to that end on a
@@ -379,7 +379,7 @@ pub(crate) fn disassemble_target_memory(
     Ok(disassembled_instructions)
 }
 
-pub(crate) fn get_capstone(target_core: &mut CoreHandle) -> Result<Capstone, DebuggerError> {
+fn get_capstone_le(target_core: &mut CoreHandle) -> Result<Capstone, DebuggerError> {
     let mut cs = match target_core.core.instruction_set()? {
         InstructionSet::Thumb2 => {
             let mut capstone_builder = Capstone::new()
