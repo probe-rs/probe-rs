@@ -40,8 +40,8 @@ pub struct DebugInfo {
     pub(crate) locations_section: gimli::LocationLists<DwarfReader>,
     pub(crate) address_section: gimli::DebugAddr<DwarfReader>,
     pub(crate) debug_line_section: gimli::DebugLine<DwarfReader>,
-
     pub(crate) unit_infos: Vec<UnitInfo>,
+    pub(crate) endianness: gimli::RunTimeEndian,
 }
 
 impl DebugInfo {
@@ -56,17 +56,18 @@ impl DebugInfo {
     pub fn from_raw(data: &[u8]) -> Result<Self, DebugError> {
         let object = object::File::parse(data)?;
 
+        let endianness = if object.is_little_endian() {
+            RunTimeEndian::Little
+        } else {
+            RunTimeEndian::Big
+        };
+
         // Load a section and return as `Cow<[u8]>`.
         let load_section = |id: gimli::SectionId| -> Result<DwarfReader, gimli::Error> {
             let data = object
                 .section_by_name(id.name())
                 .and_then(|section| section.uncompressed_data().ok())
                 .unwrap_or_else(|| borrow::Cow::Borrowed(&[][..]));
-            let endianness = if object.is_little_endian() {
-                RunTimeEndian::Little
-            } else {
-                RunTimeEndian::Big
-            };
             Ok(gimli::read::EndianRcSlice::new(
                 Rc::from(&*data),
                 endianness,
@@ -109,6 +110,7 @@ impl DebugInfo {
             address_section,
             debug_line_section,
             unit_infos,
+            endianness,
         })
     }
 
@@ -946,6 +948,11 @@ impl DebugInfo {
                 None
             }
         }
+    }
+
+    /// The program binary's (and core's) endianness.
+    pub fn endianness(&self) -> RunTimeEndian {
+        self.endianness
     }
 }
 

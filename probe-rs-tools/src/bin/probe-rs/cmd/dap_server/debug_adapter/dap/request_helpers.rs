@@ -4,6 +4,7 @@ use crate::cmd::dap_server::{
     server::{core_data::CoreHandle, session_data::BreakpointType},
     DebuggerError,
 };
+use addr2line::gimli::RunTimeEndian;
 use anyhow::{anyhow, Result};
 use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
@@ -12,7 +13,7 @@ use capstone::{
 use itertools::Itertools;
 use probe_rs::{
     debug::{ColumnType, ObjectRef, SourceLocation},
-    CoreType, InstructionSet, MemoryInterface,
+    CoreType, Error, InstructionSet, MemoryInterface,
 };
 use std::{sync::LazyLock, time::Duration};
 use typed_path::TypedPathBuf;
@@ -166,6 +167,7 @@ pub(crate) fn disassemble_target_memory(
     let mut disassembled_instructions: Vec<DisassembledInstruction> = vec![];
     let mut maybe_previous_source_location = None;
     let mut maybe_reference_instruction_index = None;
+    let convert_endianness = target_core.core_data.debug_info.endianness() == RunTimeEndian::Big;
 
     let mut instruction_pointer = start_from_address;
     'instruction_loop: while instruction_pointer < read_until_address {
@@ -181,31 +183,51 @@ pub(crate) fn disassemble_target_memory(
         let mut read_pointer = instruction_pointer + code_buffer_le.len() as u64;
         let mut read_error = None;
         while read_error.is_none() && code_buffer_le.len() < max_instruction_size as usize {
-            // Ensure that we buffer at least one full instruction.
-            let bytes_to_read = max_instruction_size - code_buffer_le.len() as u64;
-            let is_unaligned = read_pointer & 0b11 != 0;
+            fn read_instruction<const N: usize, M>(
+                ptr: &mut u64,     // read pointer
+                mem: &mut M,       // the target's memory interface
+                buf: &mut Vec<u8>, // the code buffer to read into
+                conv: bool,        // true if endianness conversion is required
+            ) -> Option<Error>
+            where
+                M: MemoryInterface<Error>,
+            {
+                // We read instructions as a byte array to preserve original endianness
+                // independently of host endianness and memory interface implementation.
+                let mut data: [u8; N] = [0; N];
+                mem.read(*ptr, &mut data)
+                    .inspect(|_| {
+                        if conv {
+                            data.reverse()
+                        }
+                        buf.extend_from_slice(&data);
+                        *ptr += N as u64;
+                    })
+                    .err()
+            }
 
-            read_error = if bytes_to_read == 2 || is_unaligned {
-                target_core
-                    .core
-                    .read_word_16(read_pointer)
-                    .inspect(|val| {
-                        code_buffer_le.extend_from_slice(&val.to_le_bytes());
-                        read_pointer += 2;
-                    })
-                    .err()
-            } else if bytes_to_read == 4 {
-                target_core
-                    .core
-                    .read_word_32(read_pointer)
-                    .inspect(|val| {
-                        code_buffer_le.extend_from_slice(&val.to_le_bytes());
-                        read_pointer += 4;
-                    })
-                    .err()
-            } else {
+            const HALFWORD: usize = 2;
+            const WORD: usize = 4;
+
+            read_error = match min_instruction_size as usize {
+                // For 16 bit or variable size instructions we need to read
+                // the code as a halfword stream. Reading a full word and
+                // then changing endianness would otherwise reverse instruction
+                // order or garble partial 32 bit instructions.
+                HALFWORD => read_instruction::<HALFWORD, _>(
+                    &mut read_pointer,
+                    &mut target_core.core,
+                    &mut code_buffer_le,
+                    convert_endianness,
+                ),
+                WORD => read_instruction::<WORD, _>(
+                    &mut read_pointer,
+                    &mut target_core.core,
+                    &mut code_buffer_le,
+                    convert_endianness,
+                ),
                 // All supported architectures have either 16 or 32 bit instructions.
-                return Err(DebuggerError::Unimplemented);
+                _ => return Err(DebuggerError::Unimplemented),
             };
         }
 
