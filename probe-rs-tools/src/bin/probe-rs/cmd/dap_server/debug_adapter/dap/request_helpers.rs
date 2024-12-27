@@ -261,11 +261,26 @@ pub(crate) fn disassemble_target_memory(
             //       has access to the DWARF line program.
             Ok(instructions) => {
                 if instructions.len() == 0 {
-                    // The capstone library sometimes returns an empty result set, instead of an Err. Catch it here or else we risk an infinte loop looking for a valid instruction.
-                    return Err(DebuggerError::Other(anyhow::anyhow!(
-                        "Disassembly encountered unsupported instructions at memory reference {:#010x?}",
-                        instruction_pointer
-                    )));
+                    // The capstone library sometimes returns an empty result set
+                    // instead of an Err. Catch it here or else we risk an infinite
+                    // loop looking for a valid instruction.
+                    disassembled_instructions.push(DisassembledInstruction {
+                        address: format!("{instruction_pointer:#010X}"),
+                        column: None,
+                        end_column: None,
+                        end_line: None,
+                        instruction: "<unsupported instruction>".to_owned(),
+                        instruction_bytes: None,
+                        line: None,
+                        location: None,
+                        symbol: None,
+                    });
+                    code_buffer_le = code_buffer_le
+                        .split_at(min_instruction_size as usize)
+                        .1
+                        .to_vec();
+                    instruction_pointer += min_instruction_size;
+                    continue 'instruction_loop;
                 }
 
                 let instruction = &instructions[0];
