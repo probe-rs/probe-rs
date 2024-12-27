@@ -187,7 +187,7 @@ pub enum DebugProbeError {
         interface_name: &'static str,
     },
 
-    /// The probe does not support he requested speed setting ({0} kHz).
+    /// The probe does not support the requested speed setting ({0} kHz).
     UnsupportedSpeed(u32),
 
     /// You need to be attached to the target to perform this action.
