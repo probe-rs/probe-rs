@@ -109,8 +109,33 @@ impl SwdSequence for &mut MockCore {
 }
 
 impl MemoryInterface<ArmError> for &mut MockCore {
-    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
-        todo!()
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+        let mut curr_seg: Option<&LoadableSegment> = None;
+
+        for (offset, val) in data.iter_mut().enumerate() {
+            let address = address + offset as u64;
+            println!("Read {:#010x} = 0", address);
+
+            match self.program_binary {
+                Some(ref program_binary) => {
+                    if !curr_seg.is_some_and(|seg| seg.contains(address, 1)) {
+                        curr_seg = self
+                            .loadable_segments
+                            .iter()
+                            .find(|&seg| seg.contains(address, 1));
+                    }
+                    match curr_seg {
+                        Some(seg) => {
+                            *val = program_binary[seg.load_addr(address) as usize];
+                        }
+                        None => *val = 0,
+                    }
+                }
+                None => *val = 0,
+            }
+        }
+
+        Ok(())
     }
 
     fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
