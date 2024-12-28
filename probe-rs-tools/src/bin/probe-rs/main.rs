@@ -11,19 +11,46 @@ use std::{ffi::OsString, path::PathBuf};
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
+use figment::providers::{Data, Format as _, Json, Toml, Yaml};
+use figment::Figment;
 use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, FormatKind, IdfOptions};
+use probe_rs::probe::DebugProbeSelector;
 use probe_rs::{probe::list::Lister, Target};
 use report::Report;
 use serde::Deserialize;
 use serde::Serialize;
 use time::{OffsetDateTime, UtcOffset};
 
+use crate::cmd::run::SharedOptions;
 use crate::util::logging::setup_logging;
 use crate::util::parse_u32;
 use crate::util::parse_u64;
 
 const MAX_LOG_FILES: usize = 20;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DeviceAlias {
+    /// The alias of the device.
+    pub alias: String,
+
+    /// The probe selector.
+    pub selector: DebugProbeSelector,
+
+    /// The chip name.
+    pub chip: Option<String>,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Config {
+    /// The default device to use.
+    pub default_device: Option<String>,
+
+    /// A list of device aliases.
+    pub devices: Vec<DeviceAlias>,
+}
 
 #[derive(clap::Parser)]
 #[clap(
@@ -52,6 +79,7 @@ struct Cli {
         default_missing_value = "./report.zip"
     )]
     report: Option<PathBuf>,
+
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
@@ -279,14 +307,19 @@ fn main() -> Result<()> {
         }
     }
 
+    let config = load_config().context("Failed to load configuration.")?;
+
     // Parse the commandline options.
-    let matches = Cli::parse_from(args);
+    let mut matches = Cli::parse_from(args);
+
+    // Substitute options from the global config, before we set up logging
+    preprocess_cli_early(&mut matches, &config)?;
 
     // Setup the probe lister, list all probes normally
     let lister = Lister::new();
 
-    let log_path = if let Some(location) = matches.log_file {
-        Some(location)
+    let log_path = if let Some(ref location) = matches.log_file {
+        Some(location.clone())
     } else if matches.log_to_folder || matches.report.is_some() {
         // We always log if we create a report.
         let location =
@@ -304,16 +337,19 @@ fn main() -> Result<()> {
 
     // the DAP server has special logging requirements. Run it before initializing logging,
     // so it can do its own special init.
-    if let Subcommand::DapServer(cmd) = matches.subcommand {
-        return cmd::dap_server::run(cmd, &lister, utc_offset, log_path);
+    if let Subcommand::DapServer(ref cmd) = matches.subcommand {
+        return cmd::dap_server::run(cmd.clone(), &lister, utc_offset, log_path);
     }
 
     let _logger_guard = setup_logging(log_path, None);
 
+    // Substitute options from the global config after we set up logging
+    preprocess_cli_late(&mut matches, &config)?;
+
     let mut elf = None;
     let result = match matches.subcommand {
         Subcommand::DapServer { .. } => unreachable!(), // handled above.
-        Subcommand::List(cmd) => cmd.run(&lister),
+        Subcommand::List(cmd) => cmd.run(&lister, &config),
         Subcommand::Info(cmd) => cmd.run(&lister),
         Subcommand::Gdb(cmd) => cmd.run(&lister),
         Subcommand::Reset(cmd) => cmd.run(&lister),
@@ -389,6 +425,85 @@ fn compile_report(
     let title = urlencoding::encode(&error);
 
     eprintln!("{base}?labels=bug&title={title}&body={body}");
+
+    Ok(())
+}
+
+fn load_config() -> anyhow::Result<Config> {
+    // Paths to search for the configuration file.
+    let mut paths = vec![PathBuf::from(".")];
+    if let Some(home) = directories::UserDirs::new().map(|user| user.home_dir().to_path_buf()) {
+        paths.push(home);
+    }
+
+    // Files to search for, without extension.
+    let files = [".probe-rs"];
+
+    let default_config = serde_json::to_string_pretty(&Config::default()).unwrap();
+    let mut figment = Figment::from(Data::<Json>::string(&default_config));
+    for path in paths {
+        for file in files {
+            figment = figment
+                .merge(Toml::file(path.join(format!("{file}.toml"))))
+                .merge(Json::file(path.join(format!("{file}.json"))))
+                .merge(Yaml::file(path.join(format!("{file}.yaml"))))
+                .merge(Yaml::file(path.join(format!("{file}.yml"))));
+        }
+    }
+
+    let config = figment.extract::<Config>()?;
+
+    Ok(config)
+}
+
+fn preprocess_cli_early(_matches: &mut Cli, _config: &Config) -> Result<()> {
+    Ok(())
+}
+
+fn preprocess_cli_late(matches: &mut Cli, config: &Config) -> Result<()> {
+    resolve_device_aliases(matches, config)?;
+    Ok(())
+}
+
+fn resolve_device_aliases(matches: &mut Cli, config: &Config) -> Result<()> {
+    if let Subcommand::Attach(cmd::attach::Cmd {
+        run:
+            cmd::run::Cmd {
+                shared_options: SharedOptions { probe_options, .. },
+                ..
+            },
+    })
+    | Subcommand::Run(cmd::run::Cmd {
+        shared_options: SharedOptions { probe_options, .. },
+        ..
+    })
+    | Subcommand::Info(cmd::info::Cmd {
+        common: probe_options,
+        ..
+    }) = &mut matches.subcommand
+    {
+        // If device is not set, and a selector is not provided, check if there is a default device
+        // in the config.
+        if probe_options.device.is_none() && probe_options.probe.is_none() {
+            if let Some(device) = config.default_device.as_deref() {
+                probe_options.device = Some(device.into());
+            }
+        }
+
+        // If a device alias is set, resolve it to a probe and chip.
+        if let Some(alias) = probe_options.device.as_deref() {
+            let device = config
+                .devices
+                .iter()
+                .find(|d| d.alias == alias)
+                .ok_or_else(|| {
+                    anyhow::anyhow!("Device alias {} is not found in the configuration.", alias)
+                })?;
+
+            probe_options.probe = Some(device.selector.clone());
+            probe_options.chip = device.chip.clone();
+        }
+    }
 
     Ok(())
 }
