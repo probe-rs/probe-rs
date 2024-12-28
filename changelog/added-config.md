@@ -1,0 +1,1 @@
+Added probe-rs configuration file with device aliasses and default device option.

@@ -71,7 +71,7 @@ pub enum DebuggerError {
 
 /// Open target in debug mode and accept debug commands.
 /// This only works as a [debug_adapter::protocol::DapAdapter] and uses Debug Adapter Protocol (DAP) commands (enables connections from clients such as Microsoft Visual Studio Code).
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Clone)]
 pub struct Cmd {
     /// IP port number to listen for incoming DAP connections, e.g. "50000"
     #[clap(long)]
