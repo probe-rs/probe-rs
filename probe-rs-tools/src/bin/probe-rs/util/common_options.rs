@@ -70,6 +70,15 @@ pub struct ReadWriteOptions {
 /// Common options and logic when interfacing with a [Probe].
 #[derive(clap::Parser, Debug)]
 pub struct ProbeOptions {
+    /// Use a configured named device from the configuration, instead of a probe-chip pair.
+    #[arg(
+        long,
+        env = "PROBE_RS_DEVICE",
+        help_heading = "PROBE CONFIGURATION",
+        conflicts_with_all = ["probe", "chip"],
+    )]
+    pub device: Option<String>,
+
     #[arg(long, env = "PROBE_RS_CHIP", help_heading = "PROBE CONFIGURATION")]
     pub chip: Option<String>,
     #[arg(
