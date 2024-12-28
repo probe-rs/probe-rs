@@ -163,6 +163,7 @@ pub enum CoreAccessOptions {
 
 /// The data required to access an ARM core
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct ArmCoreAccessOptions {
     /// The access port number to access the core
     pub ap: u8,

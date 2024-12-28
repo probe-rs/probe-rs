@@ -15,7 +15,7 @@ variants:
         core_access_options:
           !Arm
             ap: 0x0
-            psel: 0x1002927
+            targetsel: 0x1002927
     memory_map:
       - !Ram
           range:
@@ -70,7 +70,7 @@ variants:
         core_access_options:
           !Arm
             ap: 0x0
-            psel: 0x1002927
+            targetsel: 0x1002927
     memory_map:
       - !Ram
           range:
