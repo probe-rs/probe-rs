@@ -1,0 +1,2 @@
+probe-rs: Disassembly now takes the endianness of source files into account rather than relying on host endianness.
+probe-rs-tools: Fixed disassembly of ARM Thumb v2 code in the DAP server (proper instruction decoding and offset in the disassembly view).
