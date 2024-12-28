@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
 use super::memory::MemoryRegion;
-use crate::{
-    serialize::{hex_option, hex_u_int},
-    CoreType,
-};
+use crate::{serialize::hex_option, CoreType};
 use serde::{Deserialize, Serialize};
 
 /// Represents a DAP scan chain element.
@@ -169,9 +166,9 @@ pub enum CoreAccessOptions {
 pub struct ArmCoreAccessOptions {
     /// The access port number to access the core
     pub ap: u8,
-    /// The port select number to access the core
-    #[serde(serialize_with = "hex_u_int")]
-    pub psel: u32,
+    /// The TARGETSEL value used to access the core
+    #[serde(serialize_with = "hex_option")]
+    pub targetsel: Option<u32>,
     /// The base address of the debug registers for the core.
     /// Required for Cortex-A, optional for Cortex-M
     #[serde(serialize_with = "hex_option")]

@@ -11,7 +11,7 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: DTCM

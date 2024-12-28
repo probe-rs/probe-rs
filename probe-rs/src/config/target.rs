@@ -276,9 +276,9 @@ impl CoreExt for Core {
         match &self.core_access_options {
             probe_rs_target::CoreAccessOptions::Arm(options) => {
                 Some(FullyQualifiedApAddress::v1_with_dp(
-                    match options.psel {
-                        0 => DpAddress::Default,
-                        x => DpAddress::Multidrop(x),
+                    match options.targetsel {
+                        None => DpAddress::Default,
+                        Some(x) => DpAddress::Multidrop(x),
                     },
                     options.ap,
                 ))

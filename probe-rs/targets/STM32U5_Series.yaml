@@ -16,7 +16,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -69,7 +68,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -122,7 +120,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -172,7 +169,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -222,7 +218,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -272,7 +267,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -325,7 +319,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -378,7 +371,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -431,7 +423,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -484,7 +475,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -537,7 +527,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -590,7 +579,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -640,7 +628,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -690,7 +677,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -743,7 +729,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -796,7 +781,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -847,7 +831,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -905,7 +888,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -965,7 +947,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1025,7 +1006,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1082,7 +1062,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1139,7 +1118,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1197,7 +1175,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1255,7 +1232,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1313,7 +1289,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1371,7 +1346,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1429,7 +1403,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1487,7 +1460,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1545,7 +1517,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1603,7 +1574,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1661,7 +1631,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1721,7 +1690,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1778,7 +1746,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1836,7 +1803,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1894,7 +1860,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1952,7 +1917,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2010,7 +1974,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2068,7 +2031,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2133,7 +2095,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2198,7 +2159,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2263,7 +2223,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2330,7 +2289,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2395,7 +2353,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2460,7 +2417,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2525,7 +2481,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2591,7 +2546,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2653,7 +2607,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: Flash
@@ -2702,7 +2655,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2766,7 +2718,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2830,7 +2781,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2894,7 +2844,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2958,7 +2907,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3023,7 +2971,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3088,7 +3035,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3153,7 +3099,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3218,7 +3163,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3283,7 +3227,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3348,7 +3291,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3413,7 +3355,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3479,7 +3420,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3543,7 +3483,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3607,7 +3546,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3671,7 +3609,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3736,7 +3673,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3801,7 +3737,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3873,7 +3808,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3944,7 +3878,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -4015,7 +3948,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -4087,7 +4019,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -4158,7 +4089,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -4230,7 +4160,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -4302,7 +4231,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -4374,7 +4302,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -4445,7 +4372,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -4516,7 +4442,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -4587,7 +4512,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -4659,7 +4583,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: BANK_1

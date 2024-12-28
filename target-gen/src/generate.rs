@@ -204,7 +204,7 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
                     AccessPort::Index(id) => id,
                     AccessPort::Address(_) => todo!(),
                 },
-                psel: 0,
+                targetsel: None,
                 debug_base: None,
                 cti_base: None,
                 jtag_tap: None,
