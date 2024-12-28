@@ -9,12 +9,12 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0x1002927
+      targetsel: 0x1002927
   - name: core1
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0x11002927
+      targetsel: 0x11002927
   memory_map:
   - !Nvm
     range:
