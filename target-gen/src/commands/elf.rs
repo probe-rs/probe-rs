@@ -85,7 +85,7 @@ pub fn cmd_elf(
                     core_type: CoreType::Armv6m,
                     core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
                         ap: 0,
-                        psel: 0,
+                        targetsel: None,
                         debug_base: None,
                         cti_base: None,
                         jtag_tap: None,

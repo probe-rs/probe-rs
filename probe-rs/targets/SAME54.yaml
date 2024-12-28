@@ -19,7 +19,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     range:
@@ -43,7 +42,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     range:
@@ -67,7 +65,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     range:
@@ -91,7 +88,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     range:

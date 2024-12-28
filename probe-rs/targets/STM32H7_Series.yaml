@@ -14,7 +14,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -86,7 +85,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -158,7 +156,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -230,7 +227,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -301,7 +297,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -372,7 +367,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -444,7 +438,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -516,7 +509,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -587,7 +579,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -658,7 +649,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -730,7 +720,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -803,7 +792,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -874,7 +862,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -945,7 +932,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1016,7 +1002,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1088,7 +1073,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1160,7 +1144,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1232,7 +1215,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1304,7 +1286,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1376,7 +1357,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1447,7 +1427,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1519,7 +1498,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1590,7 +1568,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1663,7 +1640,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1734,7 +1710,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1805,7 +1780,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1893,7 +1867,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -1981,7 +1954,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -2069,7 +2041,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -2158,7 +2129,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -2247,7 +2217,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -2336,7 +2305,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -2425,7 +2393,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -2513,7 +2480,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -2601,7 +2567,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -2689,7 +2654,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -2777,7 +2741,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -2865,7 +2828,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -2946,7 +2908,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -3027,7 +2988,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -3108,7 +3068,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -3190,7 +3149,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -3272,7 +3230,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -3354,7 +3311,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -3436,7 +3392,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -3517,7 +3472,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -3598,7 +3552,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -3679,7 +3632,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -3760,7 +3712,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -3841,12 +3792,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -3934,12 +3884,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -4028,12 +3977,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -4122,12 +4070,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -4215,12 +4162,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -4308,12 +4254,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -4401,12 +4346,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -4494,12 +4438,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -4587,12 +4530,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -4680,12 +4622,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -4773,12 +4714,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -4866,12 +4806,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -4959,12 +4898,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -5052,12 +4990,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -5145,12 +5082,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -5238,12 +5174,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -5331,12 +5266,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -5425,7 +5359,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -5496,7 +5429,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -5567,7 +5499,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -5638,7 +5569,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -5709,7 +5639,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -5790,7 +5719,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -5872,7 +5800,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -5954,7 +5881,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -6035,7 +5961,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -6116,7 +6041,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -6197,12 +6121,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6291,12 +6214,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6384,12 +6306,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6477,12 +6398,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6570,12 +6490,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6663,12 +6582,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6756,12 +6674,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6849,12 +6766,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6942,12 +6858,11 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   - name: cm4
     type: armv7em
     core_access_options: !Arm
       ap: 3
-      psel: 0x0
+
   memory_map:
   - !Ram
     name: ITCM
@@ -7033,7 +6948,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -7105,7 +7019,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -7182,7 +7095,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -7247,7 +7159,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -7319,7 +7230,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -7396,7 +7306,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -7461,7 +7370,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -7533,7 +7441,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -7605,7 +7512,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -7677,7 +7583,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -7752,7 +7657,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -7820,7 +7724,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -7885,7 +7788,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -7959,7 +7861,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -8026,7 +7927,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -8096,7 +7996,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -8161,7 +8060,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -8233,7 +8131,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -8310,7 +8207,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -8375,7 +8271,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -8447,7 +8342,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -8522,7 +8416,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -8587,7 +8480,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -8662,7 +8554,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -8727,7 +8618,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -8801,7 +8691,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -8856,7 +8745,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -8921,7 +8809,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -8978,7 +8865,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -9036,7 +8922,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -9093,7 +8978,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -9148,7 +9032,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -9223,7 +9106,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -9288,7 +9170,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -9360,7 +9241,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -9432,7 +9312,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -9506,7 +9385,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -9571,7 +9449,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -9645,7 +9522,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -9713,7 +9589,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -9778,7 +9653,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -9850,7 +9724,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1
@@ -9924,7 +9797,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Ram
     name: ITCM
@@ -9989,7 +9861,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
   memory_map:
   - !Nvm
     name: FLASH_Bank1

@@ -256,9 +256,9 @@ impl CoreState {
             );
         };
 
-        let dp = match options.psel {
-            0 => DpAddress::Default,
-            x => DpAddress::Multidrop(x),
+        let dp = match options.targetsel {
+            None => DpAddress::Default,
+            Some(x) => DpAddress::Multidrop(x),
         };
 
         FullyQualifiedApAddress::v1_with_dp(dp, options.ap)

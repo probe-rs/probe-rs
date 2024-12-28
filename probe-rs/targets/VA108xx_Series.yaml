@@ -8,7 +8,6 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
       jtag_tap: 1
   memory_map:
   - !Nvm
@@ -39,7 +38,6 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: 0
-      psel: 0x0
       jtag_tap: 1
   memory_map:
   - !Ram
