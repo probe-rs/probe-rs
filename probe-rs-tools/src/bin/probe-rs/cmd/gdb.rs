@@ -11,17 +11,17 @@ pub struct Cmd {
         long,
         help = "Use this flag to override the default GDB connection string (localhost:1337)."
     )]
-    gdb_connection_string: Option<String>,
+    pub gdb_connection_string: Option<String>,
 
     #[clap(
         name = "reset-halt",
         long = "reset-halt",
         help = "Use this flag to reset and halt (instead of just a halt) the attached core after attaching to the target."
     )]
-    reset_halt: bool,
+    pub reset_halt: bool,
 
     #[clap(flatten)]
-    common: ProbeOptions,
+    pub common: ProbeOptions,
 }
 
 impl Cmd {

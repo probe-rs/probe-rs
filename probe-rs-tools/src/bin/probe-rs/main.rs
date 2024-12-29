@@ -495,7 +495,39 @@ fn resolve_paramset(matches: &mut Cli, config: &Config) -> Result<()> {
     };
 
     // Substitute values in `ProbeOptions` structs.
-    if let Subcommand::Attach(cmd::attach::Cmd {
+    if let Subcommand::Benchmark(cmd::benchmark::Cmd {
+        common: probe_options,
+        ..
+    })
+    | Subcommand::Debug(cmd::debug::Cmd {
+        common: probe_options,
+        ..
+    })
+    | Subcommand::Download(cmd::download::Cmd { probe_options, .. })
+    | Subcommand::Erase(cmd::erase::Cmd {
+        common: probe_options,
+        ..
+    })
+    | Subcommand::Gdb(cmd::gdb::Cmd {
+        common: probe_options,
+        ..
+    })
+    | Subcommand::Info(cmd::info::Cmd {
+        common: probe_options,
+        ..
+    })
+    | Subcommand::Itm(cmd::itm::Cmd {
+        common: probe_options,
+        ..
+    })
+    | Subcommand::Read(cmd::read::Cmd { probe_options, .. })
+    | Subcommand::Trace(cmd::trace::Cmd {
+        common: probe_options,
+        ..
+    })
+    | Subcommand::Verify(cmd::verify::Cmd { probe_options, .. })
+    | Subcommand::Write(cmd::write::Cmd { probe_options, .. })
+    | Subcommand::Attach(cmd::attach::Cmd {
         run:
             cmd::run::Cmd {
                 shared_options: SharedOptions { probe_options, .. },
@@ -504,10 +536,6 @@ fn resolve_paramset(matches: &mut Cli, config: &Config) -> Result<()> {
     })
     | Subcommand::Run(cmd::run::Cmd {
         shared_options: SharedOptions { probe_options, .. },
-        ..
-    })
-    | Subcommand::Info(cmd::info::Cmd {
-        common: probe_options,
         ..
     }) = &mut matches.subcommand
     {

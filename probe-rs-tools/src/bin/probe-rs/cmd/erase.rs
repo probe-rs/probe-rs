@@ -11,7 +11,7 @@ use crate::util::{common_options::ProbeOptions, flash::ProgressBarGroup, logging
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
-    common: ProbeOptions,
+    pub common: ProbeOptions,
 
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub disable_progressbars: bool,

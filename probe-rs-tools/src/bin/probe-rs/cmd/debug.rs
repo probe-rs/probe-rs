@@ -27,14 +27,14 @@ use crate::{util::common_options::ProbeOptions, CoreOptions};
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
-    shared: CoreOptions,
+    pub shared: CoreOptions,
 
     #[clap(flatten)]
-    common: ProbeOptions,
+    pub common: ProbeOptions,
 
     #[clap(long, value_parser)]
     /// Binary to debug
-    exe: Option<PathBuf>,
+    pub exe: Option<PathBuf>,
 }
 
 impl Cmd {

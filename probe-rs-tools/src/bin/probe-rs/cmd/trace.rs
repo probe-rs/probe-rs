@@ -13,14 +13,14 @@ use crate::CoreOptions;
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
-    shared: CoreOptions,
+    pub shared: CoreOptions,
 
     #[clap(flatten)]
-    common: ProbeOptions,
+    pub common: ProbeOptions,
 
     /// The address of the memory to dump from the target.
     #[clap(value_parser = parse_u64)]
-    loc: u64,
+    pub loc: u64,
 }
 
 impl Cmd {

@@ -19,16 +19,16 @@ use crate::CoreOptions;
 #[clap(verbatim_doc_comment)]
 pub struct Cmd {
     #[clap(flatten)]
-    shared: CoreOptions,
+    pub shared: CoreOptions,
 
     #[clap(flatten)]
-    probe_options: ProbeOptions,
+    pub probe_options: ProbeOptions,
 
     #[clap(flatten)]
-    read_write_options: ReadWriteOptions,
+    pub read_write_options: ReadWriteOptions,
 
     /// Number of words to read from the target
-    words: u64,
+    pub words: u64,
 }
 
 impl Cmd {

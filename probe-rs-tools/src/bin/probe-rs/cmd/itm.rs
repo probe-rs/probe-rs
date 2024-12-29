@@ -58,13 +58,13 @@ pub(crate) enum ItmSource {
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
-    shared: CoreOptions,
+    pub shared: CoreOptions,
 
     #[clap(flatten)]
-    common: ProbeOptions,
+    pub common: ProbeOptions,
 
     #[clap(subcommand)]
-    source: ItmSource,
+    pub source: ItmSource,
 }
 
 impl Cmd {

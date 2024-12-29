@@ -15,20 +15,20 @@ const TEST_SIZES: [usize; 5] = [1, 8, 32, 512, 8192];
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
-    common: ProbeOptions,
+    pub common: ProbeOptions,
 
     /// Start address for the benchmark test.
     ///
     /// Should be located in RAM.
     #[clap(long = "address", value_parser= parse_hex)]
-    address: u64,
+    pub address: u64,
 
     /// Minimum speed for the debug probe.
     ///
     /// Some probes will panic if you request a speed lower than they support.
     /// This option will set a lower-bound for the speeds that will be tested
     #[clap(long = "min-speed", value_parser= parse_int, default_value="0")]
-    min_speed: u32,
+    pub min_speed: u32,
 
     /// Maximum speed for the debug probe.
     ///
@@ -36,14 +36,14 @@ pub struct Cmd {
     /// Data may also become corrupt at higher speeds due to cabling issues.
     /// This option will set a upper-bound for the speeds that will be tested
     #[clap(long = "max-speed", value_parser= parse_int, default_value="0")]
-    max_speed: u32,
+    pub max_speed: u32,
 
     /// Word size for read/write accesses.
     ///
     /// Set the read/write word size to 8/32/64bits.
     /// Note: not all chips/probes support all sizes. 32bit is a safe default
     #[clap(long = "word-size", value_parser= parse_int, default_value="32")]
-    word_size: u32,
+    pub word_size: u32,
 
     /// Number of times to run each test
     ///
@@ -51,7 +51,7 @@ pub struct Cmd {
     /// in measurement. By running multiple iterations of each test we should be able to
     /// both reduce the amount of jitter, and also quantify it (via standard deviation calcs)
     #[clap(long = "iterations", value_parser= parse_usize, default_value="5")]
-    iterations: usize,
+    pub iterations: usize,
 }
 
 fn parse_usize(src: &str) -> Result<usize, ParseIntError> {

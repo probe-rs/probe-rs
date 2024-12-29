@@ -14,18 +14,18 @@ use crate::CoreOptions;
 #[clap(verbatim_doc_comment)]
 pub struct Cmd {
     #[clap(flatten)]
-    shared: CoreOptions,
+    pub shared: CoreOptions,
 
     #[clap(flatten)]
-    probe_options: ProbeOptions,
+    pub probe_options: ProbeOptions,
 
     #[clap(flatten)]
-    read_write_options: ReadWriteOptions,
+    pub read_write_options: ReadWriteOptions,
 
     /// Values to write to the target.
     /// Takes a list of integer values and can be specified in decimal (16), hexadecimal (0x10) or octal (0o20) format.
     #[clap(value_parser = parse_u64)]
-    values: Vec<u64>,
+    pub values: Vec<u64>,
 }
 
 impl Cmd {
