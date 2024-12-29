@@ -414,7 +414,11 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
     let file_name = source_location.file_name();
 
     // Try to convert the path to the native Path of the current OS
-    let native_path = std::path::PathBuf::try_from(file_path.to_path_buf())
+    #[cfg(unix)]
+    let native_path = file_path.with_unix_encoding_checked().ok()?;
+    #[cfg(windows)]
+    let native_path = file_path.with_windows_encoding_checked().ok()?;
+    let native_path = std::path::PathBuf::try_from(native_path)
         .map(|mut path| {
             if path.is_relative() {
                 if let Ok(current_dir) = std::env::current_dir() {
