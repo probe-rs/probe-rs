@@ -31,12 +31,12 @@ const MAX_LOG_FILES: usize = 20;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct DeviceAlias {
-    /// The alias of the device.
-    pub alias: String,
+struct ParameterSet {
+    /// The name of the parameter set.
+    pub name: String,
 
     /// The probe selector.
-    pub selector: DebugProbeSelector,
+    pub selector: Option<DebugProbeSelector>,
 
     /// The chip name.
     pub chip: Option<String>,
@@ -45,11 +45,11 @@ struct DeviceAlias {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Config {
-    /// The default device to use.
-    pub default_device: Option<String>,
+    /// The default named parameter set to use.
+    pub default_parameter_set: Option<String>,
 
-    /// A list of device aliases.
-    pub devices: Vec<DeviceAlias>,
+    /// A list of named parameter sets.
+    pub parameter_sets: Vec<ParameterSet>,
 }
 
 #[derive(clap::Parser)]
@@ -79,6 +79,10 @@ struct Cli {
         default_missing_value = "./report.zip"
     )]
     report: Option<PathBuf>,
+
+    /// Use a named parameter set from the configuration.
+    #[arg(long, global = true, env = "PROBE_RS_PARAM_SET")]
+    parameter_set: Option<String>,
 
     #[clap(subcommand)]
     subcommand: Subcommand,
@@ -461,11 +465,36 @@ fn preprocess_cli_early(_matches: &mut Cli, _config: &Config) -> Result<()> {
 }
 
 fn preprocess_cli_late(matches: &mut Cli, config: &Config) -> Result<()> {
-    resolve_device_aliases(matches, config)?;
+    apply_default_paramset(matches, config)?;
+    resolve_paramset(matches, config)?;
     Ok(())
 }
 
-fn resolve_device_aliases(matches: &mut Cli, config: &Config) -> Result<()> {
+fn apply_default_paramset(matches: &mut Cli, config: &Config) -> Result<()> {
+    // If a paramset is not selected, check if there is a default one
+    // in the config and apply that.
+    if matches.parameter_set.is_none() {
+        matches.parameter_set = config.default_parameter_set.clone();
+    }
+
+    Ok(())
+}
+
+fn resolve_paramset(matches: &mut Cli, config: &Config) -> Result<()> {
+    // If a named parameter set is provided, substitute its values into the CLI.
+    let Some(paramset_name) = matches.parameter_set.as_deref() else {
+        return Ok(());
+    };
+
+    let Some(paramset) = config
+        .parameter_sets
+        .iter()
+        .find(|d| d.name == paramset_name)
+    else {
+        anyhow::bail!(r#"Parameter set "{paramset_name}" is not found in the configuration."#);
+    };
+
+    // Substitute values in `ProbeOptions` structs.
     if let Subcommand::Attach(cmd::attach::Cmd {
         run:
             cmd::run::Cmd {
@@ -482,26 +511,12 @@ fn resolve_device_aliases(matches: &mut Cli, config: &Config) -> Result<()> {
         ..
     }) = &mut matches.subcommand
     {
-        // If device is not set, and a selector is not provided, check if there is a default device
-        // in the config.
-        if probe_options.device.is_none() && probe_options.probe.is_none() {
-            if let Some(device) = config.default_device.as_deref() {
-                probe_options.device = Some(device.into());
-            }
+        // Prefer CLI over config values.
+        if probe_options.probe.is_none() {
+            probe_options.probe = paramset.selector.clone();
         }
-
-        // If a device alias is set, resolve it to a probe and chip.
-        if let Some(alias) = probe_options.device.as_deref() {
-            let device = config
-                .devices
-                .iter()
-                .find(|d| d.alias == alias)
-                .ok_or_else(|| {
-                    anyhow::anyhow!("Device alias {} is not found in the configuration.", alias)
-                })?;
-
-            probe_options.probe = Some(device.selector.clone());
-            probe_options.chip = device.chip.clone();
+        if probe_options.chip.is_none() {
+            probe_options.chip = paramset.chip.clone();
         }
     }
 
