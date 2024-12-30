@@ -467,6 +467,8 @@ pub(crate) trait RawJtagIo {
     }
 
     /// Configures the probe to address the given target.
+    ///
+    /// The target must have been configured before, and must be available in `state.scan_chain`.
     fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError> {
         let state = self.state_mut();
 

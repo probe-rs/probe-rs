@@ -10,7 +10,7 @@ use crate::{
             memory_ap::{MemoryAp, MemoryApType},
             valid_access_ports, AccessPortType,
         },
-        communication_interface::{ArmProbeInterface, SwdSequence, UninitializedArmProbe},
+        communication_interface::{ArmProbeInterface, SwdSequence},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
         valid_32bit_arm_address, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, Pins,
@@ -20,7 +20,7 @@ use crate::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
         ProbeFactory, WireProtocol,
     },
-    Error as ProbeRsError, MemoryInterface,
+    MemoryInterface,
 };
 
 use probe_rs_target::ScanChainElement;
@@ -326,9 +326,11 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
-        Ok(Box::new(UninitializedStLink { probe: self }))
+        _sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+        let interface = StlinkArmDebug::new(self);
+
+        Ok(Box::new(interface))
     }
 
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
@@ -1267,50 +1269,13 @@ pub enum StlinkError {
 impl ProbeError for StlinkError {}
 
 #[derive(Debug)]
-struct UninitializedStLink {
-    probe: Box<StLink<StLinkUsbDevice>>,
-}
-
-impl UninitializedArmProbe for UninitializedStLink {
-    #[tracing::instrument(level = "trace", skip(self, _sequence))]
-    fn initialize(
-        self: Box<Self>,
-        _sequence: Arc<dyn ArmDebugSequence>,
-        dp: DpAddress,
-    ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
-        assert_eq!(dp, DpAddress::Default, "Multidrop not supported on ST-Link");
-        let interface = StlinkArmDebug::new(self.probe)
-            .map_err(|(s, e)| (s as Box<_>, ProbeRsError::from(e)))?;
-
-        Ok(Box::new(interface))
-    }
-
-    fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe)
-    }
-}
-
-impl SwdSequence for UninitializedStLink {
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
-        // This is not supported for ST-Links, unfortunately.
-        Err(DebugProbeError::CommandNotSupportedByProbe {
-            command_name: "swj_sequence",
-        })
-    }
-
-    fn swj_pins(
-        &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        self.probe.swj_pins(pin_out, pin_select, pin_wait)
-    }
-}
-
-#[derive(Debug)]
 struct StlinkArmDebug {
     probe: Box<StLink<StLinkUsbDevice>>,
+
+    /// The ST-Link probes don't support SWD multidrop, so we always use the default DP.
+    ///
+    /// This flag tracks if we are connected to a DP.
+    connected_to_dp: bool,
 
     /// Information about the APs of the target.
     /// APs are identified by a number, starting from zero.
@@ -1318,28 +1283,30 @@ struct StlinkArmDebug {
 }
 
 impl StlinkArmDebug {
-    fn new(
-        probe: Box<StLink<StLinkUsbDevice>>,
-    ) -> Result<Self, (Box<UninitializedStLink>, ArmError)> {
-        // Determine the number and type of available APs.
-        let mut interface = Self {
+    fn new(probe: Box<StLink<StLinkUsbDevice>>) -> Self {
+        Self {
             probe,
             access_ports: BTreeSet::new(),
-        };
-
-        interface.access_ports = valid_access_ports(&mut interface, DpAddress::Default)
-            .into_iter()
-            .collect();
-        interface.access_ports.iter().for_each(|addr| {
-            tracing::debug!("AP {:#x?}", addr);
-        });
-
-        Ok(interface)
+            connected_to_dp: false,
+        }
     }
 
     fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
+        }
+
+        if !self.connected_to_dp {
+            // Determine the number and type of available APs.
+            self.access_ports = valid_access_ports(self, DpAddress::Default)
+                .into_iter()
+                .collect();
+
+            self.access_ports.iter().for_each(|addr| {
+                tracing::debug!("AP {:#x?}", addr);
+            });
+
+            self.connected_to_dp = true;
         }
 
         Ok(())
@@ -1448,9 +1415,17 @@ impl ArmProbeInterface for StlinkArmDebug {
         Probe::from_attached_probe(self.probe)
     }
 
-    fn current_debug_port(&self) -> DpAddress {
-        // SWD multidrop is not supported on ST-Link
-        DpAddress::Default
+    fn current_debug_port(&self) -> Option<DpAddress> {
+        if self.connected_to_dp {
+            // SWD multidrop is not supported on ST-Link
+            Some(DpAddress::Default)
+        } else {
+            None
+        }
+    }
+
+    fn select_debug_port(&mut self, dp: DpAddress) -> Result<(), ArmError> {
+        self.select_dp(dp)
     }
 
     fn reinitialize(&mut self) -> Result<(), ArmError> {

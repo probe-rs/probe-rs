@@ -18,11 +18,11 @@ fn main() -> Result<()> {
     let mut probe = probes[0].open()?;
 
     probe.attach_to_unspecified()?;
-    let iface = probe.try_into_arm_interface().unwrap();
+    let mut iface = probe
+        .try_into_arm_interface(DefaultArmSequence::create())
+        .unwrap();
 
-    let mut iface = iface
-        .initialize(DefaultArmSequence::create(), DpAddress::Default)
-        .map_err(|(_interface, e)| e)?;
+    iface.select_debug_port(DpAddress::Default)?;
 
     let port = &FullyQualifiedApAddress::v1_with_default_dp(1);
 

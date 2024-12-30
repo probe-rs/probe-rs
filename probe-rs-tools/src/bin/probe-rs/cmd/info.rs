@@ -115,7 +115,7 @@ fn try_show_info(
         return (probe, Err(e.into()));
     }
 
-    if probe.has_arm_interface() {
+    if probe.supports_arm_debug_interface() {
         let dp_addr = if let Some(target_sel) = target_sel {
             DpAddress::Multidrop(target_sel)
         } else {
@@ -221,20 +221,21 @@ fn try_show_info(
 
 fn try_show_arm_dp_info(probe: Probe, dp_address: DpAddress) -> (Probe, Result<DebugPortVersion>) {
     tracing::debug!("Trying to show ARM chip information");
-    match probe
-        .try_into_arm_interface()
+
+    let mut interface = match probe
+        .try_into_arm_interface(DefaultArmSequence::create())
         .map_err(|(iface, e)| (iface, anyhow!(e)))
-        .and_then(|interface| {
-            interface
-                .initialize(DefaultArmSequence::create(), dp_address)
-                .map_err(|(interface, e)| (interface.close(), anyhow!(e)))
-        }) {
-        Ok(mut interface) => {
-            let res = show_arm_info(&mut *interface, dp_address);
-            (interface.close(), res)
-        }
-        Err((probe, e)) => (probe, Err(e)),
+    {
+        Ok(interface) => interface,
+        Err((probe, e)) => return (probe, Err(e)),
+    };
+
+    if let Err(err) = interface.select_debug_port(dp_address) {
+        return (interface.close(), Err(err.into()));
     }
+
+    let res = show_arm_info(&mut *interface, dp_address);
+    (interface.close(), res)
 }
 
 /// Try to show information about the ARM chip, connected to a DP at the given address.

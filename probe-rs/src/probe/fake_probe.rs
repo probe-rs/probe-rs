@@ -3,16 +3,14 @@ use crate::{
     architecture::arm::{
         ap::memory_ap::{mock::MockMemoryAp, MemoryAp},
         armv8m::Dhcsr,
-        communication_interface::{
-            ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
-        },
+        communication_interface::{FlushableArmAccess, SwdSequence},
         memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface},
         sequences::ArmDebugSequence,
         ArmError, ArmProbeInterface, DapAccess, DpAddress, FullyQualifiedApAddress, PortType,
         RawDapAccess, SwoAccess,
     },
     probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
-    Error, MemoryInterface, MemoryMappedRegister,
+    MemoryInterface, MemoryMappedRegister,
 };
 use object::{
     elf::{FileHeader32, FileHeader64, PT_LOAD},
@@ -548,9 +546,9 @@ impl DebugProbe for FakeProbe {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
-        Ok(Box::new(FakeArmInterface::new(self)))
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+        Ok(Box::new(FakeArmInterface::new(self, sequence)))
     }
 
     fn has_arm_interface(&self) -> bool {
@@ -600,23 +598,21 @@ impl RawDapAccess for FakeProbe {
 }
 
 #[derive(Debug)]
-struct FakeArmInterface<S: ArmDebugState> {
+struct FakeArmInterface {
     probe: Box<FakeProbe>,
-
-    state: S,
+    current_dp: Option<DpAddress>,
 }
 
-impl FakeArmInterface<Uninitialized> {
-    pub(crate) fn new(probe: Box<FakeProbe>) -> Self {
-        let state = Uninitialized {
-            use_overrun_detect: false,
-        };
-
-        Self { probe, state }
+impl FakeArmInterface {
+    pub(crate) fn new(probe: Box<FakeProbe>, _sequence: Arc<dyn ArmDebugSequence>) -> Self {
+        FakeArmInterface {
+            probe,
+            current_dp: None,
+        }
     }
 }
 
-impl<S: ArmDebugState> SwdSequence for FakeArmInterface<S> {
+impl SwdSequence for FakeArmInterface {
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
         self.probe.swj_sequence(bit_len, bits)?;
 
@@ -635,37 +631,13 @@ impl<S: ArmDebugState> SwdSequence for FakeArmInterface<S> {
     }
 }
 
-impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
-    fn initialize(
-        self: Box<Self>,
-        sequence: Arc<dyn ArmDebugSequence>,
-        dp: DpAddress,
-    ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, Error)> {
-        // TODO: Do we need this?
-        // sequence.debug_port_setup(&mut self.probe)?;
-
-        let interface = FakeArmInterface::<Initialized> {
-            probe: self.probe,
-            state: Initialized::new(sequence, dp, false),
-        };
-
-        Ok(Box::new(interface))
-    }
-
-    fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe)
-    }
-}
-
-impl crate::architecture::arm::communication_interface::FlushableArmAccess
-    for FakeArmInterface<Initialized>
-{
+impl FlushableArmAccess for FakeArmInterface {
     fn flush(&mut self) -> Result<(), ArmError> {
         todo!()
     }
 }
 
-impl ArmProbeInterface for FakeArmInterface<Initialized> {
+impl ArmProbeInterface for FakeArmInterface {
     fn memory_interface(
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
@@ -691,8 +663,13 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
         Probe::from_attached_probe(self.probe)
     }
 
-    fn current_debug_port(&self) -> DpAddress {
-        self.state.current_dp
+    fn current_debug_port(&self) -> Option<DpAddress> {
+        self.current_dp
+    }
+
+    fn select_debug_port(&mut self, dp: DpAddress) -> Result<(), ArmError> {
+        self.current_dp = Some(dp);
+        Ok(())
     }
 
     fn reinitialize(&mut self) -> Result<(), ArmError> {
@@ -700,7 +677,7 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
     }
 }
 
-impl SwoAccess for FakeArmInterface<Initialized> {
+impl SwoAccess for FakeArmInterface {
     fn enable_swo(
         &mut self,
         _config: &crate::architecture::arm::SwoConfig,
@@ -717,7 +694,7 @@ impl SwoAccess for FakeArmInterface<Initialized> {
     }
 }
 
-impl DapAccess for FakeArmInterface<Initialized> {
+impl DapAccess for FakeArmInterface {
     fn read_raw_dp_register(&mut self, _dp: DpAddress, _address: u8) -> Result<u32, ArmError> {
         todo!()
     }

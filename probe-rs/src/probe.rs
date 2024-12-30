@@ -14,11 +14,8 @@ pub mod stlink;
 pub mod wlink;
 
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::ArmError;
-use crate::architecture::arm::{
-    communication_interface::{DapProbe, UninitializedArmProbe},
-    PortType, SwoAccess,
-};
+use crate::architecture::arm::{communication_interface::DapProbe, PortType, SwoAccess};
+use crate::architecture::arm::{ArmError, ArmProbeInterface};
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
@@ -508,9 +505,9 @@ impl Probe {
         }
     }
 
-    /// Check if the probe has an interface to
-    /// debug ARM chips.
-    pub fn has_arm_interface(&self) -> bool {
+    /// Checks if the probe supports connecting to chips
+    /// using the Arm Debug Interface.
+    pub fn supports_arm_debug_interface(&self) -> bool {
         self.inner.has_arm_interface()
     }
 
@@ -520,12 +517,13 @@ impl Probe {
     /// If an error occurs while trying to connect, the probe is returned.
     pub fn try_into_arm_interface<'probe>(
         self,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Self, DebugProbeError)> {
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Self, ArmError)> {
         if !self.attached {
-            Err((self, DebugProbeError::NotAttached))
+            Err((self, DebugProbeError::NotAttached.into()))
         } else {
             self.inner
-                .try_get_arm_interface()
+                .try_get_arm_interface(sequence)
                 .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
         }
     }
@@ -602,7 +600,7 @@ pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sy
     fn list_probes(&self) -> Vec<DebugProbeInfo>;
 }
 
-/// An abstraction over general debug probe.
+/// An abstraction over a general debug probe.
 ///
 /// This trait has to be implemented by ever debug probe driver.
 pub trait DebugProbe: Send + fmt::Debug {
@@ -655,6 +653,9 @@ pub trait DebugProbe: Send + fmt::Debug {
     fn attach(&mut self) -> Result<(), DebugProbeError>;
 
     /// Selects the JTAG TAP to be used for communication.
+    ///
+    /// The index is the position of the TAP in the scan chain, which can
+    /// be configured using [`set_scan_chain()`](DebugProbe::set_scan_chain()).
     fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
         if index != 0 {
             return Err(DebugProbeError::NotImplemented {
@@ -698,13 +699,14 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// probe actually supports this, call [DebugProbe::has_arm_interface] first.
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
+        _sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Err((
             self.into_probe(),
             DebugProbeError::InterfaceNotAvailable {
                 interface_name: "ARM",
-            },
+            }
+            .into(),
         ))
     }
 

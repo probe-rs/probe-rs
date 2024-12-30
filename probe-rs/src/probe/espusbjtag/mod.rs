@@ -1,11 +1,13 @@
 //! ESP USB JTAG probe implementation.
 mod protocol;
 
+use std::sync::Arc;
+
 use crate::{
     architecture::{
         arm::{
-            communication_interface::{DapProbe, UninitializedArmProbe},
-            SwoAccess,
+            communication_interface::DapProbe, sequences::ArmDebugSequence, ArmError,
+            ArmProbeInterface, SwoAccess,
         },
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
         xtensa::communication_interface::{
@@ -195,14 +197,15 @@ impl DebugProbe for EspUsbJtag {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
+        _sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         // This probe cannot debug ARM targets.
         Err((
             self,
             DebugProbeError::InterfaceNotAvailable {
                 interface_name: "SWD/ARM",
-            },
+            }
+            .into(),
         ))
     }
 
