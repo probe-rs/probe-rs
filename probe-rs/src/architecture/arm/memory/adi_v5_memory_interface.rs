@@ -6,7 +6,7 @@ use crate::{
             memory_ap::{DataSize, MemoryAp, MemoryApType},
             ApAccess,
         },
-        communication_interface::{FlushableArmAccess, Initialized},
+        communication_interface::FlushableArmAccess,
         dp::DpAccess,
         memory::ArmMemoryInterface,
         ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress,
@@ -525,9 +525,9 @@ where
 
     fn get_arm_communication_interface(
         &mut self,
-    ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError> {
+    ) -> Result<&mut ArmCommunicationInterface, DebugProbeError> {
         (self.interface as &mut dyn Any)
-            .downcast_mut::<ArmCommunicationInterface<Initialized>>()
+            .downcast_mut::<ArmCommunicationInterface>()
             .ok_or(DebugProbeError::Other(
                 "Not an ArmCommunicationInterface".to_string(),
             ))
@@ -535,9 +535,9 @@ where
 
     fn try_as_parts(
         &mut self,
-    ) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut MemoryAp), DebugProbeError> {
+    ) -> Result<(&mut ArmCommunicationInterface, &mut MemoryAp), DebugProbeError> {
         (self.interface as &mut dyn Any)
-            .downcast_mut::<ArmCommunicationInterface<Initialized>>()
+            .downcast_mut::<ArmCommunicationInterface>()
             .ok_or(DebugProbeError::Other(
                 "Not an ArmCommunicationInterface".to_string(),
             ))

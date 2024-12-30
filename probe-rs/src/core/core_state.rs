@@ -33,8 +33,8 @@ impl CombinedCoreState {
         self.specific_state.core_type()
     }
 
-    pub fn interface_idx(&self) -> usize {
-        self.core_state.core_access_options.interface_idx()
+    pub fn jtag_tap_index(&self) -> usize {
+        self.core_state.core_access_options.jtag_tap_index()
     }
 
     pub(crate) fn attach_arm<'probe>(

@@ -5,10 +5,7 @@ pub mod romtable;
 
 use crate::{memory::MemoryInterface, probe::DebugProbeError, CoreStatus};
 
-use super::{
-    ap::memory_ap::MemoryAp, communication_interface::Initialized, ArmCommunicationInterface,
-    ArmError,
-};
+use super::{ap::memory_ap::MemoryAp, ArmCommunicationInterface, ArmError};
 pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType};
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
@@ -22,13 +19,13 @@ pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
     /// The underlying `ArmCommunicationInterface` if this is an `ArmCommunicationInterface`.
     fn get_arm_communication_interface(
         &mut self,
-    ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError>;
+    ) -> Result<&mut ArmCommunicationInterface, DebugProbeError>;
 
     /// The underlying `ArmCommunicationInterface` and memory AP if the probe interface is an
     /// `ArmCommunicationInterface`.
     fn try_as_parts(
         &mut self,
-    ) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut MemoryAp), DebugProbeError>;
+    ) -> Result<(&mut ArmCommunicationInterface, &mut MemoryAp), DebugProbeError>;
 
     /// Inform the probe of the [`CoreStatus`] of the chip/core attached to
     /// the probe.

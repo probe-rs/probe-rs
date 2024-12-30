@@ -996,7 +996,7 @@ mod test {
     use crate::{
         architecture::arm::{
             ap::memory_ap::MemoryAp, communication_interface::SwdSequence,
-            sequences::DefaultArmSequence,
+            sequences::DefaultArmSequence, ArmCommunicationInterface,
         },
         probe::DebugProbeError,
     };
@@ -1159,12 +1159,7 @@ mod test {
 
         fn get_arm_communication_interface(
             &mut self,
-        ) -> Result<
-            &mut crate::architecture::arm::ArmCommunicationInterface<
-                crate::architecture::arm::communication_interface::Initialized,
-            >,
-            DebugProbeError,
-        > {
+        ) -> Result<&mut ArmCommunicationInterface, DebugProbeError> {
             Err(DebugProbeError::NotImplemented {
                 function_name: "get_arm_communication_interface",
             })
@@ -1172,15 +1167,7 @@ mod test {
 
         fn try_as_parts(
             &mut self,
-        ) -> Result<
-            (
-                &mut crate::architecture::arm::ArmCommunicationInterface<
-                    crate::architecture::arm::communication_interface::Initialized,
-                >,
-                &mut MemoryAp,
-            ),
-            DebugProbeError,
-        > {
+        ) -> Result<(&mut ArmCommunicationInterface, &mut MemoryAp), DebugProbeError> {
             todo!()
         }
 

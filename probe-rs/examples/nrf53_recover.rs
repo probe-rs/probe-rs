@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::{DpAddress, FullyQualifiedApAddress},
+    architecture::arm::{sequences::DefaultArmSequence, DpAddress, FullyQualifiedApAddress},
     probe::list::Lister,
 };
 
@@ -19,10 +19,10 @@ fn main() -> Result<()> {
 
     probe.attach_to_unspecified()?;
     let mut iface = probe
-        .try_into_arm_interface()
-        .unwrap()
-        .initialize_unspecified(DpAddress::Default)
+        .try_into_arm_interface(DefaultArmSequence::create())
         .unwrap();
+
+    iface.select_debug_port(DpAddress::Default).unwrap();
 
     const APP_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress::v1_with_default_dp(0);
     const NET_MEM: FullyQualifiedApAddress = FullyQualifiedApAddress::v1_with_default_dp(1);
