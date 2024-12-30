@@ -1,6 +1,6 @@
-//! Sequences for NXP chips that use ARMv7-M cores.
+//! Sequences for NXP chips that use ARMv6-M cores.
 
-use crate::architecture::arm::armv6m::{Aircr, BpCompx, BpCtrl, Demcr, Dhcsr};
+use crate::architecture::arm::armv6m::{Aircr, Demcr, Dhcsr};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::ArmError;
@@ -17,28 +17,80 @@ impl LPC80x {
     pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self(()))
     }
-}
 
-fn force_core_halt(interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
-    tracing::trace!("force_core_halt enter");
-
-    let start = Instant::now();
-    let mut dhcsr = interface.read_word_32(Dhcsr::get_mmio_address()).unwrap() & 0x20000;
-    while start.elapsed() < Duration::from_millis(100) && dhcsr == 0 {
-        dhcsr = interface.read_word_32(Dhcsr::get_mmio_address()).unwrap() & 0x20000;
-    }
-    // if dhcsr & 0x20000 is still 0 we hit the timeout, try halting again.
-    if dhcsr == 0 {
-        interface.write_word_32(Dhcsr::get_mmio_address(), 0xA05F0003)?;
-        let start = Instant::now();
-        let mut dhcsr = interface.read_word_32(Dhcsr::get_mmio_address()).unwrap() & 0x20000;
-        while start.elapsed() < Duration::from_millis(1) && dhcsr == 0 {
-            dhcsr = interface.read_word_32(Dhcsr::get_mmio_address()).unwrap() & 0x20000;
+    // copy-paste of set_hw_breakpoint since we dont' have access to core :(
+    fn set_hw_breakpoint(
+        interface: &mut dyn ArmMemoryInterface,
+        bp_register_index: usize,
+        addr: u32,
+    ) -> Result<(), ArmError> {
+        use crate::architecture::arm::armv6m::BpCompx;
+        tracing::trace!(
+            "Setting breakpoint in lpc804 sequence on address 0x{:08x}",
+            addr
+        );
+        let mut value = BpCompx(0);
+        if addr % 4 < 2 {
+            // match lower halfword
+            value.set_bp_match(0b01);
+        } else {
+            // match higher halfword
+            value.set_bp_match(0b10);
         }
+        value.set_comp((addr >> 2) & 0x07FF_FFFF);
+        value.set_enable(true);
+
+        let register_addr =
+            BpCompx::get_mmio_address() + (bp_register_index * size_of::<u32>()) as u64;
+        interface.write_word_32(register_addr, value.into())?;
+
+        Ok(())
     }
 
-    tracing::trace!("force_core_halt exit");
-    Ok(())
+    // copy-paste of clear_hw_breakpoint since we dont' have access to core :(
+    fn clear_hw_breakpoint(
+        interface: &mut dyn ArmMemoryInterface,
+        bp_unit_index: usize,
+    ) -> Result<(), ArmError> {
+        use crate::architecture::arm::armv6m::BpCompx;
+        tracing::trace!("Clearing breakpoint in lpc804 sequence ");
+        let register_addr = BpCompx::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
+
+        let mut value = BpCompx::from(0);
+        value.set_enable(false);
+
+        interface.write_word_32(register_addr, value.into())?;
+
+        Ok(())
+    }
+
+    // custom core halt logic from cmsis-pack sequence
+    fn force_core_halt(interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+        tracing::trace!("force_core_halt enter");
+
+        let start = Instant::now();
+        let mut in_debug_state = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?).s_halt();
+        while start.elapsed() < Duration::from_millis(100) && !in_debug_state {
+            in_debug_state = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?).s_halt();
+        }
+        // if dhcsr & 0x20000 (s_halt) is still 0 and we hit the above timeout, try halting again.
+        if !in_debug_state {
+            let mut dhcsr = Dhcsr(0);
+            dhcsr.set_c_halt(true);
+            dhcsr.set_c_debugen(true);
+            dhcsr.enable_write();
+            interface.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+            let start = Instant::now();
+            while start.elapsed() < Duration::from_millis(100) {
+                if Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?).s_halt() {
+                    break;
+                };
+            }
+        }
+
+        tracing::trace!("force_core_halt exit");
+        Ok(())
+    }
 }
 
 impl ArmDebugSequence for LPC80x {
@@ -48,35 +100,21 @@ impl ArmDebugSequence for LPC80x {
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        const FPB_BKPT_H: u32 = 0x80000000;
-        const FPB_BKPT_L: u32 = 0x40000000;
-        const FPB_COMP_M: u32 = 0x1FFFFFFC;
-        const FPB_KEY: u32 = 0x00000002;
-        const FPB_ENABLE: u32 = 0x00000001;
         tracing::trace!("reset_catch_set enter");
 
         // Disable Reset Vector Catch in DEMCR
-        let demcr = interface.read_word_32(Demcr::get_mmio_address())?;
-        interface.write_word_32(Demcr::get_mmio_address(), demcr & !0x00000001)?;
+        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+        demcr.set_vc_corereset(false);
+        interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
 
         // Map Flash to Vectors
         interface.write_word_32(0x4004_8000, 0x0000_0002)?;
 
         // Read reset vector from Flash
         let reset_vector = interface.read_word_32(0x0000_0004)?;
-        tracing::info!("Reset Vector is address 0x{:08x}", reset_vector);
+        tracing::trace!("Reset Vector is address 0x{:08x}", reset_vector);
 
-        let bp_match = if (reset_vector & 0x02) != 0 {
-            FPB_BKPT_H
-        } else {
-            FPB_BKPT_L
-        };
-
-        // Set BP0 to Reset Vector
-        let bpcompx = bp_match | (reset_vector & FPB_COMP_M) | FPB_ENABLE;
-        interface.write_word_32(BpCompx::get_mmio_address(), bpcompx)?;
-        // Enable FPB
-        interface.write_word_32(BpCtrl::get_mmio_address(), FPB_KEY | FPB_ENABLE)?;
+        LPC80x::set_hw_breakpoint(interface, 0, reset_vector)?;
 
         // Clear the status bits by reading from DHCSR
         let _ = interface.read_word_32(Dhcsr::get_mmio_address())?;
@@ -94,40 +132,43 @@ impl ArmDebugSequence for LPC80x {
         tracing::trace!("reset_catch_clear enter");
 
         // Disable Reset Vector Catch in DEMCR
-        let d = interface.read_word_32(Demcr::get_mmio_address())? & !0x00000001;
-        interface.write_word_32(Demcr::get_mmio_address(), d)?;
-        // Clear BP0
-        interface.write_word_32(0xE000_2008, 0x0)?;
-        // Disable FPB
-        interface.write_word_32(0xE000_2000, 0x2)?;
+        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+        demcr.set_vc_corereset(false);
+        interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
 
-        tracing::debug!("reset_catch_clear exit");
+        LPC80x::clear_hw_breakpoint(interface, 0)?;
+
+        tracing::trace!("reset_catch_clear exit");
         Ok(())
     }
 
-    /// ResetSystem for Cortex-M devices
     fn reset_system(
         &self,
         interface: &mut dyn ArmMemoryInterface,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        tracing::debug!("reset_system enter");
+        tracing::trace!("reset_system enter");
 
         // Execute VECTRESET via AIRCR, ignore errors.
-        let _ = interface.write_32(Aircr::get_mmio_address(), &[0x05FA0004]);
+        let mut aircr = Aircr(0);
+        aircr.vectkey();
+        aircr.set_sysresetreq(true);
+        let _ = interface.write_32(Aircr::get_mmio_address(), &[aircr.0]);
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_millis(100) {
+            // ignore read errors while resetting
             if let Ok(dhcr) = interface.read_word_32(Dhcsr::get_mmio_address()) {
-                if dhcr & 0x20000 != 0 {
+                if Dhcsr(dhcr).s_halt() {
+                    // break from loop if we're in debug state
                     break;
                 }
             }
         }
 
-        let _ = force_core_halt(interface);
-        tracing::debug!("reset_system exit");
-        return Ok(());
+        let _ = LPC80x::force_core_halt(interface);
+        tracing::trace!("reset_system exit");
+        Ok(())
     }
 }
