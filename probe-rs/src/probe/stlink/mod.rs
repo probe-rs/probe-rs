@@ -1297,6 +1297,12 @@ impl StlinkArmDebug {
         }
 
         if !self.connected_to_dp {
+            // We don't need to explicitly select a DP when using the ST-Link,
+            // so we only detect the connected APs here.
+            //
+            // It's however important that we set this flag here, so we don't end up recursively calling this function.
+            self.connected_to_dp = true;
+
             // Determine the number and type of available APs.
             self.access_ports = valid_access_ports(self, DpAddress::Default)
                 .into_iter()
@@ -1305,8 +1311,6 @@ impl StlinkArmDebug {
             self.access_ports.iter().for_each(|addr| {
                 tracing::debug!("AP {:#x?}", addr);
             });
-
-            self.connected_to_dp = true;
         }
 
         Ok(())

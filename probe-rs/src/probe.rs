@@ -519,6 +519,7 @@ impl Probe {
         self,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Self, ArmError)> {
+        tracing::trace!("Trying to get interface for access to thr Arm Debug Interface");
         if !self.attached {
             Err((self, DebugProbeError::NotAttached.into()))
         } else {
