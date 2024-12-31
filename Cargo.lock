@@ -2557,6 +2557,7 @@ dependencies = [
  "signal-hook",
  "svd-parser",
  "termtree",
+ "test-case",
  "textwrap",
  "thiserror 1.0.69",
  "time",

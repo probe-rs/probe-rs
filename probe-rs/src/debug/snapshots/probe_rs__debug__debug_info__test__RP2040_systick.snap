@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1987
+assertion_line: 1998
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -10,6 +10,7 @@ snapshot_kind: text
     line: 371
     column:
       Column: 9
+    address: 268436678
   registers:
     - core_register:
         id: 0
@@ -221,6 +222,7 @@ snapshot_kind: text
     line: 101
     column:
       Column: 5
+    address: 268436678
   registers:
     - core_register:
         id: 0
@@ -432,6 +434,7 @@ snapshot_kind: text
     line: 97
     column:
       Column: 13
+    address: 268436672
   registers:
     - core_register:
         id: 0
@@ -834,6 +837,7 @@ snapshot_kind: text
     line: 62
     column:
       Column: 5
+    address: 268437366
   registers:
     - core_register:
         id: 0
@@ -1044,6 +1048,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
             line: 56
             column: ~
+            address: ~
         - name:
             Named: real_cyc
           type_name:
@@ -1053,6 +1058,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
             line: 61
             column: ~
+            address: ~
   canonical_frame_address: 536886944
 - function_name: delay
   source_location:
@@ -1060,6 +1066,7 @@ snapshot_kind: text
     line: 29
     column:
       Column: 5
+    address: 268437342
   registers:
     - core_register:
         id: 0
@@ -1270,6 +1277,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/asm.rs
             line: 28
             column: ~
+            address: ~
   canonical_frame_address: 536886944
 - function_name: enable_systick
   source_location:
@@ -1277,6 +1285,7 @@ snapshot_kind: text
     line: 93
     column:
       Column: 9
+    address: 268436308
   registers:
     - core_register:
         id: 0
@@ -1482,6 +1491,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 83
             column: ~
+            address: ~
           children:
             - name:
                 Named: CBP
@@ -1567,6 +1577,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 83
             column: ~
+            address: ~
           children:
             - name:
                 Named: CBP
@@ -1652,6 +1663,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 84
             column: ~
+            address: ~
   canonical_frame_address: 536886968
 - function_name: __cortex_m_rt_main
   source_location:
@@ -1659,6 +1671,7 @@ snapshot_kind: text
     line: 55
     column:
       Column: 54
+    address: 268436470
   registers:
     - core_register:
         id: 0
@@ -1865,6 +1878,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 24
             column: ~
+            address: ~
           children:
             - name:
                 Named: CBP
@@ -1950,6 +1964,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 26
             column: ~
+            address: ~
         - name:
             Named: pac
           type_name:
@@ -1959,6 +1974,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 27
             column: ~
+            address: ~
           children:
             - name:
                 Named: ADC
@@ -2149,6 +2165,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 28
             column: ~
+            address: ~
           children:
             - name:
                 Named: watchdog
@@ -2169,6 +2186,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 30
             column: ~
+            address: ~
           children:
             - name:
                 Named: clocks
@@ -2461,6 +2479,7 @@ snapshot_kind: text
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 22
     column: LeftEdge
+    address: 268436332
   registers:
     - core_register:
         id: 0

@@ -77,21 +77,21 @@ where
         Ok(word)
     }
 
-    /// Read a block of 64bit words at `address`.
+    /// Read a block of 64bit words at `address` in the target's endianness.
     ///
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 8.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ERR>;
 
-    /// Read a block of 32bit words at `address`.
+    /// Read a block of 32bit words at `address` in the target's endianness.
     ///
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 4.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ERR>;
 
-    /// Read a block of 16bit words at `address`.
+    /// Read a block of 16bit words at `address` in the target's endianness.
     ///
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 2.
@@ -196,21 +196,21 @@ where
         self.write_8(address, std::slice::from_ref(&data))
     }
 
-    /// Write a block of 64bit words at `address`.
+    /// Write a block of 64bit words at `address` in the target's endianness.
     ///
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 8.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ERR>;
 
-    /// Write a block of 32bit words at `address`.
+    /// Write a block of 32bit words at `address` in the target's endianness.
     ///
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 4.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ERR>;
 
-    /// Write a block of 16bit words at `address`.
+    /// Write a block of 16bit words at `address` in the target's endianness.
     ///
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 2.

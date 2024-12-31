@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1987
+assertion_line: 1998
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -10,6 +10,7 @@ snapshot_kind: text
     line: 371
     column:
       Column: 9
+    address: 24810
   registers:
     - core_register:
         id: 0
@@ -221,6 +222,7 @@ snapshot_kind: text
     line: 93
     column:
       Column: 9
+    address: 24810
   registers:
     - core_register:
         id: 0
@@ -635,6 +637,7 @@ snapshot_kind: text
     line: 1678
     column:
       Column: 9
+    address: 1688
   registers:
     - core_register:
         id: 0
@@ -849,6 +852,7 @@ snapshot_kind: text
             path: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr/mod.rs
             line: 1667
             column: ~
+            address: ~
           children:
             - name:
                 Named: "*src"
@@ -862,6 +866,7 @@ snapshot_kind: text
     line: 51
     column:
       Column: 2
+    address: 360
   registers:
     - core_register:
         id: 0
@@ -1065,6 +1070,7 @@ snapshot_kind: text
     line: 38
     column:
       Column: 54
+    address: 448
   registers:
     - core_register:
         id: 0
@@ -1271,6 +1277,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 21
             column: ~
+            address: ~
           children:
             - name:
                 Named: FICR
@@ -1626,6 +1633,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 22
             column: ~
+            address: ~
           children:
             - name:
                 Named: CBP
@@ -1711,6 +1719,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 23
             column: ~
+            address: ~
           children:
             - name:
                 Named: hfclk
@@ -1738,6 +1747,7 @@ snapshot_kind: text
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 19
     column: LeftEdge
+    address: 370
   registers:
     - core_register:
         id: 0
