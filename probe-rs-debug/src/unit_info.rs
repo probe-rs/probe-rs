@@ -4,14 +4,12 @@ use super::{
     debug_info::*, extract_byte_size, extract_file, extract_line, function_die::FunctionDie,
     variable::*, DebugError, DebugRegisters, EndianReader, SourceLocation, VariableCache,
 };
-use crate::{
-    debug::{language, stack_frame::StackFrameInfo},
-    MemoryInterface,
-};
+use crate::{language, stack_frame::StackFrameInfo};
 use gimli::{
     AttributeValue, DebugInfoOffset, DebuggingInformationEntry, EvaluationResult, Location,
     UnitOffset,
 };
+use probe_rs::MemoryInterface;
 
 /// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
 #[derive(Debug)]

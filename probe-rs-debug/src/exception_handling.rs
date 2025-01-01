@@ -5,7 +5,8 @@ use std::ops::ControlFlow;
 
 use probe_rs_target::CoreType;
 
-use crate::{debug::unwind_pc_without_debuginfo, MemoryInterface};
+use crate::unwind_pc_without_debuginfo;
+use probe_rs::MemoryInterface;
 
 use super::{DebugError, DebugInfo, DebugRegisters, StackFrame};
 
@@ -53,15 +54,15 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
     fn calling_frame_registers(
         &self,
         _memory: &mut dyn MemoryInterface,
-        _stackframe_registers: &crate::debug::DebugRegisters,
+        _stackframe_registers: &crate::DebugRegisters,
         _raw_exception: u32,
-    ) -> Result<crate::debug::DebugRegisters, DebugError> {
+    ) -> Result<crate::DebugRegisters, DebugError> {
         Err(DebugError::NotImplemented("calling frame registers"))
     }
 
     fn raw_exception(
         &self,
-        _stackframe_registers: &crate::debug::DebugRegisters,
+        _stackframe_registers: &crate::DebugRegisters,
     ) -> Result<u32, DebugError> {
         Err(DebugError::NotImplemented("raw exception"))
     }
@@ -108,14 +109,14 @@ pub trait ExceptionInterface {
     fn calling_frame_registers(
         &self,
         memory: &mut dyn MemoryInterface,
-        stackframe_registers: &crate::debug::DebugRegisters,
+        stackframe_registers: &crate::DebugRegisters,
         raw_exception: u32,
-    ) -> Result<crate::debug::DebugRegisters, DebugError>;
+    ) -> Result<crate::DebugRegisters, DebugError>;
 
     /// Retrieve the architecture specific exception number.
     fn raw_exception(
         &self,
-        stackframe_registers: &crate::debug::DebugRegisters,
+        stackframe_registers: &crate::DebugRegisters,
     ) -> Result<u32, DebugError>;
 
     /// Convert the architecture specific exception number into a human readable description.
@@ -134,7 +135,7 @@ pub trait ExceptionInterface {
         unwind_registers: &mut DebugRegisters,
         frame_pc: u64,
         stack_frames: &[StackFrame],
-        instruction_set: Option<crate::InstructionSet>,
+        instruction_set: Option<probe_rs::InstructionSet>,
         memory: &mut dyn MemoryInterface,
     ) -> ControlFlow<Option<DebugError>> {
         unwind_pc_without_debuginfo(

@@ -1,5 +1,5 @@
 use super::{debug_info::DebugInfo, DebugError, VerifiedBreakpoint};
-use crate::{
+use probe_rs::{
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
@@ -347,9 +347,9 @@ fn run_to_address(
                 core.clear_hw_breakpoint(0)?;
                 if matches!(
                     error,
-                    crate::Error::Arm(ArmError::Timeout)
-                        | crate::Error::Riscv(RiscvError::Timeout)
-                        | crate::Error::Xtensa(XtensaError::Timeout)
+                    probe_rs::Error::Arm(ArmError::Timeout)
+                        | probe_rs::Error::Riscv(RiscvError::Timeout)
+                        | probe_rs::Error::Xtensa(XtensaError::Timeout)
                 ) {
                     // This is not a quick step and halt operation. Notify the user that we are not going to wait any longer, and then return the current program counter so that the debugger can show the user where the forced halt happened.
                     tracing::error!(

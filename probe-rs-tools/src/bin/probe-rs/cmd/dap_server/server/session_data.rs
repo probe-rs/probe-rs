@@ -13,12 +13,9 @@ use crate::{
     util::common_options::OperationError,
 };
 use anyhow::{anyhow, Result};
-use probe_rs::{
-    config::TargetSelector,
-    debug::{debug_info::DebugInfo, DebugRegisters, SourceLocation},
-    exception_handler_for_core,
-    probe::list::Lister,
-    CoreStatus, Session,
+use probe_rs::{config::TargetSelector, probe::list::Lister, CoreStatus, Session};
+use probe_rs_debug::{
+    debug_info::DebugInfo, exception_handler_for_core, DebugRegisters, SourceLocation,
 };
 use std::env::set_current_dir;
 use time::UtcOffset;

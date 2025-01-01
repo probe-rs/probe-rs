@@ -1,7 +1,5 @@
-use crate::{
-    debug::{DebugError, DebugInfo, DebugRegisters},
-    Error, MemoryInterface,
-};
+use crate::{DebugError, DebugInfo, DebugRegisters};
+use probe_rs::{Error, MemoryInterface};
 
 use super::{armv6m_armv7m_shared, ExceptionInfo, ExceptionInterface};
 
@@ -101,16 +99,16 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
     fn calling_frame_registers(
         &self,
         memory_interface: &mut dyn MemoryInterface,
-        stackframe_registers: &crate::debug::DebugRegisters,
+        stackframe_registers: &crate::DebugRegisters,
         raw_exception: u32,
-    ) -> Result<crate::debug::DebugRegisters, DebugError> {
+    ) -> Result<crate::DebugRegisters, DebugError> {
         let mut updated_registers = stackframe_registers.clone();
 
         // Identify the correct location for the exception context. This is different between Armv6-M and Armv7-M.
         let exception_reason = ExceptionReason::from(raw_exception);
         if exception_reason.is_precise_fault(memory_interface)? {
-            let exception_context_address =
-                updated_registers.get_register_mut_by_role(&crate::RegisterRole::StackPointer)?;
+            let exception_context_address = updated_registers
+                .get_register_mut_by_role(&probe_rs::RegisterRole::StackPointer)?;
             if let Some(sp_value) = exception_context_address.value.as_mut() {
                 sp_value.increment_address(0x8)?;
             }
@@ -127,7 +125,7 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
 
     fn raw_exception(
         &self,
-        stackframe_registers: &crate::debug::DebugRegisters,
+        stackframe_registers: &crate::DebugRegisters,
     ) -> Result<u32, DebugError> {
         let value = armv6m_armv7m_shared::raw_exception(stackframe_registers)?;
         Ok(value)
@@ -151,13 +149,14 @@ mod test {
     use pretty_assertions::assert_eq;
 
     use super::ArmV6MExceptionHandler;
-    use crate::{
+    use probe_rs::{
         architecture::arm::core::registers::cortex_m::{RA, XPSR},
-        debug::exception_handling::ExceptionInterface,
-        debug::{DebugRegister, DebugRegisters},
         test::MockMemory,
         RegisterValue,
     };
+
+    use crate::exception_handling::ExceptionInterface;
+    use crate::{DebugRegister, DebugRegisters};
 
     #[test]
     fn exception_handler_reset_exception() {

@@ -2,18 +2,23 @@
 
 use crate::MemoryInterface;
 
-#[derive(Debug)]
-pub(crate) struct MockMemory {
+/// A mock memory implementation that can be used for testing
+///
+/// It implements the `MemoryInterface` trait and allows to add ranges of bytes that can be read back.
+#[derive(Debug, Default)]
+pub struct MockMemory {
     /// Sorted list of ranges
     values: Vec<(u64, Vec<u8>)>,
 }
 
 impl MockMemory {
-    pub(crate) fn new() -> Self {
+    /// Create a new empty mock memory
+    pub fn new() -> Self {
         MockMemory { values: Vec::new() }
     }
 
-    pub(crate) fn add_range(&mut self, address: u64, data: Vec<u8>) {
+    /// Add a range of bytes at the given address
+    pub fn add_range(&mut self, address: u64, data: Vec<u8>) {
         assert!(!data.is_empty());
 
         match self
@@ -58,7 +63,8 @@ impl MockMemory {
         }
     }
 
-    pub(crate) fn add_word_range(&mut self, address: u64, data: &[u32]) {
+    /// Add a range of words at the given address
+    pub fn add_word_range(&mut self, address: u64, data: &[u32]) {
         let mut bytes = Vec::with_capacity(data.len() * 4);
 
         for word in data {

@@ -26,12 +26,16 @@ pub mod variable_cache;
 
 pub(crate) mod exception_handling;
 
+#[cfg(test)]
+mod test;
+
 pub use self::{
-    debug_info::*, debug_step::SteppingMode, registers::*, source_instructions::SourceLocation,
-    source_instructions::VerifiedBreakpoint, stack_frame::StackFrame, variable::*,
-    variable_cache::VariableCache,
+    debug_info::*, debug_step::SteppingMode, exception_handling::exception_handler_for_core,
+    registers::*, source_instructions::SourceLocation, source_instructions::VerifiedBreakpoint,
+    stack_frame::StackFrame, variable::*, variable_cache::VariableCache,
 };
-use crate::{core::Core, MemoryInterface};
+
+use probe_rs::{Core, MemoryInterface};
 
 use gimli::AttributeValue;
 use gimli::DebuggingInformationEntry;
@@ -68,7 +72,7 @@ pub enum DebugError {
     NonUtf8(#[from] Utf8Error),
     /// A probe-rs error occurred.
     #[error("Error using the probe")]
-    Probe(#[from] crate::Error),
+    Probe(#[from] probe_rs::Error),
     /// A char could not be created from the given string.
     #[error(transparent)]
     CharConversion(#[from] std::char::CharTryFromError),

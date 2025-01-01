@@ -1,12 +1,11 @@
 use std::str::FromStr;
 
 use crate::{
-    debug::{
-        language::parsing::ParseToBytes, DebugError, Variable, VariableCache, VariableName,
-        VariableValue,
-    },
-    MemoryInterface,
+    language::parsing::ParseToBytes, DebugError, Variable, VariableCache, VariableName,
+    VariableValue,
 };
+
+use probe_rs::MemoryInterface;
 
 /// Traits and Impl's to read from, and write to, memory value based on Variable::typ and Variable::location.
 pub trait Value {

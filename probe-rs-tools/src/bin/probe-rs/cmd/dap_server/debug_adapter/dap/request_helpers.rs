@@ -9,10 +9,8 @@ use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
 };
-use probe_rs::{
-    debug::{ColumnType, ObjectRef, SourceLocation},
-    CoreType, InstructionSet, MemoryInterface,
-};
+use probe_rs::{CoreType, InstructionSet, MemoryInterface};
+use probe_rs_debug::{ColumnType, ObjectRef, SourceLocation};
 use std::{fmt::Write, sync::LazyLock, time::Duration};
 use typed_path::TypedPathBuf;
 
@@ -422,8 +420,8 @@ pub(crate) fn halt_core(
 /// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
 /// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
 pub(crate) fn get_variable_reference(
-    parent_variable: &probe_rs::debug::Variable,
-    cache: &probe_rs::debug::VariableCache,
+    parent_variable: &probe_rs_debug::Variable,
+    cache: &probe_rs_debug::VariableCache,
 ) -> (ObjectRef, i64, i64) {
     if !parent_variable.is_valid() {
         return (ObjectRef::Invalid, 0, 0);

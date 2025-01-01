@@ -1,8 +1,7 @@
 use std::ops::Range;
 
-use crate::{
-    core::{RegisterDataType, RegisterId, RegisterRole, RegisterValue},
-    CoreInterface, CoreRegister, Error,
+use probe_rs::{
+    CoreInterface, CoreRegister, Error, RegisterDataType, RegisterId, RegisterRole, RegisterValue,
 };
 use serde::Serialize;
 

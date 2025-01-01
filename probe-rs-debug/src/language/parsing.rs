@@ -1,4 +1,4 @@
-use crate::debug::DebugError;
+use crate::DebugError;
 
 /// Extension methods to simply parse a value into a number of bytes.
 pub trait ParseToBytes {

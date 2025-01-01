@@ -14,14 +14,13 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
-use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::flashing::{BootInfo, FileDownloadError, FormatKind};
 use probe_rs::{
-    exception_handler_for_core,
     probe::list::Lister,
     rtt::{Error as RttError, ScanRegion},
     Core, CoreInterface, Error, HaltReason, Session, VectorCatchCondition,
 };
+use probe_rs_debug::{exception_handler_for_core, DebugInfo, DebugRegisters};
 use signal_hook::consts::signal;
 use time::UtcOffset;
 
@@ -487,8 +486,8 @@ fn print_stacktrace<S: Write + ?Sized>(
 
             if let Some(col) = location.column {
                 let col = match col {
-                    probe_rs::debug::ColumnType::LeftEdge => 1,
-                    probe_rs::debug::ColumnType::Column(c) => c,
+                    probe_rs_debug::ColumnType::LeftEdge => 1,
+                    probe_rs_debug::ColumnType::Column(c) => c,
                 };
                 write!(output_stream, ":{col}")?;
             }

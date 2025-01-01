@@ -17,13 +17,10 @@ use crate::cmd::dap_server::{
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, DataFormat};
 use anyhow::{anyhow, Result};
-use probe_rs::debug::VerifiedBreakpoint;
-use probe_rs::{
-    debug::{
-        debug_info::DebugInfo, stack_frame::StackFrameInfo, ColumnType, ObjectRef, VariableCache,
-    },
-    rtt::ScanRegion,
-    Core, CoreStatus, HaltReason,
+use probe_rs::{rtt::ScanRegion, Core, CoreStatus, HaltReason};
+use probe_rs_debug::VerifiedBreakpoint;
+use probe_rs_debug::{
+    debug_info::DebugInfo, stack_frame::StackFrameInfo, ColumnType, ObjectRef, VariableCache,
 };
 use time::UtcOffset;
 use typed_path::TypedPath;
@@ -44,7 +41,7 @@ pub struct CoreData {
     pub debug_info: DebugInfo,
     pub static_variables: Option<VariableCache>,
     pub core_peripherals: Option<SvdCache>,
-    pub stack_frames: Vec<probe_rs::debug::stack_frame::StackFrame>,
+    pub stack_frames: Vec<probe_rs_debug::stack_frame::StackFrame>,
     pub breakpoints: Vec<session_data::ActiveBreakpoint>,
     pub rtt_connection: Option<debug_rtt::RttConnection>,
     pub rtt_client: Option<RttClient>,
@@ -167,7 +164,7 @@ impl<'p> CoreHandle<'p> {
     pub(crate) fn get_stackframe(
         &'p self,
         id: ObjectRef,
-    ) -> Option<&'p probe_rs::debug::stack_frame::StackFrame> {
+    ) -> Option<&'p probe_rs_debug::stack_frame::StackFrame> {
         self.core_data
             .stack_frames
             .iter()
