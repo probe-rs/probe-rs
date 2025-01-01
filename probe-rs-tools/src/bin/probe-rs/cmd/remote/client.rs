@@ -73,17 +73,12 @@ impl ClientConnection {
         let msg = serde_json::to_string(&msg).context("Failed to serialize client message")?;
         self.websocket.send(Message::Text(msg.into())).await?;
 
-        while let Some(Ok(msg)) = self.websocket.next().await {
+        if let Some(Ok(Message::Text(msg))) = self.websocket.next().await {
+            let msg = serde_json::from_str::<ServerMessage>(&msg)
+                .context("Failed to parse server message")?;
             match msg {
-                Message::Text(msg) => {
-                    let msg = serde_json::from_str::<ServerMessage>(&msg)
-                        .context("Failed to parse server message")?;
-                    match msg {
-                        ServerMessage::TempFileOpened(path) => return Ok(path),
-                        msg => panic!("Command unexpectedly returned {msg:?}"),
-                    }
-                }
-                _ => break,
+                ServerMessage::TempFileOpened(path) => return Ok(path),
+                msg => panic!("Command unexpectedly returned {msg:?}"),
             }
         }
 

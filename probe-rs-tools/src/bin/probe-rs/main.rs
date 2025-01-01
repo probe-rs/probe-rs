@@ -21,8 +21,8 @@ use report::Report;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
+use crate::cmd::remote::client::ClientConnection;
 use crate::cmd::run::SharedOptions;
-use crate::cmd::server::client::ClientConnection;
 use crate::util::common_options::ProbeOptions;
 use crate::util::logging::setup_logging;
 use crate::util::parse_u32;
@@ -240,7 +240,7 @@ enum Subcommand {
     /// Profile on-target runtime performance of target ELF program
     Profile(cmd::profile::ProfileCmd),
     /// Start a server that accepts remote connections
-    Serve(cmd::server::server::Cmd),
+    Serve(cmd::remote::server::Cmd),
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
     Complete(cmd::complete::Cmd),
@@ -566,7 +566,7 @@ async fn main() -> Result<()> {
     let mut elf = None;
     let report_path = matches.report.clone();
     let result = if let Some(host) = matches.host.as_deref() {
-        let mut handle = cmd::server::client::connect(host, matches.token.clone()).await?;
+        let mut handle = cmd::remote::client::connect(host, matches.token.clone()).await?;
 
         // Run the command remotely.
         matches.run_on_server(&mut handle).await
