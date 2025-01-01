@@ -17,7 +17,6 @@ use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, FormatKind, IdfOptions};
 use probe_rs::probe::DebugProbeSelector;
 use probe_rs::{probe::list::Lister, Target};
-use probe_rs_mi::ipc::IpcData;
 use report::Report;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
@@ -43,6 +42,13 @@ struct ParameterSet {
     pub chip: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ServerUser {
+    pub name: String,
+    pub token: String,
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Config {
@@ -51,6 +57,8 @@ pub(crate) struct Config {
 
     /// A list of named parameter sets.
     pub parameter_sets: Vec<ParameterSet>,
+
+    pub server_users: Vec<ServerUser>,
 }
 
 #[derive(clap::Parser, Serialize, Deserialize)]
@@ -473,8 +481,6 @@ async fn main() -> Result<()> {
     // Parse the commandline options.
     let mut matches = Cli::parse_from(args);
 
-    configure_localhost_if_server_is_running(&mut matches)?;
-
     // Substitute options from the global config, before we set up logging
     preprocess_cli_early(&mut matches, &config)?;
 
@@ -607,56 +613,6 @@ fn load_config() -> anyhow::Result<Config> {
     let config = figment.extract::<Config>()?;
 
     Ok(config)
-}
-
-fn configure_localhost_if_server_is_running(matches: &mut Cli) -> anyhow::Result<()> {
-    if matches!(matches.subcommand, Subcommand::Mi(_)) {
-        return Ok(());
-    }
-
-    use interprocess::local_socket::{prelude::*, GenericNamespaced, Stream};
-    use std::io::{prelude::*, BufReader};
-
-    let socket = "probe-rs.sock";
-    let name = socket.to_ns_name::<GenericNamespaced>()?;
-
-    let conn = match Stream::connect(name) {
-        Ok(conn) => conn,
-        Err(_) => return Ok(()), // Ignore error, assume server isn't running
-    };
-
-    // Wrap it into a buffered reader right away so that we could receive a single line out of it.
-    let mut conn = BufReader::new(conn);
-
-    let mut buffer = String::with_capacity(128);
-    // We now employ the buffer we allocated prior and receive a single line, interpreting a
-    // newline character as an end-of-file (because local sockets cannot be portably shut down),
-    // verifying validity of UTF-8 on the fly.
-    conn.read_to_string(&mut buffer)?;
-
-    let Ok(ipc_data) = serde_json::from_str::<IpcData>(&buffer) else {
-        tracing::warn!("Failed to parse IPC data: {}", buffer);
-        return Ok(());
-    };
-
-    if ipc_data.version != env!("PROBE_RS_VERSION").parse()? {
-        tracing::warn!(
-            "Version mismatch: local server is {}, but we are {}",
-            ipc_data.version,
-            env!("PROBE_RS_VERSION")
-        );
-        return Ok(());
-    }
-
-    tracing::info!("Detected running server on port {}", ipc_data.local_port);
-    if matches.host.is_none() {
-        matches.host = Some(format!("ws://localhost:{}", ipc_data.local_port));
-    }
-    if matches.token.is_none() {
-        matches.token = Some(ipc_data.local_token);
-    }
-
-    Ok(())
 }
 
 fn preprocess_cli_early(_matches: &mut Cli, _config: &Config) -> Result<()> {

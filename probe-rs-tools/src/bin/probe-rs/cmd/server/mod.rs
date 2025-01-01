@@ -13,22 +13,11 @@ use axum_extra::{
     headers::{self, authorization},
     TypedHeader,
 };
-use futures_util::{
-    future::{join3, select, Either},
-    SinkExt, StreamExt as _,
-};
-use interprocess::local_socket::{
-    traits::tokio::Listener, GenericNamespaced, ListenerOptions, ToNsName as _,
-};
+use futures_util::{future::join3, SinkExt, StreamExt as _};
 use probe_rs::probe::{list::Lister, DebugProbeSelector};
-use probe_rs_mi::ipc::IpcData;
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
-use tokio::{
-    io::{AsyncBufReadExt as _, AsyncWriteExt},
-    net::TcpStream,
-    sync::Mutex,
-};
+use tokio::{io::AsyncBufReadExt as _, net::TcpStream, sync::Mutex};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{ClientRequestBuilder, Message},
@@ -38,10 +27,9 @@ use tokio_tungstenite::{
 use std::{
     collections::HashMap,
     fmt::Write,
-    future::{Future, IntoFuture},
-    io::{self, Write as _},
+    future::Future,
+    io::Write as _,
     path::{Path, PathBuf},
-    pin::pin,
     process::Stdio,
     str::FromStr,
     sync::Arc,
@@ -66,16 +54,14 @@ enum ServerMessage {
 }
 
 struct ServerState {
-    _config: Config,
-    local_token: String,
+    config: Config,
     open_devices: Mutex<HashMap<DebugProbeSelector, Vec<Waker>>>,
 }
 
 impl ServerState {
     fn new(config: Config) -> Self {
         Self {
-            _config: config,
-            local_token: "local:myLittleP0wny".to_string(),
+            config,
             open_devices: Mutex::new(HashMap::new()),
         }
     }
@@ -173,58 +159,9 @@ impl Cmd {
 
         tracing::info!("listening on {}", listener.local_addr().unwrap());
 
-        // Localhost is special-cased as IPC can provide the token.
-        let ipc_server = ipc_server(state.local_token.clone());
-        let probe_rs_server = axum::serve(listener, app);
+        axum::serve(listener, app).await?;
 
-        match select(pin!(ipc_server), probe_rs_server.into_future()).await {
-            Either::Left((result, _)) => result,
-            Either::Right((result, _)) => Ok(result?),
-        }
-    }
-}
-
-async fn ipc_server(local_token: String) -> anyhow::Result<()> {
-    let socket = "probe-rs.sock";
-    let name = socket.to_ns_name::<GenericNamespaced>()?;
-
-    let opts = ListenerOptions::new().name(name);
-    let listener = match opts.create_tokio() {
-        Err(e) if e.kind() == io::ErrorKind::AddrInUse => {
-            eprintln!(
-                "
-Error: could not start server because the socket file is occupied. Please check if {socket}
-is in use by another process and try again."
-            );
-            return Err(e.into());
-        }
-        x => x?,
-    };
-
-    tracing::info!("Server running at {socket}");
-
-    let message = IpcData {
-        version: env!("PROBE_RS_VERSION")
-            .parse()
-            .context("failed to parse the built in version info")?,
-        local_port: 3000,
-        local_token,
-    };
-    let message = serde_json::to_string(&message).context("failed to serialize the IPC message")?;
-
-    // Set up our loop boilerplate that processes our incoming connections.
-    loop {
-        // Sort out situations when establishing an incoming connection caused an error.
-        let mut conn = match listener.accept().await {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("There was an error with an incoming connection: {e}");
-                continue;
-            }
-        };
-
-        let message = message.clone();
-        tokio::spawn(async move { conn.write_all(message.as_bytes()).await });
+        Ok(())
     }
 }
 
@@ -422,9 +359,12 @@ async fn ws_handler(
     TypedHeader(auth): TypedHeader<headers::Authorization<authorization::Bearer>>,
 ) -> impl IntoResponse {
     let token = auth.0.token();
-    if token != state.local_token {
+    let Some(user) = state.config.server_users.iter().find(|u| token == u.token) else {
+        tracing::info!("Unknown token: {}", token);
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
-    }
+    };
+
+    tracing::info!("User {} connected", user.name);
 
     // finalize the upgrade process by returning upgrade callback.
     // we can customize the callback by sending additional info such as address.
