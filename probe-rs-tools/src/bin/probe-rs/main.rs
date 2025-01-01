@@ -131,7 +131,22 @@ impl Cli {
         Ok(())
     }
 
+    async fn upload_probe_specific_files(
+        handle: &mut ClientConnection,
+        probe_options: &mut ProbeOptions,
+    ) -> anyhow::Result<()> {
+        if let Some(ref mut path) = probe_options.chip_description_path {
+            *path = handle.upload_file(&path).await?;
+        }
+
+        Ok(())
+    }
+
     async fn run_on_server(mut self, handle: &mut ClientConnection) -> anyhow::Result<()> {
+        if let Some(probe_options) = self.subcommand.probe_options_mut() {
+            Self::upload_probe_specific_files(handle, probe_options).await?;
+        }
+
         match self.subcommand {
             // Commands that don't need anything fancy
             Subcommand::List(_)
@@ -144,6 +159,13 @@ impl Cli {
 
             // Commands that need a file to be uploaded
             Subcommand::Verify(ref mut cmd) => {
+                cmd.path = handle.upload_file(&cmd.path).await?;
+
+                Self::upload_format_specific_files(handle, &mut cmd.format_options).await?;
+
+                handle.send_command(self).await
+            }
+            Subcommand::Download(ref mut cmd) => {
                 cmd.path = handle.upload_file(&cmd.path).await?;
 
                 Self::upload_format_specific_files(handle, &mut cmd.format_options).await?;
