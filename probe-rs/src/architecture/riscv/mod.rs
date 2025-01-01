@@ -15,14 +15,14 @@ use crate::{
 };
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
-use registers::{FP, RA, RISCV_CORE_REGSISTERS, SP};
+use registers::{FP, RA, RISCV_CORE_REGISTERS, SP};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
 
 #[macro_use]
-pub(crate) mod registers;
+pub mod registers;
 pub use registers::PC;
 pub(crate) mod assembly;
 pub mod communication_interface;
@@ -540,7 +540,7 @@ impl CoreInterface for Riscv32<'_> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        &RISCV_CORE_REGSISTERS
+        &RISCV_CORE_REGISTERS
     }
 
     fn program_counter(&self) -> &'static CoreRegister {

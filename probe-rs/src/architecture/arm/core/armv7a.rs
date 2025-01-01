@@ -7,8 +7,8 @@ use super::{
     },
     registers::{
         aarch32::{
-            AARCH32_CORE_REGSISTERS, AARCH32_WITH_FP_16_CORE_REGSISTERS,
-            AARCH32_WITH_FP_32_CORE_REGSISTERS,
+            AARCH32_CORE_REGISTERS, AARCH32_WITH_FP_16_CORE_REGISTERS,
+            AARCH32_WITH_FP_32_CORE_REGISTERS,
         },
         cortex_m::{FP, PC, RA, SP},
     },
@@ -723,9 +723,9 @@ impl CoreInterface for Armv7a<'_> {
 
     fn registers(&self) -> &'static CoreRegisters {
         match self.state.fp_reg_count {
-            16 => &AARCH32_WITH_FP_16_CORE_REGSISTERS,
-            32 => &AARCH32_WITH_FP_32_CORE_REGSISTERS,
-            _ => &AARCH32_CORE_REGSISTERS,
+            16 => &AARCH32_WITH_FP_16_CORE_REGISTERS,
+            32 => &AARCH32_WITH_FP_32_CORE_REGISTERS,
+            _ => &AARCH32_CORE_REGISTERS,
         }
     }
 
