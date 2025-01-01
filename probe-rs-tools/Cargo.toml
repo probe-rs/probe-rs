@@ -14,6 +14,18 @@ description = "A collection of on chip debugging tools to communicate with micro
 
 default-run = "probe-rs"
 
+[features]
+default = ["remote"]
+# Include server/client functionality
+remote = [
+    "futures-util",
+    "hyper-util",
+    "tokio-tungstenite",
+    "axum",
+    "axum-extra",
+    "tempfile",
+]
+
 [dependencies]
 anyhow = { workspace = true }
 base64 = "0.22"
@@ -95,13 +107,13 @@ zip = { version = "2.0.0", default-features = false, features = [
 urlencoding = "2"
 
 # Server-only
-futures-util = "0.3"
-hyper-util = { version = "0.1.1", features = ["client-legacy"] }
 tokio = { version = "1.0", features = ["full"] }
-tokio-tungstenite = "0.26"
-axum = { version = "0.7", features = ["ws"] }
-axum-extra = { version = "0.9", features = ["typed-header"] }
-tempfile = "3.0"
+futures-util = { version = "0.3", optional = true }
+hyper-util = { version = "0.1.1", features = ["client-legacy"], optional = true }
+tokio-tungstenite = { version = "0.26", optional = true }
+axum = { version = "0.7", features = ["ws"], optional = true }
+axum-extra = { version = "0.9", features = ["typed-header"], optional = true }
+tempfile = { version = "3.0", optional = true }
 
 [build-dependencies]
 git-version = "0.3"

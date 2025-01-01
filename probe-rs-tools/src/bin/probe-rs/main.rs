@@ -21,8 +21,9 @@ use report::Report;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
-use crate::cmd::remote::client::ClientConnection;
-use crate::cmd::remote::{LocalSession, RemoteSession};
+use crate::cmd::remote::LocalSession;
+#[cfg(feature = "remote")]
+use crate::cmd::remote::{client::ClientConnection, RemoteSession};
 use crate::cmd::run::SharedOptions;
 use crate::util::common_options::ProbeOptions;
 use crate::util::logging::setup_logging;
@@ -44,6 +45,7 @@ struct ParameterSet {
     pub chip: Option<String>,
 }
 
+#[cfg(feature = "remote")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ServerUser {
@@ -60,6 +62,7 @@ pub(crate) struct Config {
     /// A list of named parameter sets.
     pub parameter_sets: Vec<ParameterSet>,
 
+    #[cfg(feature = "remote")]
     pub server_users: Vec<ServerUser>,
 }
 
@@ -96,6 +99,7 @@ struct Cli {
     parameter_set: Option<String>,
 
     /// Remote host to connect to
+    #[cfg(feature = "remote")]
     #[arg(
         long,
         global = true,
@@ -105,6 +109,7 @@ struct Cli {
     host: Option<String>,
 
     /// Authentication token for remote connections
+    #[cfg(feature = "remote")]
     #[arg(
         long,
         global = true,
@@ -118,6 +123,7 @@ struct Cli {
 }
 
 impl Cli {
+    #[cfg(feature = "remote")]
     async fn upload_format_specific_files(
         handle: &mut ClientConnection,
         format_options: &mut FormatOptions,
@@ -132,6 +138,7 @@ impl Cli {
         Ok(())
     }
 
+    #[cfg(feature = "remote")]
     async fn upload_probe_specific_files(
         handle: &mut ClientConnection,
         probe_options: &mut ProbeOptions,
@@ -143,6 +150,7 @@ impl Cli {
         Ok(())
     }
 
+    #[cfg(feature = "remote")]
     async fn run_on_server(
         mut self,
         config: Config,
@@ -202,6 +210,7 @@ impl Cli {
         let mut session_interface = LocalSession::new();
         match self.subcommand {
             Subcommand::DapServer { .. } => unreachable!(),
+            #[cfg(feature = "remote")]
             Subcommand::Serve(cmd) => cmd.run(config).await,
             Subcommand::List(cmd) => cmd.run(&config, &mut session_interface).await,
             Subcommand::Info(cmd) => cmd.run(&lister),
@@ -274,6 +283,7 @@ enum Subcommand {
     /// Profile on-target runtime performance of target ELF program
     Profile(cmd::profile::ProfileCmd),
     /// Start a server that accepts remote connections
+    #[cfg(feature = "remote")]
     Serve(cmd::remote::server::Cmd),
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
@@ -282,6 +292,7 @@ enum Subcommand {
 }
 
 impl Subcommand {
+    #[cfg(feature = "remote")]
     pub fn probe_options(&self) -> Option<&ProbeOptions> {
         if let Subcommand::Benchmark(cmd::benchmark::Cmd {
             common: probe_options,
@@ -597,8 +608,10 @@ async fn main() -> Result<()> {
     // Substitute options from the global config after we set up logging
     preprocess_cli_late(&mut matches, &config)?;
 
-    let mut elf = None;
+    let elf = matches.elf();
     let report_path = matches.report.clone();
+
+    #[cfg(feature = "remote")]
     let result = if let Some(host) = matches.host.as_deref() {
         let mut handle = cmd::remote::client::connect(host, matches.token.clone()).await?;
 
@@ -606,9 +619,12 @@ async fn main() -> Result<()> {
         matches.run_on_server(config, &mut handle).await
     } else {
         // Run the command locally.
-        elf = matches.elf();
         matches.run(config, utc_offset).await
     };
+
+    // Run the command locally.
+    #[cfg(not(feature = "remote"))]
+    let result = matches.run(config, utc_offset).await;
 
     // TODO: we'll not get the report if a remote command fails.
     compile_report(result, report_path, elf, log_path)

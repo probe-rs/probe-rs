@@ -14,6 +14,7 @@ pub enum RemoteFunctions {
     ListProbes(list_probes::ListProbes),
 }
 
+#[cfg(feature = "remote")]
 impl RemoteFunctions {
     pub async fn run_on_server(self) -> anyhow::Result<String> {
         let result = match self {

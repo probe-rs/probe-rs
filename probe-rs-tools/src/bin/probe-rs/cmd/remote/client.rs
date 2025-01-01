@@ -91,7 +91,7 @@ impl ClientConnection {
 
         self.websocket.send(Message::Text(msg.into())).await?;
 
-        while let Some(Ok(msg)) = self.websocket.next().await {
+        if let Some(Ok(msg)) = self.websocket.next().await {
             match msg {
                 Message::Text(msg) => {
                     let msg = serde_json::from_str::<ServerMessage>(&msg)
@@ -101,7 +101,7 @@ impl ClientConnection {
                         msg => panic!("Command unexpectedly returned {msg:?}"),
                     }
                 }
-                Message::Close(_) => break,
+                Message::Close(_) => {}
                 msg => panic!("Server unexpectedly sent {msg:?}"),
             }
         }
