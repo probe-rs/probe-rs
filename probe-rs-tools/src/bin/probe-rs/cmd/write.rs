@@ -33,7 +33,7 @@ impl Cmd {
     pub async fn run(self, iface: &mut impl SessionInterface) -> anyhow::Result<()> {
         let sessid = iface.attach_probe(self.probe_options).await?;
 
-        match iface
+        iface
             .run_call(WriteMemory {
                 core: self.shared.core,
                 sessid,
@@ -41,10 +41,8 @@ impl Cmd {
                 data: self.values,
                 width: self.read_write_options.width,
             })
-            .await?
-        {
-            Ok(_) => Ok(()),
-            Err(e) => anyhow::bail!("Error writing memory: {}", e),
-        }
+            .await?;
+
+        Ok(())
     }
 }

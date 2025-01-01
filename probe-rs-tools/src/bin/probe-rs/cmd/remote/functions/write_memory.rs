@@ -15,9 +15,9 @@ pub struct WriteMemory {
 }
 
 impl super::RemoteFunction for WriteMemory {
-    type Result = Result<(), String>;
+    type Result = ();
 
-    async fn run(self, iface: &mut LocalSession) -> Self::Result {
+    async fn run(self, iface: &mut LocalSession) -> anyhow::Result<Self::Result> {
         let session = iface.session(self.sessid);
         let mut core = session.core(self.core).unwrap();
 
@@ -26,34 +26,34 @@ impl super::RemoteFunction for WriteMemory {
                 let mut bvalues = Vec::new();
                 for val in &self.data {
                     if *val > u8::MAX as u64 {
-                        return Err(format!(
+                        anyhow::bail!(
                             "{} in {:?} is too large for an 8 bit write.",
-                            val, self.data,
-                        ));
+                            val,
+                            self.data,
+                        );
                     }
                     bvalues.push(*val as u8);
                 }
-                core.write_8(self.address, &bvalues)
-                    .map_err(|e| e.to_string())
+                core.write_8(self.address, &bvalues)?;
             }
             ReadWriteBitWidth::B32 => {
                 let mut bvalues = Vec::new();
                 for val in &self.data {
                     if *val > u32::MAX as u64 {
-                        return Err(format!(
+                        anyhow::bail!(
                             "{} in {:?} is too large for a 32 bit write.",
-                            val, self.data,
-                        ));
+                            val,
+                            self.data,
+                        );
                     }
                     bvalues.push(*val as u32);
                 }
-                core.write_32(self.address, &bvalues)
-                    .map_err(|e| e.to_string())
+                core.write_32(self.address, &bvalues)?;
             }
-            ReadWriteBitWidth::B64 => core
-                .write_64(self.address, &self.data)
-                .map_err(|e| e.to_string()),
+            ReadWriteBitWidth::B64 => core.write_64(self.address, &self.data)?,
         }
+
+        Ok(())
     }
 }
 

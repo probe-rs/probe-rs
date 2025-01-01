@@ -239,11 +239,11 @@ async fn handle_socket(socket: WebSocket, state: Arc<ServerState>) {
                     return;
                 }
                 ClientMessage::Rpc(function) => {
-                    let r = function.run_on_server(&mut session).await.unwrap();
-                    handle
-                        .send_message(ServerMessage::RpcResult(r))
-                        .await
-                        .unwrap();
+                    let response = match function.run_on_server(&mut session).await {
+                        Ok(r) => ServerMessage::RpcResult(r),
+                        Err(e) => ServerMessage::Error(format!("{:?}", e)),
+                    };
+                    handle.send_message(response).await.unwrap();
                 }
                 _ => todo!(),
             }

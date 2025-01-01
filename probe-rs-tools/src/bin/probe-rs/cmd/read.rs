@@ -37,7 +37,7 @@ impl Cmd {
     pub async fn run(self, iface: &mut impl SessionInterface) -> anyhow::Result<()> {
         let sessid = iface.attach_probe(self.probe_options).await?;
 
-        let values = match iface
+        let values = iface
             .run_call(ReadMemory {
                 core: self.shared.core,
                 sessid,
@@ -45,32 +45,26 @@ impl Cmd {
                 count: self.words,
                 width: self.read_write_options.width,
             })
-            .await?
-        {
-            Ok(results) => results,
-            Err(e) => anyhow::bail!("Error reading memory: {}", e),
-        };
+            .await?;
 
         match self.read_write_options.width {
             ReadWriteBitWidth::B8 => {
                 for val in values {
                     print!("{:02x} ", val);
                 }
-                println!();
             }
             ReadWriteBitWidth::B32 => {
                 for val in values {
                     print!("{:08x} ", val);
                 }
-                println!();
             }
             ReadWriteBitWidth::B64 => {
                 for val in values {
                     print!("{:016x} ", val);
                 }
-                println!();
             }
         }
+        println!();
 
         iface.run_call(ResumeAllCores { sessid }).await?;
 

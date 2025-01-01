@@ -74,14 +74,14 @@ impl ListProbes {
 impl super::RemoteFunction for ListProbes {
     type Result = Vec<DebugProbeEntry>;
 
-    async fn run(self, _iface: &mut LocalSession) -> Self::Result {
+    async fn run(self, _iface: &mut LocalSession) -> anyhow::Result<Self::Result> {
         let lister = Lister::new();
         let probes = lister.list_all();
 
-        probes
+        Ok(probes
             .into_iter()
             .map(DebugProbeEntry::from)
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>())
     }
 }
 

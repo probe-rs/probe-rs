@@ -15,26 +15,26 @@ pub struct ReadMemory {
 }
 
 impl super::RemoteFunction for ReadMemory {
-    type Result = Result<Vec<u64>, String>;
+    type Result = Vec<u64>;
 
-    async fn run(self, iface: &mut LocalSession) -> Self::Result {
+    async fn run(self, iface: &mut LocalSession) -> anyhow::Result<Self::Result> {
         let session = iface.session(self.sessid);
-        let mut core = session.core(self.core).unwrap();
+        let mut core = session.core(self.core)?;
 
         match self.width {
             ReadWriteBitWidth::B8 => {
                 let mut words = vec![0; self.count as usize];
-                core.read_8(self.address, &mut words).unwrap();
+                core.read_8(self.address, &mut words)?;
                 Ok(words.into_iter().map(|i| i as u64).collect::<Vec<u64>>())
             }
             ReadWriteBitWidth::B32 => {
                 let mut words = vec![0; self.count as usize];
-                core.read_32(self.address, &mut words).unwrap();
+                core.read_32(self.address, &mut words)?;
                 Ok(words.into_iter().map(|i| i as u64).collect::<Vec<u64>>())
             }
             ReadWriteBitWidth::B64 => {
                 let mut words = vec![0; self.count as usize];
-                core.read_64(self.address, &mut words).unwrap();
+                core.read_64(self.address, &mut words)?;
                 Ok(words.into_iter().map(|i| i as u64).collect::<Vec<u64>>())
             }
         }

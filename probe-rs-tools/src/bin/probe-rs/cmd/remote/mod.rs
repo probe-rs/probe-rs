@@ -29,6 +29,7 @@ enum ServerMessage {
     StdOut(String),
     StdErr(String),
     RpcResult(String),
+    Error(String),
 }
 
 pub trait SessionInterface: Sized {
@@ -68,7 +69,7 @@ impl LocalSession {
 
 impl SessionInterface for LocalSession {
     async fn run_call<F: RemoteFunction>(&mut self, func: F) -> anyhow::Result<F::Result> {
-        Ok(func.run(self).await)
+        func.run(self).await
     }
 }
 

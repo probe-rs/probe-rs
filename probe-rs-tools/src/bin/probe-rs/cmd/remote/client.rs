@@ -98,6 +98,7 @@ impl ClientConnection {
                         .context("Failed to parse server message")?;
                     match msg {
                         ServerMessage::RpcResult(msg) => return Ok(msg),
+                        ServerMessage::Error(msg) => anyhow::bail!("{msg}"),
                         msg => panic!("Command unexpectedly returned {msg:?}"),
                     }
                 }

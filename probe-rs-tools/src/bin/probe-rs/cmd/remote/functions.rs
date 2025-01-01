@@ -11,7 +11,7 @@ pub mod write_memory;
 pub trait RemoteFunction: Serialize + Into<RemoteFunctions> {
     type Result: DeserializeOwned;
 
-    async fn run(self, iface: &mut LocalSession) -> Self::Result;
+    async fn run(self, iface: &mut LocalSession) -> anyhow::Result<Self::Result>;
 }
 
 /// The functions that can be called remotely.
@@ -28,11 +28,11 @@ pub enum RemoteFunctions {
 impl RemoteFunctions {
     pub async fn run_on_server(self, iface: &mut LocalSession) -> anyhow::Result<String> {
         let result = match self {
-            RemoteFunctions::Attach(func) => serde_json::to_string(&func.run(iface).await),
-            RemoteFunctions::ListProbes(func) => serde_json::to_string(&func.run(iface).await),
-            RemoteFunctions::ReadMemory(func) => serde_json::to_string(&func.run(iface).await),
-            RemoteFunctions::WriteMemory(func) => serde_json::to_string(&func.run(iface).await),
-            RemoteFunctions::ResumeAllCores(func) => serde_json::to_string(&func.run(iface).await),
+            RemoteFunctions::Attach(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::ListProbes(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::ReadMemory(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::WriteMemory(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::ResumeAllCores(func) => serde_json::to_string(&func.run(iface).await?),
         };
 
         result.map_err(|e| e.into())

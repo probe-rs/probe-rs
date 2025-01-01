@@ -22,18 +22,18 @@ pub struct Attach {
 impl super::RemoteFunction for Attach {
     type Result = AttachResult;
 
-    async fn run(mut self, iface: &mut LocalSession) -> Self::Result {
+    async fn run(mut self, iface: &mut LocalSession) -> anyhow::Result<Self::Result> {
         self.probe_options.non_interactive = true;
 
         match self.probe_options.simple_attach(&iface.lister()) {
             Ok((session, _)) => {
                 let session_id = iface.set_session(session);
-                AttachResult::Success(session_id)
+                Ok(AttachResult::Success(session_id))
             }
-            Err(OperationError::MultipleProbesFound { list }) => {
-                AttachResult::MultipleProbes(list.into_iter().map(DebugProbeEntry::from).collect())
-            }
-            Err(other) => panic!("Unexpected error: {:?}", other),
+            Err(OperationError::MultipleProbesFound { list }) => Ok(AttachResult::MultipleProbes(
+                list.into_iter().map(DebugProbeEntry::from).collect(),
+            )),
+            Err(other) => anyhow::bail!(other),
         }
     }
 }

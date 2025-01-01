@@ -9,8 +9,9 @@ pub struct ResumeAllCores {
 impl super::RemoteFunction for ResumeAllCores {
     type Result = ();
 
-    async fn run(self, iface: &mut LocalSession) -> Self::Result {
-        iface.session(self.sessid).resume_all_cores().unwrap();
+    async fn run(self, iface: &mut LocalSession) -> anyhow::Result<Self::Result> {
+        iface.session(self.sessid).resume_all_cores()?;
+        Ok(())
     }
 }
 
