@@ -19,7 +19,7 @@ members = [
     "xtask",
     "target-gen",
     "probe-rs-tools",
-    "probe-rs-mi",
+    "probe-rs-mi", "probe-rs-debug",
 ]
 exclude = ["probe-rs/tests/gpio-hal-blinky"]
 

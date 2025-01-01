@@ -547,7 +547,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.48.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1330,6 +1330,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 dependencies = [
  "fallible-iterator",
+ "indexmap",
  "stable_deref_trait",
 ]
 
@@ -1748,6 +1749,7 @@ version = "1.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6513e4067e16e69ed1db5ab56048ed65db32d10ba5fc1217f5393f8f17d8b5a5"
 dependencies = [
+ "console",
  "linked-hash-map",
  "once_cell",
  "serde",
@@ -2467,7 +2469,6 @@ dependencies = [
  "flate2",
  "futures-lite",
  "gdbstub",
- "gimli 0.31.1",
  "hexdump",
  "hidapi",
  "ihex",
@@ -2478,7 +2479,6 @@ dependencies = [
  "nusb",
  "object 0.36.7",
  "parking_lot",
- "parse_int",
  "pretty_assertions",
  "pretty_env_logger",
  "probe-rs-target",
@@ -2494,9 +2494,29 @@ dependencies = [
  "test-log",
  "thiserror 1.0.69",
  "tracing",
- "typed-path",
  "uf2-decode",
  "zerocopy 0.8.14",
+]
+
+[[package]]
+name = "probe-rs-debug"
+version = "0.25.0"
+dependencies = [
+ "bitfield",
+ "gimli 0.31.1",
+ "insta",
+ "itertools 0.14.0",
+ "object 0.36.7",
+ "parse_int",
+ "pretty_assertions",
+ "probe-rs",
+ "probe-rs-target",
+ "serde",
+ "termtree",
+ "test-case",
+ "thiserror 1.0.69",
+ "tracing",
+ "typed-path",
 ]
 
 [[package]]
@@ -2553,8 +2573,8 @@ dependencies = [
  "parse_int",
  "pretty_assertions",
  "probe-rs",
+ "probe-rs-debug",
  "probe-rs-mi",
- "probe-rs-target",
  "ratatui",
  "regex",
  "rustyline",
@@ -3355,7 +3375,6 @@ dependencies = [
  "miette",
  "pretty_env_logger",
  "probe-rs",
- "probe-rs-target",
  "serde",
  "thiserror 1.0.69",
  "toml",
@@ -4301,7 +4320,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

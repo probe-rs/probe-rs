@@ -9,10 +9,8 @@ use super::{
 };
 use crate::cmd::dap_server::{server::core_data::CoreHandle, DebuggerError};
 use itertools::Itertools;
-use probe_rs::{
-    debug::{ObjectRef, VariableName},
-    CoreDump, CoreStatus, HaltReason,
-};
+use probe_rs::{CoreDump, CoreStatus, HaltReason};
+use probe_rs_debug::{ObjectRef, VariableName};
 use std::{fmt::Display, ops::Range, path::Path, str::FromStr, time::Duration};
 
 /// The handler is a function that takes a reference to the target core, and a reference to the response body.

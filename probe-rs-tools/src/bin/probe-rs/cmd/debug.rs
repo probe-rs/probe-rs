@@ -10,18 +10,16 @@ use capstone::{
 use num_traits::Num;
 use parse_int::parse;
 use probe_rs::architecture::arm::ap::AccessPortError;
-use probe_rs::debug::stack_frame::StackFrameInfo;
-use probe_rs::exception_handler_for_core;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::probe::list::Lister;
 use probe_rs::probe::DebugProbeError;
 use probe_rs::CoreDump;
 use probe_rs::CoreDumpError;
 use probe_rs::CoreInterface;
-use probe_rs::{
-    debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame},
-    Core, CoreType, InstructionSet, MemoryInterface, RegisterValue,
-};
+use probe_rs::{Core, CoreType, InstructionSet, MemoryInterface, RegisterValue};
+use probe_rs_debug::exception_handler_for_core;
+use probe_rs_debug::stack_frame::StackFrameInfo;
+use probe_rs_debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame};
 use rustyline::{error::ReadlineError, DefaultEditor};
 
 use crate::{util::common_options::ProbeOptions, CoreOptions};
@@ -598,10 +596,10 @@ impl DebugCli {
 
                                         if let Some(col) = location.column {
                                             match col {
-                                                probe_rs::debug::ColumnType::LeftEdge => {
+                                                probe_rs_debug::ColumnType::LeftEdge => {
                                                     print!(":1")
                                                 }
-                                                probe_rs::debug::ColumnType::Column(c) => {
+                                                probe_rs_debug::ColumnType::Column(c) => {
                                                     print!(":{c}")
                                                 }
                                             }
@@ -1060,11 +1058,11 @@ struct HaltedState {
 }
 
 impl HaltedState {
-    fn get_current_frame(&self) -> Option<&probe_rs::debug::stack_frame::StackFrame> {
+    fn get_current_frame(&self) -> Option<&probe_rs_debug::stack_frame::StackFrame> {
         self.stack_frames.get(self.current_frame)
     }
 
-    fn get_current_frame_mut(&mut self) -> Option<&mut probe_rs::debug::stack_frame::StackFrame> {
+    fn get_current_frame_mut(&mut self) -> Option<&mut probe_rs_debug::stack_frame::StackFrame> {
         self.stack_frames.get_mut(self.current_frame)
     }
 }

@@ -39,7 +39,7 @@ pub(crate) const RA: CoreRegister = CoreRegister {
 pub static AARCH64_CORE_REGISTERS: LazyLock<CoreRegisters> =
     LazyLock::new(|| CoreRegisters::new(AARCH64_CORE_REGISTERS_SET.iter().collect()));
 
-pub static AARCH64_CORE_REGSISTERS_SET: &[CoreRegister] = &[
+pub(crate) static AARCH64_CORE_REGISTERS_SET: &[CoreRegister] = &[
     CoreRegister {
         roles: &[
             RegisterRole::Core("X0"),
