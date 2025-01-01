@@ -227,8 +227,8 @@ impl Cli {
             Subcommand::Chip(cmd) => cmd.run(),
             Subcommand::Benchmark(cmd) => cmd.run(&lister),
             Subcommand::Profile(cmd) => cmd.run(&lister),
-            Subcommand::Read(cmd) => cmd.run(&lister),
-            Subcommand::Write(cmd) => cmd.run(&lister),
+            Subcommand::Read(cmd) => cmd.run(&mut session_interface).await,
+            Subcommand::Write(cmd) => cmd.run(&mut session_interface).await,
             Subcommand::Complete(cmd) => cmd.run(&lister),
             Subcommand::Mi(cmd) => cmd.run(config, utc_offset).await,
         }

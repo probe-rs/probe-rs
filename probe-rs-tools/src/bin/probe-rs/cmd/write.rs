@@ -1,6 +1,6 @@
-use probe_rs::{probe::list::Lister, MemoryInterface};
-
-use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
+use crate::cmd::remote::functions::write_memory::WriteMemory;
+use crate::cmd::remote::SessionInterface;
+use crate::util::common_options::{ProbeOptions, ReadWriteOptions};
 use crate::util::parse_u64;
 use crate::CoreOptions;
 use serde::{Deserialize, Serialize};
@@ -30,44 +30,21 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.probe_options.simple_attach(lister)?;
-        let mut core = session.core(self.shared.core)?;
+    pub async fn run(self, iface: &mut impl SessionInterface) -> anyhow::Result<()> {
+        let sessid = iface.attach_probe(self.probe_options).await?;
 
-        match self.read_write_options.width {
-            ReadWriteBitWidth::B8 => {
-                let mut bvalues = Vec::new();
-                for val in &self.values {
-                    if val > &(u8::MAX as u64) {
-                        return Err(anyhow::anyhow!(
-                            "{} in {:?} is too large for an 8 bit write.",
-                            val,
-                            self.values,
-                        ));
-                    }
-                    bvalues.push(*val as u8);
-                }
-                core.write_8(self.read_write_options.address, &bvalues)?;
-            }
-            ReadWriteBitWidth::B32 => {
-                let mut bvalues = Vec::new();
-                for val in &self.values {
-                    if val > &(u32::MAX as u64) {
-                        return Err(anyhow::anyhow!(
-                            "{} in {:?} is too large for a 32 bit write.",
-                            val,
-                            self.values,
-                        ));
-                    }
-                    bvalues.push(*val as u32);
-                }
-                core.write_32(self.read_write_options.address, &bvalues)?;
-            }
-            ReadWriteBitWidth::B64 => {
-                core.write_64(self.read_write_options.address, &self.values)?;
-            }
+        match iface
+            .run_call(WriteMemory {
+                core: self.shared.core,
+                sessid,
+                address: self.read_write_options.address,
+                data: self.values,
+                width: self.read_write_options.width,
+            })
+            .await?
+        {
+            Ok(_) => Ok(()),
+            Err(e) => anyhow::bail!("Error writing memory: {}", e),
         }
-
-        Ok(())
     }
 }

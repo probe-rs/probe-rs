@@ -1,12 +1,12 @@
 use std::fmt::Display;
 
-use probe_rs::probe::list::Lister;
+use probe_rs::probe::{list::Lister, DebugProbeInfo, DebugProbeSelector};
 use serde::{Deserialize, Serialize};
 
-use crate::cmd::remote::functions::RemoteFunctions;
+use crate::cmd::remote::{functions::RemoteFunctions, LocalSession};
 
 // Separate from DebugProbeInfo because we can't serialize a &dyn ProbeFactory
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct DebugProbeEntry {
     /// The name of the debug probe.
     pub identifier: String,
@@ -34,6 +34,28 @@ impl Display for DebugProbeEntry {
     }
 }
 
+impl From<DebugProbeInfo> for DebugProbeEntry {
+    fn from(probe: DebugProbeInfo) -> DebugProbeEntry {
+        DebugProbeEntry {
+            identifier: probe.identifier.clone(),
+            vendor_id: probe.vendor_id,
+            product_id: probe.product_id,
+            serial_number: probe.serial_number.clone(),
+            probe_type: probe.probe_type(),
+        }
+    }
+}
+
+impl DebugProbeEntry {
+    pub fn selector(&self) -> DebugProbeSelector {
+        DebugProbeSelector {
+            vendor_id: self.vendor_id,
+            product_id: self.product_id,
+            serial_number: self.serial_number.clone(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ListProbes {
     vid: Option<u16>,
@@ -52,19 +74,13 @@ impl ListProbes {
 impl super::RemoteFunction for ListProbes {
     type Result = Vec<DebugProbeEntry>;
 
-    async fn run(self) -> Self::Result {
+    async fn run(self, _iface: &mut LocalSession) -> Self::Result {
         let lister = Lister::new();
         let probes = lister.list_all();
 
         probes
             .into_iter()
-            .map(|probe| DebugProbeEntry {
-                identifier: probe.identifier.clone(),
-                vendor_id: probe.vendor_id,
-                product_id: probe.product_id,
-                serial_number: probe.serial_number.clone(),
-                probe_type: probe.probe_type(),
-            })
+            .map(DebugProbeEntry::from)
             .collect::<Vec<_>>()
     }
 }

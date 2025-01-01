@@ -1,5 +1,6 @@
-use probe_rs::{probe::list::Lister, MemoryInterface};
-
+use crate::cmd::remote::functions::read_memory::ReadMemory;
+use crate::cmd::remote::functions::resume::ResumeAllCores;
+use crate::cmd::remote::SessionInterface;
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
 use crate::CoreOptions;
 use serde::{Deserialize, Serialize};
@@ -33,41 +34,45 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.probe_options.simple_attach(lister)?;
+    pub async fn run(self, iface: &mut impl SessionInterface) -> anyhow::Result<()> {
+        let sessid = iface.attach_probe(self.probe_options).await?;
 
-        let mut core = session.core(self.shared.core)?;
-        let words = self.words as usize;
+        let values = match iface
+            .run_call(ReadMemory {
+                core: self.shared.core,
+                sessid,
+                address: self.read_write_options.address,
+                count: self.words,
+                width: self.read_write_options.width,
+            })
+            .await?
+        {
+            Ok(results) => results,
+            Err(e) => anyhow::bail!("Error reading memory: {}", e),
+        };
 
         match self.read_write_options.width {
             ReadWriteBitWidth::B8 => {
-                let mut values = vec![0; words];
-                core.read_8(self.read_write_options.address, &mut values)?;
                 for val in values {
                     print!("{:02x} ", val);
                 }
                 println!();
             }
             ReadWriteBitWidth::B32 => {
-                let mut values = vec![0; words];
-                core.read_32(self.read_write_options.address, &mut values)?;
                 for val in values {
                     print!("{:08x} ", val);
                 }
                 println!();
             }
             ReadWriteBitWidth::B64 => {
-                let mut values = vec![0; words];
-                core.read_64(self.read_write_options.address, &mut values)?;
                 for val in values {
                     print!("{:016x} ", val);
                 }
                 println!();
             }
         }
-        std::mem::drop(core);
 
-        session.resume_all_cores()?;
+        iface.run_call(ResumeAllCores { sessid }).await?;
 
         Ok(())
     }

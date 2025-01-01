@@ -38,7 +38,7 @@ use std::{
 };
 
 use super::{ClientMessage, ServerMessage};
-use crate::{Cli, Config};
+use crate::{cmd::remote::LocalSession, Cli, Config};
 
 struct ServerState {
     config: Config,
@@ -224,6 +224,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<ServerState>) {
         websocket: socket,
         temp_files: vec![],
     };
+    let mut session = LocalSession::new();
     while let Some(Ok(msg)) = handle.websocket.recv().await {
         if let ws::Message::Text(msg) = msg {
             let msg =
@@ -238,7 +239,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<ServerState>) {
                     return;
                 }
                 ClientMessage::Rpc(function) => {
-                    let r = function.run_on_server().await.unwrap();
+                    let r = function.run_on_server(&mut session).await.unwrap();
                     handle
                         .send_message(ServerMessage::RpcResult(r))
                         .await
