@@ -49,6 +49,8 @@ pub struct BinaryDownloadOptions {
 pub enum ReadWriteBitWidth {
     /// 8-bit width
     B8 = 8,
+    /// 16-bit width
+    B16 = 16,
     /// 32-bit width
     B32 = 32,
     /// 64-bit width

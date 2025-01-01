@@ -19,8 +19,14 @@ pub trait RemoteFunction: Serialize + Into<RemoteFunctions> {
 pub enum RemoteFunctions {
     Attach(attach::Attach),
     ListProbes(list_probes::ListProbes),
-    ReadMemory(read_memory::ReadMemory),
-    WriteMemory(write_memory::WriteMemory),
+    ReadMemory8(read_memory::ReadMemory8),
+    ReadMemory16(read_memory::ReadMemory16),
+    ReadMemory32(read_memory::ReadMemory32),
+    ReadMemory64(read_memory::ReadMemory64),
+    WriteMemory8(write_memory::WriteMemory8),
+    WriteMemory16(write_memory::WriteMemory16),
+    WriteMemory32(write_memory::WriteMemory32),
+    WriteMemory64(write_memory::WriteMemory64),
     ResumeAllCores(resume::ResumeAllCores),
 }
 
@@ -30,8 +36,14 @@ impl RemoteFunctions {
         let result = match self {
             RemoteFunctions::Attach(func) => serde_json::to_string(&func.run(iface).await?),
             RemoteFunctions::ListProbes(func) => serde_json::to_string(&func.run(iface).await?),
-            RemoteFunctions::ReadMemory(func) => serde_json::to_string(&func.run(iface).await?),
-            RemoteFunctions::WriteMemory(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::ReadMemory8(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::ReadMemory16(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::ReadMemory32(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::ReadMemory64(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::WriteMemory8(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::WriteMemory16(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::WriteMemory32(func) => serde_json::to_string(&func.run(iface).await?),
+            RemoteFunctions::WriteMemory64(func) => serde_json::to_string(&func.run(iface).await?),
             RemoteFunctions::ResumeAllCores(func) => serde_json::to_string(&func.run(iface).await?),
         };
 

@@ -1,4 +1,6 @@
-use crate::cmd::remote::functions::read_memory::ReadMemory;
+use crate::cmd::remote::functions::read_memory::{
+    ReadMemory16, ReadMemory32, ReadMemory64, ReadMemory8,
+};
 use crate::cmd::remote::functions::resume::ResumeAllCores;
 use crate::cmd::remote::SessionInterface;
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
@@ -37,28 +39,55 @@ impl Cmd {
     pub async fn run(self, iface: &mut impl SessionInterface) -> anyhow::Result<()> {
         let sessid = iface.attach_probe(self.probe_options).await?;
 
-        let values = iface
-            .run_call(ReadMemory {
-                core: self.shared.core,
-                sessid,
-                address: self.read_write_options.address,
-                count: self.words,
-                width: self.read_write_options.width,
-            })
-            .await?;
-
         match self.read_write_options.width {
             ReadWriteBitWidth::B8 => {
+                let values = iface
+                    .run_call(ReadMemory8 {
+                        core: self.shared.core,
+                        sessid,
+                        address: self.read_write_options.address,
+                        count: self.words,
+                    })
+                    .await?;
                 for val in values {
                     print!("{:02x} ", val);
                 }
             }
+            ReadWriteBitWidth::B16 => {
+                let values = iface
+                    .run_call(ReadMemory16 {
+                        core: self.shared.core,
+                        sessid,
+                        address: self.read_write_options.address,
+                        count: self.words,
+                    })
+                    .await?;
+                for val in values {
+                    print!("{:08x} ", val);
+                }
+            }
             ReadWriteBitWidth::B32 => {
+                let values = iface
+                    .run_call(ReadMemory32 {
+                        core: self.shared.core,
+                        sessid,
+                        address: self.read_write_options.address,
+                        count: self.words,
+                    })
+                    .await?;
                 for val in values {
                     print!("{:08x} ", val);
                 }
             }
             ReadWriteBitWidth::B64 => {
+                let values = iface
+                    .run_call(ReadMemory64 {
+                        core: self.shared.core,
+                        sessid,
+                        address: self.read_write_options.address,
+                        count: self.words,
+                    })
+                    .await?;
                 for val in values {
                     print!("{:016x} ", val);
                 }
