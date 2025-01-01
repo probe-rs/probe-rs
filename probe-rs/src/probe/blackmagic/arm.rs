@@ -277,6 +277,9 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
         }
 
         if !self.is_connected_to_dp {
+            // Set this first to prevent recursion, if this fucntion is called again
+            self.is_connected_to_dp = true;
+
             // Switch to the correct mode
             self.sequence.debug_port_setup(self.probe.as_mut(), dp)?;
 
@@ -291,8 +294,6 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
             self.access_ports.iter().for_each(|addr| {
                 tracing::debug!("AP {:#x?}", addr);
             });
-
-            self.is_connected_to_dp = true;
         }
 
         Ok(())

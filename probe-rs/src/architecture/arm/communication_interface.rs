@@ -72,15 +72,11 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     /// Reinitialize the communication interface (in place).
     ///
     /// Some chip-specific reset sequences may disable the debug port. `reinitialize` allows
-    /// a debug sequence to re-initialize the debug port, staying true to the `Initialized`
-    /// type state.
+    /// a debug sequence to re-initialize the debug port.
     ///
     /// If you're invoking this from a debug sequence, know that `reinitialize` will likely
     /// call back onto you! Specifically, it will invoke some sequence of `debug_port_*`
     /// sequences with varying internal state. If you're not prepared for this, you might recurse.
-    ///
-    /// `reinitialize` does handle `debug_core_start` to re-initialize any core's debugging.
-    /// If you're a chip-specific debug sequence, you're expected to handle this yourself.
     fn reinitialize(&mut self) -> Result<(), ArmError>;
 
     /// Returns a vector of all the access ports the current debug port has.
@@ -197,8 +193,11 @@ pub struct ArmCommunicationInterface {
 
 impl Drop for ArmCommunicationInterface {
     fn drop(&mut self) {
-        if let Some(mut probe) = self.probe.take() {
-            self.disconnect(&mut *probe);
+        if self.probe.is_some() {
+            self.disconnect();
+
+            // Ensure we don't disconnect twice
+            self.probe = None;
         }
     }
 }
@@ -210,19 +209,25 @@ impl ArmCommunicationInterface {
     }
 
     fn close(mut self) -> Probe {
-        let mut probe = self.probe.take().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.");
+        self.disconnect();
 
-        self.disconnect(&mut *probe);
+        let probe = self.probe.take().unwrap();
 
         Probe::from_attached_probe(RawDapAccess::into_probe(probe))
     }
 
-    fn disconnect(&mut self, probe: &mut dyn DapProbe) {
+    /// Disconnect from all debug ports, by calling `debug_port_stop` on all DPs which we
+    /// are connected to.
+    fn disconnect(&mut self) {
+        let probe = self.probe.as_deref_mut().unwrap();
+
         if let Some(current_dp) = self.current_dp.take() {
             let _stop_span = tracing::debug_span!("debug_port_stop").entered();
 
             // Stop the current DP, which may not be one of the known ones (i.e. RP2040 rescue DP).
             self.sequence.debug_port_stop(probe, current_dp).ok();
+
+            drop(_stop_span);
 
             // Stop all intentionally-connected DPs.
             for dp in self.dps.keys().filter(|dp| **dp != current_dp) {
@@ -233,10 +238,9 @@ impl ArmCommunicationInterface {
                     tracing::warn!("Failed to stop DP {:x?}", dp);
                 }
             }
-            probe.raw_flush().ok();
-        } else {
-            probe.raw_flush().ok();
         };
+
+        probe.raw_flush().ok();
     }
 }
 
@@ -251,16 +255,13 @@ impl ArmProbeInterface for ArmCommunicationInterface {
         let current_dp = self.current_dp;
 
         // Simulate the drop / close of the initialized communication interface.
-        let mut probe = self.probe.take().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.");
-        self.disconnect(&mut *probe);
+        self.disconnect();
 
         // This should be set to None by the disconnect call above.
         assert!(self.current_dp.is_none());
 
         // Reconnect to the DP again
         if let Some(dp) = current_dp {
-            self.sequence
-                .debug_port_connect(self.probe.as_deref_mut().unwrap(), dp)?;
             self.select_dp(dp)?;
         }
 
@@ -313,13 +314,13 @@ impl SwdSequence for ArmCommunicationInterface {
 
 impl<'interface> ArmCommunicationInterface {
     /// Create a new instance of the communication interface,
-    /// which is not connected t
+    /// which is not yet connected to a debug port.
     pub fn create(
         probe: Box<dyn DapProbe>,
         sequence: Arc<dyn ArmDebugSequence>,
         use_overrun_detect: bool,
     ) -> Box<dyn ArmProbeInterface> {
-        let initializing = ArmCommunicationInterface {
+        let interface = ArmCommunicationInterface {
             probe: Some(probe),
             current_dp: None,
             dps: Default::default(),
@@ -327,7 +328,7 @@ impl<'interface> ArmCommunicationInterface {
             sequence,
         };
 
-        Box::new(initializing)
+        Box::new(interface)
     }
 
     /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
@@ -364,12 +365,18 @@ impl<'interface> ArmCommunicationInterface {
 
             self.probe_mut().raw_flush()?;
 
-            // Try to switch to the new DP.
-            if let Err(e) = sequence.debug_port_connect(&mut *self.probe_mut(), dp) {
-                tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
-
-                // Try the more involved debug_port_setup sequence, which also handles dormant mode.
+            // We are not currently connected to any DP,
+            // so we need to run the debug_port_setup sequence.
+            if self.current_dp.is_none() {
                 sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
+            } else {
+                // Try to switch to the new DP.
+                if let Err(e) = sequence.debug_port_connect(&mut *self.probe_mut(), dp) {
+                    tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
+
+                    // Try the more involved debug_port_setup sequence, which also handles dormant mode.
+                    sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
+                }
             }
 
             self.current_dp = Some(dp);
