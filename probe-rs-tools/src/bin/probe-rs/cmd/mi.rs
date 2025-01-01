@@ -30,8 +30,12 @@ impl Cmd {
         match self.subcommand {
             Subcommand::Meta => meta::run()?,
             Subcommand::Cli(cli_json) => {
-                let cli = serde_json::from_str::<Cli>(&cli_json.json)
+                let mut cli = serde_json::from_str::<Cli>(&cli_json.json)
                     .context("Failed to parse command")?;
+                if let Some(probe_options) = cli.subcommand.probe_options_mut() {
+                    // FIXME: this is a workaround, we don't support stdin in the remote client
+                    probe_options.non_interactive = true;
+                }
                 let fut = cli.run(config, utc_offset);
                 Box::pin(fut).await?;
             }
