@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::DpAddress,
+    architecture::arm::{sequences::DefaultArmSequence, DpAddress},
     probe::{list::Lister, Probe},
 };
 
@@ -25,10 +25,10 @@ fn main() -> Result<()> {
     probe.set_speed(100)?;
     probe.attach_to_unspecified()?;
     let mut iface = probe
-        .try_into_arm_interface()
-        .map_err(|(_probe, err)| err)?
-        .initialize_unspecified(core0)
-        .map_err(|(_interface, err)| err)?;
+        .try_into_arm_interface(DefaultArmSequence::create())
+        .map_err(|(_probe, err)| err)?;
+
+    iface.select_debug_port(core0)?;
 
     // This is an example on how to do raw DP register access with multidrop.
     // This reads DPIDR and TARGETID of both cores in a RP2040. This chip is

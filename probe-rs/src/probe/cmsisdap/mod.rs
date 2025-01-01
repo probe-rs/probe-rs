@@ -4,11 +4,12 @@ mod tools;
 
 use crate::{
     architecture::arm::{
-        communication_interface::{DapProbe, UninitializedArmProbe},
+        communication_interface::DapProbe,
         dp::{Abort, Ctrl},
+        sequences::ArmDebugSequence,
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
-        SwoAccess, SwoConfig, SwoMode,
+        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapError, Pins, PortType,
+        RawDapAccess, Register, SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
         cmsisdap::commands::{
@@ -51,7 +52,7 @@ use commands::{
 };
 use probe_rs_target::ScanChainElement;
 
-use std::{fmt::Write, time::Duration};
+use std::{fmt::Write, sync::Arc, time::Duration};
 
 use bitvec::prelude::*;
 
@@ -937,9 +938,9 @@ impl DebugProbe for CmsisDap {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
-        Ok(Box::new(ArmCommunicationInterface::new(self, false)))
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+        Ok(ArmCommunicationInterface::create(self, sequence, false))
     }
 
     fn has_arm_interface(&self) -> bool {

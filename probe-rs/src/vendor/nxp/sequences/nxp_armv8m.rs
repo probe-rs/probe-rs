@@ -10,7 +10,7 @@ use std::{
 use crate::{
     architecture::arm::{
         ap::{memory_ap::MemoryApType, AccessPortError, AccessPortType, ApAccess, GenericAp, IDR},
-        communication_interface::{FlushableArmAccess, Initialized},
+        communication_interface::FlushableArmAccess,
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
         memory::ArmMemoryInterface,
@@ -30,7 +30,7 @@ pub mod ol23d0;
 /// Note that this routine only supports SWD protocols. See the inline TODOs to
 /// understand where JTAG support should go.
 fn debug_port_start(
-    interface: &mut ArmCommunicationInterface<Initialized>,
+    interface: &mut ArmCommunicationInterface,
     dp: DpAddress,
     select: Select,
 ) -> Result<bool, ArmError> {
@@ -100,7 +100,7 @@ impl LPC55Sxx {
 impl ArmDebugSequence for LPC55Sxx {
     fn debug_port_start(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut ArmCommunicationInterface,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         tracing::info!("debug_port_start");
@@ -305,7 +305,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
 }
 
 fn enable_debug_mailbox(
-    interface: &mut ArmCommunicationInterface<Initialized>,
+    interface: &mut ArmCommunicationInterface,
     dp: DpAddress,
 ) -> Result<(), ArmError> {
     tracing::info!("LPC55xx connect script start");
@@ -531,7 +531,7 @@ impl MIMXRT5xxS {
 
     fn csw_debug_ready(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut ArmCommunicationInterface,
         ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
         let csw = interface.read_raw_ap_register(ap, 0x00)?;
@@ -547,7 +547,7 @@ impl MIMXRT5xxS {
     /// if it was necessary but unsuccessful.
     fn enable_debug_mailbox(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut ArmCommunicationInterface,
         dp: DpAddress,
         mem_ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
@@ -584,7 +584,7 @@ impl MIMXRT5xxS {
 impl ArmDebugSequence for MIMXRT5xxS {
     fn debug_port_start(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut ArmCommunicationInterface,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         const SW_DP_ABORT: u8 = 0x0;
