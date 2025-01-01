@@ -15,7 +15,7 @@ description = "A collection of on chip debugging tools to communicate with micro
 default-run = "probe-rs"
 
 [features]
-default = ["remote"]
+default = []
 # Include server/client functionality
 remote = [
     "futures-util",
