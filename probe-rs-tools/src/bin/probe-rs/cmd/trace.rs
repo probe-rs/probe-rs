@@ -6,21 +6,22 @@ use std::time::Instant;
 use probe_rs::probe::list::Lister;
 use probe_rs::MemoryInterface;
 use scroll::{Pwrite, LE};
+use serde::{Deserialize, Serialize};
 
 use crate::util::{common_options::ProbeOptions, parse_u64};
 use crate::CoreOptions;
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(flatten)]
-    shared: CoreOptions,
+    pub shared: CoreOptions,
 
     #[clap(flatten)]
-    common: ProbeOptions,
+    pub common: ProbeOptions,
 
     /// The address of the memory to dump from the target.
     #[clap(value_parser = parse_u64)]
-    loc: u64,
+    pub loc: u64,
 }
 
 impl Cmd {

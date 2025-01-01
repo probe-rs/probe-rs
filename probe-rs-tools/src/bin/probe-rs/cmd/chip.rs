@@ -1,13 +1,14 @@
 use bytesize::ByteSize;
 use probe_rs::config::MemoryRegion;
+use serde::{Deserialize, Serialize};
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
 
-#[derive(clap::Subcommand)]
+#[derive(clap::Subcommand, Serialize, Deserialize)]
 /// Inspect internal registry of supported chips
 enum Subcommand {
     /// Lists all the available families and their chips with their full.

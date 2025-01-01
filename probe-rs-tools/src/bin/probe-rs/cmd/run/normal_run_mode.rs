@@ -1,9 +1,10 @@
 use crate::cmd::run::{OutputStream, RunLoop, RunMode, SemihostingPrinter};
 use anyhow::anyhow;
 use probe_rs::{semihosting::SemihostingCommand, BreakpointCause, Core, HaltReason, Session};
+use serde::{Deserialize, Serialize};
 
 /// Options only used in normal run mode
-#[derive(Debug, clap::Parser, Clone)]
+#[derive(Debug, clap::Parser, Clone, Serialize, Deserialize)]
 pub struct NormalRunOptions {
     /// Enable reset vector catch if its supported on the target.
     #[clap(long, help_heading = "RUN OPTIONS")]

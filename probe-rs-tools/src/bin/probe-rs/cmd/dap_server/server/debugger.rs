@@ -1427,7 +1427,7 @@ mod test {
             result: 1,
         });
 
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
+        lister.probes.lock().push((probe_info, fake_probe));
 
         let lister = Lister::with_lister(Box::new(lister));
 
@@ -1490,7 +1490,7 @@ mod test {
             result: 1,
         });
 
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
+        lister.probes.lock().push((probe_info, fake_probe));
 
         let lister = Lister::with_lister(Box::new(lister));
 
@@ -1540,7 +1540,7 @@ mod test {
             result: 1,
         });
 
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
+        lister.probes.lock().push((probe_info, fake_probe));
 
         let lister = Lister::with_lister(Box::new(lister));
 
@@ -1612,7 +1612,7 @@ mod test {
             result: 1,
         });
 
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
+        lister.probes.lock().push((probe_info, fake_probe));
 
         let lister = Lister::with_lister(Box::new(lister));
 
@@ -1682,7 +1682,7 @@ mod test {
             result: 1,
         });
 
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
+        lister.probes.lock().push((probe_info, fake_probe));
 
         let lister = Lister::with_lister(Box::new(lister));
 
@@ -1772,7 +1772,7 @@ mod test {
             result: 1,
         });
 
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
+        lister.probes.lock().push((probe_info, fake_probe));
 
         let lister = Lister::with_lister(Box::new(lister));
 

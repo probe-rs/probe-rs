@@ -15,6 +15,7 @@ pub mod list;
 pub mod mi;
 pub mod profile;
 pub mod read;
+pub mod remote;
 pub mod reset;
 pub mod run;
 pub mod trace;

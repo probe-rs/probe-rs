@@ -11,21 +11,62 @@ use std::{ffi::OsString, path::PathBuf};
 use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
+use figment::providers::{Data, Format as _, Json, Toml, Yaml};
+use figment::Figment;
 use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, FormatKind, IdfOptions};
+use probe_rs::probe::DebugProbeSelector;
 use probe_rs::{probe::list::Lister, Target};
 use report::Report;
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
+use crate::cmd::remote::LocalSession;
+#[cfg(feature = "remote")]
+use crate::cmd::remote::{client::ClientConnection, RemoteSession};
+use crate::cmd::run::SharedOptions;
+use crate::util::common_options::ProbeOptions;
 use crate::util::logging::setup_logging;
 use crate::util::parse_u32;
 use crate::util::parse_u64;
 
 const MAX_LOG_FILES: usize = 20;
 
-#[derive(clap::Parser)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ParameterSet {
+    /// The name of the parameter set.
+    pub name: String,
+
+    /// The probe selector.
+    pub selector: Option<DebugProbeSelector>,
+
+    /// The chip name.
+    pub chip: Option<String>,
+}
+
+#[cfg(feature = "remote")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ServerUser {
+    pub name: String,
+    pub token: String,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Config {
+    /// The default named parameter set to use.
+    pub default_parameter_set: Option<String>,
+
+    /// A list of named parameter sets.
+    pub parameter_sets: Vec<ParameterSet>,
+
+    #[cfg(feature = "remote")]
+    pub server_users: Vec<ServerUser>,
+}
+
+#[derive(clap::Parser, Serialize, Deserialize)]
 #[clap(
     name = "probe-rs",
     about = "The probe-rs CLI",
@@ -52,11 +93,165 @@ struct Cli {
         default_missing_value = "./report.zip"
     )]
     report: Option<PathBuf>,
+
+    /// Use a named parameter set from the configuration.
+    #[arg(long, global = true, env = "PROBE_RS_PARAM_SET")]
+    parameter_set: Option<String>,
+
+    /// Remote host to connect to
+    #[cfg(feature = "remote")]
+    #[arg(
+        long,
+        global = true,
+        env = "PROBE_RS_REMOTE_HOST",
+        help_heading = "REMOTE CONFIGURATION"
+    )]
+    host: Option<String>,
+
+    /// Authentication token for remote connections
+    #[cfg(feature = "remote")]
+    #[arg(
+        long,
+        global = true,
+        env = "PROBE_RS_REMOTE_TOKEN",
+        help_heading = "REMOTE CONFIGURATION"
+    )]
+    token: Option<String>,
+
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
 
-#[derive(clap::Subcommand)]
+impl Cli {
+    #[cfg(feature = "remote")]
+    async fn upload_format_specific_files(
+        handle: &mut ClientConnection,
+        format_options: &mut FormatOptions,
+    ) -> anyhow::Result<()> {
+        if let Some(ref mut idf_bootloader) = format_options.idf_options.idf_bootloader {
+            *idf_bootloader = handle.upload_file(&idf_bootloader).await?;
+        }
+        if let Some(ref mut idf_partition_table) = format_options.idf_options.idf_partition_table {
+            *idf_partition_table = handle.upload_file(&idf_partition_table).await?;
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "remote")]
+    async fn upload_probe_specific_files(
+        handle: &mut ClientConnection,
+        probe_options: &mut ProbeOptions,
+    ) -> anyhow::Result<()> {
+        if let Some(ref mut path) = probe_options.chip_description_path {
+            *path = handle.upload_file(&path).await?;
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "remote")]
+    async fn run_on_server(
+        mut self,
+        config: Config,
+        handle: &mut ClientConnection,
+    ) -> anyhow::Result<()> {
+        if let Some(probe_options) = self.subcommand.probe_options_mut() {
+            Self::upload_probe_specific_files(handle, probe_options).await?;
+        }
+
+        match self.subcommand {
+            // Commands that are implemented via a series of RPC calls.
+            // TODO: refactor other commands to use this pattern, then merge this function and `run`.
+            Subcommand::List(cmd) => {
+                let mut iface = RemoteSession::new(handle);
+                cmd.run(&config, &mut iface).await
+            }
+            Subcommand::Read(cmd) => {
+                let mut iface = RemoteSession::new(handle);
+                cmd.run(&mut iface).await
+            }
+            Subcommand::Write(cmd) => {
+                let mut iface = RemoteSession::new(handle);
+                cmd.run(&mut iface).await
+            }
+
+            // Commands that don't need anything fancy
+            Subcommand::Reset(_)
+            | Subcommand::Trace(_)
+            | Subcommand::Itm(_)
+            | Subcommand::Info(_) => handle.send_command(self).await,
+
+            // Commands that need a file to be uploaded
+            Subcommand::Verify(ref mut cmd) => {
+                cmd.path = handle.upload_file(&cmd.path).await?;
+
+                Self::upload_format_specific_files(handle, &mut cmd.format_options).await?;
+
+                handle.send_command(self).await
+            }
+            Subcommand::Download(ref mut cmd) => {
+                cmd.path = handle.upload_file(&cmd.path).await?;
+
+                Self::upload_format_specific_files(handle, &mut cmd.format_options).await?;
+
+                handle.send_command(self).await
+            }
+            Subcommand::Attach(crate::cmd::attach::Cmd { run: ref mut cmd })
+            | Subcommand::Run(ref mut cmd) => {
+                cmd.shared_options.path = handle.upload_file(&cmd.shared_options.path).await?;
+
+                Self::upload_format_specific_files(handle, &mut cmd.shared_options.format_options)
+                    .await?;
+
+                handle.send_command(self).await
+            }
+
+            _ => anyhow::bail!("The subcommand is not supported in remote mode."),
+        }
+    }
+
+    async fn run(self, config: Config, utc_offset: UtcOffset) -> Result<()> {
+        let lister = Lister::new();
+        let mut session_interface = LocalSession::new();
+        match self.subcommand {
+            Subcommand::DapServer { .. } => unreachable!(),
+            #[cfg(feature = "remote")]
+            Subcommand::Serve(cmd) => cmd.run(config).await,
+            Subcommand::List(cmd) => cmd.run(&config, &mut session_interface).await,
+            Subcommand::Info(cmd) => cmd.run(&lister),
+            Subcommand::Gdb(cmd) => cmd.run(&lister),
+            Subcommand::Reset(cmd) => cmd.run(&lister),
+            Subcommand::Debug(cmd) => cmd.run(&lister),
+            Subcommand::Download(cmd) => cmd.run(&lister),
+            Subcommand::Run(cmd) => cmd.run(&lister, true, utc_offset),
+            Subcommand::Attach(cmd) => cmd.run(&lister, utc_offset),
+            Subcommand::Verify(cmd) => cmd.run(&lister),
+            Subcommand::Erase(cmd) => cmd.run(&lister),
+            Subcommand::Trace(cmd) => cmd.run(&lister),
+            Subcommand::Itm(cmd) => cmd.run(&lister),
+            Subcommand::Chip(cmd) => cmd.run(),
+            Subcommand::Benchmark(cmd) => cmd.run(&lister),
+            Subcommand::Profile(cmd) => cmd.run(&lister),
+            Subcommand::Read(cmd) => cmd.run(&mut session_interface).await,
+            Subcommand::Write(cmd) => cmd.run(&mut session_interface).await,
+            Subcommand::Complete(cmd) => cmd.run(&lister),
+            Subcommand::Mi(cmd) => cmd.run(config, utc_offset).await,
+        }
+    }
+
+    fn elf(&self) -> Option<PathBuf> {
+        match self.subcommand {
+            Subcommand::Download(ref cmd) => Some(cmd.path.clone()),
+            Subcommand::Run(ref cmd) => Some(cmd.shared_options.path.clone()),
+            Subcommand::Attach(ref cmd) => Some(cmd.run.shared_options.path.clone()),
+            Subcommand::Verify(ref cmd) => Some(cmd.path.clone()),
+            _ => None,
+        }
+    }
+}
+
+#[derive(clap::Subcommand, Serialize, Deserialize)]
 enum Subcommand {
     /// Debug Adapter Protocol (DAP) server. See <https://probe.rs/docs/tools/debugger/>.
     DapServer(cmd::dap_server::Cmd),
@@ -93,14 +288,122 @@ enum Subcommand {
     Benchmark(cmd::benchmark::Cmd),
     /// Profile on-target runtime performance of target ELF program
     Profile(cmd::profile::ProfileCmd),
+    /// Start a server that accepts remote connections
+    #[cfg(feature = "remote")]
+    Serve(cmd::remote::server::Cmd),
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
     Complete(cmd::complete::Cmd),
     Mi(cmd::mi::Cmd),
 }
 
+impl Subcommand {
+    #[cfg(feature = "remote")]
+    pub fn probe_options(&self) -> Option<&ProbeOptions> {
+        if let Subcommand::Benchmark(cmd::benchmark::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Debug(cmd::debug::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Download(cmd::download::Cmd { probe_options, .. })
+        | Subcommand::Erase(cmd::erase::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Gdb(cmd::gdb::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Info(cmd::info::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Itm(cmd::itm::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Read(cmd::read::Cmd { probe_options, .. })
+        | Subcommand::Trace(cmd::trace::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Verify(cmd::verify::Cmd { probe_options, .. })
+        | Subcommand::Write(cmd::write::Cmd { probe_options, .. })
+        | Subcommand::Attach(cmd::attach::Cmd {
+            run:
+                cmd::run::Cmd {
+                    shared_options: SharedOptions { probe_options, .. },
+                    ..
+                },
+        })
+        | Subcommand::Run(cmd::run::Cmd {
+            shared_options: SharedOptions { probe_options, .. },
+            ..
+        }) = self
+        {
+            Some(probe_options)
+        } else {
+            None
+        }
+    }
+
+    pub fn probe_options_mut(&mut self) -> Option<&mut ProbeOptions> {
+        if let Subcommand::Benchmark(cmd::benchmark::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Debug(cmd::debug::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Download(cmd::download::Cmd { probe_options, .. })
+        | Subcommand::Erase(cmd::erase::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Gdb(cmd::gdb::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Info(cmd::info::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Itm(cmd::itm::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Read(cmd::read::Cmd { probe_options, .. })
+        | Subcommand::Trace(cmd::trace::Cmd {
+            common: probe_options,
+            ..
+        })
+        | Subcommand::Verify(cmd::verify::Cmd { probe_options, .. })
+        | Subcommand::Write(cmd::write::Cmd { probe_options, .. })
+        | Subcommand::Attach(cmd::attach::Cmd {
+            run:
+                cmd::run::Cmd {
+                    shared_options: SharedOptions { probe_options, .. },
+                    ..
+                },
+        })
+        | Subcommand::Run(cmd::run::Cmd {
+            shared_options: SharedOptions { probe_options, .. },
+            ..
+        }) = self
+        {
+            Some(probe_options)
+        } else {
+            None
+        }
+    }
+}
+
 /// Shared options for core selection, shared between commands
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub(crate) struct CoreOptions {
     #[clap(long, default_value = "0")]
     core: usize,
@@ -252,7 +555,8 @@ fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<&'list 
     None
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.
     // FIXME: we should probably let the user know if we can't determine the offset. However,
@@ -260,6 +564,8 @@ fn main() -> Result<()> {
     let utc_offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
 
     let args: Vec<_> = std::env::args_os().collect();
+
+    // Special-case `cargo-embed` and `cargo-flash`.
     if let Some(args) = multicall_check(&args, "cargo-flash") {
         cmd::cargo_flash::main(args);
         return Ok(());
@@ -269,24 +575,18 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    if let Some(format_arg_pos) = args.iter().position(|arg| arg == "--format") {
-        if let Some(format_arg) = args.get(format_arg_pos + 1) {
-            if let Some(format_arg) = format_arg.to_str() {
-                if FormatKind::from_str(format_arg).is_ok() {
-                    anyhow::bail!("--format has been renamed to --binary-format. Please use --binary-format {0} instead of --format {0}", format_arg);
-                }
-            }
-        }
-    }
+    reject_format_arg(&args)?;
+
+    let config = load_config().context("Failed to load configuration.")?;
 
     // Parse the commandline options.
-    let matches = Cli::parse_from(args);
+    let mut matches = Cli::parse_from(args);
 
-    // Setup the probe lister, list all probes normally
-    let lister = Lister::new();
+    // Substitute options from the global config, before we set up logging
+    preprocess_cli_early(&mut matches, &config)?;
 
-    let log_path = if let Some(location) = matches.log_file {
-        Some(location)
+    let log_path = if let Some(ref location) = matches.log_file {
+        Some(location.clone())
     } else if matches.log_to_folder || matches.report.is_some() {
         // We always log if we create a report.
         let location =
@@ -304,49 +604,50 @@ fn main() -> Result<()> {
 
     // the DAP server has special logging requirements. Run it before initializing logging,
     // so it can do its own special init.
-    if let Subcommand::DapServer(cmd) = matches.subcommand {
-        return cmd::dap_server::run(cmd, &lister, utc_offset, log_path);
+    if let Subcommand::DapServer(ref cmd) = matches.subcommand {
+        let lister = Lister::new();
+        return cmd::dap_server::run(cmd.clone(), &lister, utc_offset, log_path);
     }
 
     let _logger_guard = setup_logging(log_path, None);
 
-    let mut elf = None;
-    let result = match matches.subcommand {
-        Subcommand::DapServer { .. } => unreachable!(), // handled above.
-        Subcommand::List(cmd) => cmd.run(&lister),
-        Subcommand::Info(cmd) => cmd.run(&lister),
-        Subcommand::Gdb(cmd) => cmd.run(&lister),
-        Subcommand::Reset(cmd) => cmd.run(&lister),
-        Subcommand::Debug(cmd) => cmd.run(&lister),
-        Subcommand::Download(cmd) => {
-            elf = Some(cmd.path.clone());
-            cmd.run(&lister)
-        }
-        Subcommand::Run(cmd) => {
-            elf = Some(cmd.shared_options.path.clone());
-            cmd.run(&lister, true, utc_offset)
-        }
-        Subcommand::Attach(cmd) => {
-            elf = Some(cmd.run.shared_options.path.clone());
-            cmd.run(&lister, utc_offset)
-        }
-        Subcommand::Verify(cmd) => {
-            elf = Some(cmd.path.clone());
-            cmd.run(&lister)
-        }
-        Subcommand::Erase(cmd) => cmd.run(&lister),
-        Subcommand::Trace(cmd) => cmd.run(&lister),
-        Subcommand::Itm(cmd) => cmd.run(&lister),
-        Subcommand::Chip(cmd) => cmd.run(),
-        Subcommand::Benchmark(cmd) => cmd.run(&lister),
-        Subcommand::Profile(cmd) => cmd.run(&lister),
-        Subcommand::Read(cmd) => cmd.run(&lister),
-        Subcommand::Write(cmd) => cmd.run(&lister),
-        Subcommand::Complete(cmd) => cmd.run(&lister),
-        Subcommand::Mi(cmd) => cmd.run(),
+    // Substitute options from the global config after we set up logging
+    preprocess_cli_late(&mut matches, &config)?;
+
+    let elf = matches.elf();
+    let report_path = matches.report.clone();
+
+    #[cfg(feature = "remote")]
+    let result = if let Some(host) = matches.host.as_deref() {
+        let mut handle = cmd::remote::client::connect(host, matches.token.clone()).await?;
+
+        // Run the command remotely.
+        matches.run_on_server(config, &mut handle).await
+    } else {
+        // Run the command locally.
+        matches.run(config, utc_offset).await
     };
 
-    compile_report(result, matches.report, elf, log_path)
+    // Run the command locally.
+    #[cfg(not(feature = "remote"))]
+    let result = matches.run(config, utc_offset).await;
+
+    // TODO: we'll not get the report if a remote command fails.
+    compile_report(result, report_path, elf, log_path)
+}
+
+fn reject_format_arg(args: &[OsString]) -> anyhow::Result<()> {
+    if let Some(format_arg_pos) = args.iter().position(|arg| arg == "--format") {
+        if let Some(format_arg) = args.get(format_arg_pos + 1) {
+            if let Some(format_arg) = format_arg.to_str() {
+                if FormatKind::from_str(format_arg).is_ok() {
+                    anyhow::bail!("--format has been renamed to --binary-format. Please use --binary-format {0} instead of --format {0}", format_arg);
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn compile_report(
@@ -389,6 +690,81 @@ fn compile_report(
     let title = urlencoding::encode(&error);
 
     eprintln!("{base}?labels=bug&title={title}&body={body}");
+
+    Ok(())
+}
+
+fn load_config() -> anyhow::Result<Config> {
+    // Paths to search for the configuration file.
+    let mut paths = vec![PathBuf::from(".")];
+    if let Some(home) = directories::UserDirs::new().map(|user| user.home_dir().to_path_buf()) {
+        paths.push(home);
+    }
+
+    // Files to search for, without extension.
+    let files = [".probe-rs"];
+
+    let default_config = serde_json::to_string_pretty(&Config::default()).unwrap();
+    let mut figment = Figment::from(Data::<Json>::string(&default_config));
+    for path in paths {
+        for file in files {
+            figment = figment
+                .merge(Toml::file(path.join(format!("{file}.toml"))))
+                .merge(Json::file(path.join(format!("{file}.json"))))
+                .merge(Yaml::file(path.join(format!("{file}.yaml"))))
+                .merge(Yaml::file(path.join(format!("{file}.yml"))));
+        }
+    }
+
+    let config = figment.extract::<Config>()?;
+
+    Ok(config)
+}
+
+fn preprocess_cli_early(_matches: &mut Cli, _config: &Config) -> Result<()> {
+    Ok(())
+}
+
+fn preprocess_cli_late(matches: &mut Cli, config: &Config) -> Result<()> {
+    apply_default_paramset(matches, config)?;
+    resolve_paramset(matches, config)?;
+    Ok(())
+}
+
+fn apply_default_paramset(matches: &mut Cli, config: &Config) -> Result<()> {
+    // If a paramset is not selected, check if there is a default one
+    // in the config and apply that.
+    if matches.parameter_set.is_none() {
+        matches.parameter_set = config.default_parameter_set.clone();
+    }
+
+    Ok(())
+}
+
+fn resolve_paramset(matches: &mut Cli, config: &Config) -> Result<()> {
+    // If a named parameter set is provided, substitute its values into the CLI.
+    let Some(paramset_name) = matches.parameter_set.as_deref() else {
+        return Ok(());
+    };
+
+    let Some(paramset) = config
+        .parameter_sets
+        .iter()
+        .find(|d| d.name == paramset_name)
+    else {
+        anyhow::bail!(r#"Parameter set "{paramset_name}" is not found in the configuration."#);
+    };
+
+    // Substitute values in `ProbeOptions` structs.
+    if let Some(probe_options) = matches.subcommand.probe_options_mut() {
+        // Prefer CLI over config values.
+        if probe_options.probe.is_none() {
+            probe_options.probe = paramset.selector.clone();
+        }
+        if probe_options.chip.is_none() {
+            probe_options.chip = paramset.chip.clone();
+        }
+    }
 
     Ok(())
 }

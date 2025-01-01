@@ -2,26 +2,27 @@ use std::time::Duration;
 
 use parking_lot::FairMutex;
 use probe_rs::probe::list::Lister;
+use serde::{Deserialize, Serialize};
 
 use crate::util::common_options::ProbeOptions;
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(
         long,
         help = "Use this flag to override the default GDB connection string (localhost:1337)."
     )]
-    gdb_connection_string: Option<String>,
+    pub gdb_connection_string: Option<String>,
 
     #[clap(
         name = "reset-halt",
         long = "reset-halt",
         help = "Use this flag to reset and halt (instead of just a halt) the attached core after attaching to the target."
     )]
-    reset_halt: bool,
+    pub reset_halt: bool,
 
     #[clap(flatten)]
-    common: ProbeOptions,
+    pub common: ProbeOptions,
 }
 
 impl Cmd {

@@ -24,22 +24,23 @@ use probe_rs::{
     probe::{list::Lister, Probe, WireProtocol},
     MemoryMappedRegister,
 };
+use serde::{Deserialize, Serialize};
 use termtree::Tree;
 
 use crate::util::common_options::ProbeOptions;
 
 const JEP_ARM: JEP106Code = JEP106Code::new(4, 0x3b);
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(flatten)]
-    common: ProbeOptions,
+    pub common: ProbeOptions,
     /// SWD Multidrop target selection value
     ///
     /// If provided, this value is written into the debug port TARGETSEL register
     /// when connecting. This is required for targets using SWD multidrop
     #[arg(long, value_parser = parse_hex)]
-    target_sel: Option<u32>,
+    pub target_sel: Option<u32>,
 }
 
 // Clippy doesn't like `from_str_radix` with radix 10, but I prefer the symmetry`

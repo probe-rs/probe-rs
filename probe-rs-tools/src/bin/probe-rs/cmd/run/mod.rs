@@ -22,6 +22,7 @@ use probe_rs::{
     rtt::{Error as RttError, ScanRegion},
     Core, CoreInterface, Error, HaltReason, Session, VectorCatchCondition,
 };
+use serde::{Deserialize, Serialize};
 use signal_hook::consts::signal;
 use time::UtcOffset;
 
@@ -31,7 +32,7 @@ use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{ChannelDataCallbacks, RttChannelConfig, RttConfig};
 use crate::FormatOptions;
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     /// Options only used when in normal run mode
     #[clap(flatten)]
@@ -46,7 +47,7 @@ pub struct Cmd {
     pub(crate) shared_options: SharedOptions,
 }
 
-#[derive(Debug, clap::Parser)]
+#[derive(Debug, clap::Parser, Serialize, Deserialize)]
 pub struct SharedOptions {
     #[clap(flatten)]
     pub(crate) probe_options: ProbeOptions,

@@ -4,11 +4,12 @@ use std::time::{Duration, Instant};
 
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
 use probe_rs::probe::list::Lister;
+use serde::{Deserialize, Serialize};
 
 use crate::util::common_options::ProbeOptions;
 use crate::CoreOptions;
 
-#[derive(clap::Subcommand)]
+#[derive(clap::Subcommand, Serialize, Deserialize)]
 pub(crate) enum ItmSource {
     /// Direct ITM data to Embedded Trace Buffer/FIFO (ETB/ETF) for extraction.
     ///
@@ -55,16 +56,16 @@ pub(crate) enum ItmSource {
     },
 }
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(flatten)]
-    shared: CoreOptions,
+    pub shared: CoreOptions,
 
     #[clap(flatten)]
-    common: ProbeOptions,
+    pub common: ProbeOptions,
 
     #[clap(subcommand)]
-    source: ItmSource,
+    pub source: ItmSource,
 }
 
 impl Cmd {
