@@ -1,7 +1,8 @@
 use probe_rs::probe::list::Lister;
+use serde::{Deserialize, Serialize};
 use time::UtcOffset;
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 #[group(skip)]
 pub struct Cmd {
     #[clap(flatten)]

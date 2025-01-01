@@ -15,6 +15,7 @@ use probe_rs::{
     probe::{list::Lister, DebugProbeError},
     CoreDumpError, Error,
 };
+use serde::{Deserialize, Serialize};
 use server::startup::debug;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -71,7 +72,7 @@ pub enum DebuggerError {
 
 /// Open target in debug mode and accept debug commands.
 /// This only works as a [debug_adapter::protocol::DapAdapter] and uses Debug Adapter Protocol (DAP) commands (enables connections from clients such as Microsoft Visual Studio Code).
-#[derive(clap::Parser, Clone)]
+#[derive(clap::Parser, Clone, Serialize, Deserialize)]
 pub struct Cmd {
     /// IP port number to listen for incoming DAP connections, e.g. "50000"
     #[clap(long)]

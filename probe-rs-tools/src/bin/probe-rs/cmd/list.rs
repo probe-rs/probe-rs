@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use probe_rs::probe::list::Lister;
+use serde::{Deserialize, Serialize};
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {}
 
 impl Cmd {

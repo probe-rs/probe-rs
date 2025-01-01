@@ -2,10 +2,11 @@ use std::time::Duration;
 
 use parking_lot::FairMutex;
 use probe_rs::probe::list::Lister;
+use serde::{Deserialize, Serialize};
 
 use crate::util::common_options::ProbeOptions;
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(
         long,

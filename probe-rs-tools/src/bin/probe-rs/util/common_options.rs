@@ -18,7 +18,7 @@ use probe_rs::{
 use serde::{Deserialize, Serialize};
 
 /// Common options when flashing a target device.
-#[derive(Debug, clap::Parser)]
+#[derive(Debug, clap::Parser, Serialize, Deserialize)]
 pub struct BinaryDownloadOptions {
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub disable_progressbars: bool,
@@ -56,7 +56,7 @@ pub enum ReadWriteBitWidth {
 }
 
 /// Common options for read/write operations to a target device.
-#[derive(Debug, clap::Parser)]
+#[derive(Debug, clap::Parser, Serialize, Deserialize)]
 pub struct ReadWriteOptions {
     /// Width of the data to read/write.
     #[clap(value_enum, ignore_case = true)]
@@ -68,7 +68,7 @@ pub struct ReadWriteOptions {
 }
 
 /// Common options and logic when interfacing with a [Probe].
-#[derive(clap::Parser, Debug)]
+#[derive(clap::Parser, Debug, Serialize, Deserialize)]
 pub struct ProbeOptions {
     #[arg(long, env = "PROBE_RS_CHIP", help_heading = "PROBE CONFIGURATION")]
     pub chip: Option<String>,

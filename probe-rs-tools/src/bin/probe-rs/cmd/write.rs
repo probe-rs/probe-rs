@@ -3,6 +3,7 @@ use probe_rs::{probe::list::Lister, MemoryInterface};
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
 use crate::util::parse_u64;
 use crate::CoreOptions;
+use serde::{Deserialize, Serialize};
 
 /// Write to target memory address
 ///
@@ -10,7 +11,7 @@ use crate::CoreOptions;
 ///      Writes 0xDEADBEEF to address 0x400E1490 and 0xCAFEF00D to address 0x400E1494
 ///
 /// NOTE: Only supports RAM addresses
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 #[clap(verbatim_doc_comment)]
 pub struct Cmd {
     #[clap(flatten)]

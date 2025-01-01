@@ -17,6 +17,7 @@ pub mod profile;
 pub mod read;
 pub mod reset;
 pub mod run;
+pub mod server;
 pub mod trace;
 pub mod verify;
 pub mod write;

@@ -23,10 +23,11 @@ use probe_rs::{
     Core, CoreType, InstructionSet, MemoryInterface, RegisterValue,
 };
 use rustyline::{error::ReadlineError, DefaultEditor};
+use serde::{Deserialize, Serialize};
 
 use crate::{util::common_options::ProbeOptions, CoreOptions};
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(flatten)]
     pub shared: CoreOptions,

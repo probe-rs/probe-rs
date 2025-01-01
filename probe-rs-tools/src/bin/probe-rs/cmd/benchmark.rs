@@ -5,6 +5,7 @@ use std::{
 
 use anyhow::Context;
 use probe_rs::{probe::list::Lister, MemoryInterface};
+use serde::{Deserialize, Serialize};
 
 use crate::util::common_options::LoadedProbeOptions;
 use crate::util::common_options::ProbeOptions;
@@ -12,7 +13,7 @@ use crate::util::common_options::ProbeOptions;
 const PROBE_SPEEDS: [u32; 10] = [320, 640, 960, 3200, 6400, 9600, 32000, 64000, 96000, 320000];
 const TEST_SIZES: [usize; 5] = [1, 8, 32, 512, 8192];
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(flatten)]
     pub common: ProbeOptions,

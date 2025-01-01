@@ -1,8 +1,9 @@
 use probe_rs::probe::list::Lister;
+use serde::{Deserialize, Serialize};
 
 use crate::{util::common_options::ProbeOptions, CoreOptions};
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(flatten)]
     shared: CoreOptions,

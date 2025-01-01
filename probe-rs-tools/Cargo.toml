@@ -94,6 +94,16 @@ zip = { version = "2.0.0", default-features = false, features = [
 ] }
 urlencoding = "2"
 
+# Server-only
+futures-util = "0.3"
+interprocess = { version = "2.2", features = ["tokio"] }
+hyper-util = { version = "0.1.1", features = ["client-legacy"] }
+tokio = { version = "1.0", features = ["full"] }
+tokio-tungstenite = "0.26"
+axum = { version = "0.7", features = ["ws"] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
+tempfile = "3.0"
+
 [build-dependencies]
 git-version = "0.3"
 

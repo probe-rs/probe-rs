@@ -2,6 +2,7 @@ use probe_rs::{probe::list::Lister, MemoryInterface};
 
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
 use crate::CoreOptions;
+use serde::{Deserialize, Serialize};
 
 /// Read from target memory address
 ///
@@ -15,7 +16,7 @@ use crate::CoreOptions;
 ///     0000000000000000 0000000000000000 (64-bit)
 ///
 /// NOTE: Only supports RAM addresses
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 #[clap(verbatim_doc_comment)]
 pub struct Cmd {
     #[clap(flatten)]

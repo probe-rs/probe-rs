@@ -5,10 +5,11 @@ use probe_rs::{
     flashing::{erase_all, FlashProgress, ProgressEvent},
     probe::list::Lister,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::util::{common_options::ProbeOptions, flash::ProgressBarGroup, logging};
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(flatten)]
     pub common: ProbeOptions,

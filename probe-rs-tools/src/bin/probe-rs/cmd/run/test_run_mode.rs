@@ -4,12 +4,12 @@ use crate::cmd::run::{
 use anyhow::Result;
 use libtest_mimic::{Arguments, Failed, FormatSetting, Trial};
 use probe_rs::{semihosting::SemihostingCommand, BreakpointCause, Core, HaltReason, Session};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 /// Options only used when in test run mode
-#[derive(Debug, clap::Parser)]
+#[derive(Debug, clap::Parser, Serialize, Deserialize)]
 pub struct TestOptions {
     /// Filter string. Only tests which contain this string are run.
     #[clap(
@@ -35,6 +35,7 @@ pub struct TestOptions {
         help_heading = "TEST OPTIONS",
         help = "Configure formatting of the test report output"
     )]
+    #[serde(skip)] // TODO: not supported yet
     pub format: Option<FormatSetting>,
 
     /// If set, filters are matched exactly rather than by substring.
@@ -66,7 +67,7 @@ pub struct TestOptions {
 }
 
 /// Options which are ignored, but exist for compatibility with libtest.
-#[derive(Debug, clap::Parser)]
+#[derive(Debug, clap::Parser, Serialize, Deserialize)]
 struct NoOpTestOptions {
     // No-op, ignored (libtest-mimic always runs in no-capture mode)
     #[clap(long = "nocapture", hide = true)]

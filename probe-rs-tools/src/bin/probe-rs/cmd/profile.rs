@@ -14,11 +14,12 @@ use probe_rs::{
     },
     probe::list::Lister,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::util::flash::{build_loader, run_flash_download};
 use tracing::info;
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct ProfileCmd {
     #[clap(flatten)]
     run: super::run::Cmd,
@@ -42,7 +43,7 @@ pub struct ProfileCmd {
     method: ProfileMethod,
 }
 
-#[derive(clap::Subcommand, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(clap::Subcommand, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum ProfileMethod {
     /// Naive, Halt -> Read PC -> Resume profiler

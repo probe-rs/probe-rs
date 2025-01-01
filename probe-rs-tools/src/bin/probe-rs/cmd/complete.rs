@@ -9,16 +9,18 @@ use clap_complete::{
     Generator, Shell,
 };
 use probe_rs::probe::list::Lister;
+use serde::{Deserialize, Serialize};
 
 use crate::Cli;
 
 const BIN_NAME: &str = "probe-rs";
 
 /// Install and complete autocomplete scripts
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 #[clap(verbatim_doc_comment)]
 pub struct Cmd {
     #[clap(long)]
+    #[serde(skip)] // TODO: unsupported
     shell: Option<Shell>,
     #[clap(subcommand)]
     kind: CompleteKind,
@@ -95,7 +97,7 @@ impl Cmd {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq, clap::Subcommand)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, clap::Subcommand, Serialize, Deserialize)]
 #[clap(verbatim_doc_comment)]
 pub enum CompleteKind {
     /// Installs the autocomplete script for the correct shell.

@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use probe_rs::probe::list::Lister;
+use serde::{Deserialize, Serialize};
 
 use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::common_options::ProbeOptions;
@@ -8,7 +9,7 @@ use crate::util::flash::build_loader;
 use crate::util::flash::run_flash_download;
 use crate::FormatOptions;
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(flatten)]
     pub probe_options: ProbeOptions,

@@ -24,13 +24,14 @@ use probe_rs::{
     probe::{list::Lister, Probe, WireProtocol},
     MemoryMappedRegister,
 };
+use serde::{Deserialize, Serialize};
 use termtree::Tree;
 
 use crate::util::common_options::ProbeOptions;
 
 const JEP_ARM: JEP106Code = JEP106Code::new(4, 0x3b);
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub struct Cmd {
     #[clap(flatten)]
     pub common: ProbeOptions,
