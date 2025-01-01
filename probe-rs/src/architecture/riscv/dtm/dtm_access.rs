@@ -4,7 +4,7 @@ use std::fmt;
 use std::time::Duration;
 
 #[async_trait::async_trait(?Send)]
-pub trait DtmAccess: Send + fmt::Debug {
+pub trait DtmAccess: fmt::Debug {
     /// Perform interface-specific initialisation upon attaching.
     async fn init(&mut self) -> Result<(), RiscvError> {
         Ok(())

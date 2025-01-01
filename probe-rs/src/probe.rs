@@ -612,7 +612,7 @@ pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sy
 ///
 /// This trait has to be implemented by ever debug probe driver.
 #[async_trait::async_trait(?Send)]
-pub trait DebugProbe: Send + fmt::Debug {
+pub trait DebugProbe: fmt::Debug {
     /// Get human readable name for the probe.
     fn get_name(&self) -> &str;
 

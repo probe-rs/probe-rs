@@ -139,7 +139,7 @@ impl Chip {
 }
 
 /// An individual core inside a chip
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Core {
     /// The core name.
     pub name: String,
@@ -154,7 +154,7 @@ pub struct Core {
 }
 
 /// The data required to access a core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum CoreAccessOptions {
     /// ARM specific options
     Arm(ArmCoreAccessOptions),
@@ -165,7 +165,7 @@ pub enum CoreAccessOptions {
 }
 
 /// The data required to access an ARM core
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct ArmCoreAccessOptions {
     /// The access port number to access the core
     pub ap: u8,
@@ -183,7 +183,7 @@ pub struct ArmCoreAccessOptions {
 }
 
 /// The data required to access a Risc-V core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RiscvCoreAccessOptions {
     /// The hart id
     pub hart_id: Option<u32>,
@@ -193,7 +193,7 @@ pub struct RiscvCoreAccessOptions {
 }
 
 /// The data required to access an Xtensa core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct XtensaCoreAccessOptions {
     /// The JTAG TAP index of the core's debug module
     pub jtag_tap: Option<usize>,

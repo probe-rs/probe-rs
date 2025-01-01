@@ -69,7 +69,7 @@ impl RegisterParseError {
 
 /// To be implemented by debug probe drivers that support debugging ARM cores.
 #[async_trait::async_trait(?Send)]
-pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
+pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess {
     /// Returns a vector of all the access ports the current debug port has.
     ///
     /// If the target device has multiple debug ports, this will switch the active debug port

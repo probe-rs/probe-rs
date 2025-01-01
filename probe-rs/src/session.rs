@@ -820,13 +820,6 @@ impl Session {
     }
 }
 
-// This test ensures that [Session] is fully [Send] + [Sync].
-const _: fn() = || {
-    fn assert_impl_all<T: ?Sized + Send>() {}
-
-    assert_impl_all::<Session>();
-};
-
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {

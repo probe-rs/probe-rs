@@ -40,6 +40,7 @@ test = []
 [dependencies]
 anyhow.workspace = true
 async-mutex.workspace = true
+async-trait.workspace = true
 docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
@@ -100,7 +101,6 @@ dunce = { version = "1", optional = true }
 [target.'cfg(target_arch="wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
 wasm-bindgen = "0.2"
-async-trait = { workspace = true }
 
 [build-dependencies]
 probe-rs-target = { workspace = true, optional = true }

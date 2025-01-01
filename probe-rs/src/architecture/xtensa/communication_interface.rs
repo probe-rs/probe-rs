@@ -1,10 +1,6 @@
 //! Xtensa Debug Module Communication
 
-use std::{
-    collections::HashMap,
-    ops::Range,
-    time::{Duration},
-};
+use std::{collections::HashMap, ops::Range, time::Duration};
 use web_time::Instant;
 
 use probe_rs_target::MemoryRange;

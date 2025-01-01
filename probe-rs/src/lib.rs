@@ -64,9 +64,7 @@
 //! [Target], [Session]  and [Core] structs.
 //!
 //! [Probe]: probe::Probe
-#![feature(simd_wasm64)]
 #![feature(extern_types)]
-#![feature(stdarch_wasm_atomic_wait)]
 #![feature(async_closure)]
 #![feature(async_trait_bounds)]
 #![allow(async_fn_in_trait)]
