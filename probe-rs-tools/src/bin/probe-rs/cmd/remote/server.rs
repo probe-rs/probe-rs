@@ -133,7 +133,9 @@ pub struct Cmd {}
 
 impl Cmd {
     pub async fn run(self, config: Config) -> anyhow::Result<()> {
-        tracing::warn!("No users configured. Only accepting connections from localhost.");
+        if config.server_users.is_empty() {
+            tracing::warn!("No users configured.");
+        }
 
         let state = Arc::new(ServerState::new(config));
 
@@ -235,7 +237,14 @@ async fn handle_socket(socket: WebSocket, state: Arc<ServerState>) {
                     handle.websocket.close().await.unwrap();
                     return;
                 }
-                ClientMessage::StdIn => todo!(),
+                ClientMessage::Rpc(function) => {
+                    let r = function.run_on_server().await.unwrap();
+                    handle
+                        .send_message(ServerMessage::RpcResult(r))
+                        .await
+                        .unwrap();
+                }
+                _ => todo!(),
             }
         }
     }

@@ -20,7 +20,7 @@ use std::{
 };
 
 use super::{ClientMessage, ServerMessage};
-use crate::Cli;
+use crate::{cmd::remote::functions::RemoteFunctions, Cli};
 
 /// Represents a connection to a remote server.
 ///
@@ -83,6 +83,30 @@ impl ClientConnection {
         }
 
         anyhow::bail!("Server did not return a file path")
+    }
+
+    pub async fn run_call(&mut self, f: RemoteFunctions) -> anyhow::Result<String> {
+        let msg = ClientMessage::Rpc(f);
+        let msg = serde_json::to_string(&msg).context("Failed to serialize client message")?;
+
+        self.websocket.send(Message::Text(msg.into())).await?;
+
+        while let Some(Ok(msg)) = self.websocket.next().await {
+            match msg {
+                Message::Text(msg) => {
+                    let msg = serde_json::from_str::<ServerMessage>(&msg)
+                        .context("Failed to parse server message")?;
+                    match msg {
+                        ServerMessage::RpcResult(msg) => return Ok(msg),
+                        msg => panic!("Command unexpectedly returned {msg:?}"),
+                    }
+                }
+                Message::Close(_) => break,
+                msg => panic!("Server unexpectedly sent {msg:?}"),
+            }
+        }
+
+        anyhow::bail!("Connection closed unexpectedly")
     }
 }
 

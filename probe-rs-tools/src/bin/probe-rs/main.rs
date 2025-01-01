@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
 use crate::cmd::remote::client::ClientConnection;
+use crate::cmd::remote::{LocalSession, RemoteSession};
 use crate::cmd::run::SharedOptions;
 use crate::util::common_options::ProbeOptions;
 use crate::util::logging::setup_logging;
@@ -142,15 +143,25 @@ impl Cli {
         Ok(())
     }
 
-    async fn run_on_server(mut self, handle: &mut ClientConnection) -> anyhow::Result<()> {
+    async fn run_on_server(
+        mut self,
+        config: Config,
+        handle: &mut ClientConnection,
+    ) -> anyhow::Result<()> {
         if let Some(probe_options) = self.subcommand.probe_options_mut() {
             Self::upload_probe_specific_files(handle, probe_options).await?;
         }
 
         match self.subcommand {
+            // Commands that are implemented via a series of RPC calls.
+            // TODO: refactor other commands to use this pattern, then merge this function and `run`.
+            Subcommand::List(cmd) => {
+                let mut iface = RemoteSession::new(handle);
+                cmd.run(&config, &mut iface).await
+            }
+
             // Commands that don't need anything fancy
-            Subcommand::List(_)
-            | Subcommand::Read(_)
+            Subcommand::Read(_)
             | Subcommand::Write(_)
             | Subcommand::Reset(_)
             | Subcommand::Trace(_)
@@ -188,10 +199,11 @@ impl Cli {
 
     async fn run(self, config: Config, utc_offset: UtcOffset) -> Result<()> {
         let lister = Lister::new();
+        let mut session_interface = LocalSession::new();
         match self.subcommand {
             Subcommand::DapServer { .. } => unreachable!(),
             Subcommand::Serve(cmd) => cmd.run(config).await,
-            Subcommand::List(cmd) => cmd.run(&lister, &config),
+            Subcommand::List(cmd) => cmd.run(&config, &mut session_interface).await,
             Subcommand::Info(cmd) => cmd.run(&lister),
             Subcommand::Gdb(cmd) => cmd.run(&lister),
             Subcommand::Reset(cmd) => cmd.run(&lister),
@@ -591,7 +603,7 @@ async fn main() -> Result<()> {
         let mut handle = cmd::remote::client::connect(host, matches.token.clone()).await?;
 
         // Run the command remotely.
-        matches.run_on_server(&mut handle).await
+        matches.run_on_server(config, &mut handle).await
     } else {
         // Run the command locally.
         elf = matches.elf();
