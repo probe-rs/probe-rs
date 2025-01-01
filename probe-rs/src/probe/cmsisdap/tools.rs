@@ -319,7 +319,7 @@ pub async fn open_device_from_selector(
         })
         .ok_or(ProbeCreationError::NotFound)?;
 
-    let device = device_info.open_device(&hid_api)?;
+    let device = device_info.open_device(&hid_api).await?;
 
     match device.get_product_string() {
         Ok(Some(s)) if is_cmsis_dap(&s) => {
