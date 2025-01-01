@@ -48,9 +48,12 @@ probe-rs-target.workspace = true
 bincode = { version = "1", optional = true }
 bitfield = "0.17"
 bitvec = "1"
+# hidapi = { version = "2", default-features = false, features = [
+#     "linux-native",
+# ], path = "../../../hidapi-rs" }
 hidapi = { version = "2", default-features = false, features = [
     "linux-native",
-], path = "../../../hidapi-rs" }
+], git = "https://github.com/Yatekii/hidapi-rs", branch = "task/webusb" }
 ihex = "3.0"
 itertools = "0.13"
 jep106 = "0.2"
@@ -60,7 +63,8 @@ object = { version = "0.36", default-features = false, features = [
     "read_core",
     "std",
 ] }
-nusb = { version = "0.1.12", path = "../../../nusb" }
+# nusb = { version = "0.1.12", path = "../../../nusb" }
+nusb = { version = "0.1.12", git = "https://github.com/Yatekii/nusb", branch = "task/webusb" }
 futures-lite = { version = "2", default-features = false }
 
 scroll = "0.12"
@@ -94,9 +98,6 @@ typed-path = { version = "0.9", optional = true }
 parse_int = { version = "0.6", optional = true }
 rmp-serde = { version = "1", optional = true }
 dunce = { version = "1", optional = true }
-
-# [target.'cfg(not(target_arch="wasm32"))'.dependencies]
-# async-io = "2"
 
 [target.'cfg(target_arch="wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"

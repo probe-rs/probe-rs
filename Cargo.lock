@@ -740,6 +740,7 @@ dependencies = [
 [[package]]
 name = "hidapi"
 version = "2.5.1"
+source = "git+https://github.com/Yatekii/hidapi-rs?branch=task%2Fwebusb#27efde3ca4280f39b245d24a774bfd7fb4402dd0"
 dependencies = [
  "cc",
  "cfg-if",
@@ -1208,6 +1209,7 @@ dependencies = [
 [[package]]
 name = "nusb"
 version = "0.1.12"
+source = "git+https://github.com/Yatekii/nusb?branch=task%2Fwebusb#fe01b0604c3a7f9816754bcfba6e8d059bae340b"
 dependencies = [
  "atomic-waker",
  "core-foundation 0.9.4",
