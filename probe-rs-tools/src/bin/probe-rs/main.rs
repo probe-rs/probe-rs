@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
 use crate::cmd::run::SharedOptions;
+use crate::cmd::server::client::ClientConnection;
 use crate::util::common_options::ProbeOptions;
 use crate::util::logging::setup_logging;
 use crate::util::parse_u32;
@@ -115,6 +116,92 @@ struct Cli {
     subcommand: Subcommand,
 }
 
+impl Cli {
+    async fn upload_format_specific_files(
+        handle: &mut ClientConnection,
+        format_options: &mut FormatOptions,
+    ) -> anyhow::Result<()> {
+        if let Some(ref mut idf_bootloader) = format_options.idf_options.idf_bootloader {
+            *idf_bootloader = handle.upload_file(&idf_bootloader).await?;
+        }
+        if let Some(ref mut idf_partition_table) = format_options.idf_options.idf_partition_table {
+            *idf_partition_table = handle.upload_file(&idf_partition_table).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn run_on_server(mut self, handle: &mut ClientConnection) -> anyhow::Result<()> {
+        match self.subcommand {
+            // Commands that don't need anything fancy
+            Subcommand::List(_)
+            | Subcommand::Read(_)
+            | Subcommand::Write(_)
+            | Subcommand::Reset(_)
+            | Subcommand::Trace(_)
+            | Subcommand::Itm(_)
+            | Subcommand::Info(_) => handle.send_command(self).await,
+
+            // Commands that need a file to be uploaded
+            Subcommand::Verify(ref mut cmd) => {
+                cmd.path = handle.upload_file(&cmd.path).await?;
+
+                Self::upload_format_specific_files(handle, &mut cmd.format_options).await?;
+
+                handle.send_command(self).await
+            }
+            Subcommand::Attach(crate::cmd::attach::Cmd { run: ref mut cmd })
+            | Subcommand::Run(ref mut cmd) => {
+                cmd.shared_options.path = handle.upload_file(&cmd.shared_options.path).await?;
+
+                Self::upload_format_specific_files(handle, &mut cmd.shared_options.format_options)
+                    .await?;
+
+                handle.send_command(self).await
+            }
+
+            _ => anyhow::bail!("The subcommand is not supported in remote mode."),
+        }
+    }
+
+    async fn run(self, config: Config, utc_offset: UtcOffset) -> Result<()> {
+        let lister = Lister::new();
+        match self.subcommand {
+            Subcommand::DapServer { .. } => unreachable!(),
+            Subcommand::Serve(cmd) => cmd.run(config).await,
+            Subcommand::List(cmd) => cmd.run(&lister, &config),
+            Subcommand::Info(cmd) => cmd.run(&lister),
+            Subcommand::Gdb(cmd) => cmd.run(&lister),
+            Subcommand::Reset(cmd) => cmd.run(&lister),
+            Subcommand::Debug(cmd) => cmd.run(&lister),
+            Subcommand::Download(cmd) => cmd.run(&lister),
+            Subcommand::Run(cmd) => cmd.run(&lister, true, utc_offset),
+            Subcommand::Attach(cmd) => cmd.run(&lister, utc_offset),
+            Subcommand::Verify(cmd) => cmd.run(&lister),
+            Subcommand::Erase(cmd) => cmd.run(&lister),
+            Subcommand::Trace(cmd) => cmd.run(&lister),
+            Subcommand::Itm(cmd) => cmd.run(&lister),
+            Subcommand::Chip(cmd) => cmd.run(),
+            Subcommand::Benchmark(cmd) => cmd.run(&lister),
+            Subcommand::Profile(cmd) => cmd.run(&lister),
+            Subcommand::Read(cmd) => cmd.run(&lister),
+            Subcommand::Write(cmd) => cmd.run(&lister),
+            Subcommand::Complete(cmd) => cmd.run(&lister),
+            Subcommand::Mi(cmd) => cmd.run(config, utc_offset).await,
+        }
+    }
+
+    fn elf(&self) -> Option<PathBuf> {
+        match self.subcommand {
+            Subcommand::Download(ref cmd) => Some(cmd.path.clone()),
+            Subcommand::Run(ref cmd) => Some(cmd.shared_options.path.clone()),
+            Subcommand::Attach(ref cmd) => Some(cmd.run.shared_options.path.clone()),
+            Subcommand::Verify(ref cmd) => Some(cmd.path.clone()),
+            _ => None,
+        }
+    }
+}
+
 #[derive(clap::Subcommand, Serialize, Deserialize)]
 enum Subcommand {
     /// Debug Adapter Protocol (DAP) server. See <https://probe.rs/docs/tools/debugger/>.
@@ -153,7 +240,7 @@ enum Subcommand {
     /// Profile on-target runtime performance of target ELF program
     Profile(cmd::profile::ProfileCmd),
     /// Start a server that accepts remote connections
-    Serve(cmd::server::Cmd),
+    Serve(cmd::server::server::Cmd),
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
     Complete(cmd::complete::Cmd),
@@ -161,43 +248,6 @@ enum Subcommand {
 }
 
 impl Subcommand {
-    async fn run(self, config: Config, utc_offset: UtcOffset) -> Result<()> {
-        let lister = Lister::new();
-        match self {
-            Subcommand::DapServer { .. } => unreachable!(),
-            Subcommand::Serve(cmd) => cmd.run(config).await,
-            Subcommand::List(cmd) => cmd.run(&lister, &config),
-            Subcommand::Info(cmd) => cmd.run(&lister),
-            Subcommand::Gdb(cmd) => cmd.run(&lister),
-            Subcommand::Reset(cmd) => cmd.run(&lister),
-            Subcommand::Debug(cmd) => cmd.run(&lister),
-            Subcommand::Download(cmd) => cmd.run(&lister),
-            Subcommand::Run(cmd) => cmd.run(&lister, true, utc_offset),
-            Subcommand::Attach(cmd) => cmd.run(&lister, utc_offset),
-            Subcommand::Verify(cmd) => cmd.run(&lister),
-            Subcommand::Erase(cmd) => cmd.run(&lister),
-            Subcommand::Trace(cmd) => cmd.run(&lister),
-            Subcommand::Itm(cmd) => cmd.run(&lister),
-            Subcommand::Chip(cmd) => cmd.run(),
-            Subcommand::Benchmark(cmd) => cmd.run(&lister),
-            Subcommand::Profile(cmd) => cmd.run(&lister),
-            Subcommand::Read(cmd) => cmd.run(&lister),
-            Subcommand::Write(cmd) => cmd.run(&lister),
-            Subcommand::Complete(cmd) => cmd.run(&lister),
-            Subcommand::Mi(cmd) => cmd.run(config, utc_offset).await,
-        }
-    }
-
-    fn elf(&self) -> Option<PathBuf> {
-        match self {
-            Subcommand::Download(cmd) => Some(cmd.path.clone()),
-            Subcommand::Run(cmd) => Some(cmd.shared_options.path.clone()),
-            Subcommand::Attach(cmd) => Some(cmd.run.shared_options.path.clone()),
-            Subcommand::Verify(cmd) => Some(cmd.path.clone()),
-            _ => None,
-        }
-    }
-
     pub fn probe_options(&self) -> Option<&ProbeOptions> {
         if let Subcommand::Benchmark(cmd::benchmark::Cmd {
             common: probe_options,
@@ -516,14 +566,14 @@ async fn main() -> Result<()> {
     let mut elf = None;
     let report_path = matches.report.clone();
     let result = if let Some(host) = matches.host.as_deref() {
-        let mut handle = cmd::server::connect(host, matches.token.clone()).await?;
+        let mut handle = cmd::server::client::connect(host, matches.token.clone()).await?;
 
         // Run the command remotely.
-        handle.run_command(matches).await
+        matches.run_on_server(&mut handle).await
     } else {
         // Run the command locally.
-        elf = matches.subcommand.elf();
-        matches.subcommand.run(config, utc_offset).await
+        elf = matches.elf();
+        matches.run(config, utc_offset).await
     };
 
     // TODO: we'll not get the report if a remote command fails.

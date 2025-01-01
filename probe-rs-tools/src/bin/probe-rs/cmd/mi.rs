@@ -32,7 +32,7 @@ impl Cmd {
             Subcommand::Cli(cli_json) => {
                 let cli = serde_json::from_str::<Cli>(&cli_json.json)
                     .context("Failed to parse command")?;
-                let fut = cli.subcommand.run(config, utc_offset);
+                let fut = cli.run(config, utc_offset);
                 Box::pin(fut).await?;
             }
         }
