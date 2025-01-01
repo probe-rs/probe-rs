@@ -167,11 +167,17 @@ impl Cli {
                 let mut iface = RemoteSession::new(handle);
                 cmd.run(&config, &mut iface).await
             }
+            Subcommand::Read(cmd) => {
+                let mut iface = RemoteSession::new(handle);
+                cmd.run(&mut iface).await
+            }
+            Subcommand::Write(cmd) => {
+                let mut iface = RemoteSession::new(handle);
+                cmd.run(&mut iface).await
+            }
 
             // Commands that don't need anything fancy
-            Subcommand::Read(_)
-            | Subcommand::Write(_)
-            | Subcommand::Reset(_)
+            Subcommand::Reset(_)
             | Subcommand::Trace(_)
             | Subcommand::Itm(_)
             | Subcommand::Info(_) => handle.send_command(self).await,
