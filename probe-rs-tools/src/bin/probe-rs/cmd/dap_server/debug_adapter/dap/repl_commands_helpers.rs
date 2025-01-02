@@ -1,7 +1,5 @@
-use probe_rs::{
-    debug::{ObjectRef, VariableName},
-    MemoryInterface,
-};
+use probe_rs::MemoryInterface;
+use probe_rs_debug::{ObjectRef, VariableName};
 
 use crate::cmd::dap_server::{server::core_data::CoreHandle, DebuggerError};
 

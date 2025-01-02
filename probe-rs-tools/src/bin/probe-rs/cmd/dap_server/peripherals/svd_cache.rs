@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use probe_rs::debug::{get_object_reference, DebugError, ObjectRef};
 use probe_rs::MemoryInterface;
+use probe_rs_debug::{get_object_reference, DebugError, ObjectRef};
 
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, Clone, PartialEq)]

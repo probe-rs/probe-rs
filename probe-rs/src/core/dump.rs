@@ -1,19 +1,4 @@
-use crate::{
-    architecture::{
-        arm::core::registers::{
-            aarch32::{
-                AARCH32_CORE_REGSISTERS, AARCH32_WITH_FP_16_CORE_REGSISTERS,
-                AARCH32_WITH_FP_32_CORE_REGSISTERS,
-            },
-            aarch64::AARCH64_CORE_REGSISTERS,
-            cortex_m::{CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS},
-        },
-        riscv::registers::RISCV_CORE_REGSISTERS,
-        xtensa::registers::XTENSA_CORE_REGSISTERS,
-    },
-    debug::{DebugRegister, DebugRegisters},
-    Core, CoreType, Error, InstructionSet, MemoryInterface,
-};
+use crate::{Core, CoreType, Error, InstructionSet, MemoryInterface};
 use crate::{RegisterId, RegisterValue};
 use probe_rs_target::MemoryRange;
 use scroll::Cread;
@@ -24,8 +9,6 @@ use std::{
     ops::Range,
     path::{Path, PathBuf},
 };
-
-use super::RegisterDataType;
 
 /// A snapshot representation of a core state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,74 +91,6 @@ impl CoreDump {
     /// Load the dumped core from a file.
     pub fn load_raw(data: &[u8]) -> Result<Self, CoreDumpError> {
         rmp_serde::from_slice(data).map_err(CoreDumpError::DecodingCoreDump)
-    }
-
-    /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
-    pub fn debug_registers(&self) -> DebugRegisters {
-        let reg_list = match self.core_type {
-            CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
-            CoreType::Armv7a => match self.floating_point_register_count {
-                Some(16) => &AARCH32_WITH_FP_16_CORE_REGSISTERS,
-                Some(32) => &AARCH32_WITH_FP_32_CORE_REGSISTERS,
-                _ => &AARCH32_CORE_REGSISTERS,
-            },
-            CoreType::Armv7m => {
-                if self.fpu_support {
-                    &CORTEX_M_WITH_FP_CORE_REGISTERS
-                } else {
-                    &CORTEX_M_CORE_REGISTERS
-                }
-            }
-            CoreType::Armv7em => {
-                if self.fpu_support {
-                    &CORTEX_M_WITH_FP_CORE_REGISTERS
-                } else {
-                    &CORTEX_M_CORE_REGISTERS
-                }
-            }
-            // TODO: This can be wrong if the CPU is 32 bit. For lack of better design at the time
-            // of writing this code this differentiation has been omitted.
-            CoreType::Armv8a => &AARCH64_CORE_REGSISTERS,
-            CoreType::Armv8m => {
-                if self.fpu_support {
-                    &CORTEX_M_WITH_FP_CORE_REGISTERS
-                } else {
-                    &CORTEX_M_CORE_REGISTERS
-                }
-            }
-            CoreType::Riscv => &RISCV_CORE_REGSISTERS,
-            CoreType::Xtensa => &XTENSA_CORE_REGSISTERS,
-        };
-
-        let mut debug_registers = Vec::<DebugRegister>::new();
-        for (dwarf_id, core_register) in reg_list.core_registers().enumerate() {
-            // Check to ensure the register type is compatible with u64.
-            if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
-            {
-                debug_registers.push(DebugRegister {
-                    core_register,
-                    // The DWARF register ID is only valid for the first 32 registers.
-                    dwarf_id: if dwarf_id < 32 {
-                        Some(dwarf_id as u16)
-                    } else {
-                        None
-                    },
-                    value: match self.registers.get(&core_register.id()) {
-                        Some(register_value) => Some(*register_value),
-                        None => {
-                            tracing::warn!("Failed to read value for register {:?}", core_register);
-                            None
-                        }
-                    },
-                });
-            } else {
-                tracing::trace!(
-                    "Unwind will use the default rule for this register : {:?}",
-                    core_register
-                );
-            }
-        }
-        DebugRegisters(debug_registers)
     }
 
     /// Returns the type of the core.

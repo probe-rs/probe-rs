@@ -1,15 +1,13 @@
 use crate::{
-    debug::{
-        language::{
-            value::{format_float, Value},
-            ProgrammingLanguage,
-        },
-        DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
-        VariableValue,
+    language::{
+        value::{format_float, Value},
+        ProgrammingLanguage,
     },
-    MemoryInterface,
+    DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
+    VariableValue,
 };
 
+use probe_rs::MemoryInterface;
 #[derive(Debug, Clone)]
 pub struct Rust;
 

@@ -10,11 +10,11 @@ mod test;
 use anyhow::Result;
 use probe_rs::{
     architecture::arm::ap::AccessPortError,
-    debug::DebugError,
     flashing::FileDownloadError,
     probe::{list::Lister, DebugProbeError},
     CoreDumpError, Error,
 };
+use probe_rs_debug::DebugError;
 use server::startup::debug;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},

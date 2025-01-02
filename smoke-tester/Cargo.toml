@@ -12,7 +12,6 @@ publish = false
 
 serde = { version = "1", features = ["derive"] }
 probe-rs = { workspace = true }
-probe-rs-target = { workspace = true }
 toml = "0.8.12"
 pretty_env_logger = "0.5.0"
 log = "0.4.21"

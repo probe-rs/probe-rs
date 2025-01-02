@@ -7,17 +7,13 @@ use super::{
     DebugError, DebugRegisters, StackFrame, VariableCache,
 };
 use crate::{
-    core::{RegisterRole, RegisterValue, UnwindRule},
-    debug::{
-        registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation,
-        VerifiedBreakpoint,
-    },
-    Error, MemoryInterface,
+    registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation, VerifiedBreakpoint,
 };
 use gimli::{
     BaseAddresses, DebugFrame, DebugInfoOffset, UnwindContext, UnwindSection, UnwindTableRow,
 };
 use object::read::{Object, ObjectSection};
+use probe_rs::{Error, MemoryInterface, RegisterRole, RegisterValue, UnwindRule};
 use probe_rs_target::InstructionSet;
 use std::{
     borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
@@ -525,7 +521,7 @@ impl DebugInfo {
         initial_registers: DebugRegisters,
         exception_handler: &dyn ExceptionInterface,
         instruction_set: Option<InstructionSet>,
-    ) -> Result<Vec<StackFrame>, crate::Error> {
+    ) -> Result<Vec<StackFrame>, probe_rs::Error> {
         self.unwind_impl(initial_registers, core, exception_handler, instruction_set)
     }
 
@@ -535,7 +531,7 @@ impl DebugInfo {
         memory: &mut impl MemoryInterface,
         exception_handler: &dyn ExceptionInterface,
         instruction_set: Option<InstructionSet>,
-    ) -> Result<Vec<StackFrame>, crate::Error> {
+    ) -> Result<Vec<StackFrame>, probe_rs::Error> {
         let mut stack_frames = Vec::<StackFrame>::new();
 
         let mut unwind_context = Box::new(gimli::UnwindContext::new());
@@ -561,7 +557,7 @@ impl DebugInfo {
             // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
             let frame_pc = frame_pc_register_value.try_into().map_err(|error| {
                 let message = format!("Cannot convert register value for program counter to a 64-bit integer value: {error:?}");
-                crate::Error::Register(message)
+                probe_rs::Error::Register(message)
             })?;
             let exception_frame = match exception_handler.exception_details(
                 memory,
@@ -984,7 +980,7 @@ pub fn get_unwind_info<'a>(
 pub fn determine_cfa<R: gimli::ReaderOffset>(
     unwind_registers: &DebugRegisters,
     unwind_info: &UnwindTableRow<R>,
-) -> Result<Option<u64>, crate::Error> {
+) -> Result<Option<u64>, probe_rs::Error> {
     let gimli::CfaRule::RegisterAndOffset { register, offset } = unwind_info.cfa() else {
         unimplemented!()
     };
@@ -1031,7 +1027,7 @@ pub fn unwind_pc_without_debuginfo(
     unwind_registers: &mut DebugRegisters,
     frame_pc: u64,
     stack_frames: &[StackFrame],
-    instruction_set: Option<crate::InstructionSet>,
+    instruction_set: Option<probe_rs::InstructionSet>,
     memory: &mut dyn MemoryInterface,
 ) -> ControlFlow<Option<DebugError>> {
     // For non exception frames, we cannot do stack unwinding if we do not have debug info.
@@ -1086,7 +1082,7 @@ pub fn unwind_register(
     unwound_return_address: &mut Option<RegisterValue>,
     memory: &mut dyn MemoryInterface,
     instruction_set: Option<InstructionSet>,
-) -> ControlFlow<crate::Error, ()> {
+) -> ControlFlow<probe_rs::Error, ()> {
     use gimli::read::RegisterRule;
 
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
@@ -1139,7 +1135,7 @@ pub fn unwind_register(
                         .get_register_value_by_role(&RegisterRole::ProgramCounter)
                     else {
                         return ControlFlow::Break(
-                            crate::Error::Other(
+                            probe_rs::Error::Other(
                                 "UNWIND: Tried to unwind return address value where current program counter is unknown.".to_string()
                             )
                         );
@@ -1148,7 +1144,7 @@ pub fn unwind_register(
                         .get_register_value_by_role(&RegisterRole::ReturnAddress)
                     else {
                         return ControlFlow::Break(
-                            crate::Error::Other(
+                            probe_rs::Error::Other(
                                 "UNWIND: Tried to unwind return address value where current return address is unknown.".to_string()
                             )
                         );
@@ -1174,7 +1170,7 @@ pub fn unwind_register(
                         .get_register_value_by_role(&RegisterRole::ProgramCounter)
                     else {
                         return ControlFlow::Break(
-                            crate::Error::Other(
+                            probe_rs::Error::Other(
                                 "UNWIND: Tried to unwind return address value where current program counter is unknown.".to_string()
                             )
                         );
@@ -1224,7 +1220,7 @@ pub fn unwind_register(
         RegisterRule::Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
             let Some(unwind_cfa) = unwind_cfa else {
-                return ControlFlow::Break(crate::Error::Other(
+                return ControlFlow::Break(probe_rs::Error::Other(
                     "UNWIND: Tried to unwind `RegisterRule` at CFA = None.".to_string(),
                 ));
             };
@@ -1390,14 +1386,17 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
 #[cfg(test)]
 mod test {
     use crate::{
-        architecture::arm::core::registers::cortex_m::CORTEX_M_CORE_REGISTERS,
-        debug::{
-            exception_handling::exception_handler_for_core,
-            exception_handling::{armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler},
-            stack_frame::{StackFrameInfo, TestFormatter},
-            DebugInfo, DebugRegister, DebugRegisters,
+        exception_handling::{
+            armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler,
+            exception_handler_for_core,
         },
-        test::MockMemory,
+        stack_frame::{StackFrameInfo, TestFormatter},
+        test::debug_registers,
+        DebugInfo, DebugRegister, DebugRegisters,
+    };
+
+    use probe_rs::{
+        architecture::arm::core::registers::cortex_m::CORTEX_M_CORE_REGISTERS, test::MockMemory,
         CoreDump, RegisterValue,
     };
     use std::path::{Path, PathBuf};
@@ -1896,12 +1895,12 @@ mod test {
     #[test]
     fn test_print_stacktrace() {
         let elf = Path::new("./tests/gpio-hal-blinky/elf");
-        let coredump = include_bytes!("../../tests/gpio-hal-blinky/coredump");
+        let coredump = include_bytes!("../tests/gpio-hal-blinky/coredump");
 
         let mut adapter = CoreDump::load_raw(coredump).unwrap();
         let debug_info = DebugInfo::from_file(elf).unwrap();
 
-        let initial_registers = adapter.debug_registers();
+        let initial_registers = debug_registers(&adapter);
         let exception_handler = exception_handler_for_core(adapter.core_type());
         let instruction_set = adapter.instruction_set();
 
@@ -1945,7 +1944,7 @@ mod test {
         .unwrap();
         let snapshot_name = test_name.to_string();
 
-        let initial_registers = adapter.debug_registers();
+        let initial_registers = debug_registers(&adapter);
         let exception_handler = exception_handler_for_core(adapter.core_type());
         let instruction_set = adapter.instruction_set();
 
@@ -1999,7 +1998,7 @@ mod test {
         ))
         .unwrap();
 
-        let initial_registers = adapter.debug_registers();
+        let initial_registers = debug_registers(&adapter);
 
         let snapshot_name = format!("{chip_name}_static_variables");
 

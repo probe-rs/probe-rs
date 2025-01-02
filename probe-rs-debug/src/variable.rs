@@ -1,4 +1,4 @@
-use crate::debug::{language::ProgrammingLanguage, unit_info::UnitInfo};
+use crate::{language::ProgrammingLanguage, unit_info::UnitInfo};
 
 use super::*;
 use gimli::{DebugInfoOffset, DwLang, UnitOffset};

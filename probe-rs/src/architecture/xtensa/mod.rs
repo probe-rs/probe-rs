@@ -11,7 +11,7 @@ use crate::{
             Register, SpecialRegister,
         },
         communication_interface::{DebugCause, IBreakEn, XtensaCommunicationInterface},
-        registers::{FP, PC, RA, SP, XTENSA_CORE_REGSISTERS},
+        registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
         sequences::XtensaDebugSequence,
     },
     core::{
@@ -28,7 +28,7 @@ pub(crate) mod arch;
 pub(crate) mod xdm;
 
 pub mod communication_interface;
-pub(crate) mod registers;
+pub mod registers;
 pub(crate) mod sequences;
 
 #[derive(Debug)]
@@ -396,7 +396,7 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        &XTENSA_CORE_REGSISTERS
+        &XTENSA_CORE_REGISTERS
     }
 
     fn program_counter(&self) -> &'static CoreRegister {

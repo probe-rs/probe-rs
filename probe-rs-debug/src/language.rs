@@ -1,11 +1,9 @@
 use gimli::DwLang;
+use probe_rs::MemoryInterface;
 
 use crate::{
-    debug::{
-        Bitfield, DebugError, Modifier, Variable, VariableCache, VariableName, VariableType,
-        VariableValue,
-    },
-    MemoryInterface,
+    Bitfield, DebugError, Modifier, Variable, VariableCache, VariableName, VariableType,
+    VariableValue,
 };
 
 /// C, C89, C99, C11, ...

@@ -1,3 +1,5 @@
+//! Register definitions for AARCH32.
+
 use std::sync::LazyLock;
 
 use super::cortex_m::ARM32_COMMON_REGS_SET;
@@ -6,7 +8,8 @@ use crate::{
     CoreRegister, CoreRegisters, RegisterId,
 };
 
-pub(crate) static AARCH32_CORE_REGSISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
+/// Core registers used in the AARCH32 instruction set.
+pub static AARCH32_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
@@ -15,28 +18,28 @@ pub(crate) static AARCH32_CORE_REGSISTERS: LazyLock<CoreRegisters> = LazyLock::n
     )
 });
 
-pub(crate) static AARCH32_WITH_FP_16_CORE_REGSISTERS: LazyLock<CoreRegisters> =
-    LazyLock::new(|| {
-        CoreRegisters::new(
-            ARM32_COMMON_REGS_SET
-                .iter()
-                .chain(AARCH32_COMMON_REGS_SET)
-                .chain(AARCH32_FP_16_REGS_SET)
-                .collect(),
-        )
-    });
+/// AArch32 registers with FP16 floating point extension
+pub static AARCH32_WITH_FP_16_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
+    CoreRegisters::new(
+        ARM32_COMMON_REGS_SET
+            .iter()
+            .chain(AARCH32_COMMON_REGS_SET)
+            .chain(AARCH32_FP_16_REGS_SET)
+            .collect(),
+    )
+});
 
-pub(crate) static AARCH32_WITH_FP_32_CORE_REGSISTERS: LazyLock<CoreRegisters> =
-    LazyLock::new(|| {
-        CoreRegisters::new(
-            ARM32_COMMON_REGS_SET
-                .iter()
-                .chain(AARCH32_COMMON_REGS_SET)
-                .chain(AARCH32_FP_16_REGS_SET)
-                .chain(AARCH32_FP_32_REGS_SET)
-                .collect(),
-        )
-    });
+/// AArch32 registers with FP16 and FP32 floating point extension
+pub static AARCH32_WITH_FP_32_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
+    CoreRegisters::new(
+        ARM32_COMMON_REGS_SET
+            .iter()
+            .chain(AARCH32_COMMON_REGS_SET)
+            .chain(AARCH32_FP_16_REGS_SET)
+            .chain(AARCH32_FP_32_REGS_SET)
+            .collect(),
+    )
+});
 
 static AARCH32_COMMON_REGS_SET: &[CoreRegister] = &[CoreRegister {
     roles: &[RegisterRole::Core("CPSR"), RegisterRole::ProcessorStatus],

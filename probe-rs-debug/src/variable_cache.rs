@@ -1,9 +1,7 @@
 use super::*;
-use crate::{
-    debug::{stack_frame::StackFrameInfo, unit_info::UnitInfo},
-    Error,
-};
+use crate::{stack_frame::StackFrameInfo, unit_info::UnitInfo};
 use gimli::UnitOffset;
+use probe_rs::Error;
 use probe_rs_target::MemoryRange;
 use serde::{Serialize, Serializer};
 use std::{
@@ -533,7 +531,7 @@ impl VariableCache {
 mod test {
     use termtree::Tree;
 
-    use crate::debug::{
+    use crate::{
         Variable, VariableCache, VariableLocation, VariableName, VariableNodeType, VariableType,
         VariantRole,
     };

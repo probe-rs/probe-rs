@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::RegisterValue;
+use probe_rs::RegisterValue;
 
 #[cfg(test)]
 pub use test::TestFormatter;

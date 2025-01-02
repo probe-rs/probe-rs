@@ -4,7 +4,8 @@ pub mod ap;
 pub(crate) mod assembly;
 pub(crate) mod communication_interface;
 pub mod component;
-pub(crate) mod core;
+// TODO: Check if this should be public.
+pub mod core;
 pub mod dp;
 pub mod memory;
 pub mod sequences;

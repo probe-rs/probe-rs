@@ -1,12 +1,11 @@
 use std::ops::ControlFlow;
 
 use crate::{
-    debug::{
-        exception_handling::{ExceptionInfo, ExceptionInterface},
-        unwind_pc_without_debuginfo, DebugError, DebugInfo, DebugRegisters, StackFrame,
-    },
-    MemoryInterface, RegisterRole, RegisterValue,
+    exception_handling::{ExceptionInfo, ExceptionInterface},
+    unwind_pc_without_debuginfo, DebugError, DebugInfo, DebugRegisters, StackFrame,
 };
+
+use probe_rs::{MemoryInterface, RegisterRole, RegisterValue};
 
 pub struct XtensaExceptionHandler;
 
@@ -26,15 +25,15 @@ impl ExceptionInterface for XtensaExceptionHandler {
     fn calling_frame_registers(
         &self,
         _memory: &mut dyn MemoryInterface,
-        _stackframe_registers: &crate::debug::DebugRegisters,
+        _stackframe_registers: &crate::DebugRegisters,
         _raw_exception: u32,
-    ) -> Result<crate::debug::DebugRegisters, DebugError> {
+    ) -> Result<crate::DebugRegisters, DebugError> {
         Err(DebugError::NotImplemented("calling frame registers"))
     }
 
     fn raw_exception(
         &self,
-        _stackframe_registers: &crate::debug::DebugRegisters,
+        _stackframe_registers: &crate::DebugRegisters,
     ) -> Result<u32, DebugError> {
         Err(DebugError::NotImplemented("raw exception"))
     }
@@ -52,7 +51,7 @@ impl ExceptionInterface for XtensaExceptionHandler {
         unwind_registers: &mut DebugRegisters,
         frame_pc: u64,
         stack_frames: &[StackFrame],
-        instruction_set: Option<crate::InstructionSet>,
+        instruction_set: Option<probe_rs::InstructionSet>,
         memory: &mut dyn MemoryInterface,
     ) -> ControlFlow<Option<DebugError>> {
         // Use the default method to unwind PC.

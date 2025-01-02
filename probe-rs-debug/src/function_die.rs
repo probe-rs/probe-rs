@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::{debug::stack_frame::StackFrameInfo, MemoryInterface};
+use crate::{stack_frame::StackFrameInfo, MemoryInterface};
 
 use super::{
     debug_info, extract_file,

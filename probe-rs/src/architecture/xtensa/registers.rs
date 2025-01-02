@@ -1,3 +1,5 @@
+//! Xtensa register descriptions.
+
 use std::sync::LazyLock;
 
 use crate::{
@@ -45,7 +47,8 @@ pub const FP: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Clear,
 };
 
-pub(crate) static XTENSA_CORE_REGSISTERS: LazyLock<CoreRegisters> =
+/// XTENSA core registers
+pub static XTENSA_CORE_REGISTERS: LazyLock<CoreRegisters> =
     LazyLock::new(|| CoreRegisters::new(XTENSA_REGISTERS_SET.iter().collect()));
 
 static XTENSA_REGISTERS_SET: &[CoreRegister] = &[

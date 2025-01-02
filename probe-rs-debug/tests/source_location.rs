@@ -1,6 +1,4 @@
-#![cfg(feature = "debug")]
-
-use probe_rs::debug::{debug_info::DebugInfo, ColumnType, SourceLocation};
+use probe_rs_debug::{debug_info::DebugInfo, ColumnType, SourceLocation};
 use std::path::PathBuf;
 use typed_path::{TypedPath, UnixPathBuf};
 

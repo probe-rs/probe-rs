@@ -26,12 +26,12 @@ use probe_rs::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
     },
-    debug::{
-        stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, SteppingMode,
-        VariableName, VerifiedBreakpoint,
-    },
     Architecture::Riscv,
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
+};
+use probe_rs_debug::{
+    stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, SteppingMode, VariableName,
+    VerifiedBreakpoint,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use typed_path::NativePathBuf;
@@ -441,8 +441,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         response_body.result = format!("{register_value}");
                     } else {
                         // If the expression wasn't pointing to a register, then check if is a local or static variable in our stack_frame
-                        let mut variable: Option<probe_rs::debug::Variable> = None;
-                        let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
+                        let mut variable: Option<probe_rs_debug::Variable> = None;
+                        let mut variable_cache: Option<&mut probe_rs_debug::VariableCache> = None;
                         // Search through available caches and stop as soon as the variable is found
                         if let Some(search_cache) = stack_frame.local_variables.as_mut() {
                             if search_cache.len() == 1 {
@@ -594,8 +594,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let variable_name = VariableName::Named(arguments.name.clone());
 
                 // The parent_key refers to a local or static variable in one of the in-scope StackFrames.
-                let mut cache_variable: Option<probe_rs::debug::Variable> = None;
-                let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
+                let mut cache_variable: Option<probe_rs_debug::Variable> = None;
+                let mut variable_cache: Option<&mut probe_rs_debug::VariableCache> = None;
                 for search_frame in target_core.core_data.stack_frames.iter_mut() {
                     if let Some(search_cache) = &mut search_frame.local_variables {
                         if let Some(search_variable) =
@@ -1402,8 +1402,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
 
-        let mut parent_variable: Option<probe_rs::debug::Variable> = None;
-        let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
+        let mut parent_variable: Option<probe_rs_debug::Variable> = None;
+        let mut variable_cache: Option<&mut probe_rs_debug::VariableCache> = None;
         let mut frame_info: Option<StackFrameInfo<'_>> = None;
 
         let registers;
@@ -1655,7 +1655,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         {
             Ok((new_status, program_counter)) => (new_status, program_counter),
             Err(error) => match &error {
-                probe_rs::debug::DebugError::WarnAndContinue { message } => {
+                probe_rs_debug::DebugError::WarnAndContinue { message } => {
                     let pc_at_error = target_core
                         .core
                         .read_core_reg(target_core.core.program_counter())?;
