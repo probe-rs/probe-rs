@@ -465,7 +465,7 @@ impl Probe {
     }
 
     /// Returns the JTAG scan chain
-    pub fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
+    pub fn scan_chain(&self) -> Result<&[JtagChainItem], DebugProbeError> {
         self.inner.scan_chain()
     }
 
@@ -647,7 +647,7 @@ pub trait DebugProbe: Send + fmt::Debug {
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError>;
 
     /// Returns the JTAG scan chain
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError>;
+    fn scan_chain(&self) -> Result<&[JtagChainItem], DebugProbeError>;
 
     /// Attach to the chip.
     ///
@@ -1128,13 +1128,26 @@ impl From<ShiftDrCommand> for JtagCommand {
 }
 
 /// Represents a Jtag Tap within the chain.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct JtagChainItem {
+    /// Unique name of the DAP
+    pub name: Option<String>,
+
     /// The IDCODE of the device.
     pub idcode: Option<IdCode>,
 
     /// The length of the instruction register.
     pub irlen: usize,
+}
+
+impl From<ScanChainElement> for JtagChainItem {
+    fn from(element: ScanChainElement) -> Self {
+        Self {
+            name: element.name,
+            idcode: None,
+            irlen: element.ir_len.unwrap_or(4) as usize,
+        }
+    }
 }
 
 /// Chain parameters to select a target tap within the chain.
