@@ -32,7 +32,6 @@ pub struct FakeProbe {
     scan_chain: Option<Vec<ScanChainElement>>,
 
     dap_register_read_handler: Option<Box<dyn Fn(PortType, u8) -> Result<u32, ArmError> + Send>>,
-
     dap_register_write_handler:
         Option<Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmError> + Send>>,
 
@@ -48,8 +47,13 @@ enum MockedAp {
     Core(MockCore),
 }
 
+pub type ArmReadFn = Box<dyn Fn(u64, &mut [u8]) -> Result<(), ArmError> + Send>;
+pub type ArmWriteFn = Box<dyn Fn(u64, &[u8]) -> Result<(), ArmError> + Send>;
 struct MockCore {
     dhcsr: Dhcsr,
+
+    arm_read_handler: Option<ArmReadFn>,
+    arm_write_handler: Option<ArmWriteFn>,
 
     /// Is the core halted?
     is_halted: bool,
@@ -59,6 +63,8 @@ impl MockCore {
     pub fn new() -> Self {
         Self {
             dhcsr: Dhcsr(0),
+            arm_read_handler: None,
+            arm_write_handler: None,
             is_halted: false,
         }
     }
@@ -80,90 +86,96 @@ impl SwdSequence for &mut MockCore {
 }
 
 impl MemoryInterface<ArmError> for &mut MockCore {
-    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
-        todo!()
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+        self.arm_read_handler.as_ref().unwrap()(address, data)
     }
 
-    fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
-        todo!()
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
+        self.arm_read_handler.as_ref().unwrap()(address, unsafe {
+            std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u8, data.len() * 2)
+        })
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
-        for (i, val) in data.iter_mut().enumerate() {
-            let address = address + (i as u64 * 4);
+        match address {
+            // DHCSR
+            Dhcsr::ADDRESS_OFFSET => {
+                let mut dhcsr: u32 = self.dhcsr.into();
 
-            match address {
-                // DHCSR
-                Dhcsr::ADDRESS_OFFSET => {
-                    let mut dhcsr: u32 = self.dhcsr.into();
-
-                    if self.is_halted {
-                        dhcsr |= 1 << 17;
-                    }
-
-                    // Always set S_REGRDY, and say that a register value can
-                    // be read.
-                    dhcsr |= 1 << 16;
-
-                    *val = dhcsr;
-                    println!("Read  DHCSR: {:#x} = {:#x}", address, val);
+                if self.is_halted {
+                    dhcsr |= 1 << 17;
                 }
 
-                _ => {
-                    *val = 0;
-                    println!("Read {:#010x} = 0", address);
-                }
+                // Always set S_REGRDY, and say that a register value can
+                // be read.
+                dhcsr |= 1 << 16;
+
+                data[0] = dhcsr;
+                tracing::trace!("[read_32] <DHCSR>: {:#x} = {:#x}", address, data[0]);
+                Ok(())
             }
+            0xE0000000..=0xE00FFFFF => {
+                tracing::trace!("[read_32] <debug protocol>: {:08x} = {}", address, data[0]);
+                Ok(())
+            }
+            _ => self.arm_read_handler.as_ref().unwrap()(address, unsafe {
+                std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u8, data.len() * 4)
+            }),
         }
-
-        Ok(())
     }
 
-    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
-        todo!()
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
+        self.arm_read_handler.as_ref().unwrap()(address, unsafe {
+            std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u8, data.len() * 8)
+        })
     }
 
-    fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
-        todo!()
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
+        self.arm_write_handler.as_ref().unwrap()(address, data)
     }
 
-    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
-        todo!()
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
+        self.arm_write_handler.as_ref().unwrap()(address, unsafe {
+            std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 2)
+        })
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
-        for (i, word) in data.iter().enumerate() {
-            let address = address + (i as u64 * 4);
+        match address {
+            Dhcsr::ADDRESS_OFFSET => {
+                let dbg_key = (data[0] >> 16) & 0xffff;
 
-            match address {
-                // DHCSR
-                Dhcsr::ADDRESS_OFFSET => {
-                    let dbg_key = (*word >> 16) & 0xffff;
+                if dbg_key == 0xa05f {
+                    // Mask out dbg key
+                    self.dhcsr = Dhcsr::from(data[0] & 0xffff);
+                    tracing::trace!("[write_32] <DHCSR> = {:#010x}", data[0]);
 
-                    if dbg_key == 0xa05f {
-                        // Mask out dbg key
-                        self.dhcsr = Dhcsr::from(*word & 0xffff);
-                        println!("Write DHCSR = {:#010x}", word);
+                    let request_halt = self.dhcsr.c_halt();
 
-                        let request_halt = self.dhcsr.c_halt();
+                    self.is_halted = request_halt;
 
-                        self.is_halted = request_halt;
-
-                        if !self.dhcsr.c_halt() && self.dhcsr.c_debugen() && self.dhcsr.c_step() {
-                            tracing::debug!("MockCore: Single step requested, setting s_halt");
-                            self.is_halted = true;
-                        }
+                    if !self.dhcsr.c_halt() && self.dhcsr.c_debugen() && self.dhcsr.c_step() {
+                        tracing::debug!("MockCore: Single step requested, setting s_halt");
+                        self.is_halted = true;
                     }
                 }
-                _ => println!("Write {:#010x} = {:#010x}", address, word),
-            }
-        }
 
-        Ok(())
+                Ok(())
+            }
+            0xE0000000..=0xE00FFFFF => {
+                tracing::trace!("[write_32] <debug protocol>: {:08x} = {}", address, data[0]);
+                Ok(())
+            }
+            _ => self.arm_write_handler.as_ref().unwrap()(address, unsafe {
+                std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4)
+            }),
+        }
     }
 
-    fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
-        todo!()
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
+        self.arm_write_handler.as_ref().unwrap()(address, unsafe {
+            std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 8)
+        })
     }
 
     fn flush(&mut self) -> Result<(), ArmError> {
@@ -281,6 +293,24 @@ impl FakeProbe {
         self.dap_register_write_handler = Some(handler);
     }
 
+    pub fn set_arm_read_handler(&mut self, handler: ArmReadFn) -> Result<(), anyhow::Error> {
+        if let MockedAp::Core(core) = &mut self.memory_ap {
+            core.arm_read_handler = Some(handler);
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("No core to set read handler on MemoryAP"))
+        }
+    }
+
+    pub fn set_arm_write_handler(&mut self, handler: ArmWriteFn) -> Result<(), anyhow::Error> {
+        if let MockedAp::Core(core) = &mut self.memory_ap {
+            core.arm_write_handler = Some(handler);
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("No core to set read handler on MemoryAP"))
+        }
+    }
+
     /// Makes a generic probe out of the [`FakeProbe`]
     pub fn into_probe(self) -> Probe {
         Probe::from_specific_probe(Box::new(self))
@@ -306,9 +336,11 @@ impl FakeProbe {
                 assert_eq!(&ap, expected_ap);
                 assert_eq!(address, expected_address);
 
+                tracing::trace!("[read_raw_ap_register] Read from {address:#x}, returned {result}");
+
                 Ok(result)
             }
-            None => panic!("No more operations expected, but got read_raw_ap_register ap={expected_ap:?}, address:{expected_address}"),
+            None => panic!("[read_raw_ap_register] No more operations expected, but got read_raw_ap_register ap={expected_ap:?}, address:{expected_address}"),
             //other => panic!("Unexpected operation: {:?}", other),
         }
     }
@@ -611,8 +643,10 @@ impl DapAccess for FakeArmInterface<Initialized> {
 
 #[cfg(all(test, feature = "builtin-targets"))]
 mod test {
-    use super::FakeProbe;
-    use crate::Permissions;
+    use std::sync::{Arc, Mutex};
+
+    use super::{FakeProbe, Operation};
+    use crate::{architecture::arm::FullyQualifiedApAddress, MemoryInterface, Permissions};
 
     #[test]
     fn create_session_with_fake_probe() {
@@ -623,5 +657,66 @@ mod test {
         probe
             .attach("nrf51822_xxAC", Permissions::default())
             .unwrap();
+    }
+
+    #[test]
+    fn arm_read_write() {
+        let fake_register = Arc::new(Mutex::new([0u8; 4]));
+
+        let mut fake_probe = FakeProbe::with_mocked_core();
+        fake_probe
+            .set_arm_read_handler({
+                let fake_register = fake_register.clone();
+                Box::new(move |addr, data| {
+                    println!(">>>> Read from {:#x} for {} bytes", addr, data.len());
+                    assert_eq!(data.len(), 4);
+
+                    let reference = fake_register.lock().unwrap();
+                    data.copy_from_slice(reference.as_ref());
+
+                    Ok(())
+                })
+            })
+            .unwrap();
+        fake_probe
+            .set_arm_write_handler({
+                let fake_register = fake_register.clone();
+                Box::new(move |addr, data| {
+                    println!(">>>> Write to {:#x} for {} bytes", addr, data.len());
+
+                    fake_register.lock().unwrap().copy_from_slice(data);
+
+                    Ok(())
+                })
+            })
+            .unwrap();
+
+        // https://docs.nordicsemi.com/bundle/ps_nrf52833/page/dif.html#register.APPROTECTSTATUS
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
+            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
+            address: 0x0c,
+            result: 0x1,
+        });
+
+        let probe = fake_probe.into_probe();
+        let mut session = probe
+            .attach("nRF52833_xxAA", Permissions::default())
+            .unwrap();
+        let mut core = session.core(0).unwrap();
+
+        let mut data = [0xFF; 4];
+        core.read(0x2000_0000, &mut data).unwrap();
+        assert_eq!(data, [0, 0, 0, 0]);
+
+        data = [0x12, 0x34, 0x56, 0x78];
+        core.write(0x2000_0000, &data).unwrap();
+        assert_eq!(
+            fake_register.lock().unwrap().as_ref(),
+            [0x12, 0x34, 0x56, 0x78]
+        );
+
+        data = [0xFF, 0xFF, 0xFF, 0xFF];
+        core.read(0x2000_0000, &mut data).unwrap();
+        assert_eq!(data, [0x12, 0x34, 0x56, 0x78]);
     }
 }
