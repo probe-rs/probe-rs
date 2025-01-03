@@ -4,11 +4,8 @@ use std::sync::Arc;
 
 use super::nrf::Nrf;
 use crate::architecture::arm::{
-    ap_v1::memory_ap::registers::CSW,
-    sequences::ArmDebugSequence,
-    ArmError, FullyQualifiedApAddress,
-    ArmProbeInterface,
-    dp::DpAddress,
+    ap_v1::memory_ap::registers::CSW, dp::DpAddress, sequences::ArmDebugSequence, ArmError,
+    ArmProbeInterface, FullyQualifiedApAddress,
 };
 
 /// The sequence handle for the nRF5340.
@@ -27,7 +24,6 @@ impl Nrf for Nrf5340 {
         &self,
         dp_address: &DpAddress,
     ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)> {
-
         let core_aps = [(0, 2), (1, 3)];
 
         core_aps

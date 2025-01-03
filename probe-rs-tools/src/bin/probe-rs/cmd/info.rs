@@ -1,16 +1,15 @@
-use std::{collections::BTreeSet, fmt::Write};
+use std::fmt::Write;
 
 use anyhow::{anyhow, Result};
 use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap_v1::{MemoryApType, AccessPort, ApClass, Register},
-            armv6m::Demcr,
+            ap_v1::{ApClass, MemoryApType, Register},
             component::Scs,
             dp::{
-                Ctrl, DebugPortId, DebugPortVersion, DpAddress, DpRegister, MinDpSupport, DLPIDR, DPIDR,
-                TARGETID,
+                Ctrl, DebugPortId, DebugPortVersion, DpAddress, DpRegister, MinDpSupport, DLPIDR,
+                DPIDR, TARGETID,
             },
             memory::{
                 romtable::{PeripheralID, RomTable},
@@ -25,7 +24,6 @@ use probe_rs::{
         },
     },
     probe::{list::Lister, Probe, WireProtocol},
-    MemoryMappedRegister,
 };
 use termtree::Tree;
 

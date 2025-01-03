@@ -9,14 +9,16 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap_v1::{memory_ap::MemoryApType, AccessPortError, AccessPortType, ApAccess, GenericAp, IDR},
+        ap_v1::{
+            memory_ap::MemoryApType, AccessPortError, AccessPortType, ApAccess, GenericAp, IDR,
+        },
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, DpAddress, SelectV1, DPIDR},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess,
-        FullyQualifiedApAddress, Pins,
+        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
+        Pins,
     },
     core::MemoryMappedRegister,
 };

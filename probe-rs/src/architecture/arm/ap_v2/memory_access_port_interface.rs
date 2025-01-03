@@ -64,7 +64,7 @@ impl<'iface> MemoryAccessPortInterface<'iface> {
     }
 }
 
-impl<'iface> SwdSequence for MemoryAccessPortInterface<'iface> {
+impl SwdSequence for MemoryAccessPortInterface<'_> {
     fn swj_sequence(
         &mut self,
         _bit_len: u8,
@@ -82,7 +82,7 @@ impl<'iface> SwdSequence for MemoryAccessPortInterface<'iface> {
         todo!()
     }
 }
-impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
+impl MemoryInterface<ArmError> for MemoryAccessPortInterface<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -238,7 +238,7 @@ impl<'iface> MemoryInterface<ArmError> for MemoryAccessPortInterface<'iface> {
         self.iface.flush()
     }
 }
-impl<'iface> ArmMemoryInterface for MemoryAccessPortInterface<'iface> {
+impl ArmMemoryInterface for MemoryAccessPortInterface<'_> {
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
         let (dp, ApAddress::V2(ap)) = self.iface.fully_qualified_address().deconstruct() else {
             panic!("The sub-interface returned an address with an unexpected version. This is a bug, please report it.")

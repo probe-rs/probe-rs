@@ -13,11 +13,11 @@ use crate::{
         communication_interface::{
             ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
         },
+        dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        dp::{DpAddress, DpRegisterAddress},
-        valid_32bit_arm_address, ArmError, DapAccess, FullyQualifiedApAddress, Pins,
-        SwoAccess, SwoConfig, SwoMode,
+        valid_32bit_arm_address, ArmError, DapAccess, FullyQualifiedApAddress, Pins, SwoAccess,
+        SwoConfig, SwoMode,
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
@@ -1458,7 +1458,10 @@ impl ArmProbeInterface for StlinkArmDebug {
         Ok(self.access_ports.clone())
     }
 
-    fn components(&mut self, _dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+    fn components(
+        &mut self,
+        _dp: DpAddress,
+    ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
         todo!()
     }
 

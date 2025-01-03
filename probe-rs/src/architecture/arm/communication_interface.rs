@@ -2,10 +2,7 @@ use crate::{
     architecture::arm::{
         ap_v1::valid_access_ports,
         ap_v2,
-        dp::{
-            Ctrl, DebugPortId, DebugPortVersion, DpAccess,
-            DPIDR,
-        },
+        dp::{Ctrl, DebugPortId, DebugPortVersion, DpAccess, DPIDR},
         memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::{ArmDebugSequence, DefaultArmSequence},
         ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess, SwoConfig,
@@ -493,7 +490,6 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             if idr.version == DebugPortVersion::DPv3 {
                 state.current_select = SelectCache::DPv3(SelectV3(0), Select1(0));
             }
-
         } else if switched_dp {
             let sequence = self.state.sequence.clone();
 

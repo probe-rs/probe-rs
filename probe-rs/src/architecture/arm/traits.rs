@@ -90,6 +90,12 @@ bitfield::bitfield! {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct ApV2Address(Vec<u64>);
 
+impl Default for ApV2Address {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ApV2Address {
     /// Create a new ApV2 Address chain
     pub fn new() -> Self {

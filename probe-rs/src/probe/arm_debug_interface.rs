@@ -1198,7 +1198,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     fn raw_write_block(&mut self, address: PortAddress, values: &[u32]) -> Result<(), ArmError> {
         let mut transfers = values
             .iter()
-            .map(|v| DapTransfer::write(address.clone(), *v))
+            .map(|v| DapTransfer::write(address, *v))
             .collect::<Vec<_>>();
 
         perform_transfers(self, &mut transfers)?;

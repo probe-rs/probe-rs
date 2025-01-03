@@ -47,11 +47,11 @@ macro_rules! dispatch {
     }
 }
 
-impl<'iface> SwdSequence for MaybeOwned<'iface> {
+impl SwdSequence for MaybeOwned<'_> {
     dispatch!(swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), crate::probe::DebugProbeError>);
     dispatch!(swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, crate::probe::DebugProbeError>);
 }
-impl<'iface> MemoryInterface<ArmError> for MaybeOwned<'iface> {
+impl MemoryInterface<ArmError> for MaybeOwned<'_> {
     dispatch!(supports_native_64bit_access(&mut self,) -> bool);
     dispatch!(read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError>);
     dispatch!(read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError>);
@@ -64,7 +64,7 @@ impl<'iface> MemoryInterface<ArmError> for MaybeOwned<'iface> {
     dispatch!(supports_8bit_transfers(&self,) -> Result<bool, ArmError>);
     dispatch!(flush(&mut self,) -> Result<(), ArmError>);
 }
-impl<'iface> ArmMemoryInterface for MaybeOwned<'iface> {
+impl ArmMemoryInterface for MaybeOwned<'_> {
     dispatch!(fully_qualified_address(&self,) -> FullyQualifiedApAddress);
     dispatch!(base_address(&mut self,) -> Result<u64, ArmError>);
     dispatch!(get_arm_communication_interface(&mut self,) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError>);
@@ -72,8 +72,8 @@ impl<'iface> ArmMemoryInterface for MaybeOwned<'iface> {
 }
 
 /// Deeply scans the debug port and returns a list of the addresses the memory access points discovered.
-pub fn enumerate_access_ports<'i>(
-    probe: &'i mut ArmCommunicationInterface<Initialized>,
+pub fn enumerate_access_ports(
+    probe: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
 ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
     enumerate_components_internal(probe, dp).map(|res| {
@@ -90,8 +90,8 @@ pub fn enumerate_access_ports<'i>(
 }
 
 /// Enumerates components attached to this debug port
-pub fn enumerate_components<'i>(
-    probe: &'i mut ArmCommunicationInterface<Initialized>,
+pub fn enumerate_components(
+    probe: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
 ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
     enumerate_components_internal(probe, dp).map(|res| {
@@ -101,8 +101,8 @@ pub fn enumerate_components<'i>(
     })
 }
 
-fn enumerate_components_internal<'i>(
-    probe: &'i mut ArmCommunicationInterface<Initialized>,
+fn enumerate_components_internal(
+    probe: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
 ) -> Result<BTreeMap<ApV2Address, Component>, ArmError> {
     let mut root_ap = RootMemoryInterface::new(probe, dp)?;

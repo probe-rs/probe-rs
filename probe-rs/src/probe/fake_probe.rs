@@ -534,7 +534,10 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
         Ok(BTreeSet::from([FullyQualifiedApAddress::v1_with_dp(dp, 1)]))
     }
 
-    fn components(&mut self, _dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+    fn components(
+        &mut self,
+        _dp: DpAddress,
+    ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
         todo!()
     }
 

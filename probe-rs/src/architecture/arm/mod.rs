@@ -1,8 +1,8 @@
 //! All the interface bits for ARM.
 
-pub(crate) mod assembly;
 pub mod ap_v1;
 pub mod ap_v2;
+pub(crate) mod assembly;
 pub(crate) mod communication_interface;
 pub mod component;
 pub(crate) mod core;

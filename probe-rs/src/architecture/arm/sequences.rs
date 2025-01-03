@@ -13,9 +13,8 @@ use probe_rs_target::CoreType;
 use crate::{
     architecture::arm::{
         core::registers::cortex_m::{PC, SP},
-        dp::{DpRegister, Ctrl, DLPIDR, TARGETID},
-        PortAddress,
-        ArmProbeInterface,
+        dp::{Ctrl, DpRegister, DLPIDR, TARGETID},
+        ArmProbeInterface, PortAddress,
     },
     probe::{DebugProbeError, WireProtocol},
     MemoryInterface, MemoryMappedRegister, Session,
