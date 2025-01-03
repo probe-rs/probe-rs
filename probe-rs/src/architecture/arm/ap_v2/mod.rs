@@ -11,10 +11,8 @@ use crate::{
 };
 
 use super::{
-    communication_interface::Initialized,
-    dp::DpAddress,
-    memory::ArmMemoryInterface,
-    ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
+    communication_interface::Initialized, dp::DpAddress, memory::ArmMemoryInterface, ApAddress,
+    ApV2Address, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
 };
 
 mod registers;
