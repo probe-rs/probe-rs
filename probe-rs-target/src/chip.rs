@@ -66,6 +66,7 @@ pub struct Chip {
     #[serde(default)]
     pub package_variants: Vec<String>,
     /// The cores available on the chip.
+    #[serde(default)]
     pub cores: Vec<Core>,
     /// The memory regions available on the chip.
     pub memory_map: Vec<MemoryRegion>,
