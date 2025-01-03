@@ -134,14 +134,20 @@ pub enum ApAddress {
     V2(ApV2Address),
 }
 
-//impl std::fmt::Display for ApAddress {
-//    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//        match self {
-//            ApAddress::V1(v) => write!(f, "V1({})", v),
-//            ApAddress::V2(v) => write!(f, "V2({})", v),
-//        }
-//    }
-//}
+impl std::fmt::Display for ApV2Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0.as_slice())
+    }
+}
+
+impl std::fmt::Display for ApAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ApAddress::V1(v) => write!(f, "V1({})", v),
+            ApAddress::V2(v) => write!(f, "V2({})", v),
+        }
+    }
+}
 
 /// Access port address.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]

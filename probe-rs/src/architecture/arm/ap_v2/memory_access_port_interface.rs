@@ -44,11 +44,8 @@ impl<'iface> MemoryAccessPortInterface<'iface> {
         let mut csw = CSW::try_from(csw_raw[0])?;
         csw.SIZE = size;
         csw.DbgSwEnable = true;
-        // tracing::debug!("Setting CSW to : {:x}.", u32::from(csw));
         self.iface
             .write_32(self.base + u64::from(CSW::ADDRESS), &[u32::from(csw)])?;
-        self.iface
-            .read_32(self.base + u64::from(CSW::ADDRESS), &mut csw_raw)?;
         Ok(())
     }
 
