@@ -66,7 +66,7 @@ impl LPC80x {
 
     // custom core halt logic from cmsis-pack sequence
     fn force_core_halt(interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
-        tracing::trace!("force_core_halt enter");
+        tracing::span!(tracing::Level::TRACE, "force_core_halt");
 
         let start = Instant::now();
         let mut in_debug_state = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?).s_halt();
@@ -88,7 +88,6 @@ impl LPC80x {
             }
         }
 
-        tracing::trace!("force_core_halt exit");
         Ok(())
     }
 }
@@ -100,7 +99,7 @@ impl ArmDebugSequence for LPC80x {
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        tracing::trace!("reset_catch_set enter");
+        tracing::span!(tracing::Level::TRACE, "reset_catch_set");
 
         // Disable Reset Vector Catch in DEMCR
         let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
@@ -118,7 +117,6 @@ impl ArmDebugSequence for LPC80x {
 
         // Clear the status bits by reading from DHCSR
         let _ = interface.read_word_32(Dhcsr::get_mmio_address())?;
-        tracing::trace!("reset_catch_set exit");
 
         Ok(())
     }
@@ -129,7 +127,7 @@ impl ArmDebugSequence for LPC80x {
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        tracing::trace!("reset_catch_clear enter");
+        tracing::span!(tracing::Level::TRACE, "reset_catch_clear");
 
         // Disable Reset Vector Catch in DEMCR
         let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
@@ -137,8 +135,6 @@ impl ArmDebugSequence for LPC80x {
         interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
 
         LPC80x::clear_hw_breakpoint(interface, 0)?;
-
-        tracing::trace!("reset_catch_clear exit");
         Ok(())
     }
 
@@ -148,7 +144,7 @@ impl ArmDebugSequence for LPC80x {
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        tracing::trace!("reset_system enter");
+        tracing::span!(tracing::Level::TRACE, "reset_system enter");
 
         // Execute VECTRESET via AIRCR, ignore errors.
         let mut aircr = Aircr(0);
@@ -168,7 +164,6 @@ impl ArmDebugSequence for LPC80x {
         }
 
         let _ = LPC80x::force_core_halt(interface);
-        tracing::trace!("reset_system exit");
         Ok(())
     }
 }
