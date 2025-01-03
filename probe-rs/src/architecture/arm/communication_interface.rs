@@ -56,13 +56,6 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
         dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError>;
 
-    /// Returns a sorted set of the FullyQualifiedApAddress of the components available on the given
-    /// Debug Port.
-    ///
-    /// If the target device has multiple debug ports, this will switch the active debug port
-    /// if necessary.
-    fn components(&mut self, dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError>;
-
     /// Closes the interface and returns back the generic probe it consumed.
     fn close(self: Box<Self>) -> Probe;
 
@@ -292,16 +285,6 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
                 Ok(valid_access_ports(self, dp).into_iter().collect())
             }
             DebugPortVersion::DPv3 => ap_v2::enumerate_access_ports(self, dp),
-            DebugPortVersion::Unsupported(_) => unreachable!(),
-        }
-    }
-
-    fn components(&mut self, dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        match self.select_dp(dp).map(|state| state.debug_port_version)? {
-            DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
-                Ok(valid_access_ports(self, dp).into_iter().collect())
-            }
-            DebugPortVersion::DPv3 => ap_v2::enumerate_components(self, dp),
             DebugPortVersion::Unsupported(_) => unreachable!(),
         }
     }

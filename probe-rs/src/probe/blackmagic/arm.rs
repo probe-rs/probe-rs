@@ -182,13 +182,6 @@ impl BlackMagicProbeArmDebug {
 }
 
 impl ArmProbeInterface for BlackMagicProbeArmDebug {
-    fn components(
-        &mut self,
-        _dp: DpAddress,
-    ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        todo!()
-    }
-
     fn access_ports(
         &mut self,
         dp: DpAddress,

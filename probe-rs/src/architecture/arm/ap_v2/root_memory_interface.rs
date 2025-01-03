@@ -1,3 +1,5 @@
+//! Functions to access the root memory interface of the Debug Port (DP) in an ADIv6
+//! implementation.
 use crate::{
     architecture::arm::{
         communication_interface::{Initialized, SwdSequence},
@@ -10,6 +12,9 @@ use crate::{
 
 type ACI = ArmCommunicationInterface<Initialized>;
 
+/// The Root Memory Interface accesses the Debug Port (DP) address space. This memory interface can
+/// only be used to interface into the ROM tables and CoreSight components of the debug
+/// infrastructure.
 pub struct RootMemoryInterface<'iface> {
     iface: &'iface mut ACI,
     dp: DpAddress,

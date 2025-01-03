@@ -1458,13 +1458,6 @@ impl ArmProbeInterface for StlinkArmDebug {
         Ok(self.access_ports.clone())
     }
 
-    fn components(
-        &mut self,
-        _dp: DpAddress,
-    ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        todo!()
-    }
-
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
