@@ -896,9 +896,6 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         interface: &mut dyn DapProbe,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
-        // Time guard for DPIDR register to become readable after line reset
-        const RESET_RECOVERY_TIMEOUT: Duration = Duration::from_secs(1);
-        const RESET_RECOVERY_RETRY_INTERVAL: Duration = Duration::from_millis(5);
         match interface.active_protocol() {
             Some(WireProtocol::Jtag) => {
                 tracing::debug!("JTAG: No special sequence needed to connect to debug port");
@@ -914,6 +911,10 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 .into());
             }
         }
+
+        // Time guard for DPIDR register to become readable after line reset
+        const RESET_RECOVERY_TIMEOUT: Duration = Duration::from_secs(1);
+        const RESET_RECOVERY_RETRY_INTERVAL: Duration = Duration::from_millis(5);
 
         // Enter SWD Line Reset State, afterwards at least 2 idle cycles (SWDIO/TMS Low)
         // Guard gives time for the target to recover
