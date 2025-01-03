@@ -13,7 +13,7 @@ use probe_rs_target::CoreType;
 use crate::{
     architecture::arm::{
         core::registers::cortex_m::{PC, SP},
-        dp::{Ctrl, DpRegister, DLPIDR, TARGETID},
+        dp::{Ctrl, DebugPortError, DpRegister, DLPIDR, TARGETID},
         ArmProbeInterface, PortAddress,
     },
     probe::{DebugProbeError, WireProtocol},
@@ -637,6 +637,14 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             }
 
             // TODO: Handle JTAG Specific part
+
+            // TODO: Only run the following code when the SWD protocol is used
+
+            let ctrl_reg: Ctrl = interface.read_dp_register(dp)?;
+            if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
+                tracing::error!("Debug power request failed");
+                return Err(DebugPortError::TargetPowerUpFailed.into());
+            }
 
             // According to CMSIS docs, here's where we would clear errors
             // in ABORT, but we do that above instead.
