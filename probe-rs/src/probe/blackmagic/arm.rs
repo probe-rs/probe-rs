@@ -392,14 +392,14 @@ impl DapAccess for BlackMagicProbeArmDebug {
                     },
                 ));
             }
-            ProtocolVersion::V0P => RemoteCommand::ReadDpV0P { addr: addr.into() },
+            ProtocolVersion::V0P => RemoteCommand::ReadDpV0P { addr: addr.address },
             ProtocolVersion::V1 | ProtocolVersion::V2 => RemoteCommand::ReadDpV1 {
                 index,
-                addr: addr.into(),
+                addr: addr.address,
             },
             ProtocolVersion::V3 | ProtocolVersion::V4 => RemoteCommand::ReadDpV3 {
                 index,
-                addr: addr.into(),
+                addr: addr.address,
             },
         };
         Ok(u32::from_be(
@@ -430,19 +430,19 @@ impl DapAccess for BlackMagicProbeArmDebug {
             }
             ProtocolVersion::V0P => RemoteCommand::RawAccessV0P {
                 rnw: 0,
-                addr: addr.into(),
+                addr: addr.address,
                 value,
             },
             ProtocolVersion::V1 | ProtocolVersion::V2 => RemoteCommand::RawAccessV1 {
                 index,
                 rnw: 0,
-                addr: addr.into(),
+                addr: addr.address,
                 value,
             },
             ProtocolVersion::V3 | ProtocolVersion::V4 => RemoteCommand::RawAccessV3 {
                 index,
                 rnw: 0,
-                addr: addr.into(),
+                addr: addr.address,
                 value,
             },
         };

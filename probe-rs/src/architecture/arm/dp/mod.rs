@@ -31,12 +31,6 @@ pub struct DpRegisterAddress {
     pub bank: u8,
 }
 
-impl From<DpRegisterAddress> for u8 {
-    fn from(addr: DpRegisterAddress) -> Self {
-        (addr.bank << 4 & 0xF0) | (addr.address & 0xF)
-    }
-}
-
 /// A trait to be implemented on Debug Port register types for typed device access.
 pub trait DpRegister:
     Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + std::fmt::Debug
