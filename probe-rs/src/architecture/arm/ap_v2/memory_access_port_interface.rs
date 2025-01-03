@@ -44,9 +44,6 @@ impl<'iface> MemoryAccessPortInterface<'iface> {
         let mut csw = CSW::try_from(csw_raw[0])?;
         csw.SIZE = size;
         csw.DbgSwEnable = true;
-        // TODO: These values derived from openocd's AHB values.  These need
-        // to be rationalized and documented.
-        csw.Prot = (1 << (25 - 24)) | (1 << (29 - 24));
         // tracing::debug!("Setting CSW to : {:x}.", u32::from(csw));
         self.iface
             .write_32(self.base + u64::from(CSW::ADDRESS), &[u32::from(csw)])?;

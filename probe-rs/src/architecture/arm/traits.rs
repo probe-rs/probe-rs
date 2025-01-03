@@ -34,17 +34,17 @@ impl PortAddress {
         }
     }
 
-    /// returns A[3:2] of the address
+    /// returns bits 2-3 of the address
     pub fn a2_and_3(&self) -> u8 {
         self.lsb() & A2AND3_MASK
     }
 
-    /// Returns A[2] of the address
+    /// Returns the second bit of the address
     pub fn a2(&self) -> bool {
         (self.lsb() & A2_MASK) == A2_MASK
     }
 
-    /// Returns A[3] of the address
+    /// Returns the third bit of the address
     pub fn a3(&self) -> bool {
         (self.lsb() & A3_MASK) == A3_MASK
     }
