@@ -1,0 +1,1 @@
+Add CMSIS-PACK sequences for LPC80x
