@@ -9,13 +9,13 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{memory_ap::MemoryApType, AccessPortError, AccessPortType, ApAccess, GenericAp, IDR},
+        ap_v1::{memory_ap::MemoryApType, AccessPortError, AccessPortType, ApAccess, GenericAp, IDR},
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
-        dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
+        dp::{Abort, Ctrl, DpAccess, DpAddress, SelectV1, DPIDR},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, DpAddress,
+        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess,
         FullyQualifiedApAddress, Pins,
     },
     core::MemoryMappedRegister,
@@ -32,7 +32,7 @@ pub mod ol23d0;
 fn debug_port_start(
     interface: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
-    select: Select,
+    select: SelectV1,
 ) -> Result<bool, ArmError> {
     interface.write_dp_register(dp, select)?;
 
@@ -98,26 +98,6 @@ impl LPC55Sxx {
 }
 
 impl ArmDebugSequence for LPC55Sxx {
-    fn debug_port_start(
-        &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
-        dp: DpAddress,
-    ) -> Result<(), ArmError> {
-        tracing::info!("debug_port_start");
-
-        let _powered_down = self::debug_port_start(interface, dp, Select(0))?;
-
-        // Per 51.6.2 and 51.6.3 there is no need to issue a debug mailbox
-        // command if we're attaching to a valid target. In fact, running
-        // the debug mailbox _prevents_ this from attaching to a running
-        // target since the debug mailbox is a separate code path.
-        // if _powered_down {
-        //     enable_debug_mailbox(interface, dp)?;
-        // }
-
-        Ok(())
-    }
-
     fn reset_catch_set(
         &self,
         interface: &mut dyn ArmMemoryInterface,
@@ -432,7 +412,7 @@ impl MIMXRT5xxS {
         // Give bootloader time to do what it needs to do
         thread::sleep(Duration::from_millis(100));
 
-        let ap = probe.ap().ap_address().clone();
+        let ap = probe.fully_qualified_address();
         let dp = ap.dp();
         let start = Instant::now();
         while !self.csw_debug_ready(probe.get_arm_communication_interface()?, &ap)?
@@ -586,31 +566,41 @@ impl ArmDebugSequence for MIMXRT5xxS {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<(), ArmError> {
-        const SW_DP_ABORT: u8 = 0x0;
-        const DP_CTRL_STAT: u8 = 0x4;
-        const DP_SELECT: u8 = 0x8;
+    ) -> Result<DPIDR, ArmError> {
+        let mut abort = Abort::default();
+        abort.set_wderrclr(true);
+        abort.set_orunerrclr(true);
+        abort.set_stkcmpclr(true);
+        abort.set_stkerrclr(true);
 
         tracing::trace!("MIMXRT5xxS debug port start");
 
         // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits of CTRL/STAT Register by write to ABORT register
-        interface.write_raw_dp_register(dp, SW_DP_ABORT, 0x0000001E)?;
+        interface.write_dp_register(dp, abort)?;
+
+        let dpidr: DPIDR = interface.read_dp_register(dp)?;
 
         // Switch to DP Register Bank 0
-        interface.write_raw_dp_register(dp, DP_SELECT, 0x00000000)?;
+        interface.write_dp_register(dp, SelectV1(0))?;
 
         // Read DP CTRL/STAT Register and check if CSYSPWRUPACK and CDBGPWRUPACK bits are set
-        let powered_down =
-            (interface.read_raw_dp_register(dp, DP_CTRL_STAT)? & 0xA0000000) != 0xA0000000;
+        let mut ctrl: Ctrl = interface.read_dp_register(dp)?;
+        let powered_down = !ctrl.csyspwrupack() || !ctrl.cdbgpwrupack();
         if powered_down {
             tracing::trace!("MIMXRT5xxS is powered down, so requesting power-up");
 
             // Request Debug/System Power-Up
-            interface.write_raw_dp_register(dp, DP_CTRL_STAT, 0x50000000)?;
+            ctrl.set_csyspwrupreq(true);
+            ctrl.set_cdbgpwrupreq(true);
+            interface.write_dp_register(dp, ctrl)?;
 
             // Wait for Power-Up Request to be acknowledged
             let start = Instant::now();
-            while (interface.read_raw_dp_register(dp, DP_CTRL_STAT)? & 0xA0000000) != 0xA0000000 {
+            loop {
+                ctrl = interface.read_dp_register(dp)?;
+                if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
+                    break;
+                }
                 if start.elapsed() >= Duration::from_secs(1) {
                     return Err(ArmError::Timeout);
                 }
@@ -622,12 +612,13 @@ impl ArmDebugSequence for MIMXRT5xxS {
         // SWD Specific Part of sequence
         // TODO: Should we skip this if we're not using SWD? How?
         // CMSIS Pack code uses: <control if="(__protocol &amp; 0xFFFF) == 2">
-        {
+        if !dpidr.min() {
             // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
-            interface.write_raw_dp_register(dp, DP_CTRL_STAT, 0x50000F00)?;
+            ctrl.set_mask_lane(0xF);
+            interface.write_dp_register(dp, ctrl)?;
 
             // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits of CTRL/STAT Register by write to ABORT register
-            interface.write_raw_dp_register(dp, SW_DP_ABORT, 0x0000001E)?;
+            interface.write_dp_register(dp, abort)?;
 
             let ap = FullyQualifiedApAddress::v1_with_dp(dp, 0);
             self.enable_debug_mailbox(interface, dp, &ap)?;
@@ -635,7 +626,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
 
         tracing::trace!("MIMXRT5xxS debug port start was successful");
 
-        Ok(())
+        Ok(dpidr)
     }
 
     fn reset_system(

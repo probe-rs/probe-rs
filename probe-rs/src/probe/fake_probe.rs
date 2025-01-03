@@ -10,15 +10,16 @@ use probe_rs_target::ScanChainElement;
 
 use crate::{
     architecture::arm::{
-        ap::memory_ap::{mock::MockMemoryAp, MemoryAp},
+        ap_v1::memory_ap::{mock::MockMemoryAp, MemoryAp},
         armv8m::Dhcsr,
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
+        dp::{DpAddress, DpRegisterAddress},
         memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface},
         sequences::ArmDebugSequence,
-        ArmError, ArmProbeInterface, DapAccess, DpAddress, FullyQualifiedApAddress, PortType,
-        RawDapAccess, SwoAccess,
+        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, PortAddress, RawDapAccess,
+        SwoAccess,
     },
     probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
     Error, MemoryInterface, MemoryMappedRegister,
@@ -31,10 +32,10 @@ pub struct FakeProbe {
     speed: u32,
     scan_chain: Option<Vec<ScanChainElement>>,
 
-    dap_register_read_handler: Option<Box<dyn Fn(PortType, u8) -> Result<u32, ArmError> + Send>>,
+    dap_register_read_handler: Option<Box<dyn Fn(PortAddress) -> Result<u32, ArmError> + Send>>,
 
     dap_register_write_handler:
-        Option<Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmError> + Send>>,
+        Option<Box<dyn Fn(PortAddress, u32) -> Result<(), ArmError> + Send>>,
 
     operations: RefCell<VecDeque<Operation>>,
 
@@ -184,7 +185,7 @@ impl ArmMemoryInterface for &mut MockCore {
         todo!()
     }
 
-    fn ap(&mut self) -> &mut MemoryAp {
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
         todo!()
     }
 
@@ -267,7 +268,7 @@ impl FakeProbe {
     /// Can be used to hook into the read.
     pub fn set_dap_register_read_handler(
         &mut self,
-        handler: Box<dyn Fn(PortType, u8) -> Result<u32, ArmError> + Send>,
+        handler: Box<dyn Fn(PortAddress) -> Result<u32, ArmError> + Send>,
     ) {
         self.dap_register_read_handler = Some(handler);
     }
@@ -276,7 +277,7 @@ impl FakeProbe {
     /// Can be used to hook into the write.
     pub fn set_dap_register_write_handler(
         &mut self,
-        handler: Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmError> + Send>,
+        handler: Box<dyn Fn(PortAddress, u32) -> Result<(), ArmError> + Send>,
     ) {
         self.dap_register_write_handler = Some(handler);
     }
@@ -406,17 +407,17 @@ impl DebugProbe for FakeProbe {
 
 impl RawDapAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
+    fn raw_read_register(&mut self, address: PortAddress) -> Result<u32, ArmError> {
         let handler = self.dap_register_read_handler.as_ref().unwrap();
 
-        handler(port, addr)
+        handler(address)
     }
 
     /// Writes a value to the DAP register on the specified port and address
-    fn raw_write_register(&mut self, port: PortType, addr: u8, value: u32) -> Result<(), ArmError> {
+    fn raw_write_register(&mut self, address: PortAddress, value: u32) -> Result<(), ArmError> {
         let handler = self.dap_register_write_handler.as_ref().unwrap();
 
-        handler(port, addr, value)
+        handler(address, value)
     }
 
     fn jtag_sequence(&mut self, _cycles: u8, _tms: bool, _tdi: u64) -> Result<(), DebugProbeError> {
@@ -533,6 +534,10 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
         Ok(BTreeSet::from([FullyQualifiedApAddress::v1_with_dp(dp, 1)]))
     }
 
+    fn components(&mut self, _dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+        todo!()
+    }
+
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
@@ -560,14 +565,18 @@ impl SwoAccess for FakeArmInterface<Initialized> {
 }
 
 impl DapAccess for FakeArmInterface<Initialized> {
-    fn read_raw_dp_register(&mut self, _dp: DpAddress, _address: u8) -> Result<u32, ArmError> {
+    fn read_raw_dp_register(
+        &mut self,
+        _dp: DpAddress,
+        _address: DpRegisterAddress,
+    ) -> Result<u32, ArmError> {
         todo!()
     }
 
     fn write_raw_dp_register(
         &mut self,
         _dp: DpAddress,
-        _address: u8,
+        _address: DpRegisterAddress,
         _value: u32,
     ) -> Result<(), ArmError> {
         todo!()

@@ -1,26 +1,30 @@
 use crate::{
     architecture::arm::{
-        ap::valid_access_ports_allowlist,
+        ap_v1::valid_access_ports,
+        ap_v2,
         dp::{
-            Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, BASEPTR0,
-            BASEPTR1, DPIDR, DPIDR1,
+            Ctrl, DebugPortId, DebugPortVersion, DpAccess,
+            DPIDR,
         },
         memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::{ArmDebugSequence, DefaultArmSequence},
-        ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, PortType, RawDapAccess, SwoAccess,
-        SwoConfig,
+        ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess, SwoConfig,
     },
     probe::{DebugProbe, DebugProbeError, Probe},
     CoreStatus, Error,
 };
 use jep106::JEP106Code;
-use tracing::Level;
 
 use std::{
     collections::{hash_map, BTreeSet, HashMap},
     fmt::Debug,
     sync::Arc,
     time::Duration,
+};
+
+use super::{
+    dp::{DpAddress, DpRegisterAddress, Select1, SelectV1, SelectV3},
+    ApAddress, PortAddress,
 };
 
 /// An error in the communication with an access port or
@@ -44,29 +48,6 @@ pub enum DapError {
     IncorrectParity,
 }
 
-/// A trait to be implemented on register types for typed device access.
-pub trait Register:
-    Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + Debug
-{
-    /// The address of the register (in bytes).
-    const ADDRESS: u8;
-    /// The name of the register as string.
-    const NAME: &'static str;
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error("Failed to parse register {name} from {value:#010x}")]
-pub struct RegisterParseError {
-    name: &'static str,
-    value: u32,
-}
-
-impl RegisterParseError {
-    pub fn new(name: &'static str, value: u32) -> Self {
-        RegisterParseError { name, value }
-    }
-}
-
 /// To be implemented by debug probe drivers that support debugging ARM cores.
 pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     /// Returns a vector of all the access ports the current debug port has.
@@ -77,6 +58,13 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
         &mut self,
         dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError>;
+
+    /// Returns a sorted set of the FullyQualifiedApAddress of the components available on the given
+    /// Debug Port.
+    ///
+    /// If the target device has multiple debug ports, this will switch the active debug port
+    /// if necessary.
+    fn components(&mut self, dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError>;
 
     /// Closes the interface and returns back the generic probe it consumed.
     fn close(self: Box<Self>) -> Probe;
@@ -204,28 +192,37 @@ impl ArmDebugState for Initialized {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SelectCache {
+    DPv1(SelectV1),
+    DPv3(SelectV3, Select1),
+}
+impl SelectCache {
+    fn dp_bank_sel(&self) -> u8 {
+        match self {
+            SelectCache::DPv1(s) => s.dp_bank_sel(),
+            SelectCache::DPv3(s, _) => s.dp_bank_sel(),
+        }
+    }
+    fn set_dp_bank_sel(&mut self, bank: u8) {
+        match self {
+            SelectCache::DPv1(s) => s.set_dp_bank_sel(bank),
+            SelectCache::DPv3(s, _) => s.set_dp_bank_sel(bank),
+        }
+    }
+}
 #[derive(Debug)]
 pub(crate) struct DpState {
-    pub _debug_port_version: DebugPortVersion,
+    pub debug_port_version: DebugPortVersion,
 
-    pub current_dpbanksel: u8,
-
-    pub current_apsel: u8,
-    pub current_apbanksel: u8,
-
-    /// Information about the APs of the target.
-    /// APs are identified by a number, starting from zero.
-    pub access_ports: BTreeSet<FullyQualifiedApAddress>,
+    current_select: SelectCache,
 }
 
 impl DpState {
     pub fn new() -> Self {
         Self {
-            _debug_port_version: DebugPortVersion::Unsupported(0xFF),
-            current_dpbanksel: 0,
-            current_apsel: 0,
-            current_apbanksel: 0,
-            access_ports: BTreeSet::new(),
+            debug_port_version: DebugPortVersion::Unsupported(0xFF),
+            current_select: SelectCache::DPv1(SelectV1(0)),
         }
     }
 }
@@ -273,7 +270,12 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
-        ArmCommunicationInterface::memory_interface(self, access_port_address)
+        let memory_interface = match access_port_address.ap() {
+            ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?)
+                as Box<dyn ArmMemoryInterface + '_>,
+            ApAddress::V2(_) => ap_v2::new_memory_interface(self, access_port_address)?,
+        };
+        Ok(memory_interface)
     }
 
     fn current_debug_port(&self) -> DpAddress {
@@ -288,7 +290,23 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         &mut self,
         dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        self.select_dp(dp).map(|state| state.access_ports.clone())
+        match self.select_dp(dp).map(|state| state.debug_port_version)? {
+            DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
+                Ok(valid_access_ports(self, dp).into_iter().collect())
+            }
+            DebugPortVersion::DPv3 => ap_v2::enumerate_access_ports(self, dp),
+            DebugPortVersion::Unsupported(_) => unreachable!(),
+        }
+    }
+
+    fn components(&mut self, dp: DpAddress) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+        match self.select_dp(dp).map(|state| state.debug_port_version)? {
+            DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
+                Ok(valid_access_ports(self, dp).into_iter().collect())
+            }
+            DebugPortVersion::DPv3 => ap_v2::enumerate_components(self, dp),
+            DebugPortVersion::Unsupported(_) => unreachable!(),
+        }
     }
 }
 
@@ -415,23 +433,6 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         self.probe_mut().core_status_notification(state).ok();
     }
 
-    /// Tries to obtain a memory interface which can be used to read memory from ARM targets.
-    pub fn memory_interface(
-        &'interface mut self,
-        access_port_address: &FullyQualifiedApAddress,
-    ) -> Result<Box<dyn ArmMemoryInterface + 'interface>, ArmError> {
-        if !self
-            .select_dp(access_port_address.dp())?
-            .access_ports
-            .contains(access_port_address)
-        {
-            return Err(ArmError::ApDoesNotExist(access_port_address.clone()));
-        }
-
-        let memory_interface = ADIMemoryInterface::new(self, access_port_address)?;
-        Ok(Box::new(memory_interface))
-    }
-
     fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
         let mut switched_dp = false;
 
@@ -462,7 +463,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             entry.insert(DpState::new());
 
             let start_span = tracing::debug_span!("debug_port_start").entered();
-            sequence.debug_port_start(self, dp)?;
+            let idr: DebugPortId = sequence.debug_port_start(self, dp)?.into();
             drop(start_span);
 
             // Make sure we enable the overrun detect mode when requested.
@@ -477,43 +478,22 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             }
 
             let idr: DebugPortId = self.read_dp_register::<DPIDR>(dp)?.into();
+            tracing::info!(
+                "Debug Port version: {} MinDP: {:?}",
+                idr.version,
+                idr.min_dp_support
+            );
+
+            let state = self
+                .state
+                .dps
+                .get_mut(&dp)
+                .expect("This DP State was inserted earlier in this function");
+            state.debug_port_version = idr.version;
             if idr.version == DebugPortVersion::DPv3 {
-                let idr1: DPIDR1 = self.read_dp_register(dp)?;
-                let base_ptr0: BASEPTR0 = self.read_dp_register(dp)?;
-                let base_ptr1: BASEPTR1 = self.read_dp_register(dp)?;
-                let base_ptr_str = base_ptr0.valid().then(|| {
-                    format!(
-                        "0x{:x}",
-                        u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12)
-                    )
-                });
-                tracing::info!(
-                    "DPv3 detected: DPIDR1:{:?} BASE_PTR: {}",
-                    idr1,
-                    base_ptr_str.as_deref().unwrap_or("not valid")
-                );
-
-                return Err(ArmError::DebugPort(DebugPortError::Unsupported(
-                    "Unsupported version (DPv3)".to_string(),
-                )));
+                state.current_select = SelectCache::DPv3(SelectV3(0), Select1(0));
             }
 
-            /* determine the number and type of available APs */
-            tracing::info!("Searching valid APs");
-
-            let ap_span = tracing::debug_span!("AP discovery").entered();
-            let allowed_aps = sequence.allowed_access_ports();
-            let access_ports = valid_access_ports_allowlist(self, dp, allowed_aps);
-            let state = self.state.dps.get_mut(&dp).unwrap();
-            state.access_ports = access_ports.into_iter().collect();
-
-            if tracing::enabled!(Level::DEBUG) {
-                for ap in &state.access_ports {
-                    tracing::debug!("Found AP: {:?}", ap);
-                }
-            }
-
-            drop(ap_span);
         } else if switched_dp {
             let sequence = self.state.sequence.clone();
 
@@ -529,7 +509,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     fn select_dp_and_dp_bank(
         &mut self,
         dp: DpAddress,
-        dp_register_address: u8,
+        dp_register_address: &DpRegisterAddress,
     ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(dp)?;
 
@@ -538,25 +518,24 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         // On ADIv5, only address 0x4 is banked, the rest are don't care.
         // On ADIv6, address 0x0 and 0x4 are banked, the rest are don't care.
 
-        let bank = dp_register_address >> 4;
-        let addr = dp_register_address & 0xF;
+        let &DpRegisterAddress {
+            bank,
+            address: addr,
+        } = dp_register_address;
 
         if addr != 0 && addr != 4 {
             return Ok(());
         }
 
-        if bank != dp_state.current_dpbanksel {
-            dp_state.current_dpbanksel = bank;
+        if bank != dp_state.current_select.dp_bank_sel() {
+            dp_state.current_select.set_dp_bank_sel(bank);
 
-            let mut select = Select(0);
+            tracing::debug!("Changing DP_BANK_SEL to {:x?}", dp_state.current_select);
 
-            tracing::debug!("Changing DP_BANK_SEL to {}", dp_state.current_dpbanksel);
-
-            select.set_ap_sel(dp_state.current_apsel);
-            select.set_ap_bank_sel(dp_state.current_apbanksel);
-            select.set_dp_bank_sel(dp_state.current_dpbanksel);
-
-            self.write_dp_register(dp, select)?;
+            match dp_state.current_select {
+                SelectCache::DPv1(select) => self.write_dp_register(dp, select)?,
+                SelectCache::DPv3(select, _) => self.write_dp_register(dp, select)?,
+            }
         }
 
         Ok(())
@@ -569,35 +548,40 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(ap.dp())?;
 
-        let port = ap.ap_v1()?;
-        let ap_bank = ap_register_address >> 4;
-
-        let mut cache_changed = if dp_state.current_apsel != port {
-            dp_state.current_apsel = port;
-            true
-        } else {
-            false
-        };
-
-        if dp_state.current_apbanksel != ap_bank {
-            dp_state.current_apbanksel = ap_bank;
-            cache_changed = true;
+        let previous_select = dp_state.current_select;
+        match (ap.ap(), &mut dp_state.current_select) {
+            (ApAddress::V1(port), SelectCache::DPv1(s)) => {
+                let ap_bank = ap_register_address >> 4;
+                s.set_ap_sel(*port);
+                s.set_ap_bank_sel(ap_bank);
+            }
+            (ApAddress::V2(addr), SelectCache::DPv3(s, s1)) => match addr.as_slice() {
+                [base] => {
+                    let address = base + u64::from(ap_register_address);
+                    s.set_addr(((address >> 4) & 0xFFFF_FFF) as u32);
+                    s1.set_addr((address >> 32) as u32);
+                }
+                _ => {
+                    unreachable!("select_ap_and_ap_bank must be called with a FullyQualifiedApAddress pointing to a component directly in the Debug Port. This is a bug, please report it.")
+                }
+            },
+            _ => unreachable!(
+                "Did not expect to be called with {ap:x?}. This is a bug, please report it."
+            ),
         }
 
-        if cache_changed {
-            let mut select = Select(0);
+        if previous_select != dp_state.current_select {
+            tracing::debug!("Changing SELECT to {:x?}", dp_state.current_select);
 
-            tracing::debug!(
-                "Changing AP to {}, AP_BANK_SEL to {}",
-                dp_state.current_apsel,
-                dp_state.current_apbanksel
-            );
-
-            select.set_ap_sel(dp_state.current_apsel);
-            select.set_ap_bank_sel(dp_state.current_apbanksel);
-            select.set_dp_bank_sel(dp_state.current_dpbanksel);
-
-            self.write_dp_register(ap.dp(), select)?;
+            match dp_state.current_select {
+                SelectCache::DPv1(select) => {
+                    self.write_dp_register(ap.dp(), select)?;
+                }
+                SelectCache::DPv3(select, select1) => {
+                    self.write_dp_register(ap.dp(), select)?;
+                    self.write_dp_register(ap.dp(), select1)?;
+                }
+            }
         }
 
         Ok(())
@@ -634,23 +618,24 @@ impl SwoAccess for ArmCommunicationInterface<Initialized> {
 }
 
 impl DapAccess for ArmCommunicationInterface<Initialized> {
-    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
-        self.select_dp_and_dp_bank(dp, address)?;
-        let result = self
-            .probe_mut()
-            .raw_read_register(PortType::DebugPort, address & 0xf)?;
+    fn read_raw_dp_register(
+        &mut self,
+        dp: DpAddress,
+        address: DpRegisterAddress,
+    ) -> Result<u32, ArmError> {
+        self.select_dp_and_dp_bank(dp, &address)?;
+        let result = self.probe_mut().raw_read_register(address.into())?;
         Ok(result)
     }
 
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
-        address: u8,
+        address: DpRegisterAddress,
         value: u32,
     ) -> Result<(), ArmError> {
-        self.select_dp_and_dp_bank(dp, address)?;
-        self.probe_mut()
-            .raw_write_register(PortType::DebugPort, address, value)?;
+        self.select_dp_and_dp_bank(dp, &address)?;
+        self.probe_mut().raw_write_register(address.into(), value)?;
         Ok(())
     }
 
@@ -663,7 +648,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
         let result = self
             .probe_mut()
-            .raw_read_register(PortType::AccessPort, address & 0xf)?;
+            .raw_read_register(PortAddress::ApRegister(address))?;
 
         Ok(result)
     }
@@ -677,7 +662,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_read_block(PortType::AccessPort, address, values)?;
+            .raw_read_block(PortAddress::ApRegister(address), values)?;
         Ok(())
     }
 
@@ -690,7 +675,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_write_register(PortType::AccessPort, address, value)?;
+            .raw_write_register(PortAddress::ApRegister(address), value)?;
 
         Ok(())
     }
@@ -704,7 +689,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_write_block(PortType::AccessPort, address, values)?;
+            .raw_write_block(PortAddress::ApRegister(address), values)?;
         Ok(())
     }
 }

@@ -1,7 +1,4 @@
 name: RA6M5 Series
-manufacturer:
-  id: 0x23
-  cc: 0x4
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:
@@ -10,7 +7,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: Flash
@@ -51,7 +48,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: Flash
@@ -92,7 +89,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: Flash
@@ -133,7 +130,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: Flash
@@ -174,7 +171,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: Flash

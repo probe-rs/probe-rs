@@ -1,7 +1,4 @@
 name: EFM32PG22 Series
-manufacturer:
-  id: 0x21
-  cc: 0x2
 generated_from_pack: true
 pack_file_release: 4.4.0
 variants:
@@ -10,7 +7,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -35,7 +32,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -60,7 +57,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -85,7 +82,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -110,7 +107,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -135,7 +132,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -160,7 +157,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -185,7 +182,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1

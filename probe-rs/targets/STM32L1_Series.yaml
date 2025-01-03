@@ -5,15 +5,12 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 1.4.1
 variants:
-- name: STM32L100C6
-  package_variants:
-  - STM32L100C6Ux
-  - STM32L100C6UxAA
+- name: STM32L100C6Ux
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -41,7 +38,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -64,15 +61,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L100R8
-  package_variants:
-  - STM32L100R8Tx
-  - STM32L100R8TxAA
+- name: STM32L100R8Tx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -100,7 +94,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -123,15 +117,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L100RB
-  package_variants:
-  - STM32L100RBTx
-  - STM32L100RBTxAA
+- name: STM32L100RBTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -159,7 +150,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -182,14 +173,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L100RC
-  package_variants:
-  - STM32L100RCTx
+- name: STM32L100RCTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -212,17 +201,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L151C6
-  package_variants:
-  - STM32L151C6Tx
-  - STM32L151C6Ux
-  - STM32L151C6TxAA
-  - STM32L151C6UxAA
+- name: STM32L151C6Tx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -250,7 +234,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -267,6 +251,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L151C6Ux
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
     cores:
     - main
   flash_algorithms:
@@ -278,7 +290,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -301,17 +313,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L151C8
-  package_variants:
-  - STM32L151C8Tx
-  - STM32L151C8Ux
-  - STM32L151C8TxAA
-  - STM32L151C8UxAA
+- name: STM32L151C8Tx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -339,7 +346,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -356,6 +363,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L151C8Ux
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
     cores:
     - main
   flash_algorithms:
@@ -367,7 +402,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -390,17 +425,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L151CB
-  package_variants:
-  - STM32L151CBTx
-  - STM32L151CBUx
-  - STM32L151CBTxAA
-  - STM32L151CBUxAA
+- name: STM32L151CBTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -428,7 +458,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -445,6 +475,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L151CBUx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
     cores:
     - main
   flash_algorithms:
@@ -456,7 +514,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -479,15 +537,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L151CC
-  package_variants:
-  - STM32L151CCTx
-  - STM32L151CCUx
+- name: STM32L151CCTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -510,14 +565,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L151QC
-  package_variants:
-  - STM32L151QCHx
+- name: STM32L151CCUx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -540,14 +593,40 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L151QD
-  package_variants:
-  - STM32L151QDHx
+- name: STM32L151QCHx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_256_opt
+- name: STM32L151QDHx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -580,14 +659,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
-- name: STM32L151QE
-  package_variants:
-  - STM32L151QEHx
+- name: STM32L151QEHx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -620,17 +697,12 @@ variants:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
-- name: STM32L151R6
-  package_variants:
-  - STM32L151R6Tx
-  - STM32L151R6Hx
-  - STM32L151R6TxAA
-  - STM32L151R6HxAA
+- name: STM32L151R6Hx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -658,7 +730,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -675,6 +747,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L151R6Tx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
     cores:
     - main
   flash_algorithms:
@@ -686,7 +786,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -709,17 +809,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L151R8
-  package_variants:
-  - STM32L151R8Tx
-  - STM32L151R8Hx
-  - STM32L151R8TxAA
-  - STM32L151R8HxAA
+- name: STM32L151R8Hx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -747,7 +842,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -764,6 +859,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L151R8Tx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
     cores:
     - main
   flash_algorithms:
@@ -775,7 +898,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -798,17 +921,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L151RB
-  package_variants:
-  - STM32L151RBTx
-  - STM32L151RBHx
-  - STM32L151RBTxAA
-  - STM32L151RBHxAA
+- name: STM32L151RBHx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -836,7 +954,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -853,6 +971,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L151RBTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
     cores:
     - main
   flash_algorithms:
@@ -864,7 +1010,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -887,16 +1033,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L151RC
-  package_variants:
-  - STM32L151RCTx
-  - STM32L151RCYx
-  - STM32L151RCTxAA
+- name: STM32L151RCTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -924,7 +1066,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -947,15 +1089,40 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L151RD
-  package_variants:
-  - STM32L151RDTx
-  - STM32L151RDYx
+- name: STM32L151RCYx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_256_opt
+- name: STM32L151RDTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -988,14 +1155,50 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
-- name: STM32L151RE
-  package_variants:
-  - STM32L151RETx
+- name: STM32L151RDYx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8030000
+      end: 0x8060000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_384_opt
+- name: STM32L151RETx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1028,14 +1231,12 @@ variants:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
-- name: STM32L151UC
-  package_variants:
-  - STM32L151UCYx
+- name: STM32L151UCYx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1058,17 +1259,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L151V8
-  package_variants:
-  - STM32L151V8Tx
-  - STM32L151V8Hx
-  - STM32L151V8TxAA
-  - STM32L151V8HxAA
+- name: STM32L151V8Hx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1096,7 +1292,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1113,6 +1309,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L151V8Tx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
     cores:
     - main
   flash_algorithms:
@@ -1124,7 +1348,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1147,17 +1371,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L151VB
-  package_variants:
-  - STM32L151VBTx
-  - STM32L151VBHx
-  - STM32L151VBTxAA
-  - STM32L151VBHxAA
+- name: STM32L151VBHx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1185,7 +1404,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1202,6 +1421,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L151VBTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
     cores:
     - main
   flash_algorithms:
@@ -1213,7 +1460,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1236,16 +1483,40 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L151VC
-  package_variants:
-  - STM32L151VCTx
-  - STM32L151VCHx
-  - STM32L151VCTxAA
+- name: STM32L151VCHx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_256_opt
+- name: STM32L151VCTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1273,7 +1544,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1296,16 +1567,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L151VD
-  package_variants:
-  - STM32L151VDTx
-  - STM32L151VDTxXX
-  - STM32L151VDYxXX
+- name: STM32L151VDTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1343,7 +1610,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1371,7 +1638,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1394,15 +1661,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
-- name: STM32L151VE
-  package_variants:
-  - STM32L151VETx
-  - STM32L151VEYx
+- name: STM32L151VETx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1435,14 +1699,50 @@ variants:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
-- name: STM32L151ZC
-  package_variants:
-  - STM32L151ZCTx
+- name: STM32L151VEYx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_512
+  - stm32l1xx_512_eeprom
+  - stm32l1xx_512_opt
+- name: STM32L151ZCTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1465,14 +1765,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L151ZD
-  package_variants:
-  - STM32L151ZDTx
+- name: STM32L151ZDTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1505,14 +1803,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
-- name: STM32L151ZE
-  package_variants:
-  - STM32L151ZETx
+- name: STM32L151ZETx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1545,17 +1841,12 @@ variants:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
-- name: STM32L152C6
-  package_variants:
-  - STM32L152C6Tx
-  - STM32L152C6Ux
-  - STM32L152C6TxAA
-  - STM32L152C6UxAA
+- name: STM32L152C6Tx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1583,7 +1874,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1600,6 +1891,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L152C6Ux
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
     cores:
     - main
   flash_algorithms:
@@ -1611,7 +1930,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1634,17 +1953,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L152C8
-  package_variants:
-  - STM32L152C8Tx
-  - STM32L152C8Ux
-  - STM32L152C8TxAA
-  - STM32L152C8UxAA
+- name: STM32L152C8Tx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1672,7 +1986,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1689,6 +2003,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L152C8Ux
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
     cores:
     - main
   flash_algorithms:
@@ -1700,7 +2042,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1723,17 +2065,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L152CB
-  package_variants:
-  - STM32L152CBTx
-  - STM32L152CBUx
-  - STM32L152CBTxAA
-  - STM32L152CBUxAA
+- name: STM32L152CBTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1761,7 +2098,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1778,6 +2115,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L152CBUx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
     cores:
     - main
   flash_algorithms:
@@ -1789,7 +2154,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1812,15 +2177,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L152CC
-  package_variants:
-  - STM32L152CCTx
-  - STM32L152CCUx
+- name: STM32L152CCTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1843,14 +2205,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L152QC
-  package_variants:
-  - STM32L152QCHx
+- name: STM32L152CCUx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1873,14 +2233,40 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L152QD
-  package_variants:
-  - STM32L152QDHx
+- name: STM32L152QCHx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_256_opt
+- name: STM32L152QDHx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1913,14 +2299,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
-- name: STM32L152QE
-  package_variants:
-  - STM32L152QEHx
+- name: STM32L152QEHx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1953,17 +2337,12 @@ variants:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
-- name: STM32L152R6
-  package_variants:
-  - STM32L152R6Tx
-  - STM32L152R6Hx
-  - STM32L152R6HxAA
-  - STM32L152R6TxAA
+- name: STM32L152R6Hx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1991,7 +2370,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2008,6 +2387,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L152R6Tx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
     cores:
     - main
   flash_algorithms:
@@ -2019,7 +2426,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2042,17 +2449,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L152R8
-  package_variants:
-  - STM32L152R8Tx
-  - STM32L152R8Hx
-  - STM32L152R8TxAA
-  - STM32L152R8HxAA
+- name: STM32L152R8Hx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2080,7 +2482,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2097,6 +2499,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L152R8Tx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
     cores:
     - main
   flash_algorithms:
@@ -2108,7 +2538,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2131,17 +2561,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L152RB
-  package_variants:
-  - STM32L152RBTx
-  - STM32L152RBHx
-  - STM32L152RBTxAA
-  - STM32L152RBHxAA
+- name: STM32L152RBHx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2169,7 +2594,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2186,6 +2611,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L152RBTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
     cores:
     - main
   flash_algorithms:
@@ -2197,7 +2650,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2220,15 +2673,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L152RC
-  package_variants:
-  - STM32L152RCTx
-  - STM32L152RCTxAA
+- name: STM32L152RCTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2256,7 +2706,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2279,15 +2729,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L152RD
-  package_variants:
-  - STM32L152RDTx
-  - STM32L152RDYx
+- name: STM32L152RDTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2320,14 +2767,50 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
-- name: STM32L152RE
-  package_variants:
-  - STM32L152RETx
+- name: STM32L152RDYx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8030000
+      end: 0x8060000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_384_opt
+- name: STM32L152RETx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2360,15 +2843,12 @@ variants:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
-- name: STM32L152UC
-  package_variants:
-  - STM32L152UCTx
-  - STM32L152UCYx
+- name: STM32L152UCYx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2391,17 +2871,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L152V8
-  package_variants:
-  - STM32L152V8Tx
-  - STM32L152V8Hx
-  - STM32L152V8TxAA
-  - STM32L152V8HxAA
+- name: STM32L152V8Hx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2429,7 +2904,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2446,6 +2921,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L152V8Tx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
     cores:
     - main
   flash_algorithms:
@@ -2457,7 +2960,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2480,17 +2983,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L152VB
-  package_variants:
-  - STM32L152VBTx
-  - STM32L152VBHx
-  - STM32L152VBTxAA
-  - STM32L152VBHxAA
+- name: STM32L152VBHx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2518,7 +3016,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2535,6 +3033,34 @@ variants:
     range:
       start: 0x20000000
       end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_128_opt
+- name: STM32L152VBTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
     cores:
     - main
   flash_algorithms:
@@ -2546,7 +3072,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2569,16 +3095,40 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_128_opt
-- name: STM32L152VC
-  package_variants:
-  - STM32L152VCTx
-  - STM32L152VCHx
-  - STM32L152VCTxAA
+- name: STM32L152VCHx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_256_opt
+- name: STM32L152VCTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2606,7 +3156,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2629,15 +3179,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L152VD
-  package_variants:
-  - STM32L152VDTx
-  - STM32L152VDTxXX
+- name: STM32L152VDTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2675,7 +3222,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2698,15 +3245,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
-- name: STM32L152VE
-  package_variants:
-  - STM32L152VETx
-  - STM32L152VEYx
+- name: STM32L152VETx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2739,84 +3283,12 @@ variants:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
-- name: STM32L152ZC
-  package_variants:
-  - STM32L152ZCTx
+- name: STM32L152VEYx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l1xx_384
-  - stm32l1xx_384_eeprom
-  - stm32l1xx_256_opt
-- name: STM32L152ZD
-  package_variants:
-  - STM32L152ZDTx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8030000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8030000
-      end: 0x8060000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2000c000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32l1xx_384
-  - stm32l1xx_384_eeprom
-  - stm32l1xx_384_opt
-- name: STM32L152ZE
-  package_variants:
-  - STM32L152ZETx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2849,15 +3321,12 @@ variants:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
-- name: STM32L162QC
-  package_variants:
-  - STM32L162QCTx
-  - STM32L162QCHx
+- name: STM32L152ZCTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2880,14 +3349,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L162QD
-  package_variants:
-  - STM32L162QDHx
+- name: STM32L152ZDTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2920,15 +3387,116 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
-- name: STM32L162RC
-  package_variants:
-  - STM32L162RCTx
-  - STM32L162RCTxAA
+- name: STM32L152ZETx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_512
+  - stm32l1xx_512_eeprom
+  - stm32l1xx_512_opt
+- name: STM32L162QCHx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_256_opt
+- name: STM32L162QDHx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8030000
+      end: 0x8060000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_384_opt
+- name: STM32L162RCTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2956,7 +3524,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2979,15 +3547,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L162RD
-  package_variants:
-  - STM32L162RDTx
-  - STM32L162RDYx
+- name: STM32L162RDTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3020,14 +3585,50 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
-- name: STM32L162RE
-  package_variants:
-  - STM32L162RETx
+- name: STM32L162RDYx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8030000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8030000
+      end: 0x8060000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_384_opt
+- name: STM32L162RETx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3060,16 +3661,40 @@ variants:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
-- name: STM32L162VC
-  package_variants:
-  - STM32L162VCTx
-  - STM32L162VCHx
-  - STM32L162VCTxAA
+- name: STM32L162VCHx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_384
+  - stm32l1xx_384_eeprom
+  - stm32l1xx_256_opt
+- name: STM32L162VCTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3097,7 +3722,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -3120,15 +3745,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L162VD
-  package_variants:
-  - STM32L162VDTx
-  - STM32L162VDYxXX
+- name: STM32L162VDTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3166,7 +3788,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -3189,15 +3811,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
-- name: STM32L162VE
-  package_variants:
-  - STM32L162VETx
-  - STM32L162VEYx
+- name: STM32L162VETx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3230,14 +3849,50 @@ variants:
   - stm32l1xx_512
   - stm32l1xx_512_eeprom
   - stm32l1xx_512_opt
-- name: STM32L162ZC
-  package_variants:
-  - STM32L162ZCTx
+- name: STM32L162VEYx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8040000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32l1xx_512
+  - stm32l1xx_512_eeprom
+  - stm32l1xx_512_opt
+- name: STM32L162ZCTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3260,14 +3915,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_256_opt
-- name: STM32L162ZD
-  package_variants:
-  - STM32L162ZDTx
+- name: STM32L162ZDTx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3300,14 +3953,12 @@ variants:
   - stm32l1xx_384
   - stm32l1xx_384_eeprom
   - stm32l1xx_384_opt
-- name: STM32L162ZE
-  package_variants:
-  - STM32L162ZETx
+- name: STM32L162ZETx
   cores:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1

@@ -6,15 +6,16 @@ pub mod romtable;
 use crate::{memory::MemoryInterface, probe::DebugProbeError, CoreStatus};
 
 use super::{
-    ap::memory_ap::MemoryAp, communication_interface::Initialized, ArmCommunicationInterface,
-    ArmError,
+    ap_v1::memory_ap::MemoryAp,
+    communication_interface::{Initialized, SwdSequence},
+    ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
 };
-pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType};
+pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, RomTable};
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
-pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
-    /// The underlying MemoryAp.
-    fn ap(&mut self) -> &mut MemoryAp;
+pub trait ArmMemoryInterface: SwdSequence + ArmMemoryInterfaceShim {
+    /// The underlying MemoryAp address.
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress;
 
     /// The underlying memory AP’s base address.
     fn base_address(&mut self) -> Result<u64, ArmError>;
@@ -36,9 +37,9 @@ pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
     // NOTE: this function should be infallible as it is usually only
     // a visual indication.
     fn update_core_status(&mut self, state: CoreStatus) {
-        self.get_arm_communication_interface()
-            .map(|iface| iface.core_status_notification(state))
-            .ok();
+        let _ = self
+            .get_arm_communication_interface()
+            .map(|iface| iface.core_status_notification(state));
     }
 }
 

@@ -9,7 +9,7 @@ use crate::{
     architecture::{
         arm::{
             communication_interface::read_chip_info_from_rom_table, sequences::DefaultArmSequence,
-            ArmChipInfo, ArmProbeInterface, DpAddress,
+            ArmChipInfo, ArmProbeInterface, dp::DpAddress,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{

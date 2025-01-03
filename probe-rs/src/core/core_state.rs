@@ -2,7 +2,8 @@ use crate::{
     architecture::{
         arm::{
             core::{CortexAState, CortexMState},
-            ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
+            dp::DpAddress,
+            ArmProbeInterface, FullyQualifiedApAddress,
         },
         riscv::{
             communication_interface::{RiscvCommunicationInterface, RiscvError},
@@ -260,8 +261,12 @@ impl CoreState {
             None => DpAddress::Default,
             Some(x) => DpAddress::Multidrop(x),
         };
-
-        FullyQualifiedApAddress::v1_with_dp(dp, options.ap)
+        match &options.ap {
+            probe_rs_target::ApAddress::V1(ap) => FullyQualifiedApAddress::v1_with_dp(dp, *ap),
+            probe_rs_target::ApAddress::V2(ap) => {
+                FullyQualifiedApAddress::v2_with_dp(dp, ap.as_slice().into())
+            }
+        }
     }
 }
 

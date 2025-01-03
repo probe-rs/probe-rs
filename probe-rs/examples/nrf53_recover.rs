@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::{DpAddress, FullyQualifiedApAddress},
+    architecture::arm::{dp::DpAddress, FullyQualifiedApAddress},
     probe::list::Lister,
 };
 

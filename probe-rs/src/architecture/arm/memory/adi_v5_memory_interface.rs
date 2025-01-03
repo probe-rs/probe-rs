@@ -2,11 +2,11 @@ use std::any::Any;
 
 use crate::{
     architecture::arm::{
-        ap::{
+        ap_v1::{
             memory_ap::{DataSize, MemoryAp, MemoryApType},
-            ApAccess,
+            AccessPortType, ApAccess,
         },
-        communication_interface::{FlushableArmAccess, Initialized},
+        communication_interface::{FlushableArmAccess, Initialized, SwdSequence},
         dp::DpAccess,
         memory::ArmMemoryInterface,
         ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress,
@@ -43,6 +43,26 @@ where
             interface,
             memory_ap,
         })
+    }
+}
+
+impl<APA> SwdSequence for ADIMemoryInterface<'_, APA>
+where
+    Self: ArmMemoryInterface,
+{
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        self.get_arm_communication_interface()?
+            .swj_sequence(bit_len, bits)
+    }
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        self.get_arm_communication_interface()?
+            .swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 
@@ -518,9 +538,8 @@ where
         self.memory_ap.base_address(self.interface)
     }
 
-    /// Returns the underlying [`MemoryAp`].
-    fn ap(&mut self) -> &mut MemoryAp {
-        &mut self.memory_ap
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        self.memory_ap.ap_address().clone()
     }
 
     fn get_arm_communication_interface(
@@ -552,8 +571,8 @@ mod tests {
 
     use crate::{
         architecture::arm::{
-            ap::memory_ap::mock::MockMemoryAp, memory::adi_v5_memory_interface::ADIMemoryInterface,
-            FullyQualifiedApAddress,
+            ap_v1::memory_ap::mock::MockMemoryAp,
+            memory::adi_v5_memory_interface::ADIMemoryInterface, FullyQualifiedApAddress,
         },
         MemoryInterface,
     };

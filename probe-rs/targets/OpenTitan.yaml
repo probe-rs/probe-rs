@@ -1,7 +1,4 @@
 name: OpenTitan
-manufacturer:
-  id: 0x6F
-  cc: 0xC
 variants:
 - name: earlgrey
   cores:

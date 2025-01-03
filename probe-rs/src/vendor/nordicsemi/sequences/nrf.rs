@@ -4,7 +4,7 @@ use crate::{
     architecture::arm::{
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
-        ArmError, ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
+        ArmError, ArmProbeInterface, dp::DpAddress, FullyQualifiedApAddress,
     },
     session::MissingPermissions,
 };

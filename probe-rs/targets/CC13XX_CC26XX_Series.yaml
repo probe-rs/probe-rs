@@ -1,14 +1,11 @@
 name: CC13xx CC26xx Series
-manufacturer:
-  id: 0x17
-  cc: 0x0
 variants:
 - name: CC2642R
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:
@@ -37,7 +34,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:
@@ -66,7 +63,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:
@@ -95,7 +92,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:
@@ -124,7 +121,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:
@@ -153,7 +150,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:
@@ -182,7 +179,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:
@@ -211,7 +208,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:
@@ -247,7 +244,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:
@@ -283,7 +280,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:
@@ -319,7 +316,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:
@@ -355,7 +352,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     range:

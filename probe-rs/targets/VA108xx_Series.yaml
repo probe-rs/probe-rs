@@ -7,7 +7,7 @@ variants:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
       jtag_tap: 1
   memory_map:
   - !Nvm
@@ -37,7 +37,7 @@ variants:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
       jtag_tap: 1
   memory_map:
   - !Ram

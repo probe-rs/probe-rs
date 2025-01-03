@@ -5,14 +5,12 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 2.1.1
 variants:
-- name: STM32F030C6
-  package_variants:
-  - STM32F030C6Tx
+- name: STM32F030C6Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -34,14 +32,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F030C8
-  package_variants:
-  - STM32F030C8Tx
+- name: STM32F030C8Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -63,14 +59,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F030CC
-  package_variants:
-  - STM32F030CCTx
+- name: STM32F030CCTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -92,14 +86,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F030F4
-  package_variants:
-  - STM32F030F4Px
+- name: STM32F030F4Px
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -121,14 +113,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F030K6
-  package_variants:
-  - STM32F030K6Tx
+- name: STM32F030K6Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -150,14 +140,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F030R8
-  package_variants:
-  - STM32F030R8Tx
+- name: STM32F030R8Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -179,14 +167,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F030RC
-  package_variants:
-  - STM32F030RCTx
+- name: STM32F030RCTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -208,14 +194,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F031C4
-  package_variants:
-  - STM32F031C4Tx
+- name: STM32F031C4Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -237,14 +221,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F031C6
-  package_variants:
-  - STM32F031C6Tx
+- name: STM32F031C6Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -266,14 +248,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F031E6
-  package_variants:
-  - STM32F031E6Yx
+- name: STM32F031E6Yx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -295,14 +275,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F031F4
-  package_variants:
-  - STM32F031F4Px
+- name: STM32F031F4Px
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -324,14 +302,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F031F6
-  package_variants:
-  - STM32F031F6Px
+- name: STM32F031F6Px
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -353,14 +329,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F031G4
-  package_variants:
-  - STM32F031G4Ux
+- name: STM32F031G4Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -382,14 +356,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F031G6
-  package_variants:
-  - STM32F031G6Ux
+- name: STM32F031G6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -411,14 +383,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F031K4
-  package_variants:
-  - STM32F031K4Ux
+- name: STM32F031K4Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -440,15 +410,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F031K6
-  package_variants:
-  - STM32F031K6Tx
-  - STM32F031K6Ux
+- name: STM32F031K6Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -470,14 +437,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F038C6
-  package_variants:
-  - STM32F038C6Tx
+- name: STM32F031K6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -499,14 +464,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F038E6
-  package_variants:
-  - STM32F038E6Yx
+- name: STM32F038C6Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -528,14 +491,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F038F6
-  package_variants:
-  - STM32F038F6Px
+- name: STM32F038E6Yx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -557,14 +518,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F038G6
-  package_variants:
-  - STM32F038G6Ux
+- name: STM32F038F6Px
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -586,14 +545,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F038K6
-  package_variants:
-  - STM32F038K6Ux
+- name: STM32F038G6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -615,15 +572,39 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F042C4
-  package_variants:
-  - STM32F042C4Tx
-  - STM32F042C4Ux
+- name: STM32F038K6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F042C4Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -645,44 +626,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F042C6
-  package_variants:
-  - STM32F042C6Tx
-  - STM32F042C6Ux
+- name: STM32F042C4Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20001800
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f0xx_64
-  - stm32f0xx_opt
-- name: STM32F042F4
-  package_variants:
-  - STM32F042F4Px
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -704,14 +653,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F042F6
-  package_variants:
-  - STM32F042F6Px
+- name: STM32F042C6Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -733,14 +680,39 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F042G4
-  package_variants:
-  - STM32F042G4Ux
+- name: STM32F042C6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F042F4Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -762,14 +734,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F042G6
-  package_variants:
-  - STM32F042G6Ux
+- name: STM32F042F6Px
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -791,15 +761,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F042K4
-  package_variants:
-  - STM32F042K4Tx
-  - STM32F042K4Ux
+- name: STM32F042G4Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -821,15 +788,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F042K6
-  package_variants:
-  - STM32F042K6Tx
-  - STM32F042K6Ux
+- name: STM32F042G6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -851,14 +815,66 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F042T6
-  package_variants:
-  - STM32F042T6Yx
+- name: STM32F042K4Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F042K4Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F042K6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -880,15 +896,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F048C6
-  package_variants:
-  - STM32F048C6Tx
-  - STM32F048C6Ux
+- name: STM32F042K6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -910,14 +923,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F048G6
-  package_variants:
-  - STM32F048G6Ux
+- name: STM32F042T6Yx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -939,14 +950,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F048T6
-  package_variants:
-  - STM32F048T6Yx
+- name: STM32F048C6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -968,15 +977,66 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F051C4
-  package_variants:
-  - STM32F051C4Tx
-  - STM32F051C4Ux
+- name: STM32F048G6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F048T6Yx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F051C4Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -998,75 +1058,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F051C6
-  package_variants:
-  - STM32F051C6Tx
-  - STM32F051C6Ux
+- name: STM32F051C4Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8008000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f0xx_64
-  - stm32f0xx_opt
-- name: STM32F051C8
-  package_variants:
-  - STM32F051C8Tx
-  - STM32F051C8Ux
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20002000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f0xx_64
-  - stm32f0xx_opt
-- name: STM32F051K4
-  package_variants:
-  - STM32F051K4Tx
-  - STM32F051K4Ux
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1088,15 +1085,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F051K6
-  package_variants:
-  - STM32F051K6Tx
-  - STM32F051K6Ux
+- name: STM32F051C6Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1118,15 +1112,39 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F051K8
-  package_variants:
-  - STM32F051K8Tx
-  - STM32F051K8Ux
+- name: STM32F051C6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F051C8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1148,14 +1166,39 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F051R4
-  package_variants:
-  - STM32F051R4Tx
+- name: STM32F051C8Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F051K4Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1177,14 +1220,39 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F051R6
-  package_variants:
-  - STM32F051R6Tx
+- name: STM32F051K4Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F051K6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1206,15 +1274,39 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F051R8
-  package_variants:
-  - STM32F051R8Tx
-  - STM32F051R8Hx
+- name: STM32F051K6Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F051K8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1236,14 +1328,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F051T8
-  package_variants:
-  - STM32F051T8Yx
+- name: STM32F051K8Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1265,14 +1355,66 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F058C8
-  package_variants:
-  - STM32F058C8Ux
+- name: STM32F051R4Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8004000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F051R6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F051R8Hx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1294,15 +1436,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F058R8
-  package_variants:
-  - STM32F058R8Hx
-  - STM32F058R8Tx
+- name: STM32F051R8Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1324,14 +1463,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F058T8
-  package_variants:
-  - STM32F058T8Yx
+- name: STM32F051T8Yx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1353,14 +1490,120 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F070C6
-  package_variants:
-  - STM32F070C6Tx
+- name: STM32F058C8Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F058R8Hx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F058R8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F058T8Yx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_64
+  - stm32f0xx_opt
+- name: STM32F070C6Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1382,14 +1625,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F070CB
-  package_variants:
-  - STM32F070CBTx
+- name: STM32F070CBTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1411,14 +1652,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F070F6
-  package_variants:
-  - STM32F070F6Px
+- name: STM32F070F6Px
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1440,14 +1679,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_64
   - stm32f0xx_opt
-- name: STM32F070RB
-  package_variants:
-  - STM32F070RBTx
+- name: STM32F070RBTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1469,15 +1706,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F071C8
-  package_variants:
-  - STM32F071C8Tx
-  - STM32F071C8Ux
+- name: STM32F071C8Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1499,75 +1733,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F071CB
-  package_variants:
-  - STM32F071CBTx
-  - STM32F071CBUx
-  - STM32F071CBYx
+- name: STM32F071C8Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f0xx_256_2k
-  - stm32f0xx_opt
-- name: STM32F071RB
-  package_variants:
-  - STM32F071RBTx
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f0xx_256_2k
-  - stm32f0xx_opt
-- name: STM32F071V8
-  package_variants:
-  - STM32F071V8Tx
-  - STM32F071V8Hx
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1589,15 +1760,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F071VB
-  package_variants:
-  - STM32F071VBHx
-  - STM32F071VBTx
+- name: STM32F071CBTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1619,15 +1787,93 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F072C8
-  package_variants:
-  - STM32F072C8Tx
-  - STM32F072C8Ux
+- name: STM32F071CBUx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F071CBYx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F071RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F071V8Hx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1649,45 +1895,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F072CB
-  package_variants:
-  - STM32F072CBTx
-  - STM32F072CBUx
-  - STM32F072CBYx
+- name: STM32F071V8Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f0xx_256_2k
-  - stm32f0xx_opt
-- name: STM32F072R8
-  package_variants:
-  - STM32F072R8Tx
-  cores:
-  - name: main
-    type: armv6m
-    core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1709,16 +1922,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F072RB
-  package_variants:
-  - STM32F072RBTx
-  - STM32F072RBHx
-  - STM32F072RBIx
+- name: STM32F071VBHx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1740,15 +1949,39 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F072V8
-  package_variants:
-  - STM32F072V8Hx
-  - STM32F072V8Tx
+- name: STM32F071VBTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F072C8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1770,15 +2003,39 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F072VB
-  package_variants:
-  - STM32F072VBTx
-  - STM32F072VBHx
+- name: STM32F072C8Ux
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F072CBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1800,16 +2057,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F078CB
-  package_variants:
-  - STM32F078CBTx
-  - STM32F078CBUx
-  - STM32F078CBYx
+- name: STM32F072CBUx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1831,15 +2084,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F078RB
-  package_variants:
-  - STM32F078RBTx
-  - STM32F078RBHx
+- name: STM32F072CBYx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1861,15 +2111,39 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F078VB
-  package_variants:
-  - STM32F078VBHx
-  - STM32F078VBTx
+- name: STM32F072R8Tx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F072RBHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1891,15 +2165,363 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F091CB
-  package_variants:
-  - STM32F091CBUx
-  - STM32F091CBTx
+- name: STM32F072RBIx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F072RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F072V8Hx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F072V8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F072VBHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F072VBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F078CBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F078CBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F078CBYx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F078RBHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F078RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F078VBHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F078VBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F091CBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1921,15 +2543,39 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F091CC
-  package_variants:
-  - STM32F091CCTx
-  - STM32F091CCUx
+- name: STM32F091CBUx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F091CCTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1951,14 +2597,39 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F091RB
-  package_variants:
-  - STM32F091RBTx
+- name: STM32F091CCUx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F091RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1980,16 +2651,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F091RC
-  package_variants:
-  - STM32F091RCTx
-  - STM32F091RCYx
-  - STM32F091RCHx
+- name: STM32F091RCHx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2011,14 +2678,66 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F091VB
-  package_variants:
-  - STM32F091VBTx
+- name: STM32F091RCTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F091RCYx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F091VBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2040,15 +2759,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F091VC
-  package_variants:
-  - STM32F091VCTx
-  - STM32F091VCHx
+- name: STM32F091VCHx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2070,15 +2786,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F098CC
-  package_variants:
-  - STM32F098CCTx
-  - STM32F098CCUx
+- name: STM32F091VCTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2100,16 +2813,12 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F098RC
-  package_variants:
-  - STM32F098RCTx
-  - STM32F098RCHx
-  - STM32F098RCYx
+- name: STM32F098CCTx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2131,15 +2840,147 @@ variants:
   flash_algorithms:
   - stm32f0xx_256_2k
   - stm32f0xx_opt
-- name: STM32F098VC
-  package_variants:
-  - STM32F098VCTx
-  - STM32F098VCHx
+- name: STM32F098CCUx
   cores:
   - name: main
     type: armv6m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F098RCHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F098RCTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F098RCYx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F098VCHx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f0xx_256_2k
+  - stm32f0xx_opt
+- name: STM32F098VCTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1

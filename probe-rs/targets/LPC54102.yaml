@@ -1,7 +1,4 @@
 name: LPC54102
-manufacturer:
-  id: 0x15
-  cc: 0x0
 generated_from_pack: true
 pack_file_release: 12.0.1
 variants:
@@ -10,7 +7,7 @@ variants:
   - name: cm4
     type: armv7em
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: PROGRAM_FLASH
@@ -49,7 +46,7 @@ variants:
   - name: cm4
     type: armv7em
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: PROGRAM_FLASH
@@ -88,7 +85,7 @@ variants:
   - name: cm4
     type: armv7em
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: PROGRAM_FLASH
@@ -127,7 +124,7 @@ variants:
   - name: cm4
     type: armv7em
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: PROGRAM_FLASH
