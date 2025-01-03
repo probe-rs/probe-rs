@@ -5,6 +5,9 @@ use crate::architecture::arm::{
     ArmError, FullyQualifiedApAddress,
 };
 
+/// The ARCHID associated with all CoreSight ROM tables.
+pub const CORESIGHT_ROM_TABLE_ARCHID: u16 = 0x0af7;
+
 /// An error to report any errors that are romtable discovery specific.
 #[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum RomTableError {
@@ -100,7 +103,7 @@ impl Iterator for RomTableIterator<'_, '_, '_> {
         let entry_data =
             RomTableEntryRaw::new(self.rom_table_reader.base_address as u32, entry_data);
 
-        //tracing::debug!("ROM Table Entry: {:#x?}", entry_data);
+        tracing::debug!("ROM Table Entry: {:#x?}", entry_data);
         Some(Ok(entry_data))
     }
 }
@@ -138,6 +141,9 @@ impl RomTable {
         // Iterate all entries and get their data.
         for (i, raw_entry) in reader.into_iter().enumerate() {
             let entry_base_addr = raw_entry.component_address();
+
+            tracing::debug!("Parsing entry at {:#010x}", entry_base_addr);
+
             if raw_entry.entry_present {
                 let component = Component::try_parse(memory, u64::from(entry_base_addr))?;
 
@@ -411,9 +417,6 @@ impl RawComponent {
         }
     }
 }
-
-/// The ARCHID associated with all CoreSight ROM tables.
-pub const CORESIGHT_ROM_TABLE_ARCHID: u16 = 0x0af7;
 
 /// This enum describes a CoreSight component.
 /// Described in table D1-2 in the ADIv5.2 spec.
@@ -870,25 +873,25 @@ pub enum PeripheralType {
 impl std::fmt::Display for PeripheralType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PeripheralType::Tpiu => write!(f, "Tpiu (Trace Port Interface Unit)"),
-            PeripheralType::Itm => write!(f, "Itm (Instrumentation Trace Module)"),
-            PeripheralType::Dwt => write!(f, "Dwt (Data Watchpoint and Trace)"),
-            PeripheralType::Scs => write!(f, "Scs (System Control Space)"),
-            PeripheralType::Fbp => write!(f, "Fbp (Flash Patch and Breakpoint)"),
-            PeripheralType::Bpu => write!(f, "Bpu (Breakpoint Unit)"),
-            PeripheralType::Etm => write!(f, "Etm (Embedded Trace)"),
-            PeripheralType::Etb => write!(f, "Etb (Trace Buffer)"),
-            PeripheralType::Rom => write!(f, "Rom"),
-            PeripheralType::Swo => write!(f, "Swo (Single Wire Output)"),
-            PeripheralType::Stm => write!(f, "Stm (System Trace Macrocell)"),
+            PeripheralType::Tpiu => write!(f, "TPIU (Trace Port Interface Unit)"),
+            PeripheralType::Itm => write!(f, "ITM (Instrumentation Trace Module)"),
+            PeripheralType::Dwt => write!(f, "DWT (Data Watchpoint and Trace)"),
+            PeripheralType::Scs => write!(f, "SCS (System Control Space)"),
+            PeripheralType::Fbp => write!(f, "FBP (Flash Patch and Breakpoint)"),
+            PeripheralType::Bpu => write!(f, "BPU (Breakpoint Unit)"),
+            PeripheralType::Etm => write!(f, "ETM (Embedded Trace Macrocell)"),
+            PeripheralType::Etb => write!(f, "ETB (Embedded Trace Buffer)"),
+            PeripheralType::Rom => write!(f, "ROM"),
+            PeripheralType::Swo => write!(f, "SWO (Single Wire Output)"),
+            PeripheralType::Stm => write!(f, "STM (System Trace Macrocell)"),
             PeripheralType::TraceFunnel => write!(f, "Trace Funnel"),
-            PeripheralType::Tsgen => write!(f, "Tsgen (Time Stamp Generator)"),
-            PeripheralType::Tmc => write!(f, "Tmc (Trace Memory Controller)"),
+            PeripheralType::Tsgen => write!(f, "TSGEN (Time Stamp Generator)"),
+            PeripheralType::Tmc => write!(f, "TMC (Trace Memory Controller)"),
             PeripheralType::Mtb => write!(f, "MTB (Micro Trace Buffer)"),
             PeripheralType::Cti => write!(f, "CTI (Cross Trigger Interface)"),
             PeripheralType::Custom => write!(f, "(Non-standard peripheral)"),
-            PeripheralType::MemAp => write!(f, "MemAp (Memory Access Port)"),
-            PeripheralType::Pmu => write!(f, "Pmu (Performance Monitoring Unit)"),
+            PeripheralType::MemAp => write!(f, "MEM-AP (Memory Access Port)"),
+            PeripheralType::Pmu => write!(f, "PMU (Performance Monitoring Unit)"),
         }
     }
 }

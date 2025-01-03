@@ -3,9 +3,11 @@ use crate::{
         ap_v1::valid_access_ports,
         ap_v2,
         dp::{Ctrl, DebugPortId, DebugPortVersion, DpAccess, DPIDR},
+        dp::{DpAddress, DpRegisterAddress, Select1, SelectV1, SelectV3},
         memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::{ArmDebugSequence, DefaultArmSequence},
-        ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess, SwoConfig,
+        ApAddress, ArmError, DapAccess, FullyQualifiedApAddress, PortAddress, RawDapAccess,
+        SwoAccess, SwoConfig,
     },
     probe::{DebugProbe, DebugProbeError, Probe},
     CoreStatus, Error,
@@ -17,11 +19,6 @@ use std::{
     fmt::Debug,
     sync::Arc,
     time::Duration,
-};
-
-use super::{
-    dp::{DpAddress, DpRegisterAddress, Select1, SelectV1, SelectV3},
-    ApAddress, PortAddress,
 };
 
 /// An error in the communication with an access port or
@@ -346,7 +343,7 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
     }
 }
 
-impl<'interface> ArmCommunicationInterface<Initialized> {
+impl ArmCommunicationInterface<Initialized> {
     /// Set up and start the debug port with brand-new state.
     fn try_setup(
         mut probe: Box<dyn DapProbe>,
@@ -537,7 +534,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             (ApAddress::V2(addr), SelectCache::DPv3(s, s1)) => match addr.as_slice() {
                 [base] => {
                     let address = base + u64::from(ap_register_address);
-                    s.set_addr(((address >> 4) & 0xFFFF_FFF) as u32);
+                    s.set_addr(((address >> 4) & 0xFFFF_FFFF) as u32);
                     s1.set_addr((address >> 32) as u32);
                 }
                 _ => {

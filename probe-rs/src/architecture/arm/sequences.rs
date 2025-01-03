@@ -488,7 +488,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         let mut has_dormant = matches!(dp, DpAddress::Multidrop(_));
 
         fn alert_sequence(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
-            tracing::trace!("Sending SelectV1ion Alert sequence");
+            tracing::trace!("Sending Selection Alert sequence");
 
             // Ensure target is not in the middle of detecting a selection alert
             interface.swj_sequence(8, 0xFF)?;
@@ -593,7 +593,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<DPIDR, ArmError> {
+    ) -> Result<(), ArmError> {
         // Clear all errors.
         // CMSIS says this is only necessary to do inside the `if powered_down`, but
         // without it here, nRF52840 faults in the next access.
@@ -638,13 +638,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
             // TODO: Handle JTAG Specific part
 
-            // TODO: Only run the following code when the SWD protocol is used
-
             // According to CMSIS docs, here's where we would clear errors
             // in ABORT, but we do that above instead.
         }
 
-        Ok(dpidr)
+        Ok(())
     }
 
     /// Initialize core debug system. This is based on the

@@ -10,18 +10,19 @@ use crate::{
     MemoryInterface,
 };
 
-type ACI = ArmCommunicationInterface<Initialized>;
-
 /// The Root Memory Interface accesses the Debug Port (DP) address space. This memory interface can
 /// only be used to interface into the ROM tables and CoreSight components of the debug
 /// infrastructure.
 pub struct RootMemoryInterface<'iface> {
-    iface: &'iface mut ACI,
+    iface: &'iface mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
     base: u64,
 }
 impl<'iface> RootMemoryInterface<'iface> {
-    pub fn new(iface: &'iface mut ACI, dp: DpAddress) -> Result<Self, ArmError> {
+    pub fn new(
+        iface: &'iface mut ArmCommunicationInterface<Initialized>,
+        dp: DpAddress,
+    ) -> Result<Self, ArmError> {
         let base_ptr0: BASEPTR0 = iface.read_dp_register(dp)?;
         let base_ptr1: BASEPTR1 = iface.read_dp_register(dp)?;
         let base = base_ptr0

@@ -35,7 +35,7 @@ fn debug_port_start(
     interface: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
     select: SelectV1,
-) -> Result<DPIDR, ArmError> {
+) -> Result<bool, ArmError> {
     interface.write_dp_register(dp, select)?;
 
     let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
@@ -85,8 +85,7 @@ fn debug_port_start(
         interface.write_dp_register(dp, abort)?;
     }
 
-    let dpidr = interface.read_dp_register(dp)?;
-    Ok(dpidr)
+    Ok(powered_down)
 }
 
 /// The sequence handle for the LPC55Sxx family.
@@ -105,7 +104,7 @@ impl ArmDebugSequence for LPC55Sxx {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<DPIDR, ArmError> {
+    ) -> Result<(), ArmError> {
         tracing::info!("debug_port_start");
 
         let _powered_down = self::debug_port_start(interface, dp, SelectV1(0))?;
@@ -118,8 +117,7 @@ impl ArmDebugSequence for LPC55Sxx {
         //     enable_debug_mailbox(interface, dp)?;
         // }
 
-        let dpidr = interface.read_dp_register(dp)?;
-        Ok(dpidr)
+        Ok(())
     }
 
     fn reset_catch_set(
@@ -590,7 +588,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<DPIDR, ArmError> {
+    ) -> Result<(), ArmError> {
         let mut abort = Abort::default();
         abort.set_wderrclr(true);
         abort.set_orunerrclr(true);
@@ -650,7 +648,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
 
         tracing::trace!("MIMXRT5xxS debug port start was successful");
 
-        Ok(dpidr)
+        Ok(())
     }
 
     fn reset_system(
