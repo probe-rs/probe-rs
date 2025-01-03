@@ -35,7 +35,7 @@ fn debug_port_start(
     interface: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
     select: SelectV1,
-) -> Result<bool, ArmError> {
+) -> Result<DPIDR, ArmError> {
     interface.write_dp_register(dp, select)?;
 
     let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
@@ -85,7 +85,8 @@ fn debug_port_start(
         interface.write_dp_register(dp, abort)?;
     }
 
-    Ok(powered_down)
+    let dpidr = interface.read_dp_register(dp)?;
+    Ok(dpidr)
 }
 
 /// The sequence handle for the LPC55Sxx family.
@@ -100,6 +101,27 @@ impl LPC55Sxx {
 }
 
 impl ArmDebugSequence for LPC55Sxx {
+    fn debug_port_start(
+        &self,
+        interface: &mut ArmCommunicationInterface<Initialized>,
+        dp: DpAddress,
+    ) -> Result<DPIDR, ArmError> {
+        tracing::info!("debug_port_start");
+
+        let _powered_down = self::debug_port_start(interface, dp, SelectV1(0))?;
+
+        // Per 51.6.2 and 51.6.3 there is no need to issue a debug mailbox
+        // command if we're attaching to a valid target. In fact, running
+        // the debug mailbox _prevents_ this from attaching to a running
+        // target since the debug mailbox is a separate code path.
+        // if _powered_down {
+        //     enable_debug_mailbox(interface, dp)?;
+        // }
+
+        let dpidr = interface.read_dp_register(dp)?;
+        Ok(dpidr)
+    }
+
     fn reset_catch_set(
         &self,
         interface: &mut dyn ArmMemoryInterface,

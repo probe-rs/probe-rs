@@ -6,6 +6,8 @@ generated_from_pack: true
 pack_file_release: 2.4.1
 variants:
 - name: STM32F100C4
+  package_variants:
+  - STM32F100C4Tx
   cores:
   - name: main
     type: armv7m
@@ -33,6 +35,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100C6
+  package_variants:
+  - STM32F100C6Tx
   cores:
   - name: main
     type: armv7m
@@ -60,6 +64,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100C8
+  package_variants:
+  - STM32F100C8Tx
   cores:
   - name: main
     type: armv7m
@@ -87,6 +93,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100CB
+  package_variants:
+  - STM32F100CBTx
   cores:
   - name: main
     type: armv7m
@@ -114,6 +122,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100R4
+  package_variants:
+  - STM32F100R4Hx
+  - STM32F100R4Tx
   cores:
   - name: main
     type: armv7m
@@ -141,6 +152,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100R6
+  package_variants:
+  - STM32F100R6Hx
+  - STM32F100R6Tx
   cores:
   - name: main
     type: armv7m
@@ -168,6 +182,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100R8
+  package_variants:
+  - STM32F100R8Hx
+  - STM32F100R8Tx
   cores:
   - name: main
     type: armv7m
@@ -195,6 +212,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100RB
+  package_variants:
+  - STM32F100RBHx
+  - STM32F100RBTx
   cores:
   - name: main
     type: armv7m
@@ -222,6 +242,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100RC
+  package_variants:
+  - STM32F100RCTx
   cores:
   - name: main
     type: armv7m
@@ -249,6 +271,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F100RD
+  package_variants:
+  - STM32F100RDTx
   cores:
   - name: main
     type: armv7m
@@ -276,6 +300,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F100RE
+  package_variants:
+  - STM32F100RETx
   cores:
   - name: main
     type: armv7m
@@ -303,6 +329,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F100V8
+  package_variants:
+  - STM32F100V8Tx
   cores:
   - name: main
     type: armv7m
@@ -330,6 +358,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100VB
+  package_variants:
+  - STM32F100VBTx
   cores:
   - name: main
     type: armv7m
@@ -357,6 +387,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F100VC
+  package_variants:
+  - STM32F100VCTx
   cores:
   - name: main
     type: armv7m
@@ -384,6 +416,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F100VD
+  package_variants:
+  - STM32F100VDTx
   cores:
   - name: main
     type: armv7m
@@ -411,6 +445,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F100VE
+  package_variants:
+  - STM32F100VETx
   cores:
   - name: main
     type: armv7m
@@ -438,6 +474,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F100ZC
+  package_variants:
+  - STM32F100ZCTx
   cores:
   - name: main
     type: armv7m
@@ -465,6 +503,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F100ZD
+  package_variants:
+  - STM32F100ZDTx
   cores:
   - name: main
     type: armv7m
@@ -492,6 +532,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F100ZE
+  package_variants:
+  - STM32F100ZETx
   cores:
   - name: main
     type: armv7m
@@ -519,6 +561,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F101C4
+  package_variants:
+  - STM32F101C4Tx
   cores:
   - name: main
     type: armv7m
@@ -546,6 +590,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101C6
+  package_variants:
+  - STM32F101C6Tx
   cores:
   - name: main
     type: armv7m
@@ -573,6 +619,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101C8
+  package_variants:
+  - STM32F101C8Tx
+  - STM32F101C8Ux
   cores:
   - name: main
     type: armv7m
@@ -600,6 +649,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101CB
+  package_variants:
+  - STM32F101CBTx
+  - STM32F101CBUx
   cores:
   - name: main
     type: armv7m
@@ -627,6 +679,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101R4
+  package_variants:
+  - STM32F101R4Tx
   cores:
   - name: main
     type: armv7m
@@ -654,6 +708,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101R6
+  package_variants:
+  - STM32F101R6Tx
   cores:
   - name: main
     type: armv7m
@@ -681,6 +737,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101R8
+  package_variants:
+  - STM32F101R8Tx
   cores:
   - name: main
     type: armv7m
@@ -708,6 +766,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101RB
+  package_variants:
+  - STM32F101RBHx
+  - STM32F101RBTx
   cores:
   - name: main
     type: armv7m
@@ -735,6 +796,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101RC
+  package_variants:
+  - STM32F101RCTx
   cores:
   - name: main
     type: armv7m
@@ -762,6 +825,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F101RD
+  package_variants:
+  - STM32F101RDTx
   cores:
   - name: main
     type: armv7m
@@ -789,6 +854,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F101RE
+  package_variants:
+  - STM32F101RETx
   cores:
   - name: main
     type: armv7m
@@ -816,6 +883,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F101RF
+  package_variants:
+  - STM32F101RFTx
   cores:
   - name: main
     type: armv7m
@@ -853,6 +922,8 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F101RG
+  package_variants:
+  - STM32F101RGTx
   cores:
   - name: main
     type: armv7m
@@ -890,6 +961,8 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F101T4
+  package_variants:
+  - STM32F101T4Ux
   cores:
   - name: main
     type: armv7m
@@ -917,6 +990,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101T6
+  package_variants:
+  - STM32F101T6Ux
   cores:
   - name: main
     type: armv7m
@@ -944,6 +1019,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101T8
+  package_variants:
+  - STM32F101T8Ux
   cores:
   - name: main
     type: armv7m
@@ -971,6 +1048,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101TB
+  package_variants:
+  - STM32F101TBUx
   cores:
   - name: main
     type: armv7m
@@ -998,6 +1077,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101V8
+  package_variants:
+  - STM32F101V8Tx
   cores:
   - name: main
     type: armv7m
@@ -1025,6 +1106,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101VB
+  package_variants:
+  - STM32F101VBTx
   cores:
   - name: main
     type: armv7m
@@ -1052,6 +1135,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F101VC
+  package_variants:
+  - STM32F101VCTx
   cores:
   - name: main
     type: armv7m
@@ -1079,6 +1164,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F101VD
+  package_variants:
+  - STM32F101VDTx
   cores:
   - name: main
     type: armv7m
@@ -1106,6 +1193,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F101VE
+  package_variants:
+  - STM32F101VETx
   cores:
   - name: main
     type: armv7m
@@ -1133,6 +1222,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F101VF
+  package_variants:
+  - STM32F101VFTx
   cores:
   - name: main
     type: armv7m
@@ -1170,6 +1261,8 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F101VG
+  package_variants:
+  - STM32F101VGTx
   cores:
   - name: main
     type: armv7m
@@ -1207,6 +1300,8 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F101ZC
+  package_variants:
+  - STM32F101ZCTx
   cores:
   - name: main
     type: armv7m
@@ -1234,6 +1329,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F101ZD
+  package_variants:
+  - STM32F101ZDTx
   cores:
   - name: main
     type: armv7m
@@ -1261,6 +1358,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F101ZE
+  package_variants:
+  - STM32F101ZETx
   cores:
   - name: main
     type: armv7m
@@ -1288,6 +1387,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F101ZF
+  package_variants:
+  - STM32F101ZFTx
   cores:
   - name: main
     type: armv7m
@@ -1325,6 +1426,8 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F101ZG
+  package_variants:
+  - STM32F101ZGTx
   cores:
   - name: main
     type: armv7m
@@ -1362,6 +1465,8 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F102C4
+  package_variants:
+  - STM32F102C4Tx
   cores:
   - name: main
     type: armv7m
@@ -1389,6 +1494,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F102C6
+  package_variants:
+  - STM32F102C6Tx
   cores:
   - name: main
     type: armv7m
@@ -1416,6 +1523,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F102C8
+  package_variants:
+  - STM32F102C8Tx
   cores:
   - name: main
     type: armv7m
@@ -1443,6 +1552,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F102CB
+  package_variants:
+  - STM32F102CBTx
   cores:
   - name: main
     type: armv7m
@@ -1470,6 +1581,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F102R4
+  package_variants:
+  - STM32F102R4Tx
   cores:
   - name: main
     type: armv7m
@@ -1497,6 +1610,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F102R6
+  package_variants:
+  - STM32F102R6Tx
   cores:
   - name: main
     type: armv7m
@@ -1524,6 +1639,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F102R8
+  package_variants:
+  - STM32F102R8Tx
   cores:
   - name: main
     type: armv7m
@@ -1551,6 +1668,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F102RB
+  package_variants:
+  - STM32F102RBTx
   cores:
   - name: main
     type: armv7m
@@ -1578,6 +1697,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103C4
+  package_variants:
+  - STM32F103C4Tx
   cores:
   - name: main
     type: armv7m
@@ -1605,6 +1726,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103C6
+  package_variants:
+  - STM32F103C6Tx
+  - STM32F103C6Ux
   cores:
   - name: main
     type: armv7m
@@ -1632,6 +1756,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103C8
+  package_variants:
+  - STM32F103C8Tx
   cores:
   - name: main
     type: armv7m
@@ -1659,6 +1785,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103CB
+  package_variants:
+  - STM32F103CBTx
+  - STM32F103CBUx
   cores:
   - name: main
     type: armv7m
@@ -1686,6 +1815,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103R4
+  package_variants:
+  - STM32F103R4Hx
+  - STM32F103R4Tx
   cores:
   - name: main
     type: armv7m
@@ -1713,6 +1845,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103R6
+  package_variants:
+  - STM32F103R6Hx
+  - STM32F103R6Tx
   cores:
   - name: main
     type: armv7m
@@ -1740,6 +1875,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103R8
+  package_variants:
+  - STM32F103R8Hx
+  - STM32F103R8Tx
   cores:
   - name: main
     type: armv7m
@@ -1767,6 +1905,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103RB
+  package_variants:
+  - STM32F103RBTx
+  - STM32F103RBHx
   cores:
   - name: main
     type: armv7m
@@ -1794,6 +1935,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103RC
+  package_variants:
+  - STM32F103RCTx
+  - STM32F103RCYx
   cores:
   - name: main
     type: armv7m
@@ -1821,6 +1965,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F103RD
+  package_variants:
+  - STM32F103RDTx
+  - STM32F103RDYx
   cores:
   - name: main
     type: armv7m
@@ -1848,6 +1995,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F103RE
+  package_variants:
+  - STM32F103RETx
+  - STM32F103REYx
   cores:
   - name: main
     type: armv7m
@@ -1875,6 +2025,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F103RF
+  package_variants:
+  - STM32F103RFTx
   cores:
   - name: main
     type: armv7m
@@ -1912,6 +2064,8 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F103RG
+  package_variants:
+  - STM32F103RGTx
   cores:
   - name: main
     type: armv7m
@@ -1949,6 +2103,8 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F103T4
+  package_variants:
+  - STM32F103T4Ux
   cores:
   - name: main
     type: armv7m
@@ -1976,6 +2132,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103T6
+  package_variants:
+  - STM32F103T6Ux
   cores:
   - name: main
     type: armv7m
@@ -2003,6 +2161,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103T8
+  package_variants:
+  - STM32F103T8Ux
   cores:
   - name: main
     type: armv7m
@@ -2030,6 +2190,8 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103TB
+  package_variants:
+  - STM32F103TBUx
   cores:
   - name: main
     type: armv7m
@@ -2057,6 +2219,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103V8
+  package_variants:
+  - STM32F103V8Hx
+  - STM32F103V8Tx
   cores:
   - name: main
     type: armv7m
@@ -2084,6 +2249,10 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103VB
+  package_variants:
+  - STM32F103VBIx
+  - STM32F103VBHx
+  - STM32F103VBTx
   cores:
   - name: main
     type: armv7m
@@ -2111,6 +2280,9 @@ variants:
   - stm32f10x_128
   - stm32f10x_opt
 - name: STM32F103VC
+  package_variants:
+  - STM32F103VCHx
+  - STM32F103VCTx
   cores:
   - name: main
     type: armv7m
@@ -2138,6 +2310,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F103VD
+  package_variants:
+  - STM32F103VDHx
+  - STM32F103VDTx
   cores:
   - name: main
     type: armv7m
@@ -2165,6 +2340,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F103VE
+  package_variants:
+  - STM32F103VEHx
+  - STM32F103VETx
   cores:
   - name: main
     type: armv7m
@@ -2192,6 +2370,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F103VF
+  package_variants:
+  - STM32F103VFTx
   cores:
   - name: main
     type: armv7m
@@ -2229,6 +2409,8 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F103VG
+  package_variants:
+  - STM32F103VGTx
   cores:
   - name: main
     type: armv7m
@@ -2266,6 +2448,9 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F103ZC
+  package_variants:
+  - STM32F103ZCHx
+  - STM32F103ZCTx
   cores:
   - name: main
     type: armv7m
@@ -2293,6 +2478,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F103ZD
+  package_variants:
+  - STM32F103ZDHx
+  - STM32F103ZDTx
   cores:
   - name: main
     type: armv7m
@@ -2320,6 +2508,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F103ZE
+  package_variants:
+  - STM32F103ZETx
+  - STM32F103ZEHx
   cores:
   - name: main
     type: armv7m
@@ -2347,6 +2538,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F103ZF
+  package_variants:
+  - STM32F103ZFHx
+  - STM32F103ZFTx
   cores:
   - name: main
     type: armv7m
@@ -2384,6 +2578,9 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F103ZG
+  package_variants:
+  - STM32F103ZGHx
+  - STM32F103ZGTx
   cores:
   - name: main
     type: armv7m
@@ -2421,6 +2618,8 @@ variants:
   - stm32f10x_1024
   - stm32f10x_opt
 - name: STM32F105R8
+  package_variants:
+  - STM32F105R8Tx
   cores:
   - name: main
     type: armv7m
@@ -2448,6 +2647,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F105RB
+  package_variants:
+  - STM32F105RBTx
   cores:
   - name: main
     type: armv7m
@@ -2475,6 +2676,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F105RC
+  package_variants:
+  - STM32F105RCTx
   cores:
   - name: main
     type: armv7m
@@ -2502,6 +2705,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F105V8
+  package_variants:
+  - STM32F105V8Hx
+  - STM32F105V8Tx
   cores:
   - name: main
     type: armv7m
@@ -2529,6 +2735,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F105VB
+  package_variants:
+  - STM32F105VBHx
+  - STM32F105VBTx
   cores:
   - name: main
     type: armv7m
@@ -2556,6 +2765,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F105VC
+  package_variants:
+  - STM32F105VCHx
+  - STM32F105VCTx
   cores:
   - name: main
     type: armv7m
@@ -2583,6 +2795,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F107RB
+  package_variants:
+  - STM32F107RBTx
   cores:
   - name: main
     type: armv7m
@@ -2610,6 +2824,8 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F107RC
+  package_variants:
+  - STM32F107RCTx
   cores:
   - name: main
     type: armv7m
@@ -2637,6 +2853,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F107VB
+  package_variants:
+  - STM32F107VBHx
+  - STM32F107VBTx
   cores:
   - name: main
     type: armv7m
@@ -2664,6 +2883,9 @@ variants:
   - stm32f10x_512
   - stm32f10x_opt
 - name: STM32F107VC
+  package_variants:
+  - STM32F107VCTx
+  - STM32F107VCHx
   cores:
   - name: main
     type: armv7m

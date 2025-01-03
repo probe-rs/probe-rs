@@ -1,4 +1,7 @@
 name: VA416xx Series
+manufacturer:
+  id: 0x71
+  cc: 0x7
 generated_from_pack: true
 pack_file_release: 1.0.5
 variants:

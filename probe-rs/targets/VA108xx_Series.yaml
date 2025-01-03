@@ -8,7 +8,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: !v1 0
-      jtag_tap: 1
+      jtag_tap: !v1 1
   memory_map:
   - !Nvm
     name: NVM
@@ -38,7 +38,7 @@ variants:
     type: armv6m
     core_access_options: !Arm
       ap: !v1 0
-      jtag_tap: 1
+      jtag_tap: !v1 1
   memory_map:
   - !Ram
     name: IRAM

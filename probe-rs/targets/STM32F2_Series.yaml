@@ -5,7 +5,9 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 2.11.0
 variants:
-- name: STM32F205RBTx
+- name: STM32F205RB
+  package_variants:
+  - STM32F205RBTx
   cores:
   - name: main
     type: armv7m
@@ -40,7 +42,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205RCTx
+- name: STM32F205RC
+  package_variants:
+  - STM32F205RCTx
   cores:
   - name: main
     type: armv7m
@@ -75,7 +79,10 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205RETx
+- name: STM32F205RE
+  package_variants:
+  - STM32F205RETx
+  - STM32F205REYx
   cores:
   - name: main
     type: armv7m
@@ -110,42 +117,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205REYx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F205RFTx
+- name: STM32F205RF
+  package_variants:
+  - STM32F205RFTx
   cores:
   - name: main
     type: armv7m
@@ -180,7 +154,11 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205RGEx
+- name: STM32F205RG
+  package_variants:
+  - STM32F205RGTx
+  - STM32F205RGYx
+  - STM32F205RGEx
   cores:
   - name: main
     type: armv7m
@@ -215,77 +193,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205RGTx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F205RGYx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F205VBTx
+- name: STM32F205VB
+  package_variants:
+  - STM32F205VBTx
   cores:
   - name: main
     type: armv7m
@@ -320,7 +230,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205VCTx
+- name: STM32F205VC
+  package_variants:
+  - STM32F205VCTx
   cores:
   - name: main
     type: armv7m
@@ -355,7 +267,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205VETx
+- name: STM32F205VE
+  package_variants:
+  - STM32F205VETx
   cores:
   - name: main
     type: armv7m
@@ -390,7 +304,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205VFTx
+- name: STM32F205VF
+  package_variants:
+  - STM32F205VFTx
   cores:
   - name: main
     type: armv7m
@@ -425,7 +341,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205VGTx
+- name: STM32F205VG
+  package_variants:
+  - STM32F205VGTx
   cores:
   - name: main
     type: armv7m
@@ -460,7 +378,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205ZCTx
+- name: STM32F205ZC
+  package_variants:
+  - STM32F205ZCTx
   cores:
   - name: main
     type: armv7m
@@ -495,7 +415,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205ZETx
+- name: STM32F205ZE
+  package_variants:
+  - STM32F205ZETx
   cores:
   - name: main
     type: armv7m
@@ -530,7 +452,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205ZFTx
+- name: STM32F205ZF
+  package_variants:
+  - STM32F205ZFTx
   cores:
   - name: main
     type: armv7m
@@ -565,7 +489,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F205ZGTx
+- name: STM32F205ZG
+  package_variants:
+  - STM32F205ZGTx
   cores:
   - name: main
     type: armv7m
@@ -600,7 +526,10 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F207ICHx
+- name: STM32F207IC
+  package_variants:
+  - STM32F207ICHx
+  - STM32F207ICTx
   cores:
   - name: main
     type: armv7m
@@ -635,7 +564,123 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F207ICTx
+- name: STM32F207IE
+  package_variants:
+  - STM32F207IEHx
+  - STM32F207IETx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x2001c000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x2001c000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f2xx_1024
+  - stm32f2xx_opt
+  - stm32f2xx_otp
+- name: STM32F207IF
+  package_variants:
+  - STM32F207IFHx
+  - STM32F207IFTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x80c0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x2001c000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x2001c000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f2xx_1024
+  - stm32f2xx_opt
+  - stm32f2xx_otp
+- name: STM32F207IG
+  package_variants:
+  - STM32F207IGHx
+  - STM32F207IGTx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x2001c000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x2001c000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32f2xx_1024
+  - stm32f2xx_opt
+  - stm32f2xx_otp
+- name: STM32F207VC
+  package_variants:
+  - STM32F207VCTx
   cores:
   - name: main
     type: armv7m
@@ -670,7 +715,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F207IEHx
+- name: STM32F207VE
+  package_variants:
+  - STM32F207VETx
   cores:
   - name: main
     type: armv7m
@@ -705,42 +752,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F207IETx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F207IFHx
+- name: STM32F207VF
+  package_variants:
+  - STM32F207VFTx
   cores:
   - name: main
     type: armv7m
@@ -775,42 +789,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F207IFTx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x80c0000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F207IGHx
+- name: STM32F207VG
+  package_variants:
+  - STM32F207VGTx
   cores:
   - name: main
     type: armv7m
@@ -845,42 +826,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F207IGTx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F207VCTx
+- name: STM32F207ZC
+  package_variants:
+  - STM32F207ZCTx
   cores:
   - name: main
     type: armv7m
@@ -915,7 +863,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F207VETx
+- name: STM32F207ZE
+  package_variants:
+  - STM32F207ZETx
   cores:
   - name: main
     type: armv7m
@@ -950,7 +900,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F207VFTx
+- name: STM32F207ZF
+  package_variants:
+  - STM32F207ZFTx
   cores:
   - name: main
     type: armv7m
@@ -985,7 +937,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F207VGTx
+- name: STM32F207ZG
+  package_variants:
+  - STM32F207ZGTx
   cores:
   - name: main
     type: armv7m
@@ -1020,42 +974,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F207ZCTx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8040000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F207ZETx
+- name: STM32F215RE
+  package_variants:
+  - STM32F215RETx
   cores:
   - name: main
     type: armv7m
@@ -1090,42 +1011,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F207ZFTx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x80c0000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F207ZGTx
+- name: STM32F215RG
+  package_variants:
+  - STM32F215RGTx
   cores:
   - name: main
     type: armv7m
@@ -1160,7 +1048,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F215RETx
+- name: STM32F215VE
+  package_variants:
+  - STM32F215VETx
   cores:
   - name: main
     type: armv7m
@@ -1195,7 +1085,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F215RGTx
+- name: STM32F215VG
+  package_variants:
+  - STM32F215VGTx
   cores:
   - name: main
     type: armv7m
@@ -1230,7 +1122,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F215VETx
+- name: STM32F215ZE
+  package_variants:
+  - STM32F215ZETx
   cores:
   - name: main
     type: armv7m
@@ -1265,7 +1159,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F215VGTx
+- name: STM32F215ZG
+  package_variants:
+  - STM32F215ZGTx
   cores:
   - name: main
     type: armv7m
@@ -1300,7 +1196,10 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F215ZETx
+- name: STM32F217IE
+  package_variants:
+  - STM32F217IEHx
+  - STM32F217IETx
   cores:
   - name: main
     type: armv7m
@@ -1335,7 +1234,10 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F215ZGTx
+- name: STM32F217IG
+  package_variants:
+  - STM32F217IGHx
+  - STM32F217IGTx
   cores:
   - name: main
     type: armv7m
@@ -1370,7 +1272,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F217IEHx
+- name: STM32F217VE
+  package_variants:
+  - STM32F217VETx
   cores:
   - name: main
     type: armv7m
@@ -1405,42 +1309,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F217IETx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F217IGHx
+- name: STM32F217VG
+  package_variants:
+  - STM32F217VGTx
   cores:
   - name: main
     type: armv7m
@@ -1475,42 +1346,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F217IGTx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F217VETx
+- name: STM32F217ZE
+  package_variants:
+  - STM32F217ZETx
   cores:
   - name: main
     type: armv7m
@@ -1545,77 +1383,9 @@ variants:
   - stm32f2xx_1024
   - stm32f2xx_opt
   - stm32f2xx_otp
-- name: STM32F217VGTx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F217ZETx
-  cores:
-  - name: main
-    type: armv7m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x20000000
-      end: 0x2001c000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x2001c000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32f2xx_1024
-  - stm32f2xx_opt
-  - stm32f2xx_otp
-- name: STM32F217ZGTx
+- name: STM32F217ZG
+  package_variants:
+  - STM32F217ZGTx
   cores:
   - name: main
     type: armv7m

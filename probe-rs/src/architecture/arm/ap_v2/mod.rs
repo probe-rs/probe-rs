@@ -1,3 +1,5 @@
+//! APv2 support for ADIv6
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
@@ -16,7 +18,6 @@ use super::{
 };
 
 mod registers;
-mod traits;
 
 mod root_memory_interface;
 use root_memory_interface::RootMemoryInterface;

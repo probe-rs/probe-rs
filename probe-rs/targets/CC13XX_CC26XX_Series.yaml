@@ -1,4 +1,7 @@
 name: CC13xx CC26xx Series
+manufacturer:
+  id: 0x17
+  cc: 0x0
 variants:
 - name: CC2642R
   cores:

@@ -1,4 +1,7 @@
 name: EFM32PG1B Series
+manufacturer:
+  id: 0x21
+  cc: 0x2
 generated_from_pack: true
 pack_file_release: 4.3.0
 variants:

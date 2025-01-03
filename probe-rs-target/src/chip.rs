@@ -161,13 +161,17 @@ pub enum CoreAccessOptions {
     Xtensa(XtensaCoreAccessOptions),
 }
 
+/// An address for AP accesses
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ApAddress {
+    /// References an address for an APv1 access, which is part of the ADIv5 specification.
     #[serde(rename = "v1")]
     V1(u8),
+    /// References an address for an APv2 access, which is part of the ADIv6 specification.
     #[serde(rename = "v2")]
     V2(Vec<u64>),
 }
+
 impl Default for ApAddress {
     fn default() -> Self {
         ApAddress::V1(0)

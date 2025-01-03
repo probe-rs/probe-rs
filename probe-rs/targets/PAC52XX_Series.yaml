@@ -1,4 +1,7 @@
 name: PAC52XX Series
+manufacturer:
+  id: 0x6F
+  cc: 0xD
 generated_from_pack: true
 pack_file_release: 2.1.0
 variants:

@@ -460,7 +460,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             entry.insert(DpState::new());
 
             let start_span = tracing::debug_span!("debug_port_start").entered();
-            let idr: DebugPortId = sequence.debug_port_start(self, dp)?.into();
+            sequence.debug_port_start(self, dp)?;
             drop(start_span);
 
             // Make sure we enable the overrun detect mode when requested.

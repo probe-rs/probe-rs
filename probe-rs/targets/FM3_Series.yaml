@@ -1,4 +1,7 @@
 name: FM3 High Performance Series
+manufacturer:
+  id: 0x41
+  cc: 0x0
 generated_from_pack: true
 pack_file_release: 1.2.1
 variants:

@@ -16,14 +16,6 @@ pub struct MemoryAccessPortInterface<'iface> {
     base: u64,
 }
 impl<'iface> MemoryAccessPortInterface<'iface> {
-    pub fn new<M: ArmMemoryInterface + 'iface>(iface: M, base: u64) -> Result<Self, ArmError> {
-        // TODO! validity check from the parent root table
-        Ok(Self {
-            iface: MaybeOwned::Boxed(Box::new(iface)),
-            base,
-        })
-    }
-
     /// creates a new `MemoryAccessPortInterface` from a reference to a `dyn ArmMemoryInterface`.
     pub fn new_with_ref(
         iface: &'iface mut (dyn ArmMemoryInterface + 'iface),

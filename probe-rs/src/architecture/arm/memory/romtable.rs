@@ -412,6 +412,7 @@ impl RawComponent {
     }
 }
 
+/// The ARCHID associated with all CoreSight ROM tables.
 pub const CORESIGHT_ROM_TABLE_ARCHID: u16 = 0x0af7;
 
 /// This enum describes a CoreSight component.

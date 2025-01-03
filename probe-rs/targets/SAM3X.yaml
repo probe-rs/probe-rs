@@ -1,4 +1,7 @@
 name: SAM3X
+manufacturer:
+  id: 0x1f
+  cc: 0x0
 generated_from_pack: true
 pack_file_release: 1.0.50
 variants:

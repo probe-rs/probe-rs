@@ -114,6 +114,7 @@ impl ApV2Address {
         new
     }
 
+    /// Get the APv2 address list.
     pub fn as_slice(&self) -> &[u64] {
         self.0.as_slice()
     }
@@ -205,6 +206,7 @@ impl FullyQualifiedApAddress {
         }
     }
 
+    /// Deconstruct an address into the DP and AP portions.
     pub fn deconstruct(self) -> (DpAddress, ApAddress) {
         (self.dp, self.ap)
     }

@@ -5,12 +5,15 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 1.0.0
 variants:
-- name: STM32H7R3A8Ix
+- name: STM32H7R3A8
+  package_variants:
+  - STM32H7R3A8Ix
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -83,12 +86,16 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R3I8Kx
+- name: STM32H7R3I8
+  package_variants:
+  - STM32H7R3I8Tx
+  - STM32H7R3I8Kx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -161,12 +168,16 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R3I8Tx
+- name: STM32H7R3L8
+  package_variants:
+  - STM32H7R3L8Hx
+  - STM32H7R3L8HxH
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -239,12 +250,15 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R3L8Hx
+- name: STM32H7R3R8
+  package_variants:
+  - STM32H7R3R8Vx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -317,12 +331,17 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R3L8HxH
+- name: STM32H7R3V8
+  package_variants:
+  - STM32H7R3V8Tx
+  - STM32H7R3V8Yx
+  - STM32H7R3V8Hx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -395,12 +414,16 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R3R8Vx
+- name: STM32H7R3Z8
+  package_variants:
+  - STM32H7R3Z8Tx
+  - STM32H7R3Z8Jx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -473,12 +496,15 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R3V8Hx
+- name: STM32H7R7A8
+  package_variants:
+  - STM32H7R7A8Ix
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -551,12 +577,16 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R3V8Tx
+- name: STM32H7R7I8
+  package_variants:
+  - STM32H7R7I8Tx
+  - STM32H7R7I8Kx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -629,12 +659,16 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R3V8Yx
+- name: STM32H7R7L8
+  package_variants:
+  - STM32H7R7L8Hx
+  - STM32H7R7L8HxH
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -707,12 +741,15 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R3Z8Jx
+- name: STM32H7R7Z8
+  package_variants:
+  - STM32H7R7Z8Jx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -785,12 +822,15 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R3Z8Tx
+- name: STM32H7S3A8
+  package_variants:
+  - STM32H7S3A8Ix
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -863,12 +903,16 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R7A8Ix
+- name: STM32H7S3I8
+  package_variants:
+  - STM32H7S3I8Tx
+  - STM32H7S3I8Kx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -941,12 +985,16 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R7I8Kx
+- name: STM32H7S3L8
+  package_variants:
+  - STM32H7S3L8Hx
+  - STM32H7S3L8HxH
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -1019,12 +1067,15 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R7I8Tx
+- name: STM32H7S3R8
+  package_variants:
+  - STM32H7S3R8Vx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -1097,12 +1148,17 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R7L8Hx
+- name: STM32H7S3V8
+  package_variants:
+  - STM32H7S3V8Tx
+  - STM32H7S3V8Yx
+  - STM32H7S3V8Hx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -1175,12 +1231,16 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R7L8HxH
+- name: STM32H7S3Z8
+  package_variants:
+  - STM32H7S3Z8Tx
+  - STM32H7S3Z8Jx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -1253,12 +1313,15 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7R7Z8Jx
+- name: STM32H7S7A8
+  package_variants:
+  - STM32H7S7A8Ix
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -1331,12 +1394,16 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S3A8Ix
+- name: STM32H7S7I8
+  package_variants:
+  - STM32H7S7I8Tx
+  - STM32H7S7I8Kx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -1409,12 +1476,16 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S3I8Kx
+- name: STM32H7S7L8
+  package_variants:
+  - STM32H7S7L8Hx
+  - STM32H7S7L8HxH
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM
@@ -1487,1104 +1558,15 @@ variants:
   - mx66uw1g45g_stm32h7s78-dk
   - mx25uw25645g_stm32h7s38-nucleo
   - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S3I8Tx
+- name: STM32H7S7Z8
+  package_variants:
+  - STM32H7S7Z8Jx
   cores:
   - name: main
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S3L8Hx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S3L8HxH
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S3R8Vx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S3V8Hx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S3V8Tx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S3V8Yx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S3Z8Jx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S3Z8Tx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S7A8Ix
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S7I8Kx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S7I8Tx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S7L8Hx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S7L8HxH
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x30000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8010000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM1
-    range:
-      start: 0x24000000
-      end: 0x24020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2
-    range:
-      start: 0x24020000
-      end: 0x24040000
-    cores:
-    - main
-  - !Ram
-    name: SRAM3
-    range:
-      start: 0x24040000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: SRAM4
-    range:
-      start: 0x24060000
-      end: 0x24072000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM1
-    range:
-      start: 0x30000000
-      end: 0x30004000
-    cores:
-    - main
-  - !Ram
-    name: AHB_SRAM2
-    range:
-      start: 0x30004000
-      end: 0x30008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7rx_64k
-  - mx66uw1g45g_stm32h7s78-dk
-  - mx25uw25645g_stm32h7s38-nucleo
-  - mx66uw1g45g_stm32h7s78-dk-xspim1
-- name: STM32H7S7Z8Jx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 1
+
   memory_map:
   - !Ram
     name: ITCM

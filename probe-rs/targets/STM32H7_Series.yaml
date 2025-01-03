@@ -5,7 +5,10 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 3.1.1
 variants:
-- name: STM32H723VEHx
+- name: STM32H723VE
+  package_variants:
+  - STM32H723VETx
+  - STM32H723VEHx
   cores:
   - name: main
     type: armv7em
@@ -73,7 +76,81 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H723VETx
+- name: STM32H723VG
+  package_variants:
+  - STM32H723VGTx
+  - STM32H723VGHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D1
+    range:
+      start: 0x24000000
+      end: 0x24050000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x30000000
+      end: 0x30008000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D3
+    range:
+      start: 0x38000000
+      end: 0x38004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h72x-73x_1024
+  - stm32h7b3i_eval_fmc-nor
+  - mt25tl01g_stm32h747i-disco
+  - mtfc4gacajcn_stm32h750b-disco
+  - stm32h7xx_mt25tl01g
+  - mt25tl01g_stm32h750b-disco
+  - mt25tl01g_stm32h750b-disco
+  - stm32h743i-eval_fmc
+  - mx25lm51245g_stm32h7b3i-eval
+  - mx25lm51245g_stm32h7b3i-disco
+  - mx25lm51245g_stm32h7b3i-eval
+  - mx25lm51245g_stm32h7b3i-disco
+  - mx25lm51245g_stm32h735-disco
+  - mt25tl01g_stm32h747i-eval
+  - stm32h7xx_mt25tl01g_dual
+- name: STM32H723ZE
+  package_variants:
+  - STM32H723ZETx
+  - STM32H723ZEIx
   cores:
   - name: main
     type: armv7em
@@ -141,7 +218,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H723VGHx
+- name: STM32H723ZG
+  package_variants:
+  - STM32H723ZGTx
+  - STM32H723ZGIx
   cores:
   - name: main
     type: armv7em
@@ -209,75 +289,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H723VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H723ZEIx
+- name: STM32H725AE
+  package_variants:
+  - STM32H725AEIx
   cores:
   - name: main
     type: armv7em
@@ -345,7 +359,80 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H723ZETx
+- name: STM32H725AG
+  package_variants:
+  - STM32H725AGIx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D1
+    range:
+      start: 0x24000000
+      end: 0x24050000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x30000000
+      end: 0x30008000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D3
+    range:
+      start: 0x38000000
+      end: 0x38004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h72x-73x_1024
+  - stm32h7b3i_eval_fmc-nor
+  - mt25tl01g_stm32h747i-disco
+  - mtfc4gacajcn_stm32h750b-disco
+  - stm32h7xx_mt25tl01g
+  - mt25tl01g_stm32h750b-disco
+  - mt25tl01g_stm32h750b-disco
+  - stm32h743i-eval_fmc
+  - mx25lm51245g_stm32h7b3i-eval
+  - mx25lm51245g_stm32h7b3i-disco
+  - mx25lm51245g_stm32h7b3i-eval
+  - mx25lm51245g_stm32h7b3i-disco
+  - mx25lm51245g_stm32h735-disco
+  - mt25tl01g_stm32h747i-eval
+  - stm32h7xx_mt25tl01g_dual
+- name: STM32H725IE
+  package_variants:
+  - STM32H725IETx
+  - STM32H725IEKx
   cores:
   - name: main
     type: armv7em
@@ -413,7 +500,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H723ZGIx
+- name: STM32H725IG
+  package_variants:
+  - STM32H725IGTx
+  - STM32H725IGKx
   cores:
   - name: main
     type: armv7em
@@ -481,75 +571,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H723ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H725AEIx
+- name: STM32H725RE
+  package_variants:
+  - STM32H725REVx
   cores:
   - name: main
     type: armv7em
@@ -617,7 +641,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H725AGIx
+- name: STM32H725RG
+  package_variants:
+  - STM32H725RGVx
   cores:
   - name: main
     type: armv7em
@@ -685,7 +711,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H725IEKx
+- name: STM32H725VE
+  package_variants:
+  - STM32H725VETx
+  - STM32H725VEHx
   cores:
   - name: main
     type: armv7em
@@ -753,7 +782,81 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H725IETx
+- name: STM32H725VG
+  package_variants:
+  - STM32H725VGTx
+  - STM32H725VGHx
+  - STM32H725VGYx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D1
+    range:
+      start: 0x24000000
+      end: 0x24050000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x30000000
+      end: 0x30008000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D3
+    range:
+      start: 0x38000000
+      end: 0x38004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h72x-73x_1024
+  - stm32h7b3i_eval_fmc-nor
+  - mt25tl01g_stm32h747i-disco
+  - mtfc4gacajcn_stm32h750b-disco
+  - stm32h7xx_mt25tl01g
+  - mt25tl01g_stm32h750b-disco
+  - mt25tl01g_stm32h750b-disco
+  - stm32h743i-eval_fmc
+  - mx25lm51245g_stm32h7b3i-eval
+  - mx25lm51245g_stm32h7b3i-disco
+  - mx25lm51245g_stm32h7b3i-eval
+  - mx25lm51245g_stm32h7b3i-disco
+  - mx25lm51245g_stm32h735-disco
+  - mt25tl01g_stm32h747i-eval
+  - stm32h7xx_mt25tl01g_dual
+- name: STM32H725ZE
+  package_variants:
+  - STM32H725ZETx
   cores:
   - name: main
     type: armv7em
@@ -821,7 +924,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H725IGKx
+- name: STM32H725ZG
+  package_variants:
+  - STM32H725ZGTx
   cores:
   - name: main
     type: armv7em
@@ -889,687 +994,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H725IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H725REVx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H725RGVx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H725VEHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H725VETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H725VGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H725VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H725VGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H725ZETx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H725ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H730ABIxQ
+- name: STM32H730AB
+  package_variants:
+  - STM32H730ABIxQ
   cores:
   - name: main
     type: armv7em
@@ -1637,7 +1064,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H730IBKxQ
+- name: STM32H730IB
+  package_variants:
+  - STM32H730IBTxQ
+  - STM32H730IBKxQ
   cores:
   - name: main
     type: armv7em
@@ -1705,7 +1135,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H730IBTxQ
+- name: STM32H730VB
+  package_variants:
+  - STM32H730VBTx
+  - STM32H730VBHx
   cores:
   - name: main
     type: armv7em
@@ -1773,7 +1206,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H730VBHx
+- name: STM32H730ZB
+  package_variants:
+  - STM32H730ZBTx
+  - STM32H730ZBIx
   cores:
   - name: main
     type: armv7em
@@ -1841,211 +1277,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H730VBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H730ZBIx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H730ZBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H733VGHx
+- name: STM32H733VG
+  package_variants:
+  - STM32H733VGTx
+  - STM32H733VGHx
   cores:
   - name: main
     type: armv7em
@@ -2113,7 +1348,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H733VGTx
+- name: STM32H733ZG
+  package_variants:
+  - STM32H733ZGTx
+  - STM32H733ZGIx
   cores:
   - name: main
     type: armv7em
@@ -2181,7 +1419,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H733ZGIx
+- name: STM32H735AG
+  package_variants:
+  - STM32H735AGIx
   cores:
   - name: main
     type: armv7em
@@ -2249,7 +1489,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H733ZGTx
+- name: STM32H735IG
+  package_variants:
+  - STM32H735IGTx
+  - STM32H735IGKx
   cores:
   - name: main
     type: armv7em
@@ -2317,7 +1560,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H735AGIx
+- name: STM32H735RG
+  package_variants:
+  - STM32H735RGVx
   cores:
   - name: main
     type: armv7em
@@ -2385,7 +1630,11 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H735IGKx
+- name: STM32H735VG
+  package_variants:
+  - STM32H735VGTx
+  - STM32H735VGHx
+  - STM32H735VGYx
   cores:
   - name: main
     type: armv7em
@@ -2453,7 +1702,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H735IGTx
+- name: STM32H735ZG
+  package_variants:
+  - STM32H735ZGTx
   cores:
   - name: main
     type: armv7em
@@ -2521,347 +1772,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H735RGVx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H735VGHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H735VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H735VGYx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H735ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24050000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38004000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h72x-73x_1024
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H742AGIx
+- name: STM32H742AG
+  package_variants:
+  - STM32H742AGIx
   cores:
   - name: main
     type: armv7em
@@ -2946,7 +1859,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H742AIIx
+- name: STM32H742AI
+  package_variants:
+  - STM32H742AIIx
   cores:
   - name: main
     type: armv7em
@@ -3031,7 +1946,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H742BGTx
+- name: STM32H742BG
+  package_variants:
+  - STM32H742BGTx
   cores:
   - name: main
     type: armv7em
@@ -3116,7 +2033,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H742BITx
+- name: STM32H742BI
+  package_variants:
+  - STM32H742BITx
   cores:
   - name: main
     type: armv7em
@@ -3201,7 +2120,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H742IGKx
+- name: STM32H742IG
+  package_variants:
+  - STM32H742IGTx
+  - STM32H742IGKx
   cores:
   - name: main
     type: armv7em
@@ -3286,92 +2208,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H742IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM2_D2
-    range:
-      start: 0x30020000
-      end: 0x30024000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H742IIKx
+- name: STM32H742II
+  package_variants:
+  - STM32H742IITx
+  - STM32H742IIKx
   cores:
   - name: main
     type: armv7em
@@ -3456,92 +2296,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H742IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM2_D2
-    range:
-      start: 0x30020000
-      end: 0x30024000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H742VGHx
+- name: STM32H742VG
+  package_variants:
+  - STM32H742VGTx
+  - STM32H742VGHx
   cores:
   - name: main
     type: armv7em
@@ -3626,92 +2384,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H742VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM2_D2
-    range:
-      start: 0x30020000
-      end: 0x30024000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H742VIHx
+- name: STM32H742VI
+  package_variants:
+  - STM32H742VITx
+  - STM32H742VIHx
   cores:
   - name: main
     type: armv7em
@@ -3796,92 +2472,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H742VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24060000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30008000
-    cores:
-    - main
-  - !Ram
-    name: RAM2_D2
-    range:
-      start: 0x30020000
-      end: 0x30024000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H742XGHx
+- name: STM32H742XG
+  package_variants:
+  - STM32H742XGHx
   cores:
   - name: main
     type: armv7em
@@ -3966,7 +2559,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H742XIHx
+- name: STM32H742XI
+  package_variants:
+  - STM32H742XIHx
   cores:
   - name: main
     type: armv7em
@@ -4051,7 +2646,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H742ZGTx
+- name: STM32H742ZG
+  package_variants:
+  - STM32H742ZGTx
   cores:
   - name: main
     type: armv7em
@@ -4136,7 +2733,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H742ZITx
+- name: STM32H742ZI
+  package_variants:
+  - STM32H742ZITx
   cores:
   - name: main
     type: armv7em
@@ -4221,7 +2820,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H743AGIx
+- name: STM32H743AG
+  package_variants:
+  - STM32H743AGIx
   cores:
   - name: main
     type: armv7em
@@ -4299,7 +2900,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H743AIIx
+- name: STM32H743AI
+  package_variants:
+  - STM32H743AIIx
   cores:
   - name: main
     type: armv7em
@@ -4377,163 +2980,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H743BGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30048000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H743BITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30048000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H743IGKx
+- name: STM32H743BG
+  package_variants:
+  - STM32H743BGTx
   cores:
   - name: main
     type: armv7em
@@ -4611,7 +3060,90 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H743IGTx
+- name: STM32H743BI
+  package_variants:
+  - STM32H743BITx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D1
+    range:
+      start: 0x24000000
+      end: 0x24080000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x30000000
+      end: 0x30048000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D3
+    range:
+      start: 0x38000000
+      end: 0x38010000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h7x_2048
+  - stm32h7b3i_eval_fmc-nor
+  - mt25tl01g_stm32h747i-disco
+  - mtfc4gacajcn_stm32h750b-disco
+  - stm32h7xx_mt25tl01g
+  - mt25tl01g_stm32h750b-disco
+  - mt25tl01g_stm32h750b-disco
+  - stm32h743i-eval_fmc
+  - mx25lm51245g_stm32h7b3i-eval
+  - mx25lm51245g_stm32h7b3i-disco
+  - mx25lm51245g_stm32h7b3i-eval
+  - mx25lm51245g_stm32h7b3i-disco
+  - mx25lm51245g_stm32h735-disco
+  - mt25tl01g_stm32h747i-eval
+  - stm32h7xx_mt25tl01g_dual
+- name: STM32H743IG
+  package_variants:
+  - STM32H743IGTx
+  - STM32H743IGKx
   cores:
   - name: main
     type: armv7em
@@ -4689,7 +3221,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H743IIKx
+- name: STM32H743II
+  package_variants:
+  - STM32H743IITx
+  - STM32H743IIKx
   cores:
   - name: main
     type: armv7em
@@ -4767,85 +3302,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H743IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30048000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H743VGHx
+- name: STM32H743VG
+  package_variants:
+  - STM32H743VGTx
+  - STM32H743VGHx
   cores:
   - name: main
     type: armv7em
@@ -4923,7 +3383,90 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H743VGTx
+- name: STM32H743VI
+  package_variants:
+  - STM32H743VITx
+  - STM32H743VIHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8100000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D1
+    range:
+      start: 0x24000000
+      end: 0x24080000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x30000000
+      end: 0x30048000
+    cores:
+    - main
+  - !Ram
+    name: RAM_D3
+    range:
+      start: 0x38000000
+      end: 0x38010000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h7x_2048
+  - stm32h7b3i_eval_fmc-nor
+  - mt25tl01g_stm32h747i-disco
+  - mtfc4gacajcn_stm32h750b-disco
+  - stm32h7xx_mt25tl01g
+  - mt25tl01g_stm32h750b-disco
+  - mt25tl01g_stm32h750b-disco
+  - stm32h743i-eval_fmc
+  - mx25lm51245g_stm32h7b3i-eval
+  - mx25lm51245g_stm32h7b3i-disco
+  - mx25lm51245g_stm32h7b3i-eval
+  - mx25lm51245g_stm32h7b3i-disco
+  - mx25lm51245g_stm32h735-disco
+  - mt25tl01g_stm32h747i-eval
+  - stm32h7xx_mt25tl01g_dual
+- name: STM32H743XG
+  package_variants:
+  - STM32H743XGHx
   cores:
   - name: main
     type: armv7em
@@ -5001,7 +3544,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H743VIHx
+- name: STM32H743XI
+  package_variants:
+  - STM32H743XIHx
   cores:
   - name: main
     type: armv7em
@@ -5079,85 +3624,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H743VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30048000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H743XGHx
+- name: STM32H743ZG
+  package_variants:
+  - STM32H743ZGTx
   cores:
   - name: main
     type: armv7em
@@ -5235,7 +3704,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H743XIHx
+- name: STM32H743ZI
+  package_variants:
+  - STM32H743ZITx
   cores:
   - name: main
     type: armv7em
@@ -5313,163 +3784,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H743ZGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30048000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H743ZITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30048000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H745BGTx
+- name: STM32H745BG
+  package_variants:
+  - STM32H745BGTx
   cores:
   - name: cm7
     type: armv7em
@@ -5479,6 +3796,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -5558,7 +3876,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H745BITx
+- name: STM32H745BI
+  package_variants:
+  - STM32H745BITx
   cores:
   - name: cm7
     type: armv7em
@@ -5568,6 +3888,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -5647,7 +3968,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H745IGKx
+- name: STM32H745IG
+  package_variants:
+  - STM32H745IGTx
+  - STM32H745IGKx
   cores:
   - name: cm7
     type: armv7em
@@ -5657,6 +3981,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -5736,7 +4061,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H745IGTx
+- name: STM32H745II
+  package_variants:
+  - STM32H745IITx
+  - STM32H745IIKx
   cores:
   - name: cm7
     type: armv7em
@@ -5746,6 +4074,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -5825,7 +4154,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H745IIKx
+- name: STM32H745XG
+  package_variants:
+  - STM32H745XGHx
   cores:
   - name: cm7
     type: armv7em
@@ -5835,6 +4166,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -5914,7 +4246,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H745IITx
+- name: STM32H745XI
+  package_variants:
+  - STM32H745XIHx
   cores:
   - name: cm7
     type: armv7em
@@ -5924,6 +4258,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6003,7 +4338,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H745XGHx
+- name: STM32H745ZG
+  package_variants:
+  - STM32H745ZGTx
   cores:
   - name: cm7
     type: armv7em
@@ -6013,6 +4350,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6092,7 +4430,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H745XIHx
+- name: STM32H745ZI
+  package_variants:
+  - STM32H745ZITx
   cores:
   - name: cm7
     type: armv7em
@@ -6102,6 +4442,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6181,7 +4522,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H745ZGTx
+- name: STM32H747AG
+  package_variants:
+  - STM32H747AGIx
   cores:
   - name: cm7
     type: armv7em
@@ -6191,6 +4534,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6270,7 +4614,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H745ZITx
+- name: STM32H747AI
+  package_variants:
+  - STM32H747AIIx
   cores:
   - name: cm7
     type: armv7em
@@ -6280,6 +4626,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6359,7 +4706,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H747AGIx
+- name: STM32H747BG
+  package_variants:
+  - STM32H747BGTx
   cores:
   - name: cm7
     type: armv7em
@@ -6369,6 +4718,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6448,7 +4798,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H747AIIx
+- name: STM32H747BI
+  package_variants:
+  - STM32H747BITx
   cores:
   - name: cm7
     type: armv7em
@@ -6458,6 +4810,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6537,7 +4890,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H747BGTx
+- name: STM32H747IG
+  package_variants:
+  - STM32H747IGTx
   cores:
   - name: cm7
     type: armv7em
@@ -6547,6 +4902,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6626,7 +4982,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H747BITx
+- name: STM32H747II
+  package_variants:
+  - STM32H747IITx
   cores:
   - name: cm7
     type: armv7em
@@ -6636,6 +4994,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6715,7 +5074,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H747IGTx
+- name: STM32H747XG
+  package_variants:
+  - STM32H747XGHx
   cores:
   - name: cm7
     type: armv7em
@@ -6725,6 +5086,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6804,7 +5166,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H747IITx
+- name: STM32H747XI
+  package_variants:
+  - STM32H747XIHx
   cores:
   - name: cm7
     type: armv7em
@@ -6814,6 +5178,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6893,7 +5258,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H747XGHx
+- name: STM32H747ZI
+  package_variants:
+  - STM32H747ZIYx
   cores:
   - name: cm7
     type: armv7em
@@ -6903,6 +5270,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -6982,185 +5350,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H747XIHx
-  cores:
-  - name: cm7
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  - name: cm4
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 3
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - cm7
-    - cm4
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - cm7
-    - cm4
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - cm7
-    - cm4
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - cm7
-    - cm4
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H747ZIYx
-  cores:
-  - name: cm7
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  - name: cm4
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 3
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - cm7
-    - cm4
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - cm7
-    - cm4
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - cm7
-    - cm4
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - cm7
-    - cm4
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H750IBKx
+- name: STM32H750IB
+  package_variants:
+  - STM32H750IBTx
+  - STM32H750IBKx
   cores:
   - name: main
     type: armv7em
@@ -7228,7 +5421,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H750IBTx
+- name: STM32H750VB
+  package_variants:
+  - STM32H750VBTx
   cores:
   - name: main
     type: armv7em
@@ -7296,7 +5491,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H750VBTx
+- name: STM32H750XB
+  package_variants:
+  - STM32H750XBHx
   cores:
   - name: main
     type: armv7em
@@ -7364,7 +5561,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H750XBHx
+- name: STM32H750ZB
+  package_variants:
+  - STM32H750ZBTx
   cores:
   - name: main
     type: armv7em
@@ -7432,75 +5631,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H750ZBTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8020000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30048000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H753AIIx
+- name: STM32H753AI
+  package_variants:
+  - STM32H753AIIx
   cores:
   - name: main
     type: armv7em
@@ -7578,7 +5711,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H753BITx
+- name: STM32H753BI
+  package_variants:
+  - STM32H753BITx
   cores:
   - name: main
     type: armv7em
@@ -7656,7 +5791,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H753IIKx
+- name: STM32H753II
+  package_variants:
+  - STM32H753IITx
+  - STM32H753IIKx
   cores:
   - name: main
     type: armv7em
@@ -7734,7 +5872,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H753IITx
+- name: STM32H753VI
+  package_variants:
+  - STM32H753VITx
+  - STM32H753VIHx
   cores:
   - name: main
     type: armv7em
@@ -7812,7 +5953,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H753VIHx
+- name: STM32H753XI
+  package_variants:
+  - STM32H753XIHx
   cores:
   - name: main
     type: armv7em
@@ -7890,7 +6033,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H753VITx
+- name: STM32H753ZI
+  package_variants:
+  - STM32H753ZITx
   cores:
   - name: main
     type: armv7em
@@ -7968,163 +6113,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H753XIHx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30048000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H753ZITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x30000000
-      end: 0x30048000
-    cores:
-    - main
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x38000000
-      end: 0x38010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H755BITx
+- name: STM32H755BI
+  package_variants:
+  - STM32H755BITx
   cores:
   - name: cm7
     type: armv7em
@@ -8134,6 +6125,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -8213,7 +6205,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H755IIKx
+- name: STM32H755II
+  package_variants:
+  - STM32H755IITx
+  - STM32H755IIKx
   cores:
   - name: cm7
     type: armv7em
@@ -8223,6 +6218,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -8302,7 +6298,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H755IITx
+- name: STM32H755XI
+  package_variants:
+  - STM32H755XIHx
   cores:
   - name: cm7
     type: armv7em
@@ -8312,6 +6310,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -8391,7 +6390,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H755XIHx
+- name: STM32H755ZI
+  package_variants:
+  - STM32H755ZITx
   cores:
   - name: cm7
     type: armv7em
@@ -8401,6 +6402,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -8480,7 +6482,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H755ZITx
+- name: STM32H757AI
+  package_variants:
+  - STM32H757AIIx
   cores:
   - name: cm7
     type: armv7em
@@ -8490,6 +6494,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -8569,7 +6574,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H757AIIx
+- name: STM32H757BI
+  package_variants:
+  - STM32H757BITx
   cores:
   - name: cm7
     type: armv7em
@@ -8579,6 +6586,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -8658,7 +6666,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H757BITx
+- name: STM32H757II
+  package_variants:
+  - STM32H757IITx
   cores:
   - name: cm7
     type: armv7em
@@ -8668,6 +6678,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -8747,7 +6758,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H757IITx
+- name: STM32H757XI
+  package_variants:
+  - STM32H757XIHx
   cores:
   - name: cm7
     type: armv7em
@@ -8757,6 +6770,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -8836,7 +6850,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H757XIHx
+- name: STM32H757ZI
+  package_variants:
+  - STM32H757ZIYx
   cores:
   - name: cm7
     type: armv7em
@@ -8846,95 +6862,7 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 3
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - cm7
-    - cm4
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - cm7
-    - cm4
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - cm7
-    - cm4
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D1
-    range:
-      start: 0x24000000
-      end: 0x24080000
-    cores:
-    - cm7
-    - cm4
-  flash_algorithms:
-  - stm32h7x_2048
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H757ZIYx
-  cores:
-  - name: cm7
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  - name: cm4
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 3
+
   memory_map:
   - !Ram
     name: ITCM
@@ -9156,7 +7084,12 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3IGKx
+- name: STM32H7A3IG
+  package_variants:
+  - STM32H7A3IGKx
+  - STM32H7A3IGTx
+  - STM32H7A3IGKxQQ
+  - STM32H7A3IGTxQQ
   cores:
   - name: main
     type: armv7em
@@ -9291,70 +7224,6 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3IGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x24000000
-      end: 0x24100000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7a-b3_flash_2m
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
 - name: STM32H7A3IGTxQ
   cores:
   - name: main
@@ -9426,7 +7295,12 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3IIKx
+- name: STM32H7A3II
+  package_variants:
+  - STM32H7A3IIKx
+  - STM32H7A3IITx
+  - STM32H7A3IIKxQQ
+  - STM32H7A3IITxQQ
   cores:
   - name: main
     type: armv7em
@@ -9543,70 +7417,6 @@ variants:
     range:
       start: 0x38000000
       end: 0x38008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7a-b3_flash_2m
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x24000000
-      end: 0x24100000
     cores:
     - main
   flash_algorithms:
@@ -9838,7 +7648,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3NGHx
+- name: STM32H7A3NG
+  package_variants:
+  - STM32H7A3NGHx
+  - STM32H7A3NGHxQQ
   cores:
   - name: main
     type: armv7em
@@ -9902,7 +7715,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3NIHx
+- name: STM32H7A3NI
+  package_variants:
+  - STM32H7A3NIHx
+  - STM32H7A3NIHxQQ
   cores:
   - name: main
     type: armv7em
@@ -10037,7 +7853,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3RGTx
+- name: STM32H7A3RG
+  package_variants:
+  - STM32H7A3RGTx
   cores:
   - name: main
     type: armv7em
@@ -10101,7 +7919,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3RITx
+- name: STM32H7A3RI
+  package_variants:
+  - STM32H7A3RITx
   cores:
   - name: main
     type: armv7em
@@ -10165,7 +7985,12 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3VGHx
+- name: STM32H7A3VG
+  package_variants:
+  - STM32H7A3VGHx
+  - STM32H7A3VGTx
+  - STM32H7A3VGHxQQ
+  - STM32H7A3VGTxQQ
   cores:
   - name: main
     type: armv7em
@@ -10300,70 +8125,6 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3VGTx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8180000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x24000000
-      end: 0x24100000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7a-b3_flash_2m
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
 - name: STM32H7A3VGTxQ
   cores:
   - name: main
@@ -10435,7 +8196,12 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3VIHx
+- name: STM32H7A3VI
+  package_variants:
+  - STM32H7A3VIHx
+  - STM32H7A3VITx
+  - STM32H7A3VIHxQQ
+  - STM32H7A3VITxQQ
   cores:
   - name: main
     type: armv7em
@@ -10570,70 +8336,6 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x24000000
-      end: 0x24100000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7a-b3_flash_2m
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
 - name: STM32H7A3VITxQ
   cores:
   - name: main
@@ -10705,7 +8407,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3ZGTx
+- name: STM32H7A3ZG
+  package_variants:
+  - STM32H7A3ZGTx
+  - STM32H7A3ZGTxQQ
   cores:
   - name: main
     type: armv7em
@@ -10840,7 +8545,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7A3ZITx
+- name: STM32H7A3ZI
+  package_variants:
+  - STM32H7A3ZITx
+  - STM32H7A3ZITxQQ
   cores:
   - name: main
     type: armv7em
@@ -10975,7 +8683,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B0ABIxQ
+- name: STM32H7B0AB
+  package_variants:
+  - STM32H7B0ABIxQ
   cores:
   - name: main
     type: armv7em
@@ -11090,7 +8800,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B0IBTx
+- name: STM32H7B0IB
+  package_variants:
+  - STM32H7B0IBTx
+  - STM32H7B0x_DISCOKxQ
   cores:
   - name: main
     type: armv7em
@@ -11144,7 +8857,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B0RBTx
+- name: STM32H7B0RB
+  package_variants:
+  - STM32H7B0RBTx
   cores:
   - name: main
     type: armv7em
@@ -11198,7 +8913,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B0VBTx
+- name: STM32H7B0VB
+  package_variants:
+  - STM32H7B0VBTx
+  - STM32H7B0VBTx
   cores:
   - name: main
     type: armv7em
@@ -11252,7 +8970,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B0ZBTx
+- name: STM32H7B0ZB
+  package_variants:
+  - STM32H7B0ZBTx
   cores:
   - name: main
     type: armv7em
@@ -11377,7 +9097,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B3IIKx
+- name: STM32H7B3II
+  package_variants:
+  - STM32H7B3IIKx
+  - STM32H7B3IITx
   cores:
   - name: main
     type: armv7em
@@ -11494,70 +9217,6 @@ variants:
     range:
       start: 0x38000000
       end: 0x38008000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7a-b3_flash_2m
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B3IITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x24000000
-      end: 0x24100000
     cores:
     - main
   flash_algorithms:
@@ -11718,7 +9377,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B3NIHx
+- name: STM32H7B3NI
+  package_variants:
+  - STM32H7B3NIHx
   cores:
   - name: main
     type: armv7em
@@ -11853,7 +9514,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B3RITx
+- name: STM32H7B3RI
+  package_variants:
+  - STM32H7B3RITx
   cores:
   - name: main
     type: armv7em
@@ -11917,7 +9580,10 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B3VIHx
+- name: STM32H7B3VI
+  package_variants:
+  - STM32H7B3VIHx
+  - STM32H7B3VITx
   cores:
   - name: main
     type: armv7em
@@ -12052,70 +9718,6 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B3VITx
-  cores:
-  - name: main
-    type: armv7em
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Ram
-    name: ITCM
-    range:
-      start: 0x0
-      end: 0x10000
-    cores:
-    - main
-  - !Nvm
-    name: BANK_1
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Nvm
-    name: BANK_2
-    range:
-      start: 0x8100000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: DTCM
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  - !Ram
-    name: SRAM
-    range:
-      start: 0x24000000
-      end: 0x24100000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32h7a-b3_flash_2m
-  - stm32h7b3i_eval_fmc-nor
-  - mt25tl01g_stm32h747i-disco
-  - mtfc4gacajcn_stm32h750b-disco
-  - stm32h7xx_mt25tl01g
-  - mt25tl01g_stm32h750b-disco
-  - mt25tl01g_stm32h750b-disco
-  - stm32h743i-eval_fmc
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h7b3i-eval
-  - mx25lm51245g_stm32h7b3i-disco
-  - mx25lm51245g_stm32h735-disco
-  - mt25tl01g_stm32h747i-eval
-  - stm32h7xx_mt25tl01g_dual
 - name: STM32H7B3VITxQ
   cores:
   - name: main
@@ -12187,7 +9789,9 @@ variants:
   - mx25lm51245g_stm32h735-disco
   - mt25tl01g_stm32h747i-eval
   - stm32h7xx_mt25tl01g_dual
-- name: STM32H7B3ZITx
+- name: STM32H7B3ZI
+  package_variants:
+  - STM32H7B3ZITx
   cores:
   - name: main
     type: armv7em
@@ -12578,7 +10182,8 @@ flash_algorithms:
   description: STM32H7x_2048
   default: true
   instructions: v/NPj3BHELUDRk/0gHDtTCBg7UgAaEDwBwDrTCBg60hgYQC/6EgAaQDwBAAAKPnR50jlTGBg50hgYORI5kwgYAC/5UgAHwBoAPAEAAAo+NHfSOFMEDwgYN5I20zE+AQBACAQvQFG2EjAaEDwAQDWStBg2UgIOABoQPABAML4DAEAIHBH0UjQSUhhAL/OSABpAPAEAAAo+dHMSM9JCGAAv81IAB8AaADwBAAAKPjRAL/FSABpAPAEAAAo+dHCSMBoIPAwAMBJyGAIRsBoQPAIAMhgCEbAaEDwgADIYAC/ukgAaQDwBAAAKPnRt0jAaCDwCAC1SchgAL+3SAAfAGgA8AQAACj40bRICDgAaCDwMACtScH4DAEIRtD4DAFA8AgAwfgMAQhG0PgMAUDwgADB+AwBAL+oSAAfAGgA8AQAACj40aVICDgAaCDwCACeScH4DAEAIHBHELUBRsHzQ0Kx8QBvN9Ox8QFvNNKXSEBpl0sYQ5VLWGEAv5NIAGkA8AQAACj50ZBIwGhH9jBzmEOOS9hgGEbAaAQjQ+oCIxhDikvYYBhGwGhA8IAA2GAAv4ZIAGkA8AQAACj50YNIwGgg8AQAgUvYYBhGAGkA8AEA6LMBIBC9gEgAaHxLGEN6S8P4FAEAv3xIAB8AaADwBAAAKPjReUgIOABoR/Ywc5hDckvD+AwBdEgIOABoovEIAwQkROoDIxhDbEvD+AwBGEbQ+AwBQPCAAMP4DAEAv2pIAB8AaADwBAAAKPjRZ0gIOABoIPAEAGBLw/gMAQDgB+BiSAAfAGgA8AEACLEBILnnACC35/C1A0YMRhZGGUY1RgAis/EAbw3Ts/EBbwrSAL9SSABpAPAEAAAo+dFQSE5PeGEK4AC/UEgAHwBoAPAEAAAo+NFKSExPOGCH4LPxAG8M07PxAW8J0kRIwGhH9jB3uENBT/hgAiD4YAzgQ0gIOABoR/Ywd7hDPE/H+AwBAiA+Twg/OGAgLAzTACIG4C9oaGgPYEhgCDUIMVIcBCr22yA8E+AAIgTgFfgBCwH4AQtSHKJC+NMAIgPg/yAB+AELUhzE8SAAkEL32AAk//dp/rPxAG8K07PxAW8H0gC/IkgAaQDwBAAAKPnRB+AAvyJIAB8AaADwBAAAKPjRG0gAaQAgsLGz8QBvCdOz8QFvBtIWSMBoIPACABRP+GAH4BZICDgAaCDwAgAQT8f4DAEBIPC9s/EAbwnTs/EBbwbSCkjAaCDwAgAIT/hgB+ALSAg4AGgg8AIABE/H+AwBACx/9HWvACDk55RFAlgAIABSAADvDyMBZ0Wrie/NFCEAUgAAAAA=
-  load_address: 0x20000020
+  # load_address manually edited to not use DTCM
+  load_address: 0x24000020
   pc_init: 0x7
   pc_uninit: 0x65
   pc_program_page: 0x263
