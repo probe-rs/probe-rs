@@ -2,9 +2,10 @@
 
 use crate::{
     architecture::arm::{
+        dp::DpAddress,
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
-        ArmError, ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
+        ArmError, ArmProbeInterface, FullyQualifiedApAddress,
     },
     session::MissingPermissions,
 };

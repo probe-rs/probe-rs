@@ -161,12 +161,29 @@ pub enum CoreAccessOptions {
     Xtensa(XtensaCoreAccessOptions),
 }
 
+/// An address for AP accesses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ApAddress {
+    /// References an address for an APv1 access, which is part of the ADIv5 specification.
+    #[serde(rename = "v1")]
+    V1(u8),
+    /// References an address for an APv2 access, which is part of the ADIv6 specification.
+    #[serde(rename = "v2")]
+    V2(Vec<u64>),
+}
+
+impl Default for ApAddress {
+    fn default() -> Self {
+        ApAddress::V1(0)
+    }
+}
+
 /// The data required to access an ARM core
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ArmCoreAccessOptions {
     /// The access port number to access the core
-    pub ap: u8,
+    pub ap: ApAddress,
     /// The TARGETSEL value used to access the core
     #[serde(serialize_with = "hex_option")]
     pub targetsel: Option<u32>,

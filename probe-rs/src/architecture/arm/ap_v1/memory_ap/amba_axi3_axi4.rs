@@ -1,7 +1,6 @@
 use crate::architecture::arm::{
-    ap::{AccessPortType, ApAccess, ApRegAccess},
-    communication_interface::RegisterParseError,
-    ArmError, DapAccess, FullyQualifiedApAddress, Register,
+    ap_v1::{AccessPortType, ApAccess, ApRegAccess, Register},
+    ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
 
 use super::{AddressIncrement, DataSize};
@@ -11,19 +10,18 @@ use super::{AddressIncrement, DataSize};
 /// The memory AP can be used to access a memory-mapped
 /// set of debug resources of the attached system.
 #[derive(Debug)]
-pub struct AmbaAxi5 {
+pub struct AmbaAxi3Axi4 {
     address: FullyQualifiedApAddress,
     csw: CSW,
     cfg: super::registers::CFG,
 }
 
-impl AmbaAxi5 {
+impl AmbaAxi3Axi4 {
     /// Creates a new AmbaAhb5Hprot with `address` as base address.
     pub fn new<P: DapAccess>(
         probe: &mut P,
         address: FullyQualifiedApAddress,
     ) -> Result<Self, ArmError> {
-        use crate::architecture::arm::Register;
         let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
         let cfg = probe.read_raw_ap_register(&address, super::registers::CFG::ADDRESS)?;
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
@@ -40,7 +38,7 @@ impl AmbaAxi5 {
     }
 }
 
-impl super::MemoryApType for AmbaAxi5 {
+impl super::MemoryApType for AmbaAxi3Axi4 {
     type CSW = CSW;
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
@@ -87,15 +85,15 @@ impl super::MemoryApType for AmbaAxi5 {
     }
 }
 
-impl AccessPortType for AmbaAxi5 {
+impl AccessPortType for AmbaAxi3Axi4 {
     fn ap_address(&self) -> &FullyQualifiedApAddress {
         &self.address
     }
 }
 
-impl ApRegAccess<CSW> for AmbaAxi5 {}
+impl ApRegAccess<CSW> for AmbaAxi3Axi4 {}
 
-super::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAxi5);
+super::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAxi3Axi4);
 
 define_ap_register!(
     /// Control and Status Word register
@@ -123,12 +121,6 @@ define_ap_register!(
         ///
         /// This bit reflects the state of the CoreSight authentication signal.
         SPIDEN: bool,               // [23]
-        /// Memory Tagging Control.
-        /// When tagging is enabled, system read and write accesses via DRW, BDx and DARx use T0TR
-        /// for transferring tag information.
-        MTE: bool,                  // [15]
-        /// Drives the AxDOMAIN signals.
-        Type: u8,                   // [14:13]
         /// A transfer is in progress.
         /// Can be used to poll whether an aborted transaction has completed.
         /// Read only.
@@ -150,8 +142,6 @@ define_ap_register!(
         Privileged: ((value >> 28) & 0x01) != 0,
         CACHE:      ((value >> 24) & 0xF) as u8,
         SPIDEN:     ((value >> 23) & 0x01) != 0,
-        MTE:        ((value >> 15) & 0x01) != 0,
-        Type:       ((value >> 13) & 0x03) as u8,
         TrInProg:   ((value >> 7) & 0x01) != 0,
         DeviceEn:   ((value >> 6) & 0x01) != 0,
         AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
@@ -164,8 +154,6 @@ define_ap_register!(
     | (u32::from(value.Privileged   ) << 28)
     | (u32::from(value.CACHE        ) << 24)
     | (u32::from(value.SPIDEN       ) << 23)
-    | (u32::from(value.MTE          ) << 15)
-    | (u32::from(value.Type         ) << 13)
     | (u32::from(value.TrInProg     ) <<  7)
     | (u32::from(value.DeviceEn     ) <<  6)
     | (u32::from(value.AddrInc as u8) <<  4)
