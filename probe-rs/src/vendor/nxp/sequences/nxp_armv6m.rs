@@ -135,6 +135,7 @@ impl ArmDebugSequence for LPC80x {
         interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
 
         LPC80x::clear_hw_breakpoint(interface, 0)?;
+
         Ok(())
     }
 
@@ -157,13 +158,14 @@ impl ArmDebugSequence for LPC80x {
             // ignore read errors while resetting
             if let Ok(dhcr) = interface.read_word_32(Dhcsr::get_mmio_address()) {
                 if Dhcsr(dhcr).s_halt() {
-                    // break from loop if we're in debug state
-                    break;
+                    // return early if we're in debug state
+                    return Ok(());
                 }
             }
         }
 
         let _ = LPC80x::force_core_halt(interface);
+
         Ok(())
     }
 }
