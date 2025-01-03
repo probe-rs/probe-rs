@@ -2,7 +2,7 @@
 //! implementation.
 use crate::{
     architecture::arm::{
-        communication_interface::{Initialized, SwdSequence},
+        communication_interface::Initialized,
         dp::{DpAccess, DpAddress, BASEPTR0, BASEPTR1},
         memory::ArmMemoryInterface,
         ApV2Address, ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress,
@@ -33,24 +33,7 @@ impl<'iface> RootMemoryInterface<'iface> {
         Ok(Self { iface, dp, base })
     }
 }
-impl SwdSequence for RootMemoryInterface<'_> {
-    fn swj_sequence(
-        &mut self,
-        bit_len: u8,
-        bits: u64,
-    ) -> Result<(), crate::probe::DebugProbeError> {
-        self.iface.swj_sequence(bit_len, bits)
-    }
 
-    fn swj_pins(
-        &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
-    ) -> Result<u32, crate::probe::DebugProbeError> {
-        self.iface.swj_pins(pin_out, pin_select, pin_wait)
-    }
-}
 impl MemoryInterface<ArmError> for RootMemoryInterface<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false

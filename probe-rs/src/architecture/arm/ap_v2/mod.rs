@@ -11,7 +11,7 @@ use crate::{
 };
 
 use super::{
-    communication_interface::{Initialized, SwdSequence},
+    communication_interface::Initialized,
     dp::DpAddress,
     memory::ArmMemoryInterface,
     ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
@@ -46,11 +46,6 @@ macro_rules! dispatch {
             }
         }
     }
-}
-
-impl SwdSequence for MaybeOwned<'_> {
-    dispatch!(swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), crate::probe::DebugProbeError>);
-    dispatch!(swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, crate::probe::DebugProbeError>);
 }
 impl MemoryInterface<ArmError> for MaybeOwned<'_> {
     dispatch!(supports_native_64bit_access(&mut self,) -> bool);

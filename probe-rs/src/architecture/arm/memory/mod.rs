@@ -7,13 +7,13 @@ use crate::{memory::MemoryInterface, probe::DebugProbeError, CoreStatus};
 
 use super::{
     ap_v1::memory_ap::MemoryAp,
-    communication_interface::{Initialized, SwdSequence},
+    communication_interface::Initialized,
     ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
 };
 pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, RomTable};
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
-pub trait ArmMemoryInterface: SwdSequence + ArmMemoryInterfaceShim {
+pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
     /// The underlying MemoryAp address.
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress;
 

@@ -1,7 +1,7 @@
 use crate::{
     architecture::arm::{
         ap_v2::registers::{DataSize, Register, CSW, DRW, TAR, TAR2},
-        communication_interface::{Initialized, SwdSequence},
+        communication_interface::Initialized,
         memory::ArmMemoryInterface,
         ApAddress, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
     },
@@ -56,24 +56,6 @@ impl<'iface> MemoryAccessPortInterface<'iface> {
     }
 }
 
-impl SwdSequence for MemoryAccessPortInterface<'_> {
-    fn swj_sequence(
-        &mut self,
-        _bit_len: u8,
-        _bits: u64,
-    ) -> Result<(), crate::probe::DebugProbeError> {
-        todo!()
-    }
-
-    fn swj_pins(
-        &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
-    ) -> Result<u32, crate::probe::DebugProbeError> {
-        todo!()
-    }
-}
 impl MemoryInterface<ArmError> for MemoryAccessPortInterface<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
