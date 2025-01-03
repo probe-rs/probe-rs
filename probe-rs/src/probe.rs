@@ -68,7 +68,7 @@ impl std::str::FromStr for WireProtocol {
             "swd" => Ok(WireProtocol::Swd),
             "jtag" => Ok(WireProtocol::Jtag),
             _ => Err(format!(
-                "'{s}' is not a valid protocol. Choose from [swd, jtag]."
+                "'{s}' is not a valid protocol. Choose either 'swd' or 'jtag'."
             )),
         }
     }
