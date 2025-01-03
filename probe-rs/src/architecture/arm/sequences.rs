@@ -922,7 +922,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             tracing::debug!("Reading DPIDR to enable SWD interface");
 
             // Read DPIDR to enable SWD interface.
-            match interface.raw_read_register(PortAddress::DpRegister(Ctrl::ADDRESS)) {
+            match interface.raw_read_register(PortAddress::DpRegister(DPIDR::ADDRESS)) {
                 Ok(x) => break x,
                 Err(z) => {
                     if guard.elapsed() > RESET_RECOVERY_TIMEOUT {
