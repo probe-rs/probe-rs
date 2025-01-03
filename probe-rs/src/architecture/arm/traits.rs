@@ -228,7 +228,7 @@ impl FullyQualifiedApAddress {
 pub trait RawDapAccess {
     /// Read a DAP register.
     ///
-    /// Only bits 2 and 3 of `a2and3` are used. Bank switching is the caller's responsibility.
+    /// Only bits 2 and 3 of the address are used. Bank switching is the caller's responsibility.
     fn raw_read_register(&mut self, address: PortAddress) -> Result<u32, ArmError>;
 
     /// Read multiple values from the same DAP register.
@@ -236,7 +236,7 @@ pub trait RawDapAccess {
     /// If possible, this uses optimized read functions, otherwise it
     /// falls back to the `read_register` function.
     ///
-    /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
+    /// Only the lowest 4 bits of the address are used. Bank switching is the caller's responsibility.
     fn raw_read_block(&mut self, address: PortAddress, values: &mut [u32]) -> Result<(), ArmError> {
         for val in values {
             *val = self.raw_read_register(address)?;
@@ -247,7 +247,7 @@ pub trait RawDapAccess {
 
     /// Write a value to a DAP register.
     ///
-    /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
+    /// Only the lowest 4 bits of the address are used. Bank switching is the caller's responsibility.
     fn raw_write_register(&mut self, address: PortAddress, value: u32) -> Result<(), ArmError>;
 
     /// Write multiple values to the same DAP register.
@@ -255,7 +255,7 @@ pub trait RawDapAccess {
     /// If possible, this uses optimized write functions, otherwise it
     /// falls back to the `write_register` function.
     ///
-    /// Only bits 2 and 3 of `a2and3` are used. Bank switching is the caller's responsibility.
+    /// Only bits 2 and 3 of the address are used. Bank switching is the caller's responsibility.
     fn raw_write_block(&mut self, address: PortAddress, values: &[u32]) -> Result<(), ArmError> {
         for val in values {
             self.raw_write_register(address, *val)?;

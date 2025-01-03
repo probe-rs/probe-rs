@@ -551,8 +551,8 @@ mod tests {
 
     use crate::{
         architecture::arm::{
-            ap_v1::memory_ap::mock::MockMemoryAp,
-            memory::adi_v5_memory_interface::ADIMemoryInterface, FullyQualifiedApAddress,
+            ap_v1::memory_ap::mock::MockMemoryAp, memory::ADIMemoryInterface,
+            FullyQualifiedApAddress,
         },
         MemoryInterface,
     };
