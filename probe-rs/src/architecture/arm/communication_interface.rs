@@ -4,7 +4,7 @@ use crate::{
         ap_v2,
         dp::{Ctrl, DebugPortId, DebugPortVersion, DpAccess, DPIDR},
         dp::{DpAddress, DpRegisterAddress, Select1, SelectV1, SelectV3},
-        memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface, Component},
+        memory::{ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::{ArmDebugSequence, DefaultArmSequence},
         ApAddress, ArmError, DapAccess, FullyQualifiedApAddress, PortAddress, RawDapAccess,
         SwoAccess, SwoConfig,

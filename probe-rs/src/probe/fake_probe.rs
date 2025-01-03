@@ -16,7 +16,7 @@ use crate::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
         dp::{DpAddress, DpRegisterAddress},
-        memory::{adi_v5_memory_interface::ADIMemoryInterface, ArmMemoryInterface},
+        memory::{ADIMemoryInterface, ArmMemoryInterface},
         sequences::ArmDebugSequence,
         ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, PortAddress, RawDapAccess,
         SwoAccess,

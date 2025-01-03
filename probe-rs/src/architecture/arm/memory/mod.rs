@@ -1,7 +1,9 @@
 //! Types and functions for interacting with target memory.
 
-pub(crate) mod adi_v5_memory_interface;
+mod adi_v5_v6_memory_interface;
 pub mod romtable;
+
+pub(crate) use adi_v5_v6_memory_interface::ADIMemoryInterface;
 
 use crate::{memory::MemoryInterface, probe::DebugProbeError, CoreStatus};
 
