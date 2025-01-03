@@ -45,13 +45,8 @@ variants:
         type: armv6m
         core_access_options:
           !Arm
-<<<<<<< HEAD
-            ap: 0x0
-
-=======
             ap: !v1 0x0
-            psel: 0x0
->>>>>>> konkers/wip/2350
+
     jtag: {}
     memory_map:
       - !Ram
@@ -73,13 +68,8 @@ variants:
         type: armv6m
         core_access_options:
           !Arm
-<<<<<<< HEAD
-            ap: 0x0
-            targetsel: 0x1002927
-=======
             ap: !v1 0x0
-            psel: 0x1002927
->>>>>>> konkers/wip/2350
+            targetsel: 0x1002927
     memory_map:
       - !Ram
           range:
