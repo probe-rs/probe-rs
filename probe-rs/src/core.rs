@@ -1,6 +1,6 @@
 use crate::{
     architecture::{
-        arm::sequences::ArmDebugSequence, riscv::sequences::RiscvDebugSequence,
+        arm::sequences::ArmCoreDebugSequence, riscv::sequences::RiscvDebugSequence,
         xtensa::sequences::XtensaDebugSequence,
     },
     config::DebugSequence,
@@ -274,7 +274,7 @@ impl<'probe> Core<'probe> {
     ) -> CombinedCoreState {
         CombinedCoreState {
             id,
-            core_state: CoreState::new(ResolvedCoreOptions::new(target, options)),
+            core_state: CoreState::new(ResolvedCoreOptions::new(target, id, options)),
             specific_state: SpecificCoreState::from_core_type(core_type),
         }
     }
@@ -713,7 +713,7 @@ impl CoreInterface for Core<'_> {
 
 pub enum ResolvedCoreOptions {
     Arm {
-        sequence: Arc<dyn ArmDebugSequence>,
+        sequence: Arc<dyn ArmCoreDebugSequence>,
         options: ArmCoreAccessOptions,
     },
     Riscv {
@@ -727,9 +727,11 @@ pub enum ResolvedCoreOptions {
 }
 
 impl ResolvedCoreOptions {
-    fn new(target: &Target, options: CoreAccessOptions) -> Self {
+    fn new(target: &Target, core_index: usize, options: CoreAccessOptions) -> Self {
         match (options, target.debug_sequence.clone()) {
-            (CoreAccessOptions::Arm(options), DebugSequence::Arm(sequence)) => {
+            (CoreAccessOptions::Arm(options), DebugSequence::Arm(_sequence)) => {
+                // TODO: Handle this for all architectures
+                let sequence = target.core_debug_sequence(core_index).arm().unwrap();
                 Self::Arm { sequence, options }
             }
             (CoreAccessOptions::Riscv(options), DebugSequence::Riscv(sequence)) => {

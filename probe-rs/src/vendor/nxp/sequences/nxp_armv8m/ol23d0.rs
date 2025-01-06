@@ -11,7 +11,10 @@ use crate::{
         armv8m::Aircr,
         core::armv8m::Dhcsr,
         memory::ArmMemoryInterface,
-        sequences::{cortex_m_core_start, ArmDebugSequence},
+        sequences::{
+            cortex_m::{self},
+            ArmCoreDebugSequence, ArmDebugSequence,
+        },
         ArmError, ArmProbeInterface, FullyQualifiedApAddress,
     },
     core::MemoryMappedRegister,
@@ -29,7 +32,7 @@ impl OL23D0 {
     }
 }
 
-impl ArmDebugSequence for OL23D0 {
+impl ArmCoreDebugSequence for OL23D0 {
     fn debug_core_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
@@ -40,7 +43,7 @@ impl ArmDebugSequence for OL23D0 {
     ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(core_ap)?;
 
-        cortex_m_core_start(&mut *memory)?;
+        cortex_m::core_start(&mut *memory)?;
 
         let memory = memory.as_mut();
         let mut core = OL23D0Core { memory };
@@ -100,6 +103,8 @@ impl ArmDebugSequence for OL23D0 {
         Ok(())
     }
 }
+
+impl ArmDebugSequence for OL23D0 {}
 
 /// This copy-pastes & simplifies a part of `arm::core::Armv8m` as we need partial core access,
 /// however we cannot construct one here.

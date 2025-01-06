@@ -8,7 +8,7 @@ use crate::{
         ap::AccessPortType,
         armv7m::Demcr,
         memory::ArmMemoryInterface,
-        sequences::{cortex_m_core_start, ArmDebugSequence},
+        sequences::{cortex_m, ArmCoreDebugSequence, ArmDebugSequence},
         ArmError, ArmProbeInterface, FullyQualifiedApAddress,
     },
     MemoryMappedRegister,
@@ -25,7 +25,7 @@ impl Va416xx {
     }
 }
 
-impl ArmDebugSequence for Va416xx {
+impl ArmCoreDebugSequence for Va416xx {
     /// Custom VA416xx core debug start sequence.
     ///
     /// This function performs the regular Cortex-M debug core start sequence in addition to
@@ -39,7 +39,7 @@ impl ArmDebugSequence for Va416xx {
         _cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
         let mut core = interface.memory_interface(core_ap)?;
-        cortex_m_core_start(&mut *core)?;
+        cortex_m::core_start(&mut *core)?;
         // Disable ROM protection
         core.write_32(0x4001_0010, &[0x000_0001])?;
         // Disable watchdog
@@ -122,3 +122,5 @@ impl ArmDebugSequence for Va416xx {
         Ok(())
     }
 }
+
+impl ArmDebugSequence for Va416xx {}

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::architecture::arm::{
     component::TraceSink,
     memory::CoresightComponent,
-    sequences::{ArmDebugSequence, ArmDebugSequenceError},
+    sequences::{ArmCoreDebugSequence, ArmDebugSequence, ArmDebugSequenceError},
     ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
 use crate::session::MissingPermissions;
@@ -81,6 +81,8 @@ mod clock {
         }
     }
 }
+
+impl ArmCoreDebugSequence for Nrf52 {}
 
 impl ArmDebugSequence for Nrf52 {
     fn debug_device_unlock(

@@ -5,7 +5,9 @@ use crate::{
         armv7m::Dhcsr,
         communication_interface::{DapProbe, SwdSequence},
         memory::ArmMemoryInterface,
-        sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
+        sequences::{
+            ArmCoreDebugSequence, ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence,
+        },
         ArmError, ArmProbeInterface, FullyQualifiedApAddress, Pins,
     },
     probe::DebugProbeError,
@@ -457,7 +459,7 @@ impl AtSAM {
     }
 }
 
-impl ArmDebugSequence for AtSAM {
+impl ArmCoreDebugSequence for AtSAM {
     fn debug_core_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
@@ -470,7 +472,9 @@ impl ArmDebugSequence for AtSAM {
 
         self.release_reset_extension(&mut *core)
     }
+}
 
+impl ArmDebugSequence for AtSAM {
     /// `reset_hardware_assert` for ATSAM devices
     ///
     /// Instead of keeping `nReset` asserted, the device is instead put into CPU Reset Extension

@@ -18,7 +18,7 @@ use crate::{
             registers::cortex_m::PC,
         },
         memory::ArmMemoryInterface,
-        sequences::{ArmDebugSequence, ArmDebugSequenceError},
+        sequences::{ArmCoreDebugSequence, ArmDebugSequence, ArmDebugSequenceError},
         ArmError,
     },
     core::MemoryMappedRegister,
@@ -78,7 +78,7 @@ impl MIMXRT10xx {
     }
 }
 
-impl ArmDebugSequence for MIMXRT10xx {
+impl ArmCoreDebugSequence for MIMXRT10xx {
     fn reset_system(
         &self,
         interface: &mut dyn ArmMemoryInterface,
@@ -134,6 +134,8 @@ impl ArmDebugSequence for MIMXRT10xx {
         }
     }
 }
+
+impl ArmDebugSequence for MIMXRT10xx {}
 
 /// Debug sequences for MIMXRT117x MCUs.
 ///
@@ -356,7 +358,7 @@ impl MIMXRT117x {
     }
 }
 
-impl ArmDebugSequence for MIMXRT117x {
+impl ArmCoreDebugSequence for MIMXRT117x {
     fn reset_catch_set(
         &self,
         _: &mut dyn ArmMemoryInterface,
@@ -475,6 +477,8 @@ impl ArmDebugSequence for MIMXRT117x {
         Ok(())
     }
 }
+
+impl ArmDebugSequence for MIMXRT117x {}
 
 /// Cache the debug state of the MCU.
 ///

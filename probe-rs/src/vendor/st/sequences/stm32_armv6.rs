@@ -7,8 +7,9 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    memory::ArmMemoryInterface, sequences::ArmDebugSequence, ArmError, ArmProbeInterface,
-    FullyQualifiedApAddress,
+    memory::ArmMemoryInterface,
+    sequences::{ArmCoreDebugSequence, ArmDebugSequence},
+    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
 
 /// Supported families for custom sequences on ARMv6 STM32 devices.
@@ -111,6 +112,39 @@ mod dbgmcu {
     }
 }
 
+impl ArmCoreDebugSequence for Stm32Armv6 {
+    fn debug_core_stop(
+        &self,
+        memory: &mut dyn ArmMemoryInterface,
+        _core_type: CoreType,
+    ) -> Result<(), ArmError> {
+        match self.family {
+            Stm32Armv6Family::F0 => {
+                let mut enr = rcc::EnrF0::read(&mut *memory)?;
+                enr.enable_dbg(false);
+                enr.write(&mut *memory)?;
+            }
+            Stm32Armv6Family::L0 => {
+                let mut enr = rcc::EnrL0::read(&mut *memory)?;
+                enr.enable_dbg(false);
+                enr.write(&mut *memory)?;
+            }
+            Stm32Armv6Family::G0 => {
+                let mut enr = rcc::EnrG0::read(&mut *memory)?;
+                enr.enable_dbg(false);
+                enr.write(&mut *memory)?;
+            }
+        }
+
+        let mut cr = dbgmcu::Control::read(&mut *memory)?;
+        cr.enable_standby_debug(false);
+        cr.enable_stop_debug(false);
+        cr.write(&mut *memory)?;
+
+        Ok(())
+    }
+}
+
 impl ArmDebugSequence for Stm32Armv6 {
     fn debug_device_unlock(
         &self,
@@ -141,37 +175,6 @@ impl ArmDebugSequence for Stm32Armv6 {
         let mut cr = dbgmcu::Control::read(&mut *memory)?;
         cr.enable_standby_debug(true);
         cr.enable_stop_debug(true);
-        cr.write(&mut *memory)?;
-
-        Ok(())
-    }
-
-    fn debug_core_stop(
-        &self,
-        memory: &mut dyn ArmMemoryInterface,
-        _core_type: CoreType,
-    ) -> Result<(), ArmError> {
-        match self.family {
-            Stm32Armv6Family::F0 => {
-                let mut enr = rcc::EnrF0::read(&mut *memory)?;
-                enr.enable_dbg(false);
-                enr.write(&mut *memory)?;
-            }
-            Stm32Armv6Family::L0 => {
-                let mut enr = rcc::EnrL0::read(&mut *memory)?;
-                enr.enable_dbg(false);
-                enr.write(&mut *memory)?;
-            }
-            Stm32Armv6Family::G0 => {
-                let mut enr = rcc::EnrG0::read(&mut *memory)?;
-                enr.enable_dbg(false);
-                enr.write(&mut *memory)?;
-            }
-        }
-
-        let mut cr = dbgmcu::Control::read(&mut *memory)?;
-        cr.enable_standby_debug(false);
-        cr.enable_stop_debug(false);
         cr.write(&mut *memory)?;
 
         Ok(())

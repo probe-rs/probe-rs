@@ -3,7 +3,7 @@
 use crate::{
     architecture::arm::{
         memory::ArmMemoryInterface,
-        sequences::{ArmDebugSequence, ArmDebugSequenceError},
+        sequences::{ArmCoreDebugSequence, ArmDebugSequence, ArmDebugSequenceError},
         ArmError, ArmProbeInterface, DpAddress, FullyQualifiedApAddress,
     },
     session::MissingPermissions,
@@ -75,6 +75,8 @@ fn set_network_core_running(interface: &mut dyn ArmMemoryInterface) -> Result<()
     interface.write_32(forceoff_addr as u64, &[RELEASE_FORCEOFF])?;
     Ok(())
 }
+
+impl<T: Nrf> ArmCoreDebugSequence for T {}
 
 impl<T: Nrf> ArmDebugSequence for T {
     fn debug_device_unlock(

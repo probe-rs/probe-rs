@@ -3,8 +3,9 @@ use std::{sync::Arc, time::Instant};
 
 use crate::{
     architecture::arm::{
-        ap::memory_ap::registers::CSW, sequences::ArmDebugSequence, ArmError,
-        FullyQualifiedApAddress, Register,
+        ap::memory_ap::registers::CSW,
+        sequences::{ArmCoreDebugSequence, ArmDebugSequence},
+        ArmError, FullyQualifiedApAddress, Register,
     },
     session::MissingPermissions,
 };
@@ -24,6 +25,8 @@ impl Nrf54L {
         Arc::new(Self(()))
     }
 }
+
+impl ArmCoreDebugSequence for Nrf54L {}
 
 impl ArmDebugSequence for Nrf54L {
     fn debug_device_unlock(
