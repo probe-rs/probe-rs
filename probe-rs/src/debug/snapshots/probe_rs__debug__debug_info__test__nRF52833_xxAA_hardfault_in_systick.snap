@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1987
+assertion_line: 1998
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -10,6 +10,7 @@ snapshot_kind: text
     line: 371
     column:
       Column: 9
+    address: 25298
   registers:
     - core_register:
         id: 0
@@ -221,6 +222,7 @@ snapshot_kind: text
     line: 93
     column:
       Column: 9
+    address: 25298
   registers:
     - core_register:
         id: 0
@@ -635,6 +637,7 @@ snapshot_kind: text
     line: 1678
     column:
       Column: 9
+    address: 2164
   registers:
     - core_register:
         id: 0
@@ -849,6 +852,7 @@ snapshot_kind: text
             path: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr/mod.rs
             line: 1667
             column: ~
+            address: ~
           children:
             - name:
                 Named: "*src"
@@ -862,6 +866,7 @@ snapshot_kind: text
     line: 51
     column:
       Column: 2
+    address: 588
   registers:
     - core_register:
         id: 0
@@ -1066,6 +1071,7 @@ snapshot_kind: text
     line: 371
     column:
       Column: 9
+    address: 958
   registers:
     - core_register:
         id: 0
@@ -1269,6 +1275,7 @@ snapshot_kind: text
     line: 84
     column:
       Column: 5
+    address: 958
   registers:
     - core_register:
         id: 0
@@ -1472,6 +1479,7 @@ snapshot_kind: text
     line: 80
     column:
       Column: 13
+    address: 948
   registers:
     - core_register:
         id: 0
@@ -1874,6 +1882,7 @@ snapshot_kind: text
     line: 62
     column:
       Column: 5
+    address: 1238
   registers:
     - core_register:
         id: 0
@@ -2084,6 +2093,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
             line: 56
             column: ~
+            address: ~
         - name:
             Named: real_cyc
           type_name:
@@ -2093,6 +2103,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
             line: 61
             column: ~
+            address: ~
   canonical_frame_address: 536887112
 - function_name: delay
   source_location:
@@ -2100,6 +2111,7 @@ snapshot_kind: text
     line: 29
     column:
       Column: 5
+    address: 1212
   registers:
     - core_register:
         id: 0
@@ -2310,6 +2322,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/asm.rs
             line: 28
             column: ~
+            address: ~
   canonical_frame_address: 536887112
 - function_name: enable_systick
   source_location:
@@ -2317,6 +2330,7 @@ snapshot_kind: text
     line: 76
     column:
       Column: 9
+    address: 660
   registers:
     - core_register:
         id: 0
@@ -2522,6 +2536,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 66
             column: ~
+            address: ~
           children:
             - name:
                 Named: CBP
@@ -2607,6 +2622,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 66
             column: ~
+            address: ~
           children:
             - name:
                 Named: CBP
@@ -2692,6 +2708,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 67
             column: ~
+            address: ~
   canonical_frame_address: 536887136
 - function_name: __cortex_m_rt_main
   source_location:
@@ -2699,6 +2716,7 @@ snapshot_kind: text
     line: 32
     column:
       Column: 5
+    address: 752
   registers:
     - core_register:
         id: 0
@@ -2905,6 +2923,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 21
             column: ~
+            address: ~
           children:
             - name:
                 Named: FICR
@@ -3260,6 +3279,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 22
             column: ~
+            address: ~
           children:
             - name:
                 Named: CBP
@@ -3345,6 +3365,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
             line: 23
             column: ~
+            address: ~
           children:
             - name:
                 Named: hfclk
@@ -3372,6 +3393,7 @@ snapshot_kind: text
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 19
     column: LeftEdge
+    address: 674
   registers:
     - core_register:
         id: 0

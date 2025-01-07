@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1984
+assertion_line: 1998
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -10,6 +10,7 @@ snapshot_kind: text
     line: 344
     column:
       Column: 13
+    address: 268465156
   registers:
     - core_register:
         id: 0
@@ -224,6 +225,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 331
             column: ~
+            address: ~
         - name:
             Named: internal_depth_measure
           type_name:
@@ -233,6 +235,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 332
             column: ~
+            address: ~
   canonical_frame_address: 536883184
 - function_name: test_deep_stack
   source_location:
@@ -240,6 +243,7 @@ snapshot_kind: text
     line: 338
     column:
       Column: 9
+    address: 268465162
   registers:
     - core_register:
         id: 0
@@ -446,6 +450,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 331
             column: ~
+            address: ~
         - name:
             Named: internal_depth_measure
           type_name:
@@ -455,6 +460,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 332
             column: ~
+            address: ~
   canonical_frame_address: 536883328
 - function_name: test_deep_stack
   source_location:
@@ -462,6 +468,7 @@ snapshot_kind: text
     line: 338
     column:
       Column: 9
+    address: 268465162
   registers:
     - core_register:
         id: 0
@@ -668,6 +675,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 331
             column: ~
+            address: ~
         - name:
             Named: internal_depth_measure
           type_name:
@@ -677,6 +685,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 332
             column: ~
+            address: ~
   canonical_frame_address: 536883472
 - function_name: test_deep_stack
   source_location:
@@ -684,6 +693,7 @@ snapshot_kind: text
     line: 338
     column:
       Column: 9
+    address: 268465162
   registers:
     - core_register:
         id: 0
@@ -890,6 +900,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 331
             column: ~
+            address: ~
         - name:
             Named: internal_depth_measure
           type_name:
@@ -899,6 +910,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 332
             column: ~
+            address: ~
   canonical_frame_address: 536883616
 - function_name: test_deep_stack
   source_location:
@@ -906,6 +918,7 @@ snapshot_kind: text
     line: 338
     column:
       Column: 9
+    address: 268465162
   registers:
     - core_register:
         id: 0
@@ -1112,6 +1125,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 331
             column: ~
+            address: ~
         - name:
             Named: internal_depth_measure
           type_name:
@@ -1121,6 +1135,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 332
             column: ~
+            address: ~
   canonical_frame_address: 536883760
 - function_name: test_deep_stack
   source_location:
@@ -1128,6 +1143,7 @@ snapshot_kind: text
     line: 338
     column:
       Column: 9
+    address: 268465162
   registers:
     - core_register:
         id: 0
@@ -1334,6 +1350,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 331
             column: ~
+            address: ~
         - name:
             Named: internal_depth_measure
           type_name:
@@ -1343,6 +1360,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 332
             column: ~
+            address: ~
   canonical_frame_address: 536883904
 - function_name: setup_data_types
   source_location:
@@ -1350,6 +1368,7 @@ snapshot_kind: text
     line: 325
     column:
       Column: 5
+    address: 268464916
   registers:
     - core_register:
         id: 0
@@ -1556,6 +1575,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 204
             column: ~
+            address: ~
         - name:
             Named: local_reference_to_global_const
           type_name:
@@ -1565,6 +1585,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 207
             column: ~
+            address: ~
           children:
             - name:
                 Named: data_ptr
@@ -1591,6 +1612,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 208
             column: ~
+            address: ~
           children:
             - name:
                 Named: data_ptr
@@ -1617,6 +1639,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 209
             column: ~
+            address: ~
           children:
             - name:
                 Named: "*local_reference_to_global_static_struct"
@@ -1665,6 +1688,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 210
             column: ~
+            address: ~
         - name:
             Named: ghosted_variable
           type_name:
@@ -1674,6 +1698,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 211
             column: ~
+            address: ~
           children:
             - name:
                 Named: data_ptr
@@ -1700,6 +1725,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 212
             column: ~
+            address: ~
         - name:
             Named: int128
           type_name:
@@ -1709,6 +1735,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 213
             column: ~
+            address: ~
         - name:
             Named: u_int128
           type_name:
@@ -1718,6 +1745,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 214
             column: ~
+            address: ~
         - name:
             Named: float64
           type_name:
@@ -1727,6 +1755,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 215
             column: ~
+            address: ~
         - name:
             Named: float64_ptr
           type_name:
@@ -1736,6 +1765,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 216
             column: ~
+            address: ~
           children:
             - name:
                 Named: "*float64_ptr"
@@ -1751,6 +1781,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 217
             column: ~
+            address: ~
         - name:
             Named: emoji_ptr
           type_name:
@@ -1760,6 +1791,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 218
             column: ~
+            address: ~
           children:
             - name:
                 Named: "*emoji_ptr"
@@ -1775,6 +1807,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 219
             column: ~
+            address: ~
         - name:
             Named: any_old_string_slice
           type_name:
@@ -1784,6 +1817,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 221
             column: ~
+            address: ~
           children:
             - name:
                 Named: data_ptr
@@ -1810,6 +1844,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 222
             column: ~
+            address: ~
           children:
             - name:
                 Named: Err
@@ -1848,6 +1883,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 223
             column: ~
+            address: ~
           children:
             - name:
                 Named: __0
@@ -1928,6 +1964,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 224
             column: ~
+            address: ~
           children:
             - name:
                 Named: raw
@@ -2193,6 +2230,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 232
             column: ~
+            address: ~
           children:
             - name:
                 Named: raw
@@ -3190,6 +3228,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 249
             column: ~
+            address: ~
         - name:
             Named: simple_enum_pointer
           type_name:
@@ -3199,6 +3238,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 250
             column: ~
+            address: ~
           children:
             - name:
                 Named: "*simple_enum_pointer"
@@ -3214,6 +3254,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 252
             column: ~
+            address: ~
           children:
             - name:
                 Named: depth
@@ -3298,6 +3339,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 263
             column: ~
+            address: ~
           children:
             - name:
                 Named: Case1
@@ -3340,6 +3382,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 271
             column: ~
+            address: ~
           children:
             - name:
                 Named: Case2
@@ -3371,6 +3414,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 273
             column: ~
+            address: ~
           children:
             - name:
                 Named: Some
@@ -3441,6 +3485,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 285
             column: ~
+            address: ~
           children:
             - name:
                 Named: "*stuct_with_one_variant_pointer"
@@ -3517,6 +3562,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 287
             column: ~
+            address: ~
           children:
             - name:
                 Named: x
@@ -3542,6 +3588,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 289
             column: ~
+            address: ~
           children:
             - name:
                 Named: x
@@ -3567,6 +3614,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 290
             column: ~
+            address: ~
           children:
             - name:
                 Named: b
@@ -3587,6 +3635,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 291
             column: ~
+            address: ~
         - name:
             Named: a3
           type_name:
@@ -3596,6 +3645,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 292
             column: ~
+            address: ~
         - name:
             Named: a4
           type_name:
@@ -3605,6 +3655,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 293
             column: ~
+            address: ~
         - name:
             Named: a5
           type_name:
@@ -3614,6 +3665,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 294
             column: ~
+            address: ~
           children:
             - name:
                 Named: __0
@@ -3634,6 +3686,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 295
             column: ~
+            address: ~
           children:
             - name:
                 Named: Variant2
@@ -3660,6 +3713,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 296
             column: ~
+            address: ~
           children:
             - name:
                 Named: Variant1
@@ -3689,6 +3743,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 298
             column: ~
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -3699,6 +3754,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 298
                 column: ~
+                address: ~
             - name:
                 Indexed: 1
               type_name:
@@ -3708,6 +3764,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 298
                 column: ~
+                address: ~
             - name:
                 Indexed: 2
               type_name:
@@ -3717,6 +3774,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 298
                 column: ~
+                address: ~
             - name:
                 Indexed: 3
               type_name:
@@ -3726,6 +3784,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 298
                 column: ~
+                address: ~
             - name:
                 Indexed: 4
               type_name:
@@ -3735,6 +3794,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 298
                 column: ~
+                address: ~
             - name:
                 Indexed: 5
               type_name:
@@ -3744,6 +3804,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 298
                 column: ~
+                address: ~
             - name:
                 Indexed: 6
               type_name:
@@ -3753,6 +3814,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 298
                 column: ~
+                address: ~
             - name:
                 Indexed: 7
               type_name:
@@ -3762,6 +3824,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 298
                 column: ~
+                address: ~
             - name:
                 Indexed: 8
               type_name:
@@ -3771,6 +3834,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 298
                 column: ~
+                address: ~
             - name:
                 Indexed: 9
               type_name:
@@ -3780,6 +3844,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 298
                 column: ~
+                address: ~
         - name:
             Named: my_array_ptr
           type_name:
@@ -3789,6 +3854,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 299
             column: ~
+            address: ~
           children:
             - name:
                 Named: "*my_array_ptr"
@@ -3861,6 +3927,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 300
             column: ~
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -3871,6 +3938,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 300
                 column: ~
+                address: ~
             - name:
                 Indexed: 1
               type_name:
@@ -3880,6 +3948,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 300
                 column: ~
+                address: ~
             - name:
                 Indexed: 2
               type_name:
@@ -3889,6 +3958,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 300
                 column: ~
+                address: ~
             - name:
                 Indexed: 3
               type_name:
@@ -3898,6 +3968,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 300
                 column: ~
+                address: ~
             - name:
                 Indexed: 4
               type_name:
@@ -3907,6 +3978,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 300
                 column: ~
+                address: ~
             - name:
                 Indexed: 5
               type_name:
@@ -3916,6 +3988,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 300
                 column: ~
+                address: ~
             - name:
                 Indexed: 6
               type_name:
@@ -3925,6 +3998,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 300
                 column: ~
+                address: ~
             - name:
                 Indexed: 7
               type_name:
@@ -3934,6 +4008,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 300
                 column: ~
+                address: ~
             - name:
                 Indexed: 8
               type_name:
@@ -3943,6 +4018,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 300
                 column: ~
+                address: ~
             - name:
                 Indexed: 9
               type_name:
@@ -3952,6 +4028,7 @@ snapshot_kind: text
                 path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
                 line: 300
                 column: ~
+                address: ~
         - name:
             Named: heapless_vec
           type_name:
@@ -3961,6 +4038,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 301
             column: ~
+            address: ~
           children:
             - name:
                 Named: len
@@ -4205,6 +4283,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 305
             column: ~
+            address: ~
           children:
             - name:
                 Named: __0
@@ -4220,6 +4299,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
             line: 306
             column: ~
+            address: ~
           children:
             - name:
                 Named: up
@@ -4426,6 +4506,7 @@ snapshot_kind: text
     line: 55
     column:
       Column: 54
+    address: 268436106
   registers:
     - core_register:
         id: 0
@@ -4632,6 +4713,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 24
             column: ~
+            address: ~
           children:
             - name:
                 Named: CBP
@@ -4717,6 +4799,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 26
             column: ~
+            address: ~
         - name:
             Named: pac
           type_name:
@@ -4726,6 +4809,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 27
             column: ~
+            address: ~
           children:
             - name:
                 Named: ADC
@@ -4916,6 +5000,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 28
             column: ~
+            address: ~
           children:
             - name:
                 Named: watchdog
@@ -4936,6 +5021,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 30
             column: ~
+            address: ~
           children:
             - name:
                 Named: clocks
@@ -5228,6 +5314,7 @@ snapshot_kind: text
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 22
     column: LeftEdge
+    address: 268435972
   registers:
     - core_register:
         id: 0

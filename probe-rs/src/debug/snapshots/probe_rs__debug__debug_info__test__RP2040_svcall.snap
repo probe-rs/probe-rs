@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1987
+assertion_line: 1998
 expression: stack_frames
 snapshot_kind: text
 ---
@@ -10,6 +10,7 @@ snapshot_kind: text
     line: 371
     column:
       Column: 9
+    address: 268437116
   registers:
     - core_register:
         id: 0
@@ -221,6 +222,7 @@ snapshot_kind: text
     line: 116
     column:
       Column: 5
+    address: 268437116
   registers:
     - core_register:
         id: 0
@@ -432,6 +434,7 @@ snapshot_kind: text
     line: 114
     column:
       Column: 13
+    address: 268437110
   registers:
     - core_register:
         id: 0
@@ -834,6 +837,7 @@ snapshot_kind: text
     line: 80
     column:
       Column: 2
+    address: 268436742
   registers:
     - core_register:
         id: 0
@@ -1041,6 +1045,7 @@ snapshot_kind: text
     line: 55
     column:
       Column: 54
+    address: 268436890
   registers:
     - core_register:
         id: 0
@@ -1247,6 +1252,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 24
             column: ~
+            address: ~
           children:
             - name:
                 Named: CBP
@@ -1332,6 +1338,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 26
             column: ~
+            address: ~
         - name:
             Named: pac
           type_name:
@@ -1341,6 +1348,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 27
             column: ~
+            address: ~
           children:
             - name:
                 Named: ADC
@@ -1531,6 +1539,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 28
             column: ~
+            address: ~
           children:
             - name:
                 Named: watchdog
@@ -1551,6 +1560,7 @@ snapshot_kind: text
             path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
             line: 30
             column: ~
+            address: ~
           children:
             - name:
                 Named: clocks
@@ -1843,6 +1853,7 @@ snapshot_kind: text
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
     line: 22
     column: LeftEdge
+    address: 268436752
   registers:
     - core_register:
         id: 0

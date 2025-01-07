@@ -2218,6 +2218,7 @@ impl UnitInfo {
             path,
             line: None,
             column: None,
+            address: None,
         };
 
         let mut variable_attributes = entry.attrs();

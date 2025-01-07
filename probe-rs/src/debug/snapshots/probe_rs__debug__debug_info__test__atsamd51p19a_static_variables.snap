@@ -1,6 +1,6 @@
 ---
 source: probe-rs/src/debug/debug_info.rs
-assertion_line: 2020
+assertion_line: 2034
 expression: static_variables
 snapshot_kind: text
 ---
@@ -18,6 +18,7 @@ Child Variables:
         line: 239
         column:
           Column: 21
+        address: ~
     - name:
         Named: _aTerminalId
       type_name: Unknown
@@ -27,6 +28,7 @@ Child Variables:
         line: 258
         column:
           Column: 22
+        address: ~
     - name:
         Named: _SEGGER_RTT
       type_name:
@@ -39,6 +41,7 @@ Child Variables:
         line: 348
         column:
           Column: 22
+        address: ~
       children:
         - name:
             Named: acID
@@ -53,6 +56,7 @@ Child Variables:
             line: 332
             column:
               Column: 27
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -64,6 +68,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 1
               type_name:
@@ -74,6 +79,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 2
               type_name:
@@ -84,6 +90,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 3
               type_name:
@@ -94,6 +101,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 4
               type_name:
@@ -104,6 +112,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 5
               type_name:
@@ -114,6 +123,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 6
               type_name:
@@ -124,6 +134,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 7
               type_name:
@@ -134,6 +145,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 8
               type_name:
@@ -144,6 +156,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 9
               type_name:
@@ -154,6 +167,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 10
               type_name:
@@ -164,6 +178,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 11
               type_name:
@@ -174,6 +189,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 12
               type_name:
@@ -184,6 +200,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 13
               type_name:
@@ -194,6 +211,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 14
               type_name:
@@ -204,6 +222,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
             - name:
                 Indexed: 15
               type_name:
@@ -214,6 +233,7 @@ Child Variables:
                 line: 332
                 column:
                   Column: 27
+                address: ~
         - name:
             Named: MaxNumUpBuffers
           type_name:
@@ -224,6 +244,7 @@ Child Variables:
             line: 333
             column:
               Column: 27
+            address: ~
         - name:
             Named: MaxNumDownBuffers
           type_name:
@@ -234,6 +255,7 @@ Child Variables:
             line: 334
             column:
               Column: 27
+            address: ~
         - name:
             Named: aUp
           type_name:
@@ -249,6 +271,7 @@ Child Variables:
             line: 335
             column:
               Column: 27
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -262,6 +285,7 @@ Child Variables:
                 line: 335
                 column:
                   Column: 27
+                address: ~
               children:
                 - name:
                     Named: sName
@@ -273,6 +297,7 @@ Child Variables:
                     line: 305
                     column:
                       Column: 22
+                    address: ~
                   children:
                     - name:
                         Named: "*sName"
@@ -291,6 +316,7 @@ Child Variables:
                     line: 306
                     column:
                       Column: 22
+                    address: ~
                   children:
                     - name:
                         Named: "*pBuffer"
@@ -307,6 +333,7 @@ Child Variables:
                     line: 307
                     column:
                       Column: 22
+                    address: ~
                 - name:
                     Named: WrOff
                   type_name:
@@ -317,6 +344,7 @@ Child Variables:
                     line: 308
                     column:
                       Column: 22
+                    address: ~
                 - name:
                     Named: RdOff
                   type_name:
@@ -329,6 +357,7 @@ Child Variables:
                     line: 309
                     column:
                       Column: 22
+                    address: ~
                 - name:
                     Named: Flags
                   type_name:
@@ -339,6 +368,7 @@ Child Variables:
                     line: 310
                     column:
                       Column: 22
+                    address: ~
         - name:
             Named: aDown
           type_name:
@@ -354,6 +384,7 @@ Child Variables:
             line: 336
             column:
               Column: 27
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -367,6 +398,7 @@ Child Variables:
                 line: 336
                 column:
                   Column: 27
+                address: ~
               children:
                 - name:
                     Named: sName
@@ -378,6 +410,7 @@ Child Variables:
                     line: 318
                     column:
                       Column: 22
+                    address: ~
                   children:
                     - name:
                         Named: "*sName"
@@ -396,6 +429,7 @@ Child Variables:
                     line: 319
                     column:
                       Column: 22
+                    address: ~
                   children:
                     - name:
                         Named: "*pBuffer"
@@ -412,6 +446,7 @@ Child Variables:
                     line: 320
                     column:
                       Column: 22
+                    address: ~
                 - name:
                     Named: WrOff
                   type_name:
@@ -424,6 +459,7 @@ Child Variables:
                     line: 321
                     column:
                       Column: 22
+                    address: ~
                 - name:
                     Named: RdOff
                   type_name:
@@ -434,6 +470,7 @@ Child Variables:
                     line: 322
                     column:
                       Column: 22
+                    address: ~
                 - name:
                     Named: Flags
                   type_name:
@@ -444,6 +481,7 @@ Child Variables:
                     line: 323
                     column:
                       Column: 22
+                    address: ~
     - name:
         Named: _acUpBuffer
       type_name:
@@ -457,6 +495,7 @@ Child Variables:
         line: 280
         column:
           Column: 3
+        address: ~
       children:
         - name:
             Indexed: 0
@@ -468,6 +507,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 1
           type_name:
@@ -478,6 +518,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 2
           type_name:
@@ -488,6 +529,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 3
           type_name:
@@ -498,6 +540,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 4
           type_name:
@@ -508,6 +551,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 5
           type_name:
@@ -518,6 +562,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 6
           type_name:
@@ -528,6 +573,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 7
           type_name:
@@ -538,6 +584,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 8
           type_name:
@@ -548,6 +595,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 9
           type_name:
@@ -558,6 +606,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 10
           type_name:
@@ -568,6 +617,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 11
           type_name:
@@ -578,6 +628,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 12
           type_name:
@@ -588,6 +639,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 13
           type_name:
@@ -598,6 +650,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 14
           type_name:
@@ -608,6 +661,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 15
           type_name:
@@ -618,6 +672,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 16
           type_name:
@@ -628,6 +683,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 17
           type_name:
@@ -638,6 +694,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 18
           type_name:
@@ -648,6 +705,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 19
           type_name:
@@ -658,6 +716,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 20
           type_name:
@@ -668,6 +727,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 21
           type_name:
@@ -678,6 +738,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 22
           type_name:
@@ -688,6 +749,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 23
           type_name:
@@ -698,6 +760,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 24
           type_name:
@@ -708,6 +771,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 25
           type_name:
@@ -718,6 +782,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 26
           type_name:
@@ -728,6 +793,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 27
           type_name:
@@ -738,6 +804,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 28
           type_name:
@@ -748,6 +815,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 29
           type_name:
@@ -758,6 +826,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 30
           type_name:
@@ -768,6 +837,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 31
           type_name:
@@ -778,6 +848,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 32
           type_name:
@@ -788,6 +859,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 33
           type_name:
@@ -798,6 +870,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 34
           type_name:
@@ -808,6 +881,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 35
           type_name:
@@ -818,6 +892,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 36
           type_name:
@@ -828,6 +903,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 37
           type_name:
@@ -838,6 +914,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 38
           type_name:
@@ -848,6 +925,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 39
           type_name:
@@ -858,6 +936,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 40
           type_name:
@@ -868,6 +947,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 41
           type_name:
@@ -878,6 +958,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 42
           type_name:
@@ -888,6 +969,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 43
           type_name:
@@ -898,6 +980,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 44
           type_name:
@@ -908,6 +991,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 45
           type_name:
@@ -918,6 +1002,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 46
           type_name:
@@ -928,6 +1013,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 47
           type_name:
@@ -938,6 +1024,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 48
           type_name:
@@ -948,6 +1035,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 49
           type_name:
@@ -958,6 +1046,7 @@ Child Variables:
             line: 280
             column:
               Column: 3
+            address: ~
         - name: Artifical
           type_name: Unknown
           value: "... and 974 more"
@@ -974,6 +1063,7 @@ Child Variables:
         line: 281
         column:
           Column: 3
+        address: ~
       children:
         - name:
             Indexed: 0
@@ -985,6 +1075,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 1
           type_name:
@@ -995,6 +1086,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 2
           type_name:
@@ -1005,6 +1097,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 3
           type_name:
@@ -1015,6 +1108,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 4
           type_name:
@@ -1025,6 +1119,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 5
           type_name:
@@ -1035,6 +1130,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 6
           type_name:
@@ -1045,6 +1141,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 7
           type_name:
@@ -1055,6 +1152,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 8
           type_name:
@@ -1065,6 +1163,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 9
           type_name:
@@ -1075,6 +1174,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 10
           type_name:
@@ -1085,6 +1185,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 11
           type_name:
@@ -1095,6 +1196,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 12
           type_name:
@@ -1105,6 +1207,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 13
           type_name:
@@ -1115,6 +1218,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 14
           type_name:
@@ -1125,6 +1229,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
         - name:
             Indexed: 15
           type_name:
@@ -1135,6 +1240,7 @@ Child Variables:
             line: 281
             column:
               Column: 3
+            address: ~
     - name:
         Named: _ActiveTerminal
       type_name: Unknown
@@ -1144,6 +1250,7 @@ Child Variables:
         line: 284
         column:
           Column: 22
+        address: ~
     - name:
         Named: foo
       type_name:
@@ -1156,6 +1263,7 @@ Child Variables:
         line: 38
         column:
           Column: 14
+        address: ~
       children:
         - name: Unknown
           type_name:
@@ -1181,6 +1289,7 @@ Child Variables:
                     line: 19
                     column:
                       Column: 21
+                    address: ~
                 - name:
                     Named: b
                   type_name:
@@ -1195,6 +1304,7 @@ Child Variables:
                     line: 20
                     column:
                       Column: 21
+                    address: ~
                 - name:
                     Named: c
                   type_name:
@@ -1209,6 +1319,7 @@ Child Variables:
                     line: 21
                     column:
                       Column: 21
+                    address: ~
                 - name:
                     Named: d
                   type_name:
@@ -1223,6 +1334,7 @@ Child Variables:
                     line: 22
                     column:
                       Column: 21
+                    address: ~
             - name:
                 Named: x
               type_name:
@@ -1237,6 +1349,7 @@ Child Variables:
                 line: 24
                 column:
                   Column: 18
+                address: ~
         - name:
             Named: unsigned_bitfields
           type_name:
@@ -1247,6 +1360,7 @@ Child Variables:
             line: 30
             column:
               Column: 7
+            address: ~
           children:
             - name:
                 Named: f
@@ -1266,6 +1380,7 @@ Child Variables:
                 line: 28
                 column:
                   Column: 17
+                address: ~
             - name:
                 Named: g
               type_name:
@@ -1284,6 +1399,7 @@ Child Variables:
                 line: 29
                 column:
                   Column: 17
+                address: ~
         - name:
             Named: signed_bitfields
           type_name:
@@ -1294,6 +1410,7 @@ Child Variables:
             line: 35
             column:
               Column: 7
+            address: ~
           children:
             - name:
                 Named: f
@@ -1313,6 +1430,7 @@ Child Variables:
                 line: 33
                 column:
                   Column: 16
+                address: ~
             - name:
                 Named: g
               type_name:
@@ -1331,6 +1449,7 @@ Child Variables:
                 line: 34
                 column:
                   Column: 16
+                address: ~
     - name:
         Named: foo_array
       type_name:
@@ -1350,6 +1469,7 @@ Child Variables:
         line: 53
         column:
           Column: 13
+        address: ~
       children:
         - name:
             Indexed: 0
@@ -1365,6 +1485,7 @@ Child Variables:
             line: 53
             column:
               Column: 13
+            address: ~
           children:
             - name: Unknown
               type_name:
@@ -1390,6 +1511,7 @@ Child Variables:
                         line: 19
                         column:
                           Column: 21
+                        address: ~
                     - name:
                         Named: b
                       type_name:
@@ -1404,6 +1526,7 @@ Child Variables:
                         line: 20
                         column:
                           Column: 21
+                        address: ~
                     - name:
                         Named: c
                       type_name:
@@ -1418,6 +1541,7 @@ Child Variables:
                         line: 21
                         column:
                           Column: 21
+                        address: ~
                     - name:
                         Named: d
                       type_name:
@@ -1432,6 +1556,7 @@ Child Variables:
                         line: 22
                         column:
                           Column: 21
+                        address: ~
                 - name:
                     Named: x
                   type_name:
@@ -1446,6 +1571,7 @@ Child Variables:
                     line: 24
                     column:
                       Column: 18
+                    address: ~
             - name:
                 Named: unsigned_bitfields
               type_name:
@@ -1456,6 +1582,7 @@ Child Variables:
                 line: 30
                 column:
                   Column: 7
+                address: ~
               children:
                 - name:
                     Named: f
@@ -1475,6 +1602,7 @@ Child Variables:
                     line: 28
                     column:
                       Column: 17
+                    address: ~
                 - name:
                     Named: g
                   type_name:
@@ -1493,6 +1621,7 @@ Child Variables:
                     line: 29
                     column:
                       Column: 17
+                    address: ~
             - name:
                 Named: signed_bitfields
               type_name:
@@ -1503,6 +1632,7 @@ Child Variables:
                 line: 35
                 column:
                   Column: 7
+                address: ~
               children:
                 - name:
                     Named: f
@@ -1522,6 +1652,7 @@ Child Variables:
                     line: 33
                     column:
                       Column: 16
+                    address: ~
                 - name:
                     Named: g
                   type_name:
@@ -1540,6 +1671,7 @@ Child Variables:
                     line: 34
                     column:
                       Column: 16
+                    address: ~
         - name:
             Indexed: 1
           type_name:
@@ -1554,6 +1686,7 @@ Child Variables:
             line: 53
             column:
               Column: 13
+            address: ~
           children:
             - name: Unknown
               type_name:
@@ -1579,6 +1712,7 @@ Child Variables:
                         line: 19
                         column:
                           Column: 21
+                        address: ~
                     - name:
                         Named: b
                       type_name:
@@ -1593,6 +1727,7 @@ Child Variables:
                         line: 20
                         column:
                           Column: 21
+                        address: ~
                     - name:
                         Named: c
                       type_name:
@@ -1607,6 +1742,7 @@ Child Variables:
                         line: 21
                         column:
                           Column: 21
+                        address: ~
                     - name:
                         Named: d
                       type_name:
@@ -1621,6 +1757,7 @@ Child Variables:
                         line: 22
                         column:
                           Column: 21
+                        address: ~
                 - name:
                     Named: x
                   type_name:
@@ -1635,6 +1772,7 @@ Child Variables:
                     line: 24
                     column:
                       Column: 18
+                    address: ~
             - name:
                 Named: unsigned_bitfields
               type_name:
@@ -1645,6 +1783,7 @@ Child Variables:
                 line: 30
                 column:
                   Column: 7
+                address: ~
               children:
                 - name:
                     Named: f
@@ -1664,6 +1803,7 @@ Child Variables:
                     line: 28
                     column:
                       Column: 17
+                    address: ~
                 - name:
                     Named: g
                   type_name:
@@ -1682,6 +1822,7 @@ Child Variables:
                     line: 29
                     column:
                       Column: 17
+                    address: ~
             - name:
                 Named: signed_bitfields
               type_name:
@@ -1692,6 +1833,7 @@ Child Variables:
                 line: 35
                 column:
                   Column: 7
+                address: ~
               children:
                 - name:
                     Named: f
@@ -1711,6 +1853,7 @@ Child Variables:
                     line: 33
                     column:
                       Column: 16
+                    address: ~
                 - name:
                     Named: g
                   type_name:
@@ -1729,6 +1872,7 @@ Child Variables:
                     line: 34
                     column:
                       Column: 16
+                    address: ~
     - name:
         Named: nested_array
       type_name:
@@ -1749,6 +1893,7 @@ Child Variables:
         line: 54
         column:
           Column: 16
+        address: ~
       children:
         - name:
             Indexed: 0
@@ -1767,6 +1912,7 @@ Child Variables:
             line: 54
             column:
               Column: 16
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -1782,6 +1928,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 1
               type_name:
@@ -1796,6 +1943,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 2
               type_name:
@@ -1810,6 +1958,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 3
               type_name:
@@ -1824,6 +1973,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 4
               type_name:
@@ -1838,6 +1988,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 5
               type_name:
@@ -1852,6 +2003,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 6
               type_name:
@@ -1866,6 +2018,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 7
               type_name:
@@ -1880,6 +2033,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 8
               type_name:
@@ -1894,6 +2048,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
         - name:
             Indexed: 1
           type_name:
@@ -1911,6 +2066,7 @@ Child Variables:
             line: 54
             column:
               Column: 16
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -1926,6 +2082,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 1
               type_name:
@@ -1940,6 +2097,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 2
               type_name:
@@ -1954,6 +2112,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 3
               type_name:
@@ -1968,6 +2127,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 4
               type_name:
@@ -1982,6 +2142,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 5
               type_name:
@@ -1996,6 +2157,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 6
               type_name:
@@ -2010,6 +2172,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 7
               type_name:
@@ -2024,6 +2187,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 8
               type_name:
@@ -2038,6 +2202,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
         - name:
             Indexed: 2
           type_name:
@@ -2055,6 +2220,7 @@ Child Variables:
             line: 54
             column:
               Column: 16
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -2070,6 +2236,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 1
               type_name:
@@ -2084,6 +2251,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 2
               type_name:
@@ -2098,6 +2266,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 3
               type_name:
@@ -2112,6 +2281,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 4
               type_name:
@@ -2126,6 +2296,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 5
               type_name:
@@ -2140,6 +2311,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 6
               type_name:
@@ -2154,6 +2326,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 7
               type_name:
@@ -2168,6 +2341,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 8
               type_name:
@@ -2182,6 +2356,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
         - name:
             Indexed: 3
           type_name:
@@ -2199,6 +2374,7 @@ Child Variables:
             line: 54
             column:
               Column: 16
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -2214,6 +2390,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 1
               type_name:
@@ -2228,6 +2405,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 2
               type_name:
@@ -2242,6 +2420,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 3
               type_name:
@@ -2256,6 +2435,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 4
               type_name:
@@ -2270,6 +2450,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 5
               type_name:
@@ -2284,6 +2465,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 6
               type_name:
@@ -2298,6 +2480,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 7
               type_name:
@@ -2312,6 +2495,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 8
               type_name:
@@ -2326,6 +2510,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
         - name:
             Indexed: 4
           type_name:
@@ -2343,6 +2528,7 @@ Child Variables:
             line: 54
             column:
               Column: 16
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -2358,6 +2544,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 1
               type_name:
@@ -2372,6 +2559,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 2
               type_name:
@@ -2386,6 +2574,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 3
               type_name:
@@ -2400,6 +2589,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 4
               type_name:
@@ -2414,6 +2604,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 5
               type_name:
@@ -2428,6 +2619,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 6
               type_name:
@@ -2442,6 +2634,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 7
               type_name:
@@ -2456,6 +2649,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 8
               type_name:
@@ -2470,6 +2664,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
         - name:
             Indexed: 5
           type_name:
@@ -2487,6 +2682,7 @@ Child Variables:
             line: 54
             column:
               Column: 16
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -2502,6 +2698,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 1
               type_name:
@@ -2516,6 +2713,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 2
               type_name:
@@ -2530,6 +2728,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 3
               type_name:
@@ -2544,6 +2743,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 4
               type_name:
@@ -2558,6 +2758,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 5
               type_name:
@@ -2572,6 +2773,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 6
               type_name:
@@ -2586,6 +2788,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 7
               type_name:
@@ -2600,6 +2803,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
             - name:
                 Indexed: 8
               type_name:
@@ -2614,6 +2818,7 @@ Child Variables:
                 line: 54
                 column:
                   Column: 16
+                address: ~
     - name:
         Named: nested_array2
       type_name:
@@ -2634,6 +2839,7 @@ Child Variables:
         line: 65
         column:
           Column: 17
+        address: ~
       children:
         - name:
             Indexed: 0
@@ -2652,6 +2858,7 @@ Child Variables:
             line: 65
             column:
               Column: 17
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -2667,6 +2874,7 @@ Child Variables:
                 line: 65
                 column:
                   Column: 17
+                address: ~
             - name:
                 Indexed: 1
               type_name:
@@ -2681,6 +2889,7 @@ Child Variables:
                 line: 65
                 column:
                   Column: 17
+                address: ~
             - name:
                 Indexed: 2
               type_name:
@@ -2695,6 +2904,7 @@ Child Variables:
                 line: 65
                 column:
                   Column: 17
+                address: ~
         - name:
             Indexed: 1
           type_name:
@@ -2712,6 +2922,7 @@ Child Variables:
             line: 65
             column:
               Column: 17
+            address: ~
           children:
             - name:
                 Indexed: 0
@@ -2727,6 +2938,7 @@ Child Variables:
                 line: 65
                 column:
                   Column: 17
+                address: ~
             - name:
                 Indexed: 1
               type_name:
@@ -2741,6 +2953,7 @@ Child Variables:
                 line: 65
                 column:
                   Column: 17
+                address: ~
             - name:
                 Indexed: 2
               type_name:
@@ -2755,3 +2968,4 @@ Child Variables:
                 line: 65
                 column:
                   Column: 17
+                address: ~

@@ -1,3 +1,4 @@
+use gimli::RunTimeEndian;
 use std::ops::Range;
 
 use crate::{debug::stack_frame::StackFrameInfo, MemoryInterface};
@@ -176,7 +177,15 @@ impl<'a> FunctionDie<'a> {
                     None => ColumnType::LeftEdge,
                     Some(c) => ColumnType::Column(c),
                 });
-        Some(SourceLocation { line, column, path })
+
+        let address = self.low_pc();
+
+        Some(SourceLocation {
+            line,
+            column,
+            path,
+            address,
+        })
     }
 
     /// Resolve an attribute by looking through both the specification and die, or abstract specification and die, entries.
@@ -236,7 +245,7 @@ fn collapsed_attribute(
     function_die: &Die,
     specification_die: &Option<Die>,
     attribute_name: gimli::DwAt,
-) -> Option<gimli::Attribute<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>> {
+) -> Option<gimli::Attribute<gimli::EndianReader<RunTimeEndian, std::rc::Rc<[u8]>>>> {
     let attribute = specification_die
         .as_ref()
         .and_then(|specification_die| {

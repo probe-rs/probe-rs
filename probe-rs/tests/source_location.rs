@@ -93,6 +93,7 @@ fn source_location() {
                 line: Some(*line),
                 column: Some(*col),
                 path: path.clone(),
+                address: Some(*addr)
             }),
             di.get_source_location(*addr)
         );

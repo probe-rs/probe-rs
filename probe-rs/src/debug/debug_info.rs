@@ -15,7 +15,8 @@ use crate::{
     Error, MemoryInterface,
 };
 use gimli::{
-    BaseAddresses, DebugFrame, DebugInfoOffset, UnwindContext, UnwindSection, UnwindTableRow,
+    BaseAddresses, DebugFrame, DebugInfoOffset, RunTimeEndian, UnwindContext, UnwindSection,
+    UnwindTableRow,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
@@ -24,13 +25,13 @@ use std::{
 };
 use typed_path::{TypedPath, TypedPathBuf};
 
-pub(crate) type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
+pub(crate) type GimliReader = gimli::EndianReader<RunTimeEndian, std::rc::Rc<[u8]>>;
 pub(crate) type GimliReaderOffset =
-    <gimli::EndianReader<gimli::LittleEndian, Rc<[u8]>> as gimli::Reader>::Offset;
+    <gimli::EndianReader<RunTimeEndian, Rc<[u8]>> as gimli::Reader>::Offset;
 
 pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
-pub(crate) type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
+pub(crate) type DwarfReader = gimli::read::EndianRcSlice<RunTimeEndian>;
 
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
@@ -39,8 +40,8 @@ pub struct DebugInfo {
     pub(crate) locations_section: gimli::LocationLists<DwarfReader>,
     pub(crate) address_section: gimli::DebugAddr<DwarfReader>,
     pub(crate) debug_line_section: gimli::DebugLine<DwarfReader>,
-
     pub(crate) unit_infos: Vec<UnitInfo>,
+    pub(crate) endianness: gimli::RunTimeEndian,
 }
 
 impl DebugInfo {
@@ -55,16 +56,21 @@ impl DebugInfo {
     pub fn from_raw(data: &[u8]) -> Result<Self, DebugError> {
         let object = object::File::parse(data)?;
 
+        let endianness = if object.is_little_endian() {
+            RunTimeEndian::Little
+        } else {
+            RunTimeEndian::Big
+        };
+
         // Load a section and return as `Cow<[u8]>`.
         let load_section = |id: gimli::SectionId| -> Result<DwarfReader, gimli::Error> {
             let data = object
                 .section_by_name(id.name())
                 .and_then(|section| section.uncompressed_data().ok())
                 .unwrap_or_else(|| borrow::Cow::Borrowed(&[][..]));
-
             Ok(gimli::read::EndianRcSlice::new(
                 Rc::from(&*data),
-                gimli::LittleEndian,
+                endianness,
             ))
         };
 
@@ -104,6 +110,7 @@ impl DebugInfo {
             address_section,
             debug_line_section,
             unit_infos,
+            endianness,
         })
     }
 
@@ -177,6 +184,7 @@ impl DebugInfo {
                                         line: previous_row.line().map(NonZeroU64::get),
                                         column: Some(previous_row.column().into()),
                                         path,
+                                        address: Some(previous_row.address()),
                                     });
                                 }
                             }
@@ -191,6 +199,7 @@ impl DebugInfo {
                                     line: row.line().map(NonZeroU64::get),
                                     column: Some(row.column().into()),
                                     path,
+                                    address: Some(row.address()),
                                 });
                             }
                         }
@@ -939,6 +948,11 @@ impl DebugInfo {
                 None
             }
         }
+    }
+
+    /// The program binary's (and core's) endianness.
+    pub fn endianness(&self) -> RunTimeEndian {
+        self.endianness
     }
 }
 
