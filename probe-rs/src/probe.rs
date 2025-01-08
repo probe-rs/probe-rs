@@ -885,6 +885,9 @@ pub enum DebugProbeSelectorParseError {
 /// where the serial number is optional, and VID and PID are
 /// parsed as hexadecimal numbers.
 ///
+/// If SERIALNUMBER exists (i.e. the selector contains a second color) and is empty,
+/// probe-rs will select probes that have no serial number, or where the serial number is empty.
+///
 /// ## Example:
 ///
 /// ```
@@ -908,12 +911,29 @@ pub struct DebugProbeSelector {
 
 impl DebugProbeSelector {
     pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
-        info.vendor_id() == self.vendor_id
-            && info.product_id() == self.product_id
+        self.match_probe_selector(info.vendor_id(), info.product_id(), info.serial_number())
+    }
+
+    fn match_probe_selector(
+        &self,
+        vendor_id: u16,
+        product_id: u16,
+        serial_number: Option<&str>,
+    ) -> bool {
+        vendor_id == self.vendor_id
+            && product_id == self.product_id
             && self
                 .serial_number
                 .as_ref()
-                .map(|s| info.serial_number() == Some(s))
+                .map(|s| {
+                    if let Some(serial_number) = serial_number {
+                        serial_number == s
+                    } else {
+                        // Match probes without serial number when the
+                        // selector has a third, empty part ("VID:PID:")
+                        s.is_empty()
+                    }
+                })
                 .unwrap_or(true)
     }
 }
@@ -1418,5 +1438,33 @@ mod test {
             selector.serial_number,
             Some("DC:DA:0C:D3:FE:D8".to_string())
         );
+    }
+
+    #[test]
+    fn missing_serial_is_none() {
+        let selector: DebugProbeSelector = "303a:1001".try_into().unwrap();
+
+        assert_eq!(selector.vendor_id, 0x303a);
+        assert_eq!(selector.product_id, 0x1001);
+        assert_eq!(selector.serial_number, None);
+
+        let matches = selector.match_probe_selector(0x303a, 0x1001, None);
+        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, Some("serial"));
+        assert!(matches);
+        assert!(matches_with_serial);
+    }
+
+    #[test]
+    fn empty_serial_is_some() {
+        let selector: DebugProbeSelector = "303a:1001:".try_into().unwrap();
+
+        assert_eq!(selector.vendor_id, 0x303a);
+        assert_eq!(selector.product_id, 0x1001);
+        assert_eq!(selector.serial_number, Some(String::new()));
+
+        let matches = selector.match_probe_selector(0x303a, 0x1001, None);
+        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, Some("serial"));
+        assert!(matches);
+        assert!(!matches_with_serial);
     }
 }
