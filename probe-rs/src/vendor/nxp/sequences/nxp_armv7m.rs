@@ -116,6 +116,9 @@ impl ArmDebugSequence for MIMXRT10xx {
     ) -> Result<(), ArmError> {
         self.check_core_type(core_type)?;
 
+        // Halt the processor before messing with the memory map.
+        self.halt(interface, true)?;
+
         // OK to perform before the reset, since the configuration
         // persists beyond the reset.
         self.use_boot_fuses_for_flexram(interface)?;
