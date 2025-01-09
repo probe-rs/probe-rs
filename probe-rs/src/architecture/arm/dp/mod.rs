@@ -637,7 +637,7 @@ impl Register for BASEPTR1 {
 }
 
 /// The ID of a debug port. Can be used to detect and select devices in a multidrop setup.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct DebugPortId {
     /// The revision of the debug port (implementation defined). This is what the designer of the debug port chooses.
     pub revision: u8,
@@ -708,7 +708,7 @@ impl DpRegister for RdBuff {
 }
 
 /// Specifies if pushed-find operations are implemented or not.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MinDpSupport {
     /// Pushed-find operations are **not** implemented.
     NotImplemented,
