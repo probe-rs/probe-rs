@@ -62,8 +62,13 @@ impl MIMXRT10xx {
 
     /// Use the boot fuse configuration for FlexRAM.
     ///
-    /// If the user changed the FlexRAM configuration in software, this will undo
-    /// that configuration, preferring the system's POR FlexRAM state.
+    /// If the user changed the FlexRAM configuration in software,
+    /// this will undo that configuration, preferring the system's POR
+    /// FlexRAM state.
+    ///
+    /// This function may change the processor's memory map, which may
+    /// cause problems for any running firmware.  Halt the processor
+    /// before calling this function.
     fn use_boot_fuses_for_flexram(
         &self,
         probe: &mut dyn ArmMemoryInterface,
