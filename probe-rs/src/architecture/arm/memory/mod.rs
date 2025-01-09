@@ -1,20 +1,22 @@
 //! Types and functions for interacting with target memory.
 
-pub(crate) mod adi_v5_memory_interface;
+mod adi_v5_v6_memory_interface;
 pub mod romtable;
+
+pub(crate) use adi_v5_v6_memory_interface::ADIMemoryInterface;
 
 use crate::{memory::MemoryInterface, probe::DebugProbeError, CoreStatus};
 
 use super::{
-    ap::memory_ap::MemoryAp, communication_interface::Initialized, ArmCommunicationInterface,
-    ArmError,
+    ap_v1::memory_ap::MemoryAp, communication_interface::Initialized, ArmCommunicationInterface,
+    ArmError, FullyQualifiedApAddress,
 };
-pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType};
+pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, RomTable};
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
 pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
-    /// The underlying MemoryAp.
-    fn ap(&mut self) -> &mut MemoryAp;
+    /// The underlying MemoryAp address.
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress;
 
     /// The underlying memory AP’s base address.
     fn base_address(&mut self) -> Result<u64, ArmError>;
@@ -26,6 +28,8 @@ pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
 
     /// The underlying `ArmCommunicationInterface` and memory AP if the probe interface is an
     /// `ArmCommunicationInterface`.
+    // TODO: This should not be part of the ArmMemoryInterface because it exposes ADI
+    // version-specific types.
     fn try_as_parts(
         &mut self,
     ) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut MemoryAp), DebugProbeError>;
@@ -36,9 +40,9 @@ pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
     // NOTE: this function should be infallible as it is usually only
     // a visual indication.
     fn update_core_status(&mut self, state: CoreStatus) {
-        self.get_arm_communication_interface()
-            .map(|iface| iface.core_status_notification(state))
-            .ok();
+        let _ = self
+            .get_arm_communication_interface()
+            .map(|iface| iface.core_status_notification(state));
     }
 }
 

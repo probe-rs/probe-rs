@@ -8,8 +8,8 @@ use probe_rs_target::Chip;
 use crate::{
     architecture::{
         arm::{
-            communication_interface::read_chip_info_from_rom_table, sequences::DefaultArmSequence,
-            ArmChipInfo, ArmProbeInterface, DpAddress,
+            communication_interface::read_chip_info_from_rom_table, dp::DpAddress,
+            sequences::DefaultArmSequence, ArmChipInfo, ArmProbeInterface,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{

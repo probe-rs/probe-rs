@@ -2,9 +2,9 @@ use std::any::Any;
 
 use crate::{
     architecture::arm::{
-        ap::{
+        ap_v1::{
             memory_ap::{DataSize, MemoryAp, MemoryApType},
-            ApAccess,
+            AccessPortType, ApAccess,
         },
         communication_interface::{FlushableArmAccess, Initialized},
         dp::DpAccess,
@@ -518,9 +518,8 @@ where
         self.memory_ap.base_address(self.interface)
     }
 
-    /// Returns the underlying [`MemoryAp`].
-    fn ap(&mut self) -> &mut MemoryAp {
-        &mut self.memory_ap
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        self.memory_ap.ap_address().clone()
     }
 
     fn get_arm_communication_interface(
@@ -552,7 +551,7 @@ mod tests {
 
     use crate::{
         architecture::arm::{
-            ap::memory_ap::mock::MockMemoryAp, memory::adi_v5_memory_interface::ADIMemoryInterface,
+            ap_v1::memory_ap::mock::MockMemoryAp, memory::ADIMemoryInterface,
             FullyQualifiedApAddress,
         },
         MemoryInterface,

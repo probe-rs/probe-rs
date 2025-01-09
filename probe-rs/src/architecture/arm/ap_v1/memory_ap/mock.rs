@@ -1,10 +1,11 @@
 use crate::architecture::arm::{
-    ap::{
+    ap_v1::{
         memory_ap::{amba_ahb3::CSW, registers::CFG, AddressIncrement, DataSize, DRW, TAR},
         ApClass, ApType, Register, IDR,
     },
     communication_interface::FlushableArmAccess,
-    ArmError, DapAccess, DpAddress,
+    dp::{DpAddress, DpRegisterAddress},
+    ArmError, DapAccess,
 };
 use std::collections::HashMap;
 
@@ -57,7 +58,11 @@ impl FlushableArmAccess for MockMemoryAp {
 }
 
 impl DapAccess for MockMemoryAp {
-    fn read_raw_dp_register(&mut self, _dp: DpAddress, _addr: u8) -> Result<u32, ArmError> {
+    fn read_raw_dp_register(
+        &mut self,
+        _dp: DpAddress,
+        _addr: DpRegisterAddress,
+    ) -> Result<u32, ArmError> {
         // Ignore for Tests
         Ok(0)
     }
@@ -65,7 +70,7 @@ impl DapAccess for MockMemoryAp {
     fn write_raw_dp_register(
         &mut self,
         _dp: DpAddress,
-        _addr: u8,
+        _addr: DpRegisterAddress,
         _value: u32,
     ) -> Result<(), ArmError> {
         Ok(())

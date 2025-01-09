@@ -16,8 +16,8 @@ mod amba_axi5;
 pub use registers::DataSize;
 use registers::{AddressIncrement, BaseAddrFormat, BASE, BASE2, DRW, TAR, TAR2};
 
-use super::{AccessPortError, AccessPortType, ApAccess, ApRegAccess};
-use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress, Register};
+use super::{AccessPortError, AccessPortType, ApAccess, ApRegAccess, Register};
+use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress};
 
 /// Implements all default registers of a memory AP to the given type.
 ///
@@ -29,7 +29,7 @@ macro_rules! attached_regs_to_mem_ap {
     ($mod_name:ident => $name:ident) => {
         mod $mod_name {
             use super::$name;
-            use $crate::architecture::arm::ap::{
+            use $crate::architecture::arm::ap_v1::{
                 memory_ap::registers::{
                     BASE, BASE2, BD0, BD1, BD2, BD3, CFG, CSW, DRW, MBT, TAR, TAR2,
                 },
@@ -205,12 +205,12 @@ macro_rules! memory_aps {
                 interface: &mut I,
                 address: &FullyQualifiedApAddress,
             ) -> Result<Self, ArmError> {
-                use crate::architecture::arm::{ap::IDR, Register};
+                use crate::architecture::arm::ap_v1::{IDR, Register};
                 let idr: IDR = interface
                     .read_raw_ap_register(address, IDR::ADDRESS)?
                     .try_into()?;
                 tracing::debug!("reading IDR: {:x?}", idr);
-                use crate::architecture::arm::ap::ApType;
+                use crate::architecture::arm::ap_v1::ApType;
                 Ok(match idr.TYPE {
                     ApType::JtagComAp => return Err(ArmError::WrongApType),
                     $(ApType::$variant => <$type>::new(interface, address.clone())?.into(),)*

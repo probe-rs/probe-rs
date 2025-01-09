@@ -84,7 +84,7 @@ pub fn cmd_elf(
                     name: "main".to_owned(),
                     core_type: CoreType::Armv6m,
                     core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
-                        ap: 0,
+                        ap: probe_rs_target::ApAddress::V1(0),
                         targetsel: None,
                         debug_base: None,
                         cti_base: None,

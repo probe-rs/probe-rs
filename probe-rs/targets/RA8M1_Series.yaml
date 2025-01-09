@@ -10,7 +10,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Generic
     name: ITCM
@@ -72,7 +72,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Generic
     name: ITCM

@@ -9,7 +9,7 @@ mod test;
 
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::ap::AccessPortError,
+    architecture::arm::ap_v1::AccessPortError,
     debug::DebugError,
     flashing::FileDownloadError,
     probe::{list::Lister, DebugProbeError},

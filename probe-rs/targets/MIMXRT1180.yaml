@@ -10,7 +10,7 @@ variants:
   - name: cm33
     type: armv8m
     core_access_options: !Arm
-      ap: 3
+      ap: !v1 3
 
   memory_map:
   - !Ram
