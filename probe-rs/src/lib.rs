@@ -73,9 +73,6 @@ pub mod config;
 pub mod vendor;
 
 mod core;
-#[cfg(feature = "debug")]
-#[cfg_attr(probers_docsrs, doc(cfg(feature = "debug")))]
-pub mod debug;
 mod error;
 pub mod flashing;
 #[cfg(feature = "gdb-server")]
@@ -87,10 +84,16 @@ pub mod probe;
 pub mod rtt;
 pub mod semihosting;
 mod session;
-#[cfg(test)]
-mod test;
+
+// TODO: Should this be public?
+#[cfg(any(test, feature = "test"))]
+pub mod test;
 
 pub use crate::config::{CoreType, InstructionSet, Target};
+pub use crate::core::dump::CoreDump;
+pub use crate::core::dump::CoreDumpError;
+pub use crate::core::registers::RegisterDataType;
+pub use crate::core::registers::UnwindRule;
 pub use crate::core::{
     Architecture, BreakpointCause, Core, CoreInformation, CoreInterface, CoreRegister,
     CoreRegisters, CoreState, CoreStatus, HaltReason, MemoryMappedRegister, RegisterId,
@@ -99,12 +102,6 @@ pub use crate::core::{
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
 pub use crate::session::{Permissions, Session};
-
-#[cfg(feature = "debug")]
-pub use crate::core::dump::{CoreDump, CoreDumpError};
-
-#[cfg(feature = "debug")]
-pub use crate::debug::exception_handling::exception_handler_for_core;
 
 #[doc = include_str!("../../README.md")]
 #[cfg(doctest)]

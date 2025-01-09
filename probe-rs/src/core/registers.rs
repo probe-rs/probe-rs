@@ -104,11 +104,12 @@ pub enum UnwindRule {
 /// Each architecture will have a set of general purpose registers, and potentially some special purpose registers. It also happens that some general purpose registers can be used for special purposes. For instance, some ARM variants allows the `LR` (link register / return address) to be used as general purpose register `R14`."
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CoreRegister {
-    // /// Some architectures have multiple names for the same register, depending on the context and the role of the register.
-    pub(crate) id: RegisterId,
+    /// Some architectures have multiple names for the same register, depending on the context and the role of the register.
+    pub id: RegisterId,
     /// If the register plays a special role (one or more) during program execution and exception handling, this array will contain the appropriate [`RegisterRole`] entry/entries.
-    pub(crate) roles: &'static [RegisterRole],
-    pub(crate) data_type: RegisterDataType,
+    pub roles: &'static [RegisterRole],
+    /// The data type of the register
+    pub data_type: RegisterDataType,
     /// For unwind purposes (debug and/or exception handling), we need to know how values are preserved between function calls. (Applies to ARM and RISC-V)
     #[serde(skip_serializing)]
     pub unwind_rule: UnwindRule,

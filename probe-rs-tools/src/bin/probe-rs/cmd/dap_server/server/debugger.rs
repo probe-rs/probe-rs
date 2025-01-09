@@ -1320,7 +1320,7 @@ mod test {
 
     fn program_binary() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf")
+            .join("../probe-rs-debug/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf")
     }
 
     fn valid_session_config() -> SessionConfig {
