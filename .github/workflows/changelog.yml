@@ -28,6 +28,8 @@ jobs:
           cache-on-failure: "true"
 
       - name: Check that fragments are valid
-        run:  cargo xtask check-changelog --pr ${{ github.event.number }} --comment-error
+        run: |
+          cp .cargo/config.toml.example .cargo/config.toml
+          cargo xtask check-changelog --pr ${{ github.event.number }} --comment-error
         env:
           GH_TOKEN: ${{ github.token }}

@@ -8,3 +8,6 @@ target
 # IDE settings
 .vscode/settings.json
 .idea/
+
+# Cargo config
+.cargo/config.toml
