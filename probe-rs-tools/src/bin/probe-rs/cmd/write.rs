@@ -29,9 +29,9 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.probe_options.simple_attach(lister)?;
-        let mut core = session.core(self.shared.core)?;
+    pub async fn run(self, lister: &Lister) -> anyhow::Result<()> {
+        let (mut session, _probe_options) = self.probe_options.simple_attach(lister).await?;
+        let mut core = session.core(self.shared.core).await?;
 
         match self.read_write_options.width {
             ReadWriteBitWidth::B8 => {
@@ -46,7 +46,8 @@ impl Cmd {
                     }
                     bvalues.push(*val as u8);
                 }
-                core.write_8(self.read_write_options.address, &bvalues)?;
+                core.write_8(self.read_write_options.address, &bvalues)
+                    .await?;
             }
             ReadWriteBitWidth::B32 => {
                 let mut bvalues = Vec::new();
@@ -60,10 +61,12 @@ impl Cmd {
                     }
                     bvalues.push(*val as u32);
                 }
-                core.write_32(self.read_write_options.address, &bvalues)?;
+                core.write_32(self.read_write_options.address, &bvalues)
+                    .await?;
             }
             ReadWriteBitWidth::B64 => {
-                core.write_64(self.read_write_options.address, &self.values)?;
+                core.write_64(self.read_write_options.address, &self.values)
+                    .await?;
             }
         }
 

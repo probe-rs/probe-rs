@@ -64,6 +64,10 @@
 //! [Target], [Session]  and [Core] structs.
 //!
 //! [Probe]: probe::Probe
+#![feature(extern_types)]
+#![feature(async_closure)]
+#![feature(async_trait_bounds)]
+#![allow(async_fn_in_trait)]
 #![warn(missing_docs)]
 #![recursion_limit = "256"] // required by bitfield!
 #![cfg_attr(probers_docsrs, feature(doc_cfg))] // Used for docs.rs
@@ -75,9 +79,9 @@ pub mod vendor;
 mod core;
 mod error;
 pub mod flashing;
-#[cfg(feature = "gdb-server")]
-#[cfg_attr(probers_docsrs, doc(cfg(feature = "gdb-server")))]
-pub mod gdb_server;
+// #[cfg(feature = "gdb-server")]
+// #[cfg_attr(probers_docsrs, doc(cfg(feature = "gdb-server")))]
+// pub mod gdb_server;
 pub mod integration;
 mod memory;
 pub mod probe;

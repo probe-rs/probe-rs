@@ -1,3 +1,5 @@
+#![feature(async_closure)]
+
 mod cmd;
 mod report;
 mod util;
@@ -66,8 +68,10 @@ enum Subcommand {
     Info(cmd::info::Cmd),
     /// Resets the target attached to the selected debug probe
     Reset(cmd::reset::Cmd),
+    #[cfg(not(target_arch = "wasm32"))]
     /// Run a GDB server
     Gdb(cmd::gdb::Cmd),
+    #[cfg(not(target_arch = "wasm32"))]
     /// Basic command line debugger
     Debug(cmd::debug::Cmd),
     /// Download memory to attached target
@@ -252,7 +256,8 @@ fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<&'list 
     None
 }
 
-fn main() -> Result<()> {
+#[pollster::main]
+async fn main() -> Result<()> {
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.
     // FIXME: we should probably let the user know if we can't determine the offset. However,
@@ -313,37 +318,39 @@ fn main() -> Result<()> {
     let mut elf = None;
     let result = match matches.subcommand {
         Subcommand::DapServer { .. } => unreachable!(), // handled above.
-        Subcommand::List(cmd) => cmd.run(&lister),
-        Subcommand::Info(cmd) => cmd.run(&lister),
-        Subcommand::Gdb(cmd) => cmd.run(&lister),
-        Subcommand::Reset(cmd) => cmd.run(&lister),
-        Subcommand::Debug(cmd) => cmd.run(&lister),
+        Subcommand::List(cmd) => cmd.run(&lister).await,
+        Subcommand::Info(cmd) => cmd.run(&lister).await,
+        #[cfg(not(target_arch = "wasm32"))]
+        Subcommand::Gdb(cmd) => cmd.run(&lister).await,
+        Subcommand::Reset(cmd) => cmd.run(&lister).await,
+        #[cfg(not(target_arch = "wasm32"))]
+        Subcommand::Debug(cmd) => cmd.run(&lister).await,
         Subcommand::Download(cmd) => {
             elf = Some(cmd.path.clone());
-            cmd.run(&lister)
+            cmd.run(&lister).await
         }
         Subcommand::Run(cmd) => {
             elf = Some(cmd.shared_options.path.clone());
-            cmd.run(&lister, true, utc_offset)
+            cmd.run(&lister, true, utc_offset).await
         }
         Subcommand::Attach(cmd) => {
             elf = Some(cmd.run.shared_options.path.clone());
-            cmd.run(&lister, utc_offset)
+            cmd.run(&lister, utc_offset).await
         }
         Subcommand::Verify(cmd) => {
             elf = Some(cmd.path.clone());
-            cmd.run(&lister)
+            cmd.run(&lister).await
         }
-        Subcommand::Erase(cmd) => cmd.run(&lister),
-        Subcommand::Trace(cmd) => cmd.run(&lister),
-        Subcommand::Itm(cmd) => cmd.run(&lister),
-        Subcommand::Chip(cmd) => cmd.run(),
-        Subcommand::Benchmark(cmd) => cmd.run(&lister),
-        Subcommand::Profile(cmd) => cmd.run(&lister),
-        Subcommand::Read(cmd) => cmd.run(&lister),
-        Subcommand::Write(cmd) => cmd.run(&lister),
-        Subcommand::Complete(cmd) => cmd.run(&lister),
-        Subcommand::Mi(cmd) => cmd.run(),
+        Subcommand::Erase(cmd) => cmd.run(&lister).await,
+        Subcommand::Trace(cmd) => cmd.run(&lister).await,
+        Subcommand::Itm(cmd) => cmd.run(&lister).await,
+        Subcommand::Chip(cmd) => cmd.run().await,
+        Subcommand::Benchmark(cmd) => cmd.run(&lister).await,
+        Subcommand::Profile(cmd) => cmd.run(&lister).await,
+        Subcommand::Read(cmd) => cmd.run(&lister).await,
+        Subcommand::Write(cmd) => cmd.run(&lister).await,
+        Subcommand::Complete(cmd) => cmd.run(&lister).await,
+        Subcommand::Mi(cmd) => cmd.run().await,
     };
 
     compile_report(result, matches.report, elf, log_path)

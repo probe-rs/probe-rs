@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
-use std::time::Instant;
+use web_time::Instant;
 
 use addr2line::Loader;
 use anyhow::anyhow;
@@ -66,19 +66,21 @@ impl std::fmt::Display for ProfileMethod {
 }
 
 impl ProfileCmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
+    pub async fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, probe_options) = self
             .run
             .shared_options
             .probe_options
-            .simple_attach(lister)?;
+            .simple_attach(lister)
+            .await?;
 
         let loader = build_loader(
             &mut session,
             &self.run.shared_options.path,
             self.run.shared_options.format_options,
             None,
-        )?;
+        )
+        .await?;
 
         let file_location = self.run.shared_options.path.as_path();
 
@@ -100,7 +102,8 @@ impl ProfileCmd {
                 &probe_options,
                 loader,
                 self.run.shared_options.chip_erase,
-            )?;
+            )
+            .await?;
         }
 
         let start = Instant::now();
@@ -111,17 +114,17 @@ impl ProfileCmd {
 
         match self.method {
             ProfileMethod::Naive => {
-                let mut core = session.core(self.core)?;
+                let mut core = session.core(self.core).await?;
                 info!("Attached to Core {}", self.core);
-                core.reset()?;
+                core.reset().await?;
                 let pc_reg = core.program_counter();
 
                 loop {
-                    core.halt(Duration::from_millis(10))?;
-                    let pc: u32 = core.read_core_reg(pc_reg)?;
+                    core.halt(Duration::from_millis(10)).await?;
+                    let pc: u32 = core.read_core_reg(pc_reg).await?;
                     *samples.entry(pc).or_insert(1) += 1;
                     reads += 1;
-                    core.run()?;
+                    core.run().await?;
                     if start.elapsed() > duration {
                         break;
                     }
@@ -129,13 +132,13 @@ impl ProfileCmd {
             }
             ProfileMethod::Itm { clk, baud } => {
                 let sink = TraceSink::Swo(SwoConfig::new(clk).set_baud(baud));
-                session.setup_tracing(self.core, sink)?;
+                session.setup_tracing(self.core, sink).await?;
 
-                let components = session.get_arm_components(DpAddress::Default)?;
+                let components = session.get_arm_components(DpAddress::Default).await?;
                 let component = find_component(&components, PeripheralType::Dwt)?;
                 let interface = session.get_arm_interface()?;
                 let mut dwt = Dwt::new(interface, component);
-                dwt.enable_pc_sampling()?;
+                dwt.enable_pc_sampling().await?;
 
                 let decoder = itm::Decoder::new(
                     session.swo_reader()?,

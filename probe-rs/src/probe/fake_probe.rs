@@ -93,12 +93,13 @@ impl MockCore {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl SwdSequence for &mut MockCore {
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+    async fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         todo!()
     }
 
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
         _pin_out: u32,
         _pin_select: u32,
@@ -108,8 +109,9 @@ impl SwdSequence for &mut MockCore {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl MemoryInterface<ArmError> for &mut MockCore {
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+    async fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         let mut curr_seg: Option<&LoadableSegment> = None;
 
         for (offset, val) in data.iter_mut().enumerate() {
@@ -138,11 +140,11 @@ impl MemoryInterface<ArmError> for &mut MockCore {
         Ok(())
     }
 
-    fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
+    async fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
+    async fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
         let mut curr_seg: Option<&LoadableSegment> = None;
 
         for (offset, val) in data.iter_mut().enumerate() {
@@ -205,19 +207,19 @@ impl MemoryInterface<ArmError> for &mut MockCore {
         Ok(())
     }
 
-    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
+    async fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
+    async fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
+    async fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
+    async fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
         for (i, word) in data.iter().enumerate() {
             let address = address + (i as u64 * 4);
 
@@ -248,25 +250,26 @@ impl MemoryInterface<ArmError> for &mut MockCore {
         Ok(())
     }
 
-    fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
+    async fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn flush(&mut self) -> Result<(), ArmError> {
+    async fn flush(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
 
-    fn supports_native_64bit_access(&mut self) -> bool {
+    async fn supports_native_64bit_access(&mut self) -> bool {
         true
     }
 
-    fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
+    async fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
         todo!()
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmMemoryInterface for &mut MockCore {
-    fn base_address(&mut self) -> Result<u64, ArmError> {
+    async fn base_address(&mut self) -> Result<u64, ArmError> {
         todo!()
     }
 
@@ -481,6 +484,7 @@ impl Default for FakeProbe {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl DebugProbe for FakeProbe {
     /// Get human readable name for the probe
     fn get_name(&self) -> &str {
@@ -491,7 +495,10 @@ impl DebugProbe for FakeProbe {
         self.speed
     }
 
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
+    async fn set_scan_chain(
+        &mut self,
+        scan_chain: Vec<ScanChainElement>,
+    ) -> Result<(), DebugProbeError> {
         self.scan_chain = Some(scan_chain);
         Ok(())
     }
@@ -505,17 +512,17 @@ impl DebugProbe for FakeProbe {
         }
     }
 
-    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+    async fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         self.speed = speed_khz;
 
         Ok(speed_khz)
     }
 
-    fn attach(&mut self) -> Result<(), DebugProbeError> {
+    async fn attach(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
 
-    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+    async fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         self.protocol = protocol;
 
         Ok(())
@@ -526,22 +533,22 @@ impl DebugProbe for FakeProbe {
     }
 
     /// Leave debug mode
-    fn detach(&mut self) -> Result<(), crate::Error> {
+    async fn detach(&mut self) -> Result<(), crate::Error> {
         Ok(())
     }
 
     /// Resets the target device.
-    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe {
             command_name: "target_reset",
         })
     }
 
-    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         unimplemented!()
     }
 
-    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
 
@@ -561,30 +568,41 @@ impl DebugProbe for FakeProbe {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl RawDapAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
+    async fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
         let handler = self.dap_register_read_handler.as_ref().unwrap();
 
         handler(port, addr)
     }
 
     /// Writes a value to the DAP register on the specified port and address
-    fn raw_write_register(&mut self, port: PortType, addr: u8, value: u32) -> Result<(), ArmError> {
+    async fn raw_write_register(
+        &mut self,
+        port: PortType,
+        addr: u8,
+        value: u32,
+    ) -> Result<(), ArmError> {
         let handler = self.dap_register_write_handler.as_ref().unwrap();
 
         handler(port, addr, value)
     }
 
-    fn jtag_sequence(&mut self, _cycles: u8, _tms: bool, _tdi: u64) -> Result<(), DebugProbeError> {
+    async fn jtag_sequence(
+        &mut self,
+        _cycles: u8,
+        _tms: bool,
+        _tdi: u64,
+    ) -> Result<(), DebugProbeError> {
         todo!()
     }
 
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+    async fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         todo!()
     }
 
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
         _pin_out: u32,
         _pin_select: u32,
@@ -597,7 +615,10 @@ impl RawDapAccess for FakeProbe {
         self
     }
 
-    fn core_status_notification(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
+    async fn core_status_notification(
+        &mut self,
+        _: crate::CoreStatus,
+    ) -> Result<(), DebugProbeError> {
         Ok(())
     }
 }
@@ -619,27 +640,29 @@ impl FakeArmInterface<Uninitialized> {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl<S: ArmDebugState> SwdSequence for FakeArmInterface<S> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)?;
+    async fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        self.probe.swj_sequence(bit_len, bits).await?;
 
         Ok(())
     }
 
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        let value = self.probe.swj_pins(pin_out, pin_select, pin_wait)?;
+        let value = self.probe.swj_pins(pin_out, pin_select, pin_wait).await?;
 
         Ok(value)
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
-    fn initialize(
+    async fn initialize(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
         dp: DpAddress,
@@ -655,7 +678,7 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
         Ok(Box::new(interface))
     }
 
-    fn close(self: Box<Self>) -> Probe {
+    async fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
 }
@@ -663,19 +686,20 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
 impl crate::architecture::arm::communication_interface::FlushableArmAccess
     for FakeArmInterface<Initialized>
 {
-    fn flush(&mut self) -> Result<(), ArmError> {
+    async fn flush(&mut self) -> Result<(), ArmError> {
         todo!()
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmProbeInterface for FakeArmInterface<Initialized> {
-    fn memory_interface(
+    async fn memory_interface(
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
         match self.probe.memory_ap {
             MockedAp::MemoryAp(ref mut _memory_ap) => {
-                let memory = ADIMemoryInterface::new(self, access_port_address)?;
+                let memory = ADIMemoryInterface::new(self, access_port_address).await?;
 
                 Ok(Box::new(memory) as _)
             }
@@ -683,14 +707,14 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
         }
     }
 
-    fn access_ports(
+    async fn access_ports(
         &mut self,
         dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
         Ok(BTreeSet::from([FullyQualifiedApAddress::v1_with_dp(dp, 1)]))
     }
 
-    fn close(self: Box<Self>) -> Probe {
+    async fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
 
@@ -699,29 +723,38 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl SwoAccess for FakeArmInterface<Initialized> {
-    fn enable_swo(
+    async fn enable_swo(
         &mut self,
         _config: &crate::architecture::arm::SwoConfig,
     ) -> Result<(), ArmError> {
         unimplemented!()
     }
 
-    fn disable_swo(&mut self) -> Result<(), ArmError> {
+    async fn disable_swo(&mut self) -> Result<(), ArmError> {
         unimplemented!()
     }
 
-    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, ArmError> {
+    async fn read_swo_timeout(
+        &mut self,
+        _timeout: std::time::Duration,
+    ) -> Result<Vec<u8>, ArmError> {
         unimplemented!()
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl DapAccess for FakeArmInterface<Initialized> {
-    fn read_raw_dp_register(&mut self, _dp: DpAddress, _address: u8) -> Result<u32, ArmError> {
+    async fn read_raw_dp_register(
+        &mut self,
+        _dp: DpAddress,
+        _address: u8,
+    ) -> Result<u32, ArmError> {
         todo!()
     }
 
-    fn write_raw_dp_register(
+    async fn write_raw_dp_register(
         &mut self,
         _dp: DpAddress,
         _address: u8,
@@ -730,7 +763,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
         todo!()
     }
 
-    fn read_raw_ap_register(
+    async fn read_raw_ap_register(
         &mut self,
         _ap: &FullyQualifiedApAddress,
         _address: u8,
@@ -738,7 +771,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
         self.probe.read_raw_ap_register(_ap, _address)
     }
 
-    fn read_raw_ap_register_repeated(
+    async fn read_raw_ap_register_repeated(
         &mut self,
         _ap: &FullyQualifiedApAddress,
         _address: u8,
@@ -747,7 +780,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
         todo!()
     }
 
-    fn write_raw_ap_register(
+    async fn write_raw_ap_register(
         &mut self,
         _ap: &FullyQualifiedApAddress,
         _address: u8,
@@ -756,7 +789,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
         todo!()
     }
 
-    fn write_raw_ap_register_repeated(
+    async fn write_raw_ap_register_repeated(
         &mut self,
         _ap: &FullyQualifiedApAddress,
         _address: u8,
@@ -771,14 +804,15 @@ mod test {
     use super::FakeProbe;
     use crate::Permissions;
 
-    #[test]
-    fn create_session_with_fake_probe() {
+    #[pollster::test]
+    async fn create_session_with_fake_probe() {
         let fake_probe = FakeProbe::with_mocked_core();
 
         let probe = fake_probe.into_probe();
 
         probe
             .attach("nrf51822_xxAC", Permissions::default())
+            .await
             .unwrap();
     }
 }

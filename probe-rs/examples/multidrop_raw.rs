@@ -6,28 +6,29 @@ use probe_rs::{
     probe::{list::Lister, Probe},
 };
 
-fn main() -> Result<()> {
+#[pollster::main]
+async fn main() -> Result<()> {
     pretty_env_logger::init();
 
     // Get a list of all available debug probes.
 
     let probe_lister = Lister::new();
 
-    let probes = probe_lister.list_all();
+    let probes = probe_lister.list_all().await;
 
     // Use the first probe found.
-    let mut probe: Probe = probes[0].open()?;
+    let mut probe: Probe = probes[0].open().await?;
 
     // Specify the multidrop DP address of the first core,
     // this is used for the initial connection.
     let core0 = DpAddress::Multidrop(0x01002927);
 
-    probe.set_speed(100)?;
-    probe.attach_to_unspecified()?;
+    probe.set_speed(100).await?;
+    probe.attach_to_unspecified().await?;
     let mut iface = probe
         .try_into_arm_interface()
         .map_err(|(_probe, err)| err)?
-        .initialize_unspecified(core0)
+        .initialize_unspecified(core0).await
         .map_err(|(_interface, err)| err)?;
 
     // This is an example on how to do raw DP register access with multidrop.
@@ -38,19 +39,19 @@ fn main() -> Result<()> {
 
     println!(
         "core0 DPIDR:    {:08x}",
-        iface.read_raw_dp_register(core0, 0x00)?
+        iface.read_raw_dp_register(core0, 0x00).await?
     );
     println!(
         "core0 TARGETID: {:08x}",
-        iface.read_raw_dp_register(core0, 0x24)?
+        iface.read_raw_dp_register(core0, 0x24).await?
     );
     println!(
         "core1 DPIDR:    {:08x}",
-        iface.read_raw_dp_register(core1, 0x00)?
+        iface.read_raw_dp_register(core1, 0x00).await?
     );
     println!(
         "core1 TARGETID: {:08x}",
-        iface.read_raw_dp_register(core1, 0x24)?
+        iface.read_raw_dp_register(core1, 0x24).await?
     );
 
     Ok(())

@@ -23,12 +23,14 @@ impl NormalRunMode {
         Box::new(NormalRunMode { run_options })
     }
 }
+
+#[async_trait::async_trait(?Send)]
 impl RunMode for NormalRunMode {
-    fn run(&self, mut session: Session, mut run_loop: RunLoop) -> anyhow::Result<()> {
-        let mut core = session.core(run_loop.core_id)?;
+    async fn run(&self, mut session: Session, mut run_loop: RunLoop) -> anyhow::Result<()> {
+        let mut core = session.core(run_loop.core_id).await?;
 
         let mut printer = SemihostingPrinter::new();
-        let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
+        let halt_handler = async |halt_reason: HaltReason, core: &mut Core| {
             let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
                 anyhow::bail!("CPU halted unexpectedly.");
             };
@@ -55,7 +57,7 @@ impl RunMode for NormalRunMode {
                 | SemihostingCommand::Close(_)
                 | SemihostingCommand::WriteConsole(_)
                 | SemihostingCommand::Write(_)) => {
-                    printer.handle(other, core)?;
+                    printer.handle(other, core).await?;
                     Ok(None)
                 }
             }

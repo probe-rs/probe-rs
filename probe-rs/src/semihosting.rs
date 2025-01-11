@@ -76,13 +76,17 @@ pub struct UnknownCommandDetails {
 
 impl UnknownCommandDetails {
     /// Returns the buffer pointed-to by the parameter of the semihosting operation
-    pub fn get_buffer(&self, core: &mut dyn CoreInterface) -> Result<Buffer, Error> {
-        Buffer::from_block_at(core, self.parameter)
+    pub async fn get_buffer(&self, core: &mut dyn CoreInterface) -> Result<Buffer, Error> {
+        Buffer::from_block_at(core, self.parameter).await
     }
 
     /// Writes the status of the semihosting operation to the return register of the target
-    pub fn write_status(&self, core: &mut dyn CoreInterface, status: i32) -> Result<(), Error> {
-        write_status(core, status)
+    pub async fn write_status(
+        &self,
+        core: &mut dyn CoreInterface,
+        status: i32,
+    ) -> Result<(), Error> {
+        write_status(core, status).await
     }
 }
 
@@ -92,17 +96,17 @@ pub struct GetCommandLineRequest(Buffer);
 
 impl GetCommandLineRequest {
     /// Writes the command line to the target. You have to continue the core manually afterwards.
-    pub fn write_command_line_to_target(
+    pub async fn write_command_line_to_target(
         &self,
         core: &mut dyn CoreInterface,
         cmdline: &str,
     ) -> Result<(), Error> {
         let mut buf = cmdline.to_owned().into_bytes();
         buf.push(0);
-        self.0.write(core, &buf)?;
+        self.0.write(core, &buf).await?;
 
         // signal to target: status = success
-        write_status(core, 0)?;
+        write_status(core, 0).await?;
 
         Ok(())
     }
@@ -119,8 +123,8 @@ pub struct OpenRequest {
 
 impl OpenRequest {
     /// Reads the path from the target.
-    pub fn path(&self, core: &mut dyn CoreInterface) -> Result<String, Error> {
-        self.path.read(core)
+    pub async fn path(&self, core: &mut dyn CoreInterface) -> Result<String, Error> {
+        self.path.read(core).await
     }
 
     /// Reads the raw mode from the target.
@@ -129,12 +133,12 @@ impl OpenRequest {
     }
 
     /// Responds with the opened file handle to the target.
-    pub fn respond_with_handle(
+    pub async fn respond_with_handle(
         &self,
         core: &mut dyn CoreInterface,
         handle: NonZeroU32,
     ) -> Result<(), Error> {
-        write_status(core, handle.get() as i32)
+        write_status(core, handle.get() as i32).await
     }
 }
 
@@ -148,13 +152,13 @@ pub struct CloseRequest {
 
 impl CloseRequest {
     /// Returns the handle of the file to close
-    pub fn file_handle(&self, core: &mut dyn CoreInterface) -> Result<u32, Error> {
-        core.read_word_32(self.pointer as u64)
+    pub async fn file_handle(&self, core: &mut dyn CoreInterface) -> Result<u32, Error> {
+        core.read_word_32(self.pointer as u64).await
     }
 
     /// Responds with success to the target.
-    pub fn success(&self, core: &mut dyn CoreInterface) -> Result<(), Error> {
-        write_status(core, 0)
+    pub async fn success(&self, core: &mut dyn CoreInterface) -> Result<(), Error> {
+        write_status(core, 0).await
     }
 }
 
@@ -163,8 +167,8 @@ impl CloseRequest {
 pub struct WriteConsoleRequest(ZeroTerminatedString);
 impl WriteConsoleRequest {
     /// Reads the string from the target
-    pub fn read(&self, core: &mut crate::Core<'_>) -> Result<String, Error> {
-        self.0.read(core)
+    pub async fn read(&self, core: &mut crate::Core<'_>) -> Result<String, Error> {
+        self.0.read(core).await
     }
 }
 
@@ -182,21 +186,26 @@ impl WriteRequest {
     }
 
     /// Reads the buffer from the target
-    pub fn read(&self, core: &mut crate::Core<'_>) -> Result<Vec<u8>, Error> {
+    pub async fn read(&self, core: &mut crate::Core<'_>) -> Result<Vec<u8>, Error> {
         let mut buf = vec![0u8; self.len as usize];
-        core.read(self.bytes as u64, &mut buf)?;
+        core.read(self.bytes as u64, &mut buf).await?;
         Ok(buf)
     }
 
     /// Writes the status of the semihosting operation to the return register of the target
-    pub fn write_status(&self, core: &mut dyn CoreInterface, status: i32) -> Result<(), Error> {
-        write_status(core, status)
+    pub async fn write_status(
+        &self,
+        core: &mut dyn CoreInterface,
+        status: i32,
+    ) -> Result<(), Error> {
+        write_status(core, status).await
     }
 }
 
-fn write_status(core: &mut dyn CoreInterface, value: i32) -> Result<(), crate::Error> {
+async fn write_status(core: &mut dyn CoreInterface, value: i32) -> Result<(), crate::Error> {
     let reg = core.registers().get_argument_register(0).unwrap();
-    core.write_core_reg(reg.into(), RegisterValue::U32(value as u32))?;
+    core.write_core_reg(reg.into(), RegisterValue::U32(value as u32))
+        .await?;
 
     Ok(())
 }
@@ -213,12 +222,12 @@ pub struct Buffer {
 
 impl Buffer {
     /// Constructs a new buffer, reading the address and length from the target.
-    pub fn from_block_at(
+    pub async fn from_block_at(
         core: &mut dyn CoreInterface,
         block_addr: u32,
     ) -> Result<Self, crate::Error> {
         let mut block: [u32; 2] = [0, 0];
-        core.read_32(block_addr as u64, &mut block)?;
+        core.read_32(block_addr as u64, &mut block).await?;
         Ok(Self {
             buffer_location: block_addr,
             address: block[0],
@@ -227,24 +236,24 @@ impl Buffer {
     }
 
     /// Reads the buffer contents from the target.
-    pub fn read(&self, core: &mut dyn CoreInterface) -> Result<Vec<u8>, Error> {
+    pub async fn read(&self, core: &mut dyn CoreInterface) -> Result<Vec<u8>, Error> {
         let mut buf = vec![0u8; self.len as usize];
-        core.read(self.address as u64, &mut buf[..])?;
+        core.read(self.address as u64, &mut buf[..]).await?;
         Ok(buf)
     }
 
     /// Writes the passed buffer to the target buffer.
     /// The buffer must end with \0. Length written to target will not include \0.
-    pub fn write(&self, core: &mut dyn CoreInterface, buf: &[u8]) -> Result<(), Error> {
+    pub async fn write(&self, core: &mut dyn CoreInterface, buf: &[u8]) -> Result<(), Error> {
         if buf.len() > self.len as usize {
             return Err(Error::Other("buffer not large enough".to_string()));
         }
         if buf.last() != Some(&0) {
             return Err(Error::Other("last byte of buffer must be 0".to_string()));
         }
-        core.write_8(self.address as u64, buf)?;
+        core.write_8(self.address as u64, buf).await?;
         let block: [u32; 2] = [self.address, (buf.len() - 1) as u32];
-        core.write_32(self.buffer_location as u64, &block)?;
+        core.write_32(self.buffer_location as u64, &block).await?;
         Ok(())
     }
 }
@@ -257,18 +266,18 @@ struct ZeroTerminatedString {
 
 impl ZeroTerminatedString {
     /// Reads the buffer contents from the target.
-    pub fn read(&self, core: &mut dyn CoreInterface) -> Result<String, Error> {
+    pub async fn read(&self, core: &mut dyn CoreInterface) -> Result<String, Error> {
         let mut bytes = Vec::new();
 
         if let Some(len) = self.length {
             bytes = vec![0; len as usize];
-            core.read(self.address as u64, &mut bytes)?;
+            core.read(self.address as u64, &mut bytes).await?;
         } else {
             let mut buf = [0; 128];
             let mut from = self.address as u64;
 
             loop {
-                core.read(from, &mut buf)?;
+                core.read(from, &mut buf).await?;
                 if let Some(end) = buf.iter().position(|&x| x == 0) {
                     bytes.extend_from_slice(&buf[..end]);
                     break;
@@ -285,14 +294,16 @@ impl ZeroTerminatedString {
 
 /// Decodes a semihosting syscall without running the requested action.
 /// Only supports SYS_EXIT, SYS_EXIT_EXTENDED and SYS_GET_CMDLINE at the moment
-pub fn decode_semihosting_syscall(
+pub async fn decode_semihosting_syscall(
     core: &mut dyn CoreInterface,
 ) -> Result<SemihostingCommand, Error> {
     let operation: u32 = core
-        .read_core_reg(core.registers().get_argument_register(0).unwrap().id())?
+        .read_core_reg(core.registers().get_argument_register(0).unwrap().id())
+        .await?
         .try_into()?;
     let parameter: u32 = core
-        .read_core_reg(core.registers().get_argument_register(1).unwrap().id())?
+        .read_core_reg(core.registers().get_argument_register(1).unwrap().id())
+        .await?
         .try_into()?;
 
     tracing::debug!("Semihosting found r0={operation:#x} r1={parameter:#x}");
@@ -321,7 +332,7 @@ pub fn decode_semihosting_syscall(
         (SYS_EXIT_EXTENDED, block_address) => {
             // Parameter points to a block of memory containing two 32-bit words.
             let mut buf = [0u32; 2];
-            core.read_32(block_address as u64, &mut buf)?;
+            core.read_32(block_address as u64, &mut buf).await?;
             let reason = buf[0];
             let subcode = buf[1];
             match (reason, subcode) {
@@ -344,19 +355,18 @@ pub fn decode_semihosting_syscall(
         (SYS_GET_CMDLINE, block_address) => {
             // signal to target: status = failure, in case the application does not answer this request
             // -1 is the error value for SYS_GET_CMDLINE
-            write_status(core, -1)?;
-            SemihostingCommand::GetCommandLine(GetCommandLineRequest(Buffer::from_block_at(
-                core,
-                block_address,
-            )?))
+            write_status(core, -1).await?;
+            SemihostingCommand::GetCommandLine(GetCommandLineRequest(
+                Buffer::from_block_at(core, block_address).await?,
+            ))
         }
 
         (SYS_OPEN, pointer) => {
-            let [string, mode, str_len] = param3(core, pointer)?;
+            let [string, mode, str_len] = param3(core, pointer).await?;
 
             // signal to target: status = failure, in case the application does not answer this request
             // -1 is the error value for SYS_OPEN
-            write_status(core, -1)?;
+            write_status(core, -1).await?;
             SemihostingCommand::Open(OpenRequest {
                 path: ZeroTerminatedString {
                     address: string,
@@ -383,7 +393,7 @@ pub fn decode_semihosting_syscall(
         (SYS_CLOSE, pointer) => {
             // signal to target: status = failure, in case the application does not answer this request
             // -1 is the error value for SYS_CLOSE
-            write_status(core, -1)?;
+            write_status(core, -1).await?;
             SemihostingCommand::Close(CloseRequest { pointer })
         }
 
@@ -404,16 +414,16 @@ pub fn decode_semihosting_syscall(
         }
 
         (SYS_WRITE, pointer) => {
-            let [handle, bytes, len] = param3(core, pointer)?;
+            let [handle, bytes, len] = param3(core, pointer).await?;
             // signal to target: status = failure, in case the application does not answer this request
-            write_status(core, -1)?;
+            write_status(core, -1).await?;
             SemihostingCommand::Write(WriteRequest { handle, bytes, len })
         }
 
         _ => {
             // signal to target: status = failure, in case the application does not answer this request
             // It is not guaranteed that a value of -1 will be treated as an error by the target, but it is a common value to indicate an error.
-            write_status(core, -1)?;
+            write_status(core, -1).await?;
 
             tracing::debug!(
                 "Unknown semihosting operation={operation:04x} parameter={parameter:04x}"
@@ -426,8 +436,8 @@ pub fn decode_semihosting_syscall(
     })
 }
 
-fn param3(core: &mut dyn CoreInterface, pointer: u32) -> Result<[u32; 3], crate::Error> {
+async fn param3(core: &mut dyn CoreInterface, pointer: u32) -> Result<[u32; 3], crate::Error> {
     let mut buf = [0; 3];
-    core.read_32(pointer as u64, &mut buf)?;
+    core.read_32(pointer as u64, &mut buf).await?;
     Ok(buf)
 }

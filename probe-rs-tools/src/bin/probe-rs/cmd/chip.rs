@@ -22,7 +22,7 @@ enum Subcommand {
 }
 
 impl Cmd {
-    pub fn run(self) -> anyhow::Result<()> {
+    pub async fn run(self) -> anyhow::Result<()> {
         let output = std::io::stdout().lock();
 
         match self.subcommand {
