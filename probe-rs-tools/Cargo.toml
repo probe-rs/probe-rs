@@ -35,7 +35,7 @@ bytesize = "1"
 capstone = "0.12"
 cargo_metadata = "0.19"
 clap = { version = "4", features = ["derive", "env"] }
-colored = "2"
+colored = "3"
 defmt-decoder = "0.4"
 directories = "5"
 dunce = "1"
