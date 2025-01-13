@@ -58,20 +58,21 @@ pub struct SharedOptions {
         index = 1,
         help = "The path to the ELF file to flash and run.\n\
     If the binary uses `embedded-test` each test will be executed in turn. See `TEST OPTIONS` for more configuration options exclusive to this mode.\n\
-    If the binary does not use `embedded-test` the binary will be flashed and run normally. See `RUN OPTIONS` for more configuration options exclusive to this mode."
+    If the binary does not use `embedded-test` the binary will be flashed and run normally. See `RUN OPTIONS` for more configuration options exclusive to this mode.",
+        env = "PROBE_RS_PATH"
     )]
     pub(crate) path: PathBuf,
 
     /// Always print the stacktrace on ctrl + c.
-    #[clap(long)]
+    #[clap(long, env = "PROBE_RS_ALWAYS_PRINT_STACKTRACE")]
     pub(crate) always_print_stacktrace: bool,
 
     /// Whether to erase the entire chip before downloading
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION", env = "PROBE_RS_CHIP_ERASE")]
     pub(crate) chip_erase: bool,
 
     /// Suppress filename and line number information from the rtt log
-    #[clap(long)]
+    #[clap(long, env = "PROBE_RS_NO_LOCATION")]
     pub(crate) no_location: bool,
 
     #[clap(flatten)]
@@ -80,7 +81,7 @@ pub struct SharedOptions {
     /// The format string to use when printing defmt encoded log messages from the target.
     ///
     /// See https://defmt.ferrous-systems.com/custom-log-output
-    #[clap(long)]
+    #[clap(long, env = "PROBE_RS_LOG_FORMAT")]
     pub(crate) log_format: Option<String>,
 
     /// Scan the memory to find the RTT control block
