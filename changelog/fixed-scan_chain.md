@@ -1,0 +1,1 @@
+`Probe::scan_chain` now returns the scanned JTAG chain, if a scan was performed before.

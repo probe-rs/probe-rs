@@ -16,7 +16,7 @@ use crate::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    probe::{DebugProbe, DebugProbeInfo, JTAGAccess, ProbeFactory},
+    probe::{DebugProbe, DebugProbeInfo, JTAGAccess, JtagChainItem, ProbeFactory},
 };
 use bitvec::{order::Lsb0, vec::BitVec};
 use probe_rs_target::ScanChainElement;
@@ -1036,17 +1036,12 @@ impl DebugProbe for BlackMagicProbe {
     }
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.jtag_state.expected_scan_chain = Some(scan_chain);
+        self.jtag_state.set_expected_scan_chain(scan_chain);
         Ok(())
     }
 
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        if let Some(scan_chain) = &self.jtag_state.expected_scan_chain {
-            Ok(scan_chain)
-        } else {
-            Ok(&[])
-        }
+    fn scan_chain(&self) -> Result<&[JtagChainItem], DebugProbeError> {
+        Ok(self.jtag_state.scan_chain())
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
