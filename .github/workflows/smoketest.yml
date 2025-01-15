@@ -46,7 +46,7 @@ jobs:
           path: target/aarch64-unknown-linux-gnu/release/smoke_tester
 
       - name: Build probe-rs
-        run: cross build --release --target aarch64-unknown-linux-gnu -p probe-rs-tools
+        run: cross build --release --target aarch64-unknown-linux-gnu -p probe-rs-tools --features ci
 
       - uses: actions/upload-artifact@v4
         with:
@@ -90,3 +90,25 @@ jobs:
           if [ -n "$EMBEDDED_TEST_RUNNER" ]; then
             . $EMBEDDED_TEST_RUNNER
           fi
+
+  benchmark:
+    runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
+    strategy:
+      matrix:
+        runner: ["smoke-tester-2"]
+    env:
+      RUN_ID: ${{ github.run_id }}
+
+    needs: [build, test, embedded-test]
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: probe-rs
+
+      - name: Run benchmark
+        run: |
+          chmod +x probe-rs
+          ./probe-rs benchmark --chip stm32f429zitx --probe "0403:6010:FT929K9H" --address 0x20000000 --word-size 32 --iterations 5
+          ./probe-rs benchmark --chip stm32f051r8tx --probe "1366:0101:000778807372" --address 0x20000000 --word-size 32 --iterations 5
+          ./probe-rs benchmark --chip stm32l432kcux --probe "0483:374b:0664FF505271754867105124" --address 0x20000000 --word-size 32 --iterations 5
