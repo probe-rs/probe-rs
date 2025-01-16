@@ -15,7 +15,7 @@ use probe_rs_target::CoreType;
 use crate::architecture::arm::{
     component::TraceSink,
     memory::{ArmMemoryInterface, CoresightComponent},
-    sequences::ArmDebugSequence,
+    sequences::{ArmCoreDebugSequence, ArmDebugSequence},
     ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
 
@@ -71,6 +71,21 @@ mod dbgmcu {
     }
 }
 
+impl ArmCoreDebugSequence for Stm32Armv7 {
+    fn debug_core_stop(
+        &self,
+        memory: &mut dyn ArmMemoryInterface,
+        _core_type: CoreType,
+    ) -> Result<(), ArmError> {
+        let mut saved_cr_value = self.saved_cr_value.lock().unwrap();
+        if let Some(crv) = saved_cr_value.take() {
+            let mut cr = dbgmcu::Control(crv);
+            cr.write(&mut *memory)?;
+        }
+        Ok(())
+    }
+}
+
 impl ArmDebugSequence for Stm32Armv7 {
     fn debug_device_unlock(
         &self,
@@ -87,19 +102,6 @@ impl ArmDebugSequence for Stm32Armv7 {
         cr.enable_stop_debug(true);
         cr.write(&mut *memory)?;
 
-        Ok(())
-    }
-
-    fn debug_core_stop(
-        &self,
-        memory: &mut dyn ArmMemoryInterface,
-        _core_type: CoreType,
-    ) -> Result<(), ArmError> {
-        let mut saved_cr_value = self.saved_cr_value.lock().unwrap();
-        if let Some(crv) = saved_cr_value.take() {
-            let mut cr = dbgmcu::Control(crv);
-            cr.write(&mut *memory)?;
-        }
         Ok(())
     }
 

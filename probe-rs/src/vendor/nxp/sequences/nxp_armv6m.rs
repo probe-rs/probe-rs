@@ -2,7 +2,7 @@
 
 use crate::architecture::arm::armv6m::{Aircr, Demcr, Dhcsr};
 use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::sequences::{ArmCoreDebugSequence, ArmDebugSequence};
 use crate::architecture::arm::ArmError;
 use crate::core::MemoryMappedRegister;
 use std::sync::Arc;
@@ -92,7 +92,7 @@ impl LPC80x {
     }
 }
 
-impl ArmDebugSequence for LPC80x {
+impl ArmCoreDebugSequence for LPC80x {
     fn reset_catch_set(
         &self,
         interface: &mut dyn ArmMemoryInterface,
@@ -169,3 +169,5 @@ impl ArmDebugSequence for LPC80x {
         Ok(())
     }
 }
+
+impl ArmDebugSequence for LPC80x {}

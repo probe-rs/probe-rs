@@ -9,8 +9,8 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        core::registers::cortex_m::XPSR, memory::ArmMemoryInterface, sequences::ArmDebugSequence,
-        ArmError,
+        core::registers::cortex_m::XPSR, memory::ArmMemoryInterface,
+        sequences::ArmCoreDebugSequence, ArmError,
     },
     core::{
         Architecture, CoreInformation, CoreInterface, CoreRegisters, CoreStatus, HaltReason,
@@ -591,14 +591,14 @@ pub struct Armv7m<'probe> {
 
     state: &'probe mut CortexMState,
 
-    sequence: Arc<dyn ArmDebugSequence>,
+    sequence: Arc<dyn ArmCoreDebugSequence>,
 }
 
 impl<'probe> Armv7m<'probe> {
     pub(crate) fn new(
         mut memory: Box<dyn ArmMemoryInterface + 'probe>,
         state: &'probe mut CortexMState,
-        sequence: Arc<dyn ArmDebugSequence>,
+        sequence: Arc<dyn ArmCoreDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state

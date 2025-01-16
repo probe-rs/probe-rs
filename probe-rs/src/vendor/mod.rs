@@ -1,6 +1,6 @@
 //! Vendor support modules.
 
-use std::{ops::Deref, sync::LazyLock};
+use std::{collections::BTreeMap, ops::Deref, sync::LazyLock};
 
 use parking_lot::{RwLock, RwLockReadGuard};
 use probe_rs_target::Chip;
@@ -16,7 +16,7 @@ use crate::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    config::{registry, ChipInfo, DebugSequence},
+    config::{registry, ChipInfo, CoreDebugSequence, DebugSequence},
     probe::{DebugProbeError, Probe},
     Error, Target,
 };
@@ -300,4 +300,11 @@ pub(crate) fn auto_determine_target(mut probe: Probe) -> Result<(Probe, Option<T
     probe.detach()?;
 
     Ok((probe, found_target))
+}
+
+pub(crate) fn try_create_core_debug_sequence(
+    _chip: &Chip,
+) -> Option<BTreeMap<usize, CoreDebugSequence>> {
+    // TODO: Determine the sequence based on the chip.
+    None
 }

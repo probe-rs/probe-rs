@@ -1,9 +1,10 @@
 use super::{Core, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
+use crate::architecture::arm::sequences::ArmCoreDebugSequence;
 use crate::flashing::FlashLoader;
 use crate::{
     architecture::{
         arm::{
-            sequences::{ArmDebugSequence, DefaultArmSequence},
+            sequences::{ArmDebugSequence, DefaultArmCoreSequence, DefaultArmSequence},
             DpAddress, FullyQualifiedApAddress,
         },
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
@@ -14,6 +15,7 @@ use crate::{
 use probe_rs_target::{
     Architecture, Chip, ChipFamily, Jtag, MemoryAccess, MemoryRange as _, NvmRegion,
 };
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -31,6 +33,9 @@ pub struct Target {
     pub(crate) source: TargetDescriptionSource,
     /// Debug sequences for the given target.
     pub debug_sequence: DebugSequence,
+
+    /// Core specific debug sequence
+    core_debug_sequences: BTreeMap<usize, CoreDebugSequence>,
     /// The regions of memory to scan to try to find an RTT header.
     ///
     /// Each region must be enclosed in exactly one RAM region from
@@ -118,6 +123,26 @@ impl Target {
             }
         });
 
+        let core_debug_sequences = crate::vendor::try_create_core_debug_sequence(chip)
+            .unwrap_or_else(|| {
+                let mut core_debug_sequences = BTreeMap::new();
+
+                for (i, core) in chip.cores.iter().enumerate() {
+                    let core_debug_sequence = match core.core_type.architecture() {
+                        Architecture::Arm => {
+                            CoreDebugSequence::Arm(DefaultArmCoreSequence::create())
+                        }
+                        Architecture::Riscv => CoreDebugSequence::Riscv(()),
+                        Architecture::Xtensa => CoreDebugSequence::Xtensa(()),
+                    };
+                    core_debug_sequences.insert(i, core_debug_sequence);
+                }
+
+                core_debug_sequences
+            });
+
+        // TODO: Get core specific debug sequences
+
         tracing::info!("Using sequence {:?}", debug_sequence);
 
         let rtt_scan_regions = match &chip.rtt_scan_ranges {
@@ -132,6 +157,7 @@ impl Target {
             source: family.source.clone(),
             memory_map,
             debug_sequence,
+            core_debug_sequences,
             rtt_scan_regions,
             jtag: chip.jtag.clone(),
             default_format: chip.default_binary_format.clone(),
@@ -166,6 +192,12 @@ impl Target {
     /// Source description of this target.
     pub fn source(&self) -> &TargetDescriptionSource {
         &self.source
+    }
+
+    /// Get the debug sequence for a specific core
+    pub fn core_debug_sequence(&self, core_index: usize) -> CoreDebugSequence {
+        // TODO: Use a default sequence?
+        self.core_debug_sequences.get(&core_index).unwrap().clone()
     }
 
     /// Create a [FlashLoader] for this target, which can be used
@@ -254,7 +286,27 @@ impl From<Target> for TargetSelector {
 }
 
 /// This is the type to denote a general debug sequence.
-/// It can differentiate between ARM and RISC-V for now.
+#[derive(Clone, Debug)]
+pub enum CoreDebugSequence {
+    /// An ARM debug sequence.
+    Arm(Arc<dyn ArmCoreDebugSequence>),
+    /// A RISC-V debug sequence.
+    Riscv(()),
+    /// An Xtensa debug sequence.
+    Xtensa(()),
+}
+
+impl CoreDebugSequence {
+    /// Try to get the ARM debug sequence.
+    pub fn arm(&self) -> Option<Arc<dyn ArmCoreDebugSequence>> {
+        match self {
+            CoreDebugSequence::Arm(arm) => Some(arm.clone()),
+            _ => None,
+        }
+    }
+}
+
+/// This is the type to denote a general debug sequence.
 #[derive(Clone, Debug)]
 pub enum DebugSequence {
     /// An ARM debug sequence.

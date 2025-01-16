@@ -16,7 +16,7 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        core::armv7a_debug_regs::*, memory::ArmMemoryInterface, sequences::ArmDebugSequence,
+        core::armv7a_debug_regs::*, memory::ArmMemoryInterface, sequences::ArmCoreDebugSequence,
         ArmError,
     },
     core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
@@ -55,7 +55,7 @@ pub struct Armv7a<'probe> {
 
     base_address: u64,
 
-    sequence: Arc<dyn ArmDebugSequence>,
+    sequence: Arc<dyn ArmCoreDebugSequence>,
 
     num_breakpoints: Option<u32>,
 
@@ -67,7 +67,7 @@ impl<'probe> Armv7a<'probe> {
         mut memory: Box<dyn ArmMemoryInterface + 'probe>,
         state: &'probe mut CortexAState,
         base_address: u64,
-        sequence: Arc<dyn ArmDebugSequence>,
+        sequence: Arc<dyn ArmCoreDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -996,7 +996,7 @@ mod test {
     use crate::{
         architecture::arm::{
             ap::memory_ap::MemoryAp, communication_interface::SwdSequence,
-            sequences::DefaultArmSequence,
+            sequences::DefaultArmCoreSequence,
         },
         probe::DebugProbeError,
     };
@@ -1370,7 +1370,7 @@ mod test {
             mock_mem,
             &mut CortexAState::new(),
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
     }
@@ -1405,7 +1405,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1444,7 +1444,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1478,7 +1478,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1511,7 +1511,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1544,7 +1544,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1583,7 +1583,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1622,7 +1622,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1675,7 +1675,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1720,7 +1720,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1748,7 +1748,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1815,7 +1815,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1863,7 +1863,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1897,7 +1897,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1927,7 +1927,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 
@@ -1958,7 +1958,7 @@ mod test {
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
-            DefaultArmSequence::create(),
+            DefaultArmCoreSequence::create(),
         )
         .unwrap();
 

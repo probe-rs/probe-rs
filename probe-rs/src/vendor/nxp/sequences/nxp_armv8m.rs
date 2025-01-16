@@ -14,7 +14,7 @@ use crate::{
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
         memory::ArmMemoryInterface,
-        sequences::ArmDebugSequence,
+        sequences::{ArmCoreDebugSequence, ArmDebugSequence},
         ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, DpAddress,
         FullyQualifiedApAddress, Pins,
     },
@@ -97,27 +97,7 @@ impl LPC55Sxx {
     }
 }
 
-impl ArmDebugSequence for LPC55Sxx {
-    fn debug_port_start(
-        &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
-        dp: DpAddress,
-    ) -> Result<(), ArmError> {
-        tracing::info!("debug_port_start");
-
-        let _powered_down = self::debug_port_start(interface, dp, Select(0))?;
-
-        // Per 51.6.2 and 51.6.3 there is no need to issue a debug mailbox
-        // command if we're attaching to a valid target. In fact, running
-        // the debug mailbox _prevents_ this from attaching to a running
-        // target since the debug mailbox is a separate code path.
-        // if _powered_down {
-        //     enable_debug_mailbox(interface, dp)?;
-        // }
-
-        Ok(())
-    }
-
+impl ArmCoreDebugSequence for LPC55Sxx {
     fn reset_catch_set(
         &self,
         interface: &mut dyn ArmMemoryInterface,
@@ -254,6 +234,28 @@ impl ArmDebugSequence for LPC55Sxx {
                 return wait_for_stop_after_reset(interface);
             }
         }
+
+        Ok(())
+    }
+}
+
+impl ArmDebugSequence for LPC55Sxx {
+    fn debug_port_start(
+        &self,
+        interface: &mut ArmCommunicationInterface<Initialized>,
+        dp: DpAddress,
+    ) -> Result<(), ArmError> {
+        tracing::info!("debug_port_start");
+
+        let _powered_down = self::debug_port_start(interface, dp, Select(0))?;
+
+        // Per 51.6.2 and 51.6.3 there is no need to issue a debug mailbox
+        // command if we're attaching to a valid target. In fact, running
+        // the debug mailbox _prevents_ this from attaching to a running
+        // target since the debug mailbox is a separate code path.
+        // if _powered_down {
+        //     enable_debug_mailbox(interface, dp)?;
+        // }
 
         Ok(())
     }
@@ -581,6 +583,58 @@ impl MIMXRT5xxS {
     }
 }
 
+impl ArmCoreDebugSequence for MIMXRT5xxS {
+    fn reset_system(
+        &self,
+        probe: &mut dyn ArmMemoryInterface,
+        core_type: probe_rs_target::CoreType,
+        _debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        self.check_core_type(core_type)?;
+
+        tracing::trace!("MIMXRT5xxS reset system");
+
+        // Halt the core
+        let mut dhcsr = Dhcsr(0);
+        dhcsr.set_c_halt(true);
+        dhcsr.set_c_debugen(true);
+        dhcsr.enable_write();
+        probe.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+        probe.flush()?;
+
+        // Clear VECTOR CATCH and set TRCENA
+        let mut demcr: Demcr = probe.read_word_32(Demcr::get_mmio_address())?.into();
+        demcr.set_trcena(true);
+        demcr.set_vc_corereset(false);
+        probe.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+        probe.flush()?;
+
+        // Reset the flash peripheral on FlexSPI0, if any.
+        self.reset_flash(probe)?;
+
+        // Set watch point at SYSTEM_STICK_CALIB access
+        probe.write_word_32(Self::DWT_COMP0, Self::SYSTEM_STICK_CALIB_ADDR)?;
+        probe.write_word_32(Self::DWT_FUNCTION0, 0x00000814)?;
+        probe.flush()?;
+        tracing::trace!("set data watchpoint for MIMXRT5xxS reset");
+
+        // Execute SYSRESETREQ via AIRCR
+        let mut aircr = Aircr(0);
+        aircr.set_sysresetreq(true);
+        aircr.vectkey();
+        // (we need to ignore errors here because the reset will make this
+        // operation seem to have failed.)
+        probe
+            .write_word_32(Aircr::get_mmio_address(), aircr.into())
+            .ok();
+        probe.flush().ok();
+
+        tracing::trace!("MIMXRT5xxS reset system was successful; waiting for halt after reset");
+
+        self.wait_for_stop_after_reset(probe)
+    }
+}
+
 impl ArmDebugSequence for MIMXRT5xxS {
     fn debug_port_start(
         &self,
@@ -636,56 +690,6 @@ impl ArmDebugSequence for MIMXRT5xxS {
         tracing::trace!("MIMXRT5xxS debug port start was successful");
 
         Ok(())
-    }
-
-    fn reset_system(
-        &self,
-        probe: &mut dyn ArmMemoryInterface,
-        core_type: probe_rs_target::CoreType,
-        _debug_base: Option<u64>,
-    ) -> Result<(), ArmError> {
-        self.check_core_type(core_type)?;
-
-        tracing::trace!("MIMXRT5xxS reset system");
-
-        // Halt the core
-        let mut dhcsr = Dhcsr(0);
-        dhcsr.set_c_halt(true);
-        dhcsr.set_c_debugen(true);
-        dhcsr.enable_write();
-        probe.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        probe.flush()?;
-
-        // Clear VECTOR CATCH and set TRCENA
-        let mut demcr: Demcr = probe.read_word_32(Demcr::get_mmio_address())?.into();
-        demcr.set_trcena(true);
-        demcr.set_vc_corereset(false);
-        probe.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
-        probe.flush()?;
-
-        // Reset the flash peripheral on FlexSPI0, if any.
-        self.reset_flash(probe)?;
-
-        // Set watch point at SYSTEM_STICK_CALIB access
-        probe.write_word_32(Self::DWT_COMP0, Self::SYSTEM_STICK_CALIB_ADDR)?;
-        probe.write_word_32(Self::DWT_FUNCTION0, 0x00000814)?;
-        probe.flush()?;
-        tracing::trace!("set data watchpoint for MIMXRT5xxS reset");
-
-        // Execute SYSRESETREQ via AIRCR
-        let mut aircr = Aircr(0);
-        aircr.set_sysresetreq(true);
-        aircr.vectkey();
-        // (we need to ignore errors here because the reset will make this
-        // operation seem to have failed.)
-        probe
-            .write_word_32(Aircr::get_mmio_address(), aircr.into())
-            .ok();
-        probe.flush().ok();
-
-        tracing::trace!("MIMXRT5xxS reset system was successful; waiting for halt after reset");
-
-        self.wait_for_stop_after_reset(probe)
     }
 
     fn reset_hardware_deassert(
@@ -773,7 +777,7 @@ impl MIMXRT118x {
     }
 }
 
-impl ArmDebugSequence for MIMXRT118x {
+impl ArmCoreDebugSequence for MIMXRT118x {
     fn reset_system(
         &self,
         interface: &mut dyn ArmMemoryInterface,
@@ -819,7 +823,9 @@ impl ArmDebugSequence for MIMXRT118x {
         tracing::error!("System reset timed out");
         Err(ArmError::Timeout)
     }
+}
 
+impl ArmDebugSequence for MIMXRT118x {
     fn allowed_access_ports(&self) -> Vec<u8> {
         // AP5 locks the whole DP if you try to read its IDR.
         vec![0, 1, 3, 4, 6]

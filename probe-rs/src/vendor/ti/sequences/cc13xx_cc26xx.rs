@@ -6,7 +6,9 @@ use crate::architecture::arm::ap::AccessPortType;
 use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::communication_interface::DapProbe;
 use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
+use crate::architecture::arm::sequences::{
+    ArmCoreDebugSequence, ArmDebugSequence, ArmDebugSequenceError,
+};
 use crate::architecture::arm::{ArmError, DpAddress};
 use crate::probe::{DebugProbeError, WireProtocol};
 use crate::MemoryMappedRegister;
@@ -342,7 +344,7 @@ fn reset_chip(chip: &str, probe: &mut dyn ArmMemoryInterface) {
     }
 }
 
-impl ArmDebugSequence for CC13xxCC26xx {
+impl ArmCoreDebugSequence for CC13xxCC26xx {
     fn reset_system(
         &self,
         probe: &mut dyn ArmMemoryInterface,
@@ -381,7 +383,9 @@ impl ArmDebugSequence for CC13xxCC26xx {
 
         Ok(())
     }
+}
 
+impl ArmDebugSequence for CC13xxCC26xx {
     fn debug_port_setup(
         &self,
         interface: &mut dyn DapProbe,

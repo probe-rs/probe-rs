@@ -2,7 +2,7 @@
 
 use super::{registers::cortex_m::*, CortexMState, Dfsr};
 use crate::{
-    architecture::arm::{memory::ArmMemoryInterface, sequences::ArmDebugSequence, ArmError},
+    architecture::arm::{memory::ArmMemoryInterface, sequences::ArmCoreDebugSequence, ArmError},
     core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
     error::Error,
     memory::{valid_32bit_address, CoreMemoryInterface},
@@ -408,14 +408,14 @@ pub(crate) struct Armv6m<'probe> {
 
     state: &'probe mut CortexMState,
 
-    sequence: Arc<dyn ArmDebugSequence>,
+    sequence: Arc<dyn ArmCoreDebugSequence>,
 }
 
 impl<'probe> Armv6m<'probe> {
     pub(crate) fn new(
         mut memory: Box<dyn ArmMemoryInterface + 'probe>,
         state: &'probe mut CortexMState,
-        sequence: Arc<dyn ArmDebugSequence>,
+        sequence: Arc<dyn ArmCoreDebugSequence>,
     ) -> Result<Self, ArmError> {
         if !state.initialized() {
             // determine current state
