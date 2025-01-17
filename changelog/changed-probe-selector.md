@@ -1,1 +1,0 @@
-probe-rs now allows selecting debug probes that have no serial number by using `VID:PID:`
