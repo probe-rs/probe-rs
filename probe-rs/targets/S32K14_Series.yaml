@@ -1,0 +1,6482 @@
+name: S32K14 Series
+manufacturer:
+  id: 0x15
+  cc: 0x0
+generated_from_pack: true
+pack_file_release: 1.5.1
+variants:
+- name: S32K142HAxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142HAxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142HFxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142HFxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142HRxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142HRxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142HSxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142HSxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142MAxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142MAxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142MFxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142MFxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142MRxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142MRxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142MSxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142MSxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142UAxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142UAxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142UFxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142UFxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142URxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142URxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142USxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142USxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142WAxxxLFx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142WAxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142WFxxxLFx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K142WFxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k142_p256_2kb_sec
+- name: S32K144HAxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HAxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HAxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HFxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HFxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HFxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HNxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HNxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HNxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HRxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HRxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HRxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HSxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HSxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144HSxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MAxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MAxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MAxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MFxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MFxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MFxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MNxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MNxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MNxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MRxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MRxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MRxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MSxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MSxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144MSxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144UAxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144UAxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144UAxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144UFxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144UFxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144UFxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144UNxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144UNxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144UNxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144URxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144URxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144URxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144USxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144USxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144USxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144WAxxxLFx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144WAxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144WFxxxLFx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K144WFxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k144_p512_4kb_sec
+- name: S32K146HAxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HAxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HAxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HAxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HFxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HFxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HFxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HFxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HNxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HNxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HNxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HNxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HRxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HRxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HRxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HRxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HSxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HSxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HSxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146HSxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MAxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MAxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MAxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MAxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MFxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MFxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MFxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MFxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MNxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MNxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MNxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MNxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MRxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MRxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MRxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MRxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MSxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MSxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MSxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146MSxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UAxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UAxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UAxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UAxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UFxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UFxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UFxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UFxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UNxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UNxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UNxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146UNxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146URxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146URxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146URxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146URxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146USxxxLHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146USxxxLLx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146USxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K146USxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k146_p1024_4kb_sec
+- name: S32K148HAxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HAxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HAxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HExxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HExxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HExxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HFxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HFxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HFxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HJxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HJxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HJxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HNxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HNxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HNxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HRxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HRxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HRxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HSxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HSxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148HSxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UAxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UAxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UAxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UExxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UExxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UExxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UFxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UFxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UFxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UJxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UJxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UJxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UNxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UNxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148UNxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148URxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148URxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148URxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148USxxxLQx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148USxxxLUx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+- name: S32K148USxxxMHx
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x180000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: IROM2
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
+  flash_algorithms:
+  - s32k148_p1536_4kb_sec
+  - s32k148_d512_4kb_sec
+flash_algorithms:
+- name: s32k142_p256_2kb_sec
+  description: S32K142 256KB PFlash (2KB Sector)
+  default: true
+  instructions: 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
+  pc_init: 0x1
+  pc_uninit: 0x73
+  pc_program_page: 0xd7
+  pc_erase_sector: 0xbd
+  pc_erase_all: 0x91
+  data_section_offset: 0x8f0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x800
+      address: 0x0
+- name: s32k144_p512_4kb_sec
+  description: S32K144 512KB PFlash (4KB Sector)
+  default: true
+  instructions: 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
+  pc_init: 0x1
+  pc_uninit: 0x73
+  pc_program_page: 0xd7
+  pc_erase_sector: 0xbd
+  pc_erase_all: 0x91
+  data_section_offset: 0x8f4
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x80000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: s32k146_p1024_4kb_sec
+  description: S32K146 1024KB PFlash (4KB Sector)
+  default: true
+  instructions: ELU8SQpo/yACQwpgSmgCQ0pgimgCQ4pgymgCQ8pgN0k1SkpgNkqKYDZKCmA2Sf4iSUQIcEhwiHDIcApxfyJKcYhxyHExSAAhSEQBYAEhCQVBYAkCgWAFIYkGwWAAIclDAWEBRhQxAPBT+AAoANABIBC9ACBwR4qyAUYkSBC1SEQAIxQwAPAa+QAoANABIBC9HkgQtUhEFDAA8Mr4ACgL0RpIGUuBIUhES0QIIskAFDAA8HT5ACgA0AEgEL0BRhNIELUBIkhEEgMUMADwvvgAKADQASAQvRNGyR3KCAFGC0gQtUhE0gAUMADwWPkAKADQASAQvQAUAEAgxSjZACAFQP//AAAgIQAABAAAAAwAAABwtQxGAWghYEFoYWCBaKFgwWghYQBpoGH7SAAlwGgABAEPIEYA8Kj7ASHgaAkEiEIB0ggRAOAAIGBhKEZwvXC18kwGRiB4ACWAIQhDIHAD4LFpSBwA0IhHIHgABvjVIHhxIQhCANABJShGcL0QtedJzHyLfEp8CXwkBhsEHEMSAhRDDEMEYBC9cLUBAgoOBQ4BBMSy3UgAIwkOxXSCdEF0BHTGfK5CAdABJQDgACWGfJZCAdABIgDgACJGfI5CAdABIQDgACEAfKBCAdABIADgACAVQw1DBUMA0AEjGEZwvcpJiXiKB5IPAioF0IkJAikA0AQhAXBwRwEh++cwtMNKcCMTcEUj03HATAAiCDQTGY1cUhzSsh1wCCr40zC8jue6SXAiCnBEIspxiOe3SnAjE3BAI9NxkXGB5/i1DEYHRrloACAVRoxCCdP6aFIYokIF2QEi0gVRGgwZFhMN4DlojEIH03poUhiiQgPZZBoBJjYDAuABIAAlLkZxHg1CENAEIA7goUhwIQFwCSHBcSEMgXEhCkFxBHE4Rv/3UP+tG6QZAC0B0AAo7ND4vTC0hGihQgjTxWgtGY1CBNkBJe0FLBthGAfgBGihQhTTRWgtGY1CENkJG41McCUlcAEl5XENDKVxDQplcSFxEQrhcqJyY3IwvCPnMLwBIHBHg0gBeAkGBtRBeBAiEUNBcAF4CQb81XBHfUkAIEp40gYL1Qp4gCMaQwpwAeBAHICyCngSBvrVICj403BHELUURnNKcCMTcEEj03GRcf/3+f4AKAnRbkoAIQgyixgbeGNUSRzJsggp+NMQvTC0aEtwJBxwQyTccZlxZUwAIQg0CxlVXEkcybIdcAgp+NMwvNjm+LUHRgxGACAeRhVGUQcB0AQg+L25aIxCCNP6aFIYokIE2QEi0gVRGgwZJOA5aIxCBdN6aFIYokIB2WQaG+ABIBngT0hwIQFwByHBcSEMgXEhCkFxBHFKSwAgCDPBGDJcQBzAsgpwCCj40zhG//eh/gg0CD0INgAty9AAKOHQ+L3/tRZGACCBsB9GkgcC0AQgBbDwvQGalWipQgjT0mhSGYpCBNkBItIFUhtUGDTgAZoVaKlCBdNSaFIZikIB2UwbKuABIOTnLkhwIQFwAiHBcSEMgXEhCkFxBHELmcFyKEsAIAwzwRg6XEAcwLIKcAQo+NMBmP/3Xf4AKArQASHJBYxCAtNiGVIaAOBiGQqZBCYKYCQdNh8/HQAu1NG45/i1BkYAIBRGAJANRjJoCRkfRqpCA9hzaNIYikIJ0rJoqkID2PNo0hiKQgLSASEAJACRACE5YA3gKXg6aEAcURhkHm0cOWAKKATTsGlBHADQgEcAIAAs79EAmPi9AABAgARAAAACQHC180tceKQHAdQEIHC9hGihQgjTxWgtGY1CBNkBJe0FLBthGAfgBGihQhPTRWgtGY1CD9kJG3AkHHALJNxxDAyccQwKXHEZcREK2XKacv/37v1wvQEgcL0QtYJokUII08NomxiLQgTZASPbBZoaURgH4AJokUIR00NomxiLQg3ZiRrTSnAjE3AII9NxCwyTcQsKU3ERcf/3yv0QvQEgEL0QtYNomUII08Ro5BiMQgTZASTkBeMaWRgH4ANomUIS00Ro5BiMQg7ZyRrBS3AkHHAAJNxxDAyccQwKXHEZcdpy//el/RC9ASAQvblKAUZTeAAg2wcC0JJ9CnBwRwQgcEezSgFGU3gAINsHBdCRdZJ9ikIA0AEgcEcEIHBHcLUORqtNcCEcRilwgSHpca5xVS4C0REK6XKqcv/3ef13LhHRACgP0QAsDtCpeiFw6XsJAqGAqnsRQ6GAaXoJAmGAKnoRQ2GAcL0BIHC98LWYTwVGfHgAIOQHQtAsaYxCBNhtaWQZjRisQjXSASAz4IgHA9EEKgHTBCQG4MgHA9ECKgHTAiQA4AEkACABLATQAiwF0AQsCdAT4B14DXAQ4F14HngtAi5DDoAK4N14LgadeC0ENUNeeDYCLkMdeDVDDWB9eO0H/NA9eHEmNUIA0AEgCRkSGxsZACoB0AAox9DwvQQg8L1wtXJMcCYEnSZwgCbmcaNxZXHhcqJy//cJ/XC9AkbSaAAgACoD0GlK0n0KcHBHBCBwRwJG0mgAIAAqBtBkStF10n2KQgDQASBwRwQgcEf4tR1GXkxwIwefBp4jcEYj43ELDKNxCwpjcSFx4nL/IaFyYXIhcv/32vwAKAXRoXopcGF6MXAhejlws+b3tYaw/yBpRghyCHMIdASuFUYDrwGWAqsIIgCXB5kGmP/30P8EAE3RaEYAegAoBtABKAnQAigQ0GgcIdAw4AKrASIAlwGWA+ACqwIiAJcBlgeZBpj/97b/BEZoHBDQACwe0WhGAHqoRwAoGdABlgKrCCIAlweZBpj/96T/BEYP4GhGAHoCKAvRBpgBIkBoEgNBCAeYCRgGmP/3Af0EAOXQaEYAegMoDdFpHALQqEcAKAjQAZYCqwQiAJcHmQaY//eB/wRGIEYJsPC9ELUdSXAiCnBJIspx//dk/BC9MLUBIxsEACkh0AAi0kMBKR/QAikd0FwQAykc0AAlBCkb0AUpFdAGKRPQBykR0AgpE9AJKQ3QCikR0AspC9AMKQXQDSkF0A4pA9APKQDRw2AwvcJgML3EYDC9xWAwvQEhiQPBYDC9AAAAAAJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x73
+  pc_program_page: 0xd7
+  pc_erase_sector: 0xbd
+  pc_erase_all: 0x91
+  data_section_offset: 0x8f4
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x100000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: s32k148_p1536_4kb_sec
+  description: S32K148 1,5MB PFlash (4KB Sector)
+  default: true
+  instructions: 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
+  pc_init: 0x1
+  pc_uninit: 0x75
+  pc_program_page: 0xd9
+  pc_erase_sector: 0xbf
+  pc_erase_all: 0x93
+  data_section_offset: 0x8e4
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x180000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: s32k148_d512_4kb_sec
+  description: S32K148 512KB DFlash (4KB Sector)
+  default: true
+  instructions: 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
+  pc_init: 0x1
+  pc_uninit: 0x75
+  pc_program_page: 0xd9
+  pc_erase_sector: 0xbf
+  pc_erase_all: 0x93
+  data_section_offset: 0x8e4
+  flash_properties:
+    address_range:
+      start: 0x10000000
+      end: 0x10080000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
