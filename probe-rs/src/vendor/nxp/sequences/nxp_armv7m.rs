@@ -416,6 +416,7 @@ impl ArmDebugSequence for MIMXRT117x {
     ) -> Result<(), ArmError> {
         // OK to perform before the reset, since the configuration
         // persists beyond the reset.
+        self.halt(probe, true)?;
         self.use_boot_fuses_for_flexram(probe)?;
 
         // Cache debug system state that may be lost across the reset.
