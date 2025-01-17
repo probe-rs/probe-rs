@@ -8,6 +8,8 @@ repository.workspace = true
 readme.workspace = true
 license.workspace = true
 
+description = "Debugging functionlity built on top of the probe-rs crate"
+
 [dependencies]
 bitfield = "0.17.0"
 gimli = "0.31.1"
