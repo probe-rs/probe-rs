@@ -22,6 +22,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142HAxxxLLx
@@ -41,6 +55,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142HFxxxLHx
@@ -60,6 +88,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142HFxxxLLx
@@ -79,6 +121,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142HRxxxLHx
@@ -98,6 +154,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142HRxxxLLx
@@ -117,6 +187,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142HSxxxLHx
@@ -136,6 +220,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142HSxxxLLx
@@ -155,6 +253,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142MAxxxLHx
@@ -174,6 +286,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142MAxxxLLx
@@ -193,6 +319,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142MFxxxLHx
@@ -212,6 +352,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142MFxxxLLx
@@ -231,6 +385,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142MRxxxLHx
@@ -250,6 +418,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142MRxxxLLx
@@ -269,6 +451,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142MSxxxLHx
@@ -288,6 +484,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142MSxxxLLx
@@ -307,6 +517,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142UAxxxLHx
@@ -326,6 +550,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142UAxxxLLx
@@ -345,6 +583,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142UFxxxLHx
@@ -364,6 +616,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142UFxxxLLx
@@ -383,6 +649,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142URxxxLHx
@@ -402,6 +682,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142URxxxLLx
@@ -421,6 +715,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142USxxxLHx
@@ -440,6 +748,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142USxxxLLx
@@ -459,6 +781,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142WAxxxLFx
@@ -478,6 +814,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142WAxxxLHx
@@ -497,6 +847,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142WFxxxLFx
@@ -516,6 +880,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K142WFxxxLHx
@@ -535,6 +913,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fffc000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
   flash_algorithms:
   - s32k142_p256_2kb_sec
 - name: S32K144HAxxxLHx
@@ -554,6 +946,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HAxxxLLx
@@ -573,6 +979,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HAxxxMHx
@@ -592,6 +1012,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HFxxxLHx
@@ -611,6 +1045,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HFxxxLLx
@@ -630,6 +1078,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HFxxxMHx
@@ -649,6 +1111,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HNxxxLHx
@@ -668,6 +1144,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HNxxxLLx
@@ -687,6 +1177,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HNxxxMHx
@@ -706,6 +1210,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HRxxxLHx
@@ -725,6 +1243,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HRxxxLLx
@@ -744,6 +1276,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HRxxxMHx
@@ -763,6 +1309,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HSxxxLHx
@@ -782,6 +1342,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HSxxxLLx
@@ -801,6 +1375,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144HSxxxMHx
@@ -820,6 +1408,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MAxxxLHx
@@ -839,6 +1441,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MAxxxLLx
@@ -858,6 +1474,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MAxxxMHx
@@ -877,6 +1507,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MFxxxLHx
@@ -896,6 +1540,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MFxxxLLx
@@ -915,6 +1573,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MFxxxMHx
@@ -934,6 +1606,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MNxxxLHx
@@ -953,6 +1639,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MNxxxLLx
@@ -972,6 +1672,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MNxxxMHx
@@ -991,6 +1705,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MRxxxLHx
@@ -1010,6 +1738,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MRxxxLLx
@@ -1029,6 +1771,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MRxxxMHx
@@ -1048,6 +1804,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MSxxxLHx
@@ -1067,6 +1837,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MSxxxLLx
@@ -1086,6 +1870,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144MSxxxMHx
@@ -1105,6 +1903,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144UAxxxLHx
@@ -1124,6 +1936,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144UAxxxLLx
@@ -1143,6 +1969,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144UAxxxMHx
@@ -1162,6 +2002,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144UFxxxLHx
@@ -1181,6 +2035,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144UFxxxLLx
@@ -1200,6 +2068,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144UFxxxMHx
@@ -1219,6 +2101,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144UNxxxLHx
@@ -1238,6 +2134,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144UNxxxLLx
@@ -1257,6 +2167,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144UNxxxMHx
@@ -1276,6 +2200,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144URxxxLHx
@@ -1295,6 +2233,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144URxxxLLx
@@ -1314,6 +2266,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144URxxxMHx
@@ -1333,6 +2299,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144USxxxLHx
@@ -1352,6 +2332,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144USxxxLLx
@@ -1371,6 +2365,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144USxxxMHx
@@ -1390,6 +2398,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144WAxxxLFx
@@ -1409,6 +2431,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144WAxxxLHx
@@ -1428,6 +2464,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144WFxxxLFx
@@ -1447,6 +2497,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K144WFxxxLHx
@@ -1466,6 +2530,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff8000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20007000
+    cores:
+    - main
   flash_algorithms:
   - s32k144_p512_4kb_sec
 - name: S32K146HAxxxLHx
@@ -1485,6 +2563,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HAxxxLLx
@@ -1504,6 +2596,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HAxxxLQx
@@ -1523,6 +2629,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HAxxxMHx
@@ -1542,6 +2662,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HFxxxLHx
@@ -1561,6 +2695,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HFxxxLLx
@@ -1580,6 +2728,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HFxxxLQx
@@ -1599,6 +2761,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HFxxxMHx
@@ -1618,6 +2794,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HNxxxLHx
@@ -1637,6 +2827,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HNxxxLLx
@@ -1656,6 +2860,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HNxxxLQx
@@ -1675,6 +2893,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HNxxxMHx
@@ -1694,6 +2926,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HRxxxLHx
@@ -1713,6 +2959,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HRxxxLLx
@@ -1732,6 +2992,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HRxxxLQx
@@ -1751,6 +3025,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HRxxxMHx
@@ -1770,6 +3058,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HSxxxLHx
@@ -1789,6 +3091,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HSxxxLLx
@@ -1808,6 +3124,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HSxxxLQx
@@ -1827,6 +3157,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146HSxxxMHx
@@ -1846,6 +3190,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MAxxxLHx
@@ -1865,6 +3223,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MAxxxLLx
@@ -1884,6 +3256,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MAxxxLQx
@@ -1903,6 +3289,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MAxxxMHx
@@ -1922,6 +3322,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MFxxxLHx
@@ -1941,6 +3355,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MFxxxLLx
@@ -1960,6 +3388,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MFxxxLQx
@@ -1979,6 +3421,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MFxxxMHx
@@ -1998,6 +3454,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MNxxxLHx
@@ -2017,6 +3487,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MNxxxLLx
@@ -2036,6 +3520,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MNxxxLQx
@@ -2055,6 +3553,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MNxxxMHx
@@ -2074,6 +3586,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MRxxxLHx
@@ -2093,6 +3619,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MRxxxLLx
@@ -2112,6 +3652,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MRxxxLQx
@@ -2131,6 +3685,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MRxxxMHx
@@ -2150,6 +3718,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MSxxxLHx
@@ -2169,6 +3751,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MSxxxLLx
@@ -2188,6 +3784,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MSxxxLQx
@@ -2207,6 +3817,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146MSxxxMHx
@@ -2226,6 +3850,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UAxxxLHx
@@ -2245,6 +3883,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UAxxxLLx
@@ -2264,6 +3916,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UAxxxLQx
@@ -2283,6 +3949,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UAxxxMHx
@@ -2302,6 +3982,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UFxxxLHx
@@ -2321,6 +4015,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UFxxxLLx
@@ -2340,6 +4048,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UFxxxLQx
@@ -2359,6 +4081,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UFxxxMHx
@@ -2378,6 +4114,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UNxxxLHx
@@ -2397,6 +4147,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UNxxxLLx
@@ -2416,6 +4180,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UNxxxLQx
@@ -2435,6 +4213,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146UNxxxMHx
@@ -2454,6 +4246,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146URxxxLHx
@@ -2473,6 +4279,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146URxxxLLx
@@ -2492,6 +4312,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146URxxxLQx
@@ -2511,6 +4345,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146URxxxMHx
@@ -2530,6 +4378,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146USxxxLHx
@@ -2549,6 +4411,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146USxxxLLx
@@ -2568,6 +4444,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146USxxxLQx
@@ -2587,6 +4477,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K146USxxxMHx
@@ -2606,6 +4510,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1fff0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000f000
+    cores:
+    - main
   flash_algorithms:
   - s32k146_p1024_4kb_sec
 - name: S32K148HAxxxLQx
@@ -2625,7 +4543,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2635,6 +4553,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2655,7 +4587,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2665,6 +4597,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2685,7 +4631,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2695,6 +4641,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2715,7 +4675,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2725,6 +4685,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2745,7 +4719,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2755,6 +4729,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2775,7 +4763,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2785,6 +4773,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2805,7 +4807,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2815,6 +4817,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2835,7 +4851,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2845,6 +4861,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2865,7 +4895,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2875,6 +4905,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2895,7 +4939,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2905,6 +4949,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2925,7 +4983,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2935,6 +4993,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2955,7 +5027,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2965,6 +5037,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -2985,7 +5071,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -2995,6 +5081,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3015,7 +5115,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3025,6 +5125,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3045,7 +5159,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3055,6 +5169,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3075,7 +5203,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3085,6 +5213,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3105,7 +5247,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3115,6 +5257,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3135,7 +5291,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3145,6 +5301,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3165,7 +5335,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3175,6 +5345,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3195,7 +5379,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3205,6 +5389,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3225,7 +5423,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3235,6 +5433,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3255,7 +5467,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3265,6 +5477,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3285,7 +5511,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3295,6 +5521,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3315,7 +5555,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3325,6 +5565,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3345,7 +5599,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3355,6 +5609,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3375,7 +5643,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3385,6 +5653,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3405,7 +5687,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3415,6 +5697,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3435,7 +5731,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3445,6 +5741,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3465,7 +5775,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3475,6 +5785,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3495,7 +5819,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3505,6 +5829,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3525,7 +5863,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3535,6 +5873,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3555,7 +5907,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3565,6 +5917,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3585,7 +5951,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3595,6 +5961,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3615,7 +5995,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3625,6 +6005,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3645,7 +6039,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3655,6 +6049,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3675,7 +6083,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3685,6 +6093,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3705,7 +6127,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3715,6 +6137,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3735,7 +6171,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3745,6 +6181,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3765,7 +6215,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3775,6 +6225,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3795,7 +6259,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3805,6 +6269,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3825,7 +6303,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3835,6 +6313,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3855,7 +6347,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: IROM2
     range:
       start: 0x10000000
@@ -3865,6 +6357,20 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: IRAM2
+    range:
+      start: 0x1ffe0000
+      end: 0x20000000
+    cores:
+    - main
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2001f000
+    cores:
+    - main
   flash_algorithms:
   - s32k148_p1536_4kb_sec
   - s32k148_d512_4kb_sec
@@ -3955,6 +6461,7 @@ flash_algorithms:
       address: 0x0
 - name: s32k148_d512_4kb_sec
   description: S32K148 512KB DFlash (4KB Sector)
+  default: true
   instructions: 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
   pc_init: 0x1
   pc_uninit: 0x75
