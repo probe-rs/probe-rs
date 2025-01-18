@@ -311,7 +311,7 @@ impl AtSAM {
             let current_dsu_statusa = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
             if current_dsu_statusa.done() {
                 tracing::info!("Chip-Erase complete");
-                let interface = memory.get_arm_communication_interface()?;
+                let interface = memory.get_swd_sequence()?;
 
                 // If the device was in Reset Extension when we started put it back into Reset Extension
                 let result = if dsu_status_a.crstext() {

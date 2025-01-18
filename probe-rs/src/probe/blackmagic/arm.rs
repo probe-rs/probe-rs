@@ -1,15 +1,14 @@
 use crate::architecture::arm::ap::memory_ap::registers::{AddressIncrement, CSW};
 use crate::architecture::arm::ap::memory_ap::{DataSize, MemoryAp, MemoryApType};
 use crate::architecture::arm::ap::valid_access_ports;
-use crate::architecture::arm::communication_interface::{Initialized, SwdSequence};
+use crate::architecture::arm::communication_interface::SwdSequence;
 use crate::architecture::arm::dp::{Abort, Ctrl, DebugPortError, DpAccess, Select};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::{
     communication_interface::UninitializedArmProbe, sequences::ArmDebugSequence, ArmProbeInterface,
 };
 use crate::architecture::arm::{
-    ArmCommunicationInterface, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress,
-    RawDapAccess, SwoAccess,
+    ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
 };
 use crate::probe::blackmagic::{Align, BlackMagicProbe, ProtocolVersion, RemoteCommand};
 use crate::probe::{DebugProbeError, Probe};
@@ -323,6 +322,10 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
             csw: csw.into(),
         }) as _)
     }
+
+    fn reinitialize(&mut self) -> Result<(), ArmError> {
+        Ok(())
+    }
 }
 
 impl SwoAccess for BlackMagicProbeArmDebug {
@@ -540,20 +543,22 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
         self.current_ap.base_address(self.probe)
     }
 
-    fn get_arm_communication_interface(
-        &mut self,
-    ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError> {
-        Err(DebugProbeError::InterfaceNotAvailable {
-            interface_name: "ARM",
-        })
+    fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
+        Ok(self.probe)
     }
 
-    fn try_as_parts(
+    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
+        Ok(self.probe)
+    }
+
+    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+        Ok(self.probe)
+    }
+
+    fn generic_status(
         &mut self,
-    ) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut MemoryAp), DebugProbeError> {
-        Err(DebugProbeError::InterfaceNotAvailable {
-            interface_name: "ARM",
-        })
+    ) -> Result<crate::architecture::arm::ap::memory_ap::registers::CSW, ArmError> {
+        CSW::try_from(self.csw).map_err(|e| ArmError::DebugPort(DebugPortError::RegisterParse(e)))
     }
 }
 

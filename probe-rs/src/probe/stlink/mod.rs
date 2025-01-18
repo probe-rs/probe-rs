@@ -10,9 +10,7 @@ use crate::{
             memory_ap::{MemoryAp, MemoryApType},
             valid_access_ports, AccessPortType,
         },
-        communication_interface::{
-            ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
-        },
+        communication_interface::{ArmProbeInterface, SwdSequence, UninitializedArmProbe},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
         valid_32bit_arm_address, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, Pins,
@@ -1454,6 +1452,10 @@ impl ArmProbeInterface for StlinkArmDebug {
         // SWD multidrop is not supported on ST-Link
         DpAddress::Default
     }
+
+    fn reinitialize(&mut self) -> Result<(), ArmError> {
+        Ok(())
+    }
 }
 
 impl SwdSequence for StlinkArmDebug {
@@ -1789,29 +1791,24 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
         &mut self.current_ap
     }
 
-    fn get_arm_communication_interface(
-        &mut self,
-    ) -> Result<
-        &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
-        DebugProbeError,
-    > {
-        Err(DebugProbeError::InterfaceNotAvailable {
-            interface_name: "ARM",
-        })
+    fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
+        Ok(self)
     }
 
-    fn try_as_parts(
+    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
+        Ok(self.probe)
+    }
+
+    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+        Ok(self.probe)
+    }
+
+    fn generic_status(
         &mut self,
-    ) -> Result<
-        (
-            &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
-            &mut MemoryAp,
-        ),
-        DebugProbeError,
-    > {
-        Err(DebugProbeError::InterfaceNotAvailable {
+    ) -> Result<crate::architecture::arm::ap::memory_ap::registers::CSW, ArmError> {
+        Err(ArmError::Probe(DebugProbeError::InterfaceNotAvailable {
             interface_name: "ARM",
-        })
+        }))
     }
 }
 
