@@ -300,14 +300,15 @@ impl From<Aircr> for u32 {
 }
 
 impl Aircr {
+    const VECTKEY: u32 = 0x5FA;
     /// Must be called before writing the register.
     pub fn vectkey(&mut self) {
-        self.set_vectkey(0x05FA);
+        self.set_vectkey(Self::VECTKEY);
     }
 
     /// Verifies that the vector key is correct (see [`Aircr::vectkey`])
     pub fn vectkeystat(&self) -> bool {
-        self.get_vectkeystat() == 0xFA05
+        self.get_vectkeystat() == Self::VECTKEY
     }
 }
 
