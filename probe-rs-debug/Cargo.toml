@@ -28,7 +28,7 @@ typed-path = "0.10.0"
 workspace = true
 
 [dev-dependencies]
-insta = "1.41.1"
+insta = { version = "1.41.1", features = ["yaml"] }
 pretty_assertions = "1.4.1"
 probe-rs = { workspace = true, features = ["test"] }
 test-case = "3.3.1"
