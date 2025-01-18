@@ -363,7 +363,7 @@ impl ArmDebugSequence for CC13xxCC26xx {
 
         // Re-initializing the core(s) is on us.
         let ap = probe.ap().ap_address().clone();
-        let interface = probe.get_arm_communication_interface()?;
+        let interface = probe.get_arm_probe_interface()?;
         interface.reinitialize()?;
 
         assert!(debug_base.is_none());

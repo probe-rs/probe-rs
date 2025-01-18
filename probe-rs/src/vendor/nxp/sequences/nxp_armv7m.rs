@@ -11,7 +11,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{memory_ap::MemoryApType, AccessPortError, AccessPortType},
+        ap::{AccessPortError, AccessPortType},
         armv7m::{FpCtrl, FpRev2CompX},
         core::{
             armv7m::{Aircr, Dhcsr},
@@ -242,9 +242,8 @@ impl MIMXRT117x {
         let mut errors = 0usize;
         let mut disables = 0usize;
 
-        let (interface, memory_ap) = probe.try_as_parts()?;
         loop {
-            match memory_ap.generic_status(interface) {
+            match probe.generic_status() {
                 Ok(csw) if csw.DeviceEn => {
                     tracing::debug!("Device enabled after {}ms with {errors} errors and {disables} invalid statuses", start.elapsed().as_millis());
                     return Ok(());
@@ -458,7 +457,7 @@ impl ArmDebugSequence for MIMXRT117x {
         // The ARM communication interface knows how to re-initialize the debug port.
         // Re-initializing the core(s) is on us.
         let ap = probe.ap().ap_address().clone();
-        let interface = probe.get_arm_communication_interface()?;
+        let interface = probe.get_arm_probe_interface()?;
         interface.reinitialize()?;
 
         assert!(debug_base.is_none());

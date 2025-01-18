@@ -1042,10 +1042,17 @@ impl DebugProbe for BlackMagicProbe {
     }
 
     fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        if let Some(scan_chain) = &self.jtag_state.expected_scan_chain {
-            Ok(scan_chain)
-        } else {
-            Ok(&[])
+        match self.active_protocol() {
+            Some(WireProtocol::Jtag) => {
+                if let Some(ref chain) = self.jtag_state.expected_scan_chain {
+                    Ok(chain.as_slice())
+                } else {
+                    Ok(&[])
+                }
+            }
+            _ => Err(DebugProbeError::InterfaceNotAvailable {
+                interface_name: "JTAG",
+            }),
         }
     }
 

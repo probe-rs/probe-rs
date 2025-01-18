@@ -274,24 +274,21 @@ impl ArmMemoryInterface for &mut MockCore {
         todo!()
     }
 
-    fn get_arm_communication_interface(
-        &mut self,
-    ) -> Result<
-        &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
-        DebugProbeError,
-    > {
+    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
         todo!()
     }
 
-    fn try_as_parts(
+    fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
+        todo!()
+    }
+
+    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+        todo!()
+    }
+
+    fn generic_status(
         &mut self,
-    ) -> Result<
-        (
-            &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
-            &mut MemoryAp,
-        ),
-        DebugProbeError,
-    > {
+    ) -> Result<crate::architecture::arm::ap::memory_ap::registers::CSW, ArmError> {
         todo!()
     }
 
@@ -696,6 +693,10 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
 
     fn current_debug_port(&self) -> DpAddress {
         self.state.current_dp
+    }
+
+    fn reinitialize(&mut self) -> Result<(), ArmError> {
+        Ok(())
     }
 }
 
