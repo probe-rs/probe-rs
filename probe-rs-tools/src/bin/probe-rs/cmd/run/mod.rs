@@ -79,7 +79,7 @@ pub struct SharedOptions {
 
     /// The format string to use when printing defmt encoded log messages from the target.
     ///
-    /// See https://defmt.ferrous-systems.com/custom-log-output
+    /// See <https://defmt.ferrous-systems.com/custom-log-output>
     #[clap(long)]
     pub(crate) log_format: Option<String>,
 

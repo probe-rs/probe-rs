@@ -23,7 +23,7 @@ use crate::{
 use super::{
     ap::AccessPortError,
     armv6m::Demcr,
-    communication_interface::{DapProbe, Initialized},
+    communication_interface::DapProbe,
     component::{TraceFunnel, TraceSink},
     core::cortex_m::{Dhcsr, Vtor},
     dp::{Abort, Ctrl, DebugPortError, DpAccess, Select, DPIDR},
@@ -592,7 +592,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     #[doc(alias = "DebugPortStart")]
     fn debug_port_start(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut ArmCommunicationInterface,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         // Clear all errors.

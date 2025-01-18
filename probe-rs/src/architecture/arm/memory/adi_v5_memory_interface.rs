@@ -6,7 +6,7 @@ use crate::{
             memory_ap::{registers, DataSize, MemoryAp, MemoryApType},
             ApAccess,
         },
-        communication_interface::{FlushableArmAccess, Initialized},
+        communication_interface::FlushableArmAccess,
         dp::DpAccess,
         memory::ArmMemoryInterface,
         ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
@@ -545,8 +545,8 @@ where
     fn generic_status(&mut self) -> Result<registers::CSW, ArmError> {
         // TODO: This assumes that the base type is `ArmCommunicationInterface`,
         // which will fail if something else implements `ADIMemoryInterface`.
-        let Some(iface) = (self.interface as &mut dyn Any)
-            .downcast_mut::<ArmCommunicationInterface<Initialized>>()
+        let Some(iface) =
+            (self.interface as &mut dyn Any).downcast_mut::<ArmCommunicationInterface>()
         else {
             return Err(ArmError::Probe(DebugProbeError::Other(
                 "Not an ArmCommunicationInterface".to_string(),
@@ -558,8 +558,8 @@ where
     fn update_core_status(&mut self, state: CoreStatus) {
         // TODO: This assumes that the base type is `ArmCommunicationInterface`,
         // which will fail if something else implements `ADIMemoryInterface`.
-        let Some(iface) = (self.interface as &mut dyn Any)
-            .downcast_mut::<ArmCommunicationInterface<Initialized>>()
+        let Some(iface) =
+            (self.interface as &mut dyn Any).downcast_mut::<ArmCommunicationInterface>()
         else {
             return;
         };
