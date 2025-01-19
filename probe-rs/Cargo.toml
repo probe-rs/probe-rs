@@ -65,7 +65,7 @@ parking_lot = "0.12.2"
 zerocopy = { version = "0.8.0", features = ["derive"] }
 
 serde = { version = "1", features = ["derive"] }
-serde_yaml = "0.9"
+serde_yaml = "=0.9.34-deprecated"
 
 # optional
 hexdump = { version = "0.1", optional = true }
@@ -80,7 +80,7 @@ dunce = "1.0.5"
 probe-rs-target = { workspace = true, optional = true }
 
 bincode = { version = "1", optional = true }
-serde_yaml = { version = "0.9", optional = true }
+serde_yaml = { version = "=0.9.34-deprecated", optional = true }
 
 [dev-dependencies]
 pretty_env_logger = "0.5"
