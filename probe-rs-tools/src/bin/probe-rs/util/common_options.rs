@@ -324,6 +324,10 @@ impl LoadedProbeOptions {
         self.0.dry_run
     }
 
+    pub(crate) fn probe(&self) -> Option<DebugProbeSelector> {
+        self.0.probe.clone()
+    }
+
     pub(crate) fn chip(&self) -> Option<String> {
         self.0.chip.clone()
     }
