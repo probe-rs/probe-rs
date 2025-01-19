@@ -341,12 +341,13 @@ impl DebugInfo {
     }
 
     /// Returns a populated (resolved) [`StackFrame`] struct.
-    /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`, while taking into account the appropriate strategy for lazy-loading of variables.
+    /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`,
+    /// while taking into account the appropriate strategy for lazy-loading of variables.
     pub(crate) fn get_stackframe_info(
         &self,
         memory: &mut impl MemoryInterface,
         address: u64,
-        unwind_context: &mut UnwindContext<GimliReaderOffset>,
+        cfa: Option<u64>,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         // When reporting the address, we format it as a hex string, with the width matching
@@ -359,22 +360,14 @@ impl DebugInfo {
             )
         };
 
-        let mut frames = Vec::new();
-
         let Ok((unit_info, functions)) = self.get_function_dies(address) else {
             // No function found at the given address.
-            return Ok(frames);
+            return Ok(vec![]);
         };
         if functions.is_empty() {
             // No function found at the given address.
-            return Ok(frames);
+            return Ok(vec![]);
         }
-
-        // Determining the frame base may need the CFA (Canonical Frame Address) to be calculated first.
-        let cfa = get_unwind_info(unwind_context, &self.frame_section, address)
-            .ok()
-            .and_then(|unwind_info| determine_cfa(unwind_registers, unwind_info).ok())
-            .flatten();
 
         // The first function is the non-inlined function, and the rest are inlined functions.
         // The frame base only exists for the non-inlined function, so we can reuse it for all the inlined functions.
@@ -388,16 +381,19 @@ impl DebugInfo {
             },
         )?;
 
+        let mut frames = Vec::new();
+
         // Handle all functions which contain further inlined functions. For
         // these functions, the location is the call site of the inlined function.
-        for (index, function_die) in functions[0..functions.len() - 1].iter().enumerate() {
+        for function_pair in functions.windows(2) {
+            let function_die = &function_pair[0];
+            let next_function = &function_pair[1];
+
             let function_name = function_die
                 .function_name(self)
                 .unwrap_or_else(unknown_function);
 
             tracing::debug!("UNWIND: Function name: {}", function_name);
-
-            let next_function = &functions[index + 1];
 
             assert!(next_function.is_inline());
 
@@ -411,48 +407,45 @@ impl DebugInfo {
                 );
                 continue;
             };
-            if next_function_low_pc > address_size && next_function_low_pc < u32::MAX as u64 {
-                // The first instruction of the inlined function is used as the call site
-                let inlined_call_site = RegisterValue::from(next_function_low_pc);
 
-                tracing::debug!(
-                    "UNWIND: Callsite for inlined function {:?}",
-                    next_function.function_name(self)
-                );
-
-                let inlined_caller_source_location = next_function.inline_call_location(self);
-
-                tracing::debug!("UNWIND: Call site: {inlined_caller_source_location:?}");
-
-                // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
-                // Resolve the statics that belong to the compilation unit that this function is in.
-                // Next, resolve and cache the function variables.
-                let local_variables = self
-                    .create_function_scope_cache(function_die, unit_info)
-                    .map_or_else(
-                        |error| {
-                            tracing::error!(
-                                "Could not resolve function variables. {error}. Continuing..."
-                            );
-                            None
-                        },
-                        Some,
-                    );
-
-                frames.push(StackFrame {
-                    id: get_object_reference(),
-                    function_name,
-                    source_location: inlined_caller_source_location,
-                    registers: unwind_registers.clone(),
-                    pc: inlined_call_site,
-                    frame_base,
-                    is_inlined: function_die.is_inline(),
-                    local_variables,
-                    canonical_frame_address: cfa,
-                });
-            } else {
-                tracing::warn!("UNWIND: Unknown call site for inlined function {function_name}.",);
+            if !(next_function_low_pc > address_size && next_function_low_pc < u32::MAX as u64) {
+                tracing::warn!("UNWIND: Unknown call site for inlined function {function_name}.");
+                continue;
             }
+
+            // The first instruction of the inlined function is used as the call site
+            let inlined_call_site = RegisterValue::from(next_function_low_pc);
+
+            tracing::debug!(
+                "UNWIND: Callsite for inlined function {:?}",
+                next_function.function_name(self)
+            );
+
+            let inlined_caller_source_location = next_function.inline_call_location(self);
+
+            tracing::debug!("UNWIND: Call site: {inlined_caller_source_location:?}");
+
+            // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
+            // Resolve the statics that belong to the compilation unit that this function is in.
+            // Next, resolve and cache the function variables.
+            let local_variables = self
+                .create_function_scope_cache(function_die, unit_info)
+                .inspect_err(|error| {
+                    tracing::error!("Could not resolve function variables. {error}. Continuing...");
+                })
+                .ok();
+
+            frames.push(StackFrame {
+                id: get_object_reference(),
+                function_name,
+                source_location: inlined_caller_source_location,
+                registers: unwind_registers.clone(),
+                pc: inlined_call_site,
+                frame_base,
+                is_inlined: function_die.is_inline(),
+                local_variables,
+                canonical_frame_address: cfa,
+            });
         }
 
         // Handle last function, which contains no further inlined functions
@@ -570,6 +563,7 @@ impl DebugInfo {
                 let message = format!("Cannot convert register value for program counter to a 64-bit integer value: {error:?}");
                 probe_rs::Error::Register(message)
             })?;
+
             let exception_frame = match exception_handler.exception_details(
                 memory,
                 &unwind_registers,
@@ -608,69 +602,59 @@ impl DebugInfo {
 
             // PART 1: Construct the `StackFrame` for the current pc.
             tracing::trace!("UNWIND: Will generate `StackFrame` for function at address (PC) {frame_pc_register_value:#}");
+            let unwind_info = get_unwind_info(&mut unwind_context, &self.frame_section, frame_pc);
 
-            // PART 1-a: Prepare the `StackFrame`'s that holds the current frame information.
-            let mut cached_stack_frames = match self.get_stackframe_info(
-                memory,
-                frame_pc,
-                &mut unwind_context,
-                &unwind_registers,
-            ) {
-                Ok(cached_stack_frames) => cached_stack_frames,
-                Err(e) => {
-                    tracing::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
-                    // There is no point in continuing with the unwind, so let's get out of here.
-                    break;
-                }
-            };
+            // Determining the frame base may need the CFA (Canonical Frame Address) to be calculated first.
+            let cfa = unwind_info
+                .as_ref()
+                .ok()
+                .and_then(|unwind_info| determine_cfa(&mut unwind_registers, unwind_info).ok())
+                .flatten();
 
-            // Part 1-b: If there were inlined functions, we push them to the stack first.
-            while cached_stack_frames.len() > 1 {
-                // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
-                #[allow(clippy::unwrap_used)]
-                let inlined_frame = cached_stack_frames.pop().unwrap(); // unwrap is safe while .len() > 1
-                tracing::trace!(
-                    "UNWIND: Found inlined function - name={}, pc={}",
-                    inlined_frame.function_name,
-                    inlined_frame.pc
-                );
-                stack_frames.push(inlined_frame);
-            }
+            // PART 1-a: Prepare the `StackFrame`s that holds the current frame information.
+            let cached_stack_frames =
+                match self.get_stackframe_info(memory, frame_pc, cfa, &unwind_registers) {
+                    Ok(cached_stack_frames) => cached_stack_frames,
+                    Err(e) => {
+                        tracing::error!("UNWIND: Unable to complete `StackFrame` information: {e}");
+                        // There is no point in continuing with the unwind, so let's get out of here.
+                        break;
+                    }
+                };
 
-            // PART 1-c: Process the remaining frame, if any, in the list of cached_stack_frames.
-            let unwind_canonical_frame_address = match cached_stack_frames.pop() {
-                Some(frame) => {
-                    // We have valid code for the current frame.
-                    let unwind_canonical_frame_address = frame.canonical_frame_address;
+            // Add the found stackframes to the list, in reverse order. `get_stackframe_info` returns the frames in
+            // the order of the most recently called function last, but the stack frames should be
+            // in the order of the most recently called function first.
+            if !cached_stack_frames.is_empty() {
+                for frame in cached_stack_frames.into_iter().rev() {
+                    if frame.is_inlined {
+                        tracing::trace!(
+                            "UNWIND: Found inlined function - name={}, pc={}",
+                            frame.function_name,
+                            frame.pc
+                        );
+                    }
                     stack_frames.push(frame);
-                    unwind_canonical_frame_address
                 }
-                None if exception_frame.is_some() => {
-                    // Nothing to do, we will add the exception frame to the stack_frames list,
-                    // and use it's unwind registers to we prepare for unwinding the preceding frame.
-                    None
-                }
-                None => {
-                    // We have no valid code for the current frame, so we
-                    // construct a frame, using what information we have.
-                    stack_frames.push(StackFrame {
-                        id: get_object_reference(),
-                        function_name: format!(
-                            "<unknown function @ {:#0width$x}>",
-                            frame_pc,
-                            width = (unwind_registers.get_address_size_bytes() * 2 + 2)
-                        ),
-                        source_location: self.get_source_location(frame_pc),
-                        registers: unwind_registers.clone(),
-                        pc: frame_pc_register_value,
-                        frame_base: None,
-                        is_inlined: false,
-                        local_variables: None,
-                        canonical_frame_address: None,
-                    });
-                    None
-                }
-            };
+            } else if exception_frame.is_none() {
+                // We have no valid code for the current frame, so we
+                // construct a frame, using what information we have.
+                stack_frames.push(StackFrame {
+                    id: get_object_reference(),
+                    function_name: format!(
+                        "<unknown function @ {:#0width$x}>",
+                        frame_pc,
+                        width = (unwind_registers.get_address_size_bytes() * 2 + 2)
+                    ),
+                    source_location: self.get_source_location(frame_pc),
+                    registers: unwind_registers.clone(),
+                    pc: frame_pc_register_value,
+                    frame_base: None,
+                    is_inlined: false,
+                    local_variables: None,
+                    canonical_frame_address: None,
+                });
+            }
 
             // Part 1-d: If we have an exception frame, we will insert it, before we continue unwinding.
             if let Some(exception_frame) = exception_frame {
@@ -685,56 +669,55 @@ impl DebugInfo {
 
             // PART 2-a: get the `gimli::FrameDescriptorEntry` for the program counter
             // and then the unwind info associated with this row.
-            let unwind_info =
-                match get_unwind_info(&mut unwind_context, &self.frame_section, frame_pc) {
-                    Ok(unwind_info) => {
-                        tracing::trace!("UNWIND: Found unwind info for address {frame_pc:#010x}");
-                        unwind_info
-                    }
-                    Err(err) => {
-                        tracing::trace!(
-                            "UNWIND: Unable to find unwind info for address {frame_pc:#010x}: {err}"
-                        );
-                        if let ControlFlow::Break(error) = exception_handler
-                            .unwind_without_debuginfo(
-                                &mut unwind_registers,
-                                frame_pc,
-                                &stack_frames,
-                                instruction_set,
-                                memory,
-                            )
-                        {
-                            if let Some(error) = error {
-                                // This is not fatal, but we cannot continue unwinding beyond the current frame.
-                                tracing::error!("{:?}", &error);
-                                if let Some(first_frame) = stack_frames.first_mut() {
-                                    first_frame.function_name =
-                                        format!("{} : ERROR : {error}", first_frame.function_name);
-                                };
-                            }
-                            break 'unwind;
+            let unwind_info = match unwind_info {
+                Ok(unwind_info) => {
+                    tracing::trace!("UNWIND: Found unwind info for address {frame_pc:#010x}");
+                    unwind_info
+                }
+                Err(err) => {
+                    tracing::trace!(
+                        "UNWIND: Unable to find unwind info for address {frame_pc:#010x}: {err}"
+                    );
+                    if let ControlFlow::Break(error) = exception_handler.unwind_without_debuginfo(
+                        &mut unwind_registers,
+                        frame_pc,
+                        &stack_frames,
+                        instruction_set,
+                        memory,
+                    ) {
+                        if let Some(error) = error {
+                            // This is not fatal, but we cannot continue unwinding beyond the current frame.
+                            tracing::error!("{:?}", &error);
+                            if let Some(first_frame) = stack_frames.first_mut() {
+                                first_frame.function_name =
+                                    format!("{} : ERROR : {error}", first_frame.function_name);
+                            };
                         }
-                        continue 'unwind;
+                        break 'unwind;
                     }
-                };
+                    continue 'unwind;
+                }
+            };
 
-            // Because we will be updating the `unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
+            // Because we will be updating the `unwind_registers` with previous frame unwind info,
+            // we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
             let callee_frame_registers = unwind_registers.clone();
 
             // PART 2-b: Unwind registers for the "previous/calling" frame.
-            // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISC-V, The LR will be unwound before the PC, so we can reference it safely.
+            // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISC-V,
+            // the LR will be unwound before the PC, so we can reference it safely.
             let mut unwound_return_address: Option<RegisterValue> = None;
 
             // When we unwind the registers for the current frame, we should always do the FP and SP first,
             // since many of the unwind rule calculations for the other registers depend on either one of these two.
             let critical_unwind_registers =
-                &mut [RegisterRole::FramePointer, RegisterRole::StackPointer].to_vec();
-            for register_role in critical_unwind_registers.iter() {
+                [RegisterRole::FramePointer, RegisterRole::StackPointer];
+            for register_role in &critical_unwind_registers {
                 if let ControlFlow::Break(error) = unwind_register(
                     unwind_registers.get_register_mut_by_role(register_role)?,
                     &callee_frame_registers,
                     Some(unwind_info),
-                    unwind_canonical_frame_address,
+                    cfa,
                     &mut None,
                     memory,
                     instruction_set,
@@ -761,7 +744,7 @@ impl DebugInfo {
                     debug_register,
                     &callee_frame_registers,
                     Some(unwind_info),
-                    unwind_canonical_frame_address,
+                    cfa,
                     &mut unwound_return_address,
                     memory,
                     instruction_set,
@@ -1118,7 +1101,8 @@ pub fn unwind_register(
 
     let new_value = match register_rule {
         RegisterRule::Undefined => {
-            // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
+            // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc.,
+            // so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
             match &debug_register {
                 fp if fp
                     .core_register
@@ -1695,11 +1679,12 @@ mod test {
         );
 
         assert_eq!(frames[1].pc, RegisterValue::U32(0x0000018A)); // <-- This is the instruction *after* the jump into the topmost frame.
-                                                                  // The PC value in the exception data
-                                                                  // depends on the exception type, and for some exceptions, it will
-                                                                  // be the address of the instruction that caused the exception, while for other exceptions
-                                                                  // it will be the address of the next instruction after the instruction that caused the exception.
-                                                                  // See: https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-entry-behavior?lang=en
+
+        // The PC value in the exception data
+        // depends on the exception type, and for some exceptions, it will
+        // be the address of the instruction that caused the exception, while for other exceptions
+        // it will be the address of the next instruction after the instruction that caused the exception.
+        // See: https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-entry-behavior?lang=en
         assert_eq!(
             frames[1]
                 .registers
@@ -1862,9 +1847,9 @@ mod test {
             0x00000000, // R10
             0x00000000, // R11
             0x5000050c, // R12
-            0x20003ff0, // R13
-            0x00200000, // R14
-            0x000002e4, // R15
+            0x20003ff0, // R13 (SP)
+            0x00200000, // R14 (RA)
+            0x000002e4, // R15 (PC)
             0x20003ff0, // MSP
             0x00000000, // PSP
             0x61000000, // XPSR
