@@ -156,6 +156,10 @@ Building requires Rust and Cargo which can be installed [using rustup](https://r
 Target files are generated using [target-gen](https://github.com/probe-rs/probe-rs/tree/master/target-gen) from CMSIS packs provided [here](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search).
 Generated files are then placed in `probe-rs/targets` for inclusion in the probe-rs project.
 
+### Updating STM32 targets
+
+STM32 memory region data has been proven unreliable on multiple occasions. We now rely on [stm32-data](https://github.com/embassy-rs/stm32-data/tree/main) for the correct values. Use target-gen to update the list of devices and their flash algorithms, then use the https://github.com/bugadani/stm-probers tool to regenerate memory maps for all STM32 devices.
+
 ### Writing new flash algorithms
 
 If there is no CMSIS-Pack with a flash algorithm available, it is necessary to write a target definition and a flash algorithm by oneself.

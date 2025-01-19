@@ -255,8 +255,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-  flash_algorithms:
-  #- stm32wlexx_128
 - name: STM32WLE4CB
   package_variants:
   - STM32WLE4CBUx
@@ -360,8 +358,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-  flash_algorithms:
-  #- stm32wlexx_128
 - name: STM32WLE4JB
   package_variants:
   - STM32WLE4JBIx
@@ -465,8 +461,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-  flash_algorithms:
-  #- stm32wlexx_128
 - name: STM32WLE5CB
   package_variants:
   - STM32WLE5CBUx
@@ -571,8 +565,6 @@ variants:
       end: 0x20005000
     cores:
     - main
-  flash_algorithms:
-  #- stm32wlexx_128
 - name: STM32WLE5JB
   package_variants:
   - STM32WLE5JBIx

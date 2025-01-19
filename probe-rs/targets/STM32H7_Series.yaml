@@ -40,21 +40,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -111,21 +118,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -182,21 +196,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -253,21 +274,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -323,21 +351,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -393,21 +428,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -464,21 +506,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -535,21 +584,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -605,21 +661,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -675,21 +738,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -746,21 +816,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -818,21 +895,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -888,21 +972,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -958,21 +1049,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1028,21 +1126,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1099,21 +1204,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1170,21 +1282,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1241,21 +1360,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1312,21 +1438,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1383,21 +1516,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1453,21 +1593,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1524,21 +1671,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1594,21 +1748,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1666,21 +1827,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1736,21 +1904,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24050000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM2
     range:
       start: 0x30000000
+      end: 0x30004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30004000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38004000
@@ -1816,28 +1991,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -1903,28 +2078,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -1990,28 +2165,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -2077,28 +2252,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -2165,28 +2340,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -2253,28 +2428,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -2341,28 +2516,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -2429,28 +2604,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -2516,28 +2691,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -2603,28 +2778,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -2690,28 +2865,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -2777,28 +2952,28 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24060000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
       end: 0x30008000
     cores:
     - main
   - !Ram
-    name: RAM2_D2
+    name: SRAM2
     range:
       start: 0x30020000
       end: 0x30024000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -2864,21 +3039,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -2944,21 +3133,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -3024,21 +3227,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -3104,21 +3321,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -3185,21 +3416,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -3266,21 +3511,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -3347,21 +3606,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -3428,21 +3701,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -3508,21 +3795,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -3588,21 +3889,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -3668,21 +3983,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -3748,21 +4077,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -3796,7 +4139,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -3810,7 +4152,7 @@ variants:
     name: BANK_1
     range:
       start: 0x8000000
-      end: 0x8100000
+      end: 0x8080000
     cores:
     - cm7
     - cm4
@@ -3821,29 +4163,13 @@ variants:
     name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8200000
+      end: 0x8180000
     cores:
     - cm7
     - cm4
     access:
       write: false
       boot: true
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
   - !Ram
     name: DTCM
     range:
@@ -3853,10 +4179,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -3888,7 +4246,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -3921,22 +4278,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -3945,10 +4286,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -3981,7 +4354,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -3995,7 +4367,7 @@ variants:
     name: BANK_1
     range:
       start: 0x8000000
-      end: 0x8100000
+      end: 0x8080000
     cores:
     - cm7
     - cm4
@@ -4006,29 +4378,13 @@ variants:
     name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8200000
+      end: 0x8180000
     cores:
     - cm7
     - cm4
     access:
       write: false
       boot: true
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
   - !Ram
     name: DTCM
     range:
@@ -4038,10 +4394,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -4074,7 +4462,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -4107,22 +4494,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -4131,10 +4502,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -4166,7 +4569,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -4180,7 +4582,7 @@ variants:
     name: BANK_1
     range:
       start: 0x8000000
-      end: 0x8100000
+      end: 0x8080000
     cores:
     - cm7
     - cm4
@@ -4191,29 +4593,13 @@ variants:
     name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8200000
+      end: 0x8180000
     cores:
     - cm7
     - cm4
     access:
       write: false
       boot: true
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
   - !Ram
     name: DTCM
     range:
@@ -4223,10 +4609,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -4258,7 +4676,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -4291,22 +4708,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -4315,10 +4716,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -4350,7 +4783,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -4364,7 +4796,7 @@ variants:
     name: BANK_1
     range:
       start: 0x8000000
-      end: 0x8100000
+      end: 0x8080000
     cores:
     - cm7
     - cm4
@@ -4375,29 +4807,13 @@ variants:
     name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8200000
+      end: 0x8180000
     cores:
     - cm7
     - cm4
     access:
       write: false
       boot: true
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
   - !Ram
     name: DTCM
     range:
@@ -4407,10 +4823,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -4442,7 +4890,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -4475,22 +4922,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -4499,10 +4930,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -4534,7 +4997,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -4548,7 +5010,7 @@ variants:
     name: BANK_1
     range:
       start: 0x8000000
-      end: 0x8100000
+      end: 0x8080000
     cores:
     - cm7
     - cm4
@@ -4559,29 +5021,13 @@ variants:
     name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8200000
+      end: 0x8180000
     cores:
     - cm7
     - cm4
     access:
       write: false
       boot: true
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
   - !Ram
     name: DTCM
     range:
@@ -4591,10 +5037,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -4626,7 +5104,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -4659,22 +5136,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -4683,10 +5144,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -4718,7 +5211,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -4732,7 +5224,7 @@ variants:
     name: BANK_1
     range:
       start: 0x8000000
-      end: 0x8100000
+      end: 0x8080000
     cores:
     - cm7
     - cm4
@@ -4743,29 +5235,13 @@ variants:
     name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8200000
+      end: 0x8180000
     cores:
     - cm7
     - cm4
     access:
       write: false
       boot: true
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
   - !Ram
     name: DTCM
     range:
@@ -4775,10 +5251,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -4810,7 +5318,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -4843,22 +5350,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -4867,10 +5358,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -4902,7 +5425,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -4916,7 +5438,7 @@ variants:
     name: BANK_1
     range:
       start: 0x8000000
-      end: 0x8100000
+      end: 0x8080000
     cores:
     - cm7
     - cm4
@@ -4927,29 +5449,13 @@ variants:
     name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8200000
+      end: 0x8180000
     cores:
     - cm7
     - cm4
     access:
       write: false
       boot: true
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
   - !Ram
     name: DTCM
     range:
@@ -4959,10 +5465,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -4994,7 +5532,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -5027,22 +5564,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -5051,10 +5572,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -5086,7 +5639,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -5100,7 +5652,7 @@ variants:
     name: BANK_1
     range:
       start: 0x8000000
-      end: 0x8100000
+      end: 0x8080000
     cores:
     - cm7
     - cm4
@@ -5111,29 +5663,13 @@ variants:
     name: BANK_2
     range:
       start: 0x8100000
-      end: 0x8200000
+      end: 0x8180000
     cores:
     - cm7
     - cm4
     access:
       write: false
       boot: true
-  - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
   - !Ram
     name: DTCM
     range:
@@ -5143,10 +5679,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -5178,7 +5746,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -5211,22 +5778,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -5235,10 +5786,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -5270,7 +5853,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -5303,22 +5885,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -5327,10 +5893,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -5385,21 +5983,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -5455,21 +6067,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -5525,21 +6151,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -5595,21 +6235,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -5675,21 +6329,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -5755,21 +6423,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -5836,21 +6518,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -5917,21 +6613,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -5997,21 +6707,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -6077,21 +6801,35 @@ variants:
     cores:
     - main
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
     cores:
     - main
   - !Ram
-    name: RAM_D2
+    name: SRAM1
     range:
       start: 0x30000000
+      end: 0x30020000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
       end: 0x30048000
     cores:
     - main
   - !Ram
-    name: RAM_D3
+    name: SRAM4
     range:
       start: 0x38000000
       end: 0x38010000
@@ -6125,7 +6863,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -6158,22 +6895,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -6182,10 +6903,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -6218,7 +6971,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -6251,22 +7003,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -6275,10 +7011,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -6310,7 +7078,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -6343,22 +7110,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -6367,10 +7118,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -6402,7 +7185,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -6435,22 +7217,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -6459,10 +7225,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -6494,7 +7292,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -6527,22 +7324,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -6551,10 +7332,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -6586,7 +7399,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -6619,22 +7431,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -6643,10 +7439,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -6678,7 +7506,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -6711,22 +7538,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -6735,10 +7546,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -6770,7 +7613,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -6803,22 +7645,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -6827,10 +7653,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -6862,7 +7720,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: 3
-
   memory_map:
   - !Ram
     name: ITCM
@@ -6895,22 +7752,6 @@ variants:
       write: false
       boot: true
   - !Ram
-    name: RAM_D2
-    range:
-      start: 0x10000000
-      end: 0x10048000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
-    name: RAM_D3
-    range:
-      start: 0x18000000
-      end: 0x18010000
-    cores:
-    - cm7
-    - cm4
-  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -6919,10 +7760,42 @@ variants:
     - cm7
     - cm4
   - !Ram
-    name: RAM_D1
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24080000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x30000000
+      end: 0x30020000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x30020000
+      end: 0x30040000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x30040000
+      end: 0x30048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
+    name: SRAM4
+    range:
+      start: 0x38000000
+      end: 0x38010000
     cores:
     - cm7
     - cm4
@@ -7131,10 +8004,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -7342,10 +8222,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -7693,10 +8580,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -7760,10 +8654,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -7897,10 +8798,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -7963,10 +8871,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -8032,10 +8947,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -8243,10 +9165,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -8452,10 +9381,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -8590,10 +9526,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -8717,10 +9660,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -8835,10 +9785,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -8891,10 +9848,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -8915,7 +9879,6 @@ variants:
   - stm32h7xx_mt25tl01g_dual
 - name: STM32H7B0VB
   package_variants:
-  - STM32H7B0VBTx
   - STM32H7B0VBTx
   cores:
   - name: main
@@ -8948,10 +9911,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -9004,10 +9974,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -9101,6 +10078,8 @@ variants:
   package_variants:
   - STM32H7B3IIKx
   - STM32H7B3IITx
+  - STM32H7B3IIKxQQ
+  - STM32H7B3IITxQQ
   cores:
   - name: main
     type: armv7em
@@ -9142,10 +10121,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -9380,6 +10366,7 @@ variants:
 - name: STM32H7B3NI
   package_variants:
   - STM32H7B3NIHx
+  - STM32H7B3NIHxQQ
   cores:
   - name: main
     type: armv7em
@@ -9421,10 +10408,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -9558,10 +10552,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -9584,6 +10585,8 @@ variants:
   package_variants:
   - STM32H7B3VIHx
   - STM32H7B3VITx
+  - STM32H7B3VIHxQQ
+  - STM32H7B3VITxQQ
   cores:
   - name: main
     type: armv7em
@@ -9625,10 +10628,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -9792,6 +10802,7 @@ variants:
 - name: STM32H7B3ZI
   package_variants:
   - STM32H7B3ZITx
+  - STM32H7B3ZITxQQ
   cores:
   - name: main
     type: armv7em
@@ -9833,10 +10844,17 @@ variants:
     cores:
     - main
   - !Ram
-    name: SRAM
+    name: AXISRAM
     range:
       start: 0x24000000
       end: 0x24100000
+    cores:
+    - main
+  - !Ram
+    name: AHBSRAM
+    range:
+      start: 0x30000000
+      end: 0x30020000
     cores:
     - main
   flash_algorithms:
@@ -10182,7 +11200,6 @@ flash_algorithms:
   description: STM32H7x_2048
   default: true
   instructions: v/NPj3BHELUDRk/0gHDtTCBg7UgAaEDwBwDrTCBg60hgYQC/6EgAaQDwBAAAKPnR50jlTGBg50hgYORI5kwgYAC/5UgAHwBoAPAEAAAo+NHfSOFMEDwgYN5I20zE+AQBACAQvQFG2EjAaEDwAQDWStBg2UgIOABoQPABAML4DAEAIHBH0UjQSUhhAL/OSABpAPAEAAAo+dHMSM9JCGAAv81IAB8AaADwBAAAKPjRAL/FSABpAPAEAAAo+dHCSMBoIPAwAMBJyGAIRsBoQPAIAMhgCEbAaEDwgADIYAC/ukgAaQDwBAAAKPnRt0jAaCDwCAC1SchgAL+3SAAfAGgA8AQAACj40bRICDgAaCDwMACtScH4DAEIRtD4DAFA8AgAwfgMAQhG0PgMAUDwgADB+AwBAL+oSAAfAGgA8AQAACj40aVICDgAaCDwCACeScH4DAEAIHBHELUBRsHzQ0Kx8QBvN9Ox8QFvNNKXSEBpl0sYQ5VLWGEAv5NIAGkA8AQAACj50ZBIwGhH9jBzmEOOS9hgGEbAaAQjQ+oCIxhDikvYYBhGwGhA8IAA2GAAv4ZIAGkA8AQAACj50YNIwGgg8AQAgUvYYBhGAGkA8AEA6LMBIBC9gEgAaHxLGEN6S8P4FAEAv3xIAB8AaADwBAAAKPjReUgIOABoR/Ywc5hDckvD+AwBdEgIOABoovEIAwQkROoDIxhDbEvD+AwBGEbQ+AwBQPCAAMP4DAEAv2pIAB8AaADwBAAAKPjRZ0gIOABoIPAEAGBLw/gMAQDgB+BiSAAfAGgA8AEACLEBILnnACC35/C1A0YMRhZGGUY1RgAis/EAbw3Ts/EBbwrSAL9SSABpAPAEAAAo+dFQSE5PeGEK4AC/UEgAHwBoAPAEAAAo+NFKSExPOGCH4LPxAG8M07PxAW8J0kRIwGhH9jB3uENBT/hgAiD4YAzgQ0gIOABoR/Ywd7hDPE/H+AwBAiA+Twg/OGAgLAzTACIG4C9oaGgPYEhgCDUIMVIcBCr22yA8E+AAIgTgFfgBCwH4AQtSHKJC+NMAIgPg/yAB+AELUhzE8SAAkEL32AAk//dp/rPxAG8K07PxAW8H0gC/IkgAaQDwBAAAKPnRB+AAvyJIAB8AaADwBAAAKPjRG0gAaQAgsLGz8QBvCdOz8QFvBtIWSMBoIPACABRP+GAH4BZICDgAaCDwAgAQT8f4DAEBIPC9s/EAbwnTs/EBbwbSCkjAaCDwAgAIT/hgB+ALSAg4AGgg8AIABE/H+AwBACx/9HWvACDk55RFAlgAIABSAADvDyMBZ0Wrie/NFCEAUgAAAAA=
-  # load_address manually edited to not use DTCM
   load_address: 0x24000020
   pc_init: 0x7
   pc_uninit: 0x65
