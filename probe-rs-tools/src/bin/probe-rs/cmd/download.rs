@@ -1,11 +1,10 @@
 use std::path::PathBuf;
 
-use probe_rs::probe::list::Lister;
+use crate::rpc::client::RpcClient;
 
+use crate::util::cli;
 use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::common_options::ProbeOptions;
-use crate::util::flash::build_loader;
-use crate::util::flash::run_flash_download;
 use crate::FormatOptions;
 
 #[derive(clap::Parser)]
@@ -28,18 +27,18 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
+    pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
+        let session = cli::attach_probe(&client, self.probe_options, false).await?;
 
-        let loader = build_loader(&mut session, &self.path, self.format_options, None)?;
-        run_flash_download(
-            &mut session,
+        cli::flash(
+            &session,
             &self.path,
-            &self.download_options,
-            &probe_options,
-            loader,
             self.chip_erase,
-        )?;
+            self.format_options,
+            self.download_options,
+            None,
+        )
+        .await?;
 
         Ok(())
     }
