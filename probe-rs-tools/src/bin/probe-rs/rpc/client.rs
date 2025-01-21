@@ -63,10 +63,11 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
     use crate::rpc::transport::websocket::{WebsocketRx, WebsocketTx};
     use axum::http::Uri;
     use futures_util::StreamExt as _;
+    use rustls::ClientConfig;
     use sha2::{Digest, Sha512};
     use std::str::FromStr;
     use tokio_tungstenite::{
-        connect_async,
+        connect_async_tls_with_config,
         tungstenite::{ClientRequestBuilder, Message},
     };
     use tokio_util::bytes::Bytes;
@@ -81,7 +82,24 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
         format!("probe-rs-tools {}", env!("PROBE_RS_LONG_VERSION")),
     );
 
-    let (ws_stream, resp) = connect_async(req).await.context("Failed to connect")?;
+    // TODO: implement something more secure
+    let rustls_connector = ClientConfig::builder()
+        .dangerous()
+        .with_custom_certificate_verifier(Arc::new(tls::NoCertificateVerification::new(
+            rustls::crypto::ring::default_provider(),
+        )))
+        .with_no_client_auth();
+
+    let (ws_stream, resp) = connect_async_tls_with_config(
+        req,
+        None,
+        false,
+        Some(tokio_tungstenite::Connector::Rustls(Arc::new(
+            rustls_connector,
+        ))),
+    )
+    .await
+    .context("Failed to connect")?;
     let (tx, rx) = ws_stream.split();
 
     let tx = WebsocketTx::new(tx);
@@ -115,6 +133,68 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
     client.is_localhost = is_localhost;
 
     Ok(client)
+}
+
+#[cfg(feature = "remote")]
+mod tls {
+    use rustls::client::danger::HandshakeSignatureValid;
+    use rustls::crypto::{verify_tls12_signature, verify_tls13_signature, CryptoProvider};
+    use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
+    use rustls::DigitallySignedStruct;
+
+    #[derive(Debug)]
+    pub struct NoCertificateVerification(CryptoProvider);
+
+    impl NoCertificateVerification {
+        pub fn new(provider: CryptoProvider) -> Self {
+            Self(provider)
+        }
+    }
+
+    impl rustls::client::danger::ServerCertVerifier for NoCertificateVerification {
+        fn verify_server_cert(
+            &self,
+            _end_entity: &CertificateDer<'_>,
+            _intermediates: &[CertificateDer<'_>],
+            _server_name: &ServerName<'_>,
+            _ocsp: &[u8],
+            _now: UnixTime,
+        ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
+            Ok(rustls::client::danger::ServerCertVerified::assertion())
+        }
+
+        fn verify_tls12_signature(
+            &self,
+            message: &[u8],
+            cert: &CertificateDer<'_>,
+            dss: &DigitallySignedStruct,
+        ) -> Result<HandshakeSignatureValid, rustls::Error> {
+            verify_tls12_signature(
+                message,
+                cert,
+                dss,
+                &self.0.signature_verification_algorithms,
+            )
+        }
+
+        fn verify_tls13_signature(
+            &self,
+            message: &[u8],
+            cert: &CertificateDer<'_>,
+            dss: &DigitallySignedStruct,
+        ) -> Result<HandshakeSignatureValid, rustls::Error> {
+            verify_tls13_signature(
+                message,
+                cert,
+                dss,
+                &self.0.signature_verification_algorithms,
+            )
+        }
+
+        fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+            self.0.signature_verification_algorithms.supported_schemes()
+        }
+    }
 }
 
 /// Represents a connection to a remote server.
