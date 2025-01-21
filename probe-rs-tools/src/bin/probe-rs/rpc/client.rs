@@ -1,0 +1,308 @@
+//! Remote client
+//!
+//! The client opens a websocket connection to the host, sends a token to authenticate and
+//! then sends commands to the server. The commands are handled by the server (by the same
+//! handlers that are used for the local commands) and the output is streamed back to the client.
+//!
+//! The command output may be a result and/or a stream of messages encoded as [ServerMessage].
+
+use postcard_rpc::{
+    header::VarSeqKind,
+    host_client::{HostClient, HostClientConfig, HostErr, Subscription},
+    Topic,
+};
+use postcard_schema::Schema;
+use probe_rs::Session;
+use serde::{de::DeserializeOwned, Serialize};
+use tokio::sync::Mutex;
+
+use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
+
+use crate::rpc::{
+    functions::{
+        info::{InfoEvent, TargetInfoRequest},
+        memory::{ReadMemoryRequest, WriteMemoryRequest},
+        probe::{
+            AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, ListProbesRequest,
+            SelectProbeRequest, SelectProbeResult,
+        },
+        reset::ResetCoreRequest,
+        resume::ResumeAllCoresRequest,
+        AttachEndpoint, ListProbesEndpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
+        ReadMemory64Endpoint, ReadMemory8Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint,
+        RpcResult, SelectProbeEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TokioSpawner,
+        WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint, WriteMemory8Endpoint,
+    },
+    transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
+    Key,
+};
+
+/// Represents a connection to a remote server.
+///
+/// Internally implemented as a websocket connection.
+#[derive(Clone)]
+pub struct RpcClient {
+    client: HostClient<String>,
+    uploaded_files: Arc<Mutex<HashMap<PathBuf, PathBuf>>>,
+    is_localhost: bool,
+}
+
+impl Drop for RpcClient {
+    fn drop(&mut self) {
+        if Arc::strong_count(&self.uploaded_files) == 1 {
+            // Dropping the last client
+            self.client.close();
+        }
+    }
+}
+
+impl RpcClient {
+    pub fn new_from_wire(
+        tx: impl PostcardSender + Send + Sync + 'static,
+        rx: impl PostcardReceiver + Send + 'static,
+    ) -> RpcClient {
+        Self {
+            client: HostClient::<String>::new_with_wire_and_config(
+                WireTx::new(tx),
+                WireRx::new(rx),
+                TokioSpawner,
+                &HostClientConfig {
+                    seq_kind: VarSeqKind::Seq2,
+                    err_uri_path: "error",
+                    outgoing_depth: 1,
+                    subscriber_timeout_if_full: Duration::from_secs(1),
+                },
+            ),
+            uploaded_files: Arc::new(Mutex::new(HashMap::new())),
+            is_localhost: false,
+        }
+    }
+
+    pub fn new_local_from_wire(
+        tx: impl PostcardSender + Send + Sync + 'static,
+        rx: impl PostcardReceiver + Send + 'static,
+    ) -> RpcClient {
+        let mut this = Self::new_from_wire(tx, rx);
+        this.is_localhost = true;
+        this
+    }
+
+    async fn send<E, T>(&self, req: &E::Request) -> anyhow::Result<T>
+    where
+        E: postcard_rpc::Endpoint<Response = T>,
+        E::Request: Serialize + Schema,
+        E::Response: DeserializeOwned + Schema,
+    {
+        match self.client.send_resp::<E>(req).await {
+            Ok(r) => Ok(r),
+            Err(e) => match e {
+                HostErr::Wire(w) => anyhow::bail!("Wire error: {}", w),
+                HostErr::BadResponse => anyhow::bail!("Bad response"),
+                HostErr::Postcard(error) => anyhow::bail!("Postcard error: {}", error),
+                HostErr::Closed => anyhow::bail!("Connection closed"),
+            },
+        }
+    }
+
+    async fn send_resp<E, T>(&self, req: &E::Request) -> anyhow::Result<T>
+    where
+        E: postcard_rpc::Endpoint<Response = RpcResult<T>>,
+        E::Request: Serialize + Schema,
+        E::Response: DeserializeOwned + Schema,
+    {
+        match self.send::<E, RpcResult<T>>(req).await? {
+            Ok(r) => Ok(r),
+            Err(e) => anyhow::bail!("{}", e),
+        }
+    }
+
+    async fn send_and_read_stream<E, T, R>(
+        &self,
+        req: &E::Request,
+        on_msg: impl FnMut(T::Message),
+    ) -> anyhow::Result<R>
+    where
+        E: postcard_rpc::Endpoint<Response = RpcResult<R>>,
+        E::Request: Serialize + Schema,
+        E::Response: DeserializeOwned + Schema,
+        T: Topic,
+        T::Message: DeserializeOwned,
+    {
+        let mut stream = match self.client.subscribe_exclusive::<T>(64).await {
+            Ok(stream) => stream,
+            Err(err) => anyhow::bail!("Failed to subscribe to '{}': {err:?}", T::PATH),
+        };
+
+        tokio::select! {
+            biased;
+            _ = read_stream(&mut stream, on_msg) => anyhow::bail!("Topic reader returned unexpectedly"),
+            r = self.send_resp::<E, R>(req) => r,
+        }
+    }
+
+    pub async fn attach_probe(&self, request: AttachRequest) -> anyhow::Result<AttachResult> {
+        self.send_resp::<AttachEndpoint, _>(&request).await
+    }
+
+    pub async fn list_probes(&self) -> anyhow::Result<Vec<DebugProbeEntry>> {
+        self.send_resp::<ListProbesEndpoint, _>(&ListProbesRequest::all())
+            .await
+    }
+
+    pub async fn select_probe(
+        &self,
+        selector: Option<DebugProbeSelector>,
+    ) -> anyhow::Result<SelectProbeResult> {
+        self.send_resp::<SelectProbeEndpoint, _>(&SelectProbeRequest { probe: selector })
+            .await
+    }
+
+    pub async fn info(
+        &self,
+        request: TargetInfoRequest,
+        on_msg: impl FnMut(InfoEvent),
+    ) -> anyhow::Result<()> {
+        self.send_and_read_stream::<TargetInfoEndpoint, TargetInfoDataTopic, _>(&request, on_msg)
+            .await
+    }
+}
+
+#[derive(Clone)]
+pub struct SessionInterface {
+    sessid: Key<Session>,
+    client: RpcClient,
+}
+
+impl SessionInterface {
+    pub fn new(client: RpcClient, sessid: Key<Session>) -> Self {
+        Self { sessid, client }
+    }
+
+    pub fn core(&self, core: usize) -> CoreInterface {
+        CoreInterface {
+            sessid: self.sessid,
+            core: core as u32,
+            client: self.client.clone(),
+        }
+    }
+
+    pub async fn resume_all_cores(&self) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<ResumeAllCoresEndpoint, _>(&ResumeAllCoresRequest {
+                sessid: self.sessid,
+            })
+            .await
+    }
+}
+
+#[derive(Clone)]
+pub struct CoreInterface {
+    sessid: Key<Session>,
+    core: u32,
+    client: RpcClient,
+}
+
+impl CoreInterface {
+    pub async fn read_memory_8(&self, address: u64, count: usize) -> anyhow::Result<Vec<u8>> {
+        self.client
+            .send_resp::<ReadMemory8Endpoint, _>(&ReadMemoryRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                count: count as u32,
+            })
+            .await
+    }
+    pub async fn read_memory_16(&self, address: u64, count: usize) -> anyhow::Result<Vec<u16>> {
+        self.client
+            .send_resp::<ReadMemory16Endpoint, _>(&ReadMemoryRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                count: count as u32,
+            })
+            .await
+    }
+    pub async fn read_memory_32(&self, address: u64, count: usize) -> anyhow::Result<Vec<u32>> {
+        self.client
+            .send_resp::<ReadMemory32Endpoint, _>(&ReadMemoryRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                count: count as u32,
+            })
+            .await
+    }
+    pub async fn read_memory_64(&self, address: u64, count: usize) -> anyhow::Result<Vec<u64>> {
+        self.client
+            .send_resp::<ReadMemory64Endpoint, _>(&ReadMemoryRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                count: count as u32,
+            })
+            .await
+    }
+
+    pub async fn write_memory_8(&self, address: u64, data: Vec<u8>) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<WriteMemory8Endpoint, _>(&WriteMemoryRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                data,
+            })
+            .await
+    }
+    pub async fn write_memory_16(&self, address: u64, data: Vec<u16>) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<WriteMemory16Endpoint, _>(&WriteMemoryRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                data,
+            })
+            .await
+    }
+    pub async fn write_memory_32(&self, address: u64, data: Vec<u32>) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<WriteMemory32Endpoint, _>(&WriteMemoryRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                data,
+            })
+            .await
+    }
+    pub async fn write_memory_64(&self, address: u64, data: Vec<u64>) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<WriteMemory64Endpoint, _>(&WriteMemoryRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                data,
+            })
+            .await
+    }
+
+    pub async fn reset(&self) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<ResetCoreEndpoint, _>(&ResetCoreRequest {
+                sessid: self.sessid,
+                core: self.core,
+            })
+            .await
+    }
+}
+
+async fn read_stream<T>(stream: &mut Subscription<T>, mut on_msg: impl FnMut(T))
+where
+    T: DeserializeOwned,
+{
+    while let Some(message) = stream.recv().await {
+        on_msg(message);
+    }
+
+    tracing::warn!("Failed to read topic");
+    futures_util::future::pending().await
+}

@@ -244,7 +244,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         Err(e) => return Err(e.into()),
     };
 
-    let format = FormatOptions::default().to_format_kind(session.target());
+    let format = FormatKind::from(FormatOptions::default().to_format_kind(session.target()));
     let elf = if matches!(format, FormatKind::Elf | FormatKind::Idf) {
         Some(fs::read(&path)?)
     } else {

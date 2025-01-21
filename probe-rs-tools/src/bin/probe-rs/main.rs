@@ -1,5 +1,6 @@
 mod cmd;
 mod report;
+mod rpc;
 mod util;
 
 use std::cmp::Reverse;
@@ -12,13 +13,15 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use colored::Colorize;
 use itertools::Itertools;
+use postcard_schema::Schema;
 use probe_rs::flashing::{BinOptions, Format, FormatKind, IdfOptions};
 use probe_rs::{probe::list::Lister, Target};
 use report::Report;
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
 
+use crate::rpc::client::RpcClient;
+use crate::rpc::functions::RpcApp;
 use crate::util::logging::setup_logging;
 use crate::util::parse_u32;
 use crate::util::parse_u64;
@@ -52,19 +55,20 @@ struct Cli {
         default_missing_value = "./report.zip"
     )]
     report: Option<PathBuf>,
+
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
 
 impl Cli {
-    fn run(self, utc_offset: UtcOffset) -> Result<()> {
+    async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> Result<()> {
         let lister = Lister::new();
         match self.subcommand {
-            Subcommand::DapServer { .. } => unreachable!(), // already handled.
-            Subcommand::List(cmd) => cmd.run(&lister),
-            Subcommand::Info(cmd) => cmd.run(&lister),
+            Subcommand::DapServer { .. } => unreachable!(),
+            Subcommand::List(cmd) => cmd.run(client).await,
+            Subcommand::Info(cmd) => cmd.run(client).await,
             Subcommand::Gdb(cmd) => cmd.run(&lister),
-            Subcommand::Reset(cmd) => cmd.run(&lister),
+            Subcommand::Reset(cmd) => cmd.run(client).await,
             Subcommand::Debug(cmd) => cmd.run(&lister),
             Subcommand::Download(cmd) => cmd.run(&lister),
             Subcommand::Run(cmd) => cmd.run(&lister, true, utc_offset),
@@ -76,8 +80,8 @@ impl Cli {
             Subcommand::Chip(cmd) => cmd.run(),
             Subcommand::Benchmark(cmd) => cmd.run(&lister),
             Subcommand::Profile(cmd) => cmd.run(&lister),
-            Subcommand::Read(cmd) => cmd.run(&lister),
-            Subcommand::Write(cmd) => cmd.run(&lister),
+            Subcommand::Read(cmd) => cmd.run(client).await,
+            Subcommand::Write(cmd) => cmd.run(client).await,
             Subcommand::Complete(cmd) => cmd.run(&lister),
             Subcommand::Mi(cmd) => cmd.run(),
         }
@@ -138,13 +142,13 @@ enum Subcommand {
 }
 
 /// Shared options for core selection, shared between commands
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Serialize, Deserialize)]
 pub(crate) struct CoreOptions {
     #[clap(long, default_value = "0")]
     core: usize,
 }
 
-#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
+#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]
 #[serde(default)]
 pub struct BinaryCliOptions {
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
@@ -155,7 +159,7 @@ pub struct BinaryCliOptions {
     skip: u32,
 }
 
-#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
+#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]
 #[serde(default)]
 pub struct IdfCliOptions {
     /// The idf bootloader path
@@ -294,7 +298,8 @@ fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<&'list 
     None
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.
     // FIXME: we should probably let the user know if we can't determine the offset. However,
@@ -346,7 +351,18 @@ fn main() -> Result<()> {
 
     let elf = matches.elf();
     let report_path = matches.report.clone();
-    let result = matches.run(utc_offset);
+
+    // Create a local server to run commands against.
+    let (mut local_server, tx, rx) = RpcApp::create_server(true, 16);
+    let handle = tokio::spawn(async move { local_server.run().await });
+
+    // Run the command locally.
+    let client = RpcClient::new_local_from_wire(tx, rx);
+    let result = matches.run(client, utc_offset).await;
+
+    // Wait for the server to shut down
+    _ = handle.await.unwrap();
+
     compile_report(result, report_path, elf, log_path)
 }
 

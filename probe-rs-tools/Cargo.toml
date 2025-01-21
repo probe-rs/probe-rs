@@ -14,6 +14,9 @@ description = "A collection of on chip debugging tools to communicate with micro
 
 default-run = "probe-rs"
 
+[features]
+default = []
+
 [dependencies]
 anyhow = { workspace = true }
 base64 = "0.22"
@@ -92,6 +95,15 @@ zip = { version = "2.0.0", default-features = false, features = [
 ] }
 urlencoding = "2"
 probe-rs-debug = { version = "0.27.0", path = "../probe-rs-debug" }
+probe-rs-target = { workspace = true }
+
+# Server-only
+tokio = { version = "1.0", features = ["full"] }
+tokio-util = "0.7"
+futures-util = { version = "0.3" }
+postcard = { version = "1.0", features = ["use-std"] }
+postcard-rpc = { version = "0.11.8", features = ["use-std"] }
+postcard-schema = { version = "0.2.0", features = ["use-std", "derive"] }
 
 [build-dependencies]
 git-version = "0.3"
