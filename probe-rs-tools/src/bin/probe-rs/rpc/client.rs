@@ -17,12 +17,18 @@ use probe_rs::Session;
 use serde::{de::DeserializeOwned, Serialize};
 use tokio::sync::Mutex;
 
-use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
 use crate::{
     rpc::{
         functions::{
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
+            file::{AppendFileRequest, TempFile},
             flash::{BootInfo, DownloadOptions, FlashRequest, FlashResult, ProgressEvent},
             info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
@@ -36,14 +42,14 @@ use crate::{
             rtt_client::{CreateRttClientRequest, LogOptions},
             stack_trace::{StackTraces, TakeStackTraceRequest},
             test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
-            AttachEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint, FlashEndpoint,
-            ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
+            AttachEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
+            FlashEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
             LoadChipFamilyEndpoint, MonitorEndpoint, MonitorTopic, ProgressEventTopic,
             ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint, ReadMemory8Endpoint,
             ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult, RunTestEndpoint,
             SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
-            TokioSpawner, WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
-            WriteMemory8Endpoint,
+            TempFileDataEndpoint, TokioSpawner, WriteMemory16Endpoint, WriteMemory32Endpoint,
+            WriteMemory64Endpoint, WriteMemory8Endpoint,
         },
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
         Key,
@@ -51,6 +57,65 @@ use crate::{
     util::rtt::client::RttClient,
     FormatOptions,
 };
+
+#[cfg(feature = "remote")]
+pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcClient> {
+    use crate::rpc::transport::websocket::{WebsocketRx, WebsocketTx};
+    use axum::http::Uri;
+    use futures_util::StreamExt as _;
+    use sha2::{Digest, Sha512};
+    use std::str::FromStr;
+    use tokio_tungstenite::{
+        connect_async,
+        tungstenite::{ClientRequestBuilder, Message},
+    };
+    use tokio_util::bytes::Bytes;
+
+    let uri = Uri::from_str(&format!("{}/worker", host)).context("Failed to parse server URI")?;
+
+    let is_localhost = uri
+        .host()
+        .is_some_and(|h| ["localhost", "127.0.0.1", "::1"].contains(&h));
+    let req = ClientRequestBuilder::new(uri).with_header(
+        "User-Agent",
+        format!("probe-rs-tools {}", env!("PROBE_RS_LONG_VERSION")),
+    );
+
+    let (ws_stream, resp) = connect_async(req).await.context("Failed to connect")?;
+    let (tx, rx) = ws_stream.split();
+
+    let tx = WebsocketTx::new(tx);
+
+    // Respond to the challenge
+    let challenge = resp
+        .headers()
+        .get("Probe-Rs-Challenge")
+        .context("No challenge header")?
+        .to_str()
+        .context("Failed to parse challenge header")?;
+
+    let mut hasher = Sha512::new();
+    hasher.update(challenge.as_bytes());
+    hasher.update(token.unwrap_or_default().as_bytes());
+    let result = hasher.finalize().to_vec();
+
+    tx.send(result)
+        .await
+        .map_err(|err| anyhow::anyhow!("Failed to send challenge response: {:?}", err))?;
+
+    let mut client = RpcClient::new_from_wire(
+        tx,
+        WebsocketRx::new(rx.map(|message| {
+            message.map(|message| match message {
+                Message::Binary(binary) => binary,
+                _ => Bytes::new(),
+            })
+        })),
+    );
+    client.is_localhost = is_localhost;
+
+    Ok(client)
+}
 
 /// Represents a connection to a remote server.
 ///
@@ -162,6 +227,40 @@ impl RpcClient {
         }
     }
 
+    pub async fn upload_file(&self, src_path: &Path) -> anyhow::Result<PathBuf> {
+        use anyhow::Context as _;
+
+        let src_path = src_path.canonicalize()?;
+        if self.is_localhost {
+            return Ok(src_path);
+        }
+
+        let mut uploaded = self.uploaded_files.lock().await;
+        if let Some(path) = uploaded.get(&src_path) {
+            return Ok(path.clone());
+        }
+
+        let data = tokio::fs::read(&src_path)
+            .await
+            .context("Failed to read file")?;
+        tracing::debug!("Uploading {} ({} bytes)", src_path.display(), data.len());
+
+        let TempFile { key, path } = self.send_resp::<CreateTempFileEndpoint, _>(&()).await?;
+
+        for chunk in data.chunks(1024 * 512) {
+            self.send_resp::<TempFileDataEndpoint, _>(&AppendFileRequest {
+                data: chunk.into(),
+                key,
+            })
+            .await?;
+        }
+
+        tracing::debug!("Uploaded file to {}", path.display());
+        uploaded.insert(src_path, path.clone());
+
+        Ok(path)
+    }
+
     pub async fn attach_probe(&self, request: AttachRequest) -> anyhow::Result<AttachResult> {
         self.send_resp::<AttachEndpoint, _>(&request).await
     }
@@ -244,12 +343,22 @@ impl SessionInterface {
 
     pub async fn flash(
         &self,
-        path: PathBuf,
-        format: FormatOptions,
+        mut path: PathBuf,
+        mut format: FormatOptions,
         options: DownloadOptions,
         rtt_client: Option<Key<RttClient>>,
         on_msg: impl FnMut(ProgressEvent),
     ) -> anyhow::Result<FlashResult> {
+        path = self.client.upload_file(&path).await?;
+
+        if let Some(ref mut idf_bootloader) = format.idf_options.idf_bootloader {
+            *idf_bootloader = self.client.upload_file(&*idf_bootloader).await?;
+        }
+
+        if let Some(ref mut idf_partition_table) = format.idf_options.idf_partition_table {
+            *idf_partition_table = self.client.upload_file(&*idf_partition_table).await?;
+        }
+
         self.client
             .send_and_read_stream::<FlashEndpoint, ProgressEventTopic, _>(
                 &FlashRequest {
@@ -320,9 +429,14 @@ impl SessionInterface {
 
     pub async fn create_rtt_client(
         &self,
-        path: Option<PathBuf>,
+        mut path: Option<PathBuf>,
         log_options: LogOptions,
     ) -> anyhow::Result<Key<RttClient>> {
+        // TODO: RTT shouldn't need the firmware, we can extract location and process output locally
+        if let Some(ref mut path) = path {
+            *path = self.client.upload_file(&*path).await?;
+        }
+
         self.client
             .send_resp::<CreateRttClientEndpoint, _>(&CreateRttClientRequest {
                 sessid: self.sessid,
@@ -333,6 +447,8 @@ impl SessionInterface {
     }
 
     pub async fn stack_trace(&self, path: PathBuf) -> anyhow::Result<StackTraces> {
+        let path = self.client.upload_file(&path).await?;
+
         self.client
             .send_resp::<TakeStackTraceEndpoint, _>(&TakeStackTraceRequest {
                 sessid: self.sessid,
