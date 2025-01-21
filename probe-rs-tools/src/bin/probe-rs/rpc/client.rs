@@ -7,8 +7,8 @@
 //! The command output may be a result and/or a stream of messages encoded as [ServerMessage].
 
 use postcard_rpc::{
-    header::VarSeqKind,
-    host_client::{HostClient, HostClientConfig, HostErr, Subscription},
+    header::{VarSeq, VarSeqKind},
+    host_client::{HostClient, HostClientConfig, HostErr, IoClosed, Subscription},
     Topic,
 };
 use postcard_schema::Schema;
@@ -18,23 +18,35 @@ use tokio::sync::Mutex;
 
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
-use crate::rpc::{
-    functions::{
-        info::{InfoEvent, TargetInfoRequest},
-        memory::{ReadMemoryRequest, WriteMemoryRequest},
-        probe::{
-            AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, ListProbesRequest,
-            SelectProbeRequest, SelectProbeResult,
+use crate::{
+    rpc::{
+        functions::{
+            flash::{BootInfo, DownloadOptions, FlashRequest, FlashResult, ProgressEvent},
+            info::{InfoEvent, TargetInfoRequest},
+            memory::{ReadMemoryRequest, WriteMemoryRequest},
+            monitor::{MonitorEvent, MonitorMode, MonitorOptions, MonitorRequest},
+            probe::{
+                AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
+                ListProbesRequest, SelectProbeRequest, SelectProbeResult,
+            },
+            reset::ResetCoreRequest,
+            resume::ResumeAllCoresRequest,
+            rtt_client::{CreateRttClientRequest, LogOptions},
+            stack_trace::{StackTraces, TakeStackTraceRequest},
+            test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
+            AttachEndpoint, CreateRttClientEndpoint, FlashEndpoint, ListProbesEndpoint,
+            ListTestsEndpoint, MonitorEndpoint, MonitorTopic, ProgressEventTopic,
+            ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint, ReadMemory8Endpoint,
+            ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult, RunTestEndpoint,
+            SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
+            TokioSpawner, WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
+            WriteMemory8Endpoint,
         },
-        reset::ResetCoreRequest,
-        resume::ResumeAllCoresRequest,
-        AttachEndpoint, ListProbesEndpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
-        ReadMemory64Endpoint, ReadMemory8Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint,
-        RpcResult, SelectProbeEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TokioSpawner,
-        WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint, WriteMemory8Endpoint,
+        transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
+        Key,
     },
-    transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
-    Key,
+    util::rtt::client::RttClient,
+    FormatOptions,
 };
 
 /// Represents a connection to a remote server.
@@ -116,6 +128,13 @@ impl RpcClient {
         }
     }
 
+    pub async fn publish<T: Topic>(&self, message: &T::Message) -> Result<(), IoClosed>
+    where
+        T::Message: Serialize,
+    {
+        self.client.publish::<T>(VarSeq::Seq2(0), message).await
+    }
+
     async fn send_and_read_stream<E, T, R>(
         &self,
         req: &E::Request,
@@ -181,6 +200,10 @@ impl SessionInterface {
         }
     }
 
+    pub fn client(&self) -> RpcClient {
+        self.client.clone()
+    }
+
     pub fn core(&self, core: usize) -> CoreInterface {
         CoreInterface {
             sessid: self.sessid,
@@ -193,6 +216,105 @@ impl SessionInterface {
         self.client
             .send_resp::<ResumeAllCoresEndpoint, _>(&ResumeAllCoresRequest {
                 sessid: self.sessid,
+            })
+            .await
+    }
+
+    pub async fn flash(
+        &self,
+        path: PathBuf,
+        format: FormatOptions,
+        options: DownloadOptions,
+        rtt_client: Option<Key<RttClient>>,
+        on_msg: impl FnMut(ProgressEvent),
+    ) -> anyhow::Result<FlashResult> {
+        self.client
+            .send_and_read_stream::<FlashEndpoint, ProgressEventTopic, _>(
+                &FlashRequest {
+                    sessid: self.sessid,
+                    path,
+                    format,
+                    options,
+                    rtt_client,
+                },
+                on_msg,
+            )
+            .await
+    }
+
+    pub async fn monitor(
+        &self,
+        mode: MonitorMode,
+        options: MonitorOptions,
+        on_msg: impl FnMut(MonitorEvent),
+    ) -> anyhow::Result<()> {
+        self.client
+            .send_and_read_stream::<MonitorEndpoint, MonitorTopic, _>(
+                &MonitorRequest {
+                    sessid: self.sessid,
+                    mode,
+                    options,
+                },
+                on_msg,
+            )
+            .await
+    }
+
+    pub async fn list_tests(
+        &self,
+        boot_info: BootInfo,
+        rtt_client: Option<Key<RttClient>>,
+        on_msg: impl FnMut(MonitorEvent),
+    ) -> anyhow::Result<Tests> {
+        self.client
+            .send_and_read_stream::<ListTestsEndpoint, MonitorTopic, _>(
+                &ListTestsRequest {
+                    sessid: self.sessid,
+                    boot_info,
+                    rtt_client,
+                },
+                on_msg,
+            )
+            .await
+    }
+
+    pub async fn run_test(
+        &self,
+        test: Test,
+        rtt_client: Option<Key<RttClient>>,
+        on_msg: impl FnMut(MonitorEvent),
+    ) -> anyhow::Result<TestResult> {
+        self.client
+            .send_and_read_stream::<RunTestEndpoint, MonitorTopic, _>(
+                &RunTestRequest {
+                    sessid: self.sessid,
+                    test,
+                    rtt_client,
+                },
+                on_msg,
+            )
+            .await
+    }
+
+    pub async fn create_rtt_client(
+        &self,
+        path: Option<PathBuf>,
+        log_options: LogOptions,
+    ) -> anyhow::Result<Key<RttClient>> {
+        self.client
+            .send_resp::<CreateRttClientEndpoint, _>(&CreateRttClientRequest {
+                sessid: self.sessid,
+                path,
+                log_options,
+            })
+            .await
+    }
+
+    pub async fn stack_trace(&self, path: PathBuf) -> anyhow::Result<StackTraces> {
+        self.client
+            .send_resp::<TakeStackTraceEndpoint, _>(&TakeStackTraceRequest {
+                sessid: self.sessid,
+                path,
             })
             .await
     }
