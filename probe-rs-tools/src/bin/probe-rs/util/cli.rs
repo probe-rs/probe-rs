@@ -33,9 +33,20 @@ use crate::{
 
 pub async fn attach_probe(
     client: &RpcClient,
-    probe_options: ProbeOptions,
+    mut probe_options: ProbeOptions,
     resume_target: bool,
 ) -> anyhow::Result<SessionInterface> {
+    // Load the chip description if provided.
+    if let Some(chip_description) = probe_options.chip_description_path.take() {
+        let file = std::fs::File::open(chip_description)?;
+
+        // Load the YAML locally to validate it before sending it to the remote.
+        let family_name = probe_rs::config::add_target_from_yaml(file)?;
+        let family = probe_rs::config::get_family_by_name(&family_name)?;
+
+        client.load_chip_family(family).await?;
+    }
+
     let probe = select_probe(client, probe_options.probe.map(Into::into)).await?;
 
     let result = client

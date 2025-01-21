@@ -6,6 +6,7 @@
 //!
 //! The command output may be a result and/or a stream of messages encoded as [ServerMessage].
 
+use anyhow::Context as _;
 use postcard_rpc::{
     header::{VarSeq, VarSeqKind},
     host_client::{HostClient, HostClientConfig, HostErr, IoClosed, Subscription},
@@ -21,6 +22,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 use crate::{
     rpc::{
         functions::{
+            chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             flash::{BootInfo, DownloadOptions, FlashRequest, FlashResult, ProgressEvent},
             info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
@@ -34,8 +36,9 @@ use crate::{
             rtt_client::{CreateRttClientRequest, LogOptions},
             stack_trace::{StackTraces, TakeStackTraceRequest},
             test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
-            AttachEndpoint, CreateRttClientEndpoint, FlashEndpoint, ListProbesEndpoint,
-            ListTestsEndpoint, MonitorEndpoint, MonitorTopic, ProgressEventTopic,
+            AttachEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint, FlashEndpoint,
+            ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
+            LoadChipFamilyEndpoint, MonitorEndpoint, MonitorTopic, ProgressEventTopic,
             ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint, ReadMemory8Endpoint,
             ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult, RunTestEndpoint,
             SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
@@ -182,6 +185,28 @@ impl RpcClient {
         on_msg: impl FnMut(InfoEvent),
     ) -> anyhow::Result<()> {
         self.send_and_read_stream::<TargetInfoEndpoint, TargetInfoDataTopic, _>(&request, on_msg)
+            .await
+    }
+
+    pub async fn load_chip_family(
+        &self,
+        families: probe_rs_target::ChipFamily,
+    ) -> anyhow::Result<()> {
+        // I refuse to add a schema to ChipFamily until we can actually load it on the server.
+        let family = postcard::to_stdvec(&families).context("Failed to serialize chip family")?;
+
+        self.send_resp::<LoadChipFamilyEndpoint, _>(&LoadChipFamilyRequest {
+            family_data: family,
+        })
+        .await
+    }
+
+    pub async fn list_chip_families(&self) -> anyhow::Result<Vec<ChipFamily>> {
+        self.send_resp::<ListChipFamiliesEndpoint, _>(&()).await
+    }
+
+    pub async fn chip_info(&self, name: &str) -> anyhow::Result<ChipData> {
+        self.send_resp::<ChipInfoEndpoint, _>(&ChipInfoRequest { name: name.into() })
             .await
     }
 }
