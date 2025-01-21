@@ -1,4 +1,5 @@
 pub mod cargo;
+pub mod cli;
 pub mod common_options;
 pub mod flash;
 pub mod logging;

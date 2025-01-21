@@ -1,5 +1,6 @@
-use probe_rs::{probe::list::Lister, MemoryInterface};
+use crate::rpc::client::RpcClient;
 
+use crate::util::cli;
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
 use crate::CoreOptions;
 
@@ -28,45 +29,51 @@ pub struct Cmd {
     read_write_options: ReadWriteOptions,
 
     /// Number of words to read from the target
-    words: u64,
+    words: usize,
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.probe_options.simple_attach(lister)?;
-
-        let mut core = session.core(self.shared.core)?;
-        let words = self.words as usize;
+    pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
+        let session = cli::attach_probe(&client, self.probe_options, false).await?;
+        let core = session.core(self.shared.core);
 
         match self.read_write_options.width {
             ReadWriteBitWidth::B8 => {
-                let mut values = vec![0; words];
-                core.read_8(self.read_write_options.address, &mut values)?;
+                let values = core
+                    .read_memory_8(self.read_write_options.address, self.words)
+                    .await?;
                 for val in values {
                     print!("{:02x} ", val);
                 }
-                println!();
             }
-            ReadWriteBitWidth::B32 => {
-                let mut values = vec![0; words];
-                core.read_32(self.read_write_options.address, &mut values)?;
+            ReadWriteBitWidth::B16 => {
+                let values = core
+                    .read_memory_16(self.read_write_options.address, self.words)
+                    .await?;
                 for val in values {
                     print!("{:08x} ", val);
                 }
-                println!();
+            }
+            ReadWriteBitWidth::B32 => {
+                let values = core
+                    .read_memory_32(self.read_write_options.address, self.words)
+                    .await?;
+                for val in values {
+                    print!("{:08x} ", val);
+                }
             }
             ReadWriteBitWidth::B64 => {
-                let mut values = vec![0; words];
-                core.read_64(self.read_write_options.address, &mut values)?;
+                let values = core
+                    .read_memory_64(self.read_write_options.address, self.words)
+                    .await?;
                 for val in values {
                     print!("{:016x} ", val);
                 }
-                println!();
             }
         }
-        std::mem::drop(core);
+        println!();
 
-        session.resume_all_cores()?;
+        session.resume_all_cores().await?;
 
         Ok(())
     }
