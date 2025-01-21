@@ -1,18 +1,19 @@
+use crate::rpc::functions::flash::ProgressEvent;
 use crate::FormatOptions;
 
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
 use super::logging;
 
-use std::cell::RefCell;
 use std::time::Duration;
 use std::{path::Path, time::Instant};
 
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use probe_rs::flashing::FlashLayout;
+use parking_lot::Mutex;
+use probe_rs::flashing::{FlashLayout, FlashProgress};
 use probe_rs::InstructionSet;
 use probe_rs::{
-    flashing::{DownloadOptions, FileDownloadError, FlashLoader, FlashProgress, ProgressEvent},
+    flashing::{DownloadOptions, FileDownloadError, FlashLoader},
     Session,
 };
 
@@ -34,104 +35,32 @@ pub fn run_flash_download(
     options.verify = download_options.verify;
     options.preverify = download_options.preverify;
 
-    if !download_options.disable_progressbars {
-        // Create progress bars.
-        let multi_progress = MultiProgress::new();
-        logging::set_progress_bar(multi_progress.clone());
+    let flash_layout_output_path = download_options.flash_layout_output_path.clone();
 
-        let progress_bars = RefCell::new(ProgressBars {
-            erase: ProgressBarGroup::new("      Erasing"),
-            fill: ProgressBarGroup::new("Reading flash"),
-            program: ProgressBarGroup::new("  Programming"),
-        });
+    let pb = if download_options.disable_progressbars {
+        None
+    } else {
+        Some(CliProgressBars::new())
+    };
 
-        // Register callback to update the progress.
-        let flash_layout_output_path = download_options.flash_layout_output_path.clone();
-        let progress = FlashProgress::new(move |event| {
-            let mut progress_bars = progress_bars.borrow_mut();
-
-            match event {
-                ProgressEvent::Initialized {
-                    chip_erase,
-                    phases,
-                    restore_unwritten,
-                } => {
-                    // Build progress bars.
-                    if chip_erase {
-                        progress_bars
-                            .erase
-                            .add(multi_progress.add(ProgressBar::new(0)));
-                    }
-
-                    if phases.len() > 1 {
-                        progress_bars.erase.append_phase();
-                        progress_bars.program.append_phase();
-                        progress_bars.fill.append_phase();
-                    }
-
-                    let mut flash_layout = FlashLayout::default();
-                    for phase_layout in phases {
-                        if restore_unwritten {
-                            let fill_size =
-                                phase_layout.fills().iter().map(|s| s.size()).sum::<u64>();
-                            progress_bars
-                                .fill
-                                .add(multi_progress.add(ProgressBar::new(fill_size)));
-                        }
-
-                        if !chip_erase {
-                            let sector_size =
-                                phase_layout.sectors().iter().map(|s| s.size()).sum::<u64>();
-                            progress_bars
-                                .erase
-                                .add(multi_progress.add(ProgressBar::new(sector_size)));
-                        }
-
-                        progress_bars
-                            .program
-                            .add(multi_progress.add(ProgressBar::new(0)));
-
-                        flash_layout.merge_from(phase_layout);
-                    }
-
-                    // TODO: progress bar for verifying?
-
-                    // Visualise flash layout to file if requested.
-                    let visualizer = flash_layout.visualize();
-                    flash_layout_output_path
-                        .as_ref()
-                        .map(|path| visualizer.write_svg(path));
+    options.progress = Some(FlashProgress::new(move |event| {
+        if let Some(ref path) = flash_layout_output_path {
+            if let probe_rs::flashing::ProgressEvent::Initialized { ref phases, .. } = event {
+                let mut flash_layout = FlashLayout::default();
+                for phase_layout in phases {
+                    flash_layout.merge_from(phase_layout.clone());
                 }
-                ProgressEvent::StartedProgramming { length } => {
-                    progress_bars.program.mark_start_now();
-                    progress_bars.program.set_length(length);
-                }
-                ProgressEvent::StartedErasing => {
-                    progress_bars.erase.mark_start_now();
-                }
-                ProgressEvent::StartedFilling => {
-                    progress_bars.fill.mark_start_now();
-                }
-                ProgressEvent::PageProgrammed { size, .. } => {
-                    progress_bars.program.inc(size as u64);
-                }
-                ProgressEvent::SectorErased { size, .. } => progress_bars.erase.inc(size),
-                ProgressEvent::PageFilled { size, .. } => progress_bars.fill.inc(size),
-                ProgressEvent::FailedErasing => {
-                    progress_bars.erase.abandon();
-                    progress_bars.program.abandon();
-                }
-                ProgressEvent::FinishedErasing => progress_bars.erase.finish(),
-                ProgressEvent::FailedProgramming => progress_bars.program.abandon(),
-                ProgressEvent::FinishedProgramming => progress_bars.program.finish(),
-                ProgressEvent::FailedFilling => progress_bars.fill.abandon(),
-                ProgressEvent::FinishedFilling => progress_bars.fill.finish(),
-                ProgressEvent::DiagnosticMessage { .. } => {}
+
+                // Visualise flash layout to file if requested.
+                let visualizer = flash_layout.visualize();
+                _ = visualizer.write_svg(path);
             }
-        });
+        }
 
-        options.progress = Some(progress);
-    }
+        if let Some(ref pb) = pb {
+            pb.handle(event.into());
+        }
+    }));
 
     // Start timer.
     let flash_timer = Instant::now();
@@ -171,10 +100,10 @@ pub fn build_loader(
     probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
 }
 
-struct ProgressBars {
-    erase: ProgressBarGroup,
-    fill: ProgressBarGroup,
-    program: ProgressBarGroup,
+pub struct ProgressBars {
+    pub erase: ProgressBarGroup,
+    pub fill: ProgressBarGroup,
+    pub program: ProgressBarGroup,
 }
 
 pub struct ProgressBarGroup {
@@ -276,5 +205,107 @@ impl ProgressBarGroup {
             bar.reset_elapsed();
             bar.reset_eta();
         }
+    }
+}
+
+pub struct CliProgressBars {
+    multi_progress: MultiProgress,
+    progress_bars: Mutex<ProgressBars>,
+}
+
+impl CliProgressBars {
+    pub fn new() -> Self {
+        // Create progress bars.
+        let multi_progress = MultiProgress::new();
+        logging::set_progress_bar(multi_progress.clone());
+
+        let progress_bars = Mutex::new(ProgressBars {
+            erase: ProgressBarGroup::new("      Erasing"),
+            fill: ProgressBarGroup::new("Reading flash"),
+            program: ProgressBarGroup::new("  Programming"),
+        });
+
+        Self {
+            multi_progress,
+            progress_bars,
+        }
+    }
+
+    pub fn handle(&self, event: ProgressEvent) {
+        let mut progress_bars = self.progress_bars.lock();
+        match event {
+            ProgressEvent::Initialized {
+                chip_erase,
+                phases,
+                restore_unwritten,
+            } => {
+                // Build progress bars.
+                if chip_erase {
+                    progress_bars
+                        .erase
+                        .add(self.multi_progress.add(ProgressBar::new(0)));
+                }
+
+                if phases.len() > 1 {
+                    progress_bars.erase.append_phase();
+                    progress_bars.program.append_phase();
+                    progress_bars.fill.append_phase();
+                }
+
+                for phase_layout in phases {
+                    if restore_unwritten {
+                        let fill_size = phase_layout.fills.iter().map(|s| s.size).sum::<u64>();
+                        progress_bars
+                            .fill
+                            .add(self.multi_progress.add(ProgressBar::new(fill_size)));
+                    }
+
+                    if !chip_erase {
+                        let sector_size = phase_layout.sectors.iter().map(|s| s.size).sum::<u64>();
+                        progress_bars
+                            .erase
+                            .add(self.multi_progress.add(ProgressBar::new(sector_size)));
+                    }
+
+                    progress_bars
+                        .program
+                        .add(self.multi_progress.add(ProgressBar::new(0)));
+                }
+
+                // TODO: progress bar for verifying?
+            }
+            ProgressEvent::StartedProgramming { length } => {
+                progress_bars.program.mark_start_now();
+                progress_bars.program.set_length(length);
+            }
+            ProgressEvent::StartedErasing => {
+                progress_bars.erase.mark_start_now();
+            }
+            ProgressEvent::StartedFilling => {
+                progress_bars.fill.mark_start_now();
+            }
+            ProgressEvent::PageProgrammed { size, .. } => {
+                progress_bars.program.inc(size as u64);
+            }
+            ProgressEvent::SectorErased { size, .. } => progress_bars.erase.inc(size),
+            ProgressEvent::PageFilled { size, .. } => progress_bars.fill.inc(size),
+            ProgressEvent::FailedErasing => {
+                progress_bars.erase.abandon();
+                progress_bars.program.abandon();
+            }
+            ProgressEvent::FinishedErasing => progress_bars.erase.finish(),
+            ProgressEvent::FailedProgramming => progress_bars.program.abandon(),
+            ProgressEvent::FinishedProgramming => progress_bars.program.finish(),
+            ProgressEvent::FailedFilling => progress_bars.fill.abandon(),
+            ProgressEvent::FinishedFilling => progress_bars.fill.finish(),
+            ProgressEvent::DiagnosticMessage { .. } => {}
+        }
+    }
+}
+
+impl Drop for CliProgressBars {
+    fn drop(&mut self) {
+        // If we don't do this, the progress bars disappear.
+        logging::clear_progress_bar();
     }
 }

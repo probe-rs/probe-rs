@@ -20,6 +20,7 @@ use tokio::sync::Mutex;
 pub mod client;
 pub mod functions;
 pub mod transport;
+pub mod utils;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Hash)]
 pub struct Key<T> {
