@@ -56,6 +56,44 @@ struct Cli {
     subcommand: Subcommand,
 }
 
+impl Cli {
+    fn run(self, utc_offset: UtcOffset) -> Result<()> {
+        let lister = Lister::new();
+        match self.subcommand {
+            Subcommand::DapServer { .. } => unreachable!(), // already handled.
+            Subcommand::List(cmd) => cmd.run(&lister),
+            Subcommand::Info(cmd) => cmd.run(&lister),
+            Subcommand::Gdb(cmd) => cmd.run(&lister),
+            Subcommand::Reset(cmd) => cmd.run(&lister),
+            Subcommand::Debug(cmd) => cmd.run(&lister),
+            Subcommand::Download(cmd) => cmd.run(&lister),
+            Subcommand::Run(cmd) => cmd.run(&lister, true, utc_offset),
+            Subcommand::Attach(cmd) => cmd.run(&lister, utc_offset),
+            Subcommand::Verify(cmd) => cmd.run(&lister),
+            Subcommand::Erase(cmd) => cmd.run(&lister),
+            Subcommand::Trace(cmd) => cmd.run(&lister),
+            Subcommand::Itm(cmd) => cmd.run(&lister),
+            Subcommand::Chip(cmd) => cmd.run(),
+            Subcommand::Benchmark(cmd) => cmd.run(&lister),
+            Subcommand::Profile(cmd) => cmd.run(&lister),
+            Subcommand::Read(cmd) => cmd.run(&lister),
+            Subcommand::Write(cmd) => cmd.run(&lister),
+            Subcommand::Complete(cmd) => cmd.run(&lister),
+            Subcommand::Mi(cmd) => cmd.run(),
+        }
+    }
+
+    fn elf(&self) -> Option<PathBuf> {
+        match self.subcommand {
+            Subcommand::Download(ref cmd) => Some(cmd.path.clone()),
+            Subcommand::Run(ref cmd) => Some(cmd.shared_options.path.clone()),
+            Subcommand::Attach(ref cmd) => Some(cmd.run.shared_options.path.clone()),
+            Subcommand::Verify(ref cmd) => Some(cmd.path.clone()),
+            _ => None,
+        }
+    }
+}
+
 #[derive(clap::Subcommand)]
 enum Subcommand {
     /// Debug Adapter Protocol (DAP) server. See <https://probe.rs/docs/tools/debugger/>.
@@ -264,6 +302,8 @@ fn main() -> Result<()> {
     let utc_offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
 
     let args: Vec<_> = std::env::args_os().collect();
+
+    // Special-case `cargo-embed` and `cargo-flash`.
     if let Some(args) = multicall_check(&args, "cargo-flash") {
         cmd::cargo_flash::main(args);
         return Ok(());
@@ -273,24 +313,13 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    if let Some(format_arg_pos) = args.iter().position(|arg| arg == "--format") {
-        if let Some(format_arg) = args.get(format_arg_pos + 1) {
-            if let Some(format_arg) = format_arg.to_str() {
-                if FormatKind::from_str(format_arg).is_ok() {
-                    anyhow::bail!("--format has been renamed to --binary-format. Please use --binary-format {0} instead of --format {0}", format_arg);
-                }
-            }
-        }
-    }
+    reject_format_arg(&args)?;
 
     // Parse the commandline options.
     let matches = Cli::parse_from(args);
 
-    // Setup the probe lister, list all probes normally
-    let lister = Lister::new();
-
-    let log_path = if let Some(location) = matches.log_file {
-        Some(location)
+    let log_path = if let Some(ref location) = matches.log_file {
+        Some(location.clone())
     } else if matches.log_to_folder || matches.report.is_some() {
         // We always log if we create a report.
         let location =
@@ -309,48 +338,30 @@ fn main() -> Result<()> {
     // the DAP server has special logging requirements. Run it before initializing logging,
     // so it can do its own special init.
     if let Subcommand::DapServer(cmd) = matches.subcommand {
+        let lister = Lister::new();
         return cmd::dap_server::run(cmd, &lister, utc_offset, log_path);
     }
 
     let _logger_guard = setup_logging(log_path, None);
 
-    let mut elf = None;
-    let result = match matches.subcommand {
-        Subcommand::DapServer { .. } => unreachable!(), // handled above.
-        Subcommand::List(cmd) => cmd.run(&lister),
-        Subcommand::Info(cmd) => cmd.run(&lister),
-        Subcommand::Gdb(cmd) => cmd.run(&lister),
-        Subcommand::Reset(cmd) => cmd.run(&lister),
-        Subcommand::Debug(cmd) => cmd.run(&lister),
-        Subcommand::Download(cmd) => {
-            elf = Some(cmd.path.clone());
-            cmd.run(&lister)
-        }
-        Subcommand::Run(cmd) => {
-            elf = Some(cmd.shared_options.path.clone());
-            cmd.run(&lister, true, utc_offset)
-        }
-        Subcommand::Attach(cmd) => {
-            elf = Some(cmd.run.shared_options.path.clone());
-            cmd.run(&lister, utc_offset)
-        }
-        Subcommand::Verify(cmd) => {
-            elf = Some(cmd.path.clone());
-            cmd.run(&lister)
-        }
-        Subcommand::Erase(cmd) => cmd.run(&lister),
-        Subcommand::Trace(cmd) => cmd.run(&lister),
-        Subcommand::Itm(cmd) => cmd.run(&lister),
-        Subcommand::Chip(cmd) => cmd.run(),
-        Subcommand::Benchmark(cmd) => cmd.run(&lister),
-        Subcommand::Profile(cmd) => cmd.run(&lister),
-        Subcommand::Read(cmd) => cmd.run(&lister),
-        Subcommand::Write(cmd) => cmd.run(&lister),
-        Subcommand::Complete(cmd) => cmd.run(&lister),
-        Subcommand::Mi(cmd) => cmd.run(),
-    };
+    let elf = matches.elf();
+    let report_path = matches.report.clone();
+    let result = matches.run(utc_offset);
+    compile_report(result, report_path, elf, log_path)
+}
 
-    compile_report(result, matches.report, elf, log_path)
+fn reject_format_arg(args: &[OsString]) -> anyhow::Result<()> {
+    if let Some(format_arg_pos) = args.iter().position(|arg| arg == "--format") {
+        if let Some(format_arg) = args.get(format_arg_pos + 1) {
+            if let Some(format_arg) = format_arg.to_str() {
+                if FormatKind::from_str(format_arg).is_ok() {
+                    anyhow::bail!("--format has been renamed to --binary-format. Please use --binary-format {0} instead of --format {0}", format_arg);
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn compile_report(
