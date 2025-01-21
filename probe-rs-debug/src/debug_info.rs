@@ -707,8 +707,7 @@ impl DebugInfo {
 
             // When we unwind the registers for the current frame, we should always do the FP and SP first,
             // since many of the unwind rule calculations for the other registers depend on either one of these two.
-            let critical_unwind_registers =
-                [RegisterRole::FramePointer, RegisterRole::StackPointer];
+            let critical_unwind_registers = [RegisterRole::StackPointer];
             for register_role in &critical_unwind_registers {
                 let register = unwind_registers.get_register_mut_by_role(register_role)?;
 
@@ -730,10 +729,7 @@ impl DebugInfo {
             for debug_register in unwind_registers.0.iter_mut() {
                 if debug_register
                     .core_register
-                    .register_has_role(RegisterRole::FramePointer)
-                    || debug_register
-                        .core_register
-                        .register_has_role(RegisterRole::StackPointer)
+                    .register_has_role(RegisterRole::StackPointer)
                     || debug_register
                         .core_register
                         .register_has_role(RegisterRole::ProgramCounter)
