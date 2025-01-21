@@ -1,12 +1,9 @@
-use std::ops::ControlFlow;
-
 use crate::{
     determine_cfa, get_object_reference, get_unwind_info, stack_frame::StackFrameInfo,
     unwind_register, DebugError, DebugInfo, DebugRegisters, StackFrame,
 };
 use bitfield::bitfield;
 use probe_rs::{Error, MemoryInterface, RegisterRole, RegisterValue};
-use probe_rs_target::InstructionSet;
 
 use super::{ExceptionInfo, ExceptionInterface};
 
@@ -148,21 +145,26 @@ pub(crate) fn exception_details(
             },
         )?;
         let callee_frame_registers = handler_frame.registers.clone();
-        if let ControlFlow::Break(error) = unwind_register(
-            handler_frame
-                .registers
-                .get_register_mut_by_role(&RegisterRole::FramePointer)?,
+
+        let frame_pointer = handler_frame
+            .registers
+            .get_register_mut_by_role(&RegisterRole::FramePointer)?;
+
+        match unwind_register(
+            frame_pointer,
             &callee_frame_registers,
-            Some(unwind_info),
+            unwind_info,
             handler_frame.canonical_frame_address,
-            &mut None,
             memory_interface,
-            Some(InstructionSet::Thumb2),
         ) {
-            tracing::error!("{:?}", &error);
-            handler_frame.function_name =
-                format!("{} : ERROR: {error}", handler_frame.function_name);
+            Err(error) => {
+                tracing::error!("{:?}", &error);
+                handler_frame.function_name =
+                    format!("{} : ERROR: {error}", handler_frame.function_name);
+            }
+            Ok(val) => frame_pointer.value = val,
         };
+
         // Now we can update the stack pointer also, but
         // first we have to determine the size of the exception data on the stack.
         // See <https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-entry-behavior?lang=en>

@@ -50,18 +50,12 @@ impl ExceptionInterface for XtensaExceptionHandler {
         &self,
         unwind_registers: &mut DebugRegisters,
         frame_pc: u64,
-        stack_frames: &[StackFrame],
+        _stack_frames: &[StackFrame],
         instruction_set: Option<probe_rs::InstructionSet>,
         memory: &mut dyn MemoryInterface,
     ) -> ControlFlow<Option<DebugError>> {
         // Use the default method to unwind PC.
-        unwind_pc_without_debuginfo(
-            unwind_registers,
-            frame_pc,
-            stack_frames,
-            instruction_set,
-            memory,
-        )?;
+        unwind_pc_without_debuginfo(unwind_registers, frame_pc, instruction_set)?;
 
         // We can try and use FP to unwind SP and RA that allows us to continue unwinding.
 

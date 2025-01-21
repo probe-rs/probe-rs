@@ -134,16 +134,10 @@ pub trait ExceptionInterface {
         &self,
         unwind_registers: &mut DebugRegisters,
         frame_pc: u64,
-        stack_frames: &[StackFrame],
+        _stack_frames: &[StackFrame],
         instruction_set: Option<probe_rs::InstructionSet>,
-        memory: &mut dyn MemoryInterface,
+        _memory: &mut dyn MemoryInterface,
     ) -> ControlFlow<Option<DebugError>> {
-        unwind_pc_without_debuginfo(
-            unwind_registers,
-            frame_pc,
-            stack_frames,
-            instruction_set,
-            memory,
-        )
+        unwind_pc_without_debuginfo(unwind_registers, frame_pc, instruction_set)
     }
 }

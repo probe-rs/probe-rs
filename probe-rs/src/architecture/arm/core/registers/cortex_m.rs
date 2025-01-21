@@ -7,21 +7,24 @@ use crate::{
     CoreRegister, CoreRegisters, RegisterId,
 };
 
-pub(crate) const PC: CoreRegister = CoreRegister {
+/// Program counter (PC) register.
+pub const PC: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("R15"), RegisterRole::ProgramCounter],
     id: RegisterId(15),
     data_type: RegisterDataType::UnsignedInteger(32),
     unwind_rule: UnwindRule::SpecialRule,
 };
 
-pub(crate) const FP: CoreRegister = CoreRegister {
+/// Frame pointer (FP) register.
+pub const FP: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("R7"), RegisterRole::FramePointer],
     id: RegisterId(7),
     data_type: RegisterDataType::UnsignedInteger(32),
-    unwind_rule: UnwindRule::SpecialRule,
+    unwind_rule: UnwindRule::Preserve,
 };
 
-pub(crate) const SP: CoreRegister = CoreRegister {
+/// Stack pointer (SP) register.
+pub const SP: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("R13"), RegisterRole::StackPointer],
     id: RegisterId(13),
     data_type: RegisterDataType::UnsignedInteger(32),
@@ -44,7 +47,7 @@ pub const XPSR: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Preserve,
 };
 
-/// All off the Cortex-M core registers.
+/// All of the Cortex-M core registers.
 pub static CORTEX_M_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET

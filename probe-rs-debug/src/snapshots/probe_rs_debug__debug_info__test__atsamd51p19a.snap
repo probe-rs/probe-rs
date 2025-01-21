@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 1999
 expression: stack_frames
 ---
 - function_name: print_const_pointers
