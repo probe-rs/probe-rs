@@ -704,38 +704,15 @@ impl DebugInfo {
             let callee_frame_registers = unwind_registers.clone();
 
             // PART 2-b: Unwind registers for the "previous/calling" frame.
-
-            // When we unwind the registers for the current frame, we should always do the FP and SP first,
-            // since many of the unwind rule calculations for the other registers depend on either one of these two.
-            let critical_unwind_registers = [RegisterRole::StackPointer];
-            for register_role in &critical_unwind_registers {
-                let register = unwind_registers.get_register_mut_by_role(register_role)?;
-
-                match unwind_register(register, &callee_frame_registers, unwind_info, cfa, memory) {
-                    Ok(val) => {
-                        register.value = val;
-                    }
-                    Err(error) => {
-                        tracing::error!("{:?}", &error);
-                        if let Some(first_frame) = stack_frames.last_mut() {
-                            first_frame.function_name =
-                                format!("{} : ERROR: {error}", first_frame.function_name);
-                        };
-                        break 'unwind;
-                    }
-                };
-            }
-
             for debug_register in unwind_registers.0.iter_mut() {
+                // The program counter is handled later
                 if debug_register
                     .core_register
-                    .register_has_role(RegisterRole::StackPointer)
-                    || debug_register
-                        .core_register
-                        .register_has_role(RegisterRole::ProgramCounter)
+                    .register_has_role(RegisterRole::ProgramCounter)
                 {
                     continue;
                 }
+
                 match unwind_register(
                     debug_register,
                     &callee_frame_registers,
