@@ -542,7 +542,13 @@ fn compile_report(
 
 fn load_config() -> anyhow::Result<Config> {
     // Paths to search for the configuration file.
+    // cwd
     let mut paths = vec![PathBuf::from(".")];
+    // path to executable
+    if let Ok(exe) = std::env::current_exe() {
+        paths.push(exe.parent().unwrap().to_path_buf());
+    }
+    // home directory
     if let Some(home) = directories::UserDirs::new().map(|user| user.home_dir().to_path_buf()) {
         paths.push(home);
     }
