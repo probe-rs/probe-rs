@@ -1,16 +1,17 @@
 use crate::rpc::functions::flash::ProgressEvent;
-use crate::FormatOptions;
+use crate::{FormatKind, FormatOptions};
 
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
 use super::logging;
 
+use std::path::PathBuf;
 use std::time::Duration;
 use std::{path::Path, time::Instant};
 
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
-use probe_rs::flashing::{FlashLayout, FlashProgress};
+use probe_rs::flashing::{BinOptions, FlashLayout, FlashProgress, Format, IdfOptions};
 use probe_rs::InstructionSet;
 use probe_rs::{
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},
@@ -95,7 +96,23 @@ pub fn build_loader(
     format_options: FormatOptions,
     image_instruction_set: Option<InstructionSet>,
 ) -> Result<FlashLoader, FileDownloadError> {
-    let format = format_options.into_format(session.target());
+    let format = match format_options.to_format_kind(session.target()) {
+        FormatKind::Bin => Format::Bin(BinOptions {
+            base_address: format_options.bin_options.base_address,
+            skip: format_options.bin_options.skip,
+        }),
+        FormatKind::Hex => Format::Hex,
+        FormatKind::Elf => Format::Elf,
+        FormatKind::Uf2 => Format::Uf2,
+        FormatKind::Idf => Format::Idf(IdfOptions {
+            bootloader: format_options.idf_options.idf_bootloader.map(PathBuf::from),
+            partition_table: format_options
+                .idf_options
+                .idf_partition_table
+                .map(PathBuf::from),
+            target_app_partition: format_options.idf_options.idf_target_app_partition,
+        }),
+    };
 
     probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
 }

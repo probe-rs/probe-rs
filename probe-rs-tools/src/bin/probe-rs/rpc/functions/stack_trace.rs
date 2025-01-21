@@ -1,4 +1,4 @@
-use std::{fmt::Write as _, path::PathBuf};
+use std::fmt::Write as _;
 
 use crate::rpc::{
     functions::{RpcContext, RpcResult},
@@ -24,7 +24,7 @@ pub struct StackTraces {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct TakeStackTraceRequest {
     pub sessid: Key<Session>,
-    pub path: PathBuf,
+    pub path: String,
 }
 
 pub type TakeStackTraceResponse = RpcResult<StackTraces>;

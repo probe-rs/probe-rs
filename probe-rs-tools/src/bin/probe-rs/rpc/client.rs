@@ -227,10 +227,10 @@ impl RpcClient {
         }
     }
 
-    pub async fn upload_file(&self, src_path: &Path) -> anyhow::Result<PathBuf> {
+    pub async fn upload_file(&self, src_path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
         use anyhow::Context as _;
 
-        let src_path = src_path.canonicalize()?;
+        let src_path = src_path.as_ref().canonicalize()?;
         if self.is_localhost {
             return Ok(src_path);
         }
@@ -255,7 +255,8 @@ impl RpcClient {
             .await?;
         }
 
-        tracing::debug!("Uploaded file to {}", path.display());
+        tracing::debug!("Uploaded file to {}", path);
+        let path = PathBuf::from(path);
         uploaded.insert(src_path, path.clone());
 
         Ok(path)
@@ -355,18 +356,28 @@ impl SessionInterface {
         path = self.client.upload_file(&path).await?;
 
         if let Some(ref mut idf_bootloader) = format.idf_options.idf_bootloader {
-            *idf_bootloader = self.client.upload_file(&*idf_bootloader).await?;
+            *idf_bootloader = self
+                .client
+                .upload_file(&*idf_bootloader)
+                .await?
+                .display()
+                .to_string();
         }
 
         if let Some(ref mut idf_partition_table) = format.idf_options.idf_partition_table {
-            *idf_partition_table = self.client.upload_file(&*idf_partition_table).await?;
+            *idf_partition_table = self
+                .client
+                .upload_file(&*idf_partition_table)
+                .await?
+                .display()
+                .to_string();
         }
 
         self.client
             .send_and_read_stream::<FlashEndpoint, ProgressEventTopic, _>(
                 &FlashRequest {
                     sessid: self.sessid,
-                    path,
+                    path: path.display().to_string(),
                     format,
                     options,
                     rtt_client,
@@ -443,7 +454,7 @@ impl SessionInterface {
         self.client
             .send_resp::<CreateRttClientEndpoint, _>(&CreateRttClientRequest {
                 sessid: self.sessid,
-                path,
+                path: path.map(|path| path.display().to_string()),
                 log_options,
             })
             .await
@@ -455,7 +466,7 @@ impl SessionInterface {
         self.client
             .send_resp::<TakeStackTraceEndpoint, _>(&TakeStackTraceRequest {
                 sessid: self.sessid,
-                path,
+                path: path.display().to_string(),
             })
             .await
     }

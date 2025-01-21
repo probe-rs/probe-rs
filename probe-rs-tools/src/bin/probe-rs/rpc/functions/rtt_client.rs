@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use crate::{
     rpc::{
         functions::{RpcContext, RpcResult},
@@ -30,7 +28,7 @@ pub struct LogOptions {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct CreateRttClientRequest {
     pub sessid: Key<Session>,
-    pub path: Option<PathBuf>,
+    pub path: Option<String>,
     pub log_options: LogOptions,
 }
 
