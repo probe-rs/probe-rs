@@ -2759,7 +2759,8 @@ dependencies = [
 [[package]]
 name = "postcard-derive"
 version = "0.2.1"
-source = "git+https://github.com/bugadani/postcard/?branch=pathbuf#28d6c3c18cfb9a995755d4d6cf04f6cf87961976"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68f049d94cb6dda6938cc8a531d2898e7c08d71c6de63d8e67123cca6cdde2cc"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2788,7 +2789,8 @@ dependencies = [
 [[package]]
 name = "postcard-schema"
 version = "0.2.0"
-source = "git+https://github.com/bugadani/postcard/?branch=pathbuf#28d6c3c18cfb9a995755d4d6cf04f6cf87961976"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7532d2f032349d41dc760c9fe5247fcb5660c689caf4884822603983a5a9a66"
 dependencies = [
  "postcard-derive",
  "serde",
