@@ -77,7 +77,7 @@ impl Cli {
             Subcommand::Erase(cmd) => cmd.run(&lister),
             Subcommand::Trace(cmd) => cmd.run(&lister),
             Subcommand::Itm(cmd) => cmd.run(&lister),
-            Subcommand::Chip(cmd) => cmd.run(),
+            Subcommand::Chip(cmd) => cmd.run(client).await,
             Subcommand::Benchmark(cmd) => cmd.run(&lister),
             Subcommand::Profile(cmd) => cmd.run(&lister),
             Subcommand::Read(cmd) => cmd.run(client).await,
