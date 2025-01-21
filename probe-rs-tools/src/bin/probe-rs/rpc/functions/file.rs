@@ -16,7 +16,7 @@ use tempfile::NamedTempFile;
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct TempFile {
-    pub path: PathBuf,
+    pub path: String,
     pub key: Key<PathBuf>,
 }
 
@@ -32,8 +32,8 @@ pub struct AppendFileRequest {
 pub fn create_temp_file(ctx: &mut RpcContext, _header: VarHeader, _req: ()) -> CreateFileResponse {
     // TODO: avoid temp files altogether
     let file = NamedTempFile::new().context("Failed to write temporary file")?;
-    let path = file.path().to_path_buf();
-    tracing::info!("Created temporary file {}", path.display());
+    let path = file.path().to_path_buf().display().to_string();
+    tracing::info!("Created temporary file {}", path);
     let key = ctx.store_object_blocking(file);
 
     Ok(TempFile {

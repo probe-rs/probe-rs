@@ -16,7 +16,6 @@ use figment::providers::{Data, Format as _, Json, Toml, Yaml};
 use figment::Figment;
 use itertools::Itertools;
 use postcard_schema::Schema;
-use probe_rs::flashing::{BinOptions, Format, IdfOptions};
 use probe_rs::{probe::list::Lister, Target};
 use report::Report;
 use serde::{Deserialize, Serialize};
@@ -226,10 +225,10 @@ pub struct BinaryCliOptions {
 pub struct IdfCliOptions {
     /// The idf bootloader path
     #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    idf_bootloader: Option<PathBuf>,
+    idf_bootloader: Option<String>,
     /// The idf partition table path
     #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    idf_partition_table: Option<PathBuf>,
+    idf_partition_table: Option<String>,
     /// The idf target app partition
     #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
     idf_target_app_partition: Option<String>,
@@ -323,26 +322,6 @@ impl FormatOptions {
             FormatKind::from_optional(target.default_format.as_deref())
                 .expect("Failed to parse a default binary format. This shouldn't happen.")
         })
-    }
-
-    /// If a format is provided, use it.
-    /// If a target has a preferred format, we use that.
-    /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
-    pub fn into_format(self, target: &Target) -> Format {
-        match self.to_format_kind(target) {
-            FormatKind::Bin => Format::Bin(BinOptions {
-                base_address: self.bin_options.base_address,
-                skip: self.bin_options.skip,
-            }),
-            FormatKind::Hex => Format::Hex,
-            FormatKind::Elf => Format::Elf,
-            FormatKind::Uf2 => Format::Uf2,
-            FormatKind::Idf => Format::Idf(IdfOptions {
-                bootloader: self.idf_options.idf_bootloader,
-                partition_table: self.idf_options.idf_partition_table,
-                target_app_partition: self.idf_options.idf_target_app_partition,
-            }),
-        }
     }
 }
 

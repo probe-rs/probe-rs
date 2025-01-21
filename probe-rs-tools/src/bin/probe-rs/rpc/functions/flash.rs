@@ -1,4 +1,4 @@
-use std::{cell::Cell, path::PathBuf, rc::Rc};
+use std::{cell::Cell, rc::Rc};
 
 use postcard_rpc::{
     header::{VarHeader, VarSeq},
@@ -48,7 +48,7 @@ pub struct DownloadOptions {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FlashRequest {
     pub sessid: Key<Session>,
-    pub path: PathBuf,
+    pub path: String,
     pub format: FormatOptions,
     pub options: DownloadOptions,
     pub rtt_client: Option<Key<RttClient>>,

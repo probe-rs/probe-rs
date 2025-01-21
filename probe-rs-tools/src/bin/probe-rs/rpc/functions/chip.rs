@@ -188,11 +188,12 @@ impl From<probe_rs_target::MemoryRegion> for MemoryRegion {
 impl MemoryRegion {
     /// Returns the address range of the memory region.
     pub fn address_range(&self) -> Range<u64> {
-        match self {
-            MemoryRegion::Ram(rr) => rr.range.clone(),
-            MemoryRegion::Generic(gr) => gr.range.clone(),
-            MemoryRegion::Nvm(nr) => nr.range.clone(),
-        }
+        let (start, end) = match self {
+            MemoryRegion::Ram(rr) => rr.range,
+            MemoryRegion::Generic(gr) => gr.range,
+            MemoryRegion::Nvm(nr) => nr.range,
+        };
+        start..end
     }
 }
 
@@ -202,7 +203,7 @@ pub struct NvmRegion {
     /// A name to describe the region
     pub name: Option<String>,
     /// Address range of the region
-    pub range: Range<u64>,
+    pub range: (u64, u64),
     /// List of cores that can access this region
     pub cores: Vec<String>,
     /// True if the memory region is an alias of a different memory region.
@@ -215,7 +216,7 @@ impl From<probe_rs_target::NvmRegion> for NvmRegion {
     fn from(value: probe_rs_target::NvmRegion) -> Self {
         Self {
             name: value.name,
-            range: value.range,
+            range: (value.range.start, value.range.end),
             cores: value.cores,
             is_alias: value.is_alias,
             access: value.access.map(|a| a.into()),
@@ -229,7 +230,7 @@ pub struct RamRegion {
     /// A name to describe the region
     pub name: Option<String>,
     /// Address range of the region
-    pub range: Range<u64>,
+    pub range: (u64, u64),
     /// List of cores that can access this region
     pub cores: Vec<String>,
     /// Access permissions for the region.
@@ -241,7 +242,7 @@ impl From<probe_rs_target::RamRegion> for RamRegion {
     fn from(value: probe_rs_target::RamRegion) -> Self {
         Self {
             name: value.name,
-            range: value.range,
+            range: (value.range.start, value.range.end),
             cores: value.cores,
             access: value.access.map(|a| a.into()),
         }
@@ -254,7 +255,7 @@ pub struct GenericRegion {
     /// A name to describe the region
     pub name: Option<String>,
     /// Address range of the region
-    pub range: Range<u64>,
+    pub range: (u64, u64),
     /// List of cores that can access this region
     pub cores: Vec<String>,
     /// Access permissions for the region.
@@ -265,7 +266,7 @@ impl From<probe_rs_target::GenericRegion> for GenericRegion {
     fn from(value: probe_rs_target::GenericRegion) -> Self {
         Self {
             name: value.name,
-            range: value.range,
+            range: (value.range.start, value.range.end),
             cores: value.cores,
             access: value.access.map(|a| a.into()),
         }

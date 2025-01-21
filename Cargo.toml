@@ -50,6 +50,3 @@ lto = "thin"
 [profile.dev.package.zip]
 # Set the default for zip in development mode so the creation of the zip does not take forever
 opt-level = 3
-
-[patch.crates-io]
-postcard-schema = { git = "https://github.com/bugadani/postcard/", branch = "pathbuf" }
