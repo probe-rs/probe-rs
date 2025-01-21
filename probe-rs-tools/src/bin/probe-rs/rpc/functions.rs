@@ -1,6 +1,11 @@
 use std::{any::Any, ops::DerefMut};
 use std::{convert::Infallible, future::Future};
 
+use crate::rpc::functions::file::{
+    append_temp_file, create_temp_file, AppendFileRequest, CreateFileResponse,
+};
+use crate::rpc::functions::probe::{select_probe, SelectProbeRequest, SelectProbeResponse};
+use crate::rpc::transport::memory::{WireRx, WireTx};
 use crate::{
     rpc::{
         functions::{
@@ -13,8 +18,8 @@ use crate::{
             memory::{read_memory, write_memory, ReadMemoryRequest, WriteMemoryRequest},
             monitor::{monitor, MonitorEvent, MonitorRequest},
             probe::{
-                attach, list_probes, select_probe, AttachRequest, AttachResponse,
-                ListProbesRequest, ListProbesResponse, SelectProbeRequest, SelectProbeResponse,
+                attach, list_probes, AttachRequest, AttachResponse, ListProbesRequest,
+                ListProbesResponse,
             },
             reset::{reset, ResetCoreRequest},
             resume::{resume_all_cores, ResumeAllCoresRequest},
@@ -25,7 +30,6 @@ use crate::{
                 RunTestResponse,
             },
         },
-        transport::memory::{WireRx, WireTx},
         Key, SessionState,
     },
     util::common_options::OperationError,
@@ -44,6 +48,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio_util::sync::CancellationToken;
 
 pub mod chip;
+pub mod file;
 pub mod flash;
 pub mod info;
 pub mod memory;
@@ -318,6 +323,9 @@ endpoints! {
     | ListTestsEndpoint         | ListTestsRequest       | ListTestsResponse       | "tests/list"       |
     | RunTestEndpoint           | RunTestRequest         | RunTestResponse         | "tests/run"        |
 
+    | CreateTempFileEndpoint    | ()                     | CreateFileResponse      | "temp_file/new"    |
+    | TempFileDataEndpoint      | AppendFileRequest      | NoResponse              | "temp_file/append" |
+
     | ListChipFamiliesEndpoint  | ()                     | ListFamiliesResponse    | "chips/list"       |
     | ChipInfoEndpoint          | ChipInfoRequest        | ChipInfoResponse        | "chips/info"       |
     | LoadChipFamilyEndpoint    | LoadChipFamilyRequest  | NoResponse              | "chips/load"       |
@@ -378,6 +386,9 @@ postcard_rpc::define_dispatch! {
 
         | ListTestsEndpoint         | spawn     | list_tests        |
         | RunTestEndpoint           | spawn     | run_test          |
+
+        | CreateTempFileEndpoint    | blocking  | create_temp_file  |
+        | TempFileDataEndpoint      | async     | append_temp_file  |
 
         | ListChipFamiliesEndpoint  | blocking  | list_families     |
         | ChipInfoEndpoint          | blocking  | chip_info         |

@@ -17,6 +17,8 @@ pub mod profile;
 pub mod read;
 pub mod reset;
 pub mod run;
+#[cfg(feature = "remote")]
+pub mod serve;
 pub mod trace;
 pub mod verify;
 pub mod write;
