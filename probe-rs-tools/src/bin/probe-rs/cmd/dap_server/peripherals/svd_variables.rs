@@ -78,6 +78,8 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
     let mut svd_cache = SvdVariableCache::new_svd_cache();
     let device_root_variable_key = svd_cache.root_variable_key();
 
+    let device_default_access = peripheral_device.default_register_properties.access;
+
     for peripheral in &peripheral_device.peripherals {
         let current_peripheral_group_name = peripheral.group_name.as_ref();
 
@@ -140,6 +142,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                     .properties
                     .access
                     .map(|a| !a.can_read())
+                    .or_else(|| device_default_access.map(|a| !a.can_read()))
                     .unwrap_or(true);
 
             let register_name = format!("{}.{}", &peripheral_name, register.name);
@@ -152,6 +155,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                     || field
                         .access
                         .map(|a| !a.can_read())
+                        .or_else(|| device_default_access.map(|a| !a.can_read()))
                         .unwrap_or(register_has_restricted_read);
 
                 let field_variable = (
