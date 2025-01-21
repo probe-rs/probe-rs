@@ -4,6 +4,10 @@ use std::{convert::Infallible, future::Future};
 use crate::{
     rpc::{
         functions::{
+            chip::{
+                chip_info, list_families, load_chip_family, ChipInfoRequest, ChipInfoResponse,
+                ListFamiliesResponse, LoadChipFamilyRequest,
+            },
             flash::{flash, FlashRequest, FlashResponse, ProgressEvent},
             info::{target_info, InfoEvent, TargetInfoRequest},
             memory::{read_memory, write_memory, ReadMemoryRequest, WriteMemoryRequest},
@@ -39,6 +43,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio_util::sync::CancellationToken;
 
+pub mod chip;
 pub mod flash;
 pub mod info;
 pub mod memory;
@@ -178,6 +183,7 @@ pub struct RpcContext {
     state: SessionState,
     token: CancellationToken,
     sender: Option<PostcardSender<WireTxImpl>>,
+    local: bool,
 }
 
 impl SpawnContext for RpcContext {
@@ -194,12 +200,17 @@ impl SpawnContext for RpcContext {
 }
 
 impl RpcContext {
-    pub fn new(_local: bool) -> Self {
+    pub fn new(local: bool) -> Self {
         Self {
             state: SessionState::new(),
             token: CancellationToken::new(),
             sender: None,
+            local,
         }
+    }
+
+    pub fn is_local(&self) -> bool {
+        self.local
     }
 
     pub fn set_sender(&mut self, sender: PostcardSender<WireTxImpl>) {
@@ -307,6 +318,10 @@ endpoints! {
     | ListTestsEndpoint         | ListTestsRequest       | ListTestsResponse       | "tests/list"       |
     | RunTestEndpoint           | RunTestRequest         | RunTestResponse         | "tests/run"        |
 
+    | ListChipFamiliesEndpoint  | ()                     | ListFamiliesResponse    | "chips/list"       |
+    | ChipInfoEndpoint          | ChipInfoRequest        | ChipInfoResponse        | "chips/info"       |
+    | LoadChipFamilyEndpoint    | LoadChipFamilyRequest  | NoResponse              | "chips/load"       |
+
     | TargetInfoEndpoint        | TargetInfoRequest      | NoResponse              | "info"             |
     | ResetCoreEndpoint         | ResetCoreRequest       | NoResponse              | "reset"            |
 
@@ -363,6 +378,10 @@ postcard_rpc::define_dispatch! {
 
         | ListTestsEndpoint         | spawn     | list_tests        |
         | RunTestEndpoint           | spawn     | run_test          |
+
+        | ListChipFamiliesEndpoint  | blocking  | list_families     |
+        | ChipInfoEndpoint          | blocking  | chip_info         |
+        | LoadChipFamilyEndpoint    | async     | load_chip_family  |
 
         | TargetInfoEndpoint        | async     | target_info       |
         | ResetCoreEndpoint         | async     | reset             |

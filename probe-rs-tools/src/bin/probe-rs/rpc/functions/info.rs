@@ -30,39 +30,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     rpc::functions::{
+        chip::JEP106Code,
         probe::{DebugProbeEntry, WireProtocol},
         NoResponse, RpcContext, TargetInfoDataTopic,
     },
     util::common_options::ProbeOptions,
 };
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Schema)]
-pub struct JEP106Code {
-    /// JEP106 identification code.
-    /// Points to a manufacturer name in the bank table corresponding to `cc`.
-    pub id: u8,
-    /// JEP106 continuation code.
-    /// This code represents the bank which the manufacturer for a corresponding `id` has to be looked up.
-    pub cc: u8,
-}
-
-impl From<jep106::JEP106Code> for JEP106Code {
-    fn from(value: jep106::JEP106Code) -> Self {
-        Self {
-            id: value.id,
-            cc: value.cc,
-        }
-    }
-}
-
-impl From<JEP106Code> for jep106::JEP106Code {
-    fn from(value: JEP106Code) -> Self {
-        Self {
-            id: value.id,
-            cc: value.cc,
-        }
-    }
-}
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct TargetInfoRequest {
