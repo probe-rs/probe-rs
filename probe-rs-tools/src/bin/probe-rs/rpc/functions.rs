@@ -4,14 +4,22 @@ use std::{convert::Infallible, future::Future};
 use crate::{
     rpc::{
         functions::{
+            flash::{flash, FlashRequest, FlashResponse, ProgressEvent},
             info::{target_info, InfoEvent, TargetInfoRequest},
             memory::{read_memory, write_memory, ReadMemoryRequest, WriteMemoryRequest},
+            monitor::{monitor, MonitorEvent, MonitorRequest},
             probe::{
                 attach, list_probes, select_probe, AttachRequest, AttachResponse,
                 ListProbesRequest, ListProbesResponse, SelectProbeRequest, SelectProbeResponse,
             },
             reset::{reset, ResetCoreRequest},
             resume::{resume_all_cores, ResumeAllCoresRequest},
+            rtt_client::{create_rtt_client, CreateRttClientRequest, CreateRttClientResponse},
+            stack_trace::{take_stack_trace, TakeStackTraceRequest, TakeStackTraceResponse},
+            test::{
+                list_tests, run_test, ListTestsRequest, ListTestsResponse, RunTestRequest,
+                RunTestResponse,
+            },
         },
         transport::memory::{WireRx, WireTx},
         Key, SessionState,
@@ -22,7 +30,7 @@ use crate::{
 use anyhow::anyhow;
 use postcard_rpc::header::{VarHeader, VarSeq};
 use postcard_rpc::server::{
-    Dispatch, Sender as PostcardSender, Server, WireRxErrorKind, WireTxErrorKind,
+    Dispatch, Sender as PostcardSender, Server, SpawnContext, WireRxErrorKind, WireTxErrorKind,
 };
 use postcard_rpc::{endpoints, host_client, server, topics, Topic, TopicDirection};
 use postcard_schema::Schema;
@@ -31,11 +39,16 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio_util::sync::CancellationToken;
 
+pub mod flash;
 pub mod info;
 pub mod memory;
+pub mod monitor;
 pub mod probe;
 pub mod reset;
 pub mod resume;
+pub mod rtt_client;
+pub mod stack_trace;
+pub mod test;
 
 pub type RpcResult<T> = Result<T, RpcError>;
 
@@ -105,10 +118,79 @@ impl From<RpcError> for anyhow::Error {
     }
 }
 
+#[derive(Clone)]
+pub struct RpcSpawnContext {
+    state: SessionState,
+    token: CancellationToken,
+    sender: PostcardSender<WireTxImpl>,
+}
+
+impl RpcSpawnContext {
+    pub async fn publish<T>(&self, seq_no: VarSeq, msg: &T::Message) -> anyhow::Result<()>
+    where
+        T: ?Sized,
+        T: Topic,
+        T::Message: Serialize + Schema,
+    {
+        anyhow::ensure!(!self.token.is_cancelled(), "RPC call cancelled");
+
+        self.sender
+            .publish::<T>(seq_no, msg)
+            .await
+            .map_err(|e| anyhow!("{:?}", e))
+    }
+
+    pub fn publish_blocking<T>(&self, seq_no: VarSeq, msg: T::Message) -> anyhow::Result<()>
+    where
+        T: Topic,
+        T::Message: Serialize + Schema + Send + Sync + Sized + 'static,
+    {
+        let handle = tokio::runtime::Handle::current();
+        let this = self.clone();
+        handle.block_on(async move {
+            tokio::spawn(async move { this.publish::<T>(seq_no, &msg).await })
+                .await
+                .unwrap()
+        })
+    }
+
+    fn dry_run(&self, sessid: Key<Session>) -> bool {
+        self.state.dry_run(sessid)
+    }
+
+    fn session_blocking(&self, sessid: Key<Session>) -> impl DerefMut<Target = Session> {
+        self.state.session_blocking(sessid)
+    }
+
+    pub fn object_mut_blocking<T: Any + Send>(
+        &self,
+        key: Key<T>,
+    ) -> impl DerefMut<Target = T> + Send {
+        self.state.object_mut_blocking(key)
+    }
+
+    pub fn cancellation_token(&self) -> CancellationToken {
+        self.token.clone()
+    }
+}
+
 pub struct RpcContext {
     state: SessionState,
     token: CancellationToken,
     sender: Option<PostcardSender<WireTxImpl>>,
+}
+
+impl SpawnContext for RpcContext {
+    type SpawnCtxt = RpcSpawnContext;
+
+    fn spawn_ctxt(&mut self) -> Self::SpawnCtxt {
+        self.token = CancellationToken::new();
+        RpcSpawnContext {
+            state: self.state.clone(),
+            token: self.token.clone(),
+            sender: self.sender.clone().unwrap(),
+        }
+    }
 }
 
 impl RpcContext {
@@ -140,6 +222,10 @@ impl RpcContext {
 
     pub async fn object_mut<T: Any + Send>(&self, key: Key<T>) -> impl DerefMut<Target = T> + Send {
         self.state.object_mut(key).await
+    }
+
+    pub async fn store_object<T: Any + Send>(&mut self, obj: T) -> Key<T> {
+        self.state.store_object(obj).await
     }
 
     #[allow(unused)]
@@ -186,7 +272,6 @@ impl host_client::WireSpawn for TokioSpawner {
     }
 }
 
-#[allow(unused)]
 pub fn spawn_fn(
     _sp: &TokioSpawner,
     fut: impl Future<Output = ()> + 'static + Send,
@@ -214,6 +299,13 @@ endpoints! {
     | AttachEndpoint            | AttachRequest          | AttachResponse          | "probe/attach"     |
 
     | ResumeAllCoresEndpoint    | ResumeAllCoresRequest  | NoResponse              | "resume"           |
+    | CreateRttClientEndpoint   | CreateRttClientRequest | CreateRttClientResponse | "create_rtt"       |
+    | TakeStackTraceEndpoint    | TakeStackTraceRequest  | TakeStackTraceResponse  | "stack_trace"      |
+    | FlashEndpoint             | FlashRequest           | FlashResponse           | "flash"            |
+    | MonitorEndpoint           | MonitorRequest         | NoResponse              | "monitor"          |
+
+    | ListTestsEndpoint         | ListTestsRequest       | ListTestsResponse       | "tests/list"       |
+    | RunTestEndpoint           | RunTestRequest         | RunTestResponse         | "tests/run"        |
 
     | TargetInfoEndpoint        | TargetInfoRequest      | NoResponse              | "info"             |
     | ResetCoreEndpoint         | ResetCoreRequest       | NoResponse              | "reset"            |
@@ -243,6 +335,8 @@ topics! {
     | TopicTy             | MessageTy     | Path              | Cfg |
     | -------             | ---------     | ----              | --- |
     | TargetInfoDataTopic | InfoEvent     | "info/data"       |     |
+    | ProgressEventTopic  | ProgressEvent | "flash/progress"  |     |
+    | MonitorTopic        | MonitorEvent  | "monitor"         |     |
 }
 
 postcard_rpc::define_dispatch! {
@@ -262,6 +356,13 @@ postcard_rpc::define_dispatch! {
         | AttachEndpoint            | async     | attach            |
 
         | ResumeAllCoresEndpoint    | async     | resume_all_cores  |
+        | CreateRttClientEndpoint   | async     | create_rtt_client |
+        | TakeStackTraceEndpoint    | async     | take_stack_trace  |
+        | FlashEndpoint             | async     | flash             |
+        | MonitorEndpoint           | spawn     | monitor           |
+
+        | ListTestsEndpoint         | spawn     | list_tests        |
+        | RunTestEndpoint           | spawn     | run_test          |
 
         | TargetInfoEndpoint        | async     | target_info       |
         | ResetCoreEndpoint         | async     | reset             |

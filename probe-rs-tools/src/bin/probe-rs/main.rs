@@ -14,7 +14,7 @@ use clap::Parser;
 use colored::Colorize;
 use itertools::Itertools;
 use postcard_schema::Schema;
-use probe_rs::flashing::{BinOptions, Format, FormatKind, IdfOptions};
+use probe_rs::flashing::{BinOptions, Format, IdfOptions};
 use probe_rs::{probe::list::Lister, Target};
 use report::Report;
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,7 @@ struct Cli {
 }
 
 impl Cli {
-    async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> Result<()> {
+    async fn run(self, client: RpcClient) -> Result<()> {
         let lister = Lister::new();
         match self.subcommand {
             Subcommand::DapServer { .. } => unreachable!(),
@@ -70,9 +70,9 @@ impl Cli {
             Subcommand::Gdb(cmd) => cmd.run(&lister),
             Subcommand::Reset(cmd) => cmd.run(client).await,
             Subcommand::Debug(cmd) => cmd.run(&lister),
-            Subcommand::Download(cmd) => cmd.run(&lister),
-            Subcommand::Run(cmd) => cmd.run(&lister, true, utc_offset),
-            Subcommand::Attach(cmd) => cmd.run(&lister, utc_offset),
+            Subcommand::Download(cmd) => cmd.run(client).await,
+            Subcommand::Run(cmd) => cmd.run(client).await,
+            Subcommand::Attach(cmd) => cmd.run(client).await,
             Subcommand::Verify(cmd) => cmd.run(&lister),
             Subcommand::Erase(cmd) => cmd.run(&lister),
             Subcommand::Trace(cmd) => cmd.run(&lister),
@@ -173,7 +173,7 @@ pub struct IdfCliOptions {
     idf_target_app_partition: Option<String>,
 }
 
-#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
+#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]
 #[serde(default)]
 pub struct FormatOptions {
     /// If a format is provided, use it.
@@ -192,6 +192,64 @@ pub struct FormatOptions {
 
     #[clap(flatten)]
     idf_options: IdfCliOptions,
+}
+
+/// A finite list of all the available binary formats probe-rs understands.
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Schema)]
+pub enum FormatKind {
+    /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
+    /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
+    /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
+    Bin,
+    /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
+    Hex,
+    /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
+    #[default]
+    Elf,
+    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
+    /// Use [IdfOptions] to configure flashing.
+    Idf,
+    /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
+    Uf2,
+}
+
+impl FormatKind {
+    /// Creates a new Format from an optional string.
+    ///
+    /// If the string is `None`, the default format is returned.
+    pub fn from_optional(s: Option<&str>) -> Result<Self, String> {
+        match s {
+            Some(format) => Self::from_str(format),
+            None => Ok(Self::default()),
+        }
+    }
+}
+
+impl FromStr for FormatKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_lowercase()[..] {
+            "bin" | "binary" => Ok(Self::Bin),
+            "hex" | "ihex" | "intelhex" => Ok(Self::Hex),
+            "elf" => Ok(Self::Elf),
+            "uf2" => Ok(Self::Uf2),
+            "idf" | "esp-idf" | "espidf" => Ok(Self::Idf),
+            _ => Err(format!("Format '{s}' is unknown.")),
+        }
+    }
+}
+
+impl From<FormatKind> for probe_rs::flashing::FormatKind {
+    fn from(kind: FormatKind) -> Self {
+        match kind {
+            FormatKind::Bin => probe_rs::flashing::FormatKind::Bin,
+            FormatKind::Hex => probe_rs::flashing::FormatKind::Hex,
+            FormatKind::Elf => probe_rs::flashing::FormatKind::Elf,
+            FormatKind::Uf2 => probe_rs::flashing::FormatKind::Uf2,
+            FormatKind::Idf => probe_rs::flashing::FormatKind::Idf,
+        }
+    }
 }
 
 impl FormatOptions {
@@ -358,7 +416,7 @@ async fn main() -> Result<()> {
 
     // Run the command locally.
     let client = RpcClient::new_local_from_wire(tx, rx);
-    let result = matches.run(client, utc_offset).await;
+    let result = matches.run(client).await;
 
     // Wait for the server to shut down
     _ = handle.await.unwrap();
