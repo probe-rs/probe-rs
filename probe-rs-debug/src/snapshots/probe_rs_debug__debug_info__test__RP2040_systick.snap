@@ -765,7 +765,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536886888
+        U32: 536886920
     - core_register:
         id: 14
         roles:
@@ -969,7 +969,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536886888
+        U32: 536886920
     - core_register:
         id: 14
         roles:
@@ -1035,13 +1035,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcyc: u32 = 858993459,\n\treal_cyc: u32 = 48000000}"
+      value: "<unknown> {\n\tcyc: u32 = 1000000,\n\treal_cyc: u32 = 500001}"
       children:
         - name:
             Named: cyc
           type_name:
             Base: u32
-          value: "858993459"
+          value: "1000000"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
             line: 56
@@ -1051,7 +1051,7 @@ expression: stack_frames
             Named: real_cyc
           type_name:
             Base: u32
-          value: "48000000"
+          value: "500001"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
             line: 61
@@ -1198,7 +1198,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536886888
+        U32: 536886920
     - core_register:
         id: 14
         roles:
@@ -1264,13 +1264,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcycles: u32 = 3758153744}"
+      value: "<unknown> {\n\tcycles: u32 = 1000000}"
       children:
         - name:
             Named: cycles
           type_name:
             Base: u32
-          value: "3758153744"
+          value: "1000000"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/asm.rs
             line: 28

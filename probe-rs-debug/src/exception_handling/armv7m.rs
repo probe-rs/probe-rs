@@ -336,16 +336,6 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
     ) -> Result<crate::DebugRegisters, DebugError> {
         let mut updated_registers = stackframe_registers.clone();
 
-        // Identify the correct location for the exception context. This is different between Armv6-M and Armv7-M.
-        let exception_reason = ExceptionReason::from(raw_exception);
-        if exception_reason.is_precise_fault(memory_interface)? {
-            let exception_context_address = updated_registers
-                .get_register_mut_by_role(&probe_rs::RegisterRole::StackPointer)?;
-            if let Some(sp_value) = exception_context_address.value.as_mut() {
-                sp_value.increment_address(0x8)?;
-            }
-        }
-
         updated_registers = armv6m_armv7m_shared::calling_frame_registers(
             memory_interface,
             &updated_registers,

@@ -564,42 +564,6 @@ impl DebugInfo {
                 probe_rs::Error::Register(message)
             })?;
 
-            let exception_frame = match exception_handler.exception_details(
-                memory,
-                &unwind_registers,
-                self,
-            ) {
-                Ok(Some(exception_info)) => {
-                    tracing::trace!(
-                        "UNWIND: Stack unwind reached an exception handler {}",
-                        exception_info.description
-                    );
-                    Some(exception_info.handler_frame)
-                }
-                Ok(None) => {
-                    tracing::trace!(
-                        "UNWIND: No exception context found. Stack unwind will continue."
-                    );
-                    None
-                }
-                Err(e) => {
-                    let message = format!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {e}");
-                    tracing::warn!("{message}");
-                    stack_frames.push(StackFrame {
-                        id: get_object_reference(),
-                        function_name: message,
-                        source_location: None,
-                        registers: unwind_registers.clone(),
-                        pc: frame_pc_register_value,
-                        frame_base: None,
-                        is_inlined: false,
-                        local_variables: None,
-                        canonical_frame_address: None,
-                    });
-                    break 'unwind;
-                }
-            };
-
             // PART 1: Construct the `StackFrame` for the current pc.
             tracing::trace!("UNWIND: Will generate `StackFrame` for function at address (PC) {frame_pc_register_value:#}");
             let unwind_info = get_unwind_info(&mut unwind_context, &self.frame_section, frame_pc);
@@ -625,7 +589,7 @@ impl DebugInfo {
             // Add the found stackframes to the list, in reverse order. `get_stackframe_info` returns the frames in
             // the order of the most recently called function last, but the stack frames should be
             // in the order of the most recently called function first.
-            if !cached_stack_frames.is_empty() {
+            let found_frames = if !cached_stack_frames.is_empty() {
                 for frame in cached_stack_frames.into_iter().rev() {
                     if frame.is_inlined {
                         tracing::trace!(
@@ -636,7 +600,12 @@ impl DebugInfo {
                     }
                     stack_frames.push(frame);
                 }
-            } else if exception_frame.is_none() {
+                true
+            } else {
+                false
+            };
+
+            if !found_frames {
                 // We have no valid code for the current frame, so we
                 // construct a frame, using what information we have.
                 stack_frames.push(StackFrame {
@@ -655,14 +624,6 @@ impl DebugInfo {
                     canonical_frame_address: None,
                 });
             }
-
-            // Part 1-d: If we have an exception frame, we will insert it, before we continue unwinding.
-            if let Some(exception_frame) = exception_frame {
-                unwind_registers = exception_frame.registers.clone();
-                stack_frames.push(exception_frame);
-                // We have everything we need to unwind the next frame in the stack.
-                continue 'unwind;
-            };
 
             // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
             tracing::trace!("UNWIND - Preparing to unwind the registers for the previous frame.");
@@ -730,6 +691,45 @@ impl DebugInfo {
                     }
                     Ok(val) => {
                         debug_register.value = val;
+                    }
+                };
+            }
+
+            if unwind_registers
+                .get_return_address()
+                .is_some_and(|ra| ra.value.is_some())
+            {
+                match exception_handler.exception_details(memory, &unwind_registers, self) {
+                    Ok(Some(exception_info)) => {
+                        tracing::trace!(
+                            "UNWIND: Stack unwind reached an exception handler {}",
+                            exception_info.description
+                        );
+                        unwind_registers = exception_info.handler_frame.registers.clone();
+                        stack_frames.push(exception_info.handler_frame);
+                        // We have everything we need to unwind the next frame in the stack.
+                        continue 'unwind;
+                    }
+                    Ok(None) => {
+                        tracing::trace!(
+                            "UNWIND: No exception context found. Stack unwind will continue."
+                        );
+                    }
+                    Err(e) => {
+                        let message = format!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {e:?}");
+                        tracing::warn!("{message}");
+                        stack_frames.push(StackFrame {
+                            id: get_object_reference(),
+                            function_name: message,
+                            source_location: None,
+                            registers: unwind_registers.clone(),
+                            pc: frame_pc_register_value,
+                            frame_base: None,
+                            is_inlined: false,
+                            local_variables: None,
+                            canonical_frame_address: None,
+                        });
+                        break 'unwind;
                     }
                 };
             }

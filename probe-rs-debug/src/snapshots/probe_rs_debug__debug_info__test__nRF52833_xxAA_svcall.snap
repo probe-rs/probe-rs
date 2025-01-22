@@ -765,7 +765,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536887096
+        U32: 536887128
     - core_register:
         id: 14
         roles:
@@ -969,7 +969,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536887096
+        U32: 536887128
     - core_register:
         id: 14
         roles:

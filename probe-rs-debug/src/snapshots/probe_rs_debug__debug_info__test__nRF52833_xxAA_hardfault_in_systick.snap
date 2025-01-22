@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 1999
 expression: stack_frames
 ---
 - function_name: software_breakpoint
@@ -525,8 +524,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 9
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 10
         roles:
@@ -592,8 +590,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value:
-        U32: 536886968
+      value: ~
     - core_register:
         id: 18
         roles:
@@ -602,8 +599,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 16
         roles:
@@ -622,14 +618,13 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 19
-      value:
-        U32: 0
+      value: ~
   pc:
     U32: 2166
-  frame_base: 536886968
+  frame_base: ~
   is_inlined: false
   local_variables: ~
-  canonical_frame_address: 536886976
+  canonical_frame_address: ~
 - function_name: read_volatile<u32>
   source_location:
     path: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr/mod.rs
@@ -733,8 +728,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 9
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 10
         roles:
@@ -800,8 +794,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value:
-        U32: 536886968
+      value: ~
     - core_register:
         id: 18
         roles:
@@ -810,8 +803,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 16
         roles:
@@ -830,8 +822,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 19
-      value:
-        U32: 0
+      value: ~
   pc:
     U32: 2166
   frame_base: 536887024
@@ -1811,7 +1802,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536887056
+        U32: 536887088
     - core_register:
         id: 14
         roles:
@@ -2015,7 +2006,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536887056
+        U32: 536887088
     - core_register:
         id: 14
         roles:
@@ -2081,13 +2072,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcyc: u32 = 1,\n\treal_cyc: u32 = 85}"
+      value: "<unknown> {\n\tcyc: u32 = 1000000,\n\treal_cyc: u32 = 500001}"
       children:
         - name:
             Named: cyc
           type_name:
             Base: u32
-          value: "1"
+          value: "1000000"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
             line: 56
@@ -2097,7 +2088,7 @@ expression: stack_frames
             Named: real_cyc
           type_name:
             Base: u32
-          value: "85"
+          value: "500001"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
             line: 61
@@ -2244,7 +2235,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536887056
+        U32: 536887088
     - core_register:
         id: 14
         roles:
@@ -2310,13 +2301,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcycles: u32 = 500001}"
+      value: "<unknown> {\n\tcycles: u32 = 1000000}"
       children:
         - name:
             Named: cycles
           type_name:
             Base: u32
-          value: "500001"
+          value: "1000000"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/asm.rs
             line: 28
