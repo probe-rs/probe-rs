@@ -972,7 +972,7 @@ pub fn get_unwind_info<'a>(
 ) -> Result<&'a gimli::UnwindTableRow<GimliReaderOffset>, DebugError> {
     let transform_error = |error| {
         DebugError::Other(format!(
-            "UNWIND: Error reading FrameDescriptorEntry at PC={} : {}",
+            "UNWIND: Error reading FrameDescriptorEntry at PC={:x} : {}",
             frame_program_counter, error
         ))
     };
