@@ -178,6 +178,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                     address: register_address,
                     restricted_read: register_has_restricted_read,
                     description: register.description.clone(),
+                    size: register.properties.size.unwrap_or(32),
                 },
             )?;
 
