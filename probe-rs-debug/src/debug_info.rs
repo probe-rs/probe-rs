@@ -774,6 +774,11 @@ impl DebugInfo {
                     break 'unwind;
                 };
             }
+
+            if callee_frame_registers == unwind_registers {
+                tracing::debug!("No change, preventing infinite loop");
+                break;
+            }
         }
 
         Ok(stack_frames)
