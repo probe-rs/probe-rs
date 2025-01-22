@@ -205,6 +205,9 @@ pub enum SvdVariable {
 
         /// Description of the register, used as type in DAP
         description: Option<String>,
+
+        /// Size in bits of the register
+        size: u32,
     },
     /// Field with address
     SvdField {
@@ -239,6 +242,7 @@ impl SvdVariable {
             SvdVariable::SvdRegister {
                 address,
                 restricted_read,
+                size,
                 ..
             } => {
                 if *restricted_read {
@@ -247,19 +251,32 @@ impl SvdVariable {
                         address
                     )
                 } else {
-                    let value = match memory.read_word_32(*address) {
-                        Ok(u32_value) => Ok(u32_value),
-                        Err(error) => Err(format!(
-                            "Unable to read peripheral register value @ {:#010X} : {:?}",
-                            address, error
-                        )),
+                    let size_bytes = (*size / 8).max(1);
+                    let bits_alignment_offset = (*address % size_bytes as u64) as u32 * 8;
+                    let value = match *size {
+                        0..=8 => memory
+                            .read_word_8(*address)
+                            .map(|val| format!("{val:#04X}")),
+                        9..=16 => {
+                            let aligned_address = *address & !0b1;
+                            memory
+                                .read_word_16(aligned_address)
+                                .map(|val| format!("{:#06X}", val >> bits_alignment_offset))
+                        }
+                        _ => {
+                            let aligned_address = *address & !0b11;
+                            memory
+                                .read_word_32(aligned_address)
+                                .map(|val| format!("{:#010X}", val >> bits_alignment_offset))
+                        }
                     };
 
                     match value {
-                        Ok(u32_value) => {
-                            format!("{:#010X}", u32_value)
-                        }
-                        Err(error) => error,
+                        Ok(value) => value,
+                        Err(error) => format!(
+                            "Unable to read peripheral register value @ {:#010X} : {:?}",
+                            address, error
+                        ),
                     }
                 }
             }
@@ -276,12 +293,10 @@ impl SvdVariable {
                         address
                     )
                 } else {
-                    let value = match memory.read_word_32(*address) {
-                        Ok(u32_value) => Ok(u32_value),
-                        Err(error) => Err(format!(
-                            "Unable to read peripheral register field value @ {:#010X} : {:?}",
-                            address, error
-                        )),
+                    let value = match *bit_range_upper_bound {
+                        0..8 => memory.read_word_8(*address).map(u32::from),
+                        8..16 => memory.read_word_16(*address & !0b1).map(u32::from),
+                        _ => memory.read_word_32(*address & !0b11),
                     };
 
                     // In this special case, we extract just the bits we need from the stored value of the register.
@@ -296,10 +311,13 @@ impl SvdVariable {
                                 address,
                                 bit_range_lower_bound,
                                 bit_range_upper_bound,
-                                width = (*bit_range_lower_bound..*bit_range_upper_bound).count()
+                                width = (*bit_range_upper_bound - *bit_range_lower_bound) as usize
                             )
                         }
-                        Err(e) => e,
+                        Err(error) => format!(
+                            "Unable to read peripheral register field value @ {:#010X} : {:?}",
+                            address, error
+                        ),
                     }
                 }
             }
