@@ -1,4 +1,4 @@
-use std::{fmt::Write, num::NonZeroU32, time::Duration};
+use std::{num::NonZeroU32, time::Duration};
 
 use crate::{
     rpc::{
@@ -24,7 +24,7 @@ pub enum MonitorMode {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub enum MonitorEvent {
-    RttOutput(String), // Monitor supports a single channel only
+    RttOutput { channel: u32, bytes: Vec<u8> },
     SemihostingOutput(SemihostingOutput),
 }
 
@@ -72,7 +72,6 @@ fn monitor_impl(ctx: RpcSpawnContext, request: MonitorRequest) -> anyhow::Result
                 .unwrap();
         }
     });
-    let mut rtt_sink = RttStreamer::new(ctx.clone());
 
     let mut rtt_client = request
         .options
@@ -117,33 +116,17 @@ fn monitor_impl(ctx: RpcSpawnContext, request: MonitorRequest) -> anyhow::Result
         &mut core,
         request.options.catch_hardfault,
         request.options.catch_reset,
-        &mut rtt_sink,
+        |channel, bytes| {
+            ctx.publish_blocking::<MonitorTopic>(
+                VarSeq::Seq2(0),
+                MonitorEvent::RttOutput { channel, bytes },
+            )
+        },
         None,
         |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
     )?;
 
     Ok(())
-}
-
-pub struct RttStreamer {
-    ctx: RpcSpawnContext,
-}
-
-impl RttStreamer {
-    pub fn new(ctx: RpcSpawnContext) -> Self {
-        Self { ctx }
-    }
-}
-
-impl Write for RttStreamer {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        self.ctx
-            .publish_blocking::<MonitorTopic>(
-                VarSeq::Seq2(0),
-                MonitorEvent::RttOutput(s.to_string()),
-            )
-            .map_err(|_| std::fmt::Error)
-    }
 }
 
 struct MonitorEventHandler<F: FnMut(MonitorEvent)> {

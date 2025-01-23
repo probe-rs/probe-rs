@@ -1,23 +1,15 @@
-use std::sync::Arc;
-
-use crate::util::rtt::{
-    ChannelDataCallbacks, DefmtState, RttActiveDownChannel, RttActiveTarget, RttActiveUpChannel,
-    RttConfig, RttSymbolError,
-};
+use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection};
 use probe_rs::{
     rtt::{Error, Rtt, ScanRegion},
-    Core, Target,
+    Core,
 };
-use time::UtcOffset;
 
 pub struct RttClient {
-    pub defmt_data: Option<Arc<DefmtState>>,
     pub scan_region: ScanRegion,
-    pub timezone_offset: UtcOffset,
-    rtt_config: RttConfig,
+    pub config: RttConfig,
 
     /// The internal RTT handle, if we have successfully attached to the target.
-    target: Option<RttActiveTarget>,
+    target: Option<RttConnection>,
 
     /// If false, don't try to attach to the target.
     try_attaching: bool,
@@ -31,47 +23,15 @@ pub struct RttClient {
 }
 
 impl RttClient {
-    pub fn new(
-        elf: Option<&[u8]>,
-        target: &Target,
-        rtt_config: RttConfig,
-        scan_region: ScanRegion,
-    ) -> Result<Self, Error> {
-        let mut this = Self {
-            defmt_data: None,
+    pub fn new(config: RttConfig, scan_region: ScanRegion) -> Self {
+        Self {
             scan_region,
-            rtt_config,
+            config,
             target: None,
             try_attaching: true,
-            timezone_offset: UtcOffset::UTC,
             polled_data: false,
             core_id: 0,
-        };
-
-        if let Some(elf) = elf {
-            let mut init_defmt = false;
-            match RttActiveTarget::get_rtt_symbol_from_bytes(elf) {
-                Ok(address) => {
-                    this.scan_region = ScanRegion::Exact(address);
-                    this.core_id = target.core_index_by_address(address).unwrap_or(0);
-
-                    init_defmt = true;
-                }
-                Err(RttSymbolError::Goblin(_)) => {
-                    // Not an ELF
-                }
-                Err(RttSymbolError::RttSymbolNotFound) => {
-                    // We can still try to use defmt, we might find the control block.
-                    init_defmt = true;
-                }
-            }
-
-            if init_defmt {
-                this.defmt_data = DefmtState::try_from_bytes(elf)?.map(Arc::new);
-            }
         }
-
-        Ok(this)
     }
 
     pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
@@ -83,16 +43,9 @@ impl RttClient {
             return Ok(false);
         }
 
-        match Rtt::attach_region(core, &self.scan_region).and_then(|rtt| {
-            RttActiveTarget::new(
-                core,
-                rtt,
-                self.defmt_data.clone(),
-                &self.rtt_config,
-                self.timezone_offset,
-            )
-            .map(Some)
-        }) {
+        match Rtt::attach_region(core, &self.scan_region)
+            .and_then(|rtt| RttConnection::new(core, rtt, &self.config).map(Some))
+        {
             Ok(rtt) => self.target = rtt,
             Err(Error::ControlBlockNotFound) => {}
             Err(Error::ControlBlockCorrupted(error)) => {
@@ -105,57 +58,37 @@ impl RttClient {
         Ok(self.target.is_some())
     }
 
-    pub fn poll(
-        &mut self,
-        core: &mut Core,
-        collector: &mut impl ChannelDataCallbacks,
-    ) -> Result<(), Error> {
+    pub fn poll_channel(&mut self, core: &mut Core, channel: usize) -> Result<&[u8], Error> {
         self.try_attach(core)?;
 
-        let Some(target) = self.target.as_mut() else {
-            return Ok(());
-        };
+        if let Some(ref mut target) = self.target {
+            match target.poll_channel(core, channel) {
+                Ok(()) => self.polled_data = true,
 
-        let result = target.poll_rtt_fallible(core, collector);
-        self.handle_poll_result(result)
-    }
-
-    pub fn poll_channel(
-        &mut self,
-        core: &mut Core,
-        channel: usize,
-        collector: &mut impl ChannelDataCallbacks,
-    ) -> Result<(), Error> {
-        self.try_attach(core)?;
-
-        let Some(target) = self.target.as_mut() else {
-            return Ok(());
-        };
-
-        let result = target.poll_channel_fallible(core, channel, collector);
-        self.handle_poll_result(result)
-    }
-
-    fn handle_poll_result(&mut self, result: Result<(), Error>) -> Result<(), Error> {
-        match result {
-            Ok(()) => self.polled_data = true,
-            Err(Error::ControlBlockCorrupted(error)) => {
-                if self.polled_data {
-                    tracing::warn!("RTT control block corrupted ({error}), re-attaching");
+                Err(Error::ControlBlockCorrupted(error)) => {
+                    if self.polled_data {
+                        tracing::warn!("RTT control block corrupted ({error}), re-attaching");
+                    }
+                    self.target = None;
+                    self.polled_data = false;
                 }
-                self.target = None;
-                self.polled_data = false;
-            }
-            Err(Error::ReadPointerChanged) => {
-                if self.polled_data {
-                    tracing::warn!("RTT read pointer changed, re-attaching");
+                Err(Error::ReadPointerChanged) => {
+                    if self.polled_data {
+                        tracing::warn!("RTT read pointer changed, re-attaching");
+                    }
+                    self.target = None;
+                    self.polled_data = false;
                 }
-                self.target = None;
-                self.polled_data = false;
+
+                Err(other) => return Err(other),
             }
-            other => return other,
         }
-        Ok(())
+
+        if let Some(ref target) = self.target {
+            return target.channel_data(channel);
+        }
+
+        Ok(&[])
     }
 
     pub(crate) fn write_down_channel(

@@ -74,8 +74,7 @@ pub struct General {
     pub connect_under_reset: bool,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-// Note: default values are defined in `RttChannelConfig`.
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UpChannelConfig {
     pub channel: usize,
     #[serde(default)]
