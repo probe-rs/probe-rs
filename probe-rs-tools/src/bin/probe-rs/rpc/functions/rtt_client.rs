@@ -5,34 +5,46 @@ use crate::{
     },
     util::rtt::{client::RttClient, RttChannelConfig, RttConfig},
 };
-use anyhow::Context as _;
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::{flashing::FormatKind, rtt::ScanRegion, Session};
+use probe_rs::{rtt, Session};
 use serde::{Deserialize, Serialize};
 
-#[derive(Default, Debug, Serialize, Deserialize, Schema)]
-pub struct LogOptions {
-    /// Suppress filename and line number information from the rtt log
-    pub no_location: bool,
+/// Used to specify which memory regions to scan for the RTT control block.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Schema)]
+pub enum ScanRegion {
+    /// Scans all RAM regions known to probe-rs. This is the default and should always work, however
+    /// if your device has a lot of RAM, scanning all of it is slow.
+    #[default]
+    Ram,
 
-    /// The format string to use when printing defmt encoded log messages from the target.
-    ///
-    /// See https://defmt.ferrous-systems.com/custom-log-output
-    pub log_format: Option<String>,
+    /// Limit scanning to the memory addresses covered by the default region of the target.
+    TargetDefault,
 
-    /// Scan the memory to find the RTT control block
-    pub rtt_scan_memory: bool,
+    /// Limit scanning to the memory addresses covered by all of the given ranges. It is up to the
+    /// user to ensure that reading from this range will not read from undefined memory.
+    Ranges(Vec<(u64, u64)>),
+
+    /// Tries to find the control block starting at this exact address. It is up to the user to
+    /// ensure that reading the necessary bytes after the pointer will no read from undefined
+    /// memory.
+    Exact(u64),
 }
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct CreateRttClientRequest {
     pub sessid: Key<Session>,
-    pub path: Option<String>,
-    pub log_options: LogOptions,
+
+    /// Scan the memory to find the RTT control block
+    pub scan_regions: ScanRegion,
 }
 
-pub type CreateRttClientResponse = RpcResult<Key<RttClient>>;
+#[derive(Serialize, Deserialize, Schema)]
+pub struct RttClientData {
+    pub handle: Key<RttClient>,
+}
+
+pub type CreateRttClientResponse = RpcResult<RttClientData>;
 
 pub async fn create_rtt_client(
     ctx: &mut RpcContext,
@@ -41,39 +53,24 @@ pub async fn create_rtt_client(
 ) -> CreateRttClientResponse {
     let session = ctx.session(request.sessid).await;
 
-    let rtt_scan_regions = match request.log_options.rtt_scan_memory {
-        true => session.target().rtt_scan_regions.clone(),
-        false => ScanRegion::Ranges(vec![]),
-    };
     let mut rtt_config = RttConfig::default();
     rtt_config.channels.push(RttChannelConfig {
         channel_number: Some(0),
-        show_location: !request.log_options.no_location,
-        log_format: request.log_options.log_format.clone(),
         ..Default::default()
     });
-    let elf = if let Some(path) = request.path.as_deref() {
-        let format = FormatKind::from_optional(session.target().default_format.as_deref())
-            .expect("Failed to parse a default binary format. This shouldn't happen.");
-        if matches!(format, FormatKind::Elf | FormatKind::Idf) {
-            Some(
-                tokio::fs::read(path)
-                    .await
-                    .context("Failed to open firmware binary")?,
-            )
-        } else {
-            None
+
+    let rtt_scan_regions = match request.scan_regions {
+        ScanRegion::Ram => rtt::ScanRegion::Ram,
+        ScanRegion::TargetDefault => session.target().rtt_scan_regions.clone(),
+        ScanRegion::Ranges(ranges) => {
+            rtt::ScanRegion::Ranges(ranges.into_iter().map(|(start, end)| start..end).collect())
         }
-    } else {
-        None
+        ScanRegion::Exact(addr) => rtt::ScanRegion::Exact(addr),
     };
 
-    let client = RttClient::new(
-        elf.as_deref(),
-        session.target(),
-        rtt_config,
-        rtt_scan_regions,
-    )?;
+    let client = RttClient::new(rtt_config, rtt_scan_regions);
 
-    Ok(ctx.store_object(client).await)
+    Ok(RttClientData {
+        handle: ctx.store_object(client).await,
+    })
 }

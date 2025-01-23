@@ -14,10 +14,11 @@ use ratatui::{
 };
 use std::{cell::RefCell, io::Write, rc::Rc};
 use std::{path::PathBuf, sync::mpsc::TryRecvError};
+use time::UtcOffset;
 
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
-    util::rtt::client::RttClient,
+    util::rtt::{client::RttClient, DataFormat, DefmtProcessor, DefmtState, RttDecoder},
 };
 
 use super::super::config;
@@ -44,7 +45,19 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(client: RttClient, config: config::Config, logname: String) -> Result<Self> {
+    pub fn new(
+        client: RttClient,
+        elf: Option<Vec<u8>>,
+        config: config::Config,
+        timestamp_offset: UtcOffset,
+        logname: String,
+    ) -> Result<Self> {
+        let defmt_data = if let Some(elf) = elf {
+            DefmtState::try_from_bytes(&elf)?
+        } else {
+            None
+        };
+
         let mut tab_config = config.rtt.tabs;
 
         // Create channel states
@@ -65,6 +78,17 @@ impl App {
                 });
             }
 
+            let mut channel_config = client
+                .config
+                .channel_config(number)
+                .cloned()
+                .unwrap_or_default();
+
+            if up.channel_name() == "defmt" {
+                channel_config.data_format = DataFormat::Defmt;
+            }
+
+            // Where `channel_config` is unspecified, apply default from `default_channel_config`.
             // Is a TCP publish address configured?
             let stream = config
                 .rtt
@@ -73,7 +97,31 @@ impl App {
                 .find(|up_config| up_config.channel == number)
                 .and_then(|up_config| up_config.socket);
 
-            up_channels.push(Rc::new(RefCell::new(UpChannel::new(up, stream))));
+            let data_format = match channel_config.data_format {
+                DataFormat::String => RttDecoder::String {
+                    timestamp_offset: Some(timestamp_offset),
+                    last_line_done: false,
+                },
+                DataFormat::BinaryLE => RttDecoder::BinaryLE,
+                DataFormat::Defmt if defmt_data.is_none() => {
+                    tracing::warn!("Defmt data not found in ELF file");
+                    continue;
+                }
+                DataFormat::Defmt => RttDecoder::Defmt {
+                    processor: DefmtProcessor::new(
+                        defmt_data.clone().unwrap(),
+                        channel_config.show_timestamps,
+                        channel_config.show_location,
+                        channel_config.log_format.as_deref(),
+                    ),
+                },
+            };
+
+            up_channels.push(Rc::new(RefCell::new(UpChannel::new(
+                up,
+                data_format,
+                stream,
+            ))));
         }
 
         for down in client.down_channels() {
