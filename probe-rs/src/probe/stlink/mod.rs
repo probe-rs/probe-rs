@@ -1329,10 +1329,8 @@ impl StlinkArmDebug {
 
         interface.access_ports = valid_access_ports(&mut interface, DpAddress::Default)
             .into_iter()
+            .inspect(|addr| tracing::debug!("AP {:#x?}", addr))
             .collect();
-        interface.access_ports.iter().for_each(|addr| {
-            tracing::debug!("AP {:#x?}", addr);
-        });
 
         Ok(interface)
     }

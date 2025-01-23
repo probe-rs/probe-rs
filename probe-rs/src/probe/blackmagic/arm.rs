@@ -30,6 +30,9 @@ pub(crate) struct BlackMagicProbeArmDebug {
     /// Information about the APs of the target.
     /// APs are identified by a number, starting from zero.
     pub access_ports: BTreeSet<FullyQualifiedApAddress>,
+
+    /// A copy of the sequence that was passed during initialization
+    sequence: Arc<dyn ArmDebugSequence>,
 }
 
 #[derive(Debug)]
@@ -68,7 +71,7 @@ impl UninitializedArmProbe for UninitializedBlackMagicArmProbe {
             }
         }
 
-        let interface = BlackMagicProbeArmDebug::new(self.probe, dp)
+        let interface = BlackMagicProbeArmDebug::new(self.probe, dp, sequence)
             .map_err(|(s, e)| (s as Box<_>, ProbeRsError::from(e)))?;
 
         Ok(Box::new(interface))
@@ -98,20 +101,27 @@ impl BlackMagicProbeArmDebug {
     fn new(
         probe: Box<BlackMagicProbe>,
         dp: DpAddress,
+        sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, (Box<UninitializedBlackMagicArmProbe>, ArmError)> {
         let mut interface = Self {
             probe,
             access_ports: BTreeSet::new(),
+            sequence,
         };
 
-        interface.debug_port_start(dp).unwrap();
+        if let Err(e) = interface.debug_port_start(dp) {
+            return Err((
+                Box::new(UninitializedBlackMagicArmProbe {
+                    probe: interface.probe,
+                }),
+                e,
+            ));
+        }
 
         interface.access_ports = valid_access_ports(&mut interface, DpAddress::Default)
             .into_iter()
+            .inspect(|addr| tracing::debug!("AP {:#x?}", addr))
             .collect();
-        interface.access_ports.iter().for_each(|addr| {
-            tracing::debug!("AP {:#x?}", addr);
-        });
         Ok(interface)
     }
 
@@ -324,6 +334,26 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
     }
 
     fn reinitialize(&mut self) -> Result<(), ArmError> {
+        let sequence = self.sequence.clone();
+        let dp = self.current_debug_port();
+
+        // Switch to the correct mode
+        sequence.debug_port_setup(&mut *self.probe, dp)?;
+
+        if let Err(e) = sequence.debug_port_connect(&mut *self.probe, dp) {
+            tracing::warn!("failed to switch to DP {:x?}: {}", dp, e);
+
+            // Try the more involved debug_port_setup sequence, which also handles dormant mode.
+            sequence.debug_port_setup(&mut *self.probe, dp)?;
+        }
+
+        self.debug_port_start(dp)?;
+
+        self.access_ports = valid_access_ports(self, DpAddress::Default)
+            .into_iter()
+            .inspect(|addr| tracing::debug!("AP {:#x?}", addr))
+            .collect();
+
         Ok(())
     }
 }
