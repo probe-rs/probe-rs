@@ -2,9 +2,8 @@ use std::path::{Path, PathBuf};
 
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
-use crate::rpc::functions::rtt_client::LogOptions;
 
-use crate::util::cli;
+use crate::util::cli::{self, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::FormatOptions;
 
@@ -162,16 +161,20 @@ impl Cmd {
 
         let session = cli::attach_probe(&client, self.shared_options.probe_options, true).await?;
 
-        let rtt_client = session
-            .create_rtt_client(
-                Some(self.shared_options.path.clone()),
-                LogOptions {
-                    no_location: self.shared_options.no_location,
-                    log_format: self.shared_options.log_format,
-                    rtt_scan_memory: self.shared_options.rtt_scan_memory,
-                },
-            )
-            .await?;
+        let mut rtt_client = rtt_client(
+            &session,
+            &self.shared_options.path,
+            match self.shared_options.rtt_scan_memory {
+                true => crate::rpc::functions::rtt_client::ScanRegion::TargetDefault,
+                false => crate::rpc::functions::rtt_client::ScanRegion::Ranges(vec![]),
+            },
+            self.shared_options.log_format,
+            !self.shared_options.no_location,
+            None,
+        )
+        .await?;
+
+        let client_handle = rtt_client.handle();
 
         // Flash firmware
         let boot_info = cli::flash(
@@ -180,7 +183,7 @@ impl Cmd {
             self.shared_options.chip_erase,
             self.shared_options.format_options,
             self.shared_options.download_options,
-            Some(rtt_client),
+            Some(&mut rtt_client),
         )
         .await?;
 
@@ -215,10 +218,11 @@ impl Cmd {
                 &session,
                 MonitorMode::Run(boot_info),
                 &self.shared_options.path,
+                Some(rtt_client),
                 MonitorOptions {
                     catch_reset: self.run_options.catch_reset,
                     catch_hardfault: self.run_options.catch_hardfault,
-                    rtt_client: Some(rtt_client),
+                    rtt_client: Some(client_handle),
                 },
                 self.shared_options.always_print_stacktrace,
             )
