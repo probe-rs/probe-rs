@@ -12,7 +12,7 @@ use crate::{
     rpc::{
         functions::{
             flash::BootInfo,
-            monitor::{MonitorEvent, RttStreamer, SemihostingOutput, SemihostingReader},
+            monitor::{MonitorEvent, SemihostingOutput, SemihostingReader},
             ListTestsEndpoint, MonitorTopic, RpcResult, RpcSpawnContext, RunTestEndpoint,
             WireTxImpl,
         },
@@ -141,7 +141,6 @@ fn list_tests_impl(ctx: RpcSpawnContext, request: ListTestsRequest) -> anyhow::R
                 .unwrap();
         }
     });
-    let mut rtt_sink = RttStreamer::new(ctx.clone());
 
     let mut rtt_client = request
         .rtt_client
@@ -175,7 +174,12 @@ fn list_tests_impl(ctx: RpcSpawnContext, request: ListTestsRequest) -> anyhow::R
         &mut core,
         true,
         true,
-        &mut rtt_sink,
+        |channel, bytes| {
+            ctx.publish_blocking::<MonitorTopic>(
+                VarSeq::Seq2(0),
+                MonitorEvent::RttOutput { channel, bytes },
+            )
+        },
         Some(Duration::from_secs(5)),
         |halt_reason, core| list_handler.handle_halt(halt_reason, core),
     )? {
@@ -241,7 +245,6 @@ fn run_test_impl(ctx: RpcSpawnContext, request: RunTestRequest) -> anyhow::Resul
                 .unwrap();
         }
     });
-    let mut rtt_sink = RttStreamer::new(ctx.clone());
 
     let mut run_loop = RunLoop {
         core_id,
@@ -253,7 +256,12 @@ fn run_test_impl(ctx: RpcSpawnContext, request: RunTestRequest) -> anyhow::Resul
         &mut core,
         true,
         true,
-        &mut rtt_sink,
+        |channel, bytes| {
+            ctx.publish_blocking::<MonitorTopic>(
+                VarSeq::Seq2(0),
+                MonitorEvent::RttOutput { channel, bytes },
+            )
+        },
         Some(timeout),
         |halt_reason, core| run_handler.handle_halt(halt_reason, core),
     )? {
