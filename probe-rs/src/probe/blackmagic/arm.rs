@@ -109,7 +109,14 @@ impl BlackMagicProbeArmDebug {
             sequence,
         };
 
-        interface.debug_port_start(dp).unwrap();
+        if let Err(e) = interface.debug_port_start(dp) {
+            return Err((
+                Box::new(UninitializedBlackMagicArmProbe {
+                    probe: interface.probe,
+                }),
+                e,
+            ));
+        }
 
         interface.access_ports = valid_access_ports(&mut interface, DpAddress::Default)
             .into_iter()
@@ -340,7 +347,7 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
             sequence.debug_port_setup(&mut *self.probe, dp)?;
         }
 
-        self.debug_port_start(dp).unwrap();
+        self.debug_port_start(dp)?;
 
         self.access_ports = valid_access_ports(self, DpAddress::Default)
             .into_iter()
