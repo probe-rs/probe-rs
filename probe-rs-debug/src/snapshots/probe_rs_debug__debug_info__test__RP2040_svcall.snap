@@ -785,7 +785,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268436742
+        U32: 268436741
     - core_register:
         id: 17
         roles:
@@ -824,7 +824,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268436742
+    U32: 268436741
   frame_base: ~
   is_inlined: false
   local_variables: ~
@@ -832,10 +832,10 @@ expression: stack_frames
 - function_name: trigger_supervisor_call
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
-    line: 80
+    line: 78
     column:
-      Column: 2
-    address: 268436742
+      Column: 9
+    address: 268436740
   registers:
     - core_register:
         id: 0
@@ -989,7 +989,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268436742
+        U32: 268436741
     - core_register:
         id: 17
         roles:
@@ -1028,7 +1028,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268436742
+    U32: 268436741
   frame_base: 536886960
   is_inlined: false
   local_variables:

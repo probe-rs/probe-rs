@@ -552,19 +552,14 @@ impl DebugInfo {
                 }
             })
         {
-            // PART 0: The first step is to determine the exception context for the current PC.
-            // - If we are at an exception handler frame:
-            //   - Create a "handler" stackframe that can be inserted into the stack_frames list,
-            //     instead of "unknown function @ address";
-            //   - Overwrite the unwind registers with the exception context.
-            // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
-            // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
             let frame_pc = frame_pc_register_value.try_into().map_err(|error| {
                 let message = format!("Cannot convert register value for program counter to a 64-bit integer value: {error:?}");
                 probe_rs::Error::Register(message)
             })?;
 
-            // PART 1: Construct the `StackFrame` for the current pc.
+            // PART 1: Construct the `StackFrame`s for the current program counter.
+            //
+            //         Multiple stack frames can be constructed if we are inside inlined functions.
             tracing::trace!("UNWIND: Will generate `StackFrame` for function at address (PC) {frame_pc_register_value:#}");
             let unwind_info = get_unwind_info(&mut unwind_context, &self.frame_section, frame_pc);
 
@@ -589,7 +584,7 @@ impl DebugInfo {
             // Add the found stackframes to the list, in reverse order. `get_stackframe_info` returns the frames in
             // the order of the most recently called function last, but the stack frames should be
             // in the order of the most recently called function first.
-            let found_frames = if !cached_stack_frames.is_empty() {
+            if !cached_stack_frames.is_empty() {
                 for frame in cached_stack_frames.into_iter().rev() {
                     if frame.is_inlined {
                         tracing::trace!(
@@ -600,12 +595,7 @@ impl DebugInfo {
                     }
                     stack_frames.push(frame);
                 }
-                true
             } else {
-                false
-            };
-
-            if !found_frames {
                 // We have no valid code for the current frame, so we
                 // construct a frame, using what information we have.
                 stack_frames.push(StackFrame {
@@ -623,7 +613,7 @@ impl DebugInfo {
                     local_variables: None,
                     canonical_frame_address: None,
                 });
-            }
+            };
 
             // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
             tracing::trace!("UNWIND - Preparing to unwind the registers for the previous frame.");
@@ -695,6 +685,13 @@ impl DebugInfo {
                 };
             }
 
+            // PART 3: Check if we entered the current frame from an exception handler.
+            // - If we are at an exception handler frame:
+            //   - Create a "handler" stackframe that can be inserted into the stack_frames list,
+            //     instead of "unknown function @ address";
+            //   - Overwrite the unwind registers with the exception context.
+            // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
+            // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
             if unwind_registers
                 .get_return_address()
                 .is_some_and(|ra| ra.value.is_some())
@@ -1119,7 +1116,7 @@ pub fn unwind_register(
         .unwrap_or(RegisterRule::Undefined);
 
     unwind_register_using_rule(
-        &debug_register.core_register,
+        debug_register.core_register,
         callee_frame_registers,
         unwind_cfa,
         memory,
@@ -1539,7 +1536,7 @@ mod test {
 
         let next_frame = &frames[1];
         assert_eq!(next_frame.function_name, "SVC");
-        assert_eq!(next_frame.pc, RegisterValue::U32(0x00000180));
+        assert_eq!(next_frame.pc, RegisterValue::U32(0x0000017f));
 
         // Expected stack frame(s):
         // Frame 0: __cortex_m_rt_SVCall_trampoline @ 0x00000182

@@ -1822,7 +1822,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 1240
+        U32: 1239
     - core_register:
         id: 17
         roles:
@@ -1861,7 +1861,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 1240
+    U32: 1239
   frame_base: ~
   is_inlined: false
   local_variables: ~
@@ -2026,7 +2026,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 1240
+        U32: 1239
     - core_register:
         id: 17
         roles:
@@ -2065,7 +2065,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 1240
+    U32: 1239
   frame_base: 536887104
   is_inlined: true
   local_variables:
@@ -2255,7 +2255,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 1240
+        U32: 1239
     - core_register:
         id: 17
         roles:

@@ -284,14 +284,17 @@ impl ExceptionReason {
         }
     }
 
-    /// Determines how the exception return address should be offset when unwinding the stack.
-    /// See Armv7-M Architecture Reference Manual, Section B1.5.6.
+    /// If a precise fault occurs, the PC value in the stack frame will point to the instruction that caused the fault.
+    /// This means that the PC value in the stack frame is the address of the faulting instruction.
+    ///
+    /// For other faults, or interrupts, the PC value in the stack frame will point to the next instruction to be executed.
+    ///
+    /// See Armv7-M Architecture Reference Manual, section B1.5.6.
     pub(crate) fn is_precise_fault(&self, memory: &mut dyn MemoryInterface) -> Result<bool, Error> {
         let is_precise = match self {
-            ExceptionReason::HardFault
-            | ExceptionReason::BusFault
-            | ExceptionReason::MemoryManagementFault
-            | ExceptionReason::UsageFault => {
+            // Usage fault and memory management fault are always precise.
+            ExceptionReason::UsageFault | ExceptionReason::MemoryManagementFault => true,
+            ExceptionReason::HardFault | ExceptionReason::BusFault => {
                 // Same logic for direct and escalated faults.
                 let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
                 cfsr.bf_precise_data_access_error()
@@ -300,7 +303,7 @@ impl ExceptionReason {
                     || cfsr.usage_fault() > 0
             }
             ExceptionReason::DebugMonitor => {
-                // This should be true for syncrhonous exceptions, and false otherwise.
+                // This should be true for synchronous exceptions, and false otherwise.
                 // TODO: Identify if this debug event was triggered by a vector catch and decode the corresponding FSR. Not a priority for unwinding purposes.
                 true
             }
@@ -318,14 +321,9 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
-        debug_info: &DebugInfo,
+        _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, DebugError> {
-        armv6m_armv7m_shared::exception_details(
-            self,
-            memory_interface,
-            stackframe_registers,
-            debug_info,
-        )
+        armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers)
     }
 
     fn calling_frame_registers(
@@ -334,13 +332,31 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         stackframe_registers: &crate::DebugRegisters,
         raw_exception: u32,
     ) -> Result<crate::DebugRegisters, DebugError> {
+        let exception_reason = ExceptionReason::from(raw_exception);
+
+        // This shouldn't be called for Reset, because for Reset, no registers
+        // are stored on the stack.
+        if exception_reason == ExceptionReason::Reset {
+            return Err(DebugError::Other(
+                "Unwinding over Reset is not possible.".to_string(),
+            ));
+        }
+
         let mut updated_registers = stackframe_registers.clone();
 
-        updated_registers = armv6m_armv7m_shared::calling_frame_registers(
-            memory_interface,
-            &updated_registers,
-            raw_exception,
-        )?;
+        updated_registers =
+            armv6m_armv7m_shared::calling_frame_registers(memory_interface, &updated_registers)?;
+
+        if !exception_reason.is_precise_fault(memory_interface)? {
+            // PC is always stored on the stack when unwinding an exception,
+            // so we know that it exists, and that it has a value
+            let pc = updated_registers.get_program_counter_mut().unwrap();
+
+            // If it is not a precise fault, the PC value in the stack frame will point to the next instruction.
+            // Subtracing 1 here so that the PC value points to the instruction that caused the fault.
+            pc.value.as_mut().unwrap().decrement_address(1)?;
+        }
+
         Ok(updated_registers)
     }
 

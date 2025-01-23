@@ -1,4 +1,4 @@
-use crate::{get_object_reference, DebugError, DebugInfo, DebugRegisters, StackFrame};
+use crate::{get_object_reference, DebugError, DebugRegisters, StackFrame};
 use bitfield::bitfield;
 use probe_rs::{Error, MemoryInterface, RegisterRole, RegisterValue};
 
@@ -67,16 +67,44 @@ pub(crate) fn exception_details(
     exception_interface: &impl ExceptionInterface,
     memory_interface: &mut dyn MemoryInterface,
     stackframe_registers: &DebugRegisters,
-    _debug_info: &DebugInfo,
 ) -> Result<Option<ExceptionInfo>, DebugError> {
     let frame_return_address = get_stack_frame_return_address(stackframe_registers)?;
+    let frame_return_address = ExcReturn(frame_return_address);
 
-    if ExcReturn(frame_return_address).is_exception_flag() != 0xF {
+    if frame_return_address.is_exception_flag() != 0xF {
         // This is a normal function return / not an exception.
         return Ok(None);
     }
 
     let raw_exception = exception_interface.raw_exception(stackframe_registers)?;
+
+    if raw_exception == 1 {
+        let mut stackframe_registers = stackframe_registers.clone();
+
+        // We don't know what happened before Reset
+        for stackframe_register in &mut stackframe_registers.0 {
+            stackframe_register.value = None;
+        }
+
+        // This is a reset exception.
+        return Ok(Some(ExceptionInfo {
+            raw_exception,
+            description: "Reset".to_string(),
+            handler_frame: StackFrame {
+                id: get_object_reference(),
+                function_name: "Reset".to_string(),
+                source_location: None,
+                registers: stackframe_registers.clone(),
+                // The PC value is not 0, this should be the address of the reset vector
+                pc: RegisterValue::U32(0),
+                frame_base: None,
+                is_inlined: false,
+                local_variables: None,
+                canonical_frame_address: None,
+            },
+        }));
+    }
+
     let mut registers = exception_interface.calling_frame_registers(
         memory_interface,
         stackframe_registers,
@@ -107,7 +135,7 @@ pub(crate) fn exception_details(
     // Now we can update the stack pointer also, but
     // first we have to determine the size of the exception data on the stack.
     // See <https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-entry-behavior?lang=en>
-    let frame_size = if ExcReturn(frame_return_address).use_standard_stackframe() {
+    let frame_size = if frame_return_address.use_standard_stackframe() {
         // This is a standard exception frame.
         0x20usize
     } else {
@@ -180,7 +208,6 @@ pub(crate) fn raw_exception(stackframe_registers: &crate::DebugRegisters) -> Res
 pub(crate) fn calling_frame_registers(
     memory: &mut dyn MemoryInterface,
     stackframe_registers: &crate::DebugRegisters,
-    _raw_exception: u32,
 ) -> Result<crate::DebugRegisters, probe_rs::Error> {
     let exception_context_address: u32 =
         stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)? as u32;

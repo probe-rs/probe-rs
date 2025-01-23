@@ -1,5 +1,5 @@
 use crate::{DebugError, DebugInfo, DebugRegisters};
-use probe_rs::{Error, MemoryInterface};
+use probe_rs::MemoryInterface;
 
 use super::{armv6m_armv7m_shared, ExceptionInfo, ExceptionInterface};
 
@@ -63,18 +63,15 @@ impl ExceptionReason {
 
     /// Determines how the exception return address should be offset when unwinding the stack.
     /// See Armv6-M Architecture Reference Manual, section B1.5.6.
-    pub(crate) fn is_precise_fault(
-        &self,
-        _memory: &mut dyn MemoryInterface,
-    ) -> Result<bool, Error> {
-        Ok(match self {
+    pub(crate) fn is_precise_fault(&self) -> bool {
+        match self {
             ExceptionReason::HardFault => {
                 // This should be true for synchronous exceptions, and false otherwise.
                 // TODO: Figure out how to differentiate that on ARMv6-M.
                 true
             }
             _ => false,
-        })
+        }
     }
 }
 
@@ -86,14 +83,9 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
-        debug_info: &DebugInfo,
+        _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, DebugError> {
-        armv6m_armv7m_shared::exception_details(
-            self,
-            memory_interface,
-            stackframe_registers,
-            debug_info,
-        )
+        armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers)
     }
 
     fn calling_frame_registers(
@@ -102,23 +94,36 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
         stackframe_registers: &crate::DebugRegisters,
         raw_exception: u32,
     ) -> Result<crate::DebugRegisters, DebugError> {
-        let mut updated_registers = stackframe_registers.clone();
-
-        // Identify the correct location for the exception context. This is different between Armv6-M and Armv7-M.
         let exception_reason = ExceptionReason::from(raw_exception);
-        if exception_reason.is_precise_fault(memory_interface)? {
-            let exception_context_address = updated_registers
-                .get_register_mut_by_role(&probe_rs::RegisterRole::StackPointer)?;
-            if let Some(sp_value) = exception_context_address.value.as_mut() {
-                sp_value.increment_address(0x8)?;
-            }
+
+        // This shouldn't be called for Reset, because for Reset, no registers
+        // are stored on the stack.
+        if exception_reason == ExceptionReason::Reset {
+            return Err(DebugError::Other(
+                "Unwinding over Reset is not possible.".to_string(),
+            ));
         }
 
-        updated_registers = armv6m_armv7m_shared::calling_frame_registers(
-            memory_interface,
-            &updated_registers,
-            raw_exception,
-        )?;
+        let mut updated_registers = stackframe_registers.clone();
+
+        updated_registers =
+            armv6m_armv7m_shared::calling_frame_registers(memory_interface, &updated_registers)?;
+
+        if !exception_reason.is_precise_fault() {
+            // PC is always stored on the stack when unwinding an exception,
+            // so we know that it exists, and that it has a value
+            let pc = updated_registers.get_program_counter_mut().unwrap();
+
+            // If it is not a precise fault, the PC value in the stack frame will point to the next instruction.
+            // Subtracing 1 here so that the PC value points to the instruction that caused the fault.
+            if pc.value.as_mut().unwrap().decrement_address(1).is_err() {
+                // Ignore errors here, better to continue in the unlikely case that we encounter PC = 0x0.
+                // It might be that in that case, the actual exception *was* a precise fault.
+                tracing::debug!(
+                    "UNWIND: Failed to reproduce caller program counter, using PC unchanged."
+                );
+            }
+        }
 
         Ok(updated_registers)
     }
