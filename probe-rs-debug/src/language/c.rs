@@ -27,11 +27,22 @@ impl ProgrammingLanguage for C {
                 "_Bool" => UnsignedInt::get_value(variable, None, memory, variable_cache).into(),
                 "char" => CChar::get_value(variable, memory, variable_cache).into(),
 
-                "unsigned char" | "unsigned int" | "short unsigned int" | "long unsigned int" => {
+                "unsigned char"
+                | "unsigned int"
+                | "short unsigned int"
+                | "long unsigned int"
+                | "long long unsigned int" => {
                     UnsignedInt::get_value(variable, None, memory, variable_cache).into()
                 }
-                "signed char" | "int" | "short int" | "long int" | "signed int"
-                | "short signed int" | "long signed int" => {
+                "signed char"
+                | "int"
+                | "short int"
+                | "long int"
+                | "long long int"
+                | "signed int"
+                | "short signed int"
+                | "long signed int"
+                | "long long signed int" => {
                     SignedInt::get_value(variable, None, memory, variable_cache).into()
                 }
 
@@ -43,7 +54,14 @@ impl ProgrammingLanguage for C {
                         VariableValue::Error(format!("Invalid byte size for float: {size}"))
                     }
                 },
-                // TODO: doubles
+                "double" => match variable.byte_size {
+                    Some(8) | None => f64::get_value(variable, memory, variable_cache)
+                        .map(format_float)
+                        .into(),
+                    Some(size) => {
+                        VariableValue::Error(format!("Invalid byte size for double: {size}"))
+                    }
+                },
                 _undetermined_value => VariableValue::Empty,
             },
 
