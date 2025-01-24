@@ -1,0 +1,1 @@
+The default defmt output format is now single line. The previous default can be activated by using the "twoline" log format.
