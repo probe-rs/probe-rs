@@ -56,7 +56,7 @@ impl ProgrammingLanguage for C {
                 },
                 "double" => match variable.byte_size {
                     Some(8) | None => f64::get_value(variable, memory, variable_cache)
-                        .map(|f| format_float(f as f64))
+                        .map(format_float)
                         .into(),
                     Some(size) => {
                         VariableValue::Error(format!("Invalid byte size for double: {size}"))
