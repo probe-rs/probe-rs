@@ -209,13 +209,13 @@ impl DefmtProcessor {
         // 2. Custom format for the channel
         // 3. Default with optional location
         let format = match log_format {
-            Some("oneline") => FormatterFormat::OneLine {
+            None | Some("oneline") => FormatterFormat::OneLine {
+                with_location: show_location,
+            },
+            Some("full") => FormatterFormat::Default {
                 with_location: show_location,
             },
             Some(format) => FormatterFormat::Custom(format),
-            None => FormatterFormat::Default {
-                with_location: show_location,
-            },
         };
 
         Self {
