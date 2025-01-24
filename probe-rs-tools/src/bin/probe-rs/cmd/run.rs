@@ -145,6 +145,8 @@ pub struct SharedOptions {
 
     /// The format string to use when printing defmt encoded log messages from the target.
     ///
+    /// You can also use one of two presets: oneline (default) and full.
+    ///
     /// See <https://defmt.ferrous-systems.com/custom-log-output>
     #[clap(long)]
     pub(crate) log_format: Option<String>,
