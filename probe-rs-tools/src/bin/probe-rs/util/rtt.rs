@@ -95,13 +95,13 @@ pub struct RttActiveUpChannel {
 }
 
 impl RttActiveUpChannel {
-    pub fn new(up_channel: UpChannel) -> Result<Self, Error> {
-        Ok(Self {
+    pub fn new(up_channel: UpChannel) -> Self {
+        Self {
             rtt_buffer: vec![0; up_channel.buffer_size().max(1)].into_boxed_slice(),
             bytes_buffered: 0,
             up_channel,
             original_mode: None,
-        })
+        }
     }
 
     pub fn change_mode(&mut self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
@@ -200,7 +200,7 @@ impl RttConnection {
                 .cloned()
                 .unwrap_or_default();
 
-            let mut up_channel = RttActiveUpChannel::new(channel)?;
+            let mut up_channel = RttActiveUpChannel::new(channel);
             if let Some(mode) = channel_config.mode {
                 up_channel.change_mode(core, mode)?;
             }
