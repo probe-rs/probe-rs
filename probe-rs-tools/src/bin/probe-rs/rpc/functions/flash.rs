@@ -1,5 +1,3 @@
-use std::{cell::Cell, rc::Rc};
-
 use postcard_rpc::{
     header::{VarHeader, VarSeq},
     server::SpawnContext,
@@ -57,7 +55,6 @@ pub struct FlashRequest {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct FlashResult {
     pub boot_info: BootInfo,
-    pub flash_layout: Vec<FlashLayout>,
 }
 
 pub type FlashResponse = RpcResult<FlashResult>;
@@ -140,108 +137,155 @@ pub struct FlashDataBlockSpan {
     size: u64,
 }
 
+#[derive(Clone, Copy, Serialize, Deserialize, Schema)]
+pub enum Operation {
+    /// Reading back flash contents to restore erased regions that should be kept unchanged.
+    Fill,
+
+    /// Erasing flash sectors.
+    Erase,
+
+    /// Writing data to flash.
+    Program,
+}
+
 #[derive(Clone, Serialize, Deserialize, Schema)]
 pub enum ProgressEvent {
-    /// The flash layout has been built and the flashing procedure was initialized.
-    Initialized {
-        /// Whether the chip erase feature is enabled.
-        /// If this is true, the chip will be erased before any other operation. No separate erase
-        /// progress bars are necessary in this case.
-        chip_erase: bool,
-
-        /// The layout of the flash contents as it will be used by the flash procedure, grouped by
-        /// phases (fill, erase, program sequences).
-        /// This is an exact report of what the flashing procedure will do during the flashing process.
-        phases: Vec<FlashLayout>,
-
-        /// Whether the unwritten flash contents will be restored after erasing.
-        restore_unwritten: bool,
+    FlashLayoutReady {
+        flash_layout: Vec<FlashLayout>,
     },
-    /// Filling of flash pages has started.
-    StartedFilling,
-    /// A page has been filled successfully.
-    /// This does not mean the page has been programmed yet.
-    /// Only its contents are determined at this point!
-    PageFilled {
+
+    /// Display a new progress bar to the user.
+    AddProgressBar {
+        operation: Operation,
+        total: u64,
+    },
+
+    /// Started an operation with the given total size.
+    Started {
+        operation: Operation,
+        total: u64,
+    }, // TODO this total should be part of AddProgressBar for Program, too
+
+    /// An operation has made progress.
+    Progress {
+        operation: Operation,
         /// The size of the page in bytes.
         size: u64,
     },
-    /// Filling of the pages has failed.
-    FailedFilling,
-    /// Filling of the pages has finished successfully.
-    FinishedFilling,
-    /// Erasing of flash has started.
-    StartedErasing,
-    /// A sector has been erased successfully.
-    SectorErased {
-        /// The size of the sector in bytes.
-        size: u64,
-    },
-    /// Erasing of the flash has failed.
-    FailedErasing,
-    /// Erasing of the flash has finished successfully.
-    FinishedErasing,
-    /// Programming of the flash has started.
-    StartedProgramming {
-        /// The total length of the data to be programmed in bytes.
-        length: u64,
-    },
-    /// A flash page has been programmed successfully.
-    PageProgrammed {
-        /// The size of this page in bytes.
-        size: u32,
-    },
-    /// Programming of the flash failed.
-    FailedProgramming,
-    /// Programming of the flash has finished successfully.
-    FinishedProgramming,
-    /// a message was received from the algo.
+
+    /// An operation has failed.
+    Failed(Operation),
+
+    /// An operation has finished successfully.
+    Finished(Operation),
+
+    /// A message was received from the algo.
     DiagnosticMessage {
         /// The message that was emitted.
         message: String,
     },
 }
-
-impl From<probe_rs::flashing::ProgressEvent> for ProgressEvent {
-    fn from(event: probe_rs::flashing::ProgressEvent) -> Self {
-        match event {
+impl ProgressEvent {
+    pub fn from_library_event(
+        event: probe_rs::flashing::ProgressEvent,
+        mut cb: impl FnMut(ProgressEvent),
+    ) {
+        let event = match event {
             probe_rs::flashing::ProgressEvent::Initialized {
                 chip_erase,
                 phases,
                 restore_unwritten,
-            } => ProgressEvent::Initialized {
-                chip_erase,
-                phases: phases.into_iter().map(Into::into).collect(),
-                restore_unwritten,
+            } => {
+                for phase in phases.iter() {
+                    if restore_unwritten {
+                        let fill_size = phase.fills().iter().map(|s| s.size()).sum::<u64>();
+
+                        cb(ProgressEvent::AddProgressBar {
+                            operation: Operation::Fill,
+                            total: fill_size,
+                        });
+                    }
+
+                    if !chip_erase {
+                        let sector_size = phase.sectors().iter().map(|s| s.size()).sum::<u64>();
+
+                        cb(ProgressEvent::AddProgressBar {
+                            operation: Operation::Erase,
+                            total: sector_size,
+                        });
+                    }
+
+                    cb(ProgressEvent::AddProgressBar {
+                        operation: Operation::Program,
+                        total: 0,
+                    });
+                }
+
+                ProgressEvent::FlashLayoutReady {
+                    flash_layout: phases.into_iter().map(FlashLayout::from).collect(),
+                }
+            }
+
+            // Fill
+            probe_rs::flashing::ProgressEvent::StartedFilling => ProgressEvent::Started {
+                operation: Operation::Fill,
+                total: 0,
             },
-            probe_rs::flashing::ProgressEvent::StartedFilling => ProgressEvent::StartedFilling,
-            probe_rs::flashing::ProgressEvent::PageFilled { size, .. } => {
-                ProgressEvent::PageFilled { size }
+            probe_rs::flashing::ProgressEvent::PageFilled { size, .. } => ProgressEvent::Progress {
+                operation: Operation::Fill,
+                size,
+            },
+            probe_rs::flashing::ProgressEvent::FailedFilling => {
+                ProgressEvent::Failed(Operation::Fill)
             }
-            probe_rs::flashing::ProgressEvent::FailedFilling => ProgressEvent::FailedFilling,
-            probe_rs::flashing::ProgressEvent::FinishedFilling => ProgressEvent::FinishedFilling,
-            probe_rs::flashing::ProgressEvent::StartedErasing => ProgressEvent::StartedErasing,
+            probe_rs::flashing::ProgressEvent::FinishedFilling => {
+                ProgressEvent::Finished(Operation::Fill)
+            }
+
+            // Erase
+            probe_rs::flashing::ProgressEvent::StartedErasing => ProgressEvent::Started {
+                operation: Operation::Erase,
+                total: 0,
+            },
             probe_rs::flashing::ProgressEvent::SectorErased { size, .. } => {
-                ProgressEvent::SectorErased { size }
+                ProgressEvent::Progress {
+                    operation: Operation::Erase,
+                    size,
+                }
             }
-            probe_rs::flashing::ProgressEvent::FailedErasing => ProgressEvent::FailedErasing,
-            probe_rs::flashing::ProgressEvent::FinishedErasing => ProgressEvent::FinishedErasing,
+            probe_rs::flashing::ProgressEvent::FailedErasing => {
+                ProgressEvent::Failed(Operation::Erase)
+            }
+            probe_rs::flashing::ProgressEvent::FinishedErasing => {
+                ProgressEvent::Finished(Operation::Erase)
+            }
+
+            // Program
             probe_rs::flashing::ProgressEvent::StartedProgramming { length } => {
-                ProgressEvent::StartedProgramming { length }
+                ProgressEvent::Started {
+                    operation: Operation::Program,
+                    total: length,
+                }
             }
             probe_rs::flashing::ProgressEvent::PageProgrammed { size, .. } => {
-                ProgressEvent::PageProgrammed { size }
+                ProgressEvent::Progress {
+                    operation: Operation::Program,
+                    size: size as u64,
+                }
             }
             probe_rs::flashing::ProgressEvent::FailedProgramming => {
-                ProgressEvent::FailedProgramming
+                ProgressEvent::Failed(Operation::Program)
             }
             probe_rs::flashing::ProgressEvent::FinishedProgramming => {
-                ProgressEvent::FinishedProgramming
+                ProgressEvent::Finished(Operation::Program)
             }
             probe_rs::flashing::ProgressEvent::DiagnosticMessage { message } => {
                 ProgressEvent::DiagnosticMessage { message }
             }
-        }
+        };
+
+        cb(event);
     }
 }
 
@@ -311,8 +355,6 @@ fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> FlashResponse {
         false
     };
 
-    let flash_layout = Rc::new(Cell::new(vec![]));
-
     let mut options = probe_rs::flashing::DownloadOptions::default();
 
     options.keep_unwritten_bytes = request.options.keep_unwritten_bytes;
@@ -322,18 +364,11 @@ fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> FlashResponse {
     options.preverify = request.options.preverify;
     options.verify = request.options.verify;
     options.disable_double_buffering = request.options.disable_double_buffering;
-    options.progress = Some(FlashProgress::new({
-        let flash_layout = flash_layout.clone();
-        let ctx = ctx.clone();
-        move |event| {
-            let event = ProgressEvent::from(event);
-            if let ProgressEvent::Initialized { ref phases, .. } = event {
-                flash_layout.set(phases.clone());
-            }
-
+    options.progress = Some(FlashProgress::new(move |event| {
+        ProgressEvent::from_library_event(event, |event| {
             ctx.publish_blocking::<ProgressEventTopic>(VarSeq::Seq2(0), event)
-                .unwrap();
-        }
+                .unwrap()
+        });
     }));
 
     // run flash download
@@ -355,6 +390,5 @@ fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> FlashResponse {
 
     Ok(FlashResult {
         boot_info: boot_info.into(),
-        flash_layout: flash_layout.take(),
     })
 }
