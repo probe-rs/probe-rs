@@ -239,7 +239,7 @@ impl Rtt {
         ptr: u64,
         // Memory contents read in advance, starting from ptr
         mem_in: Option<&[u8]>,
-    ) -> Result<Option<Rtt>, Error> {
+    ) -> Result<Rtt, Error> {
         let is_64_bit = core.is_64_bit();
 
         let mut mem = match mem_in {
@@ -277,21 +277,21 @@ impl Rtt {
             )));
         }
 
-        let cb_len = rtt_header.total_rtt_buffer_size();
+        let control_block_len = rtt_header.total_rtt_buffer_size();
 
         if let Cow::Owned(mem) = &mut mem {
             // If memory wasn't passed in, read the rest of the control block
-            mem.resize(cb_len, 0);
+            mem.resize(control_block_len, 0);
             core.read(
                 ptr + rtt_header.header_size() as u64,
-                &mut mem[rtt_header.header_size()..cb_len],
+                &mut mem[rtt_header.header_size()..control_block_len],
             )?;
         }
 
         // Validate that the entire control block fits within the region
-        if mem.len() < cb_len {
+        if mem.len() < control_block_len {
             tracing::debug!("Control block doesn't fit in scanned memory region.");
-            return Ok(None);
+            return Err(Error::ControlBlockNotFound);
         }
 
         let mut up_channels = Vec::new();
@@ -310,33 +310,33 @@ impl Rtt {
         let down_channels_buffer = rtt_header.parse_channel_buffers(down_channels_raw_buffer)?;
 
         let mut offset = up_channels_start as u64;
-        for (i, b) in up_channels_buffer.into_iter().enumerate() {
-            let buffer_size = b.size() as u64;
+        for (channel_index, buffer) in up_channels_buffer.into_iter().enumerate() {
+            let buffer_size = buffer.size() as u64;
 
-            if let Some(chan) = Channel::from(core, i, ptr + offset, b)? {
+            if let Some(chan) = Channel::from(core, channel_index, ptr + offset, buffer)? {
                 up_channels.push(UpChannel(chan));
             } else {
-                tracing::warn!("Buffer for up channel {i} not initialized");
+                tracing::warn!("Buffer for up channel {channel_index} not initialized");
             }
             offset += buffer_size;
         }
 
-        for (i, b) in down_channels_buffer.into_iter().enumerate() {
-            let buffer_size = b.size() as u64;
+        for (channel_index, buffer) in down_channels_buffer.into_iter().enumerate() {
+            let buffer_size = buffer.size() as u64;
 
-            if let Some(chan) = Channel::from(core, i, ptr + offset, b)? {
+            if let Some(chan) = Channel::from(core, channel_index, ptr + offset, buffer)? {
                 down_channels.push(DownChannel(chan));
             } else {
-                tracing::warn!("Buffer for down channel {i} not initialized");
+                tracing::warn!("Buffer for down channel {channel_index} not initialized");
             }
             offset += buffer_size;
         }
 
-        Ok(Some(Rtt {
+        Ok(Rtt {
             ptr,
             up_channels,
             down_channels,
-        }))
+        })
     }
 
     /// Attempts to detect an RTT control block anywhere in the target RAM and returns an instance
@@ -356,7 +356,7 @@ impl Rtt {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: {:#010x}", addr);
 
-                return Rtt::from(core, addr, None)?.ok_or(Error::ControlBlockNotFound);
+                return Rtt::from(core, addr, None);
             }
             ScanRegion::Ram => {
                 tracing::debug!("Scanning whole RAM");
@@ -399,7 +399,7 @@ impl Rtt {
 
                 let target_ptr = range.start + offset as u64;
 
-                Rtt::from(core, target_ptr, Some(&mem[offset..])).transpose()
+                Some(Rtt::from(core, target_ptr, Some(&mem[offset..])))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
