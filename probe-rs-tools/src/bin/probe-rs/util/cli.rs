@@ -152,6 +152,8 @@ pub async fn flash(
         )
         .await?;
 
+    // TODO: port visualizer - can't construct FlashLayout outside of the library
+
     logging::eprintln(format!(
         "     {} in {:.02}s",
         "Finished".green().bold(),

@@ -1,4 +1,4 @@
-use crate::rpc::functions::flash::ProgressEvent;
+use crate::rpc::functions::flash::{Operation, ProgressEvent};
 use crate::{FormatKind, FormatOptions};
 
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
@@ -59,7 +59,7 @@ pub fn run_flash_download(
         }
 
         if let Some(ref pb) = pb {
-            pb.handle(event.into());
+            ProgressEvent::from_library_event(event, |event| pb.handle(event));
         }
     }));
 
@@ -251,70 +251,44 @@ impl CliProgressBars {
     pub fn handle(&self, event: ProgressEvent) {
         let mut progress_bars = self.progress_bars.lock();
         match event {
-            ProgressEvent::Initialized {
-                chip_erase,
-                phases,
-                restore_unwritten,
-            } => {
-                // Build progress bars.
-                if chip_erase {
-                    progress_bars
-                        .erase
-                        .add(self.multi_progress.add(ProgressBar::new(0)));
+            ProgressEvent::FlashLayoutReady { .. } => {}
+
+            ProgressEvent::AddProgressBar { operation, total } => {
+                let bar = self.multi_progress.add(ProgressBar::new(total));
+                match operation {
+                    Operation::Fill => progress_bars.fill.add(bar),
+                    Operation::Erase => progress_bars.erase.add(bar),
+                    Operation::Program => progress_bars.program.add(bar),
                 }
+            }
 
-                if phases.len() > 1 {
-                    progress_bars.erase.append_phase();
-                    progress_bars.program.append_phase();
-                    progress_bars.fill.append_phase();
+            ProgressEvent::Started { operation, total } => match operation {
+                Operation::Fill => progress_bars.fill.mark_start_now(),
+                Operation::Erase => progress_bars.erase.mark_start_now(),
+                Operation::Program => {
+                    progress_bars.program.mark_start_now();
+                    progress_bars.program.set_length(total);
                 }
+            },
 
-                for phase_layout in phases {
-                    if restore_unwritten {
-                        let fill_size = phase_layout.fills.iter().map(|s| s.size).sum::<u64>();
-                        progress_bars
-                            .fill
-                            .add(self.multi_progress.add(ProgressBar::new(fill_size)));
-                    }
+            ProgressEvent::Progress { operation, size } => match operation {
+                Operation::Fill => progress_bars.fill.inc(size),
+                Operation::Erase => progress_bars.erase.inc(size),
+                Operation::Program => progress_bars.program.inc(size),
+            },
 
-                    if !chip_erase {
-                        let sector_size = phase_layout.sectors.iter().map(|s| s.size).sum::<u64>();
-                        progress_bars
-                            .erase
-                            .add(self.multi_progress.add(ProgressBar::new(sector_size)));
-                    }
+            ProgressEvent::Failed(operation) => match operation {
+                Operation::Fill => progress_bars.fill.abandon(),
+                Operation::Erase => progress_bars.erase.abandon(),
+                Operation::Program => progress_bars.program.abandon(),
+            },
 
-                    progress_bars
-                        .program
-                        .add(self.multi_progress.add(ProgressBar::new(0)));
-                }
+            ProgressEvent::Finished(operation) => match operation {
+                Operation::Fill => progress_bars.fill.finish(),
+                Operation::Erase => progress_bars.erase.finish(),
+                Operation::Program => progress_bars.program.finish(),
+            },
 
-                // TODO: progress bar for verifying?
-            }
-            ProgressEvent::StartedProgramming { length } => {
-                progress_bars.program.mark_start_now();
-                progress_bars.program.set_length(length);
-            }
-            ProgressEvent::StartedErasing => {
-                progress_bars.erase.mark_start_now();
-            }
-            ProgressEvent::StartedFilling => {
-                progress_bars.fill.mark_start_now();
-            }
-            ProgressEvent::PageProgrammed { size, .. } => {
-                progress_bars.program.inc(size as u64);
-            }
-            ProgressEvent::SectorErased { size, .. } => progress_bars.erase.inc(size),
-            ProgressEvent::PageFilled { size, .. } => progress_bars.fill.inc(size),
-            ProgressEvent::FailedErasing => {
-                progress_bars.erase.abandon();
-                progress_bars.program.abandon();
-            }
-            ProgressEvent::FinishedErasing => progress_bars.erase.finish(),
-            ProgressEvent::FailedProgramming => progress_bars.program.abandon(),
-            ProgressEvent::FinishedProgramming => progress_bars.program.finish(),
-            ProgressEvent::FailedFilling => progress_bars.fill.abandon(),
-            ProgressEvent::FinishedFilling => progress_bars.fill.finish(),
             ProgressEvent::DiagnosticMessage { .. } => {}
         }
     }
