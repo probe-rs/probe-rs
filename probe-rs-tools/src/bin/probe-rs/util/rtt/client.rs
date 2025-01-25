@@ -1,7 +1,7 @@
 use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection};
 use probe_rs::{
     rtt::{Error, Rtt, ScanRegion},
-    Core,
+    Core, MemoryInterface,
 };
 
 pub struct RttClient {
@@ -10,6 +10,7 @@ pub struct RttClient {
 
     /// The internal RTT handle, if we have successfully attached to the target.
     target: Option<RttConnection>,
+    last_control_block_address: Option<u64>,
 
     /// If false, don't try to attach to the target.
     try_attaching: bool,
@@ -28,6 +29,7 @@ impl RttClient {
             scan_region,
             config,
             target: None,
+            last_control_block_address: None,
             try_attaching: true,
             polled_data: false,
             core_id: 0,
@@ -43,15 +45,37 @@ impl RttClient {
             return Ok(false);
         }
 
-        match Rtt::attach_region(core, &self.scan_region)
-            .and_then(|rtt| RttConnection::new(core, rtt, &self.config).map(Some))
-        {
-            Ok(rtt) => self.target = rtt,
-            Err(Error::ControlBlockNotFound) => {}
+        let location = if let Some(location) = self.last_control_block_address {
+            location
+        } else {
+            let location = match Rtt::find_contol_block(core, &self.scan_region) {
+                Ok(location) => location,
+                Err(Error::ControlBlockNotFound) => return Ok(false),
+                Err(Error::NoControlBlockLocation) => {
+                    self.try_attaching = false;
+                    return Ok(false);
+                }
+                Err(error) => return Err(error),
+            };
+
+            self.last_control_block_address = Some(location);
+            location
+        };
+
+        let rtt = match Rtt::attach_at(core, location) {
+            Ok(rtt) => rtt,
+            Err(Error::ControlBlockNotFound) => {
+                self.last_control_block_address = None;
+                return Ok(false);
+            }
+            Err(error) => return Err(error),
+        };
+
+        match RttConnection::new(core, rtt, &self.config) {
+            Ok(rtt) => self.target = Some(rtt),
             Err(Error::ControlBlockCorrupted(error)) => {
                 tracing::debug!("RTT control block corrupted ({error})");
             }
-            Err(Error::NoControlBlockLocation) => self.try_attaching = false,
             Err(error) => return Err(error),
         };
 
@@ -114,18 +138,47 @@ impl RttClient {
         Ok(())
     }
 
+    /// This function prevents probe-rs from attaching to an RTT control block that is not
+    /// supposed to be valid. This is useful when probe-rs has reset the MCU before attaching,
+    /// or during/after flashing, when the MCU has not yet been started.
     pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
         self.try_attach(core)?;
 
-        let Some(target) = self.target.as_mut() else {
-            // If we can't attach, we don't have a valid
-            // control block and don't have to do anything.
-            return Ok(());
-        };
+        if let Some(mut target) = self.target.take() {
+            target.clear_control_block(core)?;
+        } else {
+            // While the entire block isn't valid in itself, some parts of it may be.
+            // Depending on the firmware, the control block may be initialized in such
+            // an order where probe-rs can attach to it before it is fully valid.
+            if let Some(location) = self.last_control_block_address.take() {
+                if let ScanRegion::Exact(scan_location) = self.scan_region {
+                    // If we know the exact location where a control block should be, we can clear
+                    // the whole block.
+                    if location == scan_location {
+                        const SIZE_32B: usize = 16 + 2 * 4;
+                        const SIZE_64B: usize = 16 + 2 * 8;
 
-        target.clear_control_block(core)?;
+                        let zeros = [0; SIZE_64B];
 
-        self.target = None;
+                        if core.is_64_bit() {
+                            core.write_8(location, &zeros[..SIZE_64B])?;
+                        } else {
+                            core.write_8(location, &zeros[..SIZE_32B])?;
+                        }
+                    }
+                } else {
+                    // If we have to scan for the location or we somehow found the magic string
+                    // somewhere else, we can only clear the magic string.
+                    let mut magic = [0; Rtt::RTT_ID.len()];
+                    core.read_8(location, &mut magic)?;
+                    if magic == Rtt::RTT_ID {
+                        core.write_8(location, &[0; 16])?;
+                    }
+                }
+            }
+
+            // There's nothing we can do if we don't know where the control block is.
+        }
 
         Ok(())
     }
