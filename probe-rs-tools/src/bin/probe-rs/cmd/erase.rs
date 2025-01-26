@@ -1,12 +1,13 @@
-use std::cell::RefCell;
-
-use indicatif::{MultiProgress, ProgressBar};
+use indicatif::MultiProgress;
 use probe_rs::{
-    flashing::{erase_all, FlashProgress, ProgressEvent},
+    flashing::{erase_all, FlashProgress},
     probe::list::Lister,
 };
 
-use crate::util::{common_options::ProbeOptions, flash::ProgressBarGroup, logging};
+use crate::{
+    rpc::functions::flash::{Operation, ProgressEvent},
+    util::{common_options::ProbeOptions, flash::CliProgressBars, logging},
+};
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -25,34 +26,29 @@ impl Cmd {
         logging::set_progress_bar(multi_progress.clone());
 
         let progress = if !self.disable_progressbars {
-            let progress_bars = RefCell::new(ProgressBarGroup::new("Erasing"));
+            let progress_bars = CliProgressBars::new();
 
             FlashProgress::new(move |event| {
-                let mut progress_bar = progress_bars.borrow_mut();
-
-                match event {
-                    ProgressEvent::Initialized { phases, .. } => {
-                        // Build progress bars.
-                        if phases.len() > 1 {
-                            progress_bar.append_phase();
-                        }
-
-                        for phase_layout in phases {
-                            let sector_size =
-                                phase_layout.sectors().iter().map(|s| s.size()).sum::<u64>();
-                            progress_bar.add(multi_progress.add(ProgressBar::new(sector_size)));
-                        }
+                ProgressEvent::from_library_event(event, |event| {
+                    // Only handle Erase-related events.
+                    if let ProgressEvent::AddProgressBar {
+                        operation: Operation::Erase,
+                        ..
                     }
-                    ProgressEvent::StartedErasing => {}
-                    ProgressEvent::SectorErased { size, .. } => progress_bar.inc(size),
-                    ProgressEvent::FailedErasing => progress_bar.abandon(),
-                    ProgressEvent::FinishedErasing => {
-                        let len = progress_bar.len();
-                        progress_bar.inc(len);
-                        progress_bar.finish();
+                    | ProgressEvent::Started {
+                        operation: Operation::Erase,
+                        ..
                     }
-                    _ => {}
-                }
+                    | ProgressEvent::Progress {
+                        operation: Operation::Erase,
+                        ..
+                    }
+                    | ProgressEvent::Failed(Operation::Erase)
+                    | ProgressEvent::Finished(Operation::Erase) = event
+                    {
+                        progress_bars.handle(event)
+                    }
+                });
             })
         } else {
             FlashProgress::empty()
