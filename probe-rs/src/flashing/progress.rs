@@ -35,7 +35,7 @@ impl FlashProgress {
     }
 
     /// Emit a flashing progress event.
-    fn emit(&self, event: ProgressEvent) {
+    pub fn emit(&self, event: ProgressEvent) {
         (self.handler)(event);
     }
 

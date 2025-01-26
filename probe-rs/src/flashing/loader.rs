@@ -434,10 +434,10 @@ impl FlashLoader {
     }
 
     /// Verifies data on the device.
-    pub fn verify(&self, session: &mut Session) -> Result<(), FlashError> {
+    pub fn verify(&self, session: &mut Session, progress: FlashProgress) -> Result<(), FlashError> {
         let algos = self.prepare_plan(session)?;
 
-        let progress = FlashProgress::new(|_| {});
+        // TODO: actually report progress.
 
         // Iterate all flash algorithms we need to use and do the flashing.
         for el in algos {

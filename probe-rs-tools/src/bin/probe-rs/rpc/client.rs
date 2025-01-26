@@ -31,7 +31,7 @@ use crate::{
             file::{AppendFileRequest, TempFile},
             flash::{
                 BootInfo, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
-                FlashRequest, FlashResult, ProgressEvent,
+                FlashRequest, FlashResult, ProgressEvent, VerifyRequest, VerifyResult,
             },
             info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
@@ -52,7 +52,7 @@ use crate::{
             ReadMemory64Endpoint, ReadMemory8Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint,
             RpcResult, RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint,
             TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner,
-            WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
+            VerifyEndpoint, WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
             WriteMemory8Endpoint,
         },
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
@@ -580,6 +580,22 @@ impl SessionInterface {
                 sessid: self.sessid,
                 path: path.display().to_string(),
             })
+            .await
+    }
+
+    pub(crate) async fn verify(
+        &self,
+        loader: Key<FlashLoader>,
+        on_msg: impl Fn(ProgressEvent),
+    ) -> anyhow::Result<VerifyResult> {
+        self.client
+            .send_and_read_stream::<VerifyEndpoint, ProgressEventTopic, _>(
+                &VerifyRequest {
+                    sessid: self.sessid,
+                    loader,
+                },
+                on_msg,
+            )
             .await
     }
 }

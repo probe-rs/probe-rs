@@ -174,6 +174,9 @@ pub enum Operation {
 
     /// Writing data to flash.
     Program,
+
+    /// Checking flash contents.
+    Verify,
 }
 
 #[derive(Clone, Serialize, Deserialize, Schema)]
@@ -480,4 +483,64 @@ fn erase_impl(ctx: RpcSpawnContext, request: EraseRequest) -> NoResponse {
     }
 
     Ok(())
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct VerifyRequest {
+    pub sessid: Key<Session>,
+    pub loader: Key<FlashLoader>,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub enum VerifyResult {
+    Ok,
+    Mismatch,
+}
+
+pub type VerifyResponse = RpcResult<VerifyResult>;
+
+pub async fn verify(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: VerifyRequest,
+) -> VerifyResponse {
+    let ctx = ctx.spawn_ctxt();
+    tokio::task::spawn_blocking(move || verify_impl(ctx, request))
+        .await
+        .unwrap()
+}
+
+fn verify_impl(ctx: RpcSpawnContext, request: VerifyRequest) -> VerifyResponse {
+    let mut session = ctx.session_blocking(request.sessid);
+    let loader = ctx.object_mut_blocking(request.loader);
+
+    let progress = FlashProgress::new(move |event| {
+        ProgressEvent::from_library_event(event, |event| {
+            // Only emit Erase-related events.
+            if let ProgressEvent::AddProgressBar {
+                operation: Operation::Verify,
+                ..
+            }
+            | ProgressEvent::Started {
+                operation: Operation::Verify,
+                ..
+            }
+            | ProgressEvent::Progress {
+                operation: Operation::Verify,
+                ..
+            }
+            | ProgressEvent::Failed(Operation::Verify)
+            | ProgressEvent::Finished(Operation::Verify) = event
+            {
+                ctx.publish_blocking::<ProgressEventTopic>(VarSeq::Seq2(0), event)
+                    .unwrap()
+            }
+        });
+    });
+
+    match loader.verify(&mut session, progress) {
+        Ok(()) => Ok(VerifyResult::Ok),
+        Err(flashing::FlashError::Verify) => Ok(VerifyResult::Mismatch),
+        Err(other) => Err(other.into()),
+    }
 }
