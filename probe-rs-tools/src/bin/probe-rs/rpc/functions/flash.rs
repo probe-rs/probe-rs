@@ -158,7 +158,7 @@ pub enum ProgressEvent {
     /// Display a new progress bar to the user.
     AddProgressBar {
         operation: Operation,
-        total: u64,
+        total: Option<u64>, // None means indeterminate
     },
 
     /// Started an operation with the given total size.
@@ -197,13 +197,23 @@ impl ProgressEvent {
                 phases,
                 restore_unwritten,
             } => {
+                if chip_erase {
+                    // TODO: indeterminate because ESP32s don't yet report their actual flash size while erasing.
+                    // Otherwise a determinate progress bar would look better, even if it would jump
+                    // from 0 to 100% in one step.
+                    cb(ProgressEvent::AddProgressBar {
+                        operation: Operation::Erase,
+                        total: None,
+                    });
+                }
+
                 for phase in phases.iter() {
                     if restore_unwritten {
                         let fill_size = phase.fills().iter().map(|s| s.size()).sum::<u64>();
 
                         cb(ProgressEvent::AddProgressBar {
                             operation: Operation::Fill,
-                            total: fill_size,
+                            total: Some(fill_size),
                         });
                     }
 
@@ -212,13 +222,13 @@ impl ProgressEvent {
 
                         cb(ProgressEvent::AddProgressBar {
                             operation: Operation::Erase,
-                            total: sector_size,
+                            total: Some(sector_size),
                         });
                     }
 
                     cb(ProgressEvent::AddProgressBar {
                         operation: Operation::Program,
-                        total: 0,
+                        total: Some(0),
                     });
                 }
 
