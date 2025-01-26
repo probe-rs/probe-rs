@@ -1,8 +1,6 @@
 ---
-source: probe-rs/src/debug/debug_info.rs
-assertion_line: 1804
+source: probe-rs-debug/src/debug_info.rs
 expression: printed_backtrace
-snapshot_kind: text
 ---
 Frame:
  function:        __cortex_m_rt_SVCall_trampoline
@@ -20,7 +18,7 @@ Frame:
  function:        __cortex_m_rt_main
  source_location:
   path: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs
-  line: Some(19)
+  line: Some(17)
   column: Some(Column(5))
  frame_base:      Some(2001fff0)
 Frame:

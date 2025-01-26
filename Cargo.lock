@@ -547,7 +547,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.48.0",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "colored"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fde0e0ec90c9dfb3b4b1a0891a7dcd0e2bffde2f7efed5fe7c9bb00e5bfb915e"
+dependencies = [
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -810,7 +819,7 @@ dependencies = [
  "alterable_logger",
  "anyhow",
  "byteorder",
- "colored",
+ "colored 2.2.0",
  "defmt-json-schema",
  "defmt-parser",
  "dissimilar",
@@ -2553,7 +2562,7 @@ dependencies = [
  "cargo_metadata",
  "clap",
  "clap_complete",
- "colored",
+ "colored 3.0.0",
  "defmt-decoder",
  "directories",
  "docsplay",
@@ -3369,7 +3378,7 @@ name = "smoke_tester"
 version = "0.26.0"
 dependencies = [
  "clap",
- "colored",
+ "colored 3.0.0",
  "linkme",
  "log",
  "miette",
@@ -3553,7 +3562,7 @@ dependencies = [
  "anyhow",
  "clap",
  "cmsis-pack",
- "colored",
+ "colored 3.0.0",
  "futures",
  "goblin",
  "insta",
@@ -4320,7 +4329,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

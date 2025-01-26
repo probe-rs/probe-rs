@@ -28,6 +28,7 @@ pub(crate) struct BlackMagicProbeArmDebug {
     /// APs are identified by a number, starting from zero.
     pub access_ports: BTreeSet<FullyQualifiedApAddress>,
 
+    /// A copy of the sequence that was passed during initialization
     sequence: Arc<dyn ArmDebugSequence>,
 }
 
@@ -268,6 +269,29 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
     }
 
     fn reinitialize(&mut self) -> Result<(), ArmError> {
+        let Some(dp) = self.current_debug_port() else {
+            // Not connected to a DP, nothing to do.
+            return Ok(());
+        };
+        let sequence = self.sequence.clone();
+
+        // Switch to the correct mode
+        sequence.debug_port_setup(&mut *self.probe, dp)?;
+
+        if let Err(e) = sequence.debug_port_connect(&mut *self.probe, dp) {
+            tracing::warn!("failed to switch to DP {:x?}: {}", dp, e);
+
+            // Try the more involved debug_port_setup sequence, which also handles dormant mode.
+            sequence.debug_port_setup(&mut *self.probe, dp)?;
+        }
+
+        self.debug_port_start(dp)?;
+
+        self.access_ports = valid_access_ports(self, DpAddress::Default)
+            .into_iter()
+            .inspect(|addr| tracing::debug!("AP {:#x?}", addr))
+            .collect();
+
         Ok(())
     }
 

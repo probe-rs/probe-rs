@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 1999
 expression: stack_frames
 ---
 - function_name: software_breakpoint
@@ -766,7 +765,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536887096
+        U32: 536887128
     - core_register:
         id: 14
         roles:
@@ -786,7 +785,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 938
+        U32: 937
     - core_register:
         id: 17
         roles:
@@ -825,7 +824,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 938
+    U32: 937
   frame_base: ~
   is_inlined: false
   local_variables: ~
@@ -833,10 +832,10 @@ expression: stack_frames
 - function_name: trigger_supervisor_call
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
-    line: 63
+    line: 61
     column:
-      Column: 2
-    address: 938
+      Column: 9
+    address: 936
   registers:
     - core_register:
         id: 0
@@ -970,7 +969,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536887096
+        U32: 536887128
     - core_register:
         id: 14
         roles:
@@ -990,7 +989,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 938
+        U32: 937
     - core_register:
         id: 17
         roles:
@@ -1029,7 +1028,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 938
+    U32: 937
   frame_base: 536887128
   is_inlined: false
   local_variables:
