@@ -13,7 +13,10 @@ use crate::{
                 chip_info, list_families, load_chip_family, ChipInfoRequest, ChipInfoResponse,
                 ListFamiliesResponse, LoadChipFamilyRequest,
             },
-            flash::{erase, flash, EraseRequest, FlashRequest, FlashResponse, ProgressEvent},
+            flash::{
+                build, erase, flash, BuildRequest, BuildResponse, EraseRequest, FlashRequest,
+                FlashResponse, ProgressEvent,
+            },
             info::{target_info, InfoEvent, TargetInfoRequest},
             memory::{read_memory, write_memory, ReadMemoryRequest, WriteMemoryRequest},
             monitor::{monitor, MonitorEvent, MonitorRequest},
@@ -323,8 +326,9 @@ endpoints! {
     | ResumeAllCoresEndpoint    | ResumeAllCoresRequest  | NoResponse              | "resume"           |
     | CreateRttClientEndpoint   | CreateRttClientRequest | CreateRttClientResponse | "create_rtt"       |
     | TakeStackTraceEndpoint    | TakeStackTraceRequest  | TakeStackTraceResponse  | "stack_trace"      |
-    | FlashEndpoint             | FlashRequest           | FlashResponse           | "flash"            |
-    | EraseEndpoint             | EraseRequest           | NoResponse              | "erase"            |
+    | BuildEndpoint             | BuildRequest           | BuildResponse           | "flash/build"      |
+    | FlashEndpoint             | FlashRequest           | FlashResponse           | "flash/flash"      |
+    | EraseEndpoint             | EraseRequest           | NoResponse              | "flash/erase"      |
     | MonitorEndpoint           | MonitorRequest         | NoResponse              | "monitor"          |
 
     | ListTestsEndpoint         | ListTestsRequest       | ListTestsResponse       | "tests/list"       |
@@ -388,6 +392,7 @@ postcard_rpc::define_dispatch! {
         | ResumeAllCoresEndpoint    | async     | resume_all_cores  |
         | CreateRttClientEndpoint   | async     | create_rtt_client |
         | TakeStackTraceEndpoint    | async     | take_stack_trace  |
+        | BuildEndpoint             | async     | build             |
         | FlashEndpoint             | async     | flash             |
         | EraseEndpoint             | async     | erase             |
         | MonitorEndpoint           | spawn     | monitor           |
