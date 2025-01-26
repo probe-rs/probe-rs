@@ -1,12 +1,6 @@
-use indicatif::MultiProgress;
-use probe_rs::{
-    flashing::{erase_all, FlashProgress},
-    probe::list::Lister,
-};
-
 use crate::{
-    rpc::functions::flash::{Operation, ProgressEvent},
-    util::{common_options::ProbeOptions, flash::CliProgressBars, logging},
+    rpc::{client::RpcClient, functions::flash::EraseCommand},
+    util::{cli, common_options::ProbeOptions, flash::CliProgressBars},
 };
 
 #[derive(clap::Parser)]
@@ -19,42 +13,22 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
+    pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
+        let session = cli::attach_probe(&client, self.common, false).await?;
 
-        let multi_progress = MultiProgress::new();
-        logging::set_progress_bar(multi_progress.clone());
-
-        let progress = if !self.disable_progressbars {
-            let progress_bars = CliProgressBars::new();
-
-            FlashProgress::new(move |event| {
-                ProgressEvent::from_library_event(event, |event| {
-                    // Only handle Erase-related events.
-                    if let ProgressEvent::AddProgressBar {
-                        operation: Operation::Erase,
-                        ..
-                    }
-                    | ProgressEvent::Started {
-                        operation: Operation::Erase,
-                        ..
-                    }
-                    | ProgressEvent::Progress {
-                        operation: Operation::Erase,
-                        ..
-                    }
-                    | ProgressEvent::Failed(Operation::Erase)
-                    | ProgressEvent::Finished(Operation::Erase) = event
-                    {
-                        progress_bars.handle(event)
-                    }
-                });
-            })
+        let pb = if self.disable_progressbars {
+            None
         } else {
-            FlashProgress::empty()
+            Some(CliProgressBars::new())
         };
 
-        erase_all(&mut session, progress)?;
+        session
+            .erase(EraseCommand::All, move |event| {
+                if let Some(pb) = pb.as_ref() {
+                    pb.handle(event);
+                }
+            })
+            .await?;
 
         Ok(())
     }

@@ -13,7 +13,7 @@ use crate::{
                 chip_info, list_families, load_chip_family, ChipInfoRequest, ChipInfoResponse,
                 ListFamiliesResponse, LoadChipFamilyRequest,
             },
-            flash::{flash, FlashRequest, FlashResponse, ProgressEvent},
+            flash::{erase, flash, EraseRequest, FlashRequest, FlashResponse, ProgressEvent},
             info::{target_info, InfoEvent, TargetInfoRequest},
             memory::{read_memory, write_memory, ReadMemoryRequest, WriteMemoryRequest},
             monitor::{monitor, MonitorEvent, MonitorRequest},
@@ -94,6 +94,12 @@ impl From<probe_rs::Error> for RpcError {
 
 impl From<probe_rs::flashing::FileDownloadError> for RpcError {
     fn from(e: probe_rs::flashing::FileDownloadError) -> Self {
+        Self::from(anyhow!(e))
+    }
+}
+
+impl From<probe_rs::flashing::FlashError> for RpcError {
+    fn from(e: probe_rs::flashing::FlashError) -> Self {
         Self::from(anyhow!(e))
     }
 }
@@ -318,6 +324,7 @@ endpoints! {
     | CreateRttClientEndpoint   | CreateRttClientRequest | CreateRttClientResponse | "create_rtt"       |
     | TakeStackTraceEndpoint    | TakeStackTraceRequest  | TakeStackTraceResponse  | "stack_trace"      |
     | FlashEndpoint             | FlashRequest           | FlashResponse           | "flash"            |
+    | EraseEndpoint             | EraseRequest           | NoResponse              | "erase"            |
     | MonitorEndpoint           | MonitorRequest         | NoResponse              | "monitor"          |
 
     | ListTestsEndpoint         | ListTestsRequest       | ListTestsResponse       | "tests/list"       |
@@ -382,6 +389,7 @@ postcard_rpc::define_dispatch! {
         | CreateRttClientEndpoint   | async     | create_rtt_client |
         | TakeStackTraceEndpoint    | async     | take_stack_trace  |
         | FlashEndpoint             | async     | flash             |
+        | EraseEndpoint             | async     | erase             |
         | MonitorEndpoint           | spawn     | monitor           |
 
         | ListTestsEndpoint         | spawn     | list_tests        |
