@@ -52,11 +52,6 @@ impl DebugRegister {
         Ok(None)
     }
 
-    /// Test if this is a 32-bit unsigned integer register
-    pub(crate) fn is_u32(&self) -> bool {
-        self.core_register.data_type == RegisterDataType::UnsignedInteger(32)
-    }
-
     /// A helper function to determine if the contained register value is equal to the maximum value that can be stored in that datatype.
     /// Will return false if the value is `None`
     pub(crate) fn is_max_value(&self) -> bool {
@@ -126,14 +121,15 @@ impl DebugRegisters {
 
     /// Gets the address size for this target, in bytes
     pub fn get_address_size_bytes(&self) -> usize {
-        self.get_program_counter().map_or_else(
-            || 0,
-            |debug_register| debug_register.core_register.size_in_bits().div_ceil(8),
-        )
+        self.get_program_counter()
+            .map(|debug_register| debug_register.core_register.size_in_bits().div_ceil(8))
+            .unwrap_or(0)
     }
 
     /// Get the canonical frame address, as specified in the [DWARF](https://dwarfstd.org) specification, section 6.4.
     /// [DWARF](https://dwarfstd.org)
+    ///
+    /// This is not always available
     pub fn get_frame_pointer(&self) -> Option<&DebugRegister> {
         self.0.iter().find(|debug_register| {
             debug_register

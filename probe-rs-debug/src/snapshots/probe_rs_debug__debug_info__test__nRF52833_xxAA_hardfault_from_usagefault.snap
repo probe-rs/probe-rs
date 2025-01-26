@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 1999
 expression: stack_frames
 ---
 - function_name: software_breakpoint
@@ -508,7 +507,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536887096
+        U32: 536887128
     - core_register:
         id: 8
         roles:
@@ -525,8 +524,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 9
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 10
         roles:
@@ -592,8 +590,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value:
-        U32: 536887088
+      value: ~
     - core_register:
         id: 18
         roles:
@@ -602,8 +599,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 16
         roles:
@@ -622,14 +618,13 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 19
-      value:
-        U32: 0
+      value: ~
   pc:
     U32: 1586
-  frame_base: 536887088
+  frame_base: ~
   is_inlined: false
   local_variables: ~
-  canonical_frame_address: 536887096
+  canonical_frame_address: ~
 - function_name: __udf
   source_location:
     path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
@@ -716,7 +711,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536887096
+        U32: 536887128
     - core_register:
         id: 8
         roles:
@@ -733,8 +728,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 9
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 10
         roles:
@@ -800,8 +794,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value:
-        U32: 536887088
+      value: ~
     - core_register:
         id: 18
         roles:
@@ -810,8 +803,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 16
         roles:
@@ -830,11 +822,10 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 19
-      value:
-        U32: 0
+      value: ~
   pc:
     U32: 1586
-  frame_base: 536887096
+  frame_base: 536887128
   is_inlined: true
   local_variables:
     Child Variables:
@@ -928,7 +919,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 536887096
+        U32: 536887128
     - core_register:
         id: 8
         roles:
@@ -945,8 +936,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 9
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 10
         roles:
@@ -1012,8 +1002,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value:
-        U32: 536887088
+      value: ~
     - core_register:
         id: 18
         roles:
@@ -1022,8 +1011,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 16
         roles:
@@ -1042,11 +1030,10 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 19
-      value:
-        U32: 0
+      value: ~
   pc:
     U64: 1586
-  frame_base: 536887096
+  frame_base: 536887128
   is_inlined: false
   local_variables:
     Child Variables:

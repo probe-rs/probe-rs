@@ -1,12 +1,6 @@
-use std::ops::ControlFlow;
-
-use crate::{
-    determine_cfa, get_object_reference, get_unwind_info, stack_frame::StackFrameInfo,
-    unwind_register, DebugError, DebugInfo, DebugRegisters, StackFrame,
-};
+use crate::{get_object_reference, DebugError, DebugRegisters, StackFrame};
 use bitfield::bitfield;
 use probe_rs::{Error, MemoryInterface, RegisterRole, RegisterValue};
-use probe_rs_target::InstructionSet;
 
 use super::{ExceptionInfo, ExceptionInterface};
 
@@ -73,114 +67,89 @@ pub(crate) fn exception_details(
     exception_interface: &impl ExceptionInterface,
     memory_interface: &mut dyn MemoryInterface,
     stackframe_registers: &DebugRegisters,
-    debug_info: &DebugInfo,
 ) -> Result<Option<ExceptionInfo>, DebugError> {
     let frame_return_address = get_stack_frame_return_address(stackframe_registers)?;
+    let frame_return_address = ExcReturn(frame_return_address);
 
-    if ExcReturn(frame_return_address).is_exception_flag() != 0xF {
+    if frame_return_address.is_exception_flag() != 0xF {
         // This is a normal function return / not an exception.
         return Ok(None);
     }
 
     let raw_exception = exception_interface.raw_exception(stackframe_registers)?;
-    let registers = exception_interface.calling_frame_registers(
+
+    if raw_exception == 1 {
+        let mut stackframe_registers = stackframe_registers.clone();
+
+        // We don't know what happened before Reset
+        for stackframe_register in &mut stackframe_registers.0 {
+            stackframe_register.value = None;
+        }
+
+        // This is a reset exception.
+        return Ok(Some(ExceptionInfo {
+            raw_exception,
+            description: "Reset".to_string(),
+            handler_frame: StackFrame {
+                id: get_object_reference(),
+                function_name: "Reset".to_string(),
+                source_location: None,
+                registers: stackframe_registers.clone(),
+                // The PC value is not 0, this should be the address of the reset vector
+                pc: RegisterValue::U32(0),
+                frame_base: None,
+                is_inlined: false,
+                local_variables: None,
+                canonical_frame_address: None,
+            },
+        }));
+    }
+
+    let mut registers = exception_interface.calling_frame_registers(
         memory_interface,
         stackframe_registers,
         raw_exception,
     )?;
     let description = exception_interface.exception_description(raw_exception, memory_interface)?;
 
-    let exception_frame_pc = registers.get_register_value_by_role(&RegisterRole::ProgramCounter)?;
+    let exception_frame_pc = registers.get_register_mut_by_role(&RegisterRole::ProgramCounter)?;
+
+    // TODO: If this was not a precise exception, the program counter will be the address of the next instruction.
+    //       We have to adjust the program counter to point to the instruction that caused the exception.
+
+    // unwrap: We know that we have a PC value, unwinding an exception will retrieve it from the stack
+    let pc_value = exception_frame_pc.value.unwrap();
 
     let mut handler_frame = StackFrame {
         id: get_object_reference(),
         function_name: description.clone(),
         source_location: None,
         registers,
-        pc: RegisterValue::U32(exception_frame_pc as u32),
+        pc: pc_value,
         frame_base: None,
         is_inlined: false,
         local_variables: None,
         canonical_frame_address: None,
     };
 
-    // A fault that is escalated to the priority of a HardFault retains the program counter value of the original fault,
-    // so we have to unwind the frame pointer that matches.
-    if raw_exception == 3 {
-        // A fault that is escalated to the priority of a HardFault retains program counter value of the original fault,
-        // So we have to unwind the frame pointer that matches.
-        // Determining the frame base may need the CFA (Canonical Frame Address) to be calculated first.
-        let mut unwind_context = Box::new(gimli::UnwindContext::new());
-        // let exception_interface = exception_handler_for_core(memory_interface.core.core_type());
-        // let instruction_set = memory_interface.core.instruction_set().ok();
-        let unwind_info = get_unwind_info(
-            &mut unwind_context,
-            &debug_info.frame_section,
-            exception_frame_pc,
-        )?;
-        handler_frame.canonical_frame_address =
-            determine_cfa(&handler_frame.registers, unwind_info)?;
-        let Ok((_, functions)) = debug_info.get_function_dies(exception_frame_pc) else {
-            handler_frame.function_name = format!("{} : ERROR: While resolving function information for the program counter ({exception_frame_pc:#010x}) that caused the exception.", handler_frame.function_name);
-            // Return the available exception info, along with the error information captured in the function_name.
-            return Ok(Some(ExceptionInfo {
-                raw_exception,
-                description,
-                handler_frame,
-            }));
-        };
-        if functions.is_empty() {
-            handler_frame.function_name = format!("{} : ERROR: No function information for the program counter ({exception_frame_pc:#010x}) that caused the exception.", handler_frame.function_name);
-            // Return the available exception info, along with the error information captured in the function_name.
-            return Ok(Some(ExceptionInfo {
-                raw_exception,
-                description,
-                handler_frame,
-            }));
-        }
-        handler_frame.frame_base = functions[0].frame_base(
-            debug_info,
-            memory_interface,
-            StackFrameInfo {
-                registers: &handler_frame.registers,
-                frame_base: None,
-                canonical_frame_address: handler_frame.canonical_frame_address,
-            },
-        )?;
-        let callee_frame_registers = handler_frame.registers.clone();
-        if let ControlFlow::Break(error) = unwind_register(
-            handler_frame
-                .registers
-                .get_register_mut_by_role(&RegisterRole::FramePointer)?,
-            &callee_frame_registers,
-            Some(unwind_info),
-            handler_frame.canonical_frame_address,
-            &mut None,
-            memory_interface,
-            Some(InstructionSet::Thumb2),
-        ) {
-            tracing::error!("{:?}", &error);
-            handler_frame.function_name =
-                format!("{} : ERROR: {error}", handler_frame.function_name);
-        };
-        // Now we can update the stack pointer also, but
-        // first we have to determine the size of the exception data on the stack.
-        // See <https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-entry-behavior?lang=en>
-        let frame_size = if ExcReturn(frame_return_address).use_standard_stackframe() {
-            // This is a standard exception frame.
-            0x20usize
-        } else {
-            // This is an extended frame that includes FPU registers.
-            0x68
-        };
-        // // Now we can update the registers with the new stack pointer.
-        let sp = handler_frame
-            .registers
-            .get_register_mut_by_role(&RegisterRole::StackPointer)?;
-        if let Some(sp_value) = sp.value.as_mut() {
-            sp_value.increment_address(frame_size)?;
-        }
+    // Now we can update the stack pointer also, but
+    // first we have to determine the size of the exception data on the stack.
+    // See <https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-entry-behavior?lang=en>
+    let frame_size = if frame_return_address.use_standard_stackframe() {
+        // This is a standard exception frame.
+        0x20usize
+    } else {
+        // This is an extended frame that includes FPU registers.
+        0x68
+    };
+    // // Now we can update the registers with the new stack pointer.
+    let sp = handler_frame
+        .registers
+        .get_register_mut_by_role(&RegisterRole::StackPointer)?;
+    if let Some(sp_value) = sp.value.as_mut() {
+        sp_value.increment_address(frame_size)?;
     }
+    //}
 
     Ok(Some(ExceptionInfo {
         raw_exception,
@@ -239,7 +208,6 @@ pub(crate) fn raw_exception(stackframe_registers: &crate::DebugRegisters) -> Res
 pub(crate) fn calling_frame_registers(
     memory: &mut dyn MemoryInterface,
     stackframe_registers: &crate::DebugRegisters,
-    _raw_exception: u32,
 ) -> Result<crate::DebugRegisters, probe_rs::Error> {
     let exception_context_address: u32 =
         stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)? as u32;

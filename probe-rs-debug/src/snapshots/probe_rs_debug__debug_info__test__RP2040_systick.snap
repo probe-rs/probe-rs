@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 1999
 expression: stack_frames
 ---
 - function_name: software_breakpoint
@@ -766,7 +765,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536886888
+        U32: 536886920
     - core_register:
         id: 14
         roles:
@@ -786,7 +785,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268437366
+        U32: 268437365
     - core_register:
         id: 17
         roles:
@@ -825,7 +824,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268437366
+    U32: 268437365
   frame_base: ~
   is_inlined: false
   local_variables: ~
@@ -833,10 +832,10 @@ expression: stack_frames
 - function_name: __delay
   source_location:
     path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
-    line: 62
+    line: 61
     column:
-      Column: 5
-    address: 268437366
+      Column: 20
+    address: 268437344
   registers:
     - core_register:
         id: 0
@@ -970,7 +969,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536886888
+        U32: 536886920
     - core_register:
         id: 14
         roles:
@@ -990,7 +989,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268437366
+        U32: 268437365
     - core_register:
         id: 17
         roles:
@@ -1029,33 +1028,23 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268437366
+    U32: 268437365
   frame_base: 536886936
   is_inlined: true
   local_variables:
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcyc: u32 = 858993459,\n\treal_cyc: u32 = 48000000}"
+      value: "<unknown> {\n\tcyc: u32 = 1000000}"
       children:
         - name:
             Named: cyc
           type_name:
             Base: u32
-          value: "858993459"
+          value: "1000000"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
             line: 56
-            column: ~
-            address: ~
-        - name:
-            Named: real_cyc
-          type_name:
-            Base: u32
-          value: "48000000"
-          source_location:
-            path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
-            line: 61
             column: ~
             address: ~
   canonical_frame_address: 536886944
@@ -1199,7 +1188,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 13
       value:
-        U32: 536886888
+        U32: 536886920
     - core_register:
         id: 14
         roles:
@@ -1219,7 +1208,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268437366
+        U32: 268437365
     - core_register:
         id: 17
         roles:
@@ -1265,13 +1254,13 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tcycles: u32 = 3758153744}"
+      value: "<unknown> {\n\tcycles: u32 = 1000000}"
       children:
         - name:
             Named: cycles
           type_name:
             Base: u32
-          value: "3758153744"
+          value: "1000000"
           source_location:
             path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/asm.rs
             line: 28

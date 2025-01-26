@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 1999
 expression: stack_frames
 ---
 - function_name: software_breakpoint
@@ -525,8 +524,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 9
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 10
         roles:
@@ -592,8 +590,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value:
-        U32: 536887064
+      value: ~
     - core_register:
         id: 18
         roles:
@@ -602,8 +599,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 16
         roles:
@@ -622,14 +618,13 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 19
-      value:
-        U32: 0
+      value: ~
   pc:
     U32: 1690
-  frame_base: 536887064
+  frame_base: ~
   is_inlined: false
   local_variables: ~
-  canonical_frame_address: 536887072
+  canonical_frame_address: ~
 - function_name: read_volatile<u32>
   source_location:
     path: /rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ptr/mod.rs
@@ -733,8 +728,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 9
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 10
         roles:
@@ -800,8 +794,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value:
-        U32: 536887064
+      value: ~
     - core_register:
         id: 18
         roles:
@@ -810,8 +803,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value:
-        U32: 0
+      value: ~
     - core_register:
         id: 16
         roles:
@@ -830,8 +822,7 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 19
-      value:
-        U32: 0
+      value: ~
   pc:
     U32: 1690
   frame_base: 536887120
