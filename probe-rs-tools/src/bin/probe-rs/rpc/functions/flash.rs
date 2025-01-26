@@ -4,7 +4,7 @@ use postcard_rpc::{
 };
 use postcard_schema::Schema;
 use probe_rs::{
-    flashing::{FileDownloadError, FlashProgress},
+    flashing::{self, FileDownloadError, FlashProgress},
     rtt::ScanRegion,
     Session,
 };
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     rpc::{
-        functions::{ProgressEventTopic, RpcContext, RpcResult, RpcSpawnContext},
+        functions::{NoResponse, ProgressEventTopic, RpcContext, RpcResult, RpcSpawnContext},
         Key,
     },
     util::{flash::build_loader, rtt::client::RttClient},
@@ -401,4 +401,56 @@ fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> FlashResponse {
     Ok(FlashResult {
         boot_info: boot_info.into(),
     })
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct EraseRequest {
+    pub sessid: Key<Session>,
+    pub command: EraseCommand,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub enum EraseCommand {
+    All,
+}
+
+pub async fn erase(ctx: &mut RpcContext, _header: VarHeader, request: EraseRequest) -> NoResponse {
+    let ctx = ctx.spawn_ctxt();
+    tokio::task::spawn_blocking(move || erase_impl(ctx, request))
+        .await
+        .unwrap()
+}
+
+fn erase_impl(ctx: RpcSpawnContext, request: EraseRequest) -> NoResponse {
+    let mut session = ctx.session_blocking(request.sessid);
+
+    let progress = FlashProgress::new(move |event| {
+        ProgressEvent::from_library_event(event, |event| {
+            // Only emit Erase-related events.
+            if let ProgressEvent::AddProgressBar {
+                operation: Operation::Erase,
+                ..
+            }
+            | ProgressEvent::Started {
+                operation: Operation::Erase,
+                ..
+            }
+            | ProgressEvent::Progress {
+                operation: Operation::Erase,
+                ..
+            }
+            | ProgressEvent::Failed(Operation::Erase)
+            | ProgressEvent::Finished(Operation::Erase) = event
+            {
+                ctx.publish_blocking::<ProgressEventTopic>(VarSeq::Seq2(0), event)
+                    .unwrap()
+            }
+        });
+    });
+
+    match request.command {
+        EraseCommand::All => flashing::erase_all(&mut session, progress)?,
+    }
+
+    Ok(())
 }

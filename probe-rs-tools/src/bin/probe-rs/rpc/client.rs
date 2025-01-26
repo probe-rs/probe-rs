@@ -29,7 +29,10 @@ use crate::{
         functions::{
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
-            flash::{BootInfo, DownloadOptions, FlashRequest, FlashResult, ProgressEvent},
+            flash::{
+                BootInfo, DownloadOptions, EraseCommand, EraseRequest, FlashRequest, FlashResult,
+                ProgressEvent,
+            },
             info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
             monitor::{MonitorEvent, MonitorMode, MonitorOptions, MonitorRequest},
@@ -43,13 +46,13 @@ use crate::{
             stack_trace::{StackTraces, TakeStackTraceRequest},
             test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
             AttachEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
-            FlashEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
-            LoadChipFamilyEndpoint, MonitorEndpoint, MonitorTopic, ProgressEventTopic,
-            ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint, ReadMemory8Endpoint,
-            ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult, RunTestEndpoint,
-            SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
-            TempFileDataEndpoint, TokioSpawner, WriteMemory16Endpoint, WriteMemory32Endpoint,
-            WriteMemory64Endpoint, WriteMemory8Endpoint,
+            EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint,
+            ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint, MonitorTopic,
+            ProgressEventTopic, ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
+            ReadMemory8Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult,
+            RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic,
+            TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner, WriteMemory16Endpoint,
+            WriteMemory32Endpoint, WriteMemory64Endpoint, WriteMemory8Endpoint,
         },
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
         Key,
@@ -461,6 +464,22 @@ impl SessionInterface {
                     format,
                     options,
                     rtt_client,
+                },
+                on_msg,
+            )
+            .await
+    }
+
+    pub async fn erase(
+        &self,
+        command: EraseCommand,
+        on_msg: impl FnMut(ProgressEvent),
+    ) -> anyhow::Result<()> {
+        self.client
+            .send_and_read_stream::<EraseEndpoint, ProgressEventTopic, _>(
+                &EraseRequest {
+                    sessid: self.sessid,
+                    command,
                 },
                 on_msg,
             )
