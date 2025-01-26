@@ -312,7 +312,7 @@ impl SwdSequence for ArmCommunicationInterface {
     }
 }
 
-impl<'interface> ArmCommunicationInterface {
+impl ArmCommunicationInterface {
     /// Create a new instance of the communication interface,
     /// which is not yet connected to a debug port.
     pub fn create(
@@ -337,7 +337,7 @@ impl<'interface> ArmCommunicationInterface {
     }
 
     /// Tries to obtain a memory interface which can be used to read memory from ARM targets.
-    pub fn memory_interface(
+    pub fn memory_interface<'interface>(
         &'interface mut self,
         access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + 'interface>, ArmError> {
