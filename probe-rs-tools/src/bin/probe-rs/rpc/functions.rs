@@ -14,8 +14,8 @@ use crate::{
                 ListFamiliesResponse, LoadChipFamilyRequest,
             },
             flash::{
-                build, erase, flash, BuildRequest, BuildResponse, EraseRequest, FlashRequest,
-                FlashResponse, ProgressEvent,
+                build, erase, flash, verify, BuildRequest, BuildResponse, EraseRequest,
+                FlashRequest, FlashResponse, ProgressEvent, VerifyRequest, VerifyResponse,
             },
             info::{target_info, InfoEvent, TargetInfoRequest},
             memory::{read_memory, write_memory, ReadMemoryRequest, WriteMemoryRequest},
@@ -329,6 +329,7 @@ endpoints! {
     | BuildEndpoint             | BuildRequest           | BuildResponse           | "flash/build"      |
     | FlashEndpoint             | FlashRequest           | FlashResponse           | "flash/flash"      |
     | EraseEndpoint             | EraseRequest           | NoResponse              | "flash/erase"      |
+    | VerifyEndpoint            | VerifyRequest          | VerifyResponse          | "flash/verify"     |
     | MonitorEndpoint           | MonitorRequest         | NoResponse              | "monitor"          |
 
     | ListTestsEndpoint         | ListTestsRequest       | ListTestsResponse       | "tests/list"       |
@@ -395,6 +396,7 @@ postcard_rpc::define_dispatch! {
         | BuildEndpoint             | async     | build             |
         | FlashEndpoint             | async     | flash             |
         | EraseEndpoint             | async     | erase             |
+        | VerifyEndpoint            | async     | verify            |
         | MonitorEndpoint           | spawn     | monitor           |
 
         | ListTestsEndpoint         | spawn     | list_tests        |
