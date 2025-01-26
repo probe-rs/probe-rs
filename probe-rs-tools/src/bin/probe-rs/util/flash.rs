@@ -127,7 +127,6 @@ pub struct ProgressBarGroup {
     message: String,
     bars: Vec<ProgressBar>,
     selected: usize,
-    append_phase: bool,
 }
 
 impl ProgressBarGroup {
@@ -136,38 +135,52 @@ impl ProgressBarGroup {
             message: message.to_string(),
             bars: vec![],
             selected: 0,
-            append_phase: false,
         }
     }
 
-    fn idle() -> ProgressStyle {
-        ProgressStyle::with_template("{msg:.green.bold} {spinner} {percent:>3}% [{bar:20}]")
+    fn idle(has_length: bool) -> ProgressStyle {
+        let template = if has_length {
+            "{msg:.green.bold} {spinner} {percent:>3}% [{bar:20}]"
+        } else {
+            "{msg:.green.bold} {spinner}"
+        };
+        ProgressStyle::with_template(template)
             .expect("Error in progress bar creation. This is a bug, please report it.")
             .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
             .progress_chars("--")
     }
 
-    fn active() -> ProgressStyle {
-        ProgressStyle::with_template("{msg:.green.bold} {spinner} {percent:>3}% [{bar:20}] {bytes:>10} @ {bytes_per_sec:>12} (ETA {eta})")
+    fn active(has_length: bool) -> ProgressStyle {
+        let template = if has_length {
+            "{msg:.green.bold} {spinner} {percent:>3}% [{bar:20}] {bytes:>10} @ {bytes_per_sec:>12} (ETA {eta})"
+        } else {
+            "{msg:.green.bold} {spinner} {elapsed}"
+        };
+        ProgressStyle::with_template(template)
             .expect("Error in progress bar creation. This is a bug, please report it.")
             .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
             .progress_chars("##-")
     }
 
-    fn finished() -> ProgressStyle {
-        ProgressStyle::with_template("{msg:.green.bold} {spinner} {percent:>3}% [{bar:20}] {bytes:>10} @ {bytes_per_sec:>12} (took {elapsed})")
+    fn finished(has_length: bool) -> ProgressStyle {
+        let template = if has_length {
+            "{msg:.green.bold} {spinner} {percent:>3}% [{bar:20}] {bytes:>10} @ {bytes_per_sec:>12} (took {elapsed})"
+        } else {
+            "{msg:.green.bold} {spinner} {elapsed}"
+        };
+        ProgressStyle::with_template(template)
             .expect("Error in progress bar creation. This is a bug, please report it.")
             .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
             .progress_chars("##")
     }
 
     pub fn add(&mut self, bar: ProgressBar) {
-        if self.append_phase {
+        if !self.bars.is_empty() {
             bar.set_message(format!("{} {}", self.message, self.bars.len() + 1));
         } else {
             bar.set_message(self.message.clone());
         }
-        bar.set_style(Self::idle());
+        bar.set_style(Self::idle(bar.length().is_some()));
         bar.enable_steady_tick(Duration::from_millis(100));
         bar.reset_elapsed();
 
@@ -182,16 +195,9 @@ impl ProgressBarGroup {
 
     pub fn inc(&mut self, size: u64) {
         if let Some(bar) = self.bars.get(self.selected) {
-            bar.set_style(Self::active());
+            bar.set_style(Self::active(bar.length().is_some()));
             bar.inc(size);
         }
-    }
-
-    pub fn len(&mut self) -> u64 {
-        self.bars
-            .get(self.selected)
-            .and_then(|bar| bar.length())
-            .unwrap_or(0)
     }
 
     pub fn abandon(&mut self) {
@@ -203,7 +209,10 @@ impl ProgressBarGroup {
 
     pub fn finish(&mut self) {
         if let Some(bar) = self.bars.get(self.selected) {
-            bar.set_style(Self::finished());
+            bar.set_style(Self::finished(bar.length().is_some()));
+            if let Some(length) = bar.length() {
+                bar.inc(length.saturating_sub(bar.position()));
+            }
             bar.finish();
         }
         self.next();
@@ -213,12 +222,9 @@ impl ProgressBarGroup {
         self.selected += 1;
     }
 
-    pub fn append_phase(&mut self) {
-        self.append_phase = true;
-    }
-
     pub fn mark_start_now(&mut self) {
         if let Some(bar) = self.bars.get(self.selected) {
+            bar.set_style(Self::active(bar.length().is_some()));
             bar.reset_elapsed();
             bar.reset_eta();
         }
@@ -254,7 +260,14 @@ impl CliProgressBars {
             ProgressEvent::FlashLayoutReady { .. } => {}
 
             ProgressEvent::AddProgressBar { operation, total } => {
-                let bar = self.multi_progress.add(ProgressBar::new(total));
+                let bar = self.multi_progress.add(if let Some(total) = total {
+                    // We were promised a length, but in this implementation it
+                    // may come later in the Started message. Set to at least 1
+                    // to avoid progress bars starting from 100%
+                    ProgressBar::new(total.max(1))
+                } else {
+                    ProgressBar::no_length()
+                });
                 match operation {
                     Operation::Fill => progress_bars.fill.add(bar),
                     Operation::Erase => progress_bars.erase.add(bar),
