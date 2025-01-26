@@ -4,7 +4,7 @@ use postcard_rpc::{
 };
 use postcard_schema::Schema;
 use probe_rs::{
-    flashing::{self, FileDownloadError, FlashProgress},
+    flashing::{self, FileDownloadError, FlashLoader, FlashProgress},
     rtt::ScanRegion,
     Session,
 };
@@ -44,10 +44,37 @@ pub struct DownloadOptions {
 }
 
 #[derive(Serialize, Deserialize, Schema)]
-pub struct FlashRequest {
+pub struct BuildRequest {
     pub sessid: Key<Session>,
     pub path: String,
     pub format: FormatOptions,
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct BuildResult {
+    pub loader: Key<FlashLoader>,
+}
+
+pub type BuildResponse = RpcResult<BuildResult>;
+
+pub async fn build(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: BuildRequest,
+) -> BuildResponse {
+    // build loader
+    let mut session = ctx.session(request.sessid).await;
+    let loader = build_loader(&mut session, &request.path, request.format, None)?;
+
+    Ok(BuildResult {
+        loader: ctx.store_object(loader).await,
+    })
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct FlashRequest {
+    pub sessid: Key<Session>,
+    pub loader: Key<FlashLoader>,
     pub options: DownloadOptions,
     pub rtt_client: Option<Key<RttClient>>,
 }
@@ -348,7 +375,7 @@ fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> FlashResponse {
         .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
 
     // build loader
-    let loader = build_loader(&mut session, &request.path, request.format, None)?;
+    let loader = ctx.object_mut_blocking(request.loader);
 
     // When using RTT with a program in flash, the RTT header will be moved to RAM on
     // startup, so clearing it before startup is ok. However, if we're downloading to the

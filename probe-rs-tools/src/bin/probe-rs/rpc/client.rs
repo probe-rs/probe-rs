@@ -13,7 +13,7 @@ use postcard_rpc::{
     Topic,
 };
 use postcard_schema::Schema;
-use probe_rs::Session;
+use probe_rs::{flashing::FlashLoader, Session};
 use serde::{de::DeserializeOwned, Serialize};
 use tokio::sync::Mutex;
 
@@ -30,8 +30,8 @@ use crate::{
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
             flash::{
-                BootInfo, DownloadOptions, EraseCommand, EraseRequest, FlashRequest, FlashResult,
-                ProgressEvent,
+                BootInfo, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
+                FlashRequest, FlashResult, ProgressEvent,
             },
             info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
@@ -45,14 +45,15 @@ use crate::{
             rtt_client::{CreateRttClientRequest, LogOptions},
             stack_trace::{StackTraces, TakeStackTraceRequest},
             test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
-            AttachEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
-            EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint,
-            ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint, MonitorTopic,
-            ProgressEventTopic, ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
-            ReadMemory8Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult,
-            RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic,
-            TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner, WriteMemory16Endpoint,
-            WriteMemory32Endpoint, WriteMemory64Endpoint, WriteMemory8Endpoint,
+            AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint,
+            CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint,
+            ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint,
+            MonitorTopic, ProgressEventTopic, ReadMemory16Endpoint, ReadMemory32Endpoint,
+            ReadMemory64Endpoint, ReadMemory8Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint,
+            RpcResult, RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint,
+            TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner,
+            WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
+            WriteMemory8Endpoint,
         },
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
         Key,
@@ -428,14 +429,11 @@ impl SessionInterface {
             .await
     }
 
-    pub async fn flash(
+    pub async fn build_flash_loader(
         &self,
         mut path: PathBuf,
         mut format: FormatOptions,
-        options: DownloadOptions,
-        rtt_client: Option<Key<RttClient>>,
-        on_msg: impl FnMut(ProgressEvent),
-    ) -> anyhow::Result<FlashResult> {
+    ) -> anyhow::Result<BuildResult> {
         path = self.client.upload_file(&path).await?;
 
         if let Some(ref mut idf_bootloader) = format.idf_options.idf_bootloader {
@@ -457,11 +455,26 @@ impl SessionInterface {
         }
 
         self.client
+            .send_resp::<BuildEndpoint, _>(&BuildRequest {
+                sessid: self.sessid,
+                path: path.display().to_string(),
+                format,
+            })
+            .await
+    }
+
+    pub async fn flash(
+        &self,
+        options: DownloadOptions,
+        loader: Key<FlashLoader>,
+        rtt_client: Option<Key<RttClient>>,
+        on_msg: impl FnMut(ProgressEvent),
+    ) -> anyhow::Result<FlashResult> {
+        self.client
             .send_and_read_stream::<FlashEndpoint, ProgressEventTopic, _>(
                 &FlashRequest {
                     sessid: self.sessid,
-                    path: path.display().to_string(),
-                    format,
+                    loader,
                     options,
                     rtt_client,
                 },

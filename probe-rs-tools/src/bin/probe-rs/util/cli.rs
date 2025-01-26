@@ -138,18 +138,16 @@ pub async fn flash(
         disable_double_buffering: download_options.disable_double_buffering,
     };
 
+    let loader = session
+        .build_flash_loader(path.to_path_buf(), format)
+        .await?;
+
     let result = session
-        .flash(
-            path.to_path_buf(),
-            format,
-            options,
-            rtt_client,
-            move |event| {
-                if let Some(ref pb) = pb {
-                    pb.handle(event);
-                }
-            },
-        )
+        .flash(options, loader.loader, rtt_client, move |event| {
+            if let Some(ref pb) = pb {
+                pb.handle(event);
+            }
+        })
         .await?;
 
     // TODO: port visualizer - can't construct FlashLayout outside of the library
