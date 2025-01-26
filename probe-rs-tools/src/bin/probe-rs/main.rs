@@ -111,7 +111,7 @@ impl Cli {
             Subcommand::Download(cmd) => cmd.run(client).await,
             Subcommand::Run(cmd) => cmd.run(client).await,
             Subcommand::Attach(cmd) => cmd.run(client).await,
-            Subcommand::Verify(cmd) => cmd.run(&lister),
+            Subcommand::Verify(cmd) => cmd.run(client).await,
             Subcommand::Erase(cmd) => cmd.run(client).await,
             Subcommand::Trace(cmd) => cmd.run(&lister),
             Subcommand::Itm(cmd) => cmd.run(&lister),
@@ -199,6 +199,7 @@ impl Subcommand {
                 | Self::Attach(_)
                 | Self::Run(_)
                 | Self::Erase(_)
+                | Self::Verify(_)
         )
     }
 }

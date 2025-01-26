@@ -121,6 +121,7 @@ pub struct ProgressBars {
     pub erase: ProgressBarGroup,
     pub fill: ProgressBarGroup,
     pub program: ProgressBarGroup,
+    pub verify: ProgressBarGroup,
 }
 
 pub struct ProgressBarGroup {
@@ -246,6 +247,7 @@ impl CliProgressBars {
             erase: ProgressBarGroup::new("      Erasing"),
             fill: ProgressBarGroup::new("Reading flash"),
             program: ProgressBarGroup::new("  Programming"),
+            verify: ProgressBarGroup::new("    Verifying"),
         });
 
         Self {
@@ -272,6 +274,7 @@ impl CliProgressBars {
                     Operation::Fill => progress_bars.fill.add(bar),
                     Operation::Erase => progress_bars.erase.add(bar),
                     Operation::Program => progress_bars.program.add(bar),
+                    Operation::Verify => progress_bars.verify.add(bar),
                 }
             }
 
@@ -282,24 +285,31 @@ impl CliProgressBars {
                     progress_bars.program.mark_start_now();
                     progress_bars.program.set_length(total);
                 }
+                Operation::Verify => {
+                    progress_bars.verify.mark_start_now();
+                    progress_bars.verify.set_length(total);
+                }
             },
 
             ProgressEvent::Progress { operation, size } => match operation {
                 Operation::Fill => progress_bars.fill.inc(size),
                 Operation::Erase => progress_bars.erase.inc(size),
                 Operation::Program => progress_bars.program.inc(size),
+                Operation::Verify => progress_bars.verify.inc(size),
             },
 
             ProgressEvent::Failed(operation) => match operation {
                 Operation::Fill => progress_bars.fill.abandon(),
                 Operation::Erase => progress_bars.erase.abandon(),
                 Operation::Program => progress_bars.program.abandon(),
+                Operation::Verify => progress_bars.verify.abandon(),
             },
 
             ProgressEvent::Finished(operation) => match operation {
                 Operation::Fill => progress_bars.fill.finish(),
                 Operation::Erase => progress_bars.erase.finish(),
                 Operation::Program => progress_bars.program.finish(),
+                Operation::Verify => progress_bars.verify.finish(),
             },
 
             ProgressEvent::DiagnosticMessage { .. } => {}
