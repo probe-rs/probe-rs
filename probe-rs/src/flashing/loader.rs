@@ -706,17 +706,13 @@ impl FlashLoader {
 
             let region = region.clone();
 
-            let target = session.target();
-            let algo = Self::get_flash_algorithm_for_region(&region, target)?;
             let Some(core_name) = region.cores.first() else {
                 return Err(FlashError::NoNvmCoreAccess(region));
             };
 
-            let core = target
-                .cores
-                .iter()
-                .position(|c| c.name == *core_name)
-                .unwrap();
+            let target = session.target();
+            let core = target.core_index_by_name(&core_name).unwrap();
+            let algo = Self::get_flash_algorithm_for_region(&region, target)?;
 
             // We don't usually have more than a handful of regions, linear search should be fine.
             tracing::debug!("     -- using algorithm: {}", algo.name);
@@ -860,7 +856,7 @@ impl FlashLoader {
     }
 }
 
-struct FlasherWithRegions {
-    regions: Vec<NvmRegion>,
-    flasher: Flasher,
+pub(super) struct FlasherWithRegions {
+    pub(super) regions: Vec<NvmRegion>,
+    pub(super) flasher: Flasher,
 }
