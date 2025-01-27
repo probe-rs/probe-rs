@@ -447,12 +447,12 @@ impl FlashLoader {
             let algorithm = session.target().flash_algorithm_by_name(&el.name);
             let algorithm = algorithm.unwrap().clone();
 
-            let mut flasher = Flasher::new(session, el.core, &algorithm, progress.clone())?;
+            let mut flasher = Flasher::new(session, el.core, &algorithm)?;
 
             for region in el.regions.iter() {
                 let flash_layout = flasher.flash_layout(region, &self.builder, false)?;
 
-                if !flasher.verify(session, &flash_layout, true)? {
+                if !flasher.verify(session, &progress, &flash_layout, true)? {
                     return Err(FlashError::Verify);
                 }
             }
@@ -513,11 +513,11 @@ impl FlashLoader {
             let algorithm = session.target().flash_algorithm_by_name(&el.name);
             let algorithm = algorithm.unwrap().clone();
 
-            let mut flasher = Flasher::new(session, el.core, &algorithm, progress.clone())?;
+            let mut flasher = Flasher::new(session, el.core, &algorithm)?;
 
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
-                flasher.run_erase_all(session)?;
+                flasher.run_erase_all(session, &progress)?;
                 do_chip_erase = false;
                 did_chip_erase = true;
             }
@@ -529,7 +529,7 @@ impl FlashLoader {
                 for region in el.regions.iter() {
                     let flash_layout = flasher.flash_layout(region, &self.builder, false)?;
 
-                    if !flasher.verify(session, &flash_layout, true)? {
+                    if !flasher.verify(session, &progress, &flash_layout, true)? {
                         contents_match = false;
                         break;
                     }
@@ -557,6 +557,7 @@ impl FlashLoader {
                 // Program the data.
                 flasher.program(
                     session,
+                    &progress,
                     &region,
                     &self.builder,
                     options.keep_unwritten_bytes,
@@ -762,7 +763,7 @@ impl FlashLoader {
             let algorithm = session.target().flash_algorithm_by_name(&el.name);
             let algorithm = algorithm.unwrap().clone();
 
-            let flasher = Flasher::new(session, el.core, &algorithm, progress.clone())?;
+            let flasher = Flasher::new(session, el.core, &algorithm)?;
             // If the first flash algo doesn't support erase all, disable chip erase.
             // TODO: we could sort by support but it's unlikely to make a difference.
             if options.do_chip_erase && !flasher.is_chip_erase_supported(session) {

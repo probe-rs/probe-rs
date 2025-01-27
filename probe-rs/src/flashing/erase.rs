@@ -100,11 +100,11 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
         let algo = algo.unwrap().clone();
 
         let core_index = session.target().core_index_by_name(&core_name).unwrap();
-        let mut flasher = Flasher::new(session, core_index, &algo, progress.clone())?;
+        let mut flasher = Flasher::new(session, core_index, &algo)?;
 
         if flasher.is_chip_erase_supported(session) {
             tracing::debug!("     -- chip erase supported, doing it.");
-            flasher.run_erase_all(session)?;
+            flasher.run_erase_all(session, &progress)?;
         } else {
             tracing::debug!("     -- chip erase not supported, erasing by sector.");
 
@@ -119,7 +119,7 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
                 })
                 .collect::<Vec<_>>();
 
-            flasher.run_erase(session, |active| {
+            flasher.run_erase(session, &progress, |active| {
                 for info in sectors {
                     tracing::debug!(
                         "    sector: {:#010x}-{:#010x} ({} bytes)",
@@ -197,7 +197,7 @@ pub fn erase_sectors(
         let algo = algo.unwrap().clone();
 
         let core_index = session.target().core_index_by_name(&core_name).unwrap();
-        let mut flasher = Flasher::new(session, core_index, &algo, progress.clone())?;
+        let mut flasher = Flasher::new(session, core_index, &algo)?;
 
         let sectors = flasher
             .flash_algorithm()
@@ -210,7 +210,7 @@ pub fn erase_sectors(
             })
             .collect::<Vec<_>>();
 
-        flasher.run_erase(session, |active| {
+        flasher.run_erase(session, &progress, |active| {
             for info in sectors {
                 tracing::debug!(
                     "    sector: {:#010x}-{:#010x} ({} bytes)",
