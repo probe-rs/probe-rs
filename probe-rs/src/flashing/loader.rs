@@ -441,13 +441,8 @@ impl FlashLoader {
 
         // Iterate all flash algorithms we need to use and do the flashing.
         for el in algos {
-            tracing::debug!("Flashing ranges for algo: {}", el.name);
-
-            // This can't fail, algo_name comes from the target.
-            let algorithm = session.target().flash_algorithm_by_name(&el.name);
-            let algorithm = algorithm.unwrap().clone();
-
-            let mut flasher = Flasher::new(session, el.core, &algorithm)?;
+            let mut flasher = el.flasher;
+            tracing::debug!("Flashing ranges for algo: {}", flasher.flash_algorithm.name);
 
             for region in el.regions.iter() {
                 let flash_layout = flasher.flash_layout(region, &self.builder, false)?;
@@ -507,13 +502,8 @@ impl FlashLoader {
 
         // Iterate all flash algorithms we need to use and do the flashing.
         for el in algos {
-            tracing::debug!("Flashing ranges for algo: {}", el.name);
-
-            // This can't fail, algo_name comes from the target.
-            let algorithm = session.target().flash_algorithm_by_name(&el.name);
-            let algorithm = algorithm.unwrap().clone();
-
-            let mut flasher = Flasher::new(session, el.core, &algorithm)?;
+            let mut flasher = el.flasher;
+            tracing::debug!("Flashing ranges for algo: {}", flasher.flash_algorithm.name);
 
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
@@ -586,8 +576,7 @@ impl FlashLoader {
             {
                 session
                     .core(core_to_reset_index)
-                    .map_err(FlashError::Core)?
-                    .reset_and_halt(Duration::from_millis(500))
+                    .and_then(|mut core| core.reset_and_halt(Duration::from_millis(500)))
                     .map_err(FlashError::Core)?;
             }
         }
@@ -653,7 +642,7 @@ impl FlashLoader {
         Ok(())
     }
 
-    fn prepare_plan(&self, session: &mut Session) -> Result<Vec<FlashAlgoWithRegions>, FlashError> {
+    fn prepare_plan(&self, session: &mut Session) -> Result<Vec<FlasherWithRegions>, FlashError> {
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
             tracing::debug!(
@@ -683,7 +672,7 @@ impl FlashLoader {
             tracing::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
-        let mut algos = Vec::<FlashAlgoWithRegions>::new();
+        let mut algos = Vec::<FlasherWithRegions>::new();
 
         // Commit NVM first
 
@@ -715,32 +704,30 @@ impl FlashLoader {
                 continue;
             }
 
+            let region = region.clone();
+
             let target = session.target();
-            let algo = Self::get_flash_algorithm_for_region(region, target)?;
-            let core_name = region
-                .cores
-                .first()
-                .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
-                .clone();
+            let algo = Self::get_flash_algorithm_for_region(&region, target)?;
+            let Some(core_name) = region.cores.first() else {
+                return Err(FlashError::NoNvmCoreAccess(region));
+            };
 
             let core = target
                 .cores
                 .iter()
-                .position(|c| c.name == core_name)
+                .position(|c| c.name == *core_name)
                 .unwrap();
 
-            // As we don't usually have more than a handful of regions, this is fine.
+            // We don't usually have more than a handful of regions, linear search should be fine.
             tracing::debug!("     -- using algorithm: {}", algo.name);
-            if let Some(entry) = algos
-                .iter_mut()
-                .find(|entry| entry.name == algo.name && entry.core == core)
-            {
-                entry.regions.push(region.clone());
+            if let Some(entry) = algos.iter_mut().find(|entry| {
+                entry.flasher.flash_algorithm.name == algo.name && entry.flasher.core_index == core
+            }) {
+                entry.regions.push(region);
             } else {
-                algos.push(FlashAlgoWithRegions {
-                    name: algo.name.clone(),
-                    core,
-                    regions: vec![region.clone()],
+                algos.push(FlasherWithRegions {
+                    flasher: Flasher::new(target, core, &algo)?,
+                    regions: vec![region],
                 });
             }
         }
@@ -750,7 +737,7 @@ impl FlashLoader {
 
     fn initialize(
         &self,
-        algos: &Vec<FlashAlgoWithRegions>,
+        algos: &[FlasherWithRegions],
         session: &mut Session,
         progress: &FlashProgress,
         options: &mut DownloadOptions,
@@ -759,14 +746,9 @@ impl FlashLoader {
 
         // Iterate all flash algorithms to initialize a few things.
         for el in algos.iter() {
-            // This can't fail, algo_name comes from the target.
-            let algorithm = session.target().flash_algorithm_by_name(&el.name);
-            let algorithm = algorithm.unwrap().clone();
-
-            let flasher = Flasher::new(session, el.core, &algorithm)?;
             // If the first flash algo doesn't support erase all, disable chip erase.
             // TODO: we could sort by support but it's unlikely to make a difference.
-            if options.do_chip_erase && !flasher.is_chip_erase_supported(session) {
+            if options.do_chip_erase && !el.flasher.is_chip_erase_supported(session) {
                 options.do_chip_erase = false;
                 tracing::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
                 tracing::warn!("A manual sector erase will be performed.");
@@ -774,8 +756,11 @@ impl FlashLoader {
 
             let mut phase_layout = FlashLayout::default();
             for region in el.regions.iter() {
-                let layout =
-                    flasher.flash_layout(&region, &self.builder, options.keep_unwritten_bytes)?;
+                let layout = el.flasher.flash_layout(
+                    &region,
+                    &self.builder,
+                    options.keep_unwritten_bytes,
+                )?;
 
                 phase_layout.merge_from(layout);
             }
@@ -875,9 +860,7 @@ impl FlashLoader {
     }
 }
 
-// TODO: store the Flasher here
-struct FlashAlgoWithRegions {
-    name: String,
-    core: usize,
+struct FlasherWithRegions {
     regions: Vec<NvmRegion>,
+    flasher: Flasher,
 }

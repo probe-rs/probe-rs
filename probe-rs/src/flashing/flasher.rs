@@ -8,8 +8,8 @@ use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector};
 use crate::memory::MemoryInterface;
 use crate::rtt::{self, Rtt, ScanRegion};
-use crate::CoreStatus;
 use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
+use crate::{CoreStatus, Target};
 use std::marker::PhantomData;
 use std::{
     fmt::Debug,
@@ -49,9 +49,9 @@ impl Operation for Verify {
 ///
 /// Once constructed it can be used to program date to the flash.
 pub(super) struct Flasher {
-    core_index: usize,
-    flash_algorithm: FlashAlgorithm,
-    loaded: bool,
+    pub(super) core_index: usize,
+    pub(super) flash_algorithm: FlashAlgorithm,
+    pub(super) loaded: bool,
 }
 
 /// The byte used to fill the stack when checking for stack overflows.
@@ -59,16 +59,14 @@ const STACK_FILL_BYTE: u8 = 0x56;
 
 impl Flasher {
     pub(super) fn new(
-        session: &mut Session,
+        target: &Target,
         core_index: usize,
         raw_flash_algorithm: &RawFlashAlgorithm,
     ) -> Result<Self, FlashError> {
-        let target = session.target();
-
         let flash_algorithm = FlashAlgorithm::assemble_from_raw_with_core(
             raw_flash_algorithm,
             &target.cores[core_index].name,
-            target,
+            &target,
         )?;
 
         Ok(Self {

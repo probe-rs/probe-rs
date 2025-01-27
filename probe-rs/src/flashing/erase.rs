@@ -97,10 +97,10 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
 
         // This can't fail, algo_name comes from the target.
         let algo = session.target().flash_algorithm_by_name(&algo_name);
-        let algo = algo.unwrap().clone();
+        let algo = algo.unwrap();
 
         let core_index = session.target().core_index_by_name(&core_name).unwrap();
-        let mut flasher = Flasher::new(session, core_index, &algo)?;
+        let mut flasher = Flasher::new(session.target(), core_index, &algo)?;
 
         if flasher.is_chip_erase_supported(session) {
             tracing::debug!("     -- chip erase supported, doing it.");
@@ -194,10 +194,10 @@ pub fn erase_sectors(
 
         // This can't fail, algo_name comes from the target.
         let algo = session.target().flash_algorithm_by_name(&algo_name);
-        let algo = algo.unwrap().clone();
+        let algo = algo.unwrap();
 
         let core_index = session.target().core_index_by_name(&core_name).unwrap();
-        let mut flasher = Flasher::new(session, core_index, &algo)?;
+        let mut flasher = Flasher::new(session.target(), core_index, &algo)?;
 
         let sectors = flasher
             .flash_algorithm()
