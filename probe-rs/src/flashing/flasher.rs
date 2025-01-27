@@ -66,7 +66,7 @@ impl Flasher {
         let flash_algorithm = FlashAlgorithm::assemble_from_raw_with_core(
             raw_flash_algorithm,
             &target.cores[core_index].name,
-            &target,
+            target,
         )?;
 
         Ok(Self {

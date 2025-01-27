@@ -711,7 +711,7 @@ impl FlashLoader {
             };
 
             let target = session.target();
-            let core = target.core_index_by_name(&core_name).unwrap();
+            let core = target.core_index_by_name(core_name).unwrap();
             let algo = Self::get_flash_algorithm_for_region(&region, target)?;
 
             // We don't usually have more than a handful of regions, linear search should be fine.
@@ -722,7 +722,7 @@ impl FlashLoader {
                 entry.regions.push(region);
             } else {
                 algos.push(FlasherWithRegions {
-                    flasher: Flasher::new(target, core, &algo)?,
+                    flasher: Flasher::new(target, core, algo)?,
                     regions: vec![region],
                 });
             }
@@ -752,11 +752,9 @@ impl FlashLoader {
 
             let mut phase_layout = FlashLayout::default();
             for region in el.regions.iter() {
-                let layout = el.flasher.flash_layout(
-                    &region,
-                    &self.builder,
-                    options.keep_unwritten_bytes,
-                )?;
+                let layout =
+                    el.flasher
+                        .flash_layout(region, &self.builder, options.keep_unwritten_bytes)?;
 
                 phase_layout.merge_from(layout);
             }
