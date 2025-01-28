@@ -44,6 +44,20 @@ pub enum DapError {
 
 /// To be implemented by debug probe drivers that support debugging ARM cores.
 pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
+    /// Reinitialize the communication interface (in place).
+    ///
+    /// Some chip-specific reset sequences may disable the debug port. `reinitialize` allows
+    /// a debug sequence to re-initialize the debug port, staying true to the `Initialized`
+    /// type state.
+    ///
+    /// If you're invoking this from a debug sequence, know that `reinitialize` will likely
+    /// call back onto you! Specifically, it will invoke some sequence of `debug_port_*`
+    /// sequences with varying internal state. If you're not prepared for this, you might recurse.
+    ///
+    /// `reinitialize` does handle `debug_core_start` to re-initialize any core's debugging.
+    /// If you're a chip-specific debug sequence, you're expected to handle this yourself.
+    fn reinitialize(&mut self) -> Result<(), ArmError>;
+
     /// Returns a vector of all the access ports the current debug port has.
     ///
     /// If the target device has multiple debug ports, this will switch the active debug port
@@ -232,7 +246,7 @@ impl<S: ArmDebugState> Drop for ArmCommunicationInterface<S> {
 }
 
 impl<S: ArmDebugState> ArmCommunicationInterface<S> {
-    fn probe_mut(&mut self) -> &mut dyn DapProbe {
+    pub(crate) fn probe_mut(&mut self) -> &mut dyn DapProbe {
         // Unwrap: Probe is only taken when the struct is dropped
         self.probe.as_deref_mut().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.")
     }
@@ -253,6 +267,30 @@ impl<S: ArmDebugState> ArmCommunicationInterface<S> {
 pub trait DapProbe: RawDapAccess + DebugProbe {}
 
 impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
+    fn reinitialize(&mut self) -> Result<(), ArmError> {
+        // Simulate the drop / close of the initialized communication interface.
+        let mut probe = self.probe.take().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.");
+        self.state.disconnect(&mut *probe);
+
+        match Self::try_setup(
+            probe,
+            self.state.sequence.clone(),
+            self.current_debug_port(),
+            self.state.use_overrun_detect,
+        ) {
+            Ok(reinitialized) => {
+                let _ = std::mem::replace(self, reinitialized);
+                // Dropping the original self. Since we've taken the probe, we've ensured
+                // that the drop effects don't happen again.
+                Ok(())
+            }
+            Err((probe, err)) => {
+                self.probe.replace(probe);
+                Err(err)
+            }
+        }
+    }
+
     fn memory_interface(
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
@@ -367,42 +405,6 @@ impl ArmCommunicationInterface<Initialized> {
         }
 
         Ok(initializing)
-    }
-
-    /// Reinitialize the communication interface (in place).
-    ///
-    /// Some chip-specific reset sequences may disable the debug port. `reinitialize` allows
-    /// a debug sequence to re-initialize the debug port, staying true to the `Initialized`
-    /// type state.
-    ///
-    /// If you're invoking this from a debug sequence, know that `reinitialize` will call back
-    /// onto you! Specifically, it will invoke some sequence of `debug_port_*` sequences with
-    /// varying internal state. If you're not prepared for this, you might recurse.
-    ///
-    /// `reinitialize` does handle `debug_core_start` to re-initialize any core's debugging.
-    /// If you're a chip-specific debug sequence, you're expected to handle this yourself.
-    pub(crate) fn reinitialize(&mut self) -> Result<(), ArmError> {
-        // Simulate the drop / close of the initialized communication interface.
-        let mut probe = self.probe.take().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.");
-        self.state.disconnect(&mut *probe);
-
-        match Self::try_setup(
-            probe,
-            self.state.sequence.clone(),
-            self.current_debug_port(),
-            self.state.use_overrun_detect,
-        ) {
-            Ok(reinitialized) => {
-                let _ = std::mem::replace(self, reinitialized);
-                // Dropping the original self. Since we've taken the probe, we've ensured
-                // that the drop effects don't happen again.
-                Ok(())
-            }
-            Err((probe, err)) => {
-                self.probe.replace(probe);
-                Err(err)
-            }
-        }
     }
 
     /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
@@ -667,6 +669,10 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.probe_mut()
             .raw_write_block(PortAddress::ApRegister(address), values)?;
         Ok(())
+    }
+
+    fn flush(&mut self) -> Result<(), ArmError> {
+        self.probe_mut().raw_flush()
     }
 }
 

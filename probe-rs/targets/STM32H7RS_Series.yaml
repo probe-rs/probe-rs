@@ -13,7 +13,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -95,7 +94,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -177,7 +175,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -258,7 +255,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -341,7 +337,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -423,7 +418,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -504,7 +498,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -586,7 +579,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -668,7 +660,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -749,7 +740,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -830,7 +820,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -912,7 +901,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -994,7 +982,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -1075,7 +1062,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -1158,7 +1144,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -1240,7 +1225,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -1321,7 +1305,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -1403,7 +1386,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -1485,7 +1467,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM
@@ -1566,7 +1547,6 @@ variants:
     type: armv7em
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Ram
     name: ITCM

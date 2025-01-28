@@ -2,27 +2,25 @@
 //! implementation.
 use crate::{
     architecture::arm::{
-        communication_interface::Initialized,
+        communication_interface::SwdSequence,
         dp::{DpAccess, DpAddress, BASEPTR0, BASEPTR1},
         memory::ArmMemoryInterface,
-        ApV2Address, ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress,
+        ApV2Address, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
     },
+    probe::DebugProbeError,
     MemoryInterface,
 };
 
 /// The Root Memory Interface accesses the Debug Port (DP) address space. This memory interface can
 /// only be used to interface into the ROM tables and CoreSight components of the debug
 /// infrastructure.
-pub struct RootMemoryInterface<'iface> {
-    iface: &'iface mut ArmCommunicationInterface<Initialized>,
+pub struct RootMemoryInterface<'iface, API> {
+    iface: &'iface mut API,
     dp: DpAddress,
     base: u64,
 }
-impl<'iface> RootMemoryInterface<'iface> {
-    pub fn new(
-        iface: &'iface mut ArmCommunicationInterface<Initialized>,
-        dp: DpAddress,
-    ) -> Result<Self, ArmError> {
+impl<'iface, API: ArmProbeInterface> RootMemoryInterface<'iface, API> {
+    pub fn new(iface: &'iface mut API, dp: DpAddress) -> Result<Self, ArmError> {
         let base_ptr0: BASEPTR0 = iface.read_dp_register(dp)?;
         let base_ptr1: BASEPTR1 = iface.read_dp_register(dp)?;
         let base = base_ptr0
@@ -35,7 +33,9 @@ impl<'iface> RootMemoryInterface<'iface> {
     }
 }
 
-impl MemoryInterface<ArmError> for RootMemoryInterface<'_> {
+impl<'iface, API: ArmProbeInterface> MemoryInterface<ArmError>
+    for RootMemoryInterface<'iface, API>
+{
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -99,7 +99,7 @@ impl MemoryInterface<ArmError> for RootMemoryInterface<'_> {
         Ok(())
     }
 }
-impl ArmMemoryInterface for RootMemoryInterface<'_> {
+impl<'iface, API: ArmProbeInterface> ArmMemoryInterface for RootMemoryInterface<'iface, API> {
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
         FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::new())
     }
@@ -108,21 +108,20 @@ impl ArmMemoryInterface for RootMemoryInterface<'_> {
         Ok(self.base)
     }
 
-    fn get_arm_communication_interface(
-        &mut self,
-    ) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError> {
+    fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
         Ok(self.iface)
     }
 
-    fn try_as_parts(
-        &mut self,
-    ) -> Result<
-        (
-            &mut ArmCommunicationInterface<Initialized>,
-            &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp,
-        ),
-        crate::probe::DebugProbeError,
-    > {
-        todo!()
+    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
+        Ok(self.iface)
+    }
+
+    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+        Ok(self.iface)
+    }
+
+    fn generic_status(&mut self) -> Result<crate::architecture::arm::memory::Status, ArmError> {
+        // This is not a memory AP, so there's no logicl CSW associated with it.
+        unimplemented!()
     }
 }

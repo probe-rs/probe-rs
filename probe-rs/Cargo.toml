@@ -20,19 +20,11 @@ license.workspace = true
 exclude = ["tests/"]
 
 [features]
-default = ["builtin-targets", "debug"]
+default = ["builtin-targets"]
 gdb-server = ["dep:gdbstub"]
 
 # Enable all built in targets.
 builtin-targets = ["dep:bincode", "dep:serde_yaml", "dep:probe-rs-target"]
-
-debug = [
-    "dep:gimli",
-    "dep:typed-path",
-    "dep:parse_int",
-    "dep:rmp-serde",
-    "dep:dunce",
-]
 
 # Enable helpers for testing
 test = []
@@ -50,7 +42,7 @@ hidapi = { version = "2", default-features = false, features = [
     "linux-native",
 ] }
 ihex = "3.0"
-itertools = "0.13"
+itertools = "0.14"
 jep106 = "0.2"
 flate2 = "1.0"
 object = { version = "0.36", default-features = false, features = [
@@ -62,7 +54,9 @@ nusb = "0.1.12"
 futures-lite = { version = "2", default-features = false }
 async-io = "2"
 scroll = "0.12"
-serialport = { version = "4.6.0", default-features = false, features = ["usbportinfo-interface"] }
+serialport = { version = "4.6.0", default-features = false, features = [
+    "usbportinfo-interface",
+] }
 svg = "0.18"
 tracing = "0.1"
 uf2-decode = "0.2"
@@ -79,16 +73,8 @@ hexdump = { version = "0.1", optional = true }
 # gdb server
 gdbstub = { version = "0.7", optional = true }
 
-# debug
-gimli = { version = "0.31", default-features = false, features = [
-    "endian-reader",
-    "read",
-    "std",
-], optional = true }
-typed-path = { version = "0.10", optional = true }
-parse_int = { version = "0.6", optional = true }
-rmp-serde = { version = "1", optional = true }
-dunce = { version = "1", optional = true }
+rmp-serde = { version = "1" }
+dunce = "1.0.5"
 
 [build-dependencies]
 probe-rs-target = { workspace = true, optional = true }
@@ -107,7 +93,7 @@ pretty_assertions = "1"
 test-case = "3"
 test-log = { version = "0.2.16", features = ["trace"] }
 termtree = "0.5"
-insta = { version = "1.38", default-features = false, features = ["yaml"] }
+insta = { version = "1.38", default-features = false }
 
 [[package.metadata.release.pre-release-replacements]]
 file = "../CHANGELOG.md"

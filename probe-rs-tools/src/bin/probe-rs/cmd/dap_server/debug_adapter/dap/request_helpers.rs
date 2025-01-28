@@ -4,16 +4,16 @@ use crate::cmd::dap_server::{
     server::{core_data::CoreHandle, session_data::BreakpointType},
     DebuggerError,
 };
+use addr2line::gimli::RunTimeEndian;
 use anyhow::{anyhow, Result};
 use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
 };
-use probe_rs::{
-    debug::{ColumnType, ObjectRef, SourceLocation},
-    CoreType, InstructionSet, MemoryInterface,
-};
-use std::{fmt::Write, sync::LazyLock, time::Duration};
+use itertools::Itertools;
+use probe_rs::{CoreType, Error, InstructionSet, MemoryInterface};
+use probe_rs_debug::{ColumnType, ObjectRef, SourceLocation};
+use std::{sync::LazyLock, time::Duration};
 use typed_path::TypedPathBuf;
 
 use super::dap_types::{Breakpoint, InstructionBreakpoint, MemoryAddress};
@@ -95,209 +95,289 @@ pub(crate) fn disassemble_target_memory(
     memory_reference: u64,
     instruction_count: i64,
 ) -> Result<Vec<DisassembledInstruction>, DebuggerError> {
-    let cs = get_capstone(target_core)?;
-    let target_instruction_set = target_core.core.instruction_set()?;
-    let instruction_offset_as_bytes = match target_instruction_set {
-        InstructionSet::Thumb2 | InstructionSet::RV32C => {
-            // Since we cannot guarantee the size of individual instructions, let's assume we will read the 120% of the requested number of 16-bit instructions.
-            (instruction_offset
-                * target_core
-                    .core
-                    .instruction_set()?
-                    .get_minimum_instruction_size() as i64)
-                / 4
-                * 5
-        }
-        InstructionSet::A32 | InstructionSet::A64 | InstructionSet::RV32 => {
-            instruction_offset
-                * target_core
-                    .core
-                    .instruction_set()?
-                    .get_minimum_instruction_size() as i64
-        }
-        InstructionSet::Xtensa => return Err(DebuggerError::Unimplemented),
+    let instruction_set = target_core.core.instruction_set()?;
+    match instruction_set {
+        InstructionSet::Thumb2
+        | InstructionSet::RV32C
+        | InstructionSet::RV32
+        | InstructionSet::A32
+        | InstructionSet::A64 => (),
+        _ => return Err(DebuggerError::Unimplemented), // e.g. Xtensa.
     };
-    let mut assembly_lines: Vec<DisassembledInstruction> = vec![];
-    let mut code_buffer: Vec<u8> = vec![];
-    let mut read_more_bytes = true;
-    let mut read_pointer = if byte_offset.is_negative() {
-        Some(memory_reference.saturating_sub(byte_offset.unsigned_abs()))
+
+    let min_instruction_size: u64 = instruction_set.get_minimum_instruction_size().into();
+    let max_instruction_size: u64 = instruction_set.get_maximum_instruction_size().into();
+
+    // Adjust the requested memory address with the given byte offset.
+    let adjusted_memory_reference: u64 = if byte_offset.is_negative() {
+        memory_reference.saturating_sub(byte_offset.unsigned_abs())
     } else {
-        Some(memory_reference.saturating_add(byte_offset as u64))
+        memory_reference.saturating_add(byte_offset.unsigned_abs())
     };
-    read_pointer = if instruction_offset_as_bytes.is_negative() {
-        read_pointer
-            .and_then(|rp| {
-                rp.saturating_sub(instruction_offset_as_bytes.unsigned_abs())
-                    .checked_div(4)
-            })
-            .map(|rp_memory_aligned| rp_memory_aligned * 4)
-    } else {
-        read_pointer
-            .and_then(|rp| {
-                rp.saturating_add(instruction_offset_as_bytes as u64)
-                    .checked_div(4)
-            })
-            .map(|rp_memory_aligned| rp_memory_aligned * 4)
-    };
-    let mut instruction_pointer = if let Some(read_pointer) = read_pointer {
-        read_pointer
-    } else {
-        let error_message = format!("Unable to calculate starting address for disassembly request with memory reference:{memory_reference:#010X}, byte offset:{byte_offset:#010X}, and instruction offset:{instruction_offset:#010X}.");
-        return Err(DebuggerError::Other(anyhow!(error_message)));
-    };
-    let mut stored_source_location = None;
-    while assembly_lines.len() < instruction_count as usize {
-        if read_more_bytes {
-            if let Some(current_read_pointer) = read_pointer {
-                // All supported architectures use maximum 32-bit instructions, and require 32-bit memory aligned reads.
-                match target_core.core.read_word_32(current_read_pointer) {
-                    Ok(new_word) => {
-                        // Advance the read pointer for next time we need it.
-                        read_pointer =
-                            if let Some(valid_read_pointer) = current_read_pointer.checked_add(4) {
-                                Some(valid_read_pointer)
-                            } else {
-                                // If this happens, the next loop will generate "invalid instruction" records.
-                                read_pointer = None;
-                                continue;
-                            };
-                        // Update the code buffer.
-                        for new_byte in new_word.to_le_bytes() {
-                            code_buffer.push(new_byte);
-                        }
-                    }
-                    Err(memory_read_error) => {
-                        // If we can't read data at a given address, then create a "invalid instruction" record, and keep trying.
-                        assembly_lines.push(DisassembledInstruction {
-                            address: format!("{current_read_pointer:#010X}"),
-                            column: None,
-                            end_column: None,
-                            end_line: None,
-                            instruction: format!(
-                                "<instruction address not readable : {memory_read_error:?}>"
-                            ),
-                            instruction_bytes: None,
-                            line: None,
-                            location: None,
-                            symbol: None,
-                        });
-                        read_pointer = Some(current_read_pointer.saturating_add(4));
-                        continue;
-                    }
-                }
+
+    // We're asked for a defined number of instructions, but we only can
+    // calculate memory offsets in bytes which is a non-trivial conversion
+    // in the case of variable length instruction sets. We therefore read
+    // the worst case number of instructions and later throw those in
+    // excess away:
+
+    // 1. We ensure that we always have the requested memory address in range,
+    //    so that we can identify exact instruction counts relative to this reference.
+    let start_instruction_offset: u64 = i64::min(instruction_offset, 0).unsigned_abs();
+    let end_instruction_offset: u64 =
+        i64::max(0, instruction_offset + instruction_count).unsigned_abs();
+
+    // 2. We calculate worst-case byte offsets to allow for the requested
+    //    instruction offset and count, i.e. we read so far backwards and
+    //    forward that we're guaranteed to at least read the requested
+    //    offset and count of instructions even if all instructions happen
+    //    to be max length instructions.
+    let start_memory_offset = start_instruction_offset * max_instruction_size;
+    let end_memory_offset = (end_instruction_offset + 1) * max_instruction_size;
+    let mut start_from_address = adjusted_memory_reference.saturating_sub(start_memory_offset);
+    let mut read_until_address = adjusted_memory_reference.saturating_add(end_memory_offset);
+
+    let has_variable_length_instructions = min_instruction_size != max_instruction_size;
+
+    if has_variable_length_instructions {
+        // Find the closest source location to ensure that we're starting
+        // with a well-aligned instruction pointer. Note: Variable
+        // length instructions are not necessarily word-aligned, i.e.
+        // in the case of ARM Thumbv2, instructions are embedded into
+        // a 16-bit halfword stream.
+        if let Some(source_location) = target_core
+            .core_data
+            .debug_info
+            .get_source_location(start_from_address)
+        {
+            if let Some(source_address) = source_location.address {
+                start_from_address = source_address;
             }
         }
+    }
 
-        match cs.disasm_all(&code_buffer, instruction_pointer) {
+    // Ensure pointer alignment (safety measure, should be a no-op).
+    start_from_address &= !(min_instruction_size - 1);
+    read_until_address &= !(min_instruction_size - 1);
+
+    let cs_le = get_capstone_le(target_core)?;
+    let mut code_buffer_le: Vec<u8> = vec![];
+    let mut disassembled_instructions: Vec<DisassembledInstruction> = vec![];
+    let mut maybe_previous_source_location = None;
+    let mut maybe_reference_instruction_index = None;
+    let convert_endianness = target_core.core_data.debug_info.endianness() == RunTimeEndian::Big;
+
+    let mut instruction_pointer = start_from_address;
+    'instruction_loop: while instruction_pointer < read_until_address {
+        if maybe_reference_instruction_index.is_none()
+            && instruction_pointer >= adjusted_memory_reference
+        {
+            // This instruction will be the one that the requested memory
+            // reference points to. We'll calculate instruction offsets
+            // relative to this index.
+            maybe_reference_instruction_index = Some(disassembled_instructions.len() as i64);
+        }
+
+        let mut read_pointer = instruction_pointer + code_buffer_le.len() as u64;
+        let mut read_error = None;
+        while read_error.is_none() && code_buffer_le.len() < max_instruction_size as usize {
+            fn read_instruction<const N: usize, M>(
+                ptr: &mut u64,     // read pointer
+                mem: &mut M,       // the target's memory interface
+                buf: &mut Vec<u8>, // the code buffer to read into
+                conv: bool,        // true if endianness conversion is required
+            ) -> Option<Error>
+            where
+                M: MemoryInterface<Error>,
+            {
+                // We read instructions as a byte array to preserve original endianness
+                // independently of host endianness and memory interface implementation.
+                let mut data: [u8; N] = [0; N];
+                mem.read(*ptr, &mut data)
+                    .inspect(|_| {
+                        if conv {
+                            data.reverse()
+                        }
+                        buf.extend_from_slice(&data);
+                        *ptr += N as u64;
+                    })
+                    .err()
+            }
+
+            const HALFWORD: usize = 2;
+            const WORD: usize = 4;
+
+            read_error = match min_instruction_size as usize {
+                // For 16 bit or variable size instructions we need to read
+                // the code as a halfword stream. Reading a full word and
+                // then changing endianness would otherwise reverse instruction
+                // order or garble partial 32 bit instructions.
+                HALFWORD => read_instruction::<HALFWORD, _>(
+                    &mut read_pointer,
+                    &mut target_core.core,
+                    &mut code_buffer_le,
+                    convert_endianness,
+                ),
+                WORD => read_instruction::<WORD, _>(
+                    &mut read_pointer,
+                    &mut target_core.core,
+                    &mut code_buffer_le,
+                    convert_endianness,
+                ),
+                // All supported architectures have either 16 or 32 bit instructions.
+                _ => return Err(DebuggerError::Unimplemented),
+            };
+        }
+
+        if read_error.is_some() {
+            // If we can't read data at a given address, then create
+            // an "invalid instruction" record, and keep trying.
+            disassembled_instructions.push(DisassembledInstruction {
+                address: format!("{instruction_pointer:#010X}"),
+                column: None,
+                end_column: None,
+                end_line: None,
+                instruction: format!("<instruction address not readable : {read_error:?}>"),
+                instruction_bytes: None,
+                line: None,
+                location: None,
+                symbol: None,
+            });
+            instruction_pointer += min_instruction_size;
+            continue 'instruction_loop;
+        }
+
+        // We read a single instruction as otherwise capstone will try to make sense
+        // of possibly incomplete instructions at the end of the buffer and render those
+        // as byte data or other garbage.
+        match cs_le.disasm_count(&code_buffer_le, instruction_pointer, 1) {
+            // TODO: Deal with mixed ARM/Thumbv2 encoded sources.
+            // Note: The DWARF line number state machine isa register (see DWARF5,
+            //       section 6.2.2, table 6.3) could be used to that end on a
+            //       "per instruction" basis. Capstone allows switching of the
+            //       instruction set at runtime, too. DebugInfo::get_source_location()
+            //       has access to the DWARF line program.
             Ok(instructions) => {
                 if instructions.len() == 0 {
-                    // The capstone library sometimes returns an empty result set, instead of an Err. Catch it here or else we risk an infinte loop looking for a valid instruction.
-                    return Err(DebuggerError::Other(anyhow::anyhow!(
-                        "Disassembly encountered unsupported instructions at memory reference {:#010x?}",
-                        instruction_pointer
-                    )));
+                    // The capstone library sometimes returns an empty result set
+                    // instead of an Err. Catch it here or else we risk an infinite
+                    // loop looking for a valid instruction.
+                    disassembled_instructions.push(DisassembledInstruction {
+                        address: format!("{instruction_pointer:#010X}"),
+                        column: None,
+                        end_column: None,
+                        end_line: None,
+                        instruction: "<unsupported instruction>".to_owned(),
+                        instruction_bytes: None,
+                        line: None,
+                        location: None,
+                        symbol: None,
+                    });
+                    code_buffer_le = code_buffer_le
+                        .split_at(min_instruction_size as usize)
+                        .1
+                        .to_vec();
+                    instruction_pointer += min_instruction_size;
+                    continue 'instruction_loop;
                 }
 
-                let mut result_instruction = instructions
-                    .iter()
-                    .map(|instruction| {
-                        // Before processing, update the code buffer appropriately
-                        code_buffer = code_buffer.split_at(instruction.len()).1.to_vec();
+                let instruction = &instructions[0];
 
-                        // Variable width instruction sets my not use the full `code_buffer`, so we need to read ahead, to ensure we have enough code in the buffer to disassemble the 'widest' of instructions in the instruction set.
-                        read_more_bytes = code_buffer.len() < target_instruction_set.get_maximum_instruction_size() as usize;
+                // Try to resolve the source location for this instruction:
+                // - If we find one, we use it only if it is different from the previous one.
+                //   This helps to reduce visual noise in the client.
+                // - If we do not find a source location, then just return the raw assembly
+                //   without file/line/column information.
+                let mut location = None;
+                let mut line = None;
+                let mut column = None;
+                if let Some(current_source_location) = target_core
+                    .core_data
+                    .debug_info
+                    .get_source_location(instruction.address())
+                {
+                    if maybe_previous_source_location.is_none()
+                        || maybe_previous_source_location.is_some_and(|previous_source_location| {
+                            previous_source_location != current_source_location
+                        })
+                    {
+                        location = get_dap_source(&current_source_location);
+                        line = current_source_location.line.map(|line| line as i64);
+                        column = current_source_location.column.map(|col| match col {
+                            ColumnType::LeftEdge => 0_i64,
+                            ColumnType::Column(c) => c as i64,
+                        });
+                    }
 
-                        // Move the instruction_pointer for the next read.
-                        instruction_pointer += instruction.len() as u64;
+                    maybe_previous_source_location = Some(current_source_location);
+                } else {
+                    // It won't affect the outcome, but log it for completeness.
+                    tracing::debug!("The request `Disassemble` could not resolve a source location for memory reference: {:#010}", instruction.address());
+                }
 
-                        // Try to resolve the source location for this instruction.
-                        // If we find one, we use it ONLY if it is different from the previous one (stored_source_location).
-                        // - This helps to reduce visual noise in the VSCode UX, by not displaying the same line of source code multiple times over.
-                        // If we do not find a source location, then just return the raw assembly without file/line/column information.
-                        let mut location = None;
-                        let mut line = None;
-                        let mut column = None;
-                        if let Some(current_source_location) = target_core
-                            .core_data
-                            .debug_info
-                            .get_source_location(instruction.address()) {
-                            if let Some(previous_source_location) = stored_source_location.clone() {
-                                if current_source_location != previous_source_location {
-                                    location = get_dap_source(&current_source_location);
-                                    line = current_source_location.line.map(|line| line as i64);
-                                    column = current_source_location.column.map(|col| match col {
-                                        ColumnType::LeftEdge => 0_i64,
-                                        ColumnType::Column(c) => c as i64,
-                                    });
-                                    stored_source_location = Some(current_source_location);
-                                }
-                            } else {
-                                    stored_source_location = Some(current_source_location);
-                            }
-                        } else {
-                            // It won't affect the outcome, but log it for completeness.
-                            tracing::debug!("The request `Disassemble` could not resolve a source location for memory reference: {:#010}", instruction.address());
-                        }
+                disassembled_instructions.push(DisassembledInstruction {
+                    address: format!("{:#010X}", instruction.address()),
+                    column,
+                    end_column: None,
+                    end_line: None,
+                    instruction: format!(
+                        "{}  {}",
+                        instruction.mnemonic().unwrap_or("<unknown>"),
+                        instruction.op_str().unwrap_or("")
+                    ),
+                    instruction_bytes: Some(
+                        instruction
+                            .bytes()
+                            .iter()
+                            .map(|b| format!("{:02X}", b))
+                            .join(" "),
+                    ),
+                    line,
+                    location,
+                    symbol: None,
+                });
 
-                        // Create the instruction data.
-                        DisassembledInstruction {
-                            address: format!("{:#010X}", instruction.address()),
-                            column,
-                            end_column: None,
-                            end_line: None,
-                            instruction: format!(
-                                "{}  {}",
-                                instruction.mnemonic().unwrap_or("<unknown>"),
-                                instruction.op_str().unwrap_or("")
-                            ),
-                            instruction_bytes: Some(
-                                instruction.bytes().iter().fold(String::new(),|mut s, b| {
-                                    let _ = write!(s, "{b:02X} ");
-                                    s
-                                }),
-                            ),
-                            line,
-                            location,
-                            symbol: None,
-                        }
-                    })
-                    .collect::<Vec<DisassembledInstruction>>();
-                assembly_lines.append(&mut result_instruction);
+                code_buffer_le = code_buffer_le.split_at(instruction.len()).1.to_vec();
+                instruction_pointer += instruction.len() as u64;
             }
             Err(error) => {
                 return Err(DebuggerError::Other(anyhow!(error)));
             }
         };
     }
-    // Because we need to read on a 32-bit boundary, there are cases when the requested start address
-    // is not the first line.
-    if instruction_offset == 0
-        && byte_offset == 0
-        && assembly_lines
-            .first()
-            .and_then(|first| {
-                if u64::from_str_radix(&first.address[2..], 16).unwrap_or(memory_reference)
-                    < memory_reference
-                {
-                    Some(true)
-                } else {
-                    None
+
+    // Remove excess instructions
+    // at the beginning of the list ...
+    if let Some(reference_instruction_index) = maybe_reference_instruction_index {
+        let first_instruction_index =
+            i64::max(0, reference_instruction_index + instruction_offset) as usize;
+        // Keep the last of the removed instructions that had a location
+        // and use that location for the first remaining instruction unless
+        // the first instruction has a location already.
+        let maybe_inst_with_location = disassembled_instructions
+            .drain(0..first_instruction_index)
+            .rfind(|inst| inst.location.is_some());
+        if let Some(inst_with_location) = maybe_inst_with_location {
+            if let Some(first_instruction) = disassembled_instructions.get_mut(0) {
+                if first_instruction.location.is_none() {
+                    first_instruction.line = inst_with_location.line;
+                    first_instruction.column = inst_with_location.column;
+                    first_instruction.location = inst_with_location.location;
                 }
-            })
-            .is_some()
-    {
-        assembly_lines.remove(0);
-    }
-    // With variable length instructions, we sometimes get one to many instructions
-    // (e.g. when we read a 32-bit instruction, but the next two instructions are 16-bits).
-    while assembly_lines.len() > instruction_count as usize {
-        let _ = assembly_lines.pop();
-    }
-    Ok(assembly_lines)
+            }
+        }
+    } else {
+        return Err(DebuggerError::Other(anyhow!(
+            "<`Disassemble` request: invalid memory reference.>",
+        )));
+    };
+    // ... and at the end of the list.
+    disassembled_instructions.truncate(instruction_count as usize);
+
+    Ok(disassembled_instructions)
 }
 
-pub(crate) fn get_capstone(target_core: &mut CoreHandle) -> Result<Capstone, DebuggerError> {
+fn get_capstone_le(target_core: &mut CoreHandle) -> Result<Capstone, DebuggerError> {
     let mut cs = match target_core.core.instruction_set()? {
         InstructionSet::Thumb2 => {
             let mut capstone_builder = Capstone::new()
@@ -347,7 +427,11 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
     let file_name = source_location.file_name();
 
     // Try to convert the path to the native Path of the current OS
-    let native_path = std::path::PathBuf::try_from(file_path.to_path_buf())
+    #[cfg(unix)]
+    let native_path = file_path.with_unix_encoding_checked().ok()?;
+    #[cfg(windows)]
+    let native_path = file_path.with_windows_encoding_checked().ok()?;
+    let native_path = std::path::PathBuf::try_from(native_path)
         .map(|mut path| {
             if path.is_relative() {
                 if let Ok(current_dir) = std::env::current_dir() {
@@ -422,8 +506,8 @@ pub(crate) fn halt_core(
 /// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
 /// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
 pub(crate) fn get_variable_reference(
-    parent_variable: &probe_rs::debug::Variable,
-    cache: &probe_rs::debug::VariableCache,
+    parent_variable: &probe_rs_debug::Variable,
+    cache: &probe_rs_debug::VariableCache,
 ) -> (ObjectRef, i64, i64) {
     if !parent_variable.is_valid() {
         return (ObjectRef::Invalid, 0, 0);

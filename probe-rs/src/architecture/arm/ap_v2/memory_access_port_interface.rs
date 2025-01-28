@@ -1,10 +1,11 @@
 use crate::{
     architecture::arm::{
         ap_v2::registers::{DataSize, Register, CSW, DRW, TAR, TAR2},
-        communication_interface::Initialized,
-        memory::ArmMemoryInterface,
-        ApAddress, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
+        communication_interface::SwdSequence,
+        memory::{ArmMemoryInterface, Status},
+        ApAddress, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
     },
+    probe::DebugProbeError,
     MemoryInterface,
 };
 
@@ -210,21 +211,23 @@ impl ArmMemoryInterface for MemoryAccessPortInterface<'_> {
         Ok(base & 0xFFFF_FFFF_FFFF_FFF0)
     }
 
-    fn get_arm_communication_interface(
-        &mut self,
-    ) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError> {
-        self.iface.get_arm_communication_interface()
+    fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
+        self.iface.get_swd_sequence()
     }
 
-    fn try_as_parts(
-        &mut self,
-    ) -> Result<
-        (
-            &mut ArmCommunicationInterface<Initialized>,
-            &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp,
-        ),
-        crate::probe::DebugProbeError,
-    > {
-        unimplemented!()
+    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
+        self.iface.get_arm_probe_interface()
+    }
+
+    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+        self.iface.get_dap_access()
+    }
+
+    fn generic_status(&mut self) -> Result<Status, ArmError> {
+        let mut csw_raw = [0u32];
+        self.iface
+            .read_32(self.base + u64::from(CSW::ADDRESS), &mut csw_raw)?;
+        let csw = CSW::try_from(csw_raw[0])?;
+        Ok(Status::V2(csw))
     }
 }

@@ -627,7 +627,7 @@ impl CmsisDap {
         let max_writes = (self.packet_size as usize - 3) / (1 + 4);
         if command_is_read || self.batch.len() == max_writes {
             self.process_batch()
-         } else {
+        } else {
             Ok(None)
         }
     }

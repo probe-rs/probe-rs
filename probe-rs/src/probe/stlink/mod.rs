@@ -10,9 +10,7 @@ use crate::{
             memory_ap::{MemoryAp, MemoryApType},
             valid_access_ports, AccessPortType,
         },
-        communication_interface::{
-            ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
-        },
+        communication_interface::{ArmProbeInterface, SwdSequence, UninitializedArmProbe},
         dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
@@ -1332,10 +1330,8 @@ impl StlinkArmDebug {
 
         interface.access_ports = valid_access_ports(&mut interface, DpAddress::Default)
             .into_iter()
+            .inspect(|addr| tracing::debug!("AP {:#x?}", addr))
             .collect();
-        interface.access_ports.iter().for_each(|addr| {
-            tracing::debug!("AP {:#x?}", addr);
-        });
 
         Ok(interface)
     }
@@ -1465,6 +1461,10 @@ impl ArmProbeInterface for StlinkArmDebug {
     fn current_debug_port(&self) -> DpAddress {
         // SWD multidrop is not supported on ST-Link
         DpAddress::Default
+    }
+
+    fn reinitialize(&mut self) -> Result<(), ArmError> {
+        Ok(())
     }
 }
 
@@ -1801,29 +1801,22 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
         self.current_ap.ap_address().clone()
     }
 
-    fn get_arm_communication_interface(
-        &mut self,
-    ) -> Result<
-        &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
-        DebugProbeError,
-    > {
-        Err(DebugProbeError::InterfaceNotAvailable {
-            interface_name: "ARM",
-        })
+    fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
+        Ok(self)
     }
 
-    fn try_as_parts(
-        &mut self,
-    ) -> Result<
-        (
-            &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
-            &mut MemoryAp,
-        ),
-        DebugProbeError,
-    > {
-        Err(DebugProbeError::InterfaceNotAvailable {
+    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
+        Ok(self.probe)
+    }
+
+    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+        Ok(self.probe)
+    }
+
+    fn generic_status(&mut self) -> Result<crate::architecture::arm::memory::Status, ArmError> {
+        Err(ArmError::Probe(DebugProbeError::InterfaceNotAvailable {
             interface_name: "ARM",
-        })
+        }))
     }
 }
 

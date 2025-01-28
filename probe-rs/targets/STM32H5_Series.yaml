@@ -14,7 +14,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -60,7 +59,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -106,7 +104,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -152,7 +149,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -199,7 +195,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -254,7 +249,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -306,7 +300,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: Flash
@@ -343,7 +336,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -397,7 +389,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -452,7 +443,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -507,7 +497,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -562,7 +551,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -617,7 +605,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -672,7 +659,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -724,7 +710,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: Flash
@@ -761,7 +746,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -816,7 +800,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -871,7 +854,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -925,7 +907,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -979,7 +960,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1034,7 +1014,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1089,7 +1068,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1144,7 +1122,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1199,7 +1176,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1253,7 +1229,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1307,7 +1282,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1361,7 +1335,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1415,7 +1388,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1469,7 +1441,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1524,7 +1495,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1579,7 +1549,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1636,7 +1605,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1690,7 +1658,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1745,7 +1712,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1800,7 +1766,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1854,7 +1819,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1909,7 +1873,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1963,7 +1926,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2018,7 +1980,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2073,7 +2034,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2130,7 +2090,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2184,7 +2143,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2239,7 +2197,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2294,7 +2251,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2349,7 +2305,6 @@ variants:
     type: armv8m
     core_access_options: !Arm
       ap: !v1 1
-
   memory_map:
   - !Nvm
     name: BANK_1

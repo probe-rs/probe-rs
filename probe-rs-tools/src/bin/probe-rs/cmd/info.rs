@@ -349,11 +349,13 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
             }
         }
     } else {
-        handle_memory_ap(
-            interface,
-            &FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::new()),
-            &mut tree,
-        )?;
+        let fqa = FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::new());
+        let root_rom_table = {
+            let mut root_memory = interface.memory_interface(&fqa)?;
+            let base_address = root_memory.base_address()?;
+            Component::try_parse(&mut *root_memory, base_address)?
+        };
+        coresight_component_tree(interface, root_rom_table, &fqa, &mut tree)?;
         tree.leaves.sort_by(|a, b| a.root.cmp(&b.root));
     }
 
@@ -370,6 +372,13 @@ fn handle_memory_ap(
 ) -> Result<(), anyhow::Error> {
     let component = {
         let mut memory = interface.memory_interface(access_port)?;
+
+        // Check if the AP is accessible
+        let csw = memory.generic_status()?;
+        if !csw.enabled() {
+            *parent = Tree::new("Memory AP is not accessible, DeviceEn bit not set".to_string());
+            return Ok(());
+        }
 
         let base_address = memory.base_address()?;
         Component::try_parse(&mut *memory, base_address)?

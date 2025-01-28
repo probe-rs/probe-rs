@@ -7,15 +7,19 @@ use crate::{
         romtable::{RomTable, CORESIGHT_ROM_TABLE_ARCHID},
         Component, PeripheralType,
     },
+    probe::DebugProbeError,
     MemoryInterface,
 };
 
 use super::{
-    communication_interface::Initialized, dp::DpAddress, memory::ArmMemoryInterface, ApAddress,
-    ApV2Address, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
+    communication_interface::{Initialized, SwdSequence},
+    dp::DpAddress,
+    memory::{ArmMemoryInterface, Status},
+    ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess,
+    FullyQualifiedApAddress,
 };
 
-mod registers;
+pub(crate) mod registers;
 
 mod root_memory_interface;
 use root_memory_interface::RootMemoryInterface;
@@ -61,8 +65,10 @@ impl MemoryInterface<ArmError> for MaybeOwned<'_> {
 impl ArmMemoryInterface for MaybeOwned<'_> {
     dispatch!(fully_qualified_address(&self,) -> FullyQualifiedApAddress);
     dispatch!(base_address(&mut self,) -> Result<u64, ArmError>);
-    dispatch!(get_arm_communication_interface(&mut self,) -> Result<&mut ArmCommunicationInterface<Initialized>, crate::probe::DebugProbeError>);
-    dispatch!(try_as_parts(&mut self,) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut crate::architecture::arm::ap_v1::memory_ap::MemoryAp), crate::probe::DebugProbeError>);
+    dispatch!(get_swd_sequence(&mut self,) -> Result<&mut dyn SwdSequence, DebugProbeError>);
+    dispatch!(get_arm_probe_interface(&mut self,) -> Result<&mut dyn ArmProbeInterface, DebugProbeError>);
+    dispatch!(get_dap_access(&mut self,) -> Result<&mut dyn DapAccess, DebugProbeError>);
+    dispatch!(generic_status(&mut self,) -> Result<Status, ArmError>);
 }
 
 /// Deeply scans the debug port and returns a list of the addresses the memory access points discovered.

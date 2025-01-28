@@ -406,4 +406,14 @@ pub trait DapAccess {
         }
         Ok(())
     }
+
+    /// Flush any outstanding operations.
+    ///
+    /// For performance, debug probe implementations may choose to batch writes;
+    /// to assure that any such batched writes have in fact been issued, `flush`
+    /// can be called.  Takes no arguments, but may return failure if a batched
+    /// operation fails.
+    fn flush(&mut self) -> Result<(), ArmError> {
+        Ok(())
+    }
 }

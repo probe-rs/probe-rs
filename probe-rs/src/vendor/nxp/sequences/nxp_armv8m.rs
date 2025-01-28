@@ -9,12 +9,10 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap_v1::{
-            memory_ap::MemoryApType, AccessPortError, AccessPortType, ApAccess, GenericAp, IDR,
-        },
-        communication_interface::{FlushableArmAccess, Initialized},
+        ap_v1::{AccessPortError, AccessPortType, GenericAp, Register, IDR},
+        communication_interface::Initialized,
         core::armv8m::{Aircr, Demcr, Dhcsr},
-        dp::{Abort, Ctrl, DpAccess, DpAddress, SelectV1, DPIDR},
+        dp::{Abort, Ctrl, DpAccess, DpAddress, DpRegister, SelectV1, DPIDR},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
         ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
@@ -266,10 +264,9 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
 
     thread::sleep(Duration::from_millis(10));
 
-    let (interface, memory_ap) = memory.try_as_parts()?;
-    if memory_ap.generic_status(interface)?.DeviceEn {
-        let dp = memory_ap.ap_address().dp();
-        enable_debug_mailbox(interface, dp)?;
+    if memory.generic_status()?.enabled() {
+        let dp = memory.fully_qualified_address().dp();
+        enable_debug_mailbox(memory.get_dap_access()?, dp)?;
     }
 
     let start = Instant::now();
@@ -306,20 +303,22 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
     Ok(())
 }
 
-fn enable_debug_mailbox(
-    interface: &mut ArmCommunicationInterface<Initialized>,
-    dp: DpAddress,
-) -> Result<(), ArmError> {
+fn enable_debug_mailbox(interface: &mut dyn DapAccess, dp: DpAddress) -> Result<(), ArmError> {
     tracing::info!("LPC55xx connect script start");
 
     let ap = FullyQualifiedApAddress::v1_with_dp(dp, 2);
 
-    let status: IDR = interface.read_ap_register(&GenericAp::new(ap.clone()))?;
+    let status: IDR = interface
+        .read_raw_ap_register(GenericAp::new(ap.clone()).ap_address(), IDR::ADDRESS)?
+        .try_into()?;
 
     tracing::info!("APIDR: {:?}", status);
     tracing::info!("APIDR: 0x{:08X}", u32::from(status));
 
-    let status: u32 = interface.read_dp_register::<DPIDR>(dp)?.into();
+    // ADIv5 specification section B4.3.3: "Connection and line reset sequence" states that
+    // in the reset state, reading DPIDR takes the target out of the reset state. Perform
+    // such a read here in order to ensure the core is no longer in reset.
+    let status: u32 = interface.read_raw_dp_register(dp, DPIDR::ADDRESS)?;
 
     tracing::info!("DPIDR: 0x{:08X}", status);
 
@@ -437,13 +436,12 @@ impl MIMXRT5xxS {
         let ap = probe.fully_qualified_address();
         let dp = ap.dp();
         let start = Instant::now();
-        while !self.csw_debug_ready(probe.get_arm_communication_interface()?, &ap)?
+        while !self.csw_debug_ready(probe.get_dap_access()?, &ap)?
             && start.elapsed() < Duration::from_millis(300)
         {
             // Wait for either condition
         }
-        let enabled_mailbox =
-            self.enable_debug_mailbox(probe.get_arm_communication_interface()?, dp, &ap)?;
+        let enabled_mailbox = self.enable_debug_mailbox(probe.get_dap_access()?, dp, &ap)?;
 
         // Halt the core in case it didn't stop at a breakpiont.
         tracing::trace!("halting MIMXRT5xxS Cortex-M33 core");
@@ -456,7 +454,7 @@ impl MIMXRT5xxS {
 
         if enabled_mailbox {
             // We'll double-check now to make sure we're in a reasonable state.
-            if !self.csw_debug_ready(probe.get_arm_communication_interface()?, &ap)? {
+            if !self.csw_debug_ready(probe.get_dap_access()?, &ap)? {
                 tracing::warn!("MIMXRT5xxS is still not ready to debug, even after using DebugMailbox to activate session");
             }
         }
@@ -533,7 +531,7 @@ impl MIMXRT5xxS {
 
     fn csw_debug_ready(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut dyn DapAccess,
         ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
         let csw = interface.read_raw_ap_register(ap, 0x00)?;
@@ -549,7 +547,7 @@ impl MIMXRT5xxS {
     /// if it was necessary but unsuccessful.
     fn enable_debug_mailbox(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut dyn DapAccess,
         dp: DpAddress,
         mem_ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {

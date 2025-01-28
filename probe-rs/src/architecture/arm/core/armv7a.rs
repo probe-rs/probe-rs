@@ -7,8 +7,8 @@ use super::{
     },
     registers::{
         aarch32::{
-            AARCH32_CORE_REGSISTERS, AARCH32_WITH_FP_16_CORE_REGSISTERS,
-            AARCH32_WITH_FP_32_CORE_REGSISTERS,
+            AARCH32_CORE_REGISTERS, AARCH32_WITH_FP_16_CORE_REGISTERS,
+            AARCH32_WITH_FP_32_CORE_REGISTERS,
         },
         cortex_m::{FP, PC, RA, SP},
     },
@@ -723,9 +723,9 @@ impl CoreInterface for Armv7a<'_> {
 
     fn registers(&self) -> &'static CoreRegisters {
         match self.state.fp_reg_count {
-            16 => &AARCH32_WITH_FP_16_CORE_REGSISTERS,
-            32 => &AARCH32_WITH_FP_32_CORE_REGSISTERS,
-            _ => &AARCH32_CORE_REGSISTERS,
+            16 => &AARCH32_WITH_FP_16_CORE_REGISTERS,
+            32 => &AARCH32_WITH_FP_32_CORE_REGISTERS,
+            _ => &AARCH32_CORE_REGISTERS,
         }
     }
 
@@ -1155,36 +1155,34 @@ mod test {
     }
 
     impl ArmMemoryInterface for MockProbe {
-        fn update_core_status(&mut self, _: CoreStatus) {}
-        fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
-            todo!()
-        }
-
-        fn get_arm_communication_interface(
-            &mut self,
-        ) -> Result<
-            &mut crate::architecture::arm::ArmCommunicationInterface<
-                crate::architecture::arm::communication_interface::Initialized,
-            >,
-            DebugProbeError,
-        > {
+        fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
             Err(DebugProbeError::NotImplemented {
-                function_name: "get_arm_communication_interface",
+                function_name: "get_swd_sequence",
             })
         }
 
-        fn try_as_parts(
+        fn get_arm_probe_interface(
             &mut self,
-        ) -> Result<
-            (
-                &mut crate::architecture::arm::ArmCommunicationInterface<
-                    crate::architecture::arm::communication_interface::Initialized,
-                >,
-                &mut MemoryAp,
-            ),
-            DebugProbeError,
-        > {
-            todo!()
+        ) -> Result<&mut dyn crate::architecture::arm::ArmProbeInterface, DebugProbeError> {
+            Err(DebugProbeError::NotImplemented {
+                function_name: "get_arm_probe_interface",
+            })
+        }
+
+        fn get_dap_access(
+            &mut self,
+        ) -> Result<&mut dyn crate::architecture::arm::DapAccess, DebugProbeError> {
+            Err(DebugProbeError::NotImplemented {
+                function_name: "get_dap_access",
+            })
+        }
+
+        fn generic_status(
+            &mut self,
+        ) -> Result<crate::architecture::arm::ap::memory_ap::registers::CSW, ArmError> {
+            Err(ArmError::Probe(DebugProbeError::NotImplemented {
+                function_name: "generic_status",
+            }))
         }
 
         fn base_address(&mut self) -> Result<u64, ArmError> {
