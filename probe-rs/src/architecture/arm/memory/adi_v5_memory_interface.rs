@@ -552,8 +552,6 @@ where
             )));
         };
 
-        // TODO: This is treating the ADIv6 MemAP CSW as an ADIv5 CSW. They should be
-        // differentiated based on the AP type.
         Ok(Status::V1(self.memory_ap.generic_status(iface)?))
     }
 

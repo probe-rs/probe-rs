@@ -624,7 +624,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 // Setting this on MINDP is unpredictable.
                 ctrl.set_mask_lane(0b1111);
             }
-            interface.write_dp_register(dp, ctrl)?;
+            interface.write_dp_register(dp, ctrl.clone())?;
 
             let start = Instant::now();
             loop {
@@ -640,6 +640,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             // TODO: Handle JTAG Specific part
 
             // TODO: Only run the following code when the SWD protocol is used
+
+            // Write the CTRL register after powerup completes. It's unknown if this is required
+            // for all devices, but there's little harm in writing the same value back to the
+            // register after powerup.
+            interface.write_dp_register(dp, ctrl)?;
 
             let ctrl_reg: Ctrl = interface.read_dp_register(dp)?;
             if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
