@@ -168,6 +168,12 @@ pub enum ApAddress {
     #[serde(rename = "v1")]
     V1(u8),
     /// References an address for an APv2 access, which is part of the ADIv6 specification.
+    ///
+    /// # Note
+    /// This represents a chain of addresses within nested APs. In the case where there are no
+    /// nested APs, there will be a single entry in the vector with the address in the root AP.
+    ///
+    /// Entries preceeding the last entry should reference the AP base address to be used.
     #[serde(rename = "v2")]
     V2(Vec<u64>),
 }

@@ -49,7 +49,7 @@ impl<'iface, API: ArmProbeInterface> MemoryInterface<ArmError>
         // read content
         for (i, d) in data.iter_mut().enumerate() {
             let addr = address + (i as u64) * 4;
-            let base = (self.base + addr) & 0xFFFF_FFFF_FFFF_FFF0;
+            let base = addr & (!0xF);
             let fqa = FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::new_with_tip(base));
 
             *d = self.iface.read_raw_ap_register(&fqa, (addr & 0xF) as u8)?;
@@ -101,7 +101,7 @@ impl<'iface, API: ArmProbeInterface> MemoryInterface<ArmError>
 }
 impl<'iface, API: ArmProbeInterface> ArmMemoryInterface for RootMemoryInterface<'iface, API> {
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
-        FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::new())
+        FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::root())
     }
 
     fn base_address(&mut self) -> Result<u64, ArmError> {

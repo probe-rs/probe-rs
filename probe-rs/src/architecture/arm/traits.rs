@@ -87,18 +87,18 @@ bitfield::bitfield! {
 }
 
 /// Access port v2 address
+///
+/// # Note
+/// The APv2 address is a sequence of AP base_addresses followed by the address in the final AP to
+/// access. In this way, a fully-qualified route to a specific final address can be specified. All
+/// accesses route through the "root memory interface", which is the memory interface of the debug
+/// port (DP).
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct ApV2Address(Vec<u64>);
 
-impl Default for ApV2Address {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ApV2Address {
     /// Create a new ApV2 Address chain
-    pub fn new() -> Self {
+    pub fn root() -> Self {
         Self(Vec::new())
     }
 

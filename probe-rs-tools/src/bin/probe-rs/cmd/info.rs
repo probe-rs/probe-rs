@@ -349,7 +349,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
             }
         }
     } else {
-        let fqa = FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::new());
+        let fqa = FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::root());
         let root_rom_table = {
             let mut root_memory = interface.memory_interface(&fqa)?;
             let base_address = root_memory.base_address()?;

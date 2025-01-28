@@ -111,7 +111,7 @@ fn enumerate_components_internal(
     let mut result = BTreeMap::new();
 
     let component = Component::try_parse(&mut root_ap as &mut dyn ArmMemoryInterface, base_addr)?;
-    process_component(&mut root_ap, &ApV2Address::new(), &component, &mut result)?;
+    process_component(&mut root_ap, &ApV2Address::root(), &component, &mut result)?;
 
     Ok(result)
 }
