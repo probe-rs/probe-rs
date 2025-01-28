@@ -8,7 +8,7 @@ use super::{
     ArmError,
 };
 
-/// Specifies the address of an AP register to access.
+/// Specifies the address of register to access in a debug or access port.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum RegisterAddress {
     /// A Debug Port Register address.
