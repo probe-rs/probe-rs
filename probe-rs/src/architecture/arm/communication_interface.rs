@@ -505,6 +505,8 @@ impl ArmCommunicationInterface<Initialized> {
             return Ok(());
         }
 
+        let bank = bank.unwrap_or(0);
+
         if bank != dp_state.current_select.dp_bank_sel() {
             dp_state.current_select.set_dp_bank_sel(bank);
 

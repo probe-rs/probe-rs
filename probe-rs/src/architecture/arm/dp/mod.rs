@@ -28,12 +28,12 @@ pub struct DpRegisterAddress {
     /// The register address.
     pub address: u8,
     /// The register bank.
-    pub bank: u8,
+    pub bank: Option<u8>,
 }
 
 impl From<DpRegisterAddress> for u8 {
     fn from(addr: DpRegisterAddress) -> Self {
-        (addr.bank << 4 & 0xF0) | (addr.address & 0xF)
+        (addr.bank.unwrap_or(0) << 4 & 0xF0) | (addr.address & 0xF)
     }
 }
 
@@ -53,7 +53,7 @@ pub trait DpRegister:
 
 macro_rules! impl_dpregister {
     ($t:tt, $v:expr, $addr:expr, $name:expr) => {
-        impl_dpregister!($t, $v, $addr, 0x0, $name);
+        impl_dpregister!($t, $v, $addr, None, $name);
     };
     ($t:tt, $v:expr, $addr:expr, $bank:expr, $name:expr) => {
         impl TryFrom<u32> for $t {
@@ -404,7 +404,7 @@ bitfield! {
     /// After a powerup reset or an SWD line reset, the value of this field is UNKNOWN
     pub u32, addr, set_addr: 31, 0;
 }
-impl_dpregister!(Select1, DebugPortVersion::DPv3, 0x4, 0x5, "SELECT1");
+impl_dpregister!(Select1, DebugPortVersion::DPv3, 0x4, Some(0x5), "SELECT1");
 
 bitfield! {
     /// DPIDR, Debug Port Identification register (see ADI v5.2 B2.2.5)
@@ -469,7 +469,7 @@ bitfield! {
     /// Possible values are 12, 20, 32, 40, 48 and 52 bits.
     pub u8, asize, _: 6, 0;
 }
-impl_dpregister!(DPIDR1, DebugPortVersion::DPv3, 0x0, 0x1, "DPIDR1");
+impl_dpregister!(DPIDR1, DebugPortVersion::DPv3, 0x0, Some(0x1), "DPIDR1");
 
 bitfield! {
     /// TARGETID, Target Identification register (see ADI v5.2 B2.2.10)
@@ -501,7 +501,7 @@ bitfield! {
     /// - The JEP106 identification code, TARGETID `bits[7:1]`, equals `bits[6:0]` of the final number of the JEDEC code.
     pub u16, tdesigner, _: 11, 1;
 }
-impl_dpregister!(TARGETID, DebugPortVersion::DPv2, 0x4, 0x2, "TARGETID");
+impl_dpregister!(TARGETID, DebugPortVersion::DPv2, 0x4, Some(0x2), "TARGETID");
 
 bitfield! {
     /// DLPIDR, Data Link Protocol Identification register (see ADI v5.2 B2.2.4)
@@ -517,7 +517,7 @@ bitfield! {
     /// Implemented SWD protocol version
     pub u8, protsvn, _: 3, 0;
 }
-impl_dpregister!(DLPIDR, DebugPortVersion::DPv2, 0x4, 0x3, "DLPIDR");
+impl_dpregister!(DLPIDR, DebugPortVersion::DPv2, 0x4, Some(0x3), "DLPIDR");
 
 bitfield! {
     /// BASEPTR0, Initial system address for the first component in the system (see ADI v6.0 B2.2.2)
@@ -531,7 +531,7 @@ bitfield! {
     /// True if `ptr` specifies a valid base address.
     pub valid, _: 0;
 }
-impl_dpregister!(BASEPTR0, DebugPortVersion::DPv3, 0x0, 0x2, "BASEPTR0");
+impl_dpregister!(BASEPTR0, DebugPortVersion::DPv3, 0x0, Some(0x2), "BASEPTR0");
 
 bitfield! {
     /// BASEPTR1, Initial system address for the first component in the system (see ADI v6.0 B2.2.2)
@@ -543,7 +543,7 @@ bitfield! {
     /// Pointer most significant bits (bits [63:32] of the full address).
     pub u32, ptr, _: 31, 0;
 }
-impl_dpregister!(BASEPTR1, DebugPortVersion::DPv3, 0x0, 0x3, "BASEPTR1");
+impl_dpregister!(BASEPTR1, DebugPortVersion::DPv3, 0x0, Some(0x3), "BASEPTR1");
 
 /// The ID of a debug port. Can be used to detect and select devices in a multidrop setup.
 #[derive(Debug)]

@@ -37,11 +37,11 @@ fn main() -> Result<()> {
     let core1 = DpAddress::Multidrop(0x11002927);
     const DPIDR: DpRegisterAddress = DpRegisterAddress {
         address: 0x0,
-        bank: 0x0,
+        bank: Some(0x0),
     };
     const TARGETID: DpRegisterAddress = DpRegisterAddress {
         address: 0x4,
-        bank: 0x2,
+        bank: Some(0x2),
     };
 
     println!(

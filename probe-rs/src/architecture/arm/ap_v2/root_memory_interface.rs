@@ -33,9 +33,7 @@ impl<'iface, API: ArmProbeInterface> RootMemoryInterface<'iface, API> {
     }
 }
 
-impl<API: ArmProbeInterface> MemoryInterface<ArmError>
-    for RootMemoryInterface<'_, API>
-{
+impl<API: ArmProbeInterface> MemoryInterface<ArmError> for RootMemoryInterface<'_, API> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }

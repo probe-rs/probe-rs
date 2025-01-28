@@ -1934,7 +1934,7 @@ mod test {
                 DapTransfer::read(ApAddress::V1(4)),
                 DapTransfer::read(DpRegisterAddress {
                     address: 3,
-                    bank: 0,
+                    bank: None,
                 }),
             ];
 
@@ -1966,7 +1966,7 @@ mod test {
             let mut transfers = vec![
                 DapTransfer::read(DpRegisterAddress {
                     address: 3,
-                    bank: 0,
+                    bank: None,
                 }),
                 DapTransfer::read(ApAddress::V1(4)),
             ];

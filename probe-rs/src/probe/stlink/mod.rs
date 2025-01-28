@@ -1351,7 +1351,11 @@ impl StlinkArmDebug {
     ) -> Result<(), ArmError> {
         self.select_dp(dp)?;
 
-        if address.bank != 0 && !self.probe.supports_dp_bank_selection() {
+        let Some(bank) = address.bank else {
+            return Ok(());
+        };
+
+        if bank != 0 && !self.probe.supports_dp_bank_selection() {
             tracing::warn!("Trying to access DP register at address {address:#x?}, which is not supported on ST-Links.");
             return Err(DebugProbeError::from(StlinkError::BanksNotAllowedOnDPRegister).into());
         }
@@ -1379,9 +1383,7 @@ impl DapAccess for StlinkArmDebug {
         address: DpRegisterAddress,
     ) -> Result<u32, ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
-        let result = self
-            .probe
-            .read_register(DP_PORT, address.address | (address.bank << 4))?;
+        let result = self.probe.read_register(DP_PORT, address.into())?;
 
         tracing::Span::current().record("value", result);
 
@@ -1399,8 +1401,7 @@ impl DapAccess for StlinkArmDebug {
     ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
 
-        self.probe
-            .write_register(DP_PORT, address.address | (address.bank << 4), value)?;
+        self.probe.write_register(DP_PORT, address.into(), value)?;
         Ok(())
     }
 
