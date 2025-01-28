@@ -182,18 +182,45 @@ define_apv2_register!(
         /// - `0b0` Secure access is disabled.
         /// - `0b1` Secure access is enabled.
         /// This field is optional, and read-only. If not implemented, the bit is RES0.
-        /// If CSW.DeviceEn is 0b0, SPIDEN is ignored and the effective value of SPIDEN is 0b1.
+        /// If CSW.DeviceEn is 0b0, the value is ignored and the effective value is 0b1.
         /// For more information, see `Enabling access to the connected debug device or memory system`
-        /// on page C2-154.
+        /// on page C2-177.
         ///
         /// Note:
         /// In ADIv5 and older versions of the architecture, the CSW.SPIDEN field is in the same bit
         /// position as CSW.SDeviceEn, and has the same meaning. From ADIv6, the name SDeviceEn is
         /// used to avoid confusion between this field and the SPIDEN signal on the authentication
         /// interface.
-        SPIDEN: bool,                // 1 bit
+        SDeviceEn: bool,                // 1 bit
+        /// Realm and root access status.
+        ///
+        /// When CFG.RME == 0b1, the defined values of this field are:
+        /// * 0b00 - Realm and Root accesses are disabled
+        /// * 0b01 - Realm access is enabled. Root access is disabled.
+        /// * 0b01 - Realm access is enabled. Root access is enabled.
+        ///
+        /// This field is read-only.
+        RMEEN: u8, //2 bits
         /// Reserved.
         _RES0: u8,                 // 7 bits
+
+        /// Errors prevent future memory accesses.
+        ///
+        /// Value:
+        /// - 0b0 - Memory access errors do not prevent future memory accesses.
+        /// - 0b1 - Memory access errors prevent future memory accesses.
+        ///
+        /// CFG.ERR indicates whether this field is implemented.
+        ERRSTOP: bool,
+
+        /// Errors are not passed upstream.
+        ///
+        /// Value:
+        /// - 0b0 - Errors are passed upstream.
+        /// - 0b1 - Errors are not passed upstream.
+        ///
+        /// CFG.ERR indicates whether this field is implemented.
+        ERRNPASS: bool,
         /// `1` if memory tagging access is enabled.
         MTE: bool,                   // 1 bits
         /// Memory tagging type. Implementation defined.
@@ -217,8 +244,11 @@ define_apv2_register!(
     from: value => Ok(CSW {
         DbgSwEnable: ((value >> 31) & 0x01) != 0,
         Prot: ((value >> 24) & 0x7F) as u8,
-        SPIDEN: ((value >> 23) & 0x01) != 0,
-        _RES0: ((value >> 16) & 0x7F) as u8,
+        SDeviceEn: ((value >> 23) & 0x01) != 0,
+        RMEEN: ((value >> 21) & 0x3) as u8,
+        _RES0: ((value >> 18) & 0x07) as u8,
+        ERRSTOP: ((value >> 17) & 0b1) != 0,
+        ERRNPASS: ((value >> 16) & 0b1) != 0,
         MTE: ((value >> 15) & 0x01) != 0,
         Type: ((value >> 12) & 0x07) as u8,
         Mode: ((value >> 8) & 0x0F) as u8,
@@ -230,8 +260,11 @@ define_apv2_register!(
     }),
     to: value => (u32::from(value.DbgSwEnable) << 31)
     | (u32::from(value.Prot         ) << 24)
-    | (u32::from(value.SPIDEN       ) << 23)
-    | (u32::from(value._RES0        ) << 16)
+    | (u32::from(value.SDeviceEn    ) << 23)
+    | (u32::from(value.RMEEN        ) << 21)
+    | (u32::from(value._RES0        ) << 18)
+    | (u32::from(value.ERRSTOP as u8) << 17)
+    | (u32::from(value.ERRNPASS as u8) << 16)
     | (u32::from(value.MTE          ) << 15)
     | (u32::from(value.Type         ) << 12)
     | (u32::from(value.Mode         ) <<  8)

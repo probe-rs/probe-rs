@@ -44,17 +44,22 @@ impl<'iface> MemoryAccessPortInterface<'iface> {
         let mut csw = CSW::try_from(csw_raw[0])?;
         csw.SIZE = size;
         csw.DbgSwEnable = true;
+
+        // TODO: This is setting the HPROT field to 0b10 and the HNONSEC = 1 for the AHB5 CSW. This
+        // should be moved into a bus-specific CSW control access.
+        csw.Prot = (1 << (25 - 24)) | (1 << (29 - 24));
+
         self.iface
-            .write_32(self.base + u64::from(CSW::ADDRESS), &[u32::from(csw)])?;
+            .write(self.base + u64::from(CSW::ADDRESS), &[u32::from(csw)])?;
         Ok(())
     }
 
     fn set_address(&mut self, address: u64) -> Result<(), ArmError> {
         self.iface
-            .write_word_32(self.base + u64::from(TAR::ADDRESS), address as u32)?;
+            .write(self.base + u64::from(TAR::ADDRESS), address as u32)?;
         self.iface.flush()?;
         self.iface
-            .write_word_32(self.base + u64::from(TAR2::ADDRESS), (address >> 32) as u32)?;
+            .write(self.base + u64::from(TAR2::ADDRESS), (address >> 32) as u32)?;
         self.iface.flush()?;
         Ok(())
     }
