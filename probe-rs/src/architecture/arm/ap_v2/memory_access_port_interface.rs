@@ -50,16 +50,16 @@ impl<'iface> MemoryAccessPortInterface<'iface> {
         csw.Prot = (1 << (25 - 24)) | (1 << (29 - 24));
 
         self.iface
-            .write(self.base + u64::from(CSW::ADDRESS), &[u32::from(csw)])?;
+            .write_word_32(self.base + u64::from(CSW::ADDRESS), u32::from(csw))?;
         Ok(())
     }
 
     fn set_address(&mut self, address: u64) -> Result<(), ArmError> {
         self.iface
-            .write(self.base + u64::from(TAR::ADDRESS), address as u32)?;
+            .write_word_32(self.base + u64::from(TAR::ADDRESS), address as u32)?;
         self.iface.flush()?;
         self.iface
-            .write(self.base + u64::from(TAR2::ADDRESS), (address >> 32) as u32)?;
+            .write_word_32(self.base + u64::from(TAR2::ADDRESS), (address >> 32) as u32)?;
         self.iface.flush()?;
         Ok(())
     }
