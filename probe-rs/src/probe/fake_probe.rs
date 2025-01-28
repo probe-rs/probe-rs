@@ -9,8 +9,8 @@ use crate::{
         dp::{DpAddress, DpRegisterAddress},
         memory::{ADIMemoryInterface, ArmMemoryInterface},
         sequences::ArmDebugSequence,
-        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, PortAddress, RawDapAccess,
-        SwoAccess,
+        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess,
+        RegisterAddress, SwoAccess,
     },
     probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
     Error, MemoryInterface, MemoryMappedRegister,
@@ -36,10 +36,10 @@ pub struct FakeProbe {
     speed: u32,
     scan_chain: Option<Vec<ScanChainElement>>,
 
-    dap_register_read_handler: Option<Box<dyn Fn(PortAddress) -> Result<u32, ArmError> + Send>>,
+    dap_register_read_handler: Option<Box<dyn Fn(RegisterAddress) -> Result<u32, ArmError> + Send>>,
 
     dap_register_write_handler:
-        Option<Box<dyn Fn(PortAddress, u32) -> Result<(), ArmError> + Send>>,
+        Option<Box<dyn Fn(RegisterAddress, u32) -> Result<(), ArmError> + Send>>,
 
     operations: RefCell<VecDeque<Operation>>,
 
@@ -368,7 +368,7 @@ impl FakeProbe {
     /// Can be used to hook into the read.
     pub fn set_dap_register_read_handler(
         &mut self,
-        handler: Box<dyn Fn(PortAddress) -> Result<u32, ArmError> + Send>,
+        handler: Box<dyn Fn(RegisterAddress) -> Result<u32, ArmError> + Send>,
     ) {
         self.dap_register_read_handler = Some(handler);
     }
@@ -377,7 +377,7 @@ impl FakeProbe {
     /// Can be used to hook into the write.
     pub fn set_dap_register_write_handler(
         &mut self,
-        handler: Box<dyn Fn(PortAddress, u32) -> Result<(), ArmError> + Send>,
+        handler: Box<dyn Fn(RegisterAddress, u32) -> Result<(), ArmError> + Send>,
     ) {
         self.dap_register_write_handler = Some(handler);
     }
@@ -559,14 +559,14 @@ impl DebugProbe for FakeProbe {
 
 impl RawDapAccess for FakeProbe {
     /// Reads the DAP register on the specified port and address
-    fn raw_read_register(&mut self, address: PortAddress) -> Result<u32, ArmError> {
+    fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
         let handler = self.dap_register_read_handler.as_ref().unwrap();
 
         handler(address)
     }
 
     /// Writes a value to the DAP register on the specified port and address
-    fn raw_write_register(&mut self, address: PortAddress, value: u32) -> Result<(), ArmError> {
+    fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError> {
         let handler = self.dap_register_write_handler.as_ref().unwrap();
 
         handler(address, value)

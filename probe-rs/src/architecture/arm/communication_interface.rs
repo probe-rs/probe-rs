@@ -6,7 +6,7 @@ use crate::{
         dp::{DpAddress, DpRegisterAddress, Select1, SelectV1, SelectV3},
         memory::{ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::{ArmDebugSequence, DefaultArmSequence},
-        ApAddress, ArmError, DapAccess, FullyQualifiedApAddress, PortAddress, RawDapAccess,
+        ApAddress, ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
         SwoAccess, SwoConfig,
     },
     probe::{DebugProbe, DebugProbeError, Probe},
@@ -626,7 +626,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
         let result = self
             .probe_mut()
-            .raw_read_register(PortAddress::ApRegister(address))?;
+            .raw_read_register(RegisterAddress::ApRegister(address))?;
 
         Ok(result)
     }
@@ -640,7 +640,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_read_block(PortAddress::ApRegister(address), values)?;
+            .raw_read_block(RegisterAddress::ApRegister(address), values)?;
         Ok(())
     }
 
@@ -653,7 +653,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_write_register(PortAddress::ApRegister(address), value)?;
+            .raw_write_register(RegisterAddress::ApRegister(address), value)?;
 
         Ok(())
     }
@@ -667,7 +667,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_write_block(PortAddress::ApRegister(address), values)?;
+            .raw_write_block(RegisterAddress::ApRegister(address), values)?;
         Ok(())
     }
 

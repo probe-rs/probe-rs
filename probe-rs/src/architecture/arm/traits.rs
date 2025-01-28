@@ -8,9 +8,9 @@ use super::{
     ArmError,
 };
 
-/// The type of port we are using.
+/// Specifies the address of an AP register to access.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum PortAddress {
+pub enum RegisterAddress {
     /// A Debug Port Register address.
     DpRegister(DpRegisterAddress),
     /// The lowest significant byte of an Access Port Register address.
@@ -20,17 +20,17 @@ pub enum PortAddress {
 const A2_MASK: u8 = 0b0100;
 const A3_MASK: u8 = 0b1000;
 const A2AND3_MASK: u8 = A2_MASK | A3_MASK;
-impl PortAddress {
+impl RegisterAddress {
     /// Is this Port Address for an Access Port?
     pub fn is_ap(&self) -> bool {
-        !matches!(self, PortAddress::DpRegister(_))
+        !matches!(self, RegisterAddress::DpRegister(_))
     }
 
     /// The least significant byte of the address.
     pub fn lsb(&self) -> u8 {
         match self {
-            PortAddress::DpRegister(r) => r.address,
-            PortAddress::ApRegister(r) => *r,
+            RegisterAddress::DpRegister(r) => r.address,
+            RegisterAddress::ApRegister(r) => *r,
         }
     }
 
@@ -49,18 +49,18 @@ impl PortAddress {
         (self.lsb() & A3_MASK) == A3_MASK
     }
 }
-impl From<DpRegisterAddress> for PortAddress {
+impl From<DpRegisterAddress> for RegisterAddress {
     fn from(value: DpRegisterAddress) -> Self {
-        PortAddress::DpRegister(value)
+        RegisterAddress::DpRegister(value)
     }
 }
 
-impl From<ApAddress> for PortAddress {
+impl From<ApAddress> for RegisterAddress {
     fn from(value: ApAddress) -> Self {
         match value {
-            ApAddress::V1(addr) => PortAddress::ApRegister(addr),
+            ApAddress::V1(addr) => RegisterAddress::ApRegister(addr),
             ApAddress::V2(addr) => match addr.as_slice() {
-                [addr] => PortAddress::ApRegister(*addr as u8),
+                [addr] => RegisterAddress::ApRegister(*addr as u8),
                 _ => panic!("Something unexpected happened. This is a bug, please report it."),
             },
         }
@@ -228,8 +228,8 @@ impl FullyQualifiedApAddress {
 pub trait RawDapAccess {
     /// Read a DAP register.
     ///
-    /// Only bits 2 and 3 of the address are used. Bank switching is the caller's responsibility.
-    fn raw_read_register(&mut self, address: PortAddress) -> Result<u32, ArmError>;
+    /// Only the lowest 4 bits of the address are used. Bank switching is the caller's responsibility.
+    fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError>;
 
     /// Read multiple values from the same DAP register.
     ///
@@ -237,7 +237,11 @@ pub trait RawDapAccess {
     /// falls back to the `read_register` function.
     ///
     /// Only the lowest 4 bits of the address are used. Bank switching is the caller's responsibility.
-    fn raw_read_block(&mut self, address: PortAddress, values: &mut [u32]) -> Result<(), ArmError> {
+    fn raw_read_block(
+        &mut self,
+        address: RegisterAddress,
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
         for val in values {
             *val = self.raw_read_register(address)?;
         }
@@ -248,7 +252,7 @@ pub trait RawDapAccess {
     /// Write a value to a DAP register.
     ///
     /// Only the lowest 4 bits of the address are used. Bank switching is the caller's responsibility.
-    fn raw_write_register(&mut self, address: PortAddress, value: u32) -> Result<(), ArmError>;
+    fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError>;
 
     /// Write multiple values to the same DAP register.
     ///
@@ -256,7 +260,11 @@ pub trait RawDapAccess {
     /// falls back to the `write_register` function.
     ///
     /// Only bits 2 and 3 of the address are used. Bank switching is the caller's responsibility.
-    fn raw_write_block(&mut self, address: PortAddress, values: &[u32]) -> Result<(), ArmError> {
+    fn raw_write_block(
+        &mut self,
+        address: RegisterAddress,
+        values: &[u32],
+    ) -> Result<(), ArmError> {
         for val in values {
             self.raw_write_register(address, *val)?;
         }

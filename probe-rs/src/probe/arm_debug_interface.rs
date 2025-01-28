@@ -8,7 +8,7 @@ use crate::{
     architecture::arm::{
         ap_v1::AccessPortError,
         dp::{Abort, Ctrl, DebugPortError, DpRegister, RdBuff, DPIDR},
-        ArmError, DapError, FullyQualifiedApAddress, PortAddress, RawDapAccess,
+        ArmError, DapError, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
     },
     probe::{
         common::bits_to_byte, CommandResult, DebugProbe, DebugProbeError, JTAGAccess,
@@ -17,7 +17,7 @@ use crate::{
     Error,
 };
 
-const CTRL_PORT: PortAddress = PortAddress::DpRegister(Ctrl::ADDRESS);
+const CTRL_PORT: RegisterAddress = RegisterAddress::DpRegister(Ctrl::ADDRESS);
 
 #[derive(Debug)]
 pub struct SwdSettings {
@@ -659,7 +659,7 @@ fn perform_raw_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
 #[derive(Debug, Clone)]
 struct DapTransfer {
-    address: PortAddress,
+    address: RegisterAddress,
     direction: TransferDirection,
     value: u32,
     status: TransferStatus,
@@ -667,7 +667,7 @@ struct DapTransfer {
 }
 
 impl DapTransfer {
-    fn read<P: Into<PortAddress>>(address: P) -> DapTransfer {
+    fn read<P: Into<RegisterAddress>>(address: P) -> DapTransfer {
         Self {
             address: address.into(),
             direction: TransferDirection::Read,
@@ -677,7 +677,7 @@ impl DapTransfer {
         }
     }
 
-    fn write<P: Into<PortAddress>>(address: P, value: u32) -> DapTransfer {
+    fn write<P: Into<RegisterAddress>>(address: P, value: u32) -> DapTransfer {
         Self {
             address: address.into(),
             value,
@@ -778,12 +778,12 @@ impl DapTransfer {
     }
 
     fn is_abort(&self) -> bool {
-        matches!(self.address, PortAddress::DpRegister(Abort::ADDRESS))
+        matches!(self.address, RegisterAddress::DpRegister(Abort::ADDRESS))
             && self.direction == TransferDirection::Write
     }
 
     fn is_rdbuff(&self) -> bool {
-        matches!(self.address, PortAddress::DpRegister(RdBuff::ADDRESS))
+        matches!(self.address, RegisterAddress::DpRegister(RdBuff::ADDRESS))
             && self.direction == TransferDirection::Read
     }
 
@@ -797,10 +797,10 @@ impl DapTransfer {
         // the write buffer is empty.
         let abort_write = self.is_abort();
 
-        let dpidr_read = matches!(self.address, PortAddress::DpRegister(DPIDR::ADDRESS))
+        let dpidr_read = matches!(self.address, RegisterAddress::DpRegister(DPIDR::ADDRESS))
             && self.direction == TransferDirection::Read;
 
-        let ctrl_stat_read = matches!(self.address, PortAddress::DpRegister(Ctrl::ADDRESS))
+        let ctrl_stat_read = matches!(self.address, RegisterAddress::DpRegister(Ctrl::ADDRESS))
             && self.direction == TransferDirection::Read;
 
         abort_write || dpidr_read || ctrl_stat_read
@@ -910,7 +910,7 @@ enum TransferType {
     Write(u32),
 }
 
-fn build_swd_transfer(address: &PortAddress, direction: TransferType) -> IoSequence {
+fn build_swd_transfer(address: &RegisterAddress, direction: TransferType) -> IoSequence {
     // JLink operates on raw SWD bit sequences.
     // So we need to manually assemble the read and write bitsequences.
     // The following code with the comments hopefully explains well enough how it works.
@@ -1059,7 +1059,7 @@ pub trait RawProtocolIo {
 }
 
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
-    fn raw_read_register(&mut self, address: PortAddress) -> Result<u32, ArmError> {
+    fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
         let mut transfer = DapTransfer::read(address);
         perform_transfers(self, std::slice::from_mut(&mut transfer))?;
 
@@ -1119,7 +1119,11 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         }
     }
 
-    fn raw_read_block(&mut self, address: PortAddress, values: &mut [u32]) -> Result<(), ArmError> {
+    fn raw_read_block(
+        &mut self,
+        address: RegisterAddress,
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
         let mut transfers = vec![DapTransfer::read(address); values.len()];
 
         perform_transfers(self, &mut transfers)?;
@@ -1152,7 +1156,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         Ok(())
     }
 
-    fn raw_write_register(&mut self, address: PortAddress, value: u32) -> Result<(), ArmError> {
+    fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError> {
         let mut transfer = DapTransfer::write(address, value);
 
         perform_transfers(self, std::slice::from_mut(&mut transfer))?;
@@ -1195,7 +1199,11 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         }
     }
 
-    fn raw_write_block(&mut self, address: PortAddress, values: &[u32]) -> Result<(), ArmError> {
+    fn raw_write_block(
+        &mut self,
+        address: RegisterAddress,
+        values: &[u32],
+    ) -> Result<(), ArmError> {
         let mut transfers = values
             .iter()
             .map(|v| DapTransfer::write(address, *v))
@@ -1290,7 +1298,7 @@ mod test {
     use crate::{
         architecture::arm::{
             dp::{Ctrl, DpRegister, RdBuff},
-            ApAddress, PortAddress, RawDapAccess,
+            ApAddress, RawDapAccess, RegisterAddress,
         },
         error::Error,
         probe::{DebugProbe, DebugProbeError, JTAGAccess, ScanChainElement, WireProtocol},
@@ -1408,7 +1416,7 @@ mod test {
             self.expected_transfer_count += 1;
         }
 
-        fn add_jtag_response<P: Into<PortAddress>>(
+        fn add_jtag_response<P: Into<RegisterAddress>>(
             &mut self,
             address: P,
             read: bool,
@@ -1429,7 +1437,7 @@ mod test {
             response |= status as u64;
 
             let expected = ExpectedJtagTransaction {
-                ir_address: if matches!(port, PortAddress::DpRegister(_)) {
+                ir_address: if matches!(port, RegisterAddress::DpRegister(_)) {
                     JTAG_DEBUG_PORT_IR_VALUE
                 } else {
                     JTAG_ACCESS_PORT_IR_VALUE

@@ -14,7 +14,7 @@ use crate::{
     architecture::arm::{
         core::registers::cortex_m::{PC, SP},
         dp::{Ctrl, DebugPortError, DpRegister, DLPIDR, TARGETID},
-        ArmProbeInterface, PortAddress,
+        ArmProbeInterface, RegisterAddress,
     },
     probe::{DebugProbeError, WireProtocol},
     MemoryInterface, MemoryMappedRegister, Session,
@@ -515,7 +515,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             match interface.active_protocol() {
                 Some(WireProtocol::Jtag) => {
                     if has_dormant {
-                        tracing::debug!("SelectV1 Dormant State (from SWD)");
+                        tracing::debug!("Select Dormant State (from SWD)");
                         interface.swj_sequence(16, 0xE3BC)?;
 
                         // Send alert sequence
@@ -539,7 +539,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 }
                 Some(WireProtocol::Swd) => {
                     if has_dormant {
-                        // SelectV1 Dormant State (from JTAG)
+                        // Select Dormant State (from JTAG)
                         tracing::debug!("SelectV1 Dormant State (from JTAG)");
                         interface.swj_sequence(31, 0x33BBBBBA)?;
 
@@ -605,6 +605,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         abort.set_stkcmpclr(true);
         interface.write_dp_register(dp, abort)?;
 
+        interface.write_dp_register(dp, SelectV1(0))?;
         let dpidr: DPIDR = interface.read_dp_register(dp)?;
 
         let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
@@ -842,7 +843,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     #[doc(alias = "DebugPortStop")]
     fn debug_port_stop(&self, interface: &mut dyn DapProbe, dp: DpAddress) -> Result<(), ArmError> {
         tracing::info!("Powering down debug port {dp:x?}");
-        // SelectV1 Bank 0
+        // Select Bank 0
         interface.raw_write_register(SelectV1::ADDRESS.into(), 0)?;
 
         // De-assert debug power request
@@ -927,7 +928,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             tracing::debug!("Reading DPIDR to enable SWD interface");
 
             // Read DPIDR to enable SWD interface.
-            match interface.raw_read_register(PortAddress::DpRegister(DPIDR::ADDRESS)) {
+            match interface.raw_read_register(RegisterAddress::DpRegister(DPIDR::ADDRESS)) {
                 Ok(x) => break x,
                 Err(z) => {
                     if guard.elapsed() > RESET_RECOVERY_TIMEOUT {
@@ -961,12 +962,12 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
         if let DpAddress::Multidrop(targetsel) = dp {
             tracing::debug!("Checking TARGETID and DLPIDR match");
-            // SelectV1 DP Bank 2
+            // Select DP Bank 2
             interface.raw_write_register(SelectV1::ADDRESS.into(), 2)?;
 
             let target_id = interface.raw_read_register(TARGETID::ADDRESS.into())?;
 
-            // SelectV1 DP Bank 3
+            // Select DP Bank 3
             interface.raw_write_register(SelectV1::ADDRESS.into(), 3)?;
             let dlpidr = interface.raw_read_register(DLPIDR::ADDRESS.into())?;
 

@@ -7,8 +7,8 @@ use crate::{
         communication_interface::{DapProbe, UninitializedArmProbe},
         dp::{Abort, Ctrl, DpRegister},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, ArmError, DapError, Pins, PortAddress, RawDapAccess, SwoAccess,
-        SwoConfig, SwoMode,
+        ArmCommunicationInterface, ArmError, DapError, Pins, RawDapAccess, RegisterAddress,
+        SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
         cmsisdap::commands::{
@@ -962,7 +962,7 @@ impl RawDapAccess for CmsisDap {
     }
 
     /// Reads the DAP register on the specified port and address.
-    fn raw_read_register(&mut self, address: PortAddress) -> Result<u32, ArmError> {
+    fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
         let res = self.batch_add(BatchCommand::Read(address))?;
 
         // NOTE(unwrap): batch_add will always return Some if the last command is a read
@@ -971,12 +971,16 @@ impl RawDapAccess for CmsisDap {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn raw_write_register(&mut self, address: PortAddress, value: u32) -> Result<(), ArmError> {
+    fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError> {
         self.batch_add(BatchCommand::Write(address, value))
             .map(|_| ())
     }
 
-    fn raw_write_block(&mut self, address: PortAddress, values: &[u32]) -> Result<(), ArmError> {
+    fn raw_write_block(
+        &mut self,
+        address: RegisterAddress,
+        values: &[u32],
+    ) -> Result<(), ArmError> {
         self.process_batch()?;
 
         // the overhead for a single packet is 6 bytes
@@ -1016,7 +1020,11 @@ impl RawDapAccess for CmsisDap {
         Ok(())
     }
 
-    fn raw_read_block(&mut self, address: PortAddress, values: &mut [u32]) -> Result<(), ArmError> {
+    fn raw_read_block(
+        &mut self,
+        address: RegisterAddress,
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
         self.process_batch()?;
 
         // the overhead for a single packet is 6 bytes

@@ -17,7 +17,7 @@ use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
     communication_interface::{DapProbe, UninitializedArmProbe},
-    PortAddress, SwoAccess,
+    RegisterAddress, SwoAccess,
 };
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
@@ -81,10 +81,10 @@ impl std::str::FromStr for WireProtocol {
 #[derive(Clone, Debug)]
 pub enum BatchCommand {
     /// Read from a port
-    Read(PortAddress),
+    Read(RegisterAddress),
 
     /// Write to a port
-    Write(PortAddress, u32),
+    Write(RegisterAddress, u32),
 }
 
 impl fmt::Display for BatchCommand {

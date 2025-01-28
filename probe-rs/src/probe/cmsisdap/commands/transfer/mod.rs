@@ -3,7 +3,7 @@ pub mod configure;
 use std::iter;
 
 use super::{CommandId, Request, SendError};
-use crate::architecture::arm::PortAddress;
+use crate::architecture::arm::RegisterAddress;
 use scroll::{Pread, Pwrite, LE};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -37,7 +37,7 @@ struct InnerTransferRequest {
 }
 
 impl InnerTransferRequest {
-    pub fn new(address: PortAddress, rw: RW, data: Option<u32>) -> Self {
+    pub fn new(address: RegisterAddress, rw: RW, data: Option<u32>) -> Self {
         let a2and3 = address.a2_and_3();
         //tracing::warn!("InnerTransferRequest: address_byte: {:x}", address_byte);
         Self {
@@ -151,24 +151,24 @@ impl TransferRequest {
         }
     }
 
-    pub fn read<T: Into<PortAddress>>(address: T) -> Self {
+    pub fn read<T: Into<RegisterAddress>>(address: T) -> Self {
         let mut req = Self::empty();
         req.add_read(address.into());
         req
     }
 
-    pub fn write<T: Into<PortAddress>>(address: T, data: u32) -> Self {
+    pub fn write<T: Into<RegisterAddress>>(address: T, data: u32) -> Self {
         let mut req = Self::empty();
         req.add_write(address.into(), data);
         req
     }
 
-    pub fn add_read(&mut self, address: PortAddress) {
+    pub fn add_read(&mut self, address: RegisterAddress) {
         self.transfers
             .push(InnerTransferRequest::new(address, RW::R, None));
     }
 
-    pub fn add_write(&mut self, address: PortAddress, data: u32) {
+    pub fn add_write(&mut self, address: RegisterAddress, data: u32) {
         self.transfers
             .push(InnerTransferRequest::new(address, RW::W, Some(data)));
     }
@@ -351,7 +351,7 @@ impl Request for TransferBlockRequest {
 }
 
 impl TransferBlockRequest {
-    pub(crate) fn write_request(address: PortAddress, data: Vec<u32>) -> Self {
+    pub(crate) fn write_request(address: RegisterAddress, data: Vec<u32>) -> Self {
         let inner = InnerTransferBlockRequest {
             ap_n_dp: address.is_ap(),
             r_n_w: RW::W,
@@ -367,7 +367,7 @@ impl TransferBlockRequest {
         }
     }
 
-    pub(crate) fn read_request(address: PortAddress, read_count: u16) -> Self {
+    pub(crate) fn read_request(address: RegisterAddress, read_count: u16) -> Self {
         let inner = InnerTransferBlockRequest {
             ap_n_dp: address.is_ap(),
             r_n_w: RW::R,
