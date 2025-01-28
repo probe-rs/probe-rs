@@ -625,10 +625,10 @@ impl CmsisDap {
         // be more than one read in a batch. We also process whenever the batch
         // is as long as can fit in one packet.
         let max_writes = (self.packet_size as usize - 3) / (1 + 4);
-        match command_is_read {
-            true => self.process_batch(),
-            _ if self.batch.len() == max_writes => self.process_batch(),
-            _ => Ok(None),
+        if command_is_read || self.batch.len() == max_writes {
+            self.process_batch()
+         } else {
+            Ok(None)
         }
     }
 
