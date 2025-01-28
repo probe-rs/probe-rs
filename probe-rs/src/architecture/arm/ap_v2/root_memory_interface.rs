@@ -73,7 +73,7 @@ impl<'iface, API: ArmProbeInterface> MemoryInterface<ArmError>
         // read content
         for (i, d) in data.iter().enumerate() {
             let addr = address + (i as u64) * 4;
-            let base = (self.base + addr) & 0xFFFF_FFFF_FFFF_FFF0;
+            let base = addr & (!0xF);
             let fqa = FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::new_with_tip(base));
 
             self.iface
