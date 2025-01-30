@@ -298,6 +298,9 @@ impl Channel {
                     let start = self.info.buffer_start_pointer();
                     let end = self.info.buffer_start_pointer() + self.info.size_of_buffer();
 
+                    // `end` points at one beyond the last byte, and so does `rr.range.end`. Since
+                    // `rr.range` is exclusive, `contains` will return `false` if `end` is equal to
+                    // `rr.range.end`.
                     rr.range.contains(&start) && end <= rr.range.end
                 });
 
