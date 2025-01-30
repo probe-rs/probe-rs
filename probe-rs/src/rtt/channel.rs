@@ -295,10 +295,10 @@ impl Channel {
                 .filter_map(|mr| mr.as_ram_region())
                 .merge_consecutive()
                 .any(|rr| {
-                    rr.range.contains(&self.info.buffer_start_pointer())
-                        && rr.range.contains(
-                            &(self.info.buffer_start_pointer() + self.info.size_of_buffer()),
-                        )
+                    let start = self.info.buffer_start_pointer();
+                    let end = self.info.buffer_start_pointer() + self.info.size_of_buffer();
+
+                    rr.range.contains(&start) && end <= rr.range.end
                 });
 
             if !buffer_fully_in_memory_region {
