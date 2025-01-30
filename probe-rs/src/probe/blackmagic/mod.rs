@@ -2,14 +2,15 @@
 use std::{
     char,
     io::{BufReader, BufWriter, Read, Write},
+    sync::Arc,
     time::Duration,
 };
 
 use crate::{
     architecture::{
         arm::{
-            communication_interface::{DapProbe, UninitializedArmProbe},
-            ArmCommunicationInterface,
+            communication_interface::DapProbe, sequences::ArmDebugSequence,
+            ArmCommunicationInterface, ArmError, ArmProbeInterface,
         },
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
         xtensa::communication_interface::{
@@ -18,6 +19,7 @@ use crate::{
     },
     probe::{DebugProbe, DebugProbeInfo, JTAGAccess, ProbeFactory},
 };
+use arm::BlackMagicProbeArmDebug;
 use bitvec::{order::Lsb0, vec::BitVec};
 use probe_rs_target::ScanChainElement;
 use serialport::{available_ports, SerialPortType};
@@ -35,7 +37,6 @@ const BLACK_MAGIC_PROTOCOL_RESPONSE_END: u8 = b'#';
 pub(crate) const BLACK_MAGIC_REMOTE_SIZE_MAX: usize = 1024;
 
 mod arm;
-use arm::UninitializedBlackMagicArmProbe;
 
 /// A factory for creating [`BlackMagicProbe`] instances.
 #[derive(Debug)]
@@ -1160,8 +1161,8 @@ impl DebugProbe for BlackMagicProbe {
     /// Turn this probe into an ARM probe
     fn try_get_arm_interface<'probe>(
         mut self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let has_adiv5 = match self.remote_protocol {
             ProtocolVersion::V0 => false,
             ProtocolVersion::V0P
@@ -1178,9 +1179,12 @@ impl DebugProbe for BlackMagicProbe {
         };
 
         if has_adiv5 {
-            Ok(Box::new(UninitializedBlackMagicArmProbe::new(self)))
+            match BlackMagicProbeArmDebug::new(self, sequence) {
+                Ok(interface) => Ok(Box::new(interface)),
+                Err((probe, err)) => Err((probe.into_probe(), err)),
+            }
         } else {
-            Ok(Box::new(ArmCommunicationInterface::new(self, true)))
+            Ok(ArmCommunicationInterface::create(self, sequence, true)) // TODO: Fixup the error type here
         }
     }
 
