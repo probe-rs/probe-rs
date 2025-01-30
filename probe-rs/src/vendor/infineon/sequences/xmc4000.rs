@@ -67,7 +67,7 @@ bitfield::bitfield! {
     pub hwcon, _: 1, 0;
 
     /// > SW Configuration
-    /// > Bit[9:8] is copy of Bit[1:0] after PORESET
+    /// > Bit `[9:8]` is copy of Bit `[1:0]` after PORESET
     /// > …
     /// > Note: Only reset with Power-on Reset
     pub swcon, set_swcon: 11, 8;

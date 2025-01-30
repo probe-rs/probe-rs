@@ -14,7 +14,7 @@ memory_mapped_bitfield_register! {
     pub struct Vtor(u32);
     0xE000_ED08, "VTOR",
     impl From;
-    /// This fields holds bits [31:7] of the table offset.
+    /// This fields holds bits `[31:7]` of the table offset.
     pub tbloff, set_tbloff: 31, 7;
 }
 
@@ -52,7 +52,7 @@ memory_mapped_bitfield_register! {
     0xE000_EDF4, "DCRSR",
     impl From;
     pub _, set_regwnr: 16;
-    // If the processor does not implement the FP extension the REGSEL field is bits [4:0], and bits [6:5] are Reserved, SBZ.
+    // If the processor does not implement the FP extension the REGSEL field is bits `[4:0]`, and bits `[6:5]` are Reserved, SBZ.
     pub _, set_regsel: 6,0;
 }
 
