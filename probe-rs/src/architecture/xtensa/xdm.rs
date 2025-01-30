@@ -194,7 +194,10 @@ impl<'probe> Xdm<'probe> {
         tracing::trace!("Waiting for power domain to turn on");
         let now = Instant::now();
         loop {
-            let bits = self.pwr_write(PowerDevice::PowerStat, 0)?;
+            let mut reset_bits = PowerStatus(0);
+            reset_bits.set_core_was_reset(true);
+            reset_bits.set_debug_was_reset(true);
+            let bits = self.pwr_write(PowerDevice::PowerStat, reset_bits.0)?;
             tracing::debug!("PowerStatus: {:?}", PowerStatus(bits));
             if PowerStatus(bits).debug_domain_on() {
                 break;
