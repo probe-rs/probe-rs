@@ -2,7 +2,9 @@
 
 use crate::architecture::arm::armv7m::{Aircr, Dhcsr, FpCtrl, FpRev1CompX, FpRev2CompX};
 use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
+use crate::architecture::arm::sequences::{
+    ArmCoreDebugSequence, ArmDebugSequence, ArmDebugSequenceError,
+};
 use crate::architecture::arm::{ArmError, ArmProbeInterface, FullyQualifiedApAddress};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -76,7 +78,7 @@ impl Stcon {
     const ADDRESS: u64 = 0x50004010;
 }
 
-impl ArmDebugSequence for XMC4000 {
+impl ArmCoreDebugSequence for XMC4000 {
     // We have a weird halt-after-reset sequence. It's described only in prose, not in a CMSIS pack
     // sequence. Per XMC4700/XMC4800 reference manual v1.3 § 28-8:
     //
@@ -96,7 +98,6 @@ impl ArmDebugSequence for XMC4000 {
     // So:
     // * ResetCatchSet must determine the first user instruction and set a breakpoint there.
     // * ResetCatchClear must restore the clobbered breakpoint, if any.
-
     fn reset_catch_set(
         &self,
         core: &mut dyn ArmMemoryInterface,
@@ -348,7 +349,9 @@ impl ArmDebugSequence for XMC4000 {
 
         Ok(())
     }
+}
 
+impl ArmDebugSequence for XMC4000 {
     fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
         tracing::trace!("performing XMC4000 ResetHardwareAssert");
 

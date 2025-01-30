@@ -6,7 +6,7 @@ use crate::{
     architecture::arm::{
         core::armv7m::{Demcr, Dhcsr},
         memory::ArmMemoryInterface,
-        sequences::ArmDebugSequence,
+        sequences::{ArmCoreDebugSequence, ArmDebugSequence},
         ArmError,
     },
     core::MemoryMappedRegister,
@@ -25,7 +25,7 @@ impl EFM32xG2 {
     }
 }
 
-impl ArmDebugSequence for EFM32xG2 {
+impl ArmCoreDebugSequence for EFM32xG2 {
     fn reset_catch_set(
         &self,
         core: &mut dyn ArmMemoryInterface,
@@ -66,3 +66,5 @@ impl ArmDebugSequence for EFM32xG2 {
         core.write_word_32(Demcr::get_mmio_address(), demcr.into())
     }
 }
+
+impl ArmDebugSequence for EFM32xG2 {}

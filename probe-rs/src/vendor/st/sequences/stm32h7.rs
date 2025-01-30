@@ -7,7 +7,7 @@ use probe_rs_target::CoreType;
 use crate::architecture::arm::{
     component::{TraceFunnel, TraceSink},
     memory::{romtable::RomTableError, ArmMemoryInterface, CoresightComponent, PeripheralType},
-    sequences::ArmDebugSequence,
+    sequences::{ArmCoreDebugSequence, ArmDebugSequence},
     ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
 
@@ -163,6 +163,20 @@ fn find_trace_funnel(
         })
 }
 
+impl ArmCoreDebugSequence for Stm32h7 {
+    fn debug_core_stop(
+        &self,
+        memory: &mut dyn ArmMemoryInterface,
+        _core_type: CoreType,
+    ) -> Result<(), ArmError> {
+        // Power down the debug components through selected AP.
+
+        self.enable_debug_components(&mut *memory, false)?;
+
+        Ok(())
+    }
+}
+
 impl ArmDebugSequence for Stm32h7 {
     fn debug_device_unlock(
         &self,
@@ -175,18 +189,6 @@ impl ArmDebugSequence for Stm32h7 {
 
         let mut memory = interface.memory_interface(ap)?;
         self.enable_debug_components(&mut *memory, true)?;
-
-        Ok(())
-    }
-
-    fn debug_core_stop(
-        &self,
-        memory: &mut dyn ArmMemoryInterface,
-        _core_type: CoreType,
-    ) -> Result<(), ArmError> {
-        // Power down the debug components through selected AP.
-
-        self.enable_debug_components(&mut *memory, false)?;
 
         Ok(())
     }

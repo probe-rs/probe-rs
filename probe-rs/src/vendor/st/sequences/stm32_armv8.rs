@@ -11,7 +11,7 @@ use probe_rs_target::CoreType;
 use crate::architecture::arm::{
     component::TraceSink,
     memory::{ArmMemoryInterface, CoresightComponent},
-    sequences::ArmDebugSequence,
+    sequences::{ArmCoreDebugSequence, ArmDebugSequence},
     ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
 
@@ -63,6 +63,21 @@ mod dbgmcu {
     }
 }
 
+impl ArmCoreDebugSequence for Stm32Armv8 {
+    fn debug_core_stop(
+        &self,
+        memory: &mut dyn ArmMemoryInterface,
+        _core_type: CoreType,
+    ) -> Result<(), ArmError> {
+        let mut cr = dbgmcu::Control::read(&mut *memory)?;
+        cr.enable_standby_debug(false);
+        cr.enable_stop_debug(false);
+        cr.write(&mut *memory)?;
+
+        Ok(())
+    }
+}
+
 impl ArmDebugSequence for Stm32Armv8 {
     fn debug_device_unlock(
         &self,
@@ -74,19 +89,6 @@ impl ArmDebugSequence for Stm32Armv8 {
         let mut cr = dbgmcu::Control::read(&mut *memory)?;
         cr.enable_standby_debug(true);
         cr.enable_stop_debug(true);
-        cr.write(&mut *memory)?;
-
-        Ok(())
-    }
-
-    fn debug_core_stop(
-        &self,
-        memory: &mut dyn ArmMemoryInterface,
-        _core_type: CoreType,
-    ) -> Result<(), ArmError> {
-        let mut cr = dbgmcu::Control::read(&mut *memory)?;
-        cr.enable_standby_debug(false);
-        cr.enable_stop_debug(false);
         cr.write(&mut *memory)?;
 
         Ok(())
