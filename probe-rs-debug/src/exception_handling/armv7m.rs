@@ -13,7 +13,7 @@ memory_mapped_bitfield_register! {
 }
 
 memory_mapped_bitfield_register! {
-    /// CFSR - Configurable Status Register (UFSR[31:16], BFSR[15:8], MMFSR[7:0])
+    /// CFSR - Configurable Status Register (`UFSR[31:16]`, `BFSR[15:8]`, `MMFSR[7:0]`)
     pub struct Cfsr(u32);
     0xE000ED28, "CFSR",
     impl From;

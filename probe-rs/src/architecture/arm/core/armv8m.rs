@@ -1002,7 +1002,7 @@ bitfield! {
     pub rev, _: 31, 28;
     num_code_1, _: 14, 12;
     /// The number of literal address comparators supported, starting from NUM_CODE upwards.
-    /// UNK/SBZP if Flash Patch is not implemented. Flash Patch is not implemented if FP_REMAP[29] is 0.
+    /// UNK/SBZP if Flash Patch is not implemented. Flash Patch is not implemented if `FP_REMAP[29]` is 0.
     /// If this field is zero, the implementation does not support literal comparators.
     pub num_lit, _: 11, 8;
     num_code_0, _: 7, 4;
@@ -1046,7 +1046,7 @@ bitfield! {
     #[derive(Copy,Clone)]
     pub struct FpCompN(u32);
     impl Debug;
-    /// BPADDR, bits[31:1] Breakpoint address. Specifies bits[31:1] of the breakpoint instruction address.
+    /// BPADDR, `bits[31:1]` Breakpoint address. Specifies bits`[31:1]` of the breakpoint instruction address.
     /// If BE == 0, this field is Reserved, UNK/SBZP.
     /// The reset value of this field is UNKNOWN.
     pub bp_addr, set_bp_addr: 31, 1;
