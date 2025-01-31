@@ -11,7 +11,7 @@ license.workspace = true
 description = "Debugging functionlity built on top of the probe-rs crate"
 
 [dependencies]
-bitfield = "0.17.0"
+bitfield = "0.18.0"
 gimli = "0.31.1"
 itertools = "0.14.0"
 object = "0.36.7"

@@ -194,7 +194,10 @@ impl<'probe> Xdm<'probe> {
         tracing::trace!("Waiting for power domain to turn on");
         let now = Instant::now();
         loop {
-            let bits = self.pwr_write(PowerDevice::PowerStat, 0)?;
+            let mut reset_bits = PowerStatus(0);
+            reset_bits.set_core_was_reset(true);
+            reset_bits.set_debug_was_reset(true);
+            let bits = self.pwr_write(PowerDevice::PowerStat, reset_bits.0)?;
             tracing::debug!("PowerStatus: {:?}", PowerStatus(bits));
             if PowerStatus(bits).debug_domain_on() {
                 break;
@@ -215,10 +218,10 @@ impl<'probe> Xdm<'probe> {
 
         self.check_enabled()?;
 
-        // enable the debug module
+        // configure the debug module
         self.debug_control({
             let mut reg = DebugControlBits(0);
-            reg.set_enable_ocd(true);
+            // We don't set enable_ocd here, it would just halt the core.
             reg.set_break_in_en(true);
             reg.set_break_out_en(true);
             reg

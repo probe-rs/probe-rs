@@ -246,9 +246,9 @@ bitfield! {
     /// - `11` breakpoint on both lower and upper halfwords.
     /// - The field is UNKNOWN on reset.
     pub bp_match, set_bp_match: 31,30;
-    /// Stores bits [28:2] of the comparison address. The comparison address is
-    /// compared with the address from the Code memory region. Bits [31:29] and
-    /// [1:0] of the comparison address are zero.
+    /// Stores bits `[28:2]` of the comparison address. The comparison address is
+    /// compared with the address from the Code memory region. Bits `[31:29]` and
+    /// `[1:0]` of the comparison address are zero.
     ///
     /// The field is UNKNOWN on power-on reset.
     pub comp, set_comp: 28,2;

@@ -310,7 +310,7 @@ bitfield! {
     ///
     /// TRNMODE is not supported in MINDP configuration. In MINDP configuration, the effect of writing a value other than zero to TRNCNT or TRNMODE is UNPREDICTABLE. See also MINDP, Minimal DP extension on page B1-40.
     pub u8, trn_mode, _: 3, 2;
-    /// If overrun detection is enabled, this bit is set to 0b1 when an overrun occurs. See bit[0] of this register for details of enabling overrun detection.
+    /// If overrun detection is enabled, this bit is set to 0b1 when an overrun occurs. See `bit[0]` of this register for details of enabling overrun detection.
     /// Access to and how to clear this field are DATA LINK DEFINED:
     ///
     /// JTAG-DP, all implementations
@@ -526,7 +526,7 @@ bitfield! {
     #[derive(Clone)]
     pub struct BASEPTR0(u32);
     impl Debug;
-    /// Pointer least significant bits (bits [31:12] of the full address).
+    /// Pointer least significant bits (bits `[31:12]` of the full address).
     pub u32, ptr, _: 31, 12;
     /// True if `ptr` specifies a valid base address.
     pub valid, _: 0;
@@ -540,7 +540,7 @@ bitfield! {
     #[derive(Clone)]
     pub struct BASEPTR1(u32);
     impl Debug;
-    /// Pointer most significant bits (bits [63:32] of the full address).
+    /// Pointer most significant bits (bits `[63:32]` of the full address).
     pub u32, ptr, _: 31, 0;
 }
 impl_dpregister!(BASEPTR1, DebugPortVersion::DPv3, 0x0, Some(0x3), "BASEPTR1");

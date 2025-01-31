@@ -295,10 +295,13 @@ impl Channel {
                 .filter_map(|mr| mr.as_ram_region())
                 .merge_consecutive()
                 .any(|rr| {
-                    rr.range.contains(&self.info.buffer_start_pointer())
-                        && rr.range.contains(
-                            &(self.info.buffer_start_pointer() + self.info.size_of_buffer()),
-                        )
+                    let start = self.info.buffer_start_pointer();
+                    let end = self.info.buffer_start_pointer() + self.info.size_of_buffer();
+
+                    // `end` points at one beyond the last byte, and so does `rr.range.end`. Since
+                    // `rr.range` is exclusive, `contains` will return `false` if `end` is equal to
+                    // `rr.range.end`.
+                    rr.range.contains(&start) && end <= rr.range.end
                 });
 
             if !buffer_fully_in_memory_region {

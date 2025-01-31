@@ -451,12 +451,12 @@ bitfield! {
     ///
     /// Field is UNK/SBZP
     pub replace, set_replace: 31, 30;
-    /// Bits[28:2] of the address to compare with addresses from the Code memory region,
-    /// see The system address map on page B3-592. Bits[31:29] of the address for comparison are zero.
+    /// Bits `[28:2]` of the address to compare with addresses from the Code memory region,
+    /// see The system address map on page B3-592. Bits `[31:29]` of the address for comparison are zero.
     ///
-    /// For a literal address or instruction address remap, bits[1:0] of the comparison are also zero.
+    /// For a literal address or instruction address remap, bits `[1:0]` of the comparison are also zero.
     ///
-    /// For an instruction address breakpoint, bits[1:0] of the comparison are encoded by the REPLACE field.
+    /// For an instruction address breakpoint, bits `[1:0]` of the comparison are encoded by the REPLACE field.
     ///
     /// If a match occurs:
     ///
