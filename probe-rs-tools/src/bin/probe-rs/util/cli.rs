@@ -30,8 +30,8 @@ use crate::{
         flash::CliProgressBars,
         logging,
         rtt::{
-            self, client::RttClient, DefmtProcessor, DefmtState, RttDataHandler, RttDecoder,
-            RttSymbolError,
+            self, client::RttClient, DataFormat, DefmtProcessor, DefmtState, RttChannelConfig,
+            RttDataHandler, RttDecoder, RttSymbolError,
         },
     },
     FormatOptions,
@@ -148,11 +148,10 @@ pub async fn rtt_client(
         None
     };
 
-    let rtt_client = session.create_rtt_client(scan_regions).await?;
-    let client_handle = rtt_client.handle;
-
     // The CLI only supports a single RTT up channel, and no down channels.
-    let data_format = if let Some(defmt_data) = defmt_data.clone() {
+    let data_format;
+    let decoder = if let Some(defmt_data) = defmt_data.clone() {
+        data_format = DataFormat::Defmt;
         RttDecoder::Defmt {
             processor: DefmtProcessor::new(
                 defmt_data,
@@ -162,15 +161,32 @@ pub async fn rtt_client(
             ),
         }
     } else {
+        data_format = DataFormat::String;
         RttDecoder::String {
             timestamp_offset,
             last_line_done: false,
         }
     };
 
+    let rtt_client = session
+        .create_rtt_client(
+            scan_regions,
+            vec![RttChannelConfig {
+                channel_number: Some(0),
+                mode: if data_format == DataFormat::Defmt {
+                    Some(rtt::ChannelMode::BlockIfFull)
+                } else {
+                    None
+                },
+                ..Default::default()
+            }],
+        )
+        .await?;
+    let client_handle = rtt_client.handle;
+
     Ok(CliRttClient {
         handle: client_handle,
-        data_format,
+        data_format: decoder,
     })
 }
 
@@ -459,9 +475,7 @@ fn print_monitor_event(
     match event {
         MonitorEvent::RttOutput { channel, bytes } => {
             if let Some(client) = rtt_client {
-                _ = client
-                    .data_format
-                    .process(channel as usize, &bytes, &mut Printer);
+                _ = client.data_format.process(channel, &bytes, &mut Printer);
             }
         }
         MonitorEvent::SemihostingOutput(SemihostingOutput::StdOut(str)) => {
@@ -475,7 +489,7 @@ fn print_monitor_event(
 
 struct Printer;
 impl RttDataHandler for Printer {
-    fn on_string_data(&mut self, channel: usize, data: String) -> Result<(), probe_rs::rtt::Error> {
+    fn on_string_data(&mut self, channel: u32, data: String) -> Result<(), probe_rs::rtt::Error> {
         if channel == 0 {
             print!("{}", data);
         }

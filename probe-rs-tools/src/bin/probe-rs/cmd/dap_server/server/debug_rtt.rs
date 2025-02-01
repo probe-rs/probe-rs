@@ -43,7 +43,7 @@ impl RttConnection {
 }
 
 pub(crate) struct DebuggerRttChannel {
-    pub(crate) channel_number: usize,
+    pub(crate) channel_number: u32,
     // We will not poll target RTT channels until we have confirmation from the client that the output window has been opened.
     pub(crate) has_client_window: bool,
     pub(crate) channel_data_format: RttDecoder,
@@ -91,7 +91,7 @@ struct StringCollector {
 }
 
 impl RttDataHandler for StringCollector {
-    fn on_string_data(&mut self, _channel: usize, data: String) -> Result<(), rtt::Error> {
+    fn on_string_data(&mut self, _channel: u32, data: String) -> Result<(), rtt::Error> {
         self.data = Some(data);
         Ok(())
     }
