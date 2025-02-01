@@ -1,7 +1,6 @@
 use crate::architecture::arm::{
-    ap::{AccessPortType, ApAccess, ApRegAccess},
-    communication_interface::RegisterParseError,
-    ArmError, DapAccess, FullyQualifiedApAddress, Register,
+    ap_v1::{AccessPortType, ApAccess, ApRegAccess, Register},
+    ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
 
 use super::{AddressIncrement, DataSize};
@@ -11,19 +10,18 @@ use super::{AddressIncrement, DataSize};
 /// The memory AP can be used to access a memory-mapped
 /// set of debug resources of the attached system.
 #[derive(Debug)]
-pub struct AmbaAhb5Hprot {
+pub struct AmbaAhb3 {
     address: FullyQualifiedApAddress,
     csw: CSW,
     cfg: super::registers::CFG,
 }
 
-impl AmbaAhb5Hprot {
-    /// Creates a new AmbaAhb5Hprot with `address` as base address.
+impl AmbaAhb3 {
+    /// Creates a new AmbaAhb3 with `address` as base address.
     pub fn new<P: DapAccess>(
         probe: &mut P,
         address: FullyQualifiedApAddress,
     ) -> Result<Self, ArmError> {
-        use crate::architecture::arm::Register;
         let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
         let cfg = probe.read_raw_ap_register(&address, super::registers::CFG::ADDRESS)?;
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
@@ -44,7 +42,7 @@ impl AmbaAhb5Hprot {
     }
 }
 
-impl super::MemoryApType for AmbaAhb5Hprot {
+impl super::MemoryApType for AmbaAhb3 {
     type CSW = CSW;
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
@@ -86,20 +84,20 @@ impl super::MemoryApType for AmbaAhb5Hprot {
     }
 
     fn supports_only_32bit_data_size(&self) -> bool {
-        // Amba AHB5 must support word, half-word and byte size transfers.
+        // Amba AHB3 must support word, half-word and byte size transfers.
         false
     }
 }
 
-impl AccessPortType for AmbaAhb5Hprot {
+impl AccessPortType for AmbaAhb3 {
     fn ap_address(&self) -> &FullyQualifiedApAddress {
         &self.address
     }
 }
 
-impl ApRegAccess<CSW> for AmbaAhb5Hprot {}
+impl ApRegAccess<CSW> for AmbaAhb3 {}
 
-super::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAhb5Hprot);
+super::attached_regs_to_mem_ap!(memory_ap_regs => AmbaAhb3);
 
 define_ap_register!(
     /// Control and Status Word register
@@ -150,8 +148,6 @@ define_ap_register!(
         /// used to avoid confusion between this field and the SPIDEN signal on the authentication
         /// interface.
         SPIDEN: bool,               // [23]
-        /// `HPROT[6]`
-        HPROT6: bool,               // [15]
         /// A transfer is in progress.
         /// Can be used to poll whether an aborted transaction has completed.
         /// Read only.
@@ -176,12 +172,11 @@ define_ap_register!(
         Privileged: ((value >> 25) & 0x01) != 0,
         Data:       ((value >> 24) & 0x01) != 0,
         SPIDEN:     ((value >> 23) & 0x01) != 0,
-        HPROT6:     ((value >> 15) & 0x01) != 0,
         TrInProg:   ((value >> 7) & 0x01) != 0,
         DeviceEn:   ((value >> 6) & 0x01) != 0,
         AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
         Size: DataSize::try_from((value & 0x07) as u8).map_err(|_| RegisterParseError::new("CSW", value))?,
-        _reserved_bits: value & 0x0007_70F8,
+        _reserved_bits: value & 0x007F_FF08,
     }),
     to: value => (u32::from(value.DbgSwEnable) << 31)
     | (u32::from(value.HNONSEC      ) << 30)
@@ -192,7 +187,6 @@ define_ap_register!(
     | (u32::from(value.Privileged   ) << 25)
     | (u32::from(value.Data         ) << 24)
     | (u32::from(value.SPIDEN       ) << 23)
-    | (u32::from(value.HPROT6       ) << 15)
     | (u32::from(value.TrInProg     ) <<  7)
     | (u32::from(value.DeviceEn     ) <<  6)
     | (u32::from(value.AddrInc as u8) <<  4)

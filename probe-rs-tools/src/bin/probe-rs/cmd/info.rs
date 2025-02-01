@@ -5,16 +5,18 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap::ApClass,
-            armv6m::Demcr,
+            ap_v1::{ApClass, Register, IDR},
             component::Scs,
-            dp::{Ctrl, DebugPortId, DebugPortVersion, MinDpSupport, DLPIDR, DPIDR, TARGETID},
+            dp::{
+                Ctrl, DebugPortId, DebugPortVersion, DpAddress, DpRegister, MinDpSupport, DLPIDR,
+                DPIDR, TARGETID,
+            },
             memory::{
                 romtable::{PeripheralID, RomTable},
-                Component, ComponentId, CoresightComponent, PeripheralType,
+                ArmMemoryInterface, Component, ComponentId, CoresightComponent, PeripheralType,
             },
             sequences::DefaultArmSequence,
-            ArmProbeInterface, DpAddress, FullyQualifiedApAddress, Register,
+            ApAddress, ApV2Address, ArmProbeInterface, FullyQualifiedApAddress,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
@@ -22,7 +24,6 @@ use probe_rs::{
         },
     },
     probe::{list::Lister, Probe, WireProtocol},
-    MemoryMappedRegister,
 };
 use termtree::Tree;
 
@@ -296,48 +297,69 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 
     let mut tree = Tree::new(dp_node);
 
-    let access_ports = interface.access_ports(dp)?;
     println!("ARM Chip with debug port {:x?}:", dp);
-    if access_ports.is_empty() {
-        println!("No access ports found on this chip.");
-    } else {
-        for ap_address in access_ports {
-            use probe_rs::architecture::arm::ap::IDR;
-            let idr: IDR = interface
-                .read_raw_ap_register(&ap_address, IDR::ADDRESS)?
-                .try_into()?;
+    if dp_info.version != DebugPortVersion::DPv3 {
+        let access_ports = interface.access_ports(dp)?;
+        if access_ports.is_empty() {
+            println!("No access ports found on this chip.");
+        } else {
+            for ap_address in access_ports {
+                match ap_address.ap() {
+                    ApAddress::V1(_) => {
+                        let idr: IDR = interface
+                            .read_raw_ap_register(&ap_address, IDR::ADDRESS)?
+                            .try_into()?;
 
-            if idr.CLASS == ApClass::MemAp {
-                let mut ap_nodes =
-                    Tree::new(format!("{} MemoryAP ({:?})", ap_address.ap_v1()?, idr.TYPE));
-                match handle_memory_ap(interface, &ap_address) {
-                    Ok(component_tree) => ap_nodes.push(component_tree),
-                    Err(e) => ap_nodes.push(format!("Error during access: {e}")),
-                };
-                tree.push(ap_nodes);
-            } else {
-                let jep = idr.DESIGNER;
+                        if idr.CLASS == ApClass::MemAp {
+                            let mut ap_nodes = Tree::new(format!(
+                                "{} MemoryAP ({:?})",
+                                ap_address.ap_v1()?,
+                                idr.TYPE
+                            ));
+                            if let Err(e) = handle_memory_ap(interface, &ap_address, &mut ap_nodes)
+                            {
+                                ap_nodes.push(format!("Error during access: {e}"));
+                            };
+                            ap_nodes.leaves.sort_by(|a, b| a.root.cmp(&b.root));
+                            tree.push(ap_nodes);
+                        } else {
+                            let jep = idr.DESIGNER;
 
-                let ap_type = if idr.DESIGNER == JEP_ARM {
-                    format!("{:?}", idr.TYPE)
-                } else {
-                    format!("{:#x}", idr.TYPE as u8)
-                };
+                            let ap_type = if idr.DESIGNER == JEP_ARM {
+                                format!("{:?}", idr.TYPE)
+                            } else {
+                                format!("{:#x}", idr.TYPE as u8)
+                            };
 
-                tree.push(format!(
-                    "{} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
-                    ap_address.ap_v1()?,
-                    jep.get().unwrap_or("<unknown>"),
-                    idr.CLASS,
-                    ap_type,
-                    idr.VARIANT,
-                    idr.REVISION
-                ));
+                            tree.push(format!(
+                                "{} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
+                                ap_address.ap_v1()?,
+                                jep.get().unwrap_or("<unknown>"),
+                                idr.CLASS,
+                                ap_type,
+                                idr.VARIANT,
+                                idr.REVISION
+                                ));
+                        }
+                    }
+                    ApAddress::V2(_) => {
+                        unreachable!("Ap V1 and V2 cannot be mixed.")
+                    }
+                }
             }
         }
-
-        println!("{tree}");
+    } else {
+        let fqa = FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::root());
+        let root_rom_table = {
+            let mut root_memory = interface.memory_interface(&fqa)?;
+            let base_address = root_memory.base_address()?;
+            Component::try_parse(&mut *root_memory, base_address)?
+        };
+        coresight_component_tree(interface, root_rom_table, &fqa, &mut tree)?;
+        tree.leaves.sort_by(|a, b| a.root.cmp(&b.root));
     }
+
+    println!("{tree}");
     println!();
 
     Ok(dp_info.version)
@@ -346,36 +368,37 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 fn handle_memory_ap(
     interface: &mut dyn ArmProbeInterface,
     access_port: &FullyQualifiedApAddress,
-) -> Result<Tree<String>, anyhow::Error> {
+    parent: &mut Tree<String>,
+) -> Result<(), anyhow::Error> {
     let component = {
         let mut memory = interface.memory_interface(access_port)?;
 
         // Check if the AP is accessible
         let csw = memory.generic_status()?;
-        if !csw.DeviceEn {
-            return Ok(Tree::new(
-                "Memory AP is not accessible, DeviceEn bit not set".to_string(),
-            ));
+        if !csw.enabled() {
+            *parent = Tree::new("Memory AP is not accessible, DeviceEn bit not set".to_string());
+            return Ok(());
         }
 
         let base_address = memory.base_address()?;
-        let mut demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address())?);
-        demcr.set_dwtena(true);
-        memory.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         Component::try_parse(&mut *memory, base_address)?
     };
-    let component_tree = coresight_component_tree(interface, component, access_port)?;
-
-    Ok(component_tree)
+    coresight_component_tree(interface, component, access_port, parent)
 }
 
 fn coresight_component_tree(
     interface: &mut dyn ArmProbeInterface,
     component: Component,
     access_port: &FullyQualifiedApAddress,
-) -> Result<Tree<String>> {
-    let tree = match &component {
-        Component::GenericVerificationComponent(_) => Tree::new("Generic".to_string()),
+    parent: &mut Tree<String>,
+) -> Result<()> {
+    match &component {
+        Component::GenericVerificationComponent(id) => {
+            parent.push(Tree::new(format!(
+                "{:#06x} Generic",
+                id.component_address()
+            )));
+        }
         Component::Class1RomTable(id, table) => {
             let peripheral_id = id.peripheral_id();
 
@@ -388,21 +411,21 @@ fn coresight_component_tree(
                 }
             };
 
-            let mut tree = Tree::new(root);
+            let mut tree = Tree::new(format!("{:#06x} {}", id.component_address(), root));
             process_vendor_rom_tables(interface, id, table, access_port, &mut tree)?;
+            parent.push(tree);
 
             for entry in table.entries() {
                 let component = entry.component().clone();
 
-                tree.push(coresight_component_tree(interface, component, access_port)?);
+                coresight_component_tree(interface, component, access_port, parent)?;
             }
-
-            tree
         }
         Component::CoresightComponent(id) => {
             let peripheral_id = id.peripheral_id();
+            let part_info = peripheral_id.determine_part();
 
-            let component_description = if let Some(part_info) = peripheral_id.determine_part() {
+            let component_description = if let Some(part_info) = part_info {
                 format!("{: <15} (Coresight Component)", part_info.name())
             } else {
                 format!(
@@ -415,13 +438,31 @@ fn coresight_component_tree(
                 )
             };
 
-            let mut tree = Tree::new(component_description);
-            process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)?;
-
-            tree
+            let mut tree = Tree::new(format!(
+                "{:#06x} {}",
+                id.component_address(),
+                component_description
+            ));
+            let is_rom = part_info
+                .map(|p| p.peripheral_type() == PeripheralType::Rom)
+                .unwrap_or(false);
+            process_component_entry(
+                if is_rom { &mut *parent } else { &mut tree },
+                interface,
+                peripheral_id,
+                &component,
+                access_port,
+            )?;
+            tree.leaves.sort_by(|a, b| a.root.cmp(&b.root));
+            parent.push(tree);
         }
 
-        Component::PeripheralTestBlock(_) => Tree::new("Peripheral test block".to_string()),
+        Component::PeripheralTestBlock(id) => {
+            parent.push(Tree::new(format!(
+                "{:#06x} Peripheral test block",
+                id.component_address()
+            )));
+        }
         Component::GenericIPComponent(id) => {
             let peripheral_id = id.peripheral_id();
 
@@ -431,18 +472,28 @@ fn coresight_component_tree(
                 "Generic IP component".to_string()
             };
 
-            let mut tree = Tree::new(desc);
+            let mut tree = Tree::new(format!("{:#06x} {}", id.component_address(), desc));
             process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)?;
-
-            tree
+            parent.push(tree);
         }
 
-        Component::CoreLinkOrPrimeCellOrSystemComponent(_) => {
-            Tree::new("Core Link / Prime Cell / System component".to_string())
+        Component::CoreLinkOrPrimeCellOrSystemComponent(id) => {
+            let desc = "Core Link / Prime Cell / System component";
+            let desc = if let Some(part_desc) = id.peripheral_id().determine_part() {
+                format!("{: <15} ({})", part_desc.name(), desc)
+            } else {
+                desc.to_string()
+            };
+
+            parent.push(Tree::new(format!(
+                "{:#06x} {}",
+                id.component_address(),
+                desc
+            )));
         }
     };
 
-    Ok(tree)
+    Ok(())
 }
 
 /// Processes information from/around manufacturer-specific ROM tables and adds them to the tree.
@@ -479,7 +530,7 @@ fn process_vendor_rom_tables(
 
 /// Processes ROM table entries and adds them to the tree.
 fn process_component_entry(
-    tree: &mut Tree<String>,
+    parent: &mut Tree<String>,
     interface: &mut dyn ArmProbeInterface,
     peripheral_id: &PeripheralID,
     component: &Component,
@@ -489,12 +540,40 @@ fn process_component_entry(
         return Ok(());
     };
 
-    if part.peripheral_type() == PeripheralType::Scs {
-        let cc = &CoresightComponent::new(component.clone(), access_port.clone());
-        let scs = &mut Scs::new(interface, cc);
-        let cpu_tree = cpu_info_tree(scs)?;
+    match part.peripheral_type() {
+        PeripheralType::Scs => {
+            let cc = &CoresightComponent::new(component.clone(), access_port.clone());
+            let scs = &mut Scs::new(interface, cc);
+            let cpu_tree = cpu_info_tree(scs)?;
 
-        tree.push(cpu_tree);
+            parent.push(cpu_tree);
+        }
+        PeripheralType::MemAp => {
+            let dp = access_port.dp();
+            let ApAddress::V2(addr) = access_port.ap() else {
+                unreachable!("This should only happen on ap v2 addresses.");
+            };
+            let addr = addr.clone().append(component.id().component_address());
+            let addr = FullyQualifiedApAddress::v2_with_dp(dp, addr);
+            handle_memory_ap(interface, &addr, parent)?;
+        }
+        PeripheralType::Rom => {
+            let id = component.id();
+            let mut memory = interface.memory_interface(access_port)?;
+            let rom_table = RomTable::try_parse(
+                memory.as_mut() as &mut dyn ArmMemoryInterface,
+                id.component_address(),
+            )?;
+            drop(memory);
+
+            process_vendor_rom_tables(interface, id, &rom_table, access_port, parent)?;
+            for entry in rom_table.entries() {
+                let component = entry.component().clone();
+
+                coresight_component_tree(interface, component, access_port, parent)?;
+            }
+        }
+        _ => {}
     }
 
     Ok(())

@@ -1,21 +1,52 @@
 //! Types and functions for interacting with target memory.
 
-pub(crate) mod adi_v5_memory_interface;
+mod adi_v5_memory_interface;
 pub mod romtable;
+
+pub(crate) use adi_v5_memory_interface::ADIMemoryInterface;
 
 use crate::{memory::MemoryInterface, probe::DebugProbeError, CoreStatus};
 
 use super::{
-    ap::memory_ap::{registers, MemoryAp},
-    communication_interface::SwdSequence,
-    ArmError, ArmProbeInterface, DapAccess,
+    ap_v1, ap_v2, communication_interface::SwdSequence, ArmError, ArmProbeInterface, DapAccess,
+    FullyQualifiedApAddress,
 };
-pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType};
+pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, RomTable};
+
+/// A generic status indication for an AP.
+pub enum Status {
+    /// A CSW associated with an APv1 (ADIv5) access port.
+    V1(ap_v1::memory_ap::registers::CSW),
+    /// A CSW associated with an APv2 (ADIv6) access port.
+    V2(ap_v2::registers::CSW),
+}
+
+impl Status {
+    /// Check if the AP is enabled.
+    pub fn enabled(&self) -> bool {
+        match self {
+            Self::V1(csw) => csw.DeviceEn,
+            Self::V2(csw) => csw.DeviceEn,
+        }
+    }
+}
+
+impl From<ap_v1::memory_ap::registers::CSW> for Status {
+    fn from(csw: ap_v1::memory_ap::registers::CSW) -> Self {
+        Self::V1(csw)
+    }
+}
+
+impl From<ap_v2::registers::CSW> for Status {
+    fn from(csw: ap_v2::registers::CSW) -> Self {
+        Self::V2(csw)
+    }
+}
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
 pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
-    /// The underlying MemoryAp.
-    fn ap(&mut self) -> &mut MemoryAp;
+    /// The underlying MemoryAp address.
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress;
 
     /// The underlying memory AP’s base address.
     fn base_address(&mut self) -> Result<u64, ArmError>;
@@ -30,7 +61,7 @@ pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
     fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError>;
 
     /// Get the current value of the CSW reflected in this probe.
-    fn generic_status(&mut self) -> Result<registers::CSW, ArmError>;
+    fn generic_status(&mut self) -> Result<Status, ArmError>;
 
     /// Inform the probe of the [`CoreStatus`] of the chip/core attached to
     /// the probe.

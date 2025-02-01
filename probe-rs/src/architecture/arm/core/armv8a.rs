@@ -1683,8 +1683,8 @@ impl MemoryInterface for Armv8a<'_> {
 mod test {
     use crate::{
         architecture::arm::{
-            ap::memory_ap::MemoryAp, communication_interface::SwdSequence,
-            sequences::DefaultArmSequence,
+            communication_interface::SwdSequence, sequences::DefaultArmSequence,
+            FullyQualifiedApAddress,
         },
         probe::DebugProbeError,
     };
@@ -1833,7 +1833,7 @@ mod test {
     }
 
     impl ArmMemoryInterface for MockProbe {
-        fn ap(&mut self) -> &mut MemoryAp {
+        fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
             todo!()
         }
 
@@ -1859,9 +1859,7 @@ mod test {
             })
         }
 
-        fn generic_status(
-            &mut self,
-        ) -> Result<crate::architecture::arm::ap::memory_ap::registers::CSW, ArmError> {
+        fn generic_status(&mut self) -> Result<crate::architecture::arm::memory::Status, ArmError> {
             Err(ArmError::Probe(DebugProbeError::NotImplemented {
                 function_name: "generic_status",
             }))

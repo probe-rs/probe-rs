@@ -6,15 +6,16 @@ mod usb_interface;
 
 use crate::{
     architecture::arm::{
-        ap::{
+        ap_v1::{
             memory_ap::{MemoryAp, MemoryApType},
             valid_access_ports, AccessPortType,
         },
         communication_interface::{ArmProbeInterface, SwdSequence, UninitializedArmProbe},
+        dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        valid_32bit_arm_address, ArmError, DapAccess, DpAddress, FullyQualifiedApAddress, Pins,
-        SwoAccess, SwoConfig, SwoMode,
+        valid_32bit_arm_address, ArmError, DapAccess, FullyQualifiedApAddress, Pins, SwoAccess,
+        SwoConfig, SwoMode,
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
@@ -1343,11 +1344,19 @@ impl StlinkArmDebug {
         Ok(())
     }
 
-    fn select_dp_and_dp_bank(&mut self, dp: DpAddress, address: u8) -> Result<(), ArmError> {
+    fn select_dp_and_dp_bank(
+        &mut self,
+        dp: DpAddress,
+        address: DpRegisterAddress,
+    ) -> Result<(), ArmError> {
         self.select_dp(dp)?;
 
-        if address & 0xf0 != 0 && !self.probe.supports_dp_bank_selection() {
-            tracing::warn!("Trying to access DP register at address {address:#x}, which is not supported on ST-Links.");
+        let Some(bank) = address.bank else {
+            return Ok(());
+        };
+
+        if bank != 0 && !self.probe.supports_dp_bank_selection() {
+            tracing::warn!("Trying to access DP register at address {address:#x?}, which is not supported on ST-Links.");
             return Err(DebugProbeError::from(StlinkError::BanksNotAllowedOnDPRegister).into());
         }
 
@@ -1368,9 +1377,13 @@ impl StlinkArmDebug {
 
 impl DapAccess for StlinkArmDebug {
     #[tracing::instrument(skip(self), fields(value))]
-    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
+    fn read_raw_dp_register(
+        &mut self,
+        dp: DpAddress,
+        address: DpRegisterAddress,
+    ) -> Result<u32, ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
-        let result = self.probe.read_register(DP_PORT, address)?;
+        let result = self.probe.read_register(DP_PORT, address.into())?;
 
         tracing::Span::current().record("value", result);
 
@@ -1383,12 +1396,12 @@ impl DapAccess for StlinkArmDebug {
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
-        address: u8,
+        address: DpRegisterAddress,
         value: u32,
     ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
 
-        self.probe.write_register(DP_PORT, address, value)?;
+        self.probe.write_register(DP_PORT, address.into(), value)?;
         Ok(())
     }
 
@@ -1785,8 +1798,8 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
         self.current_ap.base_address(self.probe)
     }
 
-    fn ap(&mut self) -> &mut MemoryAp {
-        &mut self.current_ap
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        self.current_ap.ap_address().clone()
     }
 
     fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
@@ -1801,9 +1814,7 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
         Ok(self.probe)
     }
 
-    fn generic_status(
-        &mut self,
-    ) -> Result<crate::architecture::arm::ap::memory_ap::registers::CSW, ArmError> {
+    fn generic_status(&mut self) -> Result<crate::architecture::arm::memory::Status, ArmError> {
         Err(ArmError::Probe(DebugProbeError::InterfaceNotAvailable {
             interface_name: "ARM",
         }))

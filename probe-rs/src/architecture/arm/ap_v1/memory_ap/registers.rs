@@ -1,4 +1,4 @@
-use crate::architecture::arm::communication_interface::RegisterParseError;
+use crate::architecture::arm::RegisterParseError;
 
 /// The unit of data that is transferred in one transfer via the DRW commands.
 ///

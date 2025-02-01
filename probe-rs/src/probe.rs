@@ -17,7 +17,7 @@ use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
     communication_interface::{DapProbe, UninitializedArmProbe},
-    PortType, SwoAccess,
+    RegisterAddress, SwoAccess,
 };
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
@@ -78,23 +78,23 @@ impl std::str::FromStr for WireProtocol {
 ///
 /// Mostly used internally but returned in DebugProbeError to indicate
 /// which batched command actually encountered the error.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum BatchCommand {
     /// Read from a port
-    Read(PortType, u16),
+    Read(RegisterAddress),
 
     /// Write to a port
-    Write(PortType, u16, u32),
+    Write(RegisterAddress, u32),
 }
 
 impl fmt::Display for BatchCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            BatchCommand::Read(port, addr) => {
-                write!(f, "Read(port={port:?}, addr={addr})")
+        match self {
+            BatchCommand::Read(port) => {
+                write!(f, "Read(port={port:?})")
             }
-            BatchCommand::Write(port, addr, data) => {
-                write!(f, "Write(port={port:?}, addr={addr}, data={data:#010x})")
+            BatchCommand::Write(port, data) => {
+                write!(f, "Write(port={port:?}, data={data:#010x})")
             }
         }
     }

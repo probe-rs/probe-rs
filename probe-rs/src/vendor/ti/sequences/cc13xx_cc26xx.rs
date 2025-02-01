@@ -2,12 +2,11 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::architecture::arm::ap::AccessPortType;
 use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::communication_interface::DapProbe;
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
-use crate::architecture::arm::{ArmError, DpAddress};
+use crate::architecture::arm::{dp::DpAddress, ArmError};
 use crate::probe::{DebugProbeError, WireProtocol};
 use crate::MemoryMappedRegister;
 
@@ -362,7 +361,7 @@ impl ArmDebugSequence for CC13xxCC26xx {
         std::thread::sleep(Duration::from_millis(1));
 
         // Re-initializing the core(s) is on us.
-        let ap = probe.ap().ap_address().clone();
+        let ap = probe.fully_qualified_address();
         let interface = probe.get_arm_probe_interface()?;
         interface.reinitialize()?;
 

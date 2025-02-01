@@ -13,7 +13,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -41,7 +41,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -72,7 +72,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -100,7 +100,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -131,7 +131,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -159,7 +159,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -189,7 +189,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -222,7 +222,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -250,7 +250,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -278,7 +278,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -311,7 +311,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -339,7 +339,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -367,7 +367,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -400,7 +400,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -428,7 +428,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -456,7 +456,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -487,7 +487,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -517,7 +517,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -547,7 +547,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -587,7 +587,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -630,7 +630,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -658,7 +658,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -686,7 +686,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -719,7 +719,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -747,7 +747,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -775,7 +775,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -808,7 +808,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -836,7 +836,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -864,7 +864,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -896,7 +896,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -924,7 +924,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -955,7 +955,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -995,7 +995,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1035,7 +1035,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1068,7 +1068,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1096,7 +1096,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1124,7 +1124,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1157,7 +1157,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1185,7 +1185,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1213,7 +1213,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1245,7 +1245,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1273,7 +1273,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1305,7 +1305,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1343,7 +1343,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1371,7 +1371,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1402,7 +1402,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1442,7 +1442,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1472,7 +1472,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1512,7 +1512,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1555,7 +1555,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1583,7 +1583,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1611,7 +1611,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1644,7 +1644,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1672,7 +1672,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1700,7 +1700,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1733,7 +1733,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1761,7 +1761,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1789,7 +1789,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -1820,7 +1820,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1850,7 +1850,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1880,7 +1880,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1920,7 +1920,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1963,7 +1963,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -1991,7 +1991,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2019,7 +2019,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2052,7 +2052,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2080,7 +2080,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2108,7 +2108,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2141,7 +2141,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2169,7 +2169,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2197,7 +2197,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2228,7 +2228,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2256,7 +2256,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2287,7 +2287,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2327,7 +2327,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2368,7 +2368,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2401,7 +2401,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2429,7 +2429,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2457,7 +2457,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2490,7 +2490,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2518,7 +2518,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2546,7 +2546,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2578,7 +2578,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2606,7 +2606,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2637,7 +2637,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2675,7 +2675,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2706,7 +2706,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2746,7 +2746,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2776,7 +2776,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2816,7 +2816,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2857,7 +2857,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2887,7 +2887,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2928,7 +2928,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -2956,7 +2956,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -2987,7 +2987,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3027,7 +3027,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3069,7 +3069,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3097,7 +3097,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -3128,7 +3128,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3166,7 +3166,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -3197,7 +3197,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3237,7 +3237,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3267,7 +3267,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1
@@ -3307,7 +3307,7 @@ variants:
   - name: main
     type: armv7m
     core_access_options: !Arm
-      ap: 0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: BANK_1

@@ -2,13 +2,13 @@ use std::any::Any;
 
 use crate::{
     architecture::arm::{
-        ap::{
-            memory_ap::{registers, DataSize, MemoryAp, MemoryApType},
-            ApAccess,
+        ap_v1::{
+            memory_ap::{DataSize, MemoryAp, MemoryApType},
+            AccessPortType, ApAccess,
         },
         communication_interface::{FlushableArmAccess, Initialized},
         dp::DpAccess,
-        memory::ArmMemoryInterface,
+        memory::{ArmMemoryInterface, Status},
         ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
     },
     probe::DebugProbeError,
@@ -518,9 +518,8 @@ where
         self.memory_ap.base_address(self.interface)
     }
 
-    /// Returns the underlying [`MemoryAp`].
-    fn ap(&mut self) -> &mut MemoryAp {
-        &mut self.memory_ap
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        self.memory_ap.ap_address().clone()
     }
 
     fn get_swd_sequence(
@@ -542,7 +541,7 @@ where
         Ok(self.interface)
     }
 
-    fn generic_status(&mut self) -> Result<registers::CSW, ArmError> {
+    fn generic_status(&mut self) -> Result<Status, ArmError> {
         // TODO: This assumes that the base type is `ArmCommunicationInterface`,
         // which will fail if something else implements `ADIMemoryInterface`.
         let Some(iface) = (self.interface as &mut dyn Any)
@@ -552,7 +551,8 @@ where
                 "Not an ArmCommunicationInterface".to_string(),
             )));
         };
-        self.memory_ap.generic_status(iface)
+
+        Ok(Status::V1(self.memory_ap.generic_status(iface)?))
     }
 
     fn update_core_status(&mut self, state: CoreStatus) {
@@ -575,7 +575,7 @@ mod tests {
 
     use crate::{
         architecture::arm::{
-            ap::memory_ap::mock::MockMemoryAp, memory::adi_v5_memory_interface::ADIMemoryInterface,
+            ap_v1::memory_ap::mock::MockMemoryAp, memory::ADIMemoryInterface,
             FullyQualifiedApAddress,
         },
         MemoryInterface,
