@@ -58,7 +58,7 @@ use crate::{
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
         Key,
     },
-    util::rtt::client::RttClient,
+    util::rtt::{client::RttClient, RttChannelConfig},
     FormatOptions,
 };
 
@@ -556,11 +556,13 @@ impl SessionInterface {
     pub async fn create_rtt_client(
         &self,
         scan_regions: ScanRegion,
+        config: Vec<RttChannelConfig>,
     ) -> anyhow::Result<RttClientData> {
         self.client
             .send_resp::<CreateRttClientEndpoint, _>(&CreateRttClientRequest {
                 sessid: self.sessid,
                 scan_regions,
+                config,
             })
             .await
     }

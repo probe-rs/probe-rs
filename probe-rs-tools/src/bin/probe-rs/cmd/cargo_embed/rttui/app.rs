@@ -131,7 +131,7 @@ impl App {
                 .any(|tab| tab.down_channel == Some(number))
             {
                 tab_config.push(TabConfig {
-                    up_channel: if up_channels.len() > number {
+                    up_channel: if up_channels.len() as u32 > number {
                         number
                     } else {
                         0
@@ -151,7 +151,7 @@ impl App {
             if tab.hide {
                 continue;
             }
-            let Some(up_channel) = up_channels.get(tab.up_channel) else {
+            let Some(up_channel) = up_channels.get(tab.up_channel as usize) else {
                 tracing::warn!(
                     "Configured up channel {} does not exist, skipping tab",
                     tab.up_channel

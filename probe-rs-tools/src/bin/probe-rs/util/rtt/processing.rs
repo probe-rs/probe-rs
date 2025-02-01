@@ -64,7 +64,7 @@ impl RttDecoder {
 
     pub fn process(
         &mut self,
-        number: usize,
+        number: u32,
         buffer: &[u8],
         collector: &mut impl RttDataHandler,
     ) -> Result<(), Error> {
@@ -116,7 +116,7 @@ impl RttDecoder {
 }
 
 pub trait RttDataHandler {
-    fn on_binary_data(&mut self, channel: usize, data: &[u8]) -> Result<(), Error> {
+    fn on_binary_data(&mut self, channel: u32, data: &[u8]) -> Result<(), Error> {
         let mut formatted_data = String::with_capacity(data.len() * 4);
         for element in data {
             // Width of 4 allows 0xFF to be printed.
@@ -125,7 +125,7 @@ pub trait RttDataHandler {
         self.on_string_data(channel, formatted_data)
     }
 
-    fn on_string_data(&mut self, channel: usize, data: String) -> Result<(), Error>;
+    fn on_string_data(&mut self, channel: u32, data: String) -> Result<(), Error>;
 }
 
 pub struct DefmtStateInner {
