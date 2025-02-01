@@ -82,7 +82,7 @@ impl RttClient {
         Ok(self.target.is_some())
     }
 
-    pub fn poll_channel(&mut self, core: &mut Core, channel: usize) -> Result<&[u8], Error> {
+    pub fn poll_channel(&mut self, core: &mut Core, channel: u32) -> Result<&[u8], Error> {
         self.try_attach(core)?;
 
         if let Some(ref mut target) = self.target {
@@ -118,7 +118,7 @@ impl RttClient {
     pub(crate) fn write_down_channel(
         &mut self,
         core: &mut Core,
-        channel: usize,
+        channel: u32,
         input: impl AsRef<[u8]>,
     ) -> Result<(), Error> {
         self.try_attach(core)?;

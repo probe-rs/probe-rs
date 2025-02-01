@@ -37,6 +37,9 @@ pub struct CreateRttClientRequest {
 
     /// Scan the memory to find the RTT control block
     pub scan_regions: ScanRegion,
+
+    /// Channel configuration.
+    pub config: Vec<RttChannelConfig>,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -53,12 +56,6 @@ pub async fn create_rtt_client(
 ) -> CreateRttClientResponse {
     let session = ctx.session(request.sessid).await;
 
-    let mut rtt_config = RttConfig::default();
-    rtt_config.channels.push(RttChannelConfig {
-        channel_number: Some(0),
-        ..Default::default()
-    });
-
     let rtt_scan_regions = match request.scan_regions {
         ScanRegion::Ram => rtt::ScanRegion::Ram,
         ScanRegion::TargetDefault => session.target().rtt_scan_regions.clone(),
@@ -68,7 +65,13 @@ pub async fn create_rtt_client(
         ScanRegion::Exact(addr) => rtt::ScanRegion::Exact(addr),
     };
 
-    let client = RttClient::new(rtt_config, rtt_scan_regions);
+    let client = RttClient::new(
+        RttConfig {
+            enabled: true,
+            channels: request.config,
+        },
+        rtt_scan_regions,
+    );
 
     Ok(RttClientData {
         handle: ctx.store_object(client).await,

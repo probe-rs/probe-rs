@@ -4,11 +4,13 @@ use figment::{
     Figment,
 };
 use probe_rs::probe::WireProtocol;
-use probe_rs::rtt::ChannelMode;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
-use crate::util::{logging::LevelFilter, rtt::DataFormat};
+use crate::util::{
+    logging::LevelFilter,
+    rtt::{ChannelMode, DataFormat},
+};
 
 use super::rttui::tab::TabConfig;
 
@@ -76,7 +78,7 @@ pub struct General {
 
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UpChannelConfig {
-    pub channel: usize,
+    pub channel: u32,
     #[serde(default)]
     pub mode: Option<ChannelMode>,
     #[serde(default)]
@@ -96,7 +98,7 @@ pub struct UpChannelConfig {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DownChannelConfig {
-    pub channel: usize,
+    pub channel: u32,
     #[serde(default)]
     pub mode: Option<ChannelMode>,
 }
@@ -125,7 +127,7 @@ pub struct Rtt {
 
 impl Rtt {
     /// Returns the configuration for the specified up channel number, if it exists.
-    pub fn up_channel_config(&self, channel_number: usize) -> Option<&UpChannelConfig> {
+    pub fn up_channel_config(&self, channel_number: u32) -> Option<&UpChannelConfig> {
         self.up_channels
             .iter()
             .find(|ch| ch.channel == channel_number)

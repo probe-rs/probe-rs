@@ -1,5 +1,5 @@
-pub use probe_rs::rtt::ChannelMode;
-use probe_rs::rtt::{DownChannel, Error, Rtt, UpChannel};
+use postcard_schema::Schema;
+use probe_rs::rtt::{self, DownChannel, Error, Rtt, UpChannel};
 use probe_rs::{Core, MemoryInterface};
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,9 @@ fn default_show_timestamps() -> bool {
     true
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Default, docsplay::Display)]
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, Default, docsplay::Display, Serialize, Deserialize, Schema,
+)]
 pub enum DataFormat {
     #[default]
     /// string
@@ -24,8 +26,45 @@ pub enum DataFormat {
     Defmt,
 }
 
+/// Specifies what to do when a channel doesn't have enough buffer space for a complete write on the
+/// target side.
+#[derive(Clone, Copy, Eq, PartialEq, Debug, Serialize, Deserialize, Schema)]
+#[repr(u32)]
+pub enum ChannelMode {
+    /// Skip writing the data completely if it doesn't fit in its entirety.
+    NoBlockSkip = 0,
+
+    /// Write as much as possible of the data and ignore the rest.
+    NoBlockTrim = 1,
+
+    /// Block (spin) if the buffer is full. Note that if the application writes within a critical
+    /// section, using this mode can cause the application to freeze if the buffer becomes full and
+    /// is not read by the host.
+    BlockIfFull = 2,
+}
+
+impl From<ChannelMode> for rtt::ChannelMode {
+    fn from(mode: ChannelMode) -> Self {
+        match mode {
+            ChannelMode::NoBlockSkip => rtt::ChannelMode::NoBlockSkip,
+            ChannelMode::NoBlockTrim => rtt::ChannelMode::NoBlockTrim,
+            ChannelMode::BlockIfFull => rtt::ChannelMode::BlockIfFull,
+        }
+    }
+}
+
+impl From<rtt::ChannelMode> for ChannelMode {
+    fn from(mode: rtt::ChannelMode) -> Self {
+        match mode {
+            rtt::ChannelMode::NoBlockSkip => ChannelMode::NoBlockSkip,
+            rtt::ChannelMode::NoBlockTrim => ChannelMode::NoBlockTrim,
+            rtt::ChannelMode::BlockIfFull => ChannelMode::BlockIfFull,
+        }
+    }
+}
+
 /// The initial configuration for RTT (Real Time Transfer). This configuration is complimented with the additional information specified for each of the channels in `RttChannel`.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, Schema)]
 pub struct RttConfig {
     #[serde(default, rename = "rttEnabled")]
     pub enabled: bool,
@@ -37,7 +76,7 @@ pub struct RttConfig {
 
 impl RttConfig {
     /// Returns the configuration for the specified channel number, if it exists.
-    pub fn channel_config(&self, channel_number: usize) -> Option<&RttChannelConfig> {
+    pub fn channel_config(&self, channel_number: u32) -> Option<&RttChannelConfig> {
         self.channels
             .iter()
             .find(|ch| ch.channel_number == Some(channel_number))
@@ -45,10 +84,10 @@ impl RttConfig {
 }
 
 /// The User specified configuration for each active RTT Channel.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Schema)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
-    pub channel_number: Option<usize>,
+    pub channel_number: Option<u32>,
     #[serde(default)]
     pub data_format: DataFormat,
 
@@ -91,7 +130,7 @@ pub struct RttActiveUpChannel {
 
     /// If set, the original mode of the channel before we first changed it. Upon exit we should do
     /// our best to restore the original mode.
-    original_mode: Option<ChannelMode>,
+    original_mode: Option<rtt::ChannelMode>,
 }
 
 impl RttActiveUpChannel {
@@ -108,7 +147,7 @@ impl RttActiveUpChannel {
         if self.original_mode.is_none() {
             self.original_mode = Some(self.up_channel.mode(core)?);
         }
-        self.up_channel.set_mode(core, mode)
+        self.up_channel.set_mode(core, mode.into())
     }
 
     pub fn channel_name(&self) -> String {
@@ -118,8 +157,8 @@ impl RttActiveUpChannel {
             .unwrap_or_else(|| format!("Unnamed RTT up channel - {}", self.up_channel.number()))
     }
 
-    pub fn number(&self) -> usize {
-        self.up_channel.number()
+    pub fn number(&self) -> u32 {
+        self.up_channel.number() as u32
     }
 
     /// Reads available channel data into the internal buffer.
@@ -159,8 +198,8 @@ impl RttActiveDownChannel {
             .unwrap_or_else(|| format!("Unnamed RTT down channel - {}", self.down_channel.number()))
     }
 
-    pub fn number(&self) -> usize {
-        self.down_channel.number()
+    pub fn number(&self) -> u32 {
+        self.down_channel.number() as u32
     }
 
     pub fn write(&mut self, core: &mut Core<'_>, data: impl AsRef<[u8]>) -> Result<(), Error> {
@@ -196,7 +235,7 @@ impl RttConnection {
         // additional user configuration in a `RttChannelConfig`. If not, apply defaults.
         for channel in rtt.up_channels.into_iter() {
             let channel_config = rtt_config
-                .channel_config(channel.number())
+                .channel_config(channel.number() as u32)
                 .cloned()
                 .unwrap_or_default();
 
@@ -223,19 +262,21 @@ impl RttConnection {
 
     /// Polls the RTT target on all channels and returns available data.
     /// An error on any channel will return an error instead of incomplete data.
-    pub fn poll_channel(&mut self, core: &mut Core, channel: usize) -> Result<(), Error> {
-        if let Some(channel) = self.active_up_channels.get_mut(channel) {
+    pub fn poll_channel(&mut self, core: &mut Core, channel_idx: u32) -> Result<(), Error> {
+        let channel_idx = channel_idx as usize;
+        if let Some(channel) = self.active_up_channels.get_mut(channel_idx) {
             channel.poll(core)
         } else {
-            Err(Error::MissingChannel(channel))
+            Err(Error::MissingChannel(channel_idx))
         }
     }
 
-    pub fn channel_data(&self, channel: usize) -> Result<&[u8], Error> {
-        if let Some(channel) = self.active_up_channels.get(channel) {
+    pub fn channel_data(&self, channel_idx: u32) -> Result<&[u8], Error> {
+        let channel_idx = channel_idx as usize;
+        if let Some(channel) = self.active_up_channels.get(channel_idx) {
             Ok(channel.buffered_data())
         } else {
-            Err(Error::MissingChannel(channel))
+            Err(Error::MissingChannel(channel_idx))
         }
     }
 
@@ -243,13 +284,14 @@ impl RttConnection {
     pub fn write_down_channel(
         &mut self,
         core: &mut Core,
-        channel: usize,
+        channel_idx: u32,
         data: impl AsRef<[u8]>,
     ) -> Result<(), Error> {
-        if let Some(channel) = self.active_down_channels.get_mut(channel) {
+        let channel_idx = channel_idx as usize;
+        if let Some(channel) = self.active_down_channels.get_mut(channel_idx) {
             channel.write(core, data)
         } else {
-            Err(Error::MissingChannel(channel))
+            Err(Error::MissingChannel(channel_idx))
         }
     }
 

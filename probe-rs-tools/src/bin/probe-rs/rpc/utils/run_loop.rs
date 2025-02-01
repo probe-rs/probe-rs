@@ -125,7 +125,7 @@ impl RunLoop<'_> {
             if let Some(ref mut rtt_client) = self.rtt_client {
                 _ = rtt_client.try_attach(core);
                 for channel in 0..rtt_client.up_channels().len() {
-                    let bytes = rtt_client.poll_channel(core, channel)?;
+                    let bytes = rtt_client.poll_channel(core, channel as u32)?;
                     if !bytes.is_empty() {
                         had_rtt_data = true;
                         rtt_callback(channel as u32, bytes.to_vec())?;

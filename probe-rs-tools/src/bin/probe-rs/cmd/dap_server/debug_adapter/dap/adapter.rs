@@ -1773,7 +1773,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Send a custom `probe-rs-rtt-channel-config` event to the MS DAP Client, to create a window for a specific RTT channel.
     pub fn rtt_window(
         &mut self,
-        channel_number: usize,
+        channel_number: u32,
         channel_name: String,
         data_format: rtt::DataFormat,
     ) -> bool {
@@ -1790,7 +1790,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     /// Send a custom `probe-rs-rtt-data` event to the MS DAP Client, to
-    pub fn rtt_output(&mut self, channel_number: usize, rtt_data: String) -> bool {
+    pub fn rtt_output(&mut self, channel_number: u32, rtt_data: String) -> bool {
         let Ok(event_body) = serde_json::to_value(RttDataEventBody {
             channel_number,
             data: rtt_data,

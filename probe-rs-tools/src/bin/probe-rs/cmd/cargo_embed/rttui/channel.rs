@@ -13,7 +13,7 @@ pub enum ChannelData {
 }
 
 impl RttDataHandler for (&mut Option<TcpPublisher>, &mut ChannelData) {
-    fn on_string_data(&mut self, _channel: usize, data: String) -> Result<(), Error> {
+    fn on_string_data(&mut self, _channel: u32, data: String) -> Result<(), Error> {
         if let Some(ref mut stream) = self.0 {
             stream.send(data.as_bytes());
         }
@@ -26,7 +26,7 @@ impl RttDataHandler for (&mut Option<TcpPublisher>, &mut ChannelData) {
         Ok(())
     }
 
-    fn on_binary_data(&mut self, _channel: usize, incoming: &[u8]) -> Result<(), Error> {
+    fn on_binary_data(&mut self, _channel: u32, incoming: &[u8]) -> Result<(), Error> {
         if let Some(ref mut stream) = self.0 {
             stream.send(incoming);
         }
@@ -41,7 +41,7 @@ impl RttDataHandler for (&mut Option<TcpPublisher>, &mut ChannelData) {
 }
 
 pub struct UpChannel {
-    channel_number: usize,
+    channel_number: u32,
     tcp_stream: Option<TcpPublisher>,
     channel_name: String,
     data_format: RttDecoder,
