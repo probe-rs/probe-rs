@@ -1,3 +1,5 @@
+use time::UtcOffset;
+
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
 use crate::util::cli::{self, rtt_client};
@@ -10,7 +12,7 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
+    pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
         let session =
             cli::attach_probe(&client, self.run.shared_options.probe_options, true).await?;
 
@@ -23,7 +25,7 @@ impl Cmd {
             },
             self.run.shared_options.log_format,
             !self.run.shared_options.no_location,
-            None,
+            Some(utc_offset),
         )
         .await?;
 

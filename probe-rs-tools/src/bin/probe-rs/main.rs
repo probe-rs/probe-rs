@@ -97,7 +97,7 @@ struct Cli {
 }
 
 impl Cli {
-    async fn run(self, client: RpcClient, _config: Config) -> Result<()> {
+    async fn run(self, client: RpcClient, _config: Config, utc_offset: UtcOffset) -> Result<()> {
         let lister = Lister::new();
         match self.subcommand {
             Subcommand::DapServer { .. } => unreachable!(),
@@ -109,8 +109,8 @@ impl Cli {
             Subcommand::Reset(cmd) => cmd.run(client).await,
             Subcommand::Debug(cmd) => cmd.run(&lister),
             Subcommand::Download(cmd) => cmd.run(client).await,
-            Subcommand::Run(cmd) => cmd.run(client).await,
-            Subcommand::Attach(cmd) => cmd.run(client).await,
+            Subcommand::Run(cmd) => cmd.run(client, utc_offset).await,
+            Subcommand::Attach(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Verify(cmd) => cmd.run(client).await,
             Subcommand::Erase(cmd) => cmd.run(client).await,
             Subcommand::Trace(cmd) => cmd.run(&lister),
@@ -465,7 +465,7 @@ async fn main() -> Result<()> {
             "The subcommand is not supported in remote mode."
         );
 
-        matches.run(client, config).await?;
+        matches.run(client, config, utc_offset).await?;
         // TODO: handle the report
         return Ok(());
     }
@@ -476,7 +476,7 @@ async fn main() -> Result<()> {
 
     // Run the command locally.
     let client = RpcClient::new_local_from_wire(tx, rx);
-    let result = matches.run(client, config).await;
+    let result = matches.run(client, config, utc_offset).await;
 
     // Wait for the server to shut down
     _ = handle.await.unwrap();

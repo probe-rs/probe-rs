@@ -11,6 +11,7 @@ use libtest_mimic::{Arguments, FormatSetting};
 use probe_rs::flashing::FileDownloadError;
 use std::fs::File;
 use std::io::Read;
+use time::UtcOffset;
 
 /// Options only used in normal run mode
 #[derive(Debug, clap::Parser, Clone)]
@@ -157,7 +158,7 @@ pub struct SharedOptions {
 }
 
 impl Cmd {
-    pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
+    pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
         // Detect run mode based on ELF file
         let run_mode = detect_run_mode(&self)?;
 
@@ -172,7 +173,7 @@ impl Cmd {
             },
             self.shared_options.log_format,
             !self.shared_options.no_location,
-            None,
+            Some(utc_offset),
         )
         .await?;
 
