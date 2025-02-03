@@ -2,13 +2,15 @@ use std::any::Any;
 
 use crate::{
     architecture::arm::{
+        ap::DataSize,
+        ap::CSW,
         ap_v1::{
-            memory_ap::{DataSize, MemoryAp, MemoryApType},
+            memory_ap::{MemoryAp, MemoryApType},
             AccessPortType, ApAccess,
         },
         communication_interface::{FlushableArmAccess, Initialized},
         dp::DpAccess,
-        memory::{ArmMemoryInterface, Status},
+        memory::ArmMemoryInterface,
         ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
     },
     probe::DebugProbeError,
@@ -541,7 +543,7 @@ where
         Ok(self.interface)
     }
 
-    fn generic_status(&mut self) -> Result<Status, ArmError> {
+    fn generic_status(&mut self) -> Result<CSW, ArmError> {
         // TODO: This assumes that the base type is `ArmCommunicationInterface`,
         // which will fail if something else implements `ADIMemoryInterface`.
         let Some(iface) = (self.interface as &mut dyn Any)
@@ -552,7 +554,7 @@ where
             )));
         };
 
-        Ok(Status::V1(self.memory_ap.generic_status(iface)?))
+        Ok(self.memory_ap.generic_status(iface)?)
     }
 
     fn update_core_status(&mut self, state: CoreStatus) {

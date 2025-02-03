@@ -1,15 +1,14 @@
-use crate::architecture::arm::ap_v1::memory_ap::registers::{AddressIncrement, CSW};
-use crate::architecture::arm::ap_v1::memory_ap::{DataSize, MemoryAp, MemoryApType};
-use crate::architecture::arm::ap_v1::{valid_access_ports, AccessPortType};
-use crate::architecture::arm::communication_interface::SwdSequence;
-use crate::architecture::arm::dp::{Abort, Ctrl, DebugPortError, DpAccess, SelectV1};
-use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::{
-    communication_interface::UninitializedArmProbe, dp::DpRegisterAddress,
-    sequences::ArmDebugSequence, ArmProbeInterface,
-};
-use crate::architecture::arm::{
-    dp::DpAddress, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
+    ap::{AddressIncrement, DataSize, CSW},
+    ap_v1::{
+        memory_ap::{MemoryAp, MemoryApType},
+        valid_access_ports, AccessPortType,
+    },
+    communication_interface::{SwdSequence, UninitializedArmProbe},
+    dp::{Abort, Ctrl, DebugPortError, DpAccess, DpAddress, DpRegisterAddress, SelectV1},
+    memory::ArmMemoryInterface,
+    sequences::ArmDebugSequence,
+    ArmProbeInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
 };
 use crate::probe::blackmagic::{Align, BlackMagicProbe, ProtocolVersion, RemoteCommand};
 use crate::probe::{ArmError, DebugProbeError, Probe};
@@ -596,12 +595,11 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
         Ok(self.probe)
     }
 
-    fn generic_status(&mut self) -> Result<crate::architecture::arm::memory::Status, ArmError> {
+    fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
         let csw = CSW::try_from(self.csw)
             .map_err(|e| ArmError::DebugPort(DebugPortError::RegisterParse(e)))?;
 
-        // TODO: Need to support ADIv6 for the black magic probe.
-        Ok(crate::architecture::arm::memory::Status::V1(csw))
+        Ok(csw)
     }
 }
 

@@ -287,7 +287,7 @@ impl ArmMemoryInterface for &mut MockCore {
         todo!()
     }
 
-    fn generic_status(&mut self) -> Result<crate::architecture::arm::memory::Status, ArmError> {
+    fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
         todo!()
     }
 

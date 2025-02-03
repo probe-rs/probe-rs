@@ -244,7 +244,7 @@ impl MIMXRT117x {
 
         loop {
             match probe.generic_status() {
-                Ok(csw) if csw.enabled() => {
+                Ok(csw) if csw.SDeviceEn => {
                     tracing::debug!("Device enabled after {}ms with {errors} errors and {disables} invalid statuses", start.elapsed().as_millis());
                     return Ok(());
                 }

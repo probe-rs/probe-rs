@@ -1,8 +1,6 @@
 use crate::architecture::arm::{
-    ap_v1::{
-        memory_ap::{amba_ahb3::CSW, registers::CFG, AddressIncrement, DataSize, DRW, TAR},
-        ApClass, ApType, Register, IDR,
-    },
+    ap::{AddressIncrement, ApClass, ApType, ApV1Register, DataSize, CFG, DRW, IDR, TAR},
+    ap_v1::memory_ap::amba_ahb3::CSW,
     communication_interface::FlushableArmAccess,
     dp::{DpAddress, DpRegisterAddress},
     ArmError, DapAccess,

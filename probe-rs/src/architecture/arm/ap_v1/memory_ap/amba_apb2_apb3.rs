@@ -1,9 +1,8 @@
 use crate::architecture::arm::{
-    ap_v1::{AccessPortType, ApAccess, ApRegAccess, Register},
+    ap::{define_ap_register, AddressIncrement, ApV1Register, DataSize, CFG},
+    ap_v1::{AccessPortType, ApAccess, ApRegAccess},
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
-
-use super::{registers::AddressIncrement, DataSize};
 
 /// Memory AP
 ///
@@ -13,7 +12,7 @@ use super::{registers::AddressIncrement, DataSize};
 pub struct AmbaApb2Apb3 {
     address: FullyQualifiedApAddress,
     csw: CSW,
-    cfg: super::registers::CFG,
+    cfg: CFG,
 }
 
 impl AmbaApb2Apb3 {
@@ -23,7 +22,7 @@ impl AmbaApb2Apb3 {
         address: FullyQualifiedApAddress,
     ) -> Result<Self, ArmError> {
         let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
-        let cfg = probe.read_raw_ap_register(&address, super::registers::CFG::ADDRESS)?;
+        let cfg = probe.read_raw_ap_register(&address, CFG::ADDRESS)?;
 
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
 
@@ -42,7 +41,7 @@ impl super::MemoryApType for AmbaApb2Apb3 {
     type CSW = CSW;
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
-        const { assert!(super::registers::CSW::ADDRESS == CSW::ADDRESS) };
+        const { assert!(crate::architecture::arm::ap::CSW::ADDRESS == CSW::ADDRESS) };
         self.csw = probe.read_ap_register(self)?;
         Ok(self.csw)
     }

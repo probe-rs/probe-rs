@@ -1,15 +1,14 @@
 use crate::{
     architecture::arm::{
-        ap_v2::registers::{DataSize, Register, CSW, DRW, TAR, TAR2},
+        ap::{ApV2Register, DataSize, BASE, BASE2, CSW, DRW, TAR, TAR2},
         communication_interface::SwdSequence,
-        memory::{ArmMemoryInterface, Status},
+        memory::ArmMemoryInterface,
         ApAddress, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
     },
     probe::DebugProbeError,
     MemoryInterface,
 };
 
-use super::registers::{BASE, BASE2};
 use super::MaybeOwned;
 
 pub struct MemoryAccessPortInterface<'iface> {
@@ -223,11 +222,11 @@ impl ArmMemoryInterface for MemoryAccessPortInterface<'_> {
         self.iface.get_dap_access()
     }
 
-    fn generic_status(&mut self) -> Result<Status, ArmError> {
+    fn generic_status(&mut self) -> Result<CSW, ArmError> {
         let mut csw_raw = [0u32];
         self.iface
             .read_32(self.base + u64::from(CSW::ADDRESS), &mut csw_raw)?;
         let csw = CSW::try_from(csw_raw[0])?;
-        Ok(Status::V2(csw))
+        Ok(csw)
     }
 }
