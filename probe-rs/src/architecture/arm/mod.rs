@@ -1,7 +1,7 @@
 //! All the interface bits for ARM.
 
 #[macro_use]
-pub(crate) mod ap;
+pub mod ap;
 pub mod ap_v1;
 pub mod ap_v2;
 pub(crate) mod assembly;

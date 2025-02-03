@@ -1,3 +1,5 @@
+//! Defines types and registers for ADIv5 and ADIv6 access ports (APs).
+
 use crate::architecture::arm::RegisterParseError;
 
 /// The unit of data that is transferred in one transfer via the DRW commands.
@@ -23,7 +25,7 @@ pub enum DataSize {
 }
 
 impl DataSize {
-    pub fn to_byte_count(self) -> usize {
+    pub(crate) fn to_byte_count(self) -> usize {
         match self {
             DataSize::U8 => 1,
             DataSize::U16 => 2,
@@ -95,14 +97,6 @@ pub enum BaseAddrFormat {
     ADIv5 = 1,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[allow(dead_code)] // Present is not used yet.
-pub enum DebugEntryState {
-    #[default]
-    NotPresent = 0,
-    Present = 1,
-}
-
 /// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ApClass {
@@ -169,6 +163,7 @@ impl ApType {
     }
 }
 
+/// Base trait for all versions of access port registers
 pub trait RegisterBase:
     Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + std::fmt::Debug
 {
@@ -176,12 +171,13 @@ pub trait RegisterBase:
     const NAME: &'static str;
 }
 
-/// A trait to be implemented on Access Port register types for typed device access.
+/// A trait to be implemented on Access Port (v1) register types for typed device access.
 pub trait ApV1Register: RegisterBase {
     /// The address of the register (in bytes).
     const ADDRESS: u8;
 }
 
+/// A trait to be implemented on Access Port (v2) register types for typed device access.
 pub trait ApV2Register: RegisterBase {
     /// The address of the register when accessed via ApV2
     const ADDRESS: u16;
