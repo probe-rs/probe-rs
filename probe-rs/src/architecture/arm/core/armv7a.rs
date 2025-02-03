@@ -1181,7 +1181,7 @@ mod test {
             })
         }
 
-        fn generic_status(&mut self) -> Result<crate::architecture::arm::memory::Status, ArmError> {
+        fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
             Err(ArmError::Probe(DebugProbeError::NotImplemented {
                 function_name: "generic_status",
             }))

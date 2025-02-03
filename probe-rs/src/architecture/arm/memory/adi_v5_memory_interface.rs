@@ -554,7 +554,7 @@ where
             )));
         };
 
-        Ok(self.memory_ap.generic_status(iface)?)
+        self.memory_ap.generic_status(iface)
     }
 
     fn update_core_status(&mut self, state: CoreStatus) {
