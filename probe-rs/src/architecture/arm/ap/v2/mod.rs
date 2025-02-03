@@ -2,22 +2,14 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::{
-    architecture::arm::memory::{
-        romtable::{RomTable, CORESIGHT_ROM_TABLE_ARCHID},
-        Component, PeripheralType,
-    },
-    probe::DebugProbeError,
-    MemoryInterface,
-};
-
-use super::{
-    ap::CSW,
-    communication_interface::{Initialized, SwdSequence},
+use crate::architecture::arm::{
+    communication_interface::Initialized,
     dp::DpAddress,
-    memory::ArmMemoryInterface,
-    ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess,
-    FullyQualifiedApAddress,
+    memory::{
+        romtable::{RomTable, CORESIGHT_ROM_TABLE_ARCHID},
+        ADIMemoryInterface, ArmMemoryInterface, Component, PeripheralType,
+    },
+    ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, FullyQualifiedApAddress,
 };
 
 mod root_memory_interface;
@@ -25,50 +17,6 @@ use root_memory_interface::RootMemoryInterface;
 
 mod memory_access_port_interface;
 use memory_access_port_interface::MemoryAccessPortInterface;
-
-enum MaybeOwned<'i> {
-    Reference(&'i mut (dyn ArmMemoryInterface + 'i)),
-    Boxed(Box<dyn ArmMemoryInterface + 'i>),
-}
-macro_rules! dispatch {
-    ($name:ident(&mut self, $($arg:ident : $t:ty),*) -> $r:ty) => {
-        fn $name(&mut self, $($arg: $t),*) -> $r {
-            match self {
-                MaybeOwned::Reference(r) => r.$name($($arg),*),
-                MaybeOwned::Boxed(b) => b.$name($($arg),*),
-            }
-        }
-    };
-    ($name:ident(&self, $($arg:ident : $t:ty),*) -> $r:ty) => {
-        fn $name(&self, $($arg: $t),*) -> $r {
-            match self {
-                MaybeOwned::Reference(r) => r.$name($($arg),*),
-                MaybeOwned::Boxed(b) => b.$name($($arg),*),
-            }
-        }
-    }
-}
-impl MemoryInterface<ArmError> for MaybeOwned<'_> {
-    dispatch!(supports_native_64bit_access(&mut self,) -> bool);
-    dispatch!(read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError>);
-    dispatch!(read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError>);
-    dispatch!(read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError>);
-    dispatch!(read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError>);
-    dispatch!(write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError>);
-    dispatch!(write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError>);
-    dispatch!(write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError>);
-    dispatch!(write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError>);
-    dispatch!(supports_8bit_transfers(&self,) -> Result<bool, ArmError>);
-    dispatch!(flush(&mut self,) -> Result<(), ArmError>);
-}
-impl ArmMemoryInterface for MaybeOwned<'_> {
-    dispatch!(fully_qualified_address(&self,) -> FullyQualifiedApAddress);
-    dispatch!(base_address(&mut self,) -> Result<u64, ArmError>);
-    dispatch!(get_swd_sequence(&mut self,) -> Result<&mut dyn SwdSequence, DebugProbeError>);
-    dispatch!(get_arm_probe_interface(&mut self,) -> Result<&mut dyn ArmProbeInterface, DebugProbeError>);
-    dispatch!(get_dap_access(&mut self,) -> Result<&mut dyn DapAccess, DebugProbeError>);
-    dispatch!(generic_status(&mut self,) -> Result<CSW, ArmError>);
-}
 
 /// Deeply scans the debug port and returns a list of the addresses the memory access points discovered.
 pub fn enumerate_access_ports(
@@ -136,7 +84,7 @@ fn process_component<'iface, M: ArmMemoryInterface + 'iface>(
         Component::CoresightComponent(c) if c.peripheral_id().is_of_type(PeripheralType::MemAp) => {
             let base_address = address.clone().append(c.component_address());
 
-            let mut subiface = MemoryAccessPortInterface::new_with_ref(
+            let mut subiface = MemoryAccessPortInterface::new(
                 iface as &mut dyn ArmMemoryInterface,
                 c.component_address(),
             )?;
@@ -170,20 +118,10 @@ pub fn new_memory_interface<'i>(
         unimplemented!("this is only for APv2 addresses")
     };
 
-    new_memory_interface_internal(iface, address.dp(), ap_address.as_slice())
-}
-
-fn new_memory_interface_internal<'i>(
-    iface: &'i mut ArmCommunicationInterface<Initialized>,
-    dp: DpAddress,
-    address: &[u64],
-) -> Result<Box<dyn ArmMemoryInterface + 'i>, ArmError> {
-    Ok(match address {
-        [ap @ .., base] => {
-            let subiface = new_memory_interface_internal(iface, dp, ap)?;
-            Box::new(MemoryAccessPortInterface::boxed(subiface, *base)?)
-                as Box<dyn ArmMemoryInterface + 'i>
-        }
-        [] => Box::new(RootMemoryInterface::new(iface, dp)?) as Box<dyn ArmMemoryInterface + 'i>,
-    })
+    if ap_address.as_slice().is_empty() {
+        Ok(Box::new(RootMemoryInterface::new(iface, address.dp())?)
+            as Box<dyn ArmMemoryInterface + 'i>)
+    } else {
+        Ok(Box::new(ADIMemoryInterface::new(iface, address)?))
+    }
 }

@@ -9,32 +9,19 @@ use crate::{
     MemoryInterface,
 };
 
-use super::MaybeOwned;
-
 pub struct MemoryAccessPortInterface<'iface> {
-    iface: MaybeOwned<'iface>,
+    iface: &'iface mut dyn ArmMemoryInterface,
     base: u64,
 }
+
 impl<'iface> MemoryAccessPortInterface<'iface> {
     /// creates a new `MemoryAccessPortInterface` from a reference to a `dyn ArmMemoryInterface`.
-    pub fn new_with_ref(
+    pub fn new(
         iface: &'iface mut (dyn ArmMemoryInterface + 'iface),
         base: u64,
     ) -> Result<Self, ArmError> {
         // TODO! validity check from the parent root table
-        Ok(Self {
-            iface: MaybeOwned::Reference(iface),
-            base,
-        })
-    }
-
-    /// creates a new `MemoryAccessPortInterface` from a boxed `dyn ArmMemoryInterface`.
-    pub fn boxed(iface: Box<dyn ArmMemoryInterface + 'iface>, base: u64) -> Result<Self, ArmError> {
-        // TODO! validity check from the parent root table
-        Ok(Self {
-            iface: MaybeOwned::Boxed(iface),
-            base,
-        })
+        Ok(Self { iface, base })
     }
 
     fn set_transaction_size(&mut self, size: DataSize) -> Result<(), ArmError> {

@@ -1,7 +1,6 @@
 use crate::{
     architecture::arm::{
-        ap_v1::valid_access_ports,
-        ap_v2,
+        ap,
         dp::{Ctrl, DebugPortId, DebugPortVersion, DpAccess, DPIDR},
         dp::{DpAddress, DpRegisterAddress, Select1, SelectV1, SelectV3},
         memory::{ADIMemoryInterface, ArmMemoryInterface, Component},
@@ -298,7 +297,7 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         let memory_interface = match access_port_address.ap() {
             ApAddress::V1(_) => Box::new(ADIMemoryInterface::new(self, access_port_address)?)
                 as Box<dyn ArmMemoryInterface + '_>,
-            ApAddress::V2(_) => ap_v2::new_memory_interface(self, access_port_address)?,
+            ApAddress::V2(_) => ap::v2::new_memory_interface(self, access_port_address)?,
         };
         Ok(memory_interface)
     }
@@ -317,9 +316,9 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
         match self.select_dp(dp).map(|state| state.debug_port_version)? {
             DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
-                Ok(valid_access_ports(self, dp).into_iter().collect())
+                Ok(ap::v1::valid_access_ports(self, dp).into_iter().collect())
             }
-            DebugPortVersion::DPv3 => ap_v2::enumerate_access_ports(self, dp),
+            DebugPortVersion::DPv3 => ap::v2::enumerate_access_ports(self, dp),
             DebugPortVersion::Unsupported(_) => unreachable!(),
         }
     }

@@ -2,11 +2,9 @@ use std::any::Any;
 
 use crate::{
     architecture::arm::{
-        ap::DataSize,
-        ap::CSW,
-        ap_v1::{
+        ap::{
             memory_ap::{MemoryAp, MemoryApType},
-            AccessPortType, ApAccess,
+            AccessPortType, ApAccess, DataSize, CSW,
         },
         communication_interface::{FlushableArmAccess, Initialized},
         dp::DpAccess,

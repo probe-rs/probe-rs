@@ -1,8 +1,8 @@
 use crate::architecture::arm::{
-    ap::{AddressIncrement, DataSize, CSW},
-    ap_v1::{
+    ap::{
         memory_ap::{MemoryAp, MemoryApType},
-        valid_access_ports, AccessPortType,
+        v1::valid_access_ports,
+        AccessPortType, AddressIncrement, DataSize, CSW,
     },
     communication_interface::{SwdSequence, UninitializedArmProbe},
     dp::{Abort, Ctrl, DebugPortError, DpAccess, DpAddress, DpRegisterAddress, SelectV1},

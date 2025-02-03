@@ -1,6 +1,206 @@
 //! Defines types and registers for ADIv5 and ADIv6 access ports (APs).
 
-use crate::architecture::arm::RegisterParseError;
+pub(crate) mod generic_ap;
+pub(crate) mod memory_ap;
+pub mod v1;
+pub mod v2;
+
+pub use generic_ap::GenericAp;
+pub use memory_ap::MemoryAp;
+pub use memory_ap::MemoryApType;
+
+use crate::architecture::arm::{
+    ArmError, DapAccess, DebugPortError, FullyQualifiedApAddress, RegisterParseError,
+};
+
+use crate::probe::DebugProbeError;
+
+/// Sum-type of the Memory Access Ports.
+#[derive(Debug)]
+pub enum AccessPort {
+    /// Any memory Access Port.
+    // TODO: Allow each memory by types to be specialised with there specific feature
+    MemoryAp(memory_ap::MemoryAp),
+    /// Other Access Ports not used for memory accesses.
+    Other(GenericAp),
+}
+impl AccessPortType for AccessPort {
+    fn ap_address(&self) -> &FullyQualifiedApAddress {
+        match self {
+            AccessPort::MemoryAp(mem_ap) => mem_ap.ap_address(),
+            AccessPort::Other(o) => o.ap_address(),
+        }
+    }
+}
+
+/// Some error during AP handling occurred.
+#[derive(Debug, thiserror::Error)]
+pub enum AccessPortError {
+    /// An error occurred when trying to read a register.
+    #[error("Failed to read register {name} at address {address:#04x}")]
+    RegisterRead {
+        /// The address of the register.
+        address: u64,
+        /// The name if the register.
+        name: &'static str,
+        /// The underlying root error of this access error.
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    /// An error occurred when trying to write a register.
+    #[error("Failed to write register {name} at address {address:#04x}")]
+    RegisterWrite {
+        /// The address of the register.
+        address: u64,
+        /// The name if the register.
+        name: &'static str,
+        /// The underlying root error of this access error.
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    /// Some error with the operation of the APs DP occurred.
+    #[error("Error while communicating with debug port")]
+    DebugPort(#[from] DebugPortError),
+    /// An error occurred when trying to flush batched writes of to the AP.
+    #[error("Failed to flush batched writes")]
+    Flush(#[from] DebugProbeError),
+
+    /// Error while parsing a register
+    #[error("Error parsing a register")]
+    RegisterParse(#[from] RegisterParseError),
+}
+
+impl AccessPortError {
+    /// Constructs a [`AccessPortError::RegisterRead`] from just the source error and the register type.
+    pub fn register_read_error<R: ApRegister, E: std::error::Error + Send + Sync + 'static>(
+        source: E,
+    ) -> Self {
+        AccessPortError::RegisterRead {
+            address: R::ADDRESS,
+            name: R::NAME,
+            source: Box::new(source),
+        }
+    }
+
+    /// Constructs a [`AccessPortError::RegisterWrite`] from just the source error and the register type.
+    pub fn register_write_error<R: ApRegister, E: std::error::Error + Send + Sync + 'static>(
+        source: E,
+    ) -> Self {
+        AccessPortError::RegisterWrite {
+            address: R::ADDRESS,
+            name: R::NAME,
+            source: Box::new(source),
+        }
+    }
+}
+
+/// A trait to be implemented by ports types providing access to a register.
+pub trait ApRegAccess<Reg: ApRegister>: AccessPortType {}
+
+/// A trait to be implemented on access port types.
+pub trait AccessPortType {
+    /// Returns the address of the access port.
+    fn ap_address(&self) -> &FullyQualifiedApAddress;
+}
+
+/// A trait to be implemented by access port drivers to implement access port operations.
+pub trait ApAccess {
+    /// Read a register of the access port.
+    fn read_ap_register<PORT, R>(&mut self, port: &PORT) -> Result<R, ArmError>
+    where
+        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        R: ApRegister;
+
+    /// Read a register of the access port using a block transfer.
+    /// This can be used to read multiple values from the same register.
+    fn read_ap_register_repeated<PORT, R>(
+        &mut self,
+        port: &PORT,
+        values: &mut [u32],
+    ) -> Result<(), ArmError>
+    where
+        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        R: ApRegister;
+
+    /// Write a register of the access port.
+    fn write_ap_register<PORT, R>(&mut self, port: &PORT, register: R) -> Result<(), ArmError>
+    where
+        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        R: ApRegister;
+
+    /// Write a register of the access port using a block transfer.
+    /// This can be used to write multiple values to the same register.
+    fn write_ap_register_repeated<PORT, R>(
+        &mut self,
+        port: &PORT,
+        values: &[u32],
+    ) -> Result<(), ArmError>
+    where
+        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        R: ApRegister;
+}
+
+impl<T: DapAccess> ApAccess for T {
+    #[tracing::instrument(skip(self, port), fields(ap = port.ap_address().ap_v1().ok(), register = R::NAME, value))]
+    fn read_ap_register<PORT, R>(&mut self, port: &PORT) -> Result<R, ArmError>
+    where
+        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        R: ApRegister,
+    {
+        let raw_value = self.read_raw_ap_register(port.ap_address(), R::ADDRESS)?;
+
+        tracing::Span::current().record("value", raw_value);
+
+        tracing::debug!("Register read succesful");
+
+        Ok(raw_value.try_into()?)
+    }
+
+    fn write_ap_register<PORT, R>(&mut self, port: &PORT, register: R) -> Result<(), ArmError>
+    where
+        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        R: ApRegister,
+    {
+        tracing::debug!("Writing AP register {}, value={:x?}", R::NAME, register);
+        self.write_raw_ap_register(port.ap_address(), R::ADDRESS, register.into())
+            .inspect_err(|err| tracing::warn!("Failed to write AP register {}: {}", R::NAME, err))
+    }
+
+    fn write_ap_register_repeated<PORT, R>(
+        &mut self,
+        port: &PORT,
+        values: &[u32],
+    ) -> Result<(), ArmError>
+    where
+        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        R: ApRegister,
+    {
+        tracing::debug!(
+            "Writing register {}, block with len={} words",
+            R::NAME,
+            values.len(),
+        );
+        self.write_raw_ap_register_repeated(port.ap_address(), R::ADDRESS, values)
+    }
+
+    fn read_ap_register_repeated<PORT, R>(
+        &mut self,
+        port: &PORT,
+        values: &mut [u32],
+    ) -> Result<(), ArmError>
+    where
+        PORT: AccessPortType + ApRegAccess<R> + ?Sized,
+        R: ApRegister,
+    {
+        tracing::debug!(
+            "Reading register {}, block with len={} words",
+            R::NAME,
+            values.len(),
+        );
+
+        self.read_raw_ap_register_repeated(port.ap_address(), R::ADDRESS, values)
+    }
+}
 
 /// The unit of data that is transferred in one transfer via the DRW commands.
 ///

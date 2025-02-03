@@ -1,7 +1,7 @@
 #![allow(missing_docs)] // Don't require docs for test code
 use crate::{
     architecture::arm::{
-        ap_v1::memory_ap::mock::MockMemoryAp,
+        ap::memory_ap::mock::MockMemoryAp,
         armv8m::Dhcsr,
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,

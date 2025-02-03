@@ -6,9 +6,10 @@ mod usb_interface;
 
 use crate::{
     architecture::arm::{
-        ap_v1::{
+        ap::{
             memory_ap::{MemoryAp, MemoryApType},
-            valid_access_ports, AccessPortType,
+            v1::valid_access_ports,
+            AccessPortType,
         },
         communication_interface::{ArmProbeInterface, SwdSequence, UninitializedArmProbe},
         dp::{DpAddress, DpRegisterAddress},

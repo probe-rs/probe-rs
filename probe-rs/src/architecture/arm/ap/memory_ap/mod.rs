@@ -29,10 +29,10 @@ macro_rules! attached_regs_to_mem_ap {
     ($mod_name:ident => $name:ident) => {
         mod $mod_name {
             use super::$name;
+            use $crate::architecture::arm::ap::ApRegAccess;
             use $crate::architecture::arm::ap::{
                 BASE, BASE2, BD0, BD1, BD2, BD3, CFG, CSW, DRW, MBT, TAR, TAR2,
             };
-            use $crate::architecture::arm::ap_v1::ApRegAccess;
             impl ApRegAccess<CFG> for $name {}
             impl ApRegAccess<CSW> for $name {}
             impl ApRegAccess<BASE> for $name {}
@@ -203,7 +203,7 @@ macro_rules! memory_aps {
                 use $crate::architecture::arm::ap::{IDR, ApRegister};
                 let idr: IDR = interface.read_raw_ap_register(address, IDR::ADDRESS)?.try_into()?;
                 tracing::debug!("reading IDR: {:x?}", idr);
-                use crate::architecture::arm::ap_v1::ApType;
+                use crate::architecture::arm::ap::ApType;
                 Ok(match idr.TYPE {
                     ApType::JtagComAp => return Err(ArmError::WrongApType),
                     $(ApType::$variant => <$type>::new(interface, address.clone())?.into(),)*
