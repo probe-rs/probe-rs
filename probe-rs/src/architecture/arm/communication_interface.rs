@@ -535,16 +535,11 @@ impl ArmCommunicationInterface<Initialized> {
                 s.set_ap_sel(*port);
                 s.set_ap_bank_sel(ap_bank);
             }
-            (ApAddress::V2(addr), SelectCache::DPv3(s, s1)) => match addr.as_slice() {
-                [base] => {
-                    let address = base + ap_register_address;
-                    s.set_addr(((address >> 4) & 0xFFFF_FFFF) as u32);
-                    s1.set_addr((address >> 32) as u32);
-                }
-                _ => {
-                    unreachable!("select_ap_and_ap_bank must be called with a FullyQualifiedApAddress pointing to a component directly in the Debug Port. This is a bug, please report it.")
-                }
-            },
+            (ApAddress::V2(base), SelectCache::DPv3(s, s1)) => {
+                let address = base.0.unwrap_or(0) + ap_register_address;
+                s.set_addr(((address >> 4) & 0xFFFF_FFFF) as u32);
+                s1.set_addr((address >> 32) as u32);
+            }
             _ => unreachable!(
                 "Did not expect to be called with {ap:x?}. This is a bug, please report it."
             ),

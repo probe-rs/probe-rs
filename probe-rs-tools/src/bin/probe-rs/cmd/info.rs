@@ -553,8 +553,13 @@ fn process_component_entry(
             let ApAddress::V2(addr) = access_port.ap() else {
                 unreachable!("This should only happen on ap v2 addresses.");
             };
-            let addr = addr.clone().append(component.id().component_address());
-            let addr = FullyQualifiedApAddress::v2_with_dp(dp, addr);
+            if addr.0.is_some() {
+                unimplemented!("Nested memory APs are not yet supported.");
+            }
+            let addr = FullyQualifiedApAddress::v2_with_dp(
+                dp,
+                ApV2Address::new(component.id().component_address()),
+            );
             handle_memory_ap(interface, &addr, parent)?;
         }
         PeripheralType::Rom => {

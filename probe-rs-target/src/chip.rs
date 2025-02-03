@@ -170,12 +170,9 @@ pub enum ApAddress {
     /// References an address for an APv2 access, which is part of the ADIv6 specification.
     ///
     /// # Note
-    /// This represents a chain of addresses within nested APs. In the case where there are no
-    /// nested APs, there will be a single entry in the vector with the address in the root AP.
-    ///
-    /// Entries preceeding the last entry should reference the AP base address to be used.
+    /// This represents a bas eaddress within the root DP memory space.
     #[serde(rename = "v2")]
-    V2(Vec<u64>),
+    V2(u64),
 }
 
 impl Default for ApAddress {

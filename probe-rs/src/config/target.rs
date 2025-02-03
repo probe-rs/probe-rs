@@ -5,7 +5,7 @@ use crate::{
         arm::{
             dp::DpAddress,
             sequences::{ArmDebugSequence, DefaultArmSequence},
-            FullyQualifiedApAddress,
+            ApV2Address, FullyQualifiedApAddress,
         },
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
         xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
@@ -285,7 +285,7 @@ impl CoreExt for Core {
                         FullyQualifiedApAddress::v1_with_dp(dp, *ap)
                     }
                     probe_rs_target::ApAddress::V2(ap) => {
-                        FullyQualifiedApAddress::v2_with_dp(dp, ap.as_slice().into())
+                        FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::new(*ap))
                     }
                 })
             }

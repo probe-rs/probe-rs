@@ -40,7 +40,6 @@ fn process_root_component(
     iface: &mut RootMemoryInterface<ArmCommunicationInterface<Initialized>>,
     component: &Component,
 ) -> Result<BTreeSet<ApV2Address>, ArmError> {
-    let address = ApV2Address::root();
     let mut result = BTreeSet::new();
 
     match component {
@@ -51,7 +50,7 @@ fn process_root_component(
             for e in rom_table.entries() {
                 if let Component::CoresightComponent(comp) = e.component() {
                     if comp.peripheral_id().is_of_type(PeripheralType::MemAp) {
-                        let base_address = address.clone().append(comp.component_address());
+                        let base_address = ApV2Address::new(comp.component_address());
                         // TODO: Check this AP for further nested APs.
                         result.insert(base_address);
                     }
@@ -62,7 +61,7 @@ fn process_root_component(
             for e in rom_table.entries() {
                 if let Component::CoresightComponent(comp) = e.component() {
                     if comp.peripheral_id().is_of_type(PeripheralType::MemAp) {
-                        let base_address = address.clone().append(comp.component_address());
+                        let base_address = ApV2Address::new(comp.component_address());
                         // TODO: Check this AP for further nested APs.
                         result.insert(base_address);
                     }
@@ -73,7 +72,7 @@ fn process_root_component(
         // If the root component is a memory AP, it's the only component in the system and we can
         // return it immediately.
         Component::CoresightComponent(c) if c.peripheral_id().is_of_type(PeripheralType::MemAp) => {
-            let base_address = address.clone().append(c.component_address());
+            let base_address = ApV2Address::new(c.component_address());
             // TODO: Check this AP for further nested APs.
             result.insert(base_address);
         }
@@ -94,9 +93,8 @@ pub fn new_memory_interface<'i>(
         unimplemented!("this is only for APv2 addresses")
     };
 
-    if ap_address.as_slice().is_empty() {
-        Ok(Box::new(RootMemoryInterface::new(iface, address.dp())?)
-            as Box<dyn ArmMemoryInterface + 'i>)
+    if ap_address.0.is_none() {
+        Ok(Box::new(RootMemoryInterface::new(iface, address.dp())?))
     } else {
         Ok(Box::new(ADIMemoryInterface::new(iface, address)?))
     }
