@@ -7,6 +7,7 @@ on:
     # opened, reopened, synchronize are the default types for pull_request.
     # labeled, unlabeled ensure this check is also run if a label is added or removed.
     types: [opened, reopened, labeled, unlabeled, synchronize]
+  merge_group:
 
 name: Changelog
 
