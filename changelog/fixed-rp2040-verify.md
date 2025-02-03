@@ -1,0 +1,1 @@
+Fixed verify operations on the RP2040
