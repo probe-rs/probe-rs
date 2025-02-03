@@ -22,13 +22,16 @@ jobs:
 
     steps:
       - name: Checkout sources
+        if: ${{ !contains(github.event.issue.labels.*.name, 'changelog:skip') }}
         uses: actions/checkout@v4
 
       - uses: swatinem/rust-cache@v2
+        if: ${{ !contains(github.event.issue.labels.*.name, 'changelog:skip') }}
         with:
           cache-on-failure: "true"
 
       - name: Check that fragments are valid
+        if: ${{ !contains(github.event.issue.labels.*.name, 'changelog:skip') }}
         run:  cargo xtask check-changelog --pr ${{ github.event.number }} --comment-error
         env:
           GH_TOKEN: ${{ github.token }}
