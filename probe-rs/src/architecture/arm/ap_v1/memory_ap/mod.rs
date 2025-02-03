@@ -13,7 +13,7 @@ mod amba_axi3_axi4;
 mod amba_axi5;
 
 use crate::architecture::arm::ap::{
-    AddressIncrement, ApV1Register, BaseAddrFormat, DataSize, BASE, BASE2, DRW, TAR, TAR2,
+    AddressIncrement, ApRegister, BaseAddrFormat, DataSize, BASE, BASE2, DRW, TAR, TAR2,
 };
 
 use super::{AccessPortError, AccessPortType, ApAccess, ApRegAccess};
@@ -57,7 +57,7 @@ pub trait MemoryApType:
     ApRegAccess<BASE> + ApRegAccess<BASE2> + ApRegAccess<TAR> + ApRegAccess<TAR2> + ApRegAccess<DRW>
 {
     /// This Memory AP’s specific CSW type.
-    type CSW: ApV1Register;
+    type CSW: ApRegister;
 
     /// Returns whether the Memory AP supports the large address extension.
     ///
@@ -200,10 +200,8 @@ macro_rules! memory_aps {
                 interface: &mut I,
                 address: &FullyQualifiedApAddress,
             ) -> Result<Self, ArmError> {
-                use crate::architecture::arm::ap::{IDR, ApV1Register};
-                let idr: IDR = interface
-                    .read_raw_ap_register(address, IDR::ADDRESS)?
-                    .try_into()?;
+                use $crate::architecture::arm::ap::{IDR, ApRegister};
+                let idr: IDR = interface.read_raw_ap_register(address, IDR::ADDRESS)?.try_into()?;
                 tracing::debug!("reading IDR: {:x?}", idr);
                 use crate::architecture::arm::ap_v1::ApType;
                 Ok(match idr.TYPE {

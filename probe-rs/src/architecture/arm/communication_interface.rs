@@ -524,20 +524,21 @@ impl ArmCommunicationInterface<Initialized> {
     fn select_ap_and_ap_bank(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        ap_register_address: u8,
+        ap_register_address: u64,
     ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(ap.dp())?;
 
         let previous_select = dp_state.current_select;
         match (ap.ap(), &mut dp_state.current_select) {
             (ApAddress::V1(port), SelectCache::DPv1(s)) => {
+                let ap_register_address = (ap_register_address & 0xFF) as u8;
                 let ap_bank = ap_register_address >> 4;
                 s.set_ap_sel(*port);
                 s.set_ap_bank_sel(ap_bank);
             }
             (ApAddress::V2(addr), SelectCache::DPv3(s, s1)) => match addr.as_slice() {
                 [base] => {
-                    let address = base + u64::from(ap_register_address);
+                    let address = base + ap_register_address;
                     s.set_addr(((address >> 4) & 0xFFFF_FFFF) as u32);
                     s1.set_addr((address >> 32) as u32);
                 }
@@ -622,13 +623,13 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     fn read_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        address: u8,
+        address: u64,
     ) -> Result<u32, ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         let result = self
             .probe_mut()
-            .raw_read_register(RegisterAddress::ApRegister(address))?;
+            .raw_read_register(RegisterAddress::ApRegister((address & 0xFF) as u8))?;
 
         Ok(result)
     }
@@ -636,26 +637,26 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     fn read_raw_ap_register_repeated(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        address: u8,
+        address: u64,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_read_block(RegisterAddress::ApRegister(address), values)?;
+            .raw_read_block(RegisterAddress::ApRegister((address & 0xFF) as u8), values)?;
         Ok(())
     }
 
     fn write_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        address: u8,
+        address: u64,
         value: u32,
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_write_register(RegisterAddress::ApRegister(address), value)?;
+            .raw_write_register(RegisterAddress::ApRegister((address & 0xFF) as u8), value)?;
 
         Ok(())
     }
@@ -663,13 +664,13 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     fn write_raw_ap_register_repeated(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        address: u8,
+        address: u64,
         values: &[u32],
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe_mut()
-            .raw_write_block(RegisterAddress::ApRegister(address), values)?;
+            .raw_write_block(RegisterAddress::ApRegister((address & 0xFF) as u8), values)?;
         Ok(())
     }
 

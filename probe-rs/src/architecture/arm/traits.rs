@@ -134,6 +134,13 @@ pub enum ApAddress {
     V2(ApV2Address),
 }
 
+impl ApAddress {
+    /// Check if an AP address is an APv2 address.
+    pub fn is_v2(&self) -> bool {
+        matches!(self, ApAddress::V2(_))
+    }
+}
+
 impl std::fmt::Display for ApV2Address {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self.0.as_slice())
@@ -358,12 +365,15 @@ pub trait DapAccess {
 
     /// Read an Access Port register.
     ///
-    /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
-    /// will do bank switching if necessary.
+    /// # Note
+    /// The address format depends on the AP type.
+    /// * For APv2, the address is a register memory address within the AP memory space.
+    /// * For APv1, the address is an 8-bit integer, where the highest 4 bits are interpreted as
+    ///   the bank number, and implementations do bank switching if necessary.
     fn read_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        addr: u8,
+        addr: u64,
     ) -> Result<u32, ArmError>;
 
     /// Read multiple values from the same Access Port register.
@@ -371,12 +381,15 @@ pub trait DapAccess {
     /// If possible, this uses optimized read functions, otherwise it
     /// falls back to the `read_raw_ap_register` function.
     ///
-    /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
-    /// will do bank switching if necessary.
+    /// # Note
+    /// The address format depends on the AP type.
+    /// * For APv2, the address is a register memory address within the AP memory space.
+    /// * For APv1, the address is an 8-bit integer, where the highest 4 bits are interpreted as
+    ///   the bank number, and implementations do bank switching if necessary.
     fn read_raw_ap_register_repeated(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        addr: u8,
+        addr: u64,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         for val in values {
@@ -387,12 +400,15 @@ pub trait DapAccess {
 
     /// Write an AP register.
     ///
-    /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
-    /// will do bank switching if necessary.
+    /// # Note
+    /// The address format depends on the AP type.
+    /// * For APv2, the address is a register memory address within the AP memory space.
+    /// * For APv1, the address is an 8-bit integer, where the highest 4 bits are interpreted as
+    ///   the bank number, and implementations do bank switching if necessary.
     fn write_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        addr: u8,
+        addr: u64,
         value: u32,
     ) -> Result<(), ArmError>;
 
@@ -401,12 +417,15 @@ pub trait DapAccess {
     /// If possible, this uses optimized write functions, otherwise it
     /// falls back to the `write_raw_ap_register` function.
     ///
-    /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
-    /// will do bank switching if necessary.
+    /// # Note
+    /// The address format depends on the AP type.
+    /// * For APv2, the address is a register memory address within the AP memory space.
+    /// * For APv1, the address is an 8-bit integer, where the highest 4 bits are interpreted as
+    ///   the bank number, and implementations do bank switching if necessary.
     fn write_raw_ap_register_repeated(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        addr: u8,
+        addr: u64,
         values: &[u32],
     ) -> Result<(), ArmError> {
         for val in values {

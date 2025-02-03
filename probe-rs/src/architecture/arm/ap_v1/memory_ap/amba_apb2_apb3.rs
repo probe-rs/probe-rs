@@ -1,5 +1,5 @@
 use crate::architecture::arm::{
-    ap::{define_ap_register, AddressIncrement, ApV1Register, DataSize, CFG},
+    ap::{define_ap_register, AddressIncrement, ApRegister, DataSize, CFG},
     ap_v1::{AccessPortType, ApAccess, ApRegAccess},
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
@@ -89,7 +89,7 @@ define_ap_register!(
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
     name: CSW,
-    address: 0x00,
+    address: 0xD00,
     fields: [
         /// Is debug software access enabled.
         DbgSwEnable: bool,          // [31]

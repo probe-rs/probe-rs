@@ -1,6 +1,6 @@
 use crate::{
     architecture::arm::{
-        ap::{ApV2Register, DataSize, BASE, BASE2, CSW, DRW, TAR, TAR2},
+        ap::{ApRegister, DataSize, BASE, BASE2, CSW, DRW, TAR, TAR2},
         communication_interface::SwdSequence,
         memory::ArmMemoryInterface,
         ApAddress, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,

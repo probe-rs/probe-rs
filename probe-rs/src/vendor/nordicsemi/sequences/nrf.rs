@@ -30,8 +30,8 @@ pub trait Nrf: Sync + Send + Debug {
     fn has_network_core(&self) -> bool;
 }
 
-const ERASEALL: u8 = 0x04;
-const ERASEALLSTATUS: u8 = 0x08;
+const ERASEALL: u64 = 0x04;
+const ERASEALLSTATUS: u64 = 0x08;
 
 const APPLICATION_SPU_PERIPH_PERM: u64 = 0x50003800;
 

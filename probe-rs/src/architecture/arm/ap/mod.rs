@@ -172,15 +172,9 @@ pub trait RegisterBase:
 }
 
 /// A trait to be implemented on Access Port (v1) register types for typed device access.
-pub trait ApV1Register: RegisterBase {
+pub trait ApRegister: RegisterBase {
     /// The address of the register (in bytes).
-    const ADDRESS: u8;
-}
-
-/// A trait to be implemented on Access Port (v2) register types for typed device access.
-pub trait ApV2Register: RegisterBase {
-    /// The address of the register when accessed via ApV2
-    const ADDRESS: u16;
+    const ADDRESS: u64;
 }
 
 /// Defines a new typed access port register for a specific access port.
@@ -214,12 +208,10 @@ macro_rules! define_ap_register {
             const NAME: &'static str = stringify!($name);
         }
 
-        impl $crate::architecture::arm::ap::ApV1Register for $name {
-            const ADDRESS: u8 = $address_v1;
-        }
-
-        impl $crate::architecture::arm::ap::ApV2Register for $name {
-            const ADDRESS: u16 = 0xD00 | $address_v1;
+        impl $crate::architecture::arm::ap::ApRegister for $name {
+            // APv1 registers only use the lower 8-bits of the address, so they ignore the static
+            // offset used by APv2 registers at the DAP access layer.
+            const ADDRESS: u64 = 0xD00 | $address_v1;
         }
 
         impl TryFrom<u32> for $name {

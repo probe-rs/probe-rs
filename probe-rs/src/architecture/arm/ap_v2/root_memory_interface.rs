@@ -50,7 +50,7 @@ impl<API: ArmProbeInterface> MemoryInterface<ArmError> for RootMemoryInterface<'
             let base = addr & (!0xF);
             let fqa = FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::new_with_tip(base));
 
-            *d = self.iface.read_raw_ap_register(&fqa, (addr & 0xF) as u8)?;
+            *d = self.iface.read_raw_ap_register(&fqa, (addr & 0xF) as u64)?;
         }
         Ok(())
     }
@@ -75,7 +75,7 @@ impl<API: ArmProbeInterface> MemoryInterface<ArmError> for RootMemoryInterface<'
             let fqa = FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::new_with_tip(base));
 
             self.iface
-                .write_raw_ap_register(&fqa, (addr & 0xF) as u8, *d)?;
+                .write_raw_ap_register(&fqa, (addr & 0xF) as u64, *d)?;
         }
         Ok(())
     }

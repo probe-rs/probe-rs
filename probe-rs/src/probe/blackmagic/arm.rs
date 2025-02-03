@@ -496,8 +496,14 @@ impl DapAccess for BlackMagicProbeArmDebug {
     fn read_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        addr: u8,
+        addr: u64,
     ) -> Result<u32, ArmError> {
+        // Currently, only APv1 is supported. As such, truncate the address to an 8-bit size.
+        if ap.ap().is_v2() {
+            unimplemented!()
+        }
+        let addr = (addr & 0xFF) as u8;
+
         let (index, apsel) = ap_to_bmp(ap)?;
 
         let command = match self.probe.remote_protocol {
@@ -531,9 +537,15 @@ impl DapAccess for BlackMagicProbeArmDebug {
     fn write_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        addr: u8,
+        addr: u64,
         value: u32,
     ) -> Result<(), ArmError> {
+        // Currently, only APv1 is supported. As such, truncate the address to an 8-bit size.
+        if ap.ap().is_v2() {
+            unimplemented!()
+        }
+        let addr = (addr & 0xFF) as u8;
+
         let (index, apsel) = ap_to_bmp(ap)?;
         let command = match self.probe.remote_protocol {
             ProtocolVersion::V0 => {

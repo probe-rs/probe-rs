@@ -1366,7 +1366,7 @@ impl StlinkArmDebug {
     fn select_ap_and_ap_bank(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        _address: u8,
+        _address: u64,
     ) -> Result<(), ArmError> {
         self.select_dp(ap.dp())?;
         self.probe.select_ap(ap.ap_v1()?)?;
@@ -1408,11 +1408,16 @@ impl DapAccess for StlinkArmDebug {
     fn read_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        address: u8,
+        address: u64,
     ) -> Result<u32, ArmError> {
+        if ap.ap().is_v2() {
+            unimplemented!()
+        }
         self.select_ap_and_ap_bank(ap, address)?;
 
-        let value = self.probe.read_register(ap.ap_v1()? as u16, address)?;
+        let value = self
+            .probe
+            .read_register(ap.ap_v1()? as u16, (address & 0xFF) as u8)?;
 
         Ok(value)
     }
@@ -1420,13 +1425,16 @@ impl DapAccess for StlinkArmDebug {
     fn write_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        address: u8,
+        address: u64,
         value: u32,
     ) -> Result<(), ArmError> {
+        if ap.ap().is_v2() {
+            unimplemented!()
+        }
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe
-            .write_register(ap.ap_v1()? as u16, address, value)?;
+            .write_register(ap.ap_v1()? as u16, (address & 0xFF) as u8, value)?;
 
         Ok(())
     }
