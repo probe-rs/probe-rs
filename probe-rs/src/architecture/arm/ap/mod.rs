@@ -351,7 +351,7 @@ define_ap_register!(
     | (u32::from(value.RMEEN        ) << 21)
     | (u32::from(value._RES0        ) << 18)
     | (u32::from(value.ERRSTOP as u8) << 17)
-    | (u32::from(value.ERRNPASS as u8) << 15)
+    | (u32::from(value.ERRNPASS as u8) << 16)
     | (u32::from(value.MTE          ) << 15)
     | (u32::from(value.Type         ) << 12)
     | (u32::from(value.Mode         ) <<  8)
