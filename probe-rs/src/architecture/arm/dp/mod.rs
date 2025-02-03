@@ -379,10 +379,10 @@ bitfield! {
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub struct SelectV3(u32);
     impl Debug;
-    /// Address output bits[63:4], formed by concatenating bits[31:0] of SELECT1 with bits[31:4] of SELECT.
+    /// Address output bits\[63:4\], formed by concatenating bits\[31:0\] of SELECT1 with bits\[31:4\] of SELECT.
     /// The ADDR field selects a four-word bank of system locations to access.
-    /// - Bits[3:2] of the address, that are used to select a specific register in a bank, are provided with APACC transactions.
-    /// - Bits[1:0] are always 0b00.
+    /// - Bits\[3:2\] of the address, that are used to select a specific register in a bank, are provided with APACC transactions.
+    /// - Bits\[1:0\] are always 0b00.
     ///
     /// After a powerup reset or an SWD line reset, the value of this field is UNKNOWN
     pub u32, addr, set_addr: 31, 4;
@@ -396,10 +396,10 @@ bitfield! {
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub struct Select1(u32);
     impl Debug;
-    /// Address output bits[63:4], formed by concatenating bits[31:0] of SELECT1 with bits[31:4] of SELECT.
+    /// Address output bits\[63:4\], formed by concatenating bits\[31:0\] of SELECT1 with bits\[31:4\] of SELECT.
     /// The ADDR field selects a four-word bank of system locations to access.
-    /// - Bits[3:2] of the address, that are used to select a specific register in a bank, are provided with APACC transactions.
-    /// - Bits[1:0] are always 0b00.
+    /// - Bits\[3:2\] of the address, that are used to select a specific register in a bank, are provided with APACC transactions.
+    /// - Bits\[1:0\] are always 0b00.
     ///
     /// After a powerup reset or an SWD line reset, the value of this field is UNKNOWN
     pub u32, addr, set_addr: 31, 0;
