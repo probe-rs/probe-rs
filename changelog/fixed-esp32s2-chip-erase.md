@@ -1,0 +1,1 @@
+Fixed `probe-rs erase` for the ESP32-S2
