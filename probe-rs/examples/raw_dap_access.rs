@@ -26,9 +26,9 @@ fn main() -> Result<()> {
 
     let port = &FullyQualifiedApAddress::v1_with_default_dp(1);
 
-    const RESET: u8 = 0;
-    const ERASEALL: u8 = 4;
-    const ERASEALLSTATUS: u8 = 8;
+    const RESET: u64 = 0;
+    const ERASEALL: u64 = 4;
+    const ERASEALLSTATUS: u64 = 8;
 
     // Reset
     iface.write_raw_ap_register(port, RESET, 1)?;
