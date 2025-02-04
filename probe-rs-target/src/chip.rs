@@ -170,7 +170,7 @@ pub enum ApAddress {
     /// References an address for an APv2 access, which is part of the ADIv6 specification.
     ///
     /// # Note
-    /// This represents a bas eaddress within the root DP memory space.
+    /// This represents a base address within the root DP memory space.
     #[serde(rename = "v2")]
     V2(u64),
 }
