@@ -201,10 +201,10 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
         core_access_options: match core_type.architecture() {
             Architecture::Arm => CoreAccessOptions::Arm(ArmCoreAccessOptions {
                 ap: match processor.ap {
-                    AccessPort::Index(id) => id,
-                    AccessPort::Address(_) => todo!(),
+                    AccessPort::Index(id) => probe_rs_target::ApAddress::V1(id),
+                    AccessPort::Address(addr) => probe_rs_target::ApAddress::V2(vec![addr]),
                 },
-                psel: 0,
+                targetsel: None,
                 debug_base: None,
                 cti_base: None,
                 jtag_tap: None,

@@ -1,1 +1,0 @@
-Passing `--protocol jtag` when using an ST-Link probe will now actually use JTAG.

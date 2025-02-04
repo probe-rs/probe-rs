@@ -25,11 +25,9 @@ serde = { version = "1", features = ["derive"] }
 thiserror = { workspace = true }
 tracing = "0.1"
 typed-path = "0.10"
-# path
-probe-rs-target = { workspace = true }
 probe-rs-mi = { workspace = true }
 
-itertools = "0.13"
+itertools = "0.14"
 
 # CLI-only
 addr2line = "0.24"
@@ -37,7 +35,7 @@ bytesize = "1"
 capstone = "0.12"
 cargo_metadata = "0.19"
 clap = { version = "4", features = ["derive", "env"] }
-colored = "2"
+colored = "3"
 defmt-decoder = "0.4"
 directories = "5"
 dunce = "1"
@@ -81,7 +79,7 @@ ratatui = { version = "0.29.0", default-features = false, features = [
 ] }
 ansi-parser = "0.9.0"
 
-probe-rs = { version = "0.24.0", path = "../probe-rs", features = [
+probe-rs = { version = "0.26.0", path = "../probe-rs", features = [
     "gdb-server",
 ] }
 parking_lot = "0.12.2"
@@ -93,12 +91,14 @@ zip = { version = "2.0.0", default-features = false, features = [
     "time",
 ] }
 urlencoding = "2"
+probe-rs-debug = { version = "0.26.0", path = "../probe-rs-debug" }
 
 [build-dependencies]
 git-version = "0.3"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
+test-case = "3"
 
 # Set the proper name for the homebrew formula
 [package.metadata.dist]

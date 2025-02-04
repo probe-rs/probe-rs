@@ -1,1 +1,0 @@
-Added `--path` option to cargo embed.

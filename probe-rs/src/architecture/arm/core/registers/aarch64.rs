@@ -1,3 +1,5 @@
+//! Register definitions for AArch64.
+
 use std::sync::LazyLock;
 
 use crate::{
@@ -33,10 +35,11 @@ pub(crate) const RA: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Clear,
 };
 
-pub(crate) static AARCH64_CORE_REGSISTERS: LazyLock<CoreRegisters> =
-    LazyLock::new(|| CoreRegisters::new(AARCH64_CORE_REGSISTERS_SET.iter().collect()));
+/// AArch64 core registers
+pub static AARCH64_CORE_REGISTERS: LazyLock<CoreRegisters> =
+    LazyLock::new(|| CoreRegisters::new(AARCH64_CORE_REGISTERS_SET.iter().collect()));
 
-pub static AARCH64_CORE_REGSISTERS_SET: &[CoreRegister] = &[
+pub(crate) static AARCH64_CORE_REGISTERS_SET: &[CoreRegister] = &[
     CoreRegister {
         roles: &[
             RegisterRole::Core("X0"),

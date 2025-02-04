@@ -17,7 +17,7 @@ use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
     communication_interface::{DapProbe, UninitializedArmProbe},
-    PortType, SwoAccess,
+    RegisterAddress, SwoAccess,
 };
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
@@ -78,23 +78,23 @@ impl std::str::FromStr for WireProtocol {
 ///
 /// Mostly used internally but returned in DebugProbeError to indicate
 /// which batched command actually encountered the error.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum BatchCommand {
     /// Read from a port
-    Read(PortType, u16),
+    Read(RegisterAddress),
 
     /// Write to a port
-    Write(PortType, u16, u32),
+    Write(RegisterAddress, u32),
 }
 
 impl fmt::Display for BatchCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            BatchCommand::Read(port, addr) => {
-                write!(f, "Read(port={port:?}, addr={addr})")
+        match self {
+            BatchCommand::Read(port) => {
+                write!(f, "Read(port={port:?})")
             }
-            BatchCommand::Write(port, addr, data) => {
-                write!(f, "Write(port={port:?}, addr={addr}, data={data:#010x})")
+            BatchCommand::Write(port, data) => {
+                write!(f, "Write(port={port:?}, data={data:#010x})")
             }
         }
     }
@@ -187,7 +187,7 @@ pub enum DebugProbeError {
         interface_name: &'static str,
     },
 
-    /// The probe does not support he requested speed setting ({0} kHz).
+    /// The probe does not support the requested speed setting ({0} kHz).
     UnsupportedSpeed(u32),
 
     /// You need to be attached to the target to perform this action.
@@ -885,6 +885,9 @@ pub enum DebugProbeSelectorParseError {
 /// where the serial number is optional, and VID and PID are
 /// parsed as hexadecimal numbers.
 ///
+/// If SERIALNUMBER exists (i.e. the selector contains a second color) and is empty,
+/// probe-rs will select probes that have no serial number, or where the serial number is empty.
+///
 /// ## Example:
 ///
 /// ```
@@ -908,12 +911,29 @@ pub struct DebugProbeSelector {
 
 impl DebugProbeSelector {
     pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
-        info.vendor_id() == self.vendor_id
-            && info.product_id() == self.product_id
+        self.match_probe_selector(info.vendor_id(), info.product_id(), info.serial_number())
+    }
+
+    fn match_probe_selector(
+        &self,
+        vendor_id: u16,
+        product_id: u16,
+        serial_number: Option<&str>,
+    ) -> bool {
+        vendor_id == self.vendor_id
+            && product_id == self.product_id
             && self
                 .serial_number
                 .as_ref()
-                .map(|s| info.serial_number() == Some(s))
+                .map(|s| {
+                    if let Some(serial_number) = serial_number {
+                        serial_number == s
+                    } else {
+                        // Match probes without serial number when the
+                        // selector has a third, empty part ("VID:PID:")
+                        s.is_empty()
+                    }
+                })
                 .unwrap_or(true)
     }
 }
@@ -1418,5 +1438,33 @@ mod test {
             selector.serial_number,
             Some("DC:DA:0C:D3:FE:D8".to_string())
         );
+    }
+
+    #[test]
+    fn missing_serial_is_none() {
+        let selector: DebugProbeSelector = "303a:1001".try_into().unwrap();
+
+        assert_eq!(selector.vendor_id, 0x303a);
+        assert_eq!(selector.product_id, 0x1001);
+        assert_eq!(selector.serial_number, None);
+
+        let matches = selector.match_probe_selector(0x303a, 0x1001, None);
+        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, Some("serial"));
+        assert!(matches);
+        assert!(matches_with_serial);
+    }
+
+    #[test]
+    fn empty_serial_is_some() {
+        let selector: DebugProbeSelector = "303a:1001:".try_into().unwrap();
+
+        assert_eq!(selector.vendor_id, 0x303a);
+        assert_eq!(selector.product_id, 0x1001);
+        assert_eq!(selector.serial_number, Some(String::new()));
+
+        let matches = selector.match_probe_selector(0x303a, 0x1001, None);
+        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, Some("serial"));
+        assert!(matches);
+        assert!(!matches_with_serial);
     }
 }

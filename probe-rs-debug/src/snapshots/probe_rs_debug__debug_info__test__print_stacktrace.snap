@@ -1,0 +1,72 @@
+---
+source: probe-rs-debug/src/debug_info.rs
+expression: printed_backtrace
+---
+Frame:
+ function:        read<nrf51_pac::timer0::events_compare::EVENTS_COMPARE_SPEC>
+ source_location:
+  path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf51-pac-0.10.1/src/generic.rs
+  line: Some(64)
+  column: Some(Column(27))
+ frame_base:      Some(20003f38)
+Frame:
+ function:        timer_running<nrf51_pac::TIMER0>
+ source_location:
+  path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
+  line: Some(397)
+  column: Some(Column(9))
+ frame_base:      Some(20003f38)
+Frame:
+ function:        wait<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
+  line: Some(266)
+  column: Some(Column(12))
+ frame_base:      Some(20003f50)
+Frame:
+ function:        delay<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
+  line: Some(145)
+  column: Some(Column(22))
+ frame_base:      Some(20003f78)
+Frame:
+ function:        delay_us<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
+  line: Some(325)
+  column: Some(Column(6))
+ frame_base:      Some(20003f88)
+Frame:
+ function:        delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
+  line: Some(298)
+  column: Some(Column(6))
+ frame_base:      Some(20003fa8)
+Frame:
+ function:        delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
+  line: Some(307)
+  column: Some(Column(6))
+ frame_base:      Some(20003fc0)
+Frame:
+ function:        __cortex_m_rt_main
+ source_location:
+  path: /Users/yatekii/repos/microbit/examples/gpio-hal-blinky/src/main.rs
+  line: Some(23)
+  column: Some(Column(9))
+ frame_base:      Some(20003ff0)
+Frame:
+ function:        __cortex_m_rt_main_trampoline
+ source_location:
+  path: /Users/yatekii/repos/microbit/examples/gpio-hal-blinky/src/main.rs
+  line: Some(10)
+  column: Some(Column(1))
+ frame_base:      Some(20003ff8)
+Frame:
+ function:        <unknown function @ 0x000000ce> : ERROR: UNWIND: Failed to read value for register R7/FP from address 0x0000000000000000 (4 bytes): The coredump does not include the memory for address 0x0 of size 0x4
+ source_location:
+None
+ frame_base:      None

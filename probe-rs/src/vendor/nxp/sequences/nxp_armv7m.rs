@@ -11,7 +11,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{memory_ap::MemoryApType, AccessPortError, AccessPortType},
+        ap_v1::AccessPortError,
         armv7m::{FpCtrl, FpRev2CompX},
         core::{
             armv7m::{Aircr, Dhcsr},
@@ -60,10 +60,39 @@ impl MIMXRT10xx {
         Ok(())
     }
 
+    /// Halt or unhalt the core.
+    fn halt(&self, probe: &mut dyn ArmMemoryInterface, halt: bool) -> Result<(), ArmError> {
+        let mut dhcsr = Dhcsr(probe.read_word_32(Dhcsr::get_mmio_address())?);
+        dhcsr.set_c_halt(halt);
+        dhcsr.set_c_debugen(true);
+        dhcsr.enable_write();
+
+        probe.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+        probe.flush()?;
+
+        let start = Instant::now();
+        let action = if halt { "halt" } else { "unhalt" };
+
+        while Dhcsr(probe.read_word_32(Dhcsr::get_mmio_address())?).s_halt() != halt {
+            if start.elapsed() > Duration::from_millis(100) {
+                tracing::debug!("Exceeded timeout while waiting for the core to {action}");
+                return Err(ArmError::Timeout);
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+
+        Ok(())
+    }
+
     /// Use the boot fuse configuration for FlexRAM.
     ///
-    /// If the user changed the FlexRAM configuration in software, this will undo
-    /// that configuration, preferring the system's POR FlexRAM state.
+    /// If the user changed the FlexRAM configuration in software,
+    /// this will undo that configuration, preferring the system's POR
+    /// FlexRAM state.
+    ///
+    /// This function may change the processor's memory map, which may
+    /// cause problems for any running firmware.  Halt the processor
+    /// before calling this function.
     fn use_boot_fuses_for_flexram(
         &self,
         probe: &mut dyn ArmMemoryInterface,
@@ -86,6 +115,9 @@ impl ArmDebugSequence for MIMXRT10xx {
         _: Option<u64>,
     ) -> Result<(), ArmError> {
         self.check_core_type(core_type)?;
+
+        // Halt the processor before messing with the memory map.
+        self.halt(interface, true)?;
 
         // OK to perform before the reset, since the configuration
         // persists beyond the reset.
@@ -210,10 +242,9 @@ impl MIMXRT117x {
         let mut errors = 0usize;
         let mut disables = 0usize;
 
-        let (interface, memory_ap) = probe.try_as_parts()?;
         loop {
-            match memory_ap.generic_status(interface) {
-                Ok(csw) if csw.DeviceEn => {
+            match probe.generic_status() {
+                Ok(csw) if csw.enabled() => {
                     tracing::debug!("Device enabled after {}ms with {errors} errors and {disables} invalid statuses", start.elapsed().as_millis());
                     return Ok(());
                 }
@@ -384,6 +415,7 @@ impl ArmDebugSequence for MIMXRT117x {
     ) -> Result<(), ArmError> {
         // OK to perform before the reset, since the configuration
         // persists beyond the reset.
+        self.halt(probe, true)?;
         self.use_boot_fuses_for_flexram(probe)?;
 
         // Cache debug system state that may be lost across the reset.
@@ -424,8 +456,8 @@ impl ArmDebugSequence for MIMXRT117x {
         //
         // The ARM communication interface knows how to re-initialize the debug port.
         // Re-initializing the core(s) is on us.
-        let ap = probe.ap().ap_address().clone();
-        let interface = probe.get_arm_communication_interface()?;
+        let ap = probe.fully_qualified_address();
+        let interface = probe.get_arm_probe_interface()?;
         interface.reinitialize()?;
 
         assert!(debug_base.is_none());

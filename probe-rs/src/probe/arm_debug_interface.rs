@@ -6,9 +6,9 @@
 
 use crate::{
     architecture::arm::{
-        ap::AccessPortError,
+        ap_v1::AccessPortError,
         dp::{Abort, Ctrl, DebugPortError, DpRegister, RdBuff, DPIDR},
-        ArmError, DapError, FullyQualifiedApAddress, PortType, RawDapAccess, Register,
+        ArmError, DapError, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
     },
     probe::{
         common::bits_to_byte, CommandResult, DebugProbe, DebugProbeError, JTAGAccess,
@@ -16,6 +16,8 @@ use crate::{
     },
     Error,
 };
+
+const CTRL_PORT: RegisterAddress = RegisterAddress::DpRegister(Ctrl::ADDRESS);
 
 #[derive(Debug)]
 pub struct SwdSettings {
@@ -142,18 +144,19 @@ fn build_jtag_payload_and_address(transfer: &DapTransfer) -> (u64, u32) {
     if transfer.is_abort() {
         (JTAG_ABORT_VALUE, JTAG_ABORT_IR_VALUE)
     } else {
-        let address = match transfer.port {
-            PortType::DebugPort => JTAG_DEBUG_PORT_IR_VALUE,
-            PortType::AccessPort => JTAG_ACCESS_PORT_IR_VALUE,
+        let address = match transfer.address.is_ap() {
+            false => JTAG_DEBUG_PORT_IR_VALUE,
+            true => JTAG_ACCESS_PORT_IR_VALUE,
         };
 
+        let port_address = transfer.address.a2_and_3();
         let mut payload = 0u64;
 
         // 32-bit value, bits 35:3
         payload |= (transfer.value as u64) << 3;
         // A[3:2], bits 2:1
-        payload |= (transfer.address as u64 & 0b1000) >> 1;
-        payload |= (transfer.address as u64 & 0b0100) >> 1;
+        payload |= (port_address as u64 & 0b1000) >> 1;
+        payload |= (port_address as u64 & 0b0100) >> 1;
         // RnW, bit 0
         payload |= u64::from(transfer.direction == TransferDirection::Read);
 
@@ -238,19 +241,13 @@ fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
     let last_is_rdbuff = transfers[transfers.len() - 1].is_rdbuff();
     if !last_is_abort && !last_is_rdbuff {
         // Need to issue a fake read to get final ack
-        results.push(
-            queue.schedule(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS).jtag_write()),
-        );
+        results.push(queue.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
     }
 
     if !last_is_abort {
         // Check CTRL/STATUS to make sure OK/FAULT meant OK
-        results.push(
-            queue.schedule(DapTransfer::read(PortType::DebugPort, Ctrl::ADDRESS).jtag_write()),
-        );
-        results.push(
-            queue.schedule(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS).jtag_write()),
-        );
+        results.push(queue.schedule(DapTransfer::read(Ctrl::ADDRESS).jtag_write()));
+        results.push(queue.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
     }
 
     let mut status_responses = vec![TransferStatus::Pending; results.len()];
@@ -338,7 +335,7 @@ fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
                 // Clear the sticky bit so future transactions succeed
                 let (_, _) = perform_jtag_transfer(
                     probe,
-                    &DapTransfer::write(PortType::DebugPort, Ctrl::ADDRESS, received_value),
+                    &DapTransfer::write(Ctrl::ADDRESS, received_value),
                 )?;
 
                 // Mark OK/FAULT transactions as failed. Since the error is sticky, we can assume that
@@ -411,6 +408,9 @@ fn perform_swd_transfers<P: RawProtocolIo>(
 /// get the result. This is handled by this function.
 ///
 /// Retries on WAIT responses are automatically handled.
+///
+/// Other errors are not handled, so the debug interface might be in an error state
+/// after this function returns.
 fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
@@ -499,7 +499,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
             // Add a read from RDBUFF, this access will be stalled by the DebugPort if the write
             // buffer is not empty.
             // This is an extra transfer, which doesn't have a reponse on it's own.
-            final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
+            final_transfers.push(DapTransfer::read(RdBuff::ADDRESS));
             probe.probe_statistics().record_extra_transfer();
         }
     }
@@ -550,7 +550,9 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     let mut successful_transfers = 0;
     let mut idle_cycles = std::cmp::max(1, probe.swd_settings().num_idle_cycles_between_writes);
 
-    'transfer: for _ in 0..probe.swd_settings().num_retries_after_wait {
+    let num_retries = probe.swd_settings().num_retries_after_wait;
+
+    'transfer: for _ in 0..num_retries {
         let chunk = &mut transfers[successful_transfers..];
         assert!(!chunk.is_empty());
 
@@ -562,7 +564,7 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
                 TransferStatus::Failed(DapError::WaitResponse) => {
                     tracing::debug!("got WAIT on transfer {}, retrying...", successful_transfers);
 
-                    clear_overrun(probe)?;
+                    clear_overrun_and_sticky_err(probe)?;
 
                     // Increase idle cycles of the failed write transfer and the rest of the chunk
                     for transfer in &mut chunk[..] {
@@ -577,7 +579,16 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
                     continue 'transfer;
                 }
-                _ => break 'transfer, // on any other error, we're done.
+                status => {
+                    tracing::debug!(
+                        "Transfer {}/{} failed: {:?}",
+                        successful_transfers + 1,
+                        transfers.len(),
+                        status
+                    );
+
+                    return Ok(());
+                }
             }
         }
 
@@ -587,6 +598,9 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     }
 
     // Timeout, abort transactions
+    tracing::debug!(
+        "Timeout in SWD transaction, aborting AP transactions after {num_retries} retries."
+    );
     write_dp_register(probe, {
         let mut abort = Abort(0);
         abort.set_dapabort(true);
@@ -597,9 +611,10 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     Ok(())
 }
 
-fn clear_overrun<P: DebugProbe + RawProtocolIo + JTAGAccess>(
+fn clear_overrun_and_sticky_err<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     probe: &mut P,
 ) -> Result<(), ArmError> {
+    tracing::debug!("Clearing overrun and sticky error");
     // Build ABORT transfer.
     write_dp_register(probe, {
         let mut abort = Abort(0);
@@ -613,7 +628,7 @@ fn write_dp_register<P: DebugProbe + RawProtocolIo + JTAGAccess, R: DpRegister>(
     probe: &mut P,
     register: R,
 ) -> Result<(), ArmError> {
-    let mut transfer = DapTransfer::write(PortType::DebugPort, R::ADDRESS, register.into());
+    let mut transfer = DapTransfer::write(R::ADDRESS, register.into());
 
     transfer.idle_cycles_after = probe.swd_settings().idle_cycles_before_write_verify
         + probe.swd_settings().num_idle_cycles_between_writes;
@@ -628,10 +643,10 @@ fn write_dp_register<P: DebugProbe + RawProtocolIo + JTAGAccess, R: DpRegister>(
     Ok(())
 }
 
-/// Perform a batch of raw transfers, retrying on WAIT responses.
+/// Perform a batch of raw transfers.
 ///
-/// Other than that, the transfers are sent as-is. You might want to use `perform_transfers` instead, which
-/// does correction for delayed FAULT responses and other helpful stuff.
+/// This function will just send the transfers as-is, without handling WAIT or FAULT response.
+/// See [`perform_raw_transfers_retry`] for a version that handles WAIT responses
 fn perform_raw_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
@@ -644,19 +659,17 @@ fn perform_raw_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
 #[derive(Debug, Clone)]
 struct DapTransfer {
-    port: PortType,
+    address: RegisterAddress,
     direction: TransferDirection,
-    address: u8,
     value: u32,
     status: TransferStatus,
     idle_cycles_after: usize,
 }
 
 impl DapTransfer {
-    fn read(port: PortType, address: u8) -> DapTransfer {
+    fn read<P: Into<RegisterAddress>>(address: P) -> DapTransfer {
         Self {
-            port,
-            address,
+            address: address.into(),
             direction: TransferDirection::Read,
             value: 0,
             status: TransferStatus::Pending,
@@ -664,10 +677,9 @@ impl DapTransfer {
         }
     }
 
-    fn write(port: PortType, address: u8, value: u32) -> DapTransfer {
+    fn write<P: Into<RegisterAddress>>(address: P, value: u32) -> DapTransfer {
         Self {
-            port,
-            address,
+            address: address.into(),
             value,
             direction: TransferDirection::Write,
             status: TransferStatus::Pending,
@@ -683,7 +695,7 @@ impl DapTransfer {
     }
 
     fn io_sequence(&self) -> IoSequence {
-        let mut seq = build_swd_transfer(self.port, self.transfer_type(), self.address);
+        let mut seq = build_swd_transfer(&self.address, self.transfer_type());
 
         seq.reserve(self.idle_cycles_after);
         for _ in 0..self.idle_cycles_after {
@@ -697,22 +709,23 @@ impl DapTransfer {
         let (payload, address) = if self.is_abort() {
             (JTAG_ABORT_VALUE, JTAG_ABORT_IR_VALUE)
         } else {
-            let address = match self.port {
-                PortType::DebugPort => JTAG_DEBUG_PORT_IR_VALUE,
-                PortType::AccessPort => JTAG_ACCESS_PORT_IR_VALUE,
+            let jtag_address = match self.address.is_ap() {
+                false => JTAG_DEBUG_PORT_IR_VALUE,
+                true => JTAG_ACCESS_PORT_IR_VALUE,
             };
+            let port_address = self.address.a2_and_3();
 
             let mut payload = 0u64;
 
             // 32-bit value, bits 35:3
             payload |= (self.value as u64) << 3;
             // A[3:2], bits 2:1
-            payload |= (self.address as u64 & 0b1000) >> 1;
-            payload |= (self.address as u64 & 0b0100) >> 1;
+            payload |= (port_address as u64 & 0b1000) >> 1;
+            payload |= (port_address as u64 & 0b0100) >> 1;
             // RnW, bit 0
             payload |= u64::from(self.direction == TransferDirection::Read);
 
-            (payload, address)
+            (payload, jtag_address)
         };
 
         JtagWriteCommand {
@@ -753,11 +766,11 @@ impl DapTransfer {
     // Helper functions for combining transfers
 
     fn is_ap_read(&self) -> bool {
-        self.port == PortType::AccessPort && self.direction == TransferDirection::Read
+        self.address.is_ap() && self.direction == TransferDirection::Read
     }
 
     fn is_ap_write(&self) -> bool {
-        self.port == PortType::AccessPort && self.direction == TransferDirection::Write
+        self.address.is_ap() && self.direction == TransferDirection::Write
     }
 
     fn is_write(&self) -> bool {
@@ -765,14 +778,12 @@ impl DapTransfer {
     }
 
     fn is_abort(&self) -> bool {
-        self.port == PortType::DebugPort
-            && self.address == Abort::ADDRESS
+        matches!(self.address, RegisterAddress::DpRegister(Abort::ADDRESS))
             && self.direction == TransferDirection::Write
     }
 
     fn is_rdbuff(&self) -> bool {
-        self.port == PortType::DebugPort
-            && self.address == RdBuff::ADDRESS
+        matches!(self.address, RegisterAddress::DpRegister(RdBuff::ADDRESS))
             && self.direction == TransferDirection::Read
     }
 
@@ -786,12 +797,10 @@ impl DapTransfer {
         // the write buffer is empty.
         let abort_write = self.is_abort();
 
-        let dpidr_read = self.port == PortType::DebugPort
-            && self.address == DPIDR::ADDRESS
+        let dpidr_read = matches!(self.address, RegisterAddress::DpRegister(DPIDR::ADDRESS))
             && self.direction == TransferDirection::Read;
 
-        let ctrl_stat_read = self.port == PortType::DebugPort
-            && self.address == Ctrl::ADDRESS
+        let ctrl_stat_read = matches!(self.address, RegisterAddress::DpRegister(Ctrl::ADDRESS))
             && self.direction == TransferDirection::Read;
 
         abort_write || dpidr_read || ctrl_stat_read
@@ -901,7 +910,7 @@ enum TransferType {
     Write(u32),
 }
 
-fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> IoSequence {
+fn build_swd_transfer(address: &RegisterAddress, direction: TransferType) -> IoSequence {
     // JLink operates on raw SWD bit sequences.
     // So we need to manually assemble the read and write bitsequences.
     // The following code with the comments hopefully explains well enough how it works.
@@ -909,10 +918,7 @@ fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> I
     // `true` means `drive line` and `false` means `open drain` for the direction sequence.
 
     // First we determine the APnDP bit.
-    let port = match port {
-        PortType::DebugPort => false,
-        PortType::AccessPort => true,
-    };
+    let ap_n_dp = address.is_ap();
 
     // Set direction bit to 1 for reads.
     let direction_bit = direction == TransferType::Read;
@@ -920,8 +926,8 @@ fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> I
     // Then we determine the address bits.
     // Only bits 2 and 3 are relevant as we use byte addressing but can only read 32bits
     // which means we can skip bits 0 and 1. The ADI specification is defined like this.
-    let a2 = (address >> 2) & 0x01 == 1;
-    let a3 = (address >> 3) & 0x01 == 1;
+    let a2 = address.a2();
+    let a3 = address.a3();
 
     let mut sequence = IoSequence::with_capacity(46);
 
@@ -931,7 +937,7 @@ fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> I
     sequence.add_output(true);
 
     // APnDP (0 for DP, 1 for AP).
-    sequence.add_output(port);
+    sequence.add_output(ap_n_dp);
 
     // RnW (0 for Write, 1 for Read).
     sequence.add_output(direction_bit);
@@ -941,7 +947,7 @@ fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> I
     sequence.add_output(a3);
 
     // Odd parity bit over APnDP, RnW a2 and a3
-    sequence.add_output(port ^ direction_bit ^ a2 ^ a3);
+    sequence.add_output(ap_n_dp ^ direction_bit ^ a2 ^ a3);
 
     // Stop bit (always 0).
     sequence.add_output(false);
@@ -1053,8 +1059,8 @@ pub trait RawProtocolIo {
 }
 
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
-    fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, ArmError> {
-        let mut transfer = DapTransfer::read(port, address);
+    fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
+        let mut transfer = DapTransfer::read(address);
         perform_transfers(self, std::slice::from_mut(&mut transfer))?;
 
         match transfer.status {
@@ -1069,11 +1075,27 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 // if we are *not* currently reading the ctrl register, otherwise
                 // this could end up being an endless recursion.
 
-                if address != Ctrl::ADDRESS {
-                    let response =
-                        RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
+                if address == CTRL_PORT {
+                    //  This is not necessarily the CTRL/STAT register, because the dpbanksel field in the SELECT register
+                    //  might be set so that the read wasn't actually from the CTRL/STAT register.
+                    tracing::debug!("Read might have been from CTRL/STAT register, not reading it again to dermine fault reason");
+
+                    // We still clear the sticky error, otherwise all future accesses will fail.
+                    //
+                    // We also assume that we use overrun detection, so we clear the overrun error as well.
+                    clear_overrun_and_sticky_err(self)?;
+                } else {
+                    // Reading the CTRL/AP register depends on the dpbanksel register, but we don't know
+                    // here what the value of it is. So this will fail if dpbanksel is not set to 0,
+                    // but there is no way of figuring that out here, because reading the SELECT register
+                    // would also fail.
+                    //
+                    // What might happen is that the read fails, but that would then trigger another fault handling,
+                    // so it all ends up working.
+                    tracing::debug!("Reading CTRL/AP register to determine reason for FAULT");
+                    let response = RawDapAccess::raw_read_register(self, CTRL_PORT)?;
                     let ctrl = Ctrl::try_from(response)?;
-                    tracing::warn!(
+                    tracing::debug!(
                         "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
                         ctrl
                     );
@@ -1081,13 +1103,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     // Check the reason for the fault
                     // Other fault reasons than overrun or write error are not handled yet.
                     if ctrl.sticky_orun() || ctrl.sticky_err() {
-                        // We did not handle a WAIT state properly
-
-                        // Because we use overrun detection, we now have to clear the overrun error
-                        clear_overrun(self)?;
+                        // Clear the error state
+                        clear_overrun_and_sticky_err(self)?;
                     }
-                } else {
-                    tracing::warn!("Error reading CTRL/STAT register. This should not happen...");
                 }
 
                 Err(DapError::FaultResponse.into())
@@ -1103,11 +1121,10 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
     fn raw_read_block(
         &mut self,
-        port: PortType,
-        address: u8,
+        address: RegisterAddress,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
-        let mut transfers = vec![DapTransfer::read(port, address); values.len()];
+        let mut transfers = vec![DapTransfer::read(address); values.len()];
 
         perform_transfers(self, &mut transfers)?;
 
@@ -1115,12 +1132,19 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
             match result.status {
                 TransferStatus::Ok => values[i] = result.value,
                 TransferStatus::Failed(err) => {
-                    tracing::warn!(
+                    tracing::info!(
                         "Error in access {}/{} of block access: {:?}",
                         i + 1,
                         values.len(),
                         err
                     );
+
+                    // TODO: The error reason could be investigated by reading the CTRL/STAT register here,
+
+                    if err == DapError::FaultResponse {
+                        clear_overrun_and_sticky_err(self)?;
+                    }
+
                     return Err(err.into());
                 }
                 other => panic!(
@@ -1132,13 +1156,8 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         Ok(())
     }
 
-    fn raw_write_register(
-        &mut self,
-        port: PortType,
-        address: u8,
-        value: u32,
-    ) -> Result<(), ArmError> {
-        let mut transfer = DapTransfer::write(port, address, value);
+    fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError> {
+        let mut transfer = DapTransfer::write(address, value);
 
         perform_transfers(self, std::slice::from_mut(&mut transfer))?;
 
@@ -1151,8 +1170,8 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 // To get a clue about the actual fault we read the ctrl register,
                 // which will have the fault status flags set.
 
-                let response =
-                    RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
+                // This read might fail because the dpbanksel register is not set to 0.
+                let response = RawDapAccess::raw_read_register(self, CTRL_PORT)?;
 
                 let ctrl = Ctrl::try_from(response)?;
                 tracing::warn!(
@@ -1166,7 +1185,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     // We did not handle a WAIT state properly
 
                     // Because we use overrun detection, we now have to clear the overrun error
-                    clear_overrun(self)?;
+                    clear_overrun_and_sticky_err(self)?;
                 }
 
                 Err(DapError::FaultResponse.into())
@@ -1182,13 +1201,12 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
     fn raw_write_block(
         &mut self,
-        port: PortType,
-        address: u8,
+        address: RegisterAddress,
         values: &[u32],
     ) -> Result<(), ArmError> {
         let mut transfers = values
             .iter()
-            .map(|v| DapTransfer::write(port, address, *v))
+            .map(|v| DapTransfer::write(address, *v))
             .collect::<Vec<_>>();
 
         perform_transfers(self, &mut transfers)?;
@@ -1203,6 +1221,11 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         values.len(),
                         err
                     );
+
+                    // TODO: The error reason could be investigated by reading the CTRL/STAT register here,
+                    if err == DapError::FaultResponse {
+                        clear_overrun_and_sticky_err(self)?;
+                    }
 
                     return Err(err.into());
                 }
@@ -1273,7 +1296,10 @@ mod test {
     use std::iter;
 
     use crate::{
-        architecture::arm::{PortType, RawDapAccess},
+        architecture::arm::{
+            dp::{Ctrl, DpRegister, RdBuff},
+            ApAddress, RawDapAccess, RegisterAddress,
+        },
         error::Error,
         probe::{DebugProbe, DebugProbeError, JTAGAccess, ScanChainElement, WireProtocol},
     };
@@ -1390,15 +1416,16 @@ mod test {
             self.expected_transfer_count += 1;
         }
 
-        fn add_jtag_response(
+        fn add_jtag_response<P: Into<RegisterAddress>>(
             &mut self,
-            port: PortType,
-            address: u32,
+            address: P,
             read: bool,
             acknowlege: DapAcknowledge,
             output_value: u32,
             input_value: u32,
         ) {
+            let port = address.into();
+            let address = port.lsb().into();
             let mut response = (output_value as u64) << 3;
 
             let status = match acknowlege {
@@ -1410,7 +1437,7 @@ mod test {
             response |= status as u64;
 
             let expected = ExpectedJtagTransaction {
-                ir_address: if port == PortType::DebugPort {
+                ir_address: if matches!(port, RegisterAddress::DpRegister(_)) {
                     JTAG_DEBUG_PORT_IR_VALUE
                 } else {
                     JTAG_ACCESS_PORT_IR_VALUE
@@ -1680,7 +1707,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, read_value);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        let result = mock.raw_read_register(PortType::AccessPort, 4).unwrap();
+        let result = mock.raw_read_register(ApAddress::V1(4).into()).unwrap();
 
         assert_eq!(result, read_value);
     }
@@ -1695,20 +1722,13 @@ mod test {
         assert!(result.is_ok());
 
         // Read request
-        mock.add_jtag_response(PortType::AccessPort, 4, true, DapAcknowledge::Ok, 0, 0);
-        mock.add_jtag_response(
-            PortType::DebugPort,
-            12,
-            true,
-            DapAcknowledge::Ok,
-            read_value,
-            0,
-        );
+        mock.add_jtag_response(ApAddress::V1(4), true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, read_value, 0);
         // Check CTRL
-        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
-        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
 
-        let result = mock.raw_read_register(PortType::AccessPort, 4).unwrap();
+        let result = mock.raw_read_register(ApAddress::V1(4).into()).unwrap();
 
         assert_eq!(result, read_value);
     }
@@ -1736,7 +1756,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, read_value);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        let result = mock.raw_read_register(PortType::AccessPort, 4).unwrap();
+        let result = mock.raw_read_register(ApAddress::V1(4).into()).unwrap();
 
         assert_eq!(result, read_value);
     }
@@ -1750,27 +1770,20 @@ mod test {
         assert!(result.is_ok());
 
         // Read
-        mock.add_jtag_response(PortType::AccessPort, 4, true, DapAcknowledge::Ok, 0, 0);
-        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Wait, 0, 0);
+        mock.add_jtag_response(ApAddress::V1(4), true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Wait, 0, 0);
 
         //  When a wait response is received, the sticky overrun bit has to be cleared
         mock.add_jtag_abort();
 
         // Retry
-        mock.add_jtag_response(PortType::AccessPort, 4, true, DapAcknowledge::Ok, 0, 0);
-        mock.add_jtag_response(
-            PortType::DebugPort,
-            12,
-            true,
-            DapAcknowledge::Ok,
-            read_value,
-            0,
-        );
+        mock.add_jtag_response(ApAddress::V1(4), true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, read_value, 0);
         // Check CTRL
-        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
-        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
 
-        let result = mock.raw_read_register(PortType::AccessPort, 4).unwrap();
+        let result = mock.raw_read_register(ApAddress::V1(4).into()).unwrap();
 
         assert_eq!(result, read_value);
     }
@@ -1786,7 +1799,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, 0);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        mock.raw_write_register(PortType::AccessPort, 4, 0x123)
+        mock.raw_write_register(ApAddress::V1(4).into(), 0x123)
             .expect("Failed to write register");
     }
 
@@ -1797,27 +1810,13 @@ mod test {
         let result = mock.select_protocol(WireProtocol::Jtag);
         assert!(result.is_ok());
 
-        mock.add_jtag_response(
-            PortType::AccessPort,
-            4,
-            false,
-            DapAcknowledge::Ok,
-            0x0,
-            0x123,
-        );
-        mock.add_jtag_response(
-            PortType::DebugPort,
-            12,
-            true,
-            DapAcknowledge::Ok,
-            0x123,
-            0x0,
-        );
+        mock.add_jtag_response(ApAddress::V1(4), false, DapAcknowledge::Ok, 0x0, 0x123);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0x123, 0x0);
         // Check CTRL
-        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
-        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
 
-        mock.raw_write_register(PortType::AccessPort, 4, 0x123)
+        mock.raw_write_register(ApAddress::V1(4).into(), 0x123)
             .expect("Failed to write register");
     }
 
@@ -1843,7 +1842,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, 0);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        mock.raw_write_register(PortType::AccessPort, 4, 0x123)
+        mock.raw_write_register(ApAddress::V1(4).into(), 0x123)
             .expect("Failed to write register");
     }
 
@@ -1854,48 +1853,20 @@ mod test {
         let result = mock.select_protocol(WireProtocol::Jtag);
         assert!(result.is_ok());
 
-        mock.add_jtag_response(
-            PortType::AccessPort,
-            4,
-            false,
-            DapAcknowledge::Ok,
-            0x0,
-            0x123,
-        );
-        mock.add_jtag_response(
-            PortType::DebugPort,
-            12,
-            true,
-            DapAcknowledge::Wait,
-            0x0,
-            0x0,
-        );
+        mock.add_jtag_response(ApAddress::V1(4), false, DapAcknowledge::Ok, 0x0, 0x123);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Wait, 0x0, 0x0);
 
         // Expect a Write to the ABORT register.
         mock.add_jtag_abort();
 
         // Second try to write register.
-        mock.add_jtag_response(
-            PortType::AccessPort,
-            4,
-            false,
-            DapAcknowledge::Ok,
-            0x0,
-            0x123,
-        );
-        mock.add_jtag_response(
-            PortType::DebugPort,
-            12,
-            true,
-            DapAcknowledge::Ok,
-            0x123,
-            0x0,
-        );
+        mock.add_jtag_response(ApAddress::V1(4), false, DapAcknowledge::Ok, 0x0, 0x123);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0x123, 0x0);
         // Check CTRL
-        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
-        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
 
-        mock.raw_write_register(PortType::AccessPort, 4, 0x123)
+        mock.raw_write_register(ApAddress::V1(4).into(), 0x123)
             .expect("Failed to write register");
     }
 
@@ -1906,13 +1877,16 @@ mod test {
             super::{perform_transfers, DapTransfer, TransferStatus},
             DapAcknowledge, MockJaylink,
         };
-        use crate::architecture::arm::PortType;
+        use crate::architecture::arm::{
+            dp::{Abort, Ctrl, DpRegister, DpRegisterAddress, DPIDR},
+            ApAddress,
+        };
 
         #[test]
         fn single_dp_register_read() {
             let register_value = 32354;
 
-            let mut transfers = vec![DapTransfer::read(PortType::DebugPort, 0)];
+            let mut transfers = vec![DapTransfer::read(DPIDR::ADDRESS)];
 
             let mut mock = MockJaylink::new();
 
@@ -1931,7 +1905,7 @@ mod test {
         fn single_ap_register_read() {
             let register_value = 0x11_22_33_44u32;
 
-            let mut transfers = vec![DapTransfer::read(PortType::AccessPort, 0)];
+            let mut transfers = vec![DapTransfer::read(ApAddress::V1(0))];
 
             let mut mock = MockJaylink::new();
 
@@ -1957,8 +1931,11 @@ mod test {
             let dp_read_value = 0xFFAABB;
 
             let mut transfers = vec![
-                DapTransfer::read(PortType::AccessPort, 4),
-                DapTransfer::read(PortType::DebugPort, 3),
+                DapTransfer::read(ApAddress::V1(4)),
+                DapTransfer::read(DpRegisterAddress {
+                    address: 3,
+                    bank: None,
+                }),
             ];
 
             let mut mock = MockJaylink::new();
@@ -1987,8 +1964,11 @@ mod test {
             let dp_read_value = 0xFFAABB;
 
             let mut transfers = vec![
-                DapTransfer::read(PortType::DebugPort, 3),
-                DapTransfer::read(PortType::AccessPort, 4),
+                DapTransfer::read(DpRegisterAddress {
+                    address: 3,
+                    bank: None,
+                }),
+                DapTransfer::read(ApAddress::V1(4)),
             ];
 
             let mut mock = MockJaylink::new();
@@ -2015,8 +1995,8 @@ mod test {
             let ap_read_values = [1, 2];
 
             let mut transfers = vec![
-                DapTransfer::read(PortType::AccessPort, 4),
-                DapTransfer::read(PortType::AccessPort, 4),
+                DapTransfer::read(ApAddress::V1(4)),
+                DapTransfer::read(ApAddress::V1(4)),
             ];
 
             let mut mock = MockJaylink::new();
@@ -2042,8 +2022,8 @@ mod test {
             let dp_read_values = [1, 2];
 
             let mut transfers = vec![
-                DapTransfer::read(PortType::DebugPort, 4),
-                DapTransfer::read(PortType::DebugPort, 4),
+                DapTransfer::read(Ctrl::ADDRESS),
+                DapTransfer::read(Ctrl::ADDRESS),
             ];
 
             let mut mock = MockJaylink::new();
@@ -2063,7 +2043,7 @@ mod test {
 
         #[test]
         fn single_dp_register_write() {
-            let mut transfers = vec![DapTransfer::write(PortType::DebugPort, 0, 0x1234_5678)];
+            let mut transfers = vec![DapTransfer::write(Abort::ADDRESS, 0x1234_5678)];
 
             let mut mock = MockJaylink::new();
 
@@ -2084,7 +2064,7 @@ mod test {
 
         #[test]
         fn single_ap_register_write() {
-            let mut transfers = vec![DapTransfer::write(PortType::AccessPort, 0, 0x1234_5678)];
+            let mut transfers = vec![DapTransfer::write(ApAddress::V1(0), 0x1234_5678)];
 
             let mut mock = MockJaylink::new();
 
@@ -2108,8 +2088,8 @@ mod test {
         #[test]
         fn multiple_ap_register_write() {
             let mut transfers = vec![
-                DapTransfer::write(PortType::AccessPort, 0, 0x1234_5678),
-                DapTransfer::write(PortType::AccessPort, 0, 0xABABABAB),
+                DapTransfer::write(ApAddress::V1(0), 0x1234_5678),
+                DapTransfer::write(ApAddress::V1(0), 0xABABABAB),
             ];
 
             let mut mock = MockJaylink::new();

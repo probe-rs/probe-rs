@@ -10,8 +10,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
-      psel: 0x0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -37,8 +36,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
-      psel: 0x0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -64,8 +62,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
-      psel: 0x0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -91,8 +88,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
-      psel: 0x0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -118,8 +114,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
-      psel: 0x0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -145,8 +140,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
-      psel: 0x0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -172,8 +166,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
-      psel: 0x0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1
@@ -199,8 +192,7 @@ variants:
   - name: main
     type: armv7em
     core_access_options: !Arm
-      ap: 0
-      psel: 0x0
+      ap: !v1 0
   memory_map:
   - !Nvm
     name: IROM1

@@ -7,7 +7,10 @@ use probe_rs_target::Chip;
 
 use crate::{
     architecture::{
-        arm::{sequences::DefaultArmSequence, ArmChipInfo, ArmProbeInterface, DpAddress},
+        arm::{
+            communication_interface::read_chip_info_from_rom_table, dp::DpAddress,
+            sequences::DefaultArmSequence, ArmChipInfo, ArmProbeInterface,
+        },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
@@ -129,8 +132,7 @@ fn try_detect_arm_chip(mut probe: Probe) -> Result<(Probe, Option<Target>), Erro
                         }
                     };
 
-                let found_arm_chip = interface
-                    .read_chip_info_from_rom_table(dp_address)
+                let found_arm_chip = read_chip_info_from_rom_table(interface.as_mut(), dp_address)
                     .unwrap_or_else(|error| {
                         tracing::debug!("Error during ARM chip detection: {error}");
                         None

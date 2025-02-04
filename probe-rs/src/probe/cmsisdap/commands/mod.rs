@@ -90,6 +90,15 @@ pub enum SendError {
     Timeout,
 }
 
+impl From<std::io::Error> for SendError {
+    fn from(error: std::io::Error) -> Self {
+        match error.kind() {
+            ErrorKind::TimedOut => SendError::Timeout,
+            _ => SendError::UsbError(error),
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum RequestError {
     /// Failed setting the SWJ Clock on probe with the following request: {request:?}
@@ -188,9 +197,9 @@ impl CmsisDapDevice {
                     n => Ok(n),
                 }
             }
-            CmsisDapDevice::V2 { handle, in_ep, .. } => handle
-                .read_bulk(*in_ep, buf, USB_TIMEOUT)
-                .map_err(SendError::UsbError),
+            CmsisDapDevice::V2 { handle, in_ep, .. } => {
+                Ok(handle.read_bulk(*in_ep, buf, USB_TIMEOUT)?)
+            }
         }
     }
 
@@ -200,9 +209,7 @@ impl CmsisDapDevice {
             CmsisDapDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
             CmsisDapDevice::V2 { handle, out_ep, .. } => {
                 // Skip first byte as it's set to 0 for HID transfers
-                handle
-                    .write_bulk(*out_ep, &buf[1..], USB_TIMEOUT)
-                    .map_err(SendError::UsbError)
+                Ok(handle.write_bulk(*out_ep, &buf[1..], USB_TIMEOUT)?)
             }
         }
     }

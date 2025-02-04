@@ -6,17 +6,16 @@ mod usb_interface;
 
 use crate::{
     architecture::arm::{
-        ap::{
+        ap_v1::{
             memory_ap::{MemoryAp, MemoryApType},
             valid_access_ports, AccessPortType,
         },
-        communication_interface::{
-            ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
-        },
-        memory::{ArmMemoryInterface, Component},
+        communication_interface::{ArmProbeInterface, SwdSequence, UninitializedArmProbe},
+        dp::{DpAddress, DpRegisterAddress},
+        memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        valid_32bit_arm_address, ArmChipInfo, ArmError, DapAccess, DpAddress,
-        FullyQualifiedApAddress, Pins, SwoAccess, SwoConfig, SwoMode,
+        valid_32bit_arm_address, ArmError, DapAccess, FullyQualifiedApAddress, Pins, SwoAccess,
+        SwoConfig, SwoMode,
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
@@ -1331,10 +1330,8 @@ impl StlinkArmDebug {
 
         interface.access_ports = valid_access_ports(&mut interface, DpAddress::Default)
             .into_iter()
+            .inspect(|addr| tracing::debug!("AP {:#x?}", addr))
             .collect();
-        interface.access_ports.iter().for_each(|addr| {
-            tracing::debug!("AP {:#x?}", addr);
-        });
 
         Ok(interface)
     }
@@ -1347,11 +1344,19 @@ impl StlinkArmDebug {
         Ok(())
     }
 
-    fn select_dp_and_dp_bank(&mut self, dp: DpAddress, address: u8) -> Result<(), ArmError> {
+    fn select_dp_and_dp_bank(
+        &mut self,
+        dp: DpAddress,
+        address: DpRegisterAddress,
+    ) -> Result<(), ArmError> {
         self.select_dp(dp)?;
 
-        if address & 0xf0 != 0 && !self.probe.supports_dp_bank_selection() {
-            tracing::warn!("Trying to access DP register at address {address:#x}, which is not supported on ST-Links.");
+        let Some(bank) = address.bank else {
+            return Ok(());
+        };
+
+        if bank != 0 && !self.probe.supports_dp_bank_selection() {
+            tracing::warn!("Trying to access DP register at address {address:#x?}, which is not supported on ST-Links.");
             return Err(DebugProbeError::from(StlinkError::BanksNotAllowedOnDPRegister).into());
         }
 
@@ -1372,9 +1377,13 @@ impl StlinkArmDebug {
 
 impl DapAccess for StlinkArmDebug {
     #[tracing::instrument(skip(self), fields(value))]
-    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
+    fn read_raw_dp_register(
+        &mut self,
+        dp: DpAddress,
+        address: DpRegisterAddress,
+    ) -> Result<u32, ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
-        let result = self.probe.read_register(DP_PORT, address)?;
+        let result = self.probe.read_register(DP_PORT, address.into())?;
 
         tracing::Span::current().record("value", result);
 
@@ -1387,12 +1396,12 @@ impl DapAccess for StlinkArmDebug {
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
-        address: u8,
+        address: DpRegisterAddress,
         value: u32,
     ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
 
-        self.probe.write_register(DP_PORT, address, value)?;
+        self.probe.write_register(DP_PORT, address.into(), value)?;
         Ok(())
     }
 
@@ -1437,31 +1446,6 @@ impl ArmProbeInterface for StlinkArmDebug {
         Ok(Box::new(interface) as _)
     }
 
-    fn read_chip_info_from_rom_table(
-        &mut self,
-        dp: DpAddress,
-    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmError> {
-        self.select_dp(dp)?;
-
-        for ap in self.access_ports.clone() {
-            if let Ok(mut memory) = self.memory_interface(&ap) {
-                let base_address = memory.base_address()?;
-                let component = Component::try_parse(&mut *memory, base_address)?;
-
-                if let Component::Class1RomTable(component_id, _) = component {
-                    if let Some(jep106) = component_id.peripheral_id().jep106() {
-                        return Ok(Some(ArmChipInfo {
-                            manufacturer: jep106,
-                            part: component_id.peripheral_id().part(),
-                        }));
-                    }
-                }
-            }
-        }
-
-        Ok(None)
-    }
-
     fn access_ports(
         &mut self,
         dp: DpAddress,
@@ -1478,6 +1462,10 @@ impl ArmProbeInterface for StlinkArmDebug {
     fn current_debug_port(&self) -> DpAddress {
         // SWD multidrop is not supported on ST-Link
         DpAddress::Default
+    }
+
+    fn reinitialize(&mut self) -> Result<(), ArmError> {
+        Ok(())
     }
 }
 
@@ -1810,33 +1798,26 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
         self.current_ap.base_address(self.probe)
     }
 
-    fn ap(&mut self) -> &mut MemoryAp {
-        &mut self.current_ap
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        self.current_ap.ap_address().clone()
     }
 
-    fn get_arm_communication_interface(
-        &mut self,
-    ) -> Result<
-        &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
-        DebugProbeError,
-    > {
-        Err(DebugProbeError::InterfaceNotAvailable {
-            interface_name: "ARM",
-        })
+    fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
+        Ok(self)
     }
 
-    fn try_as_parts(
-        &mut self,
-    ) -> Result<
-        (
-            &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
-            &mut MemoryAp,
-        ),
-        DebugProbeError,
-    > {
-        Err(DebugProbeError::InterfaceNotAvailable {
+    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
+        Ok(self.probe)
+    }
+
+    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+        Ok(self.probe)
+    }
+
+    fn generic_status(&mut self) -> Result<crate::architecture::arm::memory::Status, ArmError> {
+        Err(ArmError::Probe(DebugProbeError::InterfaceNotAvailable {
             interface_name: "ARM",
-        })
+        }))
     }
 }
 

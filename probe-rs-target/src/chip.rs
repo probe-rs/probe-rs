@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
 use super::memory::MemoryRegion;
-use crate::{
-    serialize::{hex_option, hex_u_int},
-    CoreType,
-};
+use crate::{serialize::hex_option, CoreType};
 use serde::{Deserialize, Serialize};
 
 /// Represents a DAP scan chain element.
@@ -164,14 +161,38 @@ pub enum CoreAccessOptions {
     Xtensa(XtensaCoreAccessOptions),
 }
 
+/// An address for AP accesses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ApAddress {
+    /// References an address for an APv1 access, which is part of the ADIv5 specification.
+    #[serde(rename = "v1")]
+    V1(u8),
+    /// References an address for an APv2 access, which is part of the ADIv6 specification.
+    ///
+    /// # Note
+    /// This represents a chain of addresses within nested APs. In the case where there are no
+    /// nested APs, there will be a single entry in the vector with the address in the root AP.
+    ///
+    /// Entries preceeding the last entry should reference the AP base address to be used.
+    #[serde(rename = "v2")]
+    V2(Vec<u64>),
+}
+
+impl Default for ApAddress {
+    fn default() -> Self {
+        ApAddress::V1(0)
+    }
+}
+
 /// The data required to access an ARM core
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct ArmCoreAccessOptions {
     /// The access port number to access the core
-    pub ap: u8,
-    /// The port select number to access the core
-    #[serde(serialize_with = "hex_u_int")]
-    pub psel: u32,
+    pub ap: ApAddress,
+    /// The TARGETSEL value used to access the core
+    #[serde(serialize_with = "hex_option")]
+    pub targetsel: Option<u32>,
     /// The base address of the debug registers for the core.
     /// Required for Cortex-A, optional for Cortex-M
     #[serde(serialize_with = "hex_option")]

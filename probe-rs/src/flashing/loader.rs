@@ -5,7 +5,6 @@ use probe_rs_target::{
     InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
     TargetDescriptionSource,
 };
-use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
 use std::str::FromStr;
@@ -441,19 +440,14 @@ impl FlashLoader {
         let progress = FlashProgress::new(|_| {});
 
         // Iterate all flash algorithms we need to use and do the flashing.
-        for ((algo_name, core), regions) in algos {
-            tracing::debug!("Flashing ranges for algo: {}", algo_name);
+        for el in algos {
+            let mut flasher = el.flasher;
+            tracing::debug!("Flashing ranges for algo: {}", flasher.flash_algorithm.name);
 
-            // This can't fail, algo_name comes from the target.
-            let algo = session.target().flash_algorithm_by_name(&algo_name);
-            let algo = algo.unwrap().clone();
-
-            let mut flasher = Flasher::new(session, core, &algo, progress.clone())?;
-
-            for region in regions.iter() {
+            for region in el.regions.iter() {
                 let flash_layout = flasher.flash_layout(region, &self.builder, false)?;
 
-                if !flasher.verify(&flash_layout, true)? {
+                if !flasher.verify(session, &progress, &flash_layout, true)? {
                     return Err(FlashError::Verify);
                 }
             }
@@ -507,18 +501,13 @@ impl FlashLoader {
         }
 
         // Iterate all flash algorithms we need to use and do the flashing.
-        for ((algo_name, core), regions) in algos {
-            tracing::debug!("Flashing ranges for algo: {}", algo_name);
-
-            // This can't fail, algo_name comes from the target.
-            let algo = session.target().flash_algorithm_by_name(&algo_name);
-            let algo = algo.unwrap().clone();
-
-            let mut flasher = Flasher::new(session, core, &algo, progress.clone())?;
+        for el in algos {
+            let mut flasher = el.flasher;
+            tracing::debug!("Flashing ranges for algo: {}", flasher.flash_algorithm.name);
 
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
-                flasher.run_erase_all()?;
+                flasher.run_erase_all(session, &progress)?;
                 do_chip_erase = false;
                 did_chip_erase = true;
             }
@@ -527,10 +516,10 @@ impl FlashLoader {
                 tracing::info!("Pre-verifying!");
 
                 let mut contents_match = true;
-                for region in regions.iter() {
+                for region in el.regions.iter() {
                     let flash_layout = flasher.flash_layout(region, &self.builder, false)?;
 
-                    if !flasher.verify(&flash_layout, true)? {
+                    if !flasher.verify(session, &progress, &flash_layout, true)? {
                         contents_match = false;
                         break;
                     }
@@ -548,7 +537,7 @@ impl FlashLoader {
                 do_use_double_buffering = false;
             }
 
-            for region in regions {
+            for region in el.regions {
                 tracing::debug!(
                     "    programming region: {:#010X?} ({} bytes)",
                     region.range,
@@ -557,6 +546,8 @@ impl FlashLoader {
 
                 // Program the data.
                 flasher.program(
+                    session,
+                    &progress,
                     &region,
                     &self.builder,
                     options.keep_unwritten_bytes,
@@ -585,8 +576,7 @@ impl FlashLoader {
             {
                 session
                     .core(core_to_reset_index)
-                    .map_err(FlashError::Core)?
-                    .reset_and_halt(Duration::from_millis(500))
+                    .and_then(|mut core| core.reset_and_halt(Duration::from_millis(500)))
                     .map_err(FlashError::Core)?;
             }
         }
@@ -652,10 +642,7 @@ impl FlashLoader {
         Ok(())
     }
 
-    fn prepare_plan(
-        &self,
-        session: &mut Session,
-    ) -> Result<HashMap<(String, usize), Vec<NvmRegion>>, FlashError> {
+    fn prepare_plan(&self, session: &mut Session) -> Result<Vec<FlasherWithRegions>, FlashError> {
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
             tracing::debug!(
@@ -685,7 +672,7 @@ impl FlashLoader {
             tracing::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
-        let mut algos: HashMap<(String, usize), Vec<NvmRegion>> = HashMap::new();
+        let mut algos = Vec::<FlasherWithRegions>::new();
 
         // Commit NVM first
 
@@ -717,24 +704,28 @@ impl FlashLoader {
                 continue;
             }
 
+            let region = region.clone();
+
+            let Some(core_name) = region.cores.first() else {
+                return Err(FlashError::NoNvmCoreAccess(region));
+            };
+
             let target = session.target();
-            let algo = Self::get_flash_algorithm_for_region(region, target)?;
-            let core_name = region
-                .cores
-                .first()
-                .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
-                .clone();
+            let core = target.core_index_by_name(core_name).unwrap();
+            let algo = Self::get_flash_algorithm_for_region(&region, target)?;
 
-            let core = target
-                .cores
-                .iter()
-                .position(|c| c.name == core_name)
-                .unwrap();
-
-            let entry = algos.entry((algo.name.clone(), core)).or_default();
-            entry.push(region.clone());
-
+            // We don't usually have more than a handful of regions, linear search should be fine.
             tracing::debug!("     -- using algorithm: {}", algo.name);
+            if let Some(entry) = algos.iter_mut().find(|entry| {
+                entry.flasher.flash_algorithm.name == algo.name && entry.flasher.core_index == core
+            }) {
+                entry.regions.push(region);
+            } else {
+                algos.push(FlasherWithRegions {
+                    flasher: Flasher::new(target, core, algo)?,
+                    regions: vec![region],
+                });
+            }
         }
 
         Ok(algos)
@@ -742,7 +733,7 @@ impl FlashLoader {
 
     fn initialize(
         &self,
-        algos: &HashMap<(String, usize), Vec<NvmRegion>>,
+        algos: &[FlasherWithRegions],
         session: &mut Session,
         progress: &FlashProgress,
         options: &mut DownloadOptions,
@@ -750,24 +741,20 @@ impl FlashLoader {
         let mut phases = vec![];
 
         // Iterate all flash algorithms to initialize a few things.
-        for ((algo_name, core), regions) in algos.iter() {
-            // This can't fail, algo_name comes from the target.
-            let algo = session.target().flash_algorithm_by_name(algo_name);
-            let algo = algo.unwrap().clone();
-
-            let flasher = Flasher::new(session, *core, &algo, progress.clone())?;
+        for el in algos.iter() {
             // If the first flash algo doesn't support erase all, disable chip erase.
             // TODO: we could sort by support but it's unlikely to make a difference.
-            if options.do_chip_erase && !flasher.is_chip_erase_supported() {
+            if options.do_chip_erase && !el.flasher.is_chip_erase_supported(session) {
                 options.do_chip_erase = false;
                 tracing::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
                 tracing::warn!("A manual sector erase will be performed.");
             }
 
             let mut phase_layout = FlashLayout::default();
-            for region in regions {
+            for region in el.regions.iter() {
                 let layout =
-                    flasher.flash_layout(region, &self.builder, options.keep_unwritten_bytes)?;
+                    el.flasher
+                        .flash_layout(region, &self.builder, options.keep_unwritten_bytes)?;
 
                 phase_layout.merge_from(layout);
             }
@@ -865,4 +852,9 @@ impl FlashLoader {
             .iter()
             .map(|(address, data)| (*address, data.as_slice()))
     }
+}
+
+pub(super) struct FlasherWithRegions {
+    pub(super) regions: Vec<NvmRegion>,
+    pub(super) flasher: Flasher,
 }

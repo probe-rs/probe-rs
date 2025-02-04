@@ -1,1 +1,0 @@
-Removed the `memory_map` argument from `Rtt::attach` and `Rtt::attach_region`.

@@ -1,1 +1,0 @@
-Updated STM32L5 family information.

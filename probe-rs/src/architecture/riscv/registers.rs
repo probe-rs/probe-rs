@@ -1,3 +1,5 @@
+//! RISC-V register descriptions.
+
 use std::sync::LazyLock;
 
 use crate::{
@@ -39,7 +41,10 @@ pub(crate) const RA: CoreRegister = CoreRegister {
 };
 
 // S0 and S1 need to be referenceable as constants in other parts of the architecture specific code.
+
+/// The first saved register, s0. Used as the frame pointer
 pub const S0: CoreRegister = FP;
+/// The second saved register, s1.
 pub const S1: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("x9"), RegisterRole::Other("s1")],
     id: RegisterId(0x1009),
@@ -47,7 +52,8 @@ pub const S1: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Clear,
 };
 
-pub(crate) static RISCV_CORE_REGSISTERS: LazyLock<CoreRegisters> =
+/// The RISCV core registers.
+pub static RISCV_CORE_REGISTERS: LazyLock<CoreRegisters> =
     LazyLock::new(|| CoreRegisters::new(RISCV_REGISTERS_SET.iter().collect()));
 
 static RISCV_REGISTERS_SET: &[CoreRegister] = &[

@@ -2440,7 +2440,7 @@ memory_mapped_bitfield_register! {
     /// An implementation does not have to implement
     /// both virtual and physical accesses, but it must
     /// fail accesses that it doesn’t support.
-
+    ///
     /// 0: Addresses are physical (to the hart they are
     /// performed on).\
     /// 1: Addresses are virtual, and translated the way

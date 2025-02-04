@@ -1,1 +1,0 @@
-Renamed the `esp32-3.3v` target to `esp32`

@@ -6,6 +6,7 @@ use probe_rs_target::{
     chip_detection::{NordicConfigIdDetection, NordicFicrDetection},
     Chip,
 };
+use sequences::nrf54l::Nrf54L;
 
 use crate::{
     architecture::arm::{
@@ -33,6 +34,8 @@ impl Vendor for NordicSemi {
             DebugSequence::Arm(Nrf52::create())
         } else if chip.name.starts_with("nRF9160") {
             DebugSequence::Arm(Nrf9160::create())
+        } else if chip.name.starts_with("nRF54L") {
+            DebugSequence::Arm(Nrf54L::create())
         } else {
             return None;
         };

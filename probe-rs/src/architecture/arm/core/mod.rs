@@ -21,7 +21,7 @@ pub(crate) mod armv7a_debug_regs;
 pub(crate) mod armv8a_debug_regs;
 pub(crate) mod cortex_m;
 pub(crate) mod instructions;
-pub(crate) mod registers;
+pub mod registers;
 
 /// Core information data which is downloaded from the target, represents its state and can be used for debugging.
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -13,26 +13,25 @@ use probe_rs_target::CoreType;
 use crate::{
     architecture::arm::{
         core::registers::cortex_m::{PC, SP},
-        dp::{DLPIDR, TARGETID},
-        ArmProbeInterface,
+        dp::{Ctrl, DebugPortError, DpRegister, DLPIDR, TARGETID},
+        ArmProbeInterface, RegisterAddress,
     },
     probe::{DebugProbeError, WireProtocol},
     MemoryInterface, MemoryMappedRegister, Session,
 };
 
 use super::{
-    ap::AccessPortError,
+    ap_v1::AccessPortError,
     armv6m::Demcr,
     communication_interface::{DapProbe, Initialized},
     component::{TraceFunnel, TraceSink},
     core::cortex_m::{Dhcsr, Vtor},
-    dp::{Abort, Ctrl, DebugPortError, DpAccess, Select, DPIDR},
+    dp::{Abort, DpAccess, DpAddress, SelectV1, DPIDR},
     memory::{
         romtable::{CoresightComponent, PeripheralType},
         ArmMemoryInterface,
     },
-    ArmCommunicationInterface, ArmError, DpAddress, FullyQualifiedApAddress, Pins, PortType,
-    Register,
+    ArmCommunicationInterface, ArmError, FullyQualifiedApAddress, Pins,
 };
 
 /// An error occurred when executing an ARM debug sequence
@@ -424,20 +423,31 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// De-Assert a system-wide reset line nRST. This is based on the
     /// `ResetHardwareDeassert` function from the [ARM SVD Debug Description].
     ///
+    /// This function is called _once_ when using the "connect under reset" functionality,
+    /// after a connection to each core has been established, and it is expected that after
+    /// this function is called, the target will start executing code.
+    ///
+    /// The provided `default_ap` is the default access port that should be used for memory
+    /// access, if the sequence requires it.
+    ///
     /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetHardwareDeassert
     #[doc(alias = "ResetHardwareDeassert")]
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+    fn reset_hardware_deassert(
+        &self,
+        probe: &mut dyn ArmProbeInterface,
+        _default_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
         let mut n_reset = Pins(0);
         n_reset.set_nreset(true);
         let n_reset = n_reset.0 as u32;
 
-        let can_read_pins = memory.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff;
+        let can_read_pins = probe.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff;
 
         if can_read_pins {
             let start = Instant::now();
 
             loop {
-                if Pins(memory.swj_pins(n_reset, n_reset, 0)? as u8).nreset() {
+                if Pins(probe.swj_pins(n_reset, n_reset, 0)? as u8).nreset() {
                     return Ok(());
                 }
                 if start.elapsed() >= Duration::from_secs(1) {
@@ -530,7 +540,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 Some(WireProtocol::Swd) => {
                     if has_dormant {
                         // Select Dormant State (from JTAG)
-                        tracing::debug!("Select Dormant State (from JTAG)");
+                        tracing::debug!("SelectV1 Dormant State (from JTAG)");
                         interface.swj_sequence(31, 0x33BBBBBA)?;
 
                         // Leave dormant state
@@ -595,7 +605,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         abort.set_stkcmpclr(true);
         interface.write_dp_register(dp, abort)?;
 
-        interface.write_dp_register(dp, Select(0))?;
+        interface.write_dp_register(dp, SelectV1(0))?;
+        let dpidr: DPIDR = interface.read_dp_register(dp)?;
 
         let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
 
@@ -606,7 +617,14 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             let mut ctrl = Ctrl(0);
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
-            interface.write_dp_register(dp, ctrl)?;
+            if !dpidr.min() {
+                // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode,
+                // Include all Byte Lanes).
+                //
+                // Setting this on MINDP is unpredictable.
+                ctrl.set_mask_lane(0b1111);
+            }
+            interface.write_dp_register(dp, ctrl.clone())?;
 
             let start = Instant::now();
             loop {
@@ -623,11 +641,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
             // TODO: Only run the following code when the SWD protocol is used
 
-            // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
-            let mut ctrl = Ctrl(0);
-            ctrl.set_cdbgpwrupreq(true);
-            ctrl.set_csyspwrupreq(true);
-            ctrl.set_mask_lane(0b1111);
+            // Write the CTRL register after powerup completes. It's unknown if this is required
+            // for all devices, but there's little harm in writing the same value back to the
+            // register after powerup.
             interface.write_dp_register(dp, ctrl)?;
 
             let ctrl_reg: Ctrl = interface.read_dp_register(dp)?;
@@ -833,15 +849,15 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     fn debug_port_stop(&self, interface: &mut dyn DapProbe, dp: DpAddress) -> Result<(), ArmError> {
         tracing::info!("Powering down debug port {dp:x?}");
         // Select Bank 0
-        interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 0)?;
+        interface.raw_write_register(SelectV1::ADDRESS.into(), 0)?;
 
         // De-assert debug power request
-        interface.raw_write_register(PortType::DebugPort, Ctrl::ADDRESS, 0)?;
+        interface.raw_write_register(Ctrl::ADDRESS.into(), 0)?;
 
         // Wait for the power domains to go away
         let start = Instant::now();
         loop {
-            let ctrl = interface.raw_read_register(PortType::DebugPort, Ctrl::ADDRESS)?;
+            let ctrl = interface.raw_read_register(Ctrl::ADDRESS.into())?;
             let ctrl = Ctrl(ctrl);
             if !(ctrl.csyspwrupack() || ctrl.cdbgpwrupack()) {
                 return Ok(());
@@ -917,7 +933,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             tracing::debug!("Reading DPIDR to enable SWD interface");
 
             // Read DPIDR to enable SWD interface.
-            match interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS) {
+            match interface.raw_read_register(RegisterAddress::DpRegister(DPIDR::ADDRESS)) {
                 Ok(x) => break x,
                 Err(z) => {
                     if guard.elapsed() > RESET_RECOVERY_TIMEOUT {
@@ -944,7 +960,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         abort.set_stkcmpclr(true);
 
         // DPBANKSEL does not matter for ABORT
-        interface.raw_write_register(PortType::DebugPort, Abort::ADDRESS, abort.0)?;
+        interface.raw_write_register(Abort::ADDRESS.into(), abort.0)?;
         interface.raw_flush()?;
 
         // Check that we are connected to the right DP
@@ -952,14 +968,13 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         if let DpAddress::Multidrop(targetsel) = dp {
             tracing::debug!("Checking TARGETID and DLPIDR match");
             // Select DP Bank 2
-            interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 2)?;
+            interface.raw_write_register(SelectV1::ADDRESS.into(), 2)?;
 
-            let target_id =
-                interface.raw_read_register(PortType::DebugPort, TARGETID::ADDRESS & 0xf)?;
+            let target_id = interface.raw_read_register(TARGETID::ADDRESS.into())?;
 
             // Select DP Bank 3
-            interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 3)?;
-            let dlpidr = interface.raw_read_register(PortType::DebugPort, DLPIDR::ADDRESS & 0xf)?;
+            interface.raw_write_register(SelectV1::ADDRESS.into(), 3)?;
+            let dlpidr = interface.raw_read_register(DLPIDR::ADDRESS.into())?;
 
             const TARGETID_MASK: u32 = 0x0FFF_FFFF;
             const DLPIDR_MASK: u32 = 0xF000_0000;
@@ -979,10 +994,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             }
         }
 
-        interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 0)?;
-        let ctrl_stat = interface
-            .raw_read_register(PortType::DebugPort, Ctrl::ADDRESS & 0xf)
-            .map(Ctrl);
+        interface.raw_write_register(SelectV1::ADDRESS.into(), 0)?;
+        let ctrl_stat = interface.raw_read_register(Ctrl::ADDRESS.into()).map(Ctrl);
 
         match ctrl_stat {
             Ok(ctrl_stat) => {

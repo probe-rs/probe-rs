@@ -1,0 +1,35 @@
+---
+source: probe-rs-debug/src/debug_info.rs
+expression: printed_backtrace
+---
+Frame:
+ function:        __cortex_m_rt_SVCall_trampoline
+ source_location:
+  path: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs
+  line: Some(22)
+  column: Some(Column(1))
+ frame_base:      Some(2001ffc8)
+Frame:
+ function:        SVC
+ source_location:
+None
+ frame_base:      None
+Frame:
+ function:        __cortex_m_rt_main
+ source_location:
+  path: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs
+  line: Some(17)
+  column: Some(Column(5))
+ frame_base:      Some(2001fff0)
+Frame:
+ function:        __cortex_m_rt_main_trampoline
+ source_location:
+  path: /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs
+  line: Some(11)
+  column: Some(Column(1))
+ frame_base:      Some(2001fff8)
+Frame:
+ function:        <unknown function @ 0x0000013c>
+ source_location:
+None
+ frame_base:      None

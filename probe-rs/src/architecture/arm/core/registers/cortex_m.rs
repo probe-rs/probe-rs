@@ -7,43 +7,48 @@ use crate::{
     CoreRegister, CoreRegisters, RegisterId,
 };
 
-pub(crate) const PC: CoreRegister = CoreRegister {
+/// Program counter (PC) register.
+pub const PC: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("R15"), RegisterRole::ProgramCounter],
     id: RegisterId(15),
     data_type: RegisterDataType::UnsignedInteger(32),
     unwind_rule: UnwindRule::SpecialRule,
 };
 
-pub(crate) const FP: CoreRegister = CoreRegister {
+/// Frame pointer (FP) register.
+pub const FP: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("R7"), RegisterRole::FramePointer],
     id: RegisterId(7),
     data_type: RegisterDataType::UnsignedInteger(32),
-    unwind_rule: UnwindRule::SpecialRule,
+    unwind_rule: UnwindRule::Preserve,
 };
 
-pub(crate) const SP: CoreRegister = CoreRegister {
+/// Stack pointer (SP) register.
+pub const SP: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("R13"), RegisterRole::StackPointer],
     id: RegisterId(13),
     data_type: RegisterDataType::UnsignedInteger(32),
     unwind_rule: UnwindRule::Preserve,
 };
 
-pub(crate) const RA: CoreRegister = CoreRegister {
+/// Return address (RA) register.
+pub const RA: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("R14"), RegisterRole::ReturnAddress],
     id: RegisterId(14),
     data_type: RegisterDataType::UnsignedInteger(32),
     unwind_rule: UnwindRule::SpecialRule,
 };
 
-pub(crate) const XPSR: CoreRegister = CoreRegister {
+/// xPSR register, the combination of APSR, IPSR, and EPSR.
+pub const XPSR: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("XPSR"), RegisterRole::ProcessorStatus],
     id: RegisterId(0b1_0000),
     data_type: RegisterDataType::UnsignedInteger(32),
     unwind_rule: UnwindRule::Preserve,
 };
 
-/// All off the Cortex-M core registers.
-pub(crate) static CORTEX_M_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
+/// All of the Cortex-M core registers.
+pub static CORTEX_M_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
@@ -52,7 +57,8 @@ pub(crate) static CORTEX_M_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::n
     )
 });
 
-pub(crate) static CORTEX_M_WITH_FP_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
+/// Cortex-M registers with floating point extension.
+pub static CORTEX_M_WITH_FP_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
@@ -62,7 +68,7 @@ pub(crate) static CORTEX_M_WITH_FP_CORE_REGISTERS: LazyLock<CoreRegisters> = Laz
     )
 });
 
-pub(super) static ARM32_COMMON_REGS_SET: &[CoreRegister] = &[
+pub(crate) static ARM32_COMMON_REGS_SET: &[CoreRegister] = &[
     CoreRegister {
         roles: &[
             RegisterRole::Core("R0"),

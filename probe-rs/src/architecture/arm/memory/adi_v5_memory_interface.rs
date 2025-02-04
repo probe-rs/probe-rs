@@ -2,17 +2,17 @@ use std::any::Any;
 
 use crate::{
     architecture::arm::{
-        ap::{
+        ap_v1::{
             memory_ap::{DataSize, MemoryAp, MemoryApType},
-            ApAccess,
+            AccessPortType, ApAccess,
         },
-        communication_interface::{FlushableArmAccess, Initialized, SwdSequence},
+        communication_interface::{FlushableArmAccess, Initialized},
         dp::DpAccess,
-        memory::ArmMemoryInterface,
-        ArmCommunicationInterface, ArmError, DapAccess, FullyQualifiedApAddress,
+        memory::{ArmMemoryInterface, Status},
+        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
     },
     probe::DebugProbeError,
-    MemoryInterface,
+    CoreStatus, MemoryInterface,
 };
 
 /// Calculate the maximum number of bytes we can write starting at address
@@ -47,26 +47,6 @@ where
 }
 
 impl<APA> ADIMemoryInterface<'_, APA> where APA: ApAccess {}
-
-impl<APA> SwdSequence for ADIMemoryInterface<'_, APA>
-where
-    Self: ArmMemoryInterface,
-{
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.get_arm_communication_interface()?
-            .swj_sequence(bit_len, bits)
-    }
-
-    fn swj_pins(
-        &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        self.get_arm_communication_interface()?
-            .swj_pins(pin_out, pin_select, pin_wait)
-    }
-}
 
 impl<AP> MemoryInterface<ArmError> for ADIMemoryInterface<'_, AP>
 where
@@ -532,36 +512,59 @@ where
 
 impl<APA> ArmMemoryInterface for ADIMemoryInterface<'_, APA>
 where
-    APA: std::any::Any + FlushableArmAccess + ApAccess + DpAccess,
+    APA: std::any::Any + FlushableArmAccess + ApAccess + DpAccess + ArmProbeInterface,
 {
     fn base_address(&mut self) -> Result<u64, ArmError> {
         self.memory_ap.base_address(self.interface)
     }
 
-    /// Returns the underlying [`MemoryAp`].
-    fn ap(&mut self) -> &mut MemoryAp {
-        &mut self.memory_ap
+    fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
+        self.memory_ap.ap_address().clone()
     }
 
-    fn get_arm_communication_interface(
+    fn get_swd_sequence(
         &mut self,
-    ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError> {
-        (self.interface as &mut dyn Any)
-            .downcast_mut::<ArmCommunicationInterface<Initialized>>()
-            .ok_or(DebugProbeError::Other(
-                "Not an ArmCommunicationInterface".to_string(),
-            ))
+    ) -> Result<
+        &mut dyn crate::architecture::arm::communication_interface::SwdSequence,
+        DebugProbeError,
+    > {
+        Ok(self.interface)
     }
 
-    fn try_as_parts(
+    fn get_arm_probe_interface(
         &mut self,
-    ) -> Result<(&mut ArmCommunicationInterface<Initialized>, &mut MemoryAp), DebugProbeError> {
-        (self.interface as &mut dyn Any)
+    ) -> Result<&mut dyn crate::architecture::arm::ArmProbeInterface, DebugProbeError> {
+        Ok(self.interface)
+    }
+
+    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+        Ok(self.interface)
+    }
+
+    fn generic_status(&mut self) -> Result<Status, ArmError> {
+        // TODO: This assumes that the base type is `ArmCommunicationInterface`,
+        // which will fail if something else implements `ADIMemoryInterface`.
+        let Some(iface) = (self.interface as &mut dyn Any)
             .downcast_mut::<ArmCommunicationInterface<Initialized>>()
-            .ok_or(DebugProbeError::Other(
+        else {
+            return Err(ArmError::Probe(DebugProbeError::Other(
                 "Not an ArmCommunicationInterface".to_string(),
-            ))
-            .map(|iface| (iface, &mut self.memory_ap))
+            )));
+        };
+
+        Ok(Status::V1(self.memory_ap.generic_status(iface)?))
+    }
+
+    fn update_core_status(&mut self, state: CoreStatus) {
+        // TODO: This assumes that the base type is `ArmCommunicationInterface`,
+        // which will fail if something else implements `ADIMemoryInterface`.
+        let Some(iface) = (self.interface as &mut dyn Any)
+            .downcast_mut::<ArmCommunicationInterface<Initialized>>()
+        else {
+            return;
+        };
+
+        iface.probe_mut().core_status_notification(state).ok();
     }
 }
 
@@ -572,7 +575,7 @@ mod tests {
 
     use crate::{
         architecture::arm::{
-            ap::memory_ap::mock::MockMemoryAp, memory::adi_v5_memory_interface::ADIMemoryInterface,
+            ap_v1::memory_ap::mock::MockMemoryAp, memory::ADIMemoryInterface,
             FullyQualifiedApAddress,
         },
         MemoryInterface,

@@ -5,5 +5,6 @@ target
 # It's a Mac Thing
 **/.DS_Store 
 
-# VSCode
+# IDE settings
 .vscode/settings.json
+.idea/

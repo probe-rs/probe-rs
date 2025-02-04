@@ -14,8 +14,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -36,7 +35,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA50KG
   package_variants:
   - STM32WBA50KGUx
@@ -44,8 +42,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -66,7 +63,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA52CE
   package_variants:
   - STM32WBA52CEUx
@@ -74,8 +70,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -96,7 +91,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA52CG
   package_variants:
   - STM32WBA52CGUx
@@ -104,8 +98,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -126,7 +119,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA52KE
   package_variants:
   - STM32WBA52KEUx
@@ -134,8 +126,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -156,7 +147,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA52KG
   package_variants:
   - STM32WBA52KGUx
@@ -164,8 +154,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -186,7 +175,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA54CE
   package_variants:
   - STM32WBA54CEUx
@@ -194,8 +182,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -216,7 +203,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA54CG
   package_variants:
   - STM32WBA54CGUx
@@ -224,8 +210,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -246,7 +231,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA54KE
   package_variants:
   - STM32WBA54KEUx
@@ -254,8 +238,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -276,7 +259,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA54KG
   package_variants:
   - STM32WBA54KGUx
@@ -284,8 +266,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -306,7 +287,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA55CE
   package_variants:
   - STM32WBA55CEUx
@@ -314,8 +294,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -336,7 +315,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA55CG
   package_variants:
   - STM32WBA55CGUx
@@ -344,8 +322,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -366,7 +343,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA55HE
   package_variants:
   - STM32WBA55HEFx
@@ -374,8 +350,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -396,7 +371,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA55HG
   package_variants:
   - STM32WBA55HGFx
@@ -404,8 +378,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -426,7 +399,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA55UE
   package_variants:
   - STM32WBA55UEIx
@@ -434,8 +406,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -456,7 +427,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 - name: STM32WBA55UG
   package_variants:
   - STM32WBA55UGIx
@@ -464,8 +434,7 @@ variants:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: 1
-      psel: 0x0
+      ap: !v1 1
   memory_map:
   - !Nvm
     name: BANK_1
@@ -486,7 +455,6 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  #- stm32wbax_1m_0c00
 flash_algorithms:
 - name: stm32wbax_1m_0800
   description: STM32WBAxx 1M NSecure Flash
@@ -503,28 +471,6 @@ flash_algorithms:
     address_range:
       start: 0x8000000
       end: 0x8100000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32wbax_1m_0c00
-  description: STM32WBAxx 1M Secure Flash
-  default: true
-  instructions: v/NPj3BH/kkJbMgPcEdwtQRGDUYWRnK2//f1/yCx+EgAbMCyVSgR0fVIgGoA8ABAILH0SPJJiGDzSIhgAL/wSABqAPSAMAAo+dEY4E/w/zDrSYAxCGDqScH4hADoSYgxCGAJHQhg50jlSchg5kjIYAC/40hAagD0gDAAKPnRACBwvRC1BEb/977/ILHcSABswLJVKAbR2kiAakDwAEDYSYhiBeDWSMBqQPAAQNRJyGL/96b/ACAQvRC1//ek/yCxz0gAbMCyVSgj0QC/zEhAagD0gDAAKPnRICDJSQhiCEaAakDwBACIYghGgGpA9IAwiGL/94X/AL/BSABqAPSAMAAo+dG+SIBqIPAEALxJiGIf4AC/ukhAagD0gDAAKPnRICC3SUhiBCDIYghGwGpA9IAwyGL/92T/AL+xSEBqAPSAMAAo+dGuSIBqIPAEAKxJiGIAIBC9cLUERrTxQG8B06TxgGT/90//ILGlSABswLJVKC3RICCiSQhiCEaAakDwAgCIYsTzRzUIRoBqIPR+cIhiCEaAakDqxQCIYghGgGpA9IAwiGIAv5VIAGoA9IAwACj50ZJIAGoA8AIACLEBIHC9j0iAaiDwAgCNSYhiLOAgIItJSGIIRsBqQPACAMhixPNHNQhGwGog9H5wyGIIRsBqQOrFAMhiCEbAakD0gDDIYgC/fkhAagD0gDAAKPnRe0hAagDwAgAIsQEg0Od4SMBqIPACAHZJyGIAIMjnLen8RwVGD0aQRgXwBwZP8AAKB/EPACDwDwf/993+ILFsSABswLJVKH3RQvL7AGhJCGIBIIhiheAIL0zTQPL/EGRJCGIALjLQpesGCgAkBuCa+AAADfgEAArxAQpkHLRC9tMAJAfgmPgAAKEZDfgBAAjxAQhkHMbxCACgQvPYpesGCgC/U0gAagD0gDAAKPnRAJjK+AAAAZjK+AQAAL8Av8bxCAA/GsbxCAAFRAAmAL9ISABqAPSAMAAo+dHY+AAAKGDY+AQAaGAI8QgICD8INQC/AL8h4AAkBuCY+AAADfgEAAjxAQhkHLxC9tMAJATg/yDhGQ34AQBkHMfxCACgQvbYAL8zSABqAPSAMAAo+dEAmChgAZhoYAAnAL8tSABqAPSAMADgFOAAKPfRKUgAakLy+wEIQCixCEYlSQhiASC96PyHAC9/9HevACAhSYhiluBC8vsAHklIYgEgyGKJ4AgvU9NA8v8QGklIYr6zpesGCgAkBuCa+AAADfgEAArxAQpkHLRC9tMAJAfgmPgAAKEZDfgBAAjxAQhkHMbxCACgQvPYpesGCgC/CUhAagD0gDAAKPnRAJjK+AAAAZjK+AQAAL8Av8bxCAA/GsbxCAAG4AAgAkAjAWdFq4nvzQHgBUQAJgC/J0hAagD0gDAAKPnR2PgAAChg2PgEAGhgCPEICAg/CDUAvwC/IeAAJAbgmPgAAA34BAAI8QEIZBy8QvbTACQE4P8g4RkN+AEAZBzH8QgAoEL22AC/EkhAagD0gDAAKPnRAJgoYAGYaGAAJwC/DEhAagD0gDAAKPnRCUhAakLy+wEIQCCxCEYGSUhiASBl5wAvf/RzrwAgAknIYgAgXecAAAAgAkAAAAAA
-  load_address: 0x30000020
-  pc_init: 0xf
-  pc_uninit: 0x83
-  pc_program_page: 0x22f
-  pc_erase_sector: 0x157
-  pc_erase_all: 0xb9
-  data_section_offset: 0x4b8
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc100000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400

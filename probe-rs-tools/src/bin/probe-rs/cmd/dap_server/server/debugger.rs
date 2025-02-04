@@ -179,7 +179,6 @@ impl Debugger {
 
                 match request.command.as_ref() {
                     "configurationDone"
-                    | "setBreakpoint"
                     | "setBreakpoints"
                     | "setInstructionBreakpoints"
                     | "clearBreakpoint"
@@ -971,8 +970,9 @@ mod test {
             dap::{
                 adapter::DebugAdapter,
                 dap_types::{
-                    Capabilities, DisconnectArguments, ErrorResponseBody,
-                    InitializeRequestArguments, Message, Request, Response, Thread,
+                    Capabilities, DisassembleArguments, DisassembleResponseBody,
+                    DisassembledInstruction, DisconnectArguments, ErrorResponseBody,
+                    InitializeRequestArguments, Message, Request, Response, Source, Thread,
                     ThreadsResponseBody,
                 },
             },
@@ -980,6 +980,7 @@ mod test {
         },
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
         test::TestLister,
+        DebuggerError,
     };
     use probe_rs::{
         architecture::arm::FullyQualifiedApAddress,
@@ -995,7 +996,10 @@ mod test {
         fmt::Display,
         path::PathBuf,
     };
+    use test_case::test_case;
     use time::UtcOffset;
+
+    const TEST_CHIP_NAME: &str = "nRF52833_xxAA";
 
     #[derive(Debug)]
     struct MockProbeFactory;
@@ -1298,8 +1302,7 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_initalize_request() {
+    fn initialized_protocol_adapter() -> MockProtocolAdapter {
         let mut protocol_adapter = MockProtocolAdapter::new();
 
         protocol_adapter
@@ -1312,81 +1315,30 @@ mod test {
         protocol_adapter
             .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-
-        let lister = Lister::with_lister(Box::new(TestLister::new()));
-
-        // TODO: Check proper return value
-        debugger.debug_session(debug_adapter, &lister).unwrap_err();
+        protocol_adapter
     }
 
-    #[test]
-    fn test_launch_no_probes() {
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
-
-        let launch_args = SessionConfig::default();
-
-        let args = serde_json::to_value(launch_args).unwrap();
-
-        let expected_error = "No connected probes were found.";
-        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
-
-        protocol_adapter
-            .add_request("launch")
-            .with_arguments(args)
-            .and_error_response()
-            .with_body(error_response_body(expected_error));
-
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-
-        let lister = Lister::with_lister(Box::new(TestLister::new()));
-
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+    fn program_binary() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../probe-rs-debug/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf")
     }
 
-    #[test]
-    fn test_launch_and_terminate() {
-        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
-
-        let debug_info =
-            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
-
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
-
-        let launch_args = SessionConfig {
-            chip: Some("nrf52833_xxaa".to_owned()),
+    fn valid_session_config() -> SessionConfig {
+        SessionConfig {
+            chip: Some(TEST_CHIP_NAME.to_owned()),
             core_configs: vec![CoreConfig {
                 core_index: 0,
-                program_binary: Some(debug_info),
+                program_binary: Some(program_binary()),
                 ..CoreConfig::default()
             }],
             ..SessionConfig::default()
-        };
+        }
+    }
 
+    fn launched_protocol_adapter() -> MockProtocolAdapter {
+        let mut protocol_adapter = initialized_protocol_adapter();
+
+        let launch_args = valid_session_config();
         protocol_adapter
             .add_request("launch")
             .with_arguments(launch_args)
@@ -1395,6 +1347,10 @@ mod test {
         protocol_adapter.expect_event("initialized", None::<u32>);
 
         protocol_adapter
+    }
+
+    fn disconnect_protocol_adapter(protocol_adapter: &mut MockProtocolAdapter) {
+        protocol_adapter
             .add_request("disconnect")
             .with_arguments(DisconnectArguments {
                 restart: Some(false),
@@ -1402,13 +1358,9 @@ mod test {
                 terminate_debuggee: Some(false),
             })
             .and_succesful_response();
+    }
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-
-        let lister = TestLister::new();
-
+    fn fake_probe() -> (DebugProbeInfo, FakeProbe) {
         let probe_info = DebugProbeInfo::new(
             "Mock probe",
             0x12,
@@ -1418,7 +1370,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core();
+        let fake_probe = FakeProbe::with_mocked_core_and_binary(program_binary().as_path());
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {
@@ -1427,29 +1379,64 @@ mod test {
             result: 1,
         });
 
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
+        (probe_info, fake_probe)
+    }
 
+    fn execute_test(
+        protocol_adapter: MockProtocolAdapter,
+        with_probe: bool,
+    ) -> Result<(), DebuggerError> {
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+
+        let lister = TestLister::new();
+        if with_probe {
+            lister.probes.borrow_mut().push(fake_probe());
+        }
         let lister = Lister::with_lister(Box::new(lister));
 
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        let mut debugger = Debugger::new(UtcOffset::UTC, None)?;
+        debugger.debug_session(debug_adapter, &lister)
+    }
+
+    #[test]
+    fn test_initalize_request() {
+        let protocol_adapter = initialized_protocol_adapter();
+
+        // TODO: Check proper return value
+        execute_test(protocol_adapter, false).unwrap_err();
+    }
+
+    #[test]
+    fn test_launch_no_probes() {
+        let mut protocol_adapter = initialized_protocol_adapter();
+
+        let expected_error = "No connected probes were found.";
+        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
+
+        protocol_adapter
+            .add_request("launch")
+            .with_arguments(SessionConfig::default())
+            .and_error_response()
+            .with_body(error_response_body(expected_error));
+
+        execute_test(protocol_adapter, false).unwrap();
+    }
+
+    #[test]
+    fn test_launch_and_terminate() {
+        let mut protocol_adapter = launched_protocol_adapter();
+
+        disconnect_protocol_adapter(&mut protocol_adapter);
+
+        execute_test(protocol_adapter, true).unwrap();
     }
 
     #[test]
     fn launch_with_config_error() {
-        let mut protocol_adapter = MockProtocolAdapter::new();
+        let mut protocol_adapter = initialized_protocol_adapter();
 
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
-
-        let launch_args = SessionConfig {
-            chip: Some("nrf52833_xxaa".to_owned()),
+        let invalid_launch_args = SessionConfig {
+            chip: Some(TEST_CHIP_NAME.to_owned()),
             core_configs: vec![CoreConfig {
                 core_index: 0,
                 ..CoreConfig::default()
@@ -1462,54 +1449,16 @@ mod test {
 
         protocol_adapter
             .add_request("launch")
-            .with_arguments(launch_args)
+            .with_arguments(invalid_launch_args)
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-
-        let lister = TestLister::new();
-
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &MockProbeFactory,
-            None,
-        );
-
-        let fake_probe = FakeProbe::with_mocked_core();
-
-        // Indicate that the core is unlocked
-        fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
-            address: 0xC,
-            result: 1,
-        });
-
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
-
-        let lister = Lister::with_lister(Box::new(lister));
-
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, true).unwrap();
     }
 
     #[test]
     fn wrong_request_after_init() {
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
+        let mut protocol_adapter = initialized_protocol_adapter();
 
         let expected_error = "Expected request 'launch' or 'attach', but received 'threads'";
         protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
@@ -1519,62 +1468,14 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-        let lister = TestLister::new();
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &MockProbeFactory,
-            None,
-        );
-
-        let fake_probe = FakeProbe::with_mocked_core();
-
-        // Indicate that the core is unlocked
-        fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
-            address: 0xC,
-            result: 1,
-        });
-
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
-
-        let lister = Lister::with_lister(Box::new(lister));
-
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, true).unwrap();
     }
 
     #[test]
     fn attach_request() {
-        let mut protocol_adapter = MockProtocolAdapter::new();
+        let mut protocol_adapter = initialized_protocol_adapter();
 
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
-
-        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
-        let debug_info =
-            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
-
-        let attach_args = SessionConfig {
-            chip: Some("nrf52833_xxaa".to_owned()),
-            core_configs: vec![CoreConfig {
-                core_index: 0,
-                program_binary: Some(debug_info),
-                ..CoreConfig::default()
-            }],
-            ..SessionConfig::default()
-        };
-
+        let attach_args = valid_session_config();
         protocol_adapter
             .add_request("attach")
             .with_arguments(attach_args)
@@ -1582,74 +1483,22 @@ mod test {
 
         protocol_adapter.expect_event("initialized", None::<u32>);
 
-        protocol_adapter
-            .add_request("disconnect")
-            .with_arguments(DisconnectArguments {
-                restart: Some(false),
-                suspend_debuggee: Some(false),
-                terminate_debuggee: Some(false),
-            })
-            .and_succesful_response();
+        disconnect_protocol_adapter(&mut protocol_adapter);
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-        let lister = TestLister::new();
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &MockProbeFactory,
-            None,
-        );
-
-        let fake_probe = FakeProbe::with_mocked_core();
-
-        // Indicate that the core is unlocked
-        fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
-            address: 0xC,
-            result: 1,
-        });
-
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
-
-        let lister = Lister::with_lister(Box::new(lister));
-
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, true).unwrap();
     }
 
     #[test]
     fn attach_with_flashing() {
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
-
-        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
-        let debug_info =
-            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
+        let mut protocol_adapter = initialized_protocol_adapter();
 
         let attach_args = SessionConfig {
-            chip: Some("nrf52833_xxaa".to_owned()),
-            core_configs: vec![CoreConfig {
-                core_index: 0,
-                program_binary: Some(debug_info),
-                ..CoreConfig::default()
-            }],
             flashing_config: FlashingConfig {
                 flashing_enabled: true,
                 halt_after_reset: true,
                 ..Default::default()
             },
-            ..SessionConfig::default()
+            ..valid_session_config()
         };
 
         let expected_error = "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.";
@@ -1661,69 +1510,12 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
-        let lister = TestLister::new();
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &MockProbeFactory,
-            None,
-        );
-
-        let fake_probe = FakeProbe::with_mocked_core();
-
-        // Indicate that the core is unlocked
-        fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
-            address: 0xC,
-            result: 1,
-        });
-
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
-
-        let lister = Lister::with_lister(Box::new(lister));
-
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, true).unwrap();
     }
 
     #[test]
     fn launch_and_threads() {
-        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
-        let debug_info =
-            manifest_dir.join("../probe-rs/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf");
-        let chip_name = "nRF52833_xxAA";
-
-        let mut protocol_adapter = MockProtocolAdapter::new();
-
-        protocol_adapter
-            .add_request("initialize")
-            .with_arguments(default_initialize_args())
-            .and_succesful_response()
-            .with_body(expected_capabilites());
-
-        protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
-        protocol_adapter
-            .expect_output_event("probe-rs-debug: Starting probe-rs as a DAP Protocol server\n");
-
-        let launch_args = SessionConfig {
-            chip: Some(chip_name.to_owned()),
-            core_configs: vec![CoreConfig {
-                core_index: 0,
-                program_binary: Some(debug_info),
-                ..CoreConfig::default()
-            }],
-            ..SessionConfig::default()
-        };
-
-        protocol_adapter
-            .add_request("launch")
-            .with_arguments(launch_args)
-            .and_succesful_response();
-
-        protocol_adapter.expect_event("initialized", None::<u32>);
+        let mut protocol_adapter = launched_protocol_adapter();
 
         protocol_adapter
             .add_request("configurationDone")
@@ -1735,47 +1527,145 @@ mod test {
             .with_body(ThreadsResponseBody {
                 threads: vec![Thread {
                     id: 0,
-                    name: format!("0-{chip_name}"),
+                    name: format!("0-{TEST_CHIP_NAME}"),
                 }],
             });
 
+        disconnect_protocol_adapter(&mut protocol_adapter);
+
+        execute_test(protocol_adapter, true).unwrap();
+    }
+
+    #[test_case(0; "instructions before and not including the ref address, multiple locations")]
+    #[test_case(1; "instructions including the ref address, location cloned from earlier line")]
+    #[test_case(2; "instructions after and not including the ref address")]
+    #[test_case(3; "negative byte offset of exactly one instruction (aligned)")]
+    #[test_case(4; "positive byte offset that lands in the middle of an instruction (unaligned)")]
+    fn disassemble(test_case: usize) {
+        #[rustfmt::skip]
+        mod config {
+            use std::collections::HashMap;
+
+            type TestInstruction = (&'static str, &'static str, &'static str);
+            const TEST_INSTRUCTIONS: [TestInstruction; 10] = [
+                // address, instruction, instruction_bytes
+                ("0x00000772", "b  #0x7a8", "19 E0"),         // 32 bit Thumb-v2 instruction
+                ("0x00000774", "ldr  r0, [sp, #4]", "01 98"), // 16 bit Thumb-v2 instruction
+                ("0x00000776", "mov.w  r1, #0x55555555", "4F F0 55 31"),
+                ("0x0000077A", "and.w  r1, r1, r0, lsr #1", "01 EA 50 01"),
+                ("0x0000077E", "subs  r0, r0, r1", "40 1A"),
+                ("0x00000780", "mov.w  r1, #0x33333333", "4F F0 33 31"),
+                ("0x00000784", "and.w  r1, r1, r0, lsr #2", "01 EA 90 01"),
+                ("0x00000788", "bic  r0, r0, #0xcccccccc", "20 F0 CC 30"),
+                ("0x0000078C", "add  r0, r1", "08 44"),
+                ("0x0000078E", "add.w  r0, r0, r0, lsr #4", "00 EB 10 10"),
+            ];
+
+            type TestLocation = (i64, i64, &'static str, &'static str, &'static str);
+            const TEST_LOCATIONS: [TestLocation; 3] = [
+                // line, column, name, path, presentation_hint
+                (115, 5, "<unavailable>: ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs", "deemphasize"),
+                (0, 5, "<unavailable>: ub_checks.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/ub_checks.rs", "deemphasize"),
+                (1244, 5, "<unavailable>: mod.rs", "/rustc/7f2fc33da6633f5a764ddc263c769b6b2873d167/library/core/src/num/mod.rs", "deemphasize"),
+            ];
+
+            type TestCase = (&'static str, i64, i64, i64, &'static [TestInstruction], HashMap<&'static str, &'static TestLocation>);
+            pub(super) fn test_cases() -> [TestCase; 5] {[
+                // memory reference, byte offset, instruction_offset, instruction_count, expected instructions,
+                //    hash from instruction addresses to expected locations:
+
+                // Test Case: instructions before and not including the ref address, multiple locations
+                ("0x00000788", 0, -7, 6, &TEST_INSTRUCTIONS[0..6],
+                    HashMap::from([("0x00000772", &TEST_LOCATIONS[0]), ("0x00000774", &TEST_LOCATIONS[1]), ("0x0000077A", &TEST_LOCATIONS[2])])),
+
+                // Test Case: instructions including the ref address, location cloned from earlier line
+                ("0x00000788", 0, -3, 6, &TEST_INSTRUCTIONS[4..10],
+                    HashMap::from([("0x0000077E", &TEST_LOCATIONS[2])])),
+
+                // Test Case: instructions after and not including the ref address
+                ("0x00000772", 0, 3, 6, &TEST_INSTRUCTIONS[3..9],
+                    HashMap::from([("0x0000077A", &TEST_LOCATIONS[2])])),
+
+                // Test Case: negative byte offset of exactly one instruction (aligned)
+                ("0x00000772", -4, 3, 6, &TEST_INSTRUCTIONS[2..8],
+                    HashMap::from([("0x00000776", &TEST_LOCATIONS[1]), ("0x0000077A", &TEST_LOCATIONS[2])])),
+
+                // Test Case: positive byte offset that lands in the middle of an instruction (unaligned):
+                //            automatic instruction alignment and defensive ref address matching
+                ("0x00000776", 6, 0, 6, &TEST_INSTRUCTIONS[4..10],
+                    HashMap::from([("0x0000077E", &TEST_LOCATIONS[2])])),
+            ]}
+        }
+
+        let mut protocol_adapter = launched_protocol_adapter();
+
         protocol_adapter
-            .add_request("disconnect")
-            .with_arguments(DisconnectArguments {
-                restart: Some(false),
-                suspend_debuggee: Some(false),
-                terminate_debuggee: Some(false),
-            })
+            .add_request("configurationDone")
             .and_succesful_response();
 
-        let debug_adapter = DebugAdapter::new(protocol_adapter);
+        let default_instruction_fields = DisassembledInstruction {
+            address: "".to_string(),
+            column: None,
+            end_column: None,
+            end_line: None,
+            instruction: "".to_string(),
+            instruction_bytes: None,
+            line: None,
+            location: None,
+            symbol: None,
+        };
 
-        let mut debugger = Debugger::new(UtcOffset::UTC, None).unwrap();
+        let default_source_fields = Source {
+            adapter_data: None,
+            checksums: None,
+            name: None,
+            origin: None,
+            path: None,
+            presentation_hint: None,
+            source_reference: None,
+            sources: None,
+        };
 
-        let lister = TestLister::new();
+        let (mem, off, inst_off, inst_cnt, test_instrs, test_locs) =
+            &config::test_cases()[test_case];
 
-        let probe_info = DebugProbeInfo::new(
-            "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
-            &MockProbeFactory,
-            None,
-        );
+        protocol_adapter
+            .add_request("disassemble")
+            .with_arguments(DisassembleArguments {
+                memory_reference: mem.to_string(),
+                offset: Some(*off),
+                instruction_offset: Some(*inst_off),
+                instruction_count: *inst_cnt,
+                resolve_symbols: None,
+            })
+            .and_succesful_response()
+            .with_body(DisassembleResponseBody {
+                instructions: test_instrs
+                    .iter()
+                    .map(|(address, instruction, instruction_bytes)| {
+                        let mut instruction = DisassembledInstruction {
+                            address: (*address).to_owned(),
+                            instruction: (*instruction).to_owned(),
+                            instruction_bytes: Some((*instruction_bytes).to_owned()),
+                            ..default_instruction_fields.clone()
+                        };
+                        if let Some(&(line, column, name, path, hint)) = test_locs.get(address) {
+                            instruction.line = if *line == 0 { None } else { Some(*line) };
+                            instruction.column = Some(*column);
+                            instruction.location = Some(Source {
+                                name: Some(name.to_string()),
+                                path: Some(path.to_string()),
+                                presentation_hint: Some(hint.to_string()),
+                                ..default_source_fields.clone()
+                            })
+                        }
+                        instruction
+                    })
+                    .collect(),
+            });
 
-        let fake_probe = FakeProbe::with_mocked_core();
+        disconnect_protocol_adapter(&mut protocol_adapter);
 
-        // Indicate that the core is unlocked
-        fake_probe.expect_operation(Operation::ReadRawApRegister {
-            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
-            address: 0xC,
-            result: 1,
-        });
-
-        lister.probes.borrow_mut().push((probe_info, fake_probe));
-
-        let lister = Lister::with_lister(Box::new(lister));
-
-        debugger.debug_session(debug_adapter, &lister).unwrap();
+        execute_test(protocol_adapter, true).unwrap();
     }
 }

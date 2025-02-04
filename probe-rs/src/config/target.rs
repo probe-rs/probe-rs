@@ -3,8 +3,9 @@ use crate::flashing::FlashLoader;
 use crate::{
     architecture::{
         arm::{
+            dp::DpAddress,
             sequences::{ArmDebugSequence, DefaultArmSequence},
-            DpAddress, FullyQualifiedApAddress,
+            FullyQualifiedApAddress,
         },
         riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
         xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
@@ -275,13 +276,18 @@ impl CoreExt for Core {
     fn memory_ap(&self) -> Option<FullyQualifiedApAddress> {
         match &self.core_access_options {
             probe_rs_target::CoreAccessOptions::Arm(options) => {
-                Some(FullyQualifiedApAddress::v1_with_dp(
-                    match options.psel {
-                        0 => DpAddress::Default,
-                        x => DpAddress::Multidrop(x),
-                    },
-                    options.ap,
-                ))
+                let dp = match options.targetsel {
+                    None => DpAddress::Default,
+                    Some(x) => DpAddress::Multidrop(x),
+                };
+                Some(match &options.ap {
+                    probe_rs_target::ApAddress::V1(ap) => {
+                        FullyQualifiedApAddress::v1_with_dp(dp, *ap)
+                    }
+                    probe_rs_target::ApAddress::V2(ap) => {
+                        FullyQualifiedApAddress::v2_with_dp(dp, ap.as_slice().into())
+                    }
+                })
             }
             probe_rs_target::CoreAccessOptions::Riscv(_) => None,
             probe_rs_target::CoreAccessOptions::Xtensa(_) => None,

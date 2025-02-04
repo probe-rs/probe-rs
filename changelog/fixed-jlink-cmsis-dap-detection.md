@@ -1,1 +1,0 @@
-Fixed detection of J-Link probes configured as CMSIS-DAP compatible probes, don't recognize them as J-Links.
