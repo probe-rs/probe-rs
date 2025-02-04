@@ -92,6 +92,10 @@ impl MemoryInterface<ArmError> for MemoryAccessPortInterface<'_> {
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
+        if (address % 2) != 0 {
+            return Err(ArmError::alignment_error(address, 2));
+        }
+
         self.set_transaction_size(DataSize::U16)?;
 
         // iface: fully qualified address points parent
@@ -100,9 +104,13 @@ impl MemoryInterface<ArmError> for MemoryAccessPortInterface<'_> {
         for (i, d) in data.iter_mut().enumerate() {
             let address = address + (i as u64) * 2;
             self.set_address(address)?;
-            *d = self
+            let drw = self
                 .iface
-                .read_word_32(self.base + u64::from(DRW::ADDRESS))? as u16;
+                .read_word_32(self.base + u64::from(DRW::ADDRESS))?;
+
+            // According to ARM Debug Interface Architecture Specification ADIv6.0
+            // "C2.2.7 Byte lanes" the contents of DRW need to be shifted appropriately.
+            *d = ((drw >> ((address % 4) * 8)) & 0xFFFF) as u16;
         }
 
         Ok(())
@@ -117,9 +125,13 @@ impl MemoryInterface<ArmError> for MemoryAccessPortInterface<'_> {
         for (i, d) in data.iter_mut().enumerate() {
             let address = address + (i as u64);
             self.set_address(address)?;
-            *d = self
+            let drw = self
                 .iface
-                .read_word_32(self.base + u64::from(DRW::ADDRESS))? as u8;
+                .read_word_32(self.base + u64::from(DRW::ADDRESS))?;
+
+            // According to ARM Debug Interface Architecture Specification ADIv6.0
+            // "C2.2.7 Byte lanes" the contents of DRW need to be shifted appropriately.
+            *d = ((drw >> ((address % 4) * 8)) & 0xFF) as u8;
         }
 
         Ok(())
