@@ -17,19 +17,10 @@ use crate::{
 pub struct RootMemoryInterface<'iface, API> {
     iface: &'iface mut API,
     dp: DpAddress,
-    base: u64,
 }
 impl<'iface, API: ArmProbeInterface> RootMemoryInterface<'iface, API> {
     pub fn new(iface: &'iface mut API, dp: DpAddress) -> Result<Self, ArmError> {
-        let base_ptr0: BASEPTR0 = iface.read_dp_register(dp)?;
-        let base_ptr1: BASEPTR1 = iface.read_dp_register(dp)?;
-        let base = base_ptr0
-            .valid()
-            .then(|| u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12))
-            .inspect(|base| tracing::info!("DPv3 BASE_PTR: 0x{base:x}"))
-            .ok_or_else(|| ArmError::Other("DP has no valid base address defined.".into()))?;
-
-        Ok(Self { iface, dp, base })
+        Ok(Self { iface, dp })
     }
 }
 
@@ -98,7 +89,14 @@ impl<API: ArmProbeInterface> ArmMemoryInterface for RootMemoryInterface<'_, API>
     }
 
     fn base_address(&mut self) -> Result<u64, ArmError> {
-        Ok(self.base)
+        let base_ptr0: BASEPTR0 = self.iface.read_dp_register(self.dp)?;
+        let base_ptr1: BASEPTR1 = self.iface.read_dp_register(self.dp)?;
+        let base = base_ptr0
+            .valid()
+            .then(|| u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12))
+            .ok_or_else(|| ArmError::Other("DP has no valid base address defined.".into()))?;
+
+        Ok(base)
     }
 
     fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
