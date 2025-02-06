@@ -11,7 +11,7 @@ use crate::{
     rpc::{
         client::{RpcClient, SessionInterface},
         functions::{
-            flash::{BootInfo, DownloadOptions, VerifyResult},
+            flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
             monitor::{MonitorEvent, MonitorMode, MonitorOptions, SemihostingOutput},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
@@ -141,13 +141,22 @@ pub async fn flash(
         .build_flash_loader(path.to_path_buf(), format)
         .await?;
 
+    let mut flash_layout = None;
+    let mut handle_progress_events = |event| {
+        if let ProgressEvent::FlashLayoutReady {
+            flash_layout: layout,
+        } = &event
+        {
+            flash_layout = Some(layout.clone());
+        }
+        if let Some(ref pb) = pb {
+            pb.handle(event);
+        }
+    };
+
     let run_flash = if download_options.preverify {
         let result = session
-            .verify(loader.loader, |event| {
-                if let Some(ref pb) = pb {
-                    pb.handle(event);
-                }
-            })
+            .verify(loader.loader, &mut handle_progress_events)
             .await?;
 
         result == VerifyResult::Mismatch
@@ -157,16 +166,30 @@ pub async fn flash(
 
     if run_flash {
         session
-            .flash(options, loader.loader, rtt_client, |event| {
-                if let Some(ref pb) = pb {
-                    pb.handle(event);
-                }
-            })
+            .flash(
+                options,
+                loader.loader,
+                rtt_client,
+                &mut handle_progress_events,
+            )
             .await?;
     }
 
+    // Dropping the progress bar so that it stops placing itself below log output.
     std::mem::drop(pb);
-    // TODO: port visualizer - can't construct FlashLayout outside of the library
+
+    // Visualise flash layout to file if requested.
+    if let Some(visualizer_output) = download_options.flash_layout_output_path {
+        if let Some(phases) = flash_layout {
+            let mut flash_layout = FlashLayout::default();
+            for phase_layout in phases {
+                flash_layout.merge_from(phase_layout);
+            }
+
+            let visualizer = flash_layout.visualize();
+            _ = visualizer.write_svg(visualizer_output);
+        }
+    }
 
     logging::eprintln(format!(
         "     {} in {:.02}s",

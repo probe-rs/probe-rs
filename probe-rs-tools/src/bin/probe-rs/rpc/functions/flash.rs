@@ -79,16 +79,24 @@ pub struct FlashRequest {
     pub rtt_client: Option<Key<RttClient>>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Schema)]
+#[derive(Default, Clone, Serialize, Deserialize, Schema)]
 pub struct FlashLayout {
     pub sectors: Vec<FlashSector>,
     pub pages: Vec<FlashPage>,
     pub fills: Vec<FlashFill>,
     pub data_blocks: Vec<FlashDataBlockSpan>,
 }
+impl FlashLayout {
+    pub fn merge_from(&mut self, layout: FlashLayout) {
+        self.sectors.extend(layout.sectors);
+        self.pages.extend(layout.pages);
+        self.fills.extend(layout.fills);
+        self.data_blocks.extend(layout.data_blocks);
+    }
+}
 
-impl From<probe_rs::flashing::FlashLayout> for FlashLayout {
-    fn from(layout: probe_rs::flashing::FlashLayout) -> Self {
+impl From<&probe_rs::flashing::FlashLayout> for FlashLayout {
+    fn from(layout: &probe_rs::flashing::FlashLayout) -> Self {
         FlashLayout {
             sectors: layout
                 .sectors()
@@ -153,8 +161,8 @@ pub struct FlashFill {
 /// A block of data that is to be written to flash.
 #[derive(Clone, Serialize, Deserialize, Schema)]
 pub struct FlashDataBlockSpan {
-    address: u64,
-    size: u64,
+    pub address: u64,
+    pub size: u64,
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, Schema)]
@@ -256,7 +264,7 @@ impl ProgressEvent {
                 }
 
                 ProgressEvent::FlashLayoutReady {
-                    flash_layout: phases.into_iter().map(FlashLayout::from).collect(),
+                    flash_layout: phases.iter().map(FlashLayout::from).collect(),
                 }
             }
 

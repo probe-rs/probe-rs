@@ -583,7 +583,7 @@ impl SessionInterface {
     pub(crate) async fn verify(
         &self,
         loader: Key<FlashLoader>,
-        on_msg: impl Fn(ProgressEvent),
+        on_msg: impl FnMut(ProgressEvent),
     ) -> anyhow::Result<VerifyResult> {
         self.client
             .send_and_read_stream::<VerifyEndpoint, ProgressEventTopic, _>(
