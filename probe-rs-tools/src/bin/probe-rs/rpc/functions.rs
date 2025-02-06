@@ -15,7 +15,7 @@ use crate::{
             },
             flash::{
                 build, erase, flash, verify, BuildRequest, BuildResponse, EraseRequest,
-                FlashRequest, FlashResponse, ProgressEvent, VerifyRequest, VerifyResponse,
+                FlashRequest, ProgressEvent, VerifyRequest, VerifyResponse,
             },
             info::{target_info, InfoEvent, TargetInfoRequest},
             memory::{read_memory, write_memory, ReadMemoryRequest, WriteMemoryRequest},
@@ -327,7 +327,7 @@ endpoints! {
     | CreateRttClientEndpoint   | CreateRttClientRequest | CreateRttClientResponse | "create_rtt"       |
     | TakeStackTraceEndpoint    | TakeStackTraceRequest  | TakeStackTraceResponse  | "stack_trace"      |
     | BuildEndpoint             | BuildRequest           | BuildResponse           | "flash/build"      |
-    | FlashEndpoint             | FlashRequest           | FlashResponse           | "flash/flash"      |
+    | FlashEndpoint             | FlashRequest           | NoResponse              | "flash/flash"      |
     | EraseEndpoint             | EraseRequest           | NoResponse              | "flash/erase"      |
     | VerifyEndpoint            | VerifyRequest          | VerifyResponse          | "flash/verify"     |
     | MonitorEndpoint           | MonitorRequest         | NoResponse              | "monitor"          |
