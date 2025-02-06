@@ -174,7 +174,7 @@ impl Cmd {
             .await?;
 
         // Flash firmware
-        let flash_result = cli::flash(
+        let boot_info = cli::flash(
             &session,
             &self.shared_options.path,
             self.shared_options.chip_erase,
@@ -188,7 +188,7 @@ impl Cmd {
         if run_mode == RunMode::Test {
             cli::test(
                 &session,
-                flash_result.boot_info,
+                boot_info,
                 Arguments {
                     test_threads: Some(1), // Avoid parallel execution
                     list: self.test_options.list,
@@ -213,7 +213,7 @@ impl Cmd {
         } else {
             cli::monitor(
                 &session,
-                MonitorMode::Run(flash_result.boot_info),
+                MonitorMode::Run(boot_info),
                 &self.shared_options.path,
                 MonitorOptions {
                     catch_reset: self.run_options.catch_reset,

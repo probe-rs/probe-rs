@@ -35,8 +35,6 @@ pub struct DownloadOptions {
     /// If the chip was pre-erased with external erasers, this flag can set to true to skip erasing
     /// It may be useful for mass production.
     pub skip_erase: bool,
-    /// Before flashing, read back the flash contents to skip up-to-date regions.
-    pub preverify: bool,
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     pub verify: bool,
     /// Disable double buffering when loading flash.
@@ -53,6 +51,7 @@ pub struct BuildRequest {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct BuildResult {
     pub loader: Key<FlashLoader>,
+    pub boot_info: BootInfo,
 }
 
 pub type BuildResponse = RpcResult<BuildResult>;
@@ -67,6 +66,7 @@ pub async fn build(
     let loader = build_loader(&mut session, &request.path, request.format, None)?;
 
     Ok(BuildResult {
+        boot_info: loader.boot_info().into(),
         loader: ctx.store_object(loader).await,
     })
 }
@@ -78,13 +78,6 @@ pub struct FlashRequest {
     pub options: DownloadOptions,
     pub rtt_client: Option<Key<RttClient>>,
 }
-
-#[derive(Serialize, Deserialize, Schema)]
-pub struct FlashResult {
-    pub boot_info: BootInfo,
-}
-
-pub type FlashResponse = RpcResult<FlashResult>;
 
 #[derive(Clone, Serialize, Deserialize, Schema)]
 pub struct FlashLayout {
@@ -358,18 +351,14 @@ impl From<probe_rs::flashing::BootInfo> for BootInfo {
     }
 }
 
-pub async fn flash(
-    ctx: &mut RpcContext,
-    _header: VarHeader,
-    request: FlashRequest,
-) -> FlashResponse {
+pub async fn flash(ctx: &mut RpcContext, _header: VarHeader, request: FlashRequest) -> NoResponse {
     let ctx = ctx.spawn_ctxt();
     tokio::task::spawn_blocking(move || flash_impl(ctx, request))
         .await
         .unwrap()
 }
 
-fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> FlashResponse {
+fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> NoResponse {
     let dry_run = ctx.dry_run(request.sessid);
     let mut session = ctx.session_blocking(request.sessid);
 
@@ -401,7 +390,7 @@ fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> FlashResponse {
     options.dry_run = dry_run;
     options.do_chip_erase = request.options.do_chip_erase;
     options.skip_erase = request.options.skip_erase;
-    options.preverify = request.options.preverify;
+    options.preverify = false;
     options.verify = request.options.verify;
     options.disable_double_buffering = request.options.disable_double_buffering;
     options.progress = Some(FlashProgress::new(move |event| {
@@ -416,8 +405,6 @@ fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> FlashResponse {
         .commit(&mut session, options)
         .map_err(FileDownloadError::Flash)?;
 
-    let boot_info = loader.boot_info();
-
     if let Some(rtt_client) = rtt_client.as_mut() {
         if should_clear_rtt_header {
             // We ended up resetting the MCU, throw away old RTT data and prevent
@@ -428,9 +415,7 @@ fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> FlashResponse {
         }
     }
 
-    Ok(FlashResult {
-        boot_info: boot_info.into(),
-    })
+    Ok(())
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -491,7 +476,7 @@ pub struct VerifyRequest {
     pub loader: Key<FlashLoader>,
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Schema)]
 pub enum VerifyResult {
     Ok,
     Mismatch,

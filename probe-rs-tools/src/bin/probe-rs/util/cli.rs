@@ -11,7 +11,7 @@ use crate::{
     rpc::{
         client::{RpcClient, SessionInterface},
         functions::{
-            flash::{BootInfo, DownloadOptions, FlashResult},
+            flash::{BootInfo, DownloadOptions, VerifyResult},
             monitor::{MonitorEvent, MonitorMode, MonitorOptions, SemihostingOutput},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
@@ -118,7 +118,7 @@ pub async fn flash(
     format: FormatOptions,
     download_options: BinaryDownloadOptions,
     rtt_client: Option<Key<RttClient>>,
-) -> anyhow::Result<FlashResult> {
+) -> anyhow::Result<BootInfo> {
     // Start timer.
     let flash_timer = Instant::now();
 
@@ -133,7 +133,6 @@ pub async fn flash(
         keep_unwritten_bytes: download_options.restore_unwritten,
         do_chip_erase: chip_erase,
         skip_erase: false,
-        preverify: download_options.preverify,
         verify: download_options.verify,
         disable_double_buffering: download_options.disable_double_buffering,
     };
@@ -142,14 +141,31 @@ pub async fn flash(
         .build_flash_loader(path.to_path_buf(), format)
         .await?;
 
-    let result = session
-        .flash(options, loader.loader, rtt_client, move |event| {
-            if let Some(ref pb) = pb {
-                pb.handle(event);
-            }
-        })
-        .await?;
+    let run_flash = if download_options.preverify {
+        let result = session
+            .verify(loader.loader, |event| {
+                if let Some(ref pb) = pb {
+                    pb.handle(event);
+                }
+            })
+            .await?;
 
+        result == VerifyResult::Mismatch
+    } else {
+        true
+    };
+
+    if run_flash {
+        session
+            .flash(options, loader.loader, rtt_client, |event| {
+                if let Some(ref pb) = pb {
+                    pb.handle(event);
+                }
+            })
+            .await?;
+    }
+
+    std::mem::drop(pb);
     // TODO: port visualizer - can't construct FlashLayout outside of the library
 
     logging::eprintln(format!(
@@ -158,7 +174,7 @@ pub async fn flash(
         flash_timer.elapsed().as_secs_f32(),
     ));
 
-    Ok(result)
+    Ok(loader.boot_info)
 }
 
 pub async fn monitor(
