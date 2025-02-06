@@ -29,12 +29,16 @@ pub struct AppendFileRequest {
 }
 
 #[cfg(feature = "remote")]
-pub fn create_temp_file(ctx: &mut RpcContext, _header: VarHeader, _req: ()) -> CreateFileResponse {
+pub async fn create_temp_file(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    _req: (),
+) -> CreateFileResponse {
     // TODO: avoid temp files altogether
     let file = NamedTempFile::new().context("Failed to write temporary file")?;
     let path = file.path().to_path_buf().display().to_string();
     tracing::info!("Created temporary file {}", path);
-    let key = ctx.store_object_blocking(file);
+    let key = ctx.store_object(file).await;
 
     Ok(TempFile {
         path,
@@ -43,7 +47,11 @@ pub fn create_temp_file(ctx: &mut RpcContext, _header: VarHeader, _req: ()) -> C
 }
 
 #[cfg(not(feature = "remote"))]
-pub fn create_temp_file(_ctx: &mut RpcContext, _header: VarHeader, _req: ()) -> CreateFileResponse {
+pub async fn create_temp_file(
+    _ctx: &mut RpcContext,
+    _header: VarHeader,
+    _req: (),
+) -> CreateFileResponse {
     Err("Not supported".into())
 }
 

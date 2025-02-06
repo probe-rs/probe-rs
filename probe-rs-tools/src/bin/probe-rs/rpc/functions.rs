@@ -253,11 +253,6 @@ impl RpcContext {
         self.state.store_object(obj).await
     }
 
-    #[allow(unused)]
-    pub fn store_object_blocking<T: Any + Send>(&mut self, obj: T) -> Key<T> {
-        self.state.store_object_blocking(obj)
-    }
-
     pub async fn set_session(&mut self, session: Session, dry_run: bool) -> Key<Session> {
         self.state.set_session(session, dry_run).await
     }
@@ -402,7 +397,7 @@ postcard_rpc::define_dispatch! {
         | ListTestsEndpoint         | spawn     | list_tests        |
         | RunTestEndpoint           | spawn     | run_test          |
 
-        | CreateTempFileEndpoint    | blocking  | create_temp_file  |
+        | CreateTempFileEndpoint    | async     | create_temp_file  |
         | TempFileDataEndpoint      | async     | append_temp_file  |
 
         | ListChipFamiliesEndpoint  | blocking  | list_families     |
