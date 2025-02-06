@@ -31,7 +31,7 @@ use crate::{
             file::{AppendFileRequest, TempFile},
             flash::{
                 BootInfo, BuildRequest, BuildResult, DownloadOptions, EraseCommand, EraseRequest,
-                FlashRequest, FlashResult, ProgressEvent, VerifyRequest, VerifyResult,
+                FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
             },
             info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
@@ -469,7 +469,7 @@ impl SessionInterface {
         loader: Key<FlashLoader>,
         rtt_client: Option<Key<RttClient>>,
         on_msg: impl FnMut(ProgressEvent),
-    ) -> anyhow::Result<FlashResult> {
+    ) -> anyhow::Result<()> {
         self.client
             .send_and_read_stream::<FlashEndpoint, ProgressEventTopic, _>(
                 &FlashRequest {
