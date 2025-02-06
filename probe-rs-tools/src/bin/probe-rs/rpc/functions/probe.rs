@@ -14,7 +14,7 @@ use crate::{
 use std::fmt::Display;
 
 // Separate from DebugProbeInfo because we can't serialize a &dyn ProbeFactory
-#[derive(Serialize, Deserialize, Clone, Schema)]
+#[derive(Debug, Serialize, Deserialize, Clone, Schema)]
 pub struct DebugProbeEntry {
     /// The name of the debug probe.
     pub identifier: String,
@@ -23,7 +23,7 @@ pub struct DebugProbeEntry {
     /// The USB product ID of the debug probe.
     pub product_id: u16,
     /// The serial number of the debug probe.
-    pub serial_number: Option<String>,
+    pub serial_number: String,
 
     pub probe_type: String,
 }
@@ -33,11 +33,7 @@ impl Display for DebugProbeEntry {
         write!(
             f,
             "{} -- {:04x}:{:04x}:{} ({})",
-            self.identifier,
-            self.vendor_id,
-            self.product_id,
-            self.serial_number.as_deref().unwrap_or(""),
-            self.probe_type,
+            self.identifier, self.vendor_id, self.product_id, self.serial_number, self.probe_type,
         )
     }
 }
@@ -45,11 +41,11 @@ impl Display for DebugProbeEntry {
 impl From<DebugProbeInfo> for DebugProbeEntry {
     fn from(probe: DebugProbeInfo) -> DebugProbeEntry {
         DebugProbeEntry {
-            identifier: probe.identifier.clone(),
+            probe_type: probe.probe_type(),
+            identifier: probe.identifier,
             vendor_id: probe.vendor_id,
             product_id: probe.product_id,
-            serial_number: probe.serial_number.clone(),
-            probe_type: probe.probe_type(),
+            serial_number: probe.serial_number.unwrap_or_default(),
         }
     }
 }
@@ -59,7 +55,7 @@ impl DebugProbeEntry {
         DebugProbeSelector {
             vendor_id: self.vendor_id,
             product_id: self.product_id,
-            serial_number: self.serial_number.clone(),
+            serial_number: Some(self.serial_number.clone()),
         }
     }
 }
