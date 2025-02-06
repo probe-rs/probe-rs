@@ -283,7 +283,7 @@ impl Channel {
 
             if buffer_offset_larger_than_size_of_buffer {
                 return Err(Error::ControlBlockCorrupted(format!(
-                    "{which} pointer is {value} while buffer size is {} for {channel_kind}channel {} ({})",
+                    "{which} pointer is {value:#010x} while buffer size is {:#010x} for {channel_kind}channel {} ({})",
                     self.info.size_of_buffer(),
                     self.number,
                     self.name().unwrap_or("no name"),
