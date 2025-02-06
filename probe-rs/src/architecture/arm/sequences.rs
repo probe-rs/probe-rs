@@ -646,7 +646,24 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 // Setting this on MINDP is unpredictable.
                 ctrl.set_mask_lane(0b1111);
             }
-            interface.write_dp_register(dp, ctrl.clone())?;
+
+            match interface
+                .write_dp_register(dp, ctrl.clone())
+                .and_then(|_| interface.flush())
+            {
+                Ok(()) => {}
+                Err(e @ ArmError::Dap(DapError::NoAcknowledge)) => {
+                    let Some(probe) = interface.try_dap_probe_mut() else {
+                        return Err(e);
+                    };
+                    // If we get a NACK from the power-up request, ignore the error & perform a line reset.
+                    // CMSIS-DAP transports read DP.RDBUFF right after a write to DP.CTRL_STAT.
+                    // This fails in some cases on PSOC 6, for example if the device is waking from DeepSleep.
+                    // If something really went wrong, we'll hit an error or timeout in the polling loop below.
+                    self.debug_port_connect(probe, dp)?;
+                }
+                Err(e) => return Err(e),
+            }
 
             let start = Instant::now();
             loop {
