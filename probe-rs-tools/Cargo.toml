@@ -104,6 +104,7 @@ zip = { version = "2.0.0", default-features = false, features = [
 urlencoding = "2"
 probe-rs-debug = { version = "0.27.0", path = "../probe-rs-debug" }
 probe-rs-target = { workspace = true }
+svg = "0.18"
 
 # Server-only
 tokio = { version = "1.0", features = ["full"] }

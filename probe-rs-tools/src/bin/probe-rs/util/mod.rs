@@ -5,6 +5,7 @@ pub mod flash;
 pub mod logging;
 pub mod meta;
 pub mod rtt;
+pub mod visualizer;
 
 use std::num::ParseIntError;
 
