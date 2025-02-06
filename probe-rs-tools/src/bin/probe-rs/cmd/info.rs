@@ -5,7 +5,7 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap_v1::{ApClass, Register, IDR},
+            ap::{ApClass, ApV1Register, IDR},
             component::Scs,
             dp::{
                 Ctrl, DebugPortId, DebugPortVersion, DpAddress, DpRegister, MinDpSupport, DLPIDR,
@@ -307,7 +307,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
                 match ap_address.ap() {
                     ApAddress::V1(_) => {
                         let idr: IDR = interface
-                            .read_raw_ap_register(&ap_address, IDR::ADDRESS)?
+                            .read_raw_ap_register(&ap_address, <IDR as ApV1Register>::ADDRESS)?
                             .try_into()?;
 
                         if idr.CLASS == ApClass::MemAp {
@@ -375,7 +375,7 @@ fn handle_memory_ap(
 
         // Check if the AP is accessible
         let csw = memory.generic_status()?;
-        if !csw.enabled() {
+        if !csw.SDeviceEn {
             *parent = Tree::new("Memory AP is not accessible, DeviceEn bit not set".to_string());
             return Ok(());
         }

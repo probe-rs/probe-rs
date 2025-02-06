@@ -1,7 +1,6 @@
 //! Memory access port
 
 pub(crate) mod mock;
-pub mod registers;
 
 mod amba_ahb3;
 mod amba_apb2_apb3;
@@ -13,11 +12,12 @@ mod amba_ahb5_hprot;
 mod amba_axi3_axi4;
 mod amba_axi5;
 
-pub use registers::DataSize;
-use registers::{AddressIncrement, BaseAddrFormat, BASE, BASE2, DRW, TAR, TAR2};
+use crate::architecture::arm::ap::{
+    AddressIncrement, ApV1Register, BaseAddrFormat, DataSize, BASE, BASE2, DRW, TAR, TAR2,
+};
 
-use super::{AccessPortError, AccessPortType, ApAccess, ApRegAccess, Register};
-use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress};
+use super::{AccessPortError, AccessPortType, ApAccess, ApRegAccess};
+use crate::architecture::arm::{ap::CSW, ArmError, DapAccess, FullyQualifiedApAddress};
 
 /// Implements all default registers of a memory AP to the given type.
 ///
@@ -29,12 +29,10 @@ macro_rules! attached_regs_to_mem_ap {
     ($mod_name:ident => $name:ident) => {
         mod $mod_name {
             use super::$name;
-            use $crate::architecture::arm::ap_v1::{
-                memory_ap::registers::{
-                    BASE, BASE2, BD0, BD1, BD2, BD3, CFG, CSW, DRW, MBT, TAR, TAR2,
-                },
-                ApRegAccess,
+            use $crate::architecture::arm::ap::{
+                BASE, BASE2, BD0, BD1, BD2, BD3, CFG, CSW, DRW, MBT, TAR, TAR2,
             };
+            use $crate::architecture::arm::ap_v1::ApRegAccess;
             impl ApRegAccess<CFG> for $name {}
             impl ApRegAccess<CSW> for $name {}
             impl ApRegAccess<BASE> for $name {}
@@ -59,7 +57,7 @@ pub trait MemoryApType:
     ApRegAccess<BASE> + ApRegAccess<BASE2> + ApRegAccess<TAR> + ApRegAccess<TAR2> + ApRegAccess<DRW>
 {
     /// This Memory AP’s specific CSW type.
-    type CSW: Register;
+    type CSW: ApV1Register;
 
     /// Returns whether the Memory AP supports the large address extension.
     ///
@@ -85,10 +83,7 @@ pub trait MemoryApType:
     ) -> Result<(), ArmError>;
 
     /// The current generic CSW (missing the memory AP specific fields).
-    fn generic_status<I: ApAccess>(
-        &mut self,
-        interface: &mut I,
-    ) -> Result<registers::CSW, ArmError> {
+    fn generic_status<I: ApAccess>(&mut self, interface: &mut I) -> Result<CSW, ArmError> {
         self.status(interface)?
             .into()
             .try_into()
@@ -205,7 +200,7 @@ macro_rules! memory_aps {
                 interface: &mut I,
                 address: &FullyQualifiedApAddress,
             ) -> Result<Self, ArmError> {
-                use crate::architecture::arm::ap_v1::{IDR, Register};
+                use crate::architecture::arm::ap::{IDR, ApV1Register};
                 let idr: IDR = interface
                     .read_raw_ap_register(address, IDR::ADDRESS)?
                     .try_into()?;
@@ -260,7 +255,7 @@ impl AccessPortType for MemoryAp {
 }
 
 impl MemoryApType for MemoryAp {
-    type CSW = registers::CSW;
+    type CSW = CSW;
 
     fn has_large_address_extension(&self) -> bool {
         mem_ap_forward!(self, has_large_address_extension())

@@ -8,40 +8,10 @@ pub(crate) use adi_v5_memory_interface::ADIMemoryInterface;
 use crate::{memory::MemoryInterface, probe::DebugProbeError, CoreStatus};
 
 use super::{
-    ap_v1, ap_v2, communication_interface::SwdSequence, ArmError, ArmProbeInterface, DapAccess,
+    communication_interface::SwdSequence, ArmError, ArmProbeInterface, DapAccess,
     FullyQualifiedApAddress,
 };
 pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, RomTable};
-
-/// A generic status indication for an AP.
-pub enum Status {
-    /// A CSW associated with an APv1 (ADIv5) access port.
-    V1(ap_v1::memory_ap::registers::CSW),
-    /// A CSW associated with an APv2 (ADIv6) access port.
-    V2(ap_v2::registers::CSW),
-}
-
-impl Status {
-    /// Check if the AP is enabled.
-    pub fn enabled(&self) -> bool {
-        match self {
-            Self::V1(csw) => csw.DeviceEn,
-            Self::V2(csw) => csw.DeviceEn,
-        }
-    }
-}
-
-impl From<ap_v1::memory_ap::registers::CSW> for Status {
-    fn from(csw: ap_v1::memory_ap::registers::CSW) -> Self {
-        Self::V1(csw)
-    }
-}
-
-impl From<ap_v2::registers::CSW> for Status {
-    fn from(csw: ap_v2::registers::CSW) -> Self {
-        Self::V2(csw)
-    }
-}
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
 pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
@@ -61,7 +31,7 @@ pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
     fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError>;
 
     /// Get the current value of the CSW reflected in this probe.
-    fn generic_status(&mut self) -> Result<Status, ArmError>;
+    fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError>;
 
     /// Inform the probe of the [`CoreStatus`] of the chip/core attached to
     /// the probe.

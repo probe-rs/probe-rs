@@ -1,29 +1,18 @@
 //! Types and functions for interacting with v1 access ports.
 
-#[macro_use]
-pub mod register_generation;
 pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
+pub use generic_ap::GenericAp;
 pub use memory_ap::MemoryAp;
 pub use memory_ap::MemoryApType;
 
-use crate::architecture::arm::dp::DebugPortError;
+use crate::architecture::arm::{
+    ap::{ApType, ApV1Register, IDR},
+    dp::{DebugPortError, DpAddress},
+    ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
+};
 use crate::probe::DebugProbeError;
-
-pub use generic_ap::{ApClass, ApType, IDR};
-
-use super::{dp::DpAddress, ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError};
-
-/// A trait to be implemented on Access Port register types for typed device access.
-pub trait Register:
-    Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + std::fmt::Debug
-{
-    /// The address of the register (in bytes).
-    const ADDRESS: u8;
-    /// The name of the register as string.
-    const NAME: &'static str;
-}
 
 /// Some error during AP handling occurred.
 #[derive(Debug, thiserror::Error)]
@@ -64,7 +53,7 @@ pub enum AccessPortError {
 
 impl AccessPortError {
     /// Constructs a [`AccessPortError::RegisterRead`] from just the source error and the register type.
-    pub fn register_read_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
+    pub fn register_read_error<R: ApV1Register, E: std::error::Error + Send + Sync + 'static>(
         source: E,
     ) -> Self {
         AccessPortError::RegisterRead {
@@ -75,7 +64,7 @@ impl AccessPortError {
     }
 
     /// Constructs a [`AccessPortError::RegisterWrite`] from just the source error and the register type.
-    pub fn register_write_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
+    pub fn register_write_error<R: ApV1Register, E: std::error::Error + Send + Sync + 'static>(
         source: E,
     ) -> Self {
         AccessPortError::RegisterWrite {
@@ -87,11 +76,9 @@ impl AccessPortError {
 }
 
 /// A trait to be implemented by ports types providing access to a register.
-pub trait ApRegAccess<Reg: Register>: AccessPortType {}
+pub trait ApRegAccess<Reg: ApV1Register>: AccessPortType {}
 
 /// A trait to be implemented on access port types.
-///
-/// Use the [`define_ap!`] macro to implement this.
 pub trait AccessPortType {
     /// Returns the address of the access port.
     fn ap_address(&self) -> &FullyQualifiedApAddress;
@@ -103,7 +90,7 @@ pub trait ApAccess {
     fn read_ap_register<PORT, R>(&mut self, port: &PORT) -> Result<R, ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
-        R: Register;
+        R: ApV1Register;
 
     /// Read a register of the access port using a block transfer.
     /// This can be used to read multiple values from the same register.
@@ -114,13 +101,13 @@ pub trait ApAccess {
     ) -> Result<(), ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
-        R: Register;
+        R: ApV1Register;
 
     /// Write a register of the access port.
     fn write_ap_register<PORT, R>(&mut self, port: &PORT, register: R) -> Result<(), ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
-        R: Register;
+        R: ApV1Register;
 
     /// Write a register of the access port using a block transfer.
     /// This can be used to write multiple values to the same register.
@@ -131,7 +118,7 @@ pub trait ApAccess {
     ) -> Result<(), ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
-        R: Register;
+        R: ApV1Register;
 }
 
 impl<T: DapAccess> ApAccess for T {
@@ -139,7 +126,7 @@ impl<T: DapAccess> ApAccess for T {
     fn read_ap_register<PORT, R>(&mut self, port: &PORT) -> Result<R, ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
-        R: Register,
+        R: ApV1Register,
     {
         let raw_value = self.read_raw_ap_register(port.ap_address(), R::ADDRESS)?;
 
@@ -153,7 +140,7 @@ impl<T: DapAccess> ApAccess for T {
     fn write_ap_register<PORT, R>(&mut self, port: &PORT, register: R) -> Result<(), ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
-        R: Register,
+        R: ApV1Register,
     {
         tracing::debug!("Writing AP register {}, value={:x?}", R::NAME, register);
         self.write_raw_ap_register(port.ap_address(), R::ADDRESS, register.into())
@@ -167,7 +154,7 @@ impl<T: DapAccess> ApAccess for T {
     ) -> Result<(), ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
-        R: Register,
+        R: ApV1Register,
     {
         tracing::debug!(
             "Writing register {}, block with len={} words",
@@ -184,7 +171,7 @@ impl<T: DapAccess> ApAccess for T {
     ) -> Result<(), ArmError>
     where
         PORT: AccessPortType + ApRegAccess<R> + ?Sized,
-        R: Register,
+        R: ApV1Register,
     {
         tracing::debug!(
             "Reading register {}, block with len={} words",
@@ -298,10 +285,3 @@ where
             }
         })
 }
-
-define_ap!(
-    /// A generic access port which implements just the register every access port has to implement
-    /// to be compliant with the ADI 5.2 specification.
-    GenericAp
-);
-impl ApRegAccess<IDR> for GenericAp {}

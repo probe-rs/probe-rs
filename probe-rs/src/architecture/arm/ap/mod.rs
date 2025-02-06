@@ -1,3 +1,5 @@
+//! Defines types and registers for ADIv5 and ADIv6 access ports (APs).
+
 use crate::architecture::arm::RegisterParseError;
 
 /// The unit of data that is transferred in one transfer via the DRW commands.
@@ -23,7 +25,7 @@ pub enum DataSize {
 }
 
 impl DataSize {
-    pub fn to_byte_count(self) -> usize {
+    pub(crate) fn to_byte_count(self) -> usize {
         match self {
             DataSize::U8 => 1,
             DataSize::U16 => 2,
@@ -95,13 +97,148 @@ pub enum BaseAddrFormat {
     ADIv5 = 1,
 }
 
+/// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[allow(dead_code)] // Present is not used yet.
-pub enum DebugEntryState {
+pub enum ApClass {
+    /// This describes a custom AP that is vendor defined and not defined by ARM
     #[default]
-    NotPresent = 0,
-    Present = 1,
+    Undefined = 0b0000,
+    /// The standard ARM COM-AP defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
+    ComAp = 0b0001,
+    /// The standard ARM MEM-AP defined  in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification
+    MemAp = 0b1000,
 }
+
+impl ApClass {
+    /// Tries to create an `ApClass` from a given `u8`.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0b0000 => Some(ApClass::Undefined),
+            0b0001 => Some(ApClass::ComAp),
+            0b1000 => Some(ApClass::MemAp),
+            _ => None,
+        }
+    }
+}
+
+/// The type of AP defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
+/// You can find the details in the table C1-2 on page C1-146.
+/// The different types correspond to the different access/memory buses of ARM cores.
+#[allow(non_camel_case_types)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ApType {
+    /// This is the most basic AP that is included in most MCUs and uses SWD or JTAG as an access bus.
+    #[default]
+    JtagComAp = 0x0,
+    /// A AMBA based AHB3 AP (see E1.5).
+    AmbaAhb3 = 0x1,
+    /// A AMBA based APB2 and APB3 AP (see E1.8).
+    AmbaApb2Apb3 = 0x2,
+    /// A AMBA based AXI3 and AXI4 AP (see E1.2).
+    AmbaAxi3Axi4 = 0x4,
+    /// A AMBA based AHB5 AP (see E1.6).
+    AmbaAhb5 = 0x5,
+    /// A AMBA based APB4 and APB5 AP (see E1.9).
+    AmbaApb4Apb5 = 0x6,
+    /// A AMBA based AXI5 AP (see E1.4).
+    AmbaAxi5 = 0x7,
+    /// A AMBA based AHB5 AP with enhanced HPROT (see E1.7).
+    AmbaAhb5Hprot = 0x8,
+}
+
+impl ApType {
+    /// Tries to create an `ApType` from a given `u8`.
+    pub fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0x0 => Some(ApType::JtagComAp),
+            0x1 => Some(ApType::AmbaAhb3),
+            0x2 => Some(ApType::AmbaApb2Apb3),
+            0x4 => Some(ApType::AmbaAxi3Axi4),
+            0x5 => Some(ApType::AmbaAhb5),
+            0x6 => Some(ApType::AmbaApb4Apb5),
+            0x7 => Some(ApType::AmbaAxi5),
+            0x8 => Some(ApType::AmbaAhb5Hprot),
+            _ => None,
+        }
+    }
+}
+
+/// Base trait for all versions of access port registers
+pub trait RegisterBase:
+    Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + std::fmt::Debug
+{
+    /// The name of the register as string.
+    const NAME: &'static str;
+}
+
+/// A trait to be implemented on Access Port (v1) register types for typed device access.
+pub trait ApV1Register: RegisterBase {
+    /// The address of the register (in bytes).
+    const ADDRESS: u8;
+}
+
+/// A trait to be implemented on Access Port (v2) register types for typed device access.
+pub trait ApV2Register: RegisterBase {
+    /// The address of the register when accessed via ApV2
+    const ADDRESS: u16;
+}
+
+/// Defines a new typed access port register for a specific access port.
+/// Takes
+/// - type: The type of the port.
+/// - name: The name of the constructed type for the register. Also accepts a doc comment to be added to the type.
+/// - address: The address relative to the base address of the access port.
+/// - fields: A list of fields of the register type.
+/// - from: a closure to transform from an `u32` to the typed register.
+/// - to: A closure to transform from they typed register to an `u32`.
+macro_rules! define_ap_register {
+    (
+        $(#[$outer:meta])*
+        name: $name:ident,
+        address: $address_v1:expr,
+        fields: [$($(#[$inner:meta])*$field:ident: $type:ty$(,)?)*],
+        from: $from_param:ident => $from:expr,
+        to: $to_param:ident => $to:expr
+    )
+    => {
+        $(#[$outer])*
+        #[allow(non_snake_case)]
+        #[allow(clippy::upper_case_acronyms)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub struct $name {
+            $($(#[$inner])*pub $field: $type,)*
+        }
+
+        impl $crate::architecture::arm::ap::RegisterBase for $name {
+            // ADDRESS is always the lower 4 bits of the register address.
+            const NAME: &'static str = stringify!($name);
+        }
+
+        impl $crate::architecture::arm::ap::ApV1Register for $name {
+            const ADDRESS: u8 = $address_v1;
+        }
+
+        impl $crate::architecture::arm::ap::ApV2Register for $name {
+            const ADDRESS: u16 = 0xD00 | $address_v1;
+        }
+
+        impl TryFrom<u32> for $name {
+            type Error = $crate::architecture::arm::RegisterParseError;
+
+            fn try_from($from_param: u32) -> Result<$name, Self::Error> {
+                $from
+            }
+        }
+
+        impl From<$name> for u32 {
+            fn from($to_param: $name) -> u32 {
+                $to
+            }
+        }
+    }
+}
+
+pub(crate) use define_ap_register;
 
 define_ap_register!(
     /// Control and Status Word register
@@ -123,18 +260,54 @@ define_ap_register!(
         /// - `0b0` Secure access is disabled.
         /// - `0b1` Secure access is enabled.
         /// This field is optional, and read-only. If not implemented, the bit is RES0.
-        /// If CSW.DeviceEn is 0b0, SPIDEN is ignored and the effective value of SPIDEN is 0b1.
+        /// If CSW.DeviceEn is 0b0, the value is ignored and the effective value is 0b1.
         /// For more information, see `Enabling access to the connected debug device or memory system`
-        /// on page C2-154.
+        /// on page C2-177.
         ///
         /// Note:
         /// In ADIv5 and older versions of the architecture, the CSW.SPIDEN field is in the same bit
         /// position as CSW.SDeviceEn, and has the same meaning. From ADIv6, the name SDeviceEn is
         /// used to avoid confusion between this field and the SPIDEN signal on the authentication
         /// interface.
-        SPIDEN: bool,                // 1 bit
+        SDeviceEn: bool,                // 1 bit
+        /// Realm and root access status.
+        ///
+        /// # Note
+        /// This field is RES0 for ADIv5.
+        ///
+        /// When CFG.RME == 0b1, the defined values of this field are:
+        /// * 0b00 - Realm and Root accesses are disabled
+        /// * 0b01 - Realm access is enabled. Root access is disabled.
+        /// * 0b01 - Realm access is enabled. Root access is enabled.
+        ///
+        /// This field is read-only.
+        RMEEN: u8, //2 bits
         /// Reserved.
         _RES0: u8,                 // 7 bits
+
+        /// Errors prevent future memory accesses.
+        ///
+        /// # Note
+        /// This field is RES0 for ADIv5.
+        ///
+        /// Value:
+        /// - 0b0 - Memory access errors do not prevent future memory accesses.
+        /// - 0b1 - Memory access errors prevent future memory accesses.
+        ///
+        /// CFG.ERR indicates whether this field is implemented.
+        ERRSTOP: bool,
+
+        /// Errors are not passed upstream.
+        ///
+        /// # Note
+        /// This field is RES0 for ADIv5.
+        ///
+        /// Value:
+        /// - 0b0 - Errors are passed upstream.
+        /// - 0b1 - Errors are not passed upstream.
+        ///
+        /// CFG.ERR indicates whether this field is implemented.
+        ERRNPASS: bool,
         /// `1` if memory tagging access is enabled.
         MTE: bool,                   // 1 bits
         /// Memory tagging type. Implementation defined.
@@ -158,8 +331,11 @@ define_ap_register!(
     from: value => Ok(CSW {
         DbgSwEnable: ((value >> 31) & 0x01) != 0,
         Prot: ((value >> 24) & 0x7F) as u8,
-        SPIDEN: ((value >> 23) & 0x01) != 0,
-        _RES0: ((value >> 16) & 0x7F) as u8,
+        SDeviceEn: ((value >> 23) & 0x01) != 0,
+        RMEEN: ((value >> 21) & 0x3) as u8,
+        _RES0: ((value >> 18) & 0x07) as u8,
+        ERRSTOP: ((value >> 17) & 0b1) != 0,
+        ERRNPASS: ((value >> 16) & 0b1) != 0,
         MTE: ((value >> 15) & 0x01) != 0,
         Type: ((value >> 12) & 0x07) as u8,
         Mode: ((value >> 8) & 0x0F) as u8,
@@ -171,8 +347,11 @@ define_ap_register!(
     }),
     to: value => (u32::from(value.DbgSwEnable) << 31)
     | (u32::from(value.Prot         ) << 24)
-    | (u32::from(value.SPIDEN       ) << 23)
-    | (u32::from(value._RES0        ) << 16)
+    | (u32::from(value.SDeviceEn    ) << 23)
+    | (u32::from(value.RMEEN        ) << 21)
+    | (u32::from(value._RES0        ) << 18)
+    | (u32::from(value.ERRSTOP as u8) << 17)
+    | (u32::from(value.ERRNPASS as u8) << 16)
     | (u32::from(value.MTE          ) << 15)
     | (u32::from(value.Type         ) << 12)
     | (u32::from(value.Mode         ) <<  8)
@@ -371,4 +550,48 @@ define_ap_register!(
         // _RES0
         | (u32::from(value.Format as u8) << 1)
         | u32::from(value.present)
+);
+
+define_ap_register!(
+    /// Identification Register
+    ///
+    /// The identification register is used to identify
+    /// an AP.
+    ///
+    /// It has to be present on every AP.
+    name: IDR,
+    address: 0x0FC,
+    fields: [
+        /// The revision of this access point.
+        REVISION: u8,
+        /// The JEP106 code of the designer of this access point.
+        DESIGNER: jep106::JEP106Code,
+        /// The class of this access point.
+        CLASS: ApClass,
+        #[doc(hidden)]
+        _RES0: u8,
+        /// The variant of this access port.
+        VARIANT: u8,
+        /// The type of this access port.
+        TYPE: ApType,
+    ],
+    from: value => Ok(IDR {
+        REVISION: ((value >> 28) & 0x0F) as u8,
+        DESIGNER: {
+            let designer = ((value >> 17) & 0x7FF) as u16;
+            let cc = (designer >> 7) as u8;
+            let id = (designer & 0x7f) as u8;
+
+            jep106::JEP106Code::new(cc, id)
+        },
+        CLASS: ApClass::from_u8(((value >> 13) & 0x0F) as u8).ok_or_else(|| RegisterParseError::new("IDR", value))?,
+        _RES0: 0,
+        VARIANT: ((value >> 4) & 0x0F) as u8,
+        TYPE: ApType::from_u8((value & 0x0F) as u8).ok_or_else(|| RegisterParseError::new("IDR", value))?
+    }),
+    to: value => (u32::from(value.REVISION) << 28)
+        | (((u32::from(value.DESIGNER.cc) << 7) | u32::from(value.DESIGNER.id)) << 17)
+        | ((value.CLASS as u32) << 13)
+        | (u32::from(value.VARIANT) << 4)
+        | (value.TYPE as u32)
 );

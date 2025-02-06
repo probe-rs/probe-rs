@@ -3,8 +3,9 @@ use std::{sync::Arc, time::Instant};
 
 use crate::{
     architecture::arm::{
-        ap_v1::memory_ap::registers::CSW, ap_v1::Register, sequences::ArmDebugSequence, ArmError,
-        FullyQualifiedApAddress,
+        ap::{ApV1Register, CSW},
+        sequences::ArmDebugSequence,
+        ArmError, FullyQualifiedApAddress,
     },
     session::MissingPermissions,
 };

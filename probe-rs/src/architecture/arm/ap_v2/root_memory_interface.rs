@@ -116,7 +116,7 @@ impl<API: ArmProbeInterface> ArmMemoryInterface for RootMemoryInterface<'_, API>
         Ok(self.iface)
     }
 
-    fn generic_status(&mut self) -> Result<crate::architecture::arm::memory::Status, ArmError> {
+    fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
         // This is not a memory AP, so there's no logicl CSW associated with it.
         unimplemented!()
     }

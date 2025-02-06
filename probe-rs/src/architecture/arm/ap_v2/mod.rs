@@ -12,14 +12,13 @@ use crate::{
 };
 
 use super::{
+    ap::CSW,
     communication_interface::{Initialized, SwdSequence},
     dp::DpAddress,
-    memory::{ArmMemoryInterface, Status},
+    memory::ArmMemoryInterface,
     ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess,
     FullyQualifiedApAddress,
 };
-
-pub(crate) mod registers;
 
 mod root_memory_interface;
 use root_memory_interface::RootMemoryInterface;
@@ -68,7 +67,7 @@ impl ArmMemoryInterface for MaybeOwned<'_> {
     dispatch!(get_swd_sequence(&mut self,) -> Result<&mut dyn SwdSequence, DebugProbeError>);
     dispatch!(get_arm_probe_interface(&mut self,) -> Result<&mut dyn ArmProbeInterface, DebugProbeError>);
     dispatch!(get_dap_access(&mut self,) -> Result<&mut dyn DapAccess, DebugProbeError>);
-    dispatch!(generic_status(&mut self,) -> Result<Status, ArmError>);
+    dispatch!(generic_status(&mut self,) -> Result<CSW, ArmError>);
 }
 
 /// Deeply scans the debug port and returns a list of the addresses the memory access points discovered.

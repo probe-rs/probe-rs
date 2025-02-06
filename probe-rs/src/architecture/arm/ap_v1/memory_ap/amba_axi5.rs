@@ -1,5 +1,6 @@
 use crate::architecture::arm::{
-    ap_v1::{AccessPortType, ApAccess, ApRegAccess, Register},
+    ap::{define_ap_register, ApV1Register, CFG},
+    ap_v1::{AccessPortType, ApAccess, ApRegAccess},
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
 
@@ -13,7 +14,7 @@ use super::{AddressIncrement, DataSize};
 pub struct AmbaAxi5 {
     address: FullyQualifiedApAddress,
     csw: CSW,
-    cfg: super::registers::CFG,
+    cfg: CFG,
 }
 
 impl AmbaAxi5 {
@@ -23,7 +24,7 @@ impl AmbaAxi5 {
         address: FullyQualifiedApAddress,
     ) -> Result<Self, ArmError> {
         let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
-        let cfg = probe.read_raw_ap_register(&address, super::registers::CFG::ADDRESS)?;
+        let cfg = probe.read_raw_ap_register(&address, CFG::ADDRESS)?;
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
 
         let me = Self { address, csw, cfg };
@@ -42,7 +43,7 @@ impl super::MemoryApType for AmbaAxi5 {
     type CSW = CSW;
 
     fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
-        const { assert!(super::registers::CSW::ADDRESS == CSW::ADDRESS) };
+        const { assert!(crate::architecture::arm::ap::CSW::ADDRESS == CSW::ADDRESS) };
         self.csw = probe.read_ap_register(self)?;
         Ok(self.csw)
     }

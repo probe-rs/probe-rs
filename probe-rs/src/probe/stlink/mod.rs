@@ -1814,7 +1814,7 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
         Ok(self.probe)
     }
 
-    fn generic_status(&mut self) -> Result<crate::architecture::arm::memory::Status, ArmError> {
+    fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
         Err(ArmError::Probe(DebugProbeError::InterfaceNotAvailable {
             interface_name: "ARM",
         }))

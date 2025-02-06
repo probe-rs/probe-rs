@@ -9,7 +9,8 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap_v1::{AccessPortError, AccessPortType, GenericAp, Register, IDR},
+        ap::{ApV1Register, IDR},
+        ap_v1::{AccessPortError, AccessPortType, GenericAp},
         communication_interface::Initialized,
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, DpAddress, DpRegister, SelectV1, DPIDR},
@@ -264,7 +265,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
 
     thread::sleep(Duration::from_millis(10));
 
-    if memory.generic_status()?.enabled() {
+    if memory.generic_status()?.SDeviceEn {
         let dp = memory.fully_qualified_address().dp();
         enable_debug_mailbox(memory.get_dap_access()?, dp)?;
     }
