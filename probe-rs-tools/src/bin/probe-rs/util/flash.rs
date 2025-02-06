@@ -1,4 +1,4 @@
-use crate::rpc::functions::flash::{Operation, ProgressEvent};
+use crate::rpc::functions::flash::{FlashLayout, Operation, ProgressEvent};
 use crate::{FormatKind, FormatOptions};
 
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
@@ -11,7 +11,7 @@ use std::{path::Path, time::Instant};
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
-use probe_rs::flashing::{BinOptions, FlashLayout, FlashProgress, Format, IdfOptions};
+use probe_rs::flashing::{BinOptions, FlashProgress, Format, IdfOptions};
 use probe_rs::InstructionSet;
 use probe_rs::{
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},
@@ -49,7 +49,7 @@ pub fn run_flash_download(
             if let probe_rs::flashing::ProgressEvent::Initialized { ref phases, .. } = event {
                 let mut flash_layout = FlashLayout::default();
                 for phase_layout in phases {
-                    flash_layout.merge_from(phase_layout.clone());
+                    flash_layout.merge_from(phase_layout.into());
                 }
 
                 // Visualise flash layout to file if requested.
