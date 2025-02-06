@@ -68,14 +68,13 @@ impl RttClient {
                 self.last_control_block_address = None;
                 return Ok(false);
             }
+            Err(Error::ControlBlockCorrupted(_)) => return Ok(false),
             Err(error) => return Err(error),
         };
 
         match RttConnection::new(core, rtt, &self.config) {
             Ok(rtt) => self.target = Some(rtt),
-            Err(Error::ControlBlockCorrupted(error)) => {
-                tracing::debug!("RTT control block corrupted ({error})");
-            }
+            Err(Error::ControlBlockCorrupted(_)) => {}
             Err(error) => return Err(error),
         };
 
