@@ -1,6 +1,8 @@
 use crate::architecture::arm::{
-    ap::{AddressIncrement, ApClass, ApType, ApV1Register, DataSize, CFG, DRW, IDR, TAR},
-    ap_v1::memory_ap::amba_ahb3::CSW,
+    ap::{
+        memory_ap::amba_ahb3::CSW, AddressIncrement, ApClass, ApRegister, ApType, DataSize, CFG,
+        DRW, IDR, TAR,
+    },
     communication_interface::FlushableArmAccess,
     dp::{DpAddress, DpRegisterAddress},
     ArmError, DapAccess,
@@ -10,7 +12,7 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub struct MockMemoryAp {
     pub memory: Vec<u8>,
-    store: HashMap<u8, u32>,
+    store: HashMap<u64, u32>,
 }
 
 impl MockMemoryAp {
@@ -77,7 +79,7 @@ impl DapAccess for MockMemoryAp {
     fn read_raw_ap_register(
         &mut self,
         _ap: &crate::architecture::arm::FullyQualifiedApAddress,
-        addr: u8,
+        addr: u64,
     ) -> Result<u32, ArmError> {
         let csw = self.store[&CSW::ADDRESS];
         let address = self.store[&TAR::ADDRESS];
@@ -148,7 +150,7 @@ impl DapAccess for MockMemoryAp {
     fn write_raw_ap_register(
         &mut self,
         _ap: &crate::architecture::arm::FullyQualifiedApAddress,
-        addr: u8,
+        addr: u64,
         value: u32,
     ) -> Result<(), ArmError> {
         tracing::debug!("Mock: Write {:x} to register {:x?}", value, &addr);

@@ -1,8 +1,8 @@
 use crate::architecture::arm::{
-    ap::{AddressIncrement, DataSize, CSW},
-    ap_v1::{
+    ap::{
         memory_ap::{MemoryAp, MemoryApType},
-        valid_access_ports, AccessPortType,
+        v1::valid_access_ports,
+        AccessPortType, AddressIncrement, DataSize, CSW,
     },
     communication_interface::{SwdSequence, UninitializedArmProbe},
     dp::{Abort, Ctrl, DebugPortError, DpAccess, DpAddress, DpRegisterAddress, SelectV1},
@@ -496,8 +496,16 @@ impl DapAccess for BlackMagicProbeArmDebug {
     fn read_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        addr: u8,
+        addr: u64,
     ) -> Result<u32, ArmError> {
+        // Currently, only APv1 is supported. As such, truncate the address to an 8-bit size.
+        if ap.ap().is_v2() {
+            return Err(ArmError::NotImplemented(
+                "BlackMagicProbe does not yet support APv2",
+            ));
+        }
+        let addr = (addr & 0xFF) as u8;
+
         let (index, apsel) = ap_to_bmp(ap)?;
 
         let command = match self.probe.remote_protocol {
@@ -531,9 +539,17 @@ impl DapAccess for BlackMagicProbeArmDebug {
     fn write_raw_ap_register(
         &mut self,
         ap: &FullyQualifiedApAddress,
-        addr: u8,
+        addr: u64,
         value: u32,
     ) -> Result<(), ArmError> {
+        // Currently, only APv1 is supported. As such, truncate the address to an 8-bit size.
+        if ap.ap().is_v2() {
+            return Err(ArmError::NotImplemented(
+                "BlackMagicProbe does not yet support APv2",
+            ));
+        }
+        let addr = (addr & 0xFF) as u8;
+
         let (index, apsel) = ap_to_bmp(ap)?;
         let command = match self.probe.remote_protocol {
             ProtocolVersion::V0 => {

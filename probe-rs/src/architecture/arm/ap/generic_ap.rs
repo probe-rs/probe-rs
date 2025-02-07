@@ -1,7 +1,6 @@
 //! Generic access port
 use crate::architecture::arm::{
-    ap::IDR,
-    ap_v1::{AccessPortType, ApRegAccess},
+    ap::{AccessPortType, ApRegAccess, IDR},
     FullyQualifiedApAddress,
 };
 

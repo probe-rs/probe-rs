@@ -1,7 +1,7 @@
 #![allow(missing_docs)] // Don't require docs for test code
 use crate::{
     architecture::arm::{
-        ap_v1::memory_ap::mock::MockMemoryAp,
+        ap::memory_ap::mock::MockMemoryAp,
         armv8m::Dhcsr,
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
@@ -298,7 +298,7 @@ impl ArmMemoryInterface for &mut MockCore {
 pub enum Operation {
     ReadRawApRegister {
         ap: FullyQualifiedApAddress,
-        address: u8,
+        address: u64,
         result: u32,
     },
 }
@@ -394,7 +394,7 @@ impl FakeProbe {
     fn read_raw_ap_register(
         &mut self,
         expected_ap: &FullyQualifiedApAddress,
-        expected_address: u8,
+        expected_address: u64,
     ) -> Result<u32, ArmError> {
         let operation = self.next_operation();
 
@@ -737,7 +737,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
     fn read_raw_ap_register(
         &mut self,
         _ap: &FullyQualifiedApAddress,
-        _address: u8,
+        _address: u64,
     ) -> Result<u32, ArmError> {
         self.probe.read_raw_ap_register(_ap, _address)
     }
@@ -745,7 +745,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
     fn read_raw_ap_register_repeated(
         &mut self,
         _ap: &FullyQualifiedApAddress,
-        _address: u8,
+        _address: u64,
         _values: &mut [u32],
     ) -> Result<(), ArmError> {
         todo!()
@@ -754,7 +754,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
     fn write_raw_ap_register(
         &mut self,
         _ap: &FullyQualifiedApAddress,
-        _address: u8,
+        _address: u64,
         _value: u32,
     ) -> Result<(), ArmError> {
         todo!()
@@ -763,7 +763,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
     fn write_raw_ap_register_repeated(
         &mut self,
         _ap: &FullyQualifiedApAddress,
-        _address: u8,
+        _address: u64,
         _values: &[u32],
     ) -> Result<(), ArmError> {
         todo!()

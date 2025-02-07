@@ -5,7 +5,7 @@ use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
-            ap::{ApClass, ApV1Register, IDR},
+            ap::{ApClass, ApRegister, IDR},
             component::Scs,
             dp::{
                 Ctrl, DebugPortId, DebugPortVersion, DpAddress, DpRegister, MinDpSupport, DLPIDR,
@@ -307,7 +307,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
                 match ap_address.ap() {
                     ApAddress::V1(_) => {
                         let idr: IDR = interface
-                            .read_raw_ap_register(&ap_address, <IDR as ApV1Register>::ADDRESS)?
+                            .read_raw_ap_register(&ap_address, IDR::ADDRESS)?
                             .try_into()?;
 
                         if idr.CLASS == ApClass::MemAp {
@@ -553,8 +553,13 @@ fn process_component_entry(
             let ApAddress::V2(addr) = access_port.ap() else {
                 unreachable!("This should only happen on ap v2 addresses.");
             };
-            let addr = addr.clone().append(component.id().component_address());
-            let addr = FullyQualifiedApAddress::v2_with_dp(dp, addr);
+            if addr.0.is_some() {
+                return Err(anyhow::anyhow!("Nested memory APs are not yet supported."));
+            }
+            let addr = FullyQualifiedApAddress::v2_with_dp(
+                dp,
+                ApV2Address::new(component.id().component_address()),
+            );
             handle_memory_ap(interface, &addr, parent)?;
         }
         PeripheralType::Rom => {

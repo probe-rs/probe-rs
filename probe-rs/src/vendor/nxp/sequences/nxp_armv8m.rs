@@ -9,8 +9,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{ApV1Register, IDR},
-        ap_v1::{AccessPortError, AccessPortType, GenericAp},
+        ap::{AccessPortError, AccessPortType, ApRegister, GenericAp, IDR},
         communication_interface::Initialized,
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, DpAddress, DpRegister, SelectV1, DPIDR},

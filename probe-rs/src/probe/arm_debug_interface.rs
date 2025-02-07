@@ -6,7 +6,7 @@
 
 use crate::{
     architecture::arm::{
-        ap_v1::AccessPortError,
+        ap::AccessPortError,
         dp::{Abort, Ctrl, DebugPortError, DpRegister, RdBuff, DPIDR},
         ArmError, DapError, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
     },

@@ -1,6 +1,8 @@
 use crate::architecture::arm::{
-    ap::{define_ap_register, AddressIncrement, ApV1Register, DataSize, CFG},
-    ap_v1::{AccessPortType, ApAccess, ApRegAccess},
+    ap::{
+        define_ap_register, AccessPortType, AddressIncrement, ApAccess, ApRegAccess, ApRegister,
+        DataSize, CFG,
+    },
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
 };
 

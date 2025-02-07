@@ -9,13 +9,11 @@ variants:
     - name: core0
       type: armv8m
       core_access_options: !Arm
-        ap: !v2
-          - 0x2000
+        ap: !v2 0x2000
     - name: core1
       type: armv8m
       core_access_options: !Arm
-        ap: !v2
-          - 0x4000
+        ap: !v2 0x4000
   memory_map:
   - !Nvm
     range:
