@@ -1,0 +1,1 @@
+Flasher now reports progress for flash content verification

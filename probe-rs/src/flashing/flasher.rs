@@ -72,7 +72,7 @@ impl FlashData {
 
     pub fn encoder(&mut self, encoding: TransferEncoding) -> &FlashEncoder {
         if let FlashData::Raw(layout) = self {
-            let layout = std::mem::replace(layout, FlashLayout::default());
+            let layout = std::mem::take(layout);
             let encoder = FlashEncoder::new(encoding, layout);
             *self = FlashData::Loaded(encoder);
         }
@@ -310,7 +310,6 @@ impl Flasher {
     /// If `restore_unwritten_bytes` is `true`, all bytes of a sector,
     /// that are not to be written during flashing will be read from the flash first
     /// and written again once the sector is erased.
-    #[allow(clippy::too_many_arguments)] // The plan is to remove at least `verify` in the future.
     pub(super) fn program(
         &mut self,
         session: &mut Session,
@@ -387,8 +386,26 @@ impl Flasher {
         result
     }
 
-    /// Verifies all the to-be-written bytes of `layout`.
+    /// Verifies all the to-be-written bytes of this flasher.
     pub(super) fn verify(
+        &mut self,
+        session: &mut Session,
+        progress: &FlashProgress,
+        ignore_filled: bool,
+    ) -> Result<bool, FlashError> {
+        progress.started_verifying();
+
+        let result = self.do_verify(session, progress, ignore_filled);
+
+        match result.is_ok() {
+            true => progress.finished_verifying(),
+            false => progress.failed_verifying(),
+        }
+
+        result
+    }
+
+    fn do_verify(
         &mut self,
         session: &mut Session,
         progress: &FlashProgress,
@@ -405,6 +422,7 @@ impl Flasher {
                     let flash_encoder = region.data.encoder(encoding);
 
                     for page in flash_encoder.pages() {
+                        let start = Instant::now();
                         let address = page.address();
                         let bytes = page.data();
 
@@ -440,6 +458,8 @@ impl Flasher {
                             );
                             return Ok(false);
                         }
+
+                        progress.page_verified(bytes.len() as u64, start.elapsed());
                     }
                 }
                 Ok(true)
@@ -451,6 +471,7 @@ impl Flasher {
                 for region in data {
                     let layout = region.data.layout();
                     for (idx, page) in layout.pages().iter().enumerate() {
+                        let start = Instant::now();
                         let address = page.address();
                         let data = page.data();
 
@@ -481,6 +502,8 @@ impl Flasher {
                             );
                             return Ok(false);
                         }
+
+                        progress.page_verified(data.len() as u64, start.elapsed());
                     }
                 }
                 Ok(true)

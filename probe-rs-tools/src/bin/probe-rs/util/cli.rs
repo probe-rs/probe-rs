@@ -201,13 +201,6 @@ pub async fn flash(
     // Start timer.
     let flash_timer = Instant::now();
 
-    //let flash_layout_output_path = download_options.flash_layout_output_path.clone();
-    let pb = if download_options.disable_progressbars {
-        None
-    } else {
-        Some(CliProgressBars::new())
-    };
-
     let options = DownloadOptions {
         keep_unwritten_bytes: download_options.restore_unwritten,
         do_chip_erase: chip_erase,
@@ -221,21 +214,25 @@ pub async fn flash(
         .await?;
 
     let mut flash_layout = None;
-    let mut handle_progress_events = |event| {
-        if let ProgressEvent::FlashLayoutReady {
-            flash_layout: layout,
-        } = &event
-        {
-            flash_layout = Some(layout.clone());
-        }
-        if let Some(ref pb) = pb {
-            pb.handle(event);
-        }
-    };
 
     let run_flash = if download_options.preverify {
+        let pb = if download_options.disable_progressbars {
+            None
+        } else {
+            Some(CliProgressBars::new())
+        };
         let result = session
-            .verify(loader.loader, &mut handle_progress_events)
+            .verify(loader.loader, |event| {
+                if let ProgressEvent::FlashLayoutReady {
+                    flash_layout: layout,
+                } = &event
+                {
+                    flash_layout = Some(layout.clone());
+                }
+                if let Some(ref pb) = pb {
+                    pb.handle(event);
+                }
+            })
             .await?;
 
         result == VerifyResult::Mismatch
@@ -244,18 +241,30 @@ pub async fn flash(
     };
 
     if run_flash {
+        let pb = if download_options.disable_progressbars {
+            None
+        } else {
+            Some(CliProgressBars::new())
+        };
         session
             .flash(
                 options,
                 loader.loader,
                 rtt_client.as_ref().map(|c| c.handle),
-                &mut handle_progress_events,
+                |event| {
+                    if let ProgressEvent::FlashLayoutReady {
+                        flash_layout: layout,
+                    } = &event
+                    {
+                        flash_layout = Some(layout.clone());
+                    }
+                    if let Some(ref pb) = pb {
+                        pb.handle(event);
+                    }
+                },
             )
             .await?;
     }
-
-    // Dropping the progress bar so that it stops placing itself below log output.
-    std::mem::drop(pb);
 
     // Visualise flash layout to file if requested.
     if let Some(visualizer_output) = download_options.flash_layout_output_path {
