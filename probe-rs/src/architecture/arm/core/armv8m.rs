@@ -233,6 +233,8 @@ impl CoreInterface for Armv8m<'_> {
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;
+        // Invalidate cached core status
+        self.set_core_status(CoreStatus::Unknown);
         Ok(())
     }
 
