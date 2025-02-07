@@ -2,11 +2,17 @@ use std::collections::HashMap;
 
 use probe_rs_target::{MemoryRange, MemoryRegion, NvmRegion};
 
+use crate::flashing::progress::ProgressOperation;
 use crate::flashing::{flasher::Flasher, FlashError, FlashLoader};
-use crate::flashing::{FlashLayout, FlashSector, FlasherWithRegions};
+use crate::flashing::{FlashLayout, FlashSector};
 use crate::Session;
 
 use super::FlashProgress;
+
+struct FlasherWithRegions {
+    flasher: Flasher,
+    regions: Vec<NvmRegion>,
+}
 
 /// Mass-erase all nonvolatile memory.
 ///
@@ -70,11 +76,9 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
     for el in algos.iter() {
         let flash_algorithm = &el.flasher.flash_algorithm;
 
-        let chip_erase_supported =
-            session.has_sequence_erase_all() || flash_algorithm.pc_erase_all.is_some();
         // If the first flash algo doesn't support erase all, disable chip erase.
         // TODO: we could sort by support but it's unlikely to make a difference.
-        if do_chip_erase && !chip_erase_supported {
+        if do_chip_erase && !el.flasher.is_chip_erase_supported(session) {
             do_chip_erase = false;
         }
 
@@ -95,7 +99,16 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
         phases.push(layout);
     }
 
-    progress.initialized(do_chip_erase, false, phases);
+    if do_chip_erase {
+        progress.add_progress_bar(ProgressOperation::Erase, None);
+    } else {
+        for phase in phases.iter() {
+            let sector_size = phase.sectors().iter().map(|s| s.size()).sum::<u64>();
+
+            progress.add_progress_bar(ProgressOperation::Erase, Some(sector_size));
+        }
+    }
+    progress.initialized(phases);
 
     for el in algos {
         let mut flasher = el.flasher;
@@ -114,11 +127,14 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
                 .iter_sectors()
                 .filter(|info| {
                     let range = info.base_address..info.base_address + info.size;
-                    el.regions.iter().any(|r| r.range.contains_range(&range))
+                    flasher
+                        .regions
+                        .iter()
+                        .any(|r| r.region.range.contains_range(&range))
                 })
                 .collect::<Vec<_>>();
 
-            flasher.run_erase(session, &progress, |active| {
+            flasher.run_erase(session, &progress, |active, _| {
                 for info in sectors {
                     tracing::debug!(
                         "    sector: {:#010x}-{:#010x} ({} bytes)",
@@ -209,7 +225,7 @@ pub fn erase_sectors(
             })
             .collect::<Vec<_>>();
 
-        flasher.run_erase(session, &progress, |active| {
+        flasher.run_erase(session, &progress, |active, _| {
             for info in sectors {
                 tracing::debug!(
                     "    sector: {:#010x}-{:#010x} ({} bytes)",

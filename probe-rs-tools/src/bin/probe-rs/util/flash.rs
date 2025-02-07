@@ -46,7 +46,10 @@ pub fn run_flash_download(
 
     options.progress = Some(FlashProgress::new(move |event| {
         if let Some(ref path) = flash_layout_output_path {
-            if let probe_rs::flashing::ProgressEvent::Initialized { ref phases, .. } = event {
+            if let probe_rs::flashing::ProgressEvent::FlashLayoutReady {
+                flash_layout: ref phases,
+            } = event
+            {
                 let mut flash_layout = FlashLayout::default();
                 for phase_layout in phases {
                     flash_layout.merge_from(phase_layout.into());
@@ -188,12 +191,6 @@ impl ProgressBarGroup {
         self.bars.push(bar);
     }
 
-    pub fn set_length(&mut self, length: u64) {
-        if let Some(bar) = self.bars.get(self.selected) {
-            bar.set_length(length);
-        }
-    }
-
     pub fn inc(&mut self, size: u64) {
         if let Some(bar) = self.bars.get(self.selected) {
             bar.set_style(Self::active(bar.length().is_some()));
@@ -278,17 +275,11 @@ impl CliProgressBars {
                 }
             }
 
-            ProgressEvent::Started { operation, total } => match operation {
+            ProgressEvent::Started(operation) => match operation {
                 Operation::Fill => progress_bars.fill.mark_start_now(),
                 Operation::Erase => progress_bars.erase.mark_start_now(),
-                Operation::Program => {
-                    progress_bars.program.mark_start_now();
-                    progress_bars.program.set_length(total);
-                }
-                Operation::Verify => {
-                    progress_bars.verify.mark_start_now();
-                    progress_bars.verify.set_length(total);
-                }
+                Operation::Program => progress_bars.program.mark_start_now(),
+                Operation::Verify => progress_bars.verify.mark_start_now(),
             },
 
             ProgressEvent::Progress { operation, size } => match operation {

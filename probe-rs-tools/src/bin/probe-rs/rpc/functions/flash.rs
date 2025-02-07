@@ -178,6 +178,17 @@ pub enum Operation {
     Verify,
 }
 
+impl From<flashing::ProgressOperation> for Operation {
+    fn from(operation: flashing::ProgressOperation) -> Self {
+        match operation {
+            flashing::ProgressOperation::Fill => Operation::Fill,
+            flashing::ProgressOperation::Erase => Operation::Erase,
+            flashing::ProgressOperation::Program => Operation::Program,
+            flashing::ProgressOperation::Verify => Operation::Verify,
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, Schema)]
 pub enum ProgressEvent {
     FlashLayoutReady {
@@ -191,10 +202,7 @@ pub enum ProgressEvent {
     },
 
     /// Started an operation with the given total size.
-    Started {
-        operation: Operation,
-        total: u64,
-    }, // TODO this total should be part of AddProgressBar for Program, too
+    Started(Operation),
 
     /// An operation has made progress.
     Progress {
@@ -216,110 +224,31 @@ pub enum ProgressEvent {
     },
 }
 impl ProgressEvent {
-    pub fn from_library_event(
-        event: probe_rs::flashing::ProgressEvent,
-        mut cb: impl FnMut(ProgressEvent),
-    ) {
+    pub fn from_library_event(event: flashing::ProgressEvent, mut cb: impl FnMut(ProgressEvent)) {
         let event = match event {
-            probe_rs::flashing::ProgressEvent::Initialized {
-                chip_erase,
-                phases,
-                restore_unwritten,
-            } => {
-                if chip_erase {
-                    // TODO: indeterminate because ESP32s don't yet report their actual flash size while erasing.
-                    // Otherwise a determinate progress bar would look better, even if it would jump
-                    // from 0 to 100% in one step.
-                    cb(ProgressEvent::AddProgressBar {
-                        operation: Operation::Erase,
-                        total: None,
-                    });
-                }
-
-                for phase in phases.iter() {
-                    if restore_unwritten {
-                        let fill_size = phase.fills().iter().map(|s| s.size()).sum::<u64>();
-
-                        cb(ProgressEvent::AddProgressBar {
-                            operation: Operation::Fill,
-                            total: Some(fill_size),
-                        });
-                    }
-
-                    if !chip_erase {
-                        let sector_size = phase.sectors().iter().map(|s| s.size()).sum::<u64>();
-
-                        cb(ProgressEvent::AddProgressBar {
-                            operation: Operation::Erase,
-                            total: Some(sector_size),
-                        });
-                    }
-
-                    cb(ProgressEvent::AddProgressBar {
-                        operation: Operation::Program,
-                        total: Some(0),
-                    });
-                }
-
+            flashing::ProgressEvent::FlashLayoutReady { flash_layout } => {
                 ProgressEvent::FlashLayoutReady {
-                    flash_layout: phases.iter().map(FlashLayout::from).collect(),
+                    flash_layout: flash_layout.iter().map(Into::into).collect(),
                 }
             }
-
-            // Fill
-            probe_rs::flashing::ProgressEvent::StartedFilling => ProgressEvent::Started {
-                operation: Operation::Fill,
-                total: 0,
-            },
-            probe_rs::flashing::ProgressEvent::PageFilled { size, .. } => ProgressEvent::Progress {
-                operation: Operation::Fill,
+            flashing::ProgressEvent::AddProgressBar { operation, total } => {
+                ProgressEvent::AddProgressBar {
+                    operation: operation.into(),
+                    total,
+                }
+            }
+            flashing::ProgressEvent::Started(operation) => ProgressEvent::Started(operation.into()),
+            flashing::ProgressEvent::Progress {
+                operation, size, ..
+            } => ProgressEvent::Progress {
+                operation: operation.into(),
                 size,
             },
-            probe_rs::flashing::ProgressEvent::FailedFilling => {
-                ProgressEvent::Failed(Operation::Fill)
+            flashing::ProgressEvent::Failed(operation) => ProgressEvent::Failed(operation.into()),
+            flashing::ProgressEvent::Finished(operation) => {
+                ProgressEvent::Finished(operation.into())
             }
-            probe_rs::flashing::ProgressEvent::FinishedFilling => {
-                ProgressEvent::Finished(Operation::Fill)
-            }
-
-            // Erase
-            probe_rs::flashing::ProgressEvent::StartedErasing => ProgressEvent::Started {
-                operation: Operation::Erase,
-                total: 0,
-            },
-            probe_rs::flashing::ProgressEvent::SectorErased { size, .. } => {
-                ProgressEvent::Progress {
-                    operation: Operation::Erase,
-                    size,
-                }
-            }
-            probe_rs::flashing::ProgressEvent::FailedErasing => {
-                ProgressEvent::Failed(Operation::Erase)
-            }
-            probe_rs::flashing::ProgressEvent::FinishedErasing => {
-                ProgressEvent::Finished(Operation::Erase)
-            }
-
-            // Program
-            probe_rs::flashing::ProgressEvent::StartedProgramming { length } => {
-                ProgressEvent::Started {
-                    operation: Operation::Program,
-                    total: length,
-                }
-            }
-            probe_rs::flashing::ProgressEvent::PageProgrammed { size, .. } => {
-                ProgressEvent::Progress {
-                    operation: Operation::Program,
-                    size: size as u64,
-                }
-            }
-            probe_rs::flashing::ProgressEvent::FailedProgramming => {
-                ProgressEvent::Failed(Operation::Program)
-            }
-            probe_rs::flashing::ProgressEvent::FinishedProgramming => {
-                ProgressEvent::Finished(Operation::Program)
-            }
-            probe_rs::flashing::ProgressEvent::DiagnosticMessage { message } => {
+            flashing::ProgressEvent::DiagnosticMessage { message } => {
                 ProgressEvent::DiagnosticMessage { message }
             }
         };
@@ -453,10 +382,7 @@ fn erase_impl(
                 operation: Operation::Erase,
                 ..
             }
-            | ProgressEvent::Started {
-                operation: Operation::Erase,
-                ..
-            }
+            | ProgressEvent::Started(Operation::Erase)
             | ProgressEvent::Progress {
                 operation: Operation::Erase,
                 ..
@@ -514,10 +440,7 @@ fn verify_impl(
                 operation: Operation::Verify,
                 ..
             }
-            | ProgressEvent::Started {
-                operation: Operation::Verify,
-                ..
-            }
+            | ProgressEvent::Started(Operation::Verify)
             | ProgressEvent::Progress {
                 operation: Operation::Verify,
                 ..
