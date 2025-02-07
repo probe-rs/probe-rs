@@ -29,12 +29,9 @@ macro_rules! define_ap_register {
             $($(#[$inner])*pub $field: $type,)*
         }
 
-        impl $crate::architecture::arm::ap::RegisterBase for $name {
-            // ADDRESS is always the lower 4 bits of the register address.
-            const NAME: &'static str = stringify!($name);
-        }
-
         impl $crate::architecture::arm::ap::ApRegister for $name {
+            const NAME: &'static str = stringify!($name);
+
             // APv1 registers only use the lower 8-bits of the address, so they ignore the static
             // offset used by APv2 registers at the DAP access layer.
             const ADDRESS: u64 = 0xD00 | $address_v1;

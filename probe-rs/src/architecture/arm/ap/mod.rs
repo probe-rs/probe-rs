@@ -366,15 +366,12 @@ impl ApType {
     }
 }
 /// Base trait for all versions of access port registers
-pub trait RegisterBase:
+pub trait ApRegister:
     Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + std::fmt::Debug
 {
-    /// The name of the register as string.
-    const NAME: &'static str;
-}
-
-/// A trait to be implemented on Access Port (v1) register types for typed device access.
-pub trait ApRegister: RegisterBase {
     /// The address of the register (in bytes).
     const ADDRESS: u64;
+
+    /// The name of the register as string.
+    const NAME: &'static str;
 }
