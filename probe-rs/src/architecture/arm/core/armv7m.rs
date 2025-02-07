@@ -801,6 +801,8 @@ impl CoreInterface for Armv7m<'_> {
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
+        // Invalidate cached core status
+        self.set_core_status(CoreStatus::Unknown);
         Ok(())
     }
 
