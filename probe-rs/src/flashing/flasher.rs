@@ -293,11 +293,7 @@ impl Flasher {
         }
 
         // Flash all necessary pages.
-        if self.double_buffering_supported() && enable_double_buffering {
-            self.program_double_buffer(session, progress, &flash_encoder)?;
-        } else {
-            self.program_simple(session, progress, &flash_encoder)?;
-        };
+        self.do_program(session, progress, &flash_encoder, enable_double_buffering)?;
 
         if verify
             && !self.verify(
@@ -439,35 +435,6 @@ impl Flasher {
         })
     }
 
-    /// Programs the pages given in `flash_layout` into the flash.
-    fn program_simple(
-        &mut self,
-        session: &mut Session,
-        progress: &FlashProgress,
-        flash_encoder: &FlashEncoder,
-    ) -> Result<(), FlashError> {
-        progress.started_programming(flash_encoder.program_size());
-
-        let result = self.run_program(session, progress, |active| {
-            for page in flash_encoder.pages() {
-                active
-                    .program_page(page)
-                    .map_err(|error| FlashError::PageWrite {
-                        page_address: page.address(),
-                        source: Box::new(error),
-                    })?;
-            }
-            Ok(())
-        });
-
-        match result.is_ok() {
-            true => progress.finished_programming(),
-            false => progress.failed_programming(),
-        }
-
-        result
-    }
-
     /// Perform an erase of all sectors given in `flash_layout`.
     fn sector_erase(
         &mut self,
@@ -497,6 +464,48 @@ impl Flasher {
         result
     }
 
+    fn do_program(
+        &mut self,
+        session: &mut Session,
+        progress: &FlashProgress,
+        flash_encoder: &FlashEncoder,
+        enable_double_buffering: bool,
+    ) -> Result<(), FlashError> {
+        progress.started_programming(flash_encoder.program_size());
+        let program_result = if self.double_buffering_supported() && enable_double_buffering {
+            self.program_double_buffer(session, progress, &flash_encoder)
+        } else {
+            self.program_simple(session, progress, &flash_encoder)
+        };
+
+        match program_result.is_ok() {
+            true => progress.finished_programming(),
+            false => progress.failed_programming(),
+        }
+
+        program_result
+    }
+
+    /// Programs the pages given in `flash_layout` into the flash.
+    fn program_simple(
+        &mut self,
+        session: &mut Session,
+        progress: &FlashProgress,
+        flash_encoder: &FlashEncoder,
+    ) -> Result<(), FlashError> {
+        self.run_program(session, progress, |active| {
+            for page in flash_encoder.pages() {
+                active
+                    .program_page(page)
+                    .map_err(|error| FlashError::PageWrite {
+                        page_address: page.address(),
+                        source: Box::new(error),
+                    })?;
+            }
+            Ok(())
+        })
+    }
+
     /// Flash a program using double buffering.
     ///
     /// This uses two buffers to increase the flash speed.
@@ -512,10 +521,8 @@ impl Flasher {
         progress: &FlashProgress,
         flash_encoder: &FlashEncoder,
     ) -> Result<(), FlashError> {
-        let mut current_buf = 0;
-        progress.started_programming(flash_encoder.program_size());
-
-        let result = self.run_program(session, progress, |active| {
+        self.run_program(session, progress, |active| {
+            let mut current_buf = 0;
             let mut t = Instant::now();
             let mut last_page_address = 0;
             for page in flash_encoder.pages() {
@@ -547,14 +554,7 @@ impl Flasher {
             }
 
             active.wait_for_write_end(last_page_address)
-        });
-
-        match result.is_ok() {
-            true => progress.finished_programming(),
-            false => progress.failed_programming(),
-        }
-
-        result
+        })
     }
 
     pub(super) fn flash_layout(
