@@ -500,7 +500,9 @@ impl DapAccess for BlackMagicProbeArmDebug {
     ) -> Result<u32, ArmError> {
         // Currently, only APv1 is supported. As such, truncate the address to an 8-bit size.
         if ap.ap().is_v2() {
-            unimplemented!()
+            return Err(ArmError::NotImplemented(
+                "BlackMagicProbe does not yet support APv2",
+            ));
         }
         let addr = (addr & 0xFF) as u8;
 
@@ -542,7 +544,9 @@ impl DapAccess for BlackMagicProbeArmDebug {
     ) -> Result<(), ArmError> {
         // Currently, only APv1 is supported. As such, truncate the address to an 8-bit size.
         if ap.ap().is_v2() {
-            unimplemented!()
+            return Err(ArmError::NotImplemented(
+                "BlackMagicProbe does not yet support APv2",
+            ));
         }
         let addr = (addr & 0xFF) as u8;
 

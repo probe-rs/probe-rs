@@ -1412,7 +1412,9 @@ impl DapAccess for StlinkArmDebug {
         address: u64,
     ) -> Result<u32, ArmError> {
         if ap.ap().is_v2() {
-            unimplemented!()
+            return Err(ArmError::NotImplemented(
+                "ST-Link does not yet support APv2",
+            ));
         }
         self.select_ap_and_ap_bank(ap, address)?;
 
@@ -1430,7 +1432,9 @@ impl DapAccess for StlinkArmDebug {
         value: u32,
     ) -> Result<(), ArmError> {
         if ap.ap().is_v2() {
-            unimplemented!()
+            return Err(ArmError::NotImplemented(
+                "ST-Link does not yet support APv2",
+            ));
         }
         self.select_ap_and_ap_bank(ap, address)?;
 

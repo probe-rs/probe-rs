@@ -554,7 +554,7 @@ fn process_component_entry(
                 unreachable!("This should only happen on ap v2 addresses.");
             };
             if addr.0.is_some() {
-                unimplemented!("Nested memory APs are not yet supported.");
+                return Err(anyhow::anyhow!("Nested memory APs are not yet supported."));
             }
             let addr = FullyQualifiedApAddress::v2_with_dp(
                 dp,
