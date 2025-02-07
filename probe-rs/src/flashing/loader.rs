@@ -436,9 +436,18 @@ impl FlashLoader {
 
     /// Verifies data on the device.
     pub fn verify(&self, session: &mut Session, progress: FlashProgress) -> Result<(), FlashError> {
-        let algos = self.prepare_plan(session, false)?;
+        let mut algos = self.prepare_plan(session, false)?;
 
-        // TODO: actually report progress.
+        for flasher in algos.iter_mut() {
+            let mut program_size = 0;
+            for region in flasher.regions.iter_mut() {
+                program_size += region
+                    .data
+                    .encoder(flasher.flash_algorithm.transfer_encoding)
+                    .program_size();
+            }
+            progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
+        }
 
         // Iterate all flash algorithms we need to use and do the flashing.
         for mut flasher in algos {
@@ -721,27 +730,34 @@ impl FlashLoader {
         // Iterate all flash algorithms to initialize a few things.
         for flasher in algos.iter_mut() {
             let mut phase_layout = FlashLayout::default();
+
+            let mut fill_size = 0;
+            let mut erase_size = 0;
+            let mut program_size = 0;
+
             for region in flasher.regions.iter_mut() {
                 let layout = region.flash_layout();
                 phase_layout.merge_from(layout.clone());
 
-                let sector_size = layout.sectors().iter().map(|s| s.size()).sum::<u64>();
-
-                if options.keep_unwritten_bytes {
-                    let fill_size = layout.fills().iter().map(|s| s.size()).sum::<u64>();
-                    progress.add_progress_bar(ProgressOperation::Fill, Some(fill_size));
-                }
-
-                if !options.do_chip_erase {
-                    progress.add_progress_bar(ProgressOperation::Erase, Some(sector_size));
-                }
-
-                let program_size = region
+                erase_size += layout.sectors().iter().map(|s| s.size()).sum::<u64>();
+                fill_size += layout.fills().iter().map(|s| s.size()).sum::<u64>();
+                program_size += region
                     .data
                     .encoder(flasher.flash_algorithm.transfer_encoding)
                     .program_size();
-                progress.add_progress_bar(ProgressOperation::Program, Some(program_size));
             }
+
+            if options.keep_unwritten_bytes {
+                progress.add_progress_bar(ProgressOperation::Fill, Some(fill_size));
+            }
+            if !options.do_chip_erase {
+                progress.add_progress_bar(ProgressOperation::Erase, Some(erase_size));
+            }
+            progress.add_progress_bar(ProgressOperation::Program, Some(program_size));
+            if options.verify {
+                progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
+            }
+
             phases.push(phase_layout);
         }
 
