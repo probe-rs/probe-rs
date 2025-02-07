@@ -212,11 +212,11 @@ impl Channel {
             return Ok(None);
         };
 
-        let this = Channel {
+        let mut this = Channel {
             number,
             core_id: core.id(),
             metadata_ptr,
-            name: read_c_string(core, info.standard_name_pointer())?,
+            name: None,
             info,
             last_read_ptr: None,
         };
@@ -225,6 +225,8 @@ impl Channel {
         // We call read_pointers to validate that the channel pointers are in an expected range.
         // This should at least catch most cases where the control block is partially initialized.
         this.read_pointers(core, "")?;
+        // Read channel name just after the pointer was validated to be within an expected range.
+        this.name = read_c_string(core, this.info.standard_name_pointer())?;
         this.mode(core)?;
 
         Ok(Some(this))
