@@ -30,10 +30,8 @@ macro_rules! attached_regs_to_mem_ap {
         mod $mod_name {
             use super::$name;
             use $crate::architecture::arm::ap::{
-                ApRegAccess,
-                BASE, BASE2, BD0, BD1, BD2, BD3, CFG, CSW, DRW, MBT, TAR, TAR2,
+                ApRegAccess, BASE, BASE2, BD0, BD1, BD2, BD3, CFG, CSW, DRW, MBT, TAR, TAR2,
             };
-            use $crate::architecture::arm::ap_v1::ApRegAccess;
             impl ApRegAccess<CFG> for $name {}
             impl ApRegAccess<CSW> for $name {}
             impl ApRegAccess<BASE> for $name {}
