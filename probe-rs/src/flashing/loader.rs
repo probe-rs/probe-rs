@@ -443,7 +443,7 @@ impl FlashLoader {
             for region in flasher.regions.iter_mut() {
                 program_size += region
                     .data
-                    .encoder(flasher.flash_algorithm.transfer_encoding)
+                    .encoder(flasher.flash_algorithm.transfer_encoding, true)
                     .program_size();
             }
             progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
@@ -743,7 +743,10 @@ impl FlashLoader {
                 fill_size += layout.fills().iter().map(|s| s.size()).sum::<u64>();
                 program_size += region
                     .data
-                    .encoder(flasher.flash_algorithm.transfer_encoding)
+                    .encoder(
+                        flasher.flash_algorithm.transfer_encoding,
+                        !options.keep_unwritten_bytes,
+                    )
                     .program_size();
             }
 
