@@ -4,13 +4,14 @@ mod rpc;
 mod util;
 
 use std::cmp::Reverse;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::str::FromStr;
 use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::{Context, Result};
-use clap::Parser;
+use clap::{CommandFactory, FromArgMatches};
 use colored::Colorize;
 use figment::providers::{Data, Format as _, Json, Toml, Yaml};
 use figment::Figment;
@@ -37,11 +38,16 @@ struct ServerUser {
     pub token: String,
 }
 
+type ConfigPreset = Vec<String>;
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Config {
     #[cfg(feature = "remote")]
     pub server_users: Vec<ServerUser>,
+
+    /// A named set of `--key=value` pairs.
+    pub presets: HashMap<String, ConfigPreset>,
 }
 
 #[derive(clap::Parser)]
@@ -94,6 +100,17 @@ struct Cli {
 
     #[clap(subcommand)]
     subcommand: Subcommand,
+
+    /// A configuration preset to apply.
+    ///
+    /// A preset is a list of command line arguments, that can be defined in the configuration file.
+    /// Presets can be used as a shortcut to specify any number of options, e.g. they can be used to
+    /// assign a name to a specific probe-chip pair.
+    ///
+    /// Manually specified command line arguments take overwrite presets, but presets
+    /// take precedence over environment variables.
+    #[arg(long, global = true, env = "PROBE_RS_CONFIG_PRESET")]
+    preset: Option<String>,
 }
 
 impl Cli {
@@ -407,7 +424,7 @@ async fn main() -> Result<()> {
     //        at this point we don't have a logger yet.
     let utc_offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
 
-    let args: Vec<_> = std::env::args_os().collect();
+    let mut args: Vec<_> = std::env::args_os().collect();
 
     // Special-case `cargo-embed` and `cargo-flash`.
     if let Some(args) = multicall_check(&args, "cargo-flash") {
@@ -424,11 +441,52 @@ async fn main() -> Result<()> {
     let config = load_config().context("Failed to load configuration.")?;
 
     // Parse the commandline options.
-    let matches = Cli::parse_from(args);
+    let mut matches = Cli::command().get_matches_from(&args);
 
-    let log_path = if let Some(ref location) = matches.log_file {
+    // Apply the configuration preset if one is specified.
+    let mut args_modified = false;
+    if let Some(preset) = matches.get_one::<String>("preset") {
+        if let Some(preset) = config.presets.get(preset) {
+            for arg in preset {
+                let (key, value) = if arg.starts_with("--") {
+                    if let Some((key, value)) = arg.split_once([' ', '=']) {
+                        (key.trim(), Some(value.trim()))
+                    } else {
+                        (arg.as_str(), None)
+                    }
+                } else {
+                    (arg.as_str(), None)
+                };
+
+                let flag = key.into();
+                if !args.contains(&flag) {
+                    args_modified = true;
+                    args.push(flag);
+                    if let Some(value) = value {
+                        args.push(value.into());
+                    }
+                }
+            }
+        } else {
+            eprintln!("Config preset '{preset}' not found.");
+            std::process::exit(1);
+        }
+    }
+
+    if args_modified {
+        // Re-parse the modified CLI input. Ignore errors so that users can specify
+        // options that are only valid for certain subcommands.
+        matches = Cli::command().ignore_errors(true).get_matches_from(args);
+    }
+
+    let cli = match Cli::from_arg_matches(&matches) {
+        Ok(matches) => matches,
+        Err(err) => err.exit(),
+    };
+
+    let log_path = if let Some(ref location) = cli.log_file {
         Some(location.clone())
-    } else if matches.log_to_folder || matches.report.is_some() {
+    } else if cli.log_to_folder || cli.report.is_some() {
         // We always log if we create a report.
         let location =
             default_logfile_location().context("Unable to determine default log file location.")?;
@@ -445,27 +503,27 @@ async fn main() -> Result<()> {
 
     // the DAP server has special logging requirements. Run it before initializing logging,
     // so it can do its own special init.
-    if let Subcommand::DapServer(cmd) = matches.subcommand {
+    if let Subcommand::DapServer(cmd) = cli.subcommand {
         let lister = Lister::new();
         return cmd::dap_server::run(cmd, &lister, utc_offset, log_path);
     }
 
     let _logger_guard = setup_logging(log_path, None);
 
-    let elf = matches.elf();
-    let report_path = matches.report.clone();
+    let elf = cli.elf();
+    let report_path = cli.report.clone();
 
     #[cfg(feature = "remote")]
-    if let Some(host) = matches.host.as_deref() {
+    if let Some(host) = cli.host.as_deref() {
         // Run the command remotely.
-        let client = rpc::client::connect(host, matches.token.clone()).await?;
+        let client = rpc::client::connect(host, cli.token.clone()).await?;
 
         anyhow::ensure!(
-            matches.subcommand.is_remote_cmd(),
+            cli.subcommand.is_remote_cmd(),
             "The subcommand is not supported in remote mode."
         );
 
-        matches.run(client, config, utc_offset).await?;
+        cli.run(client, config, utc_offset).await?;
         // TODO: handle the report
         return Ok(());
     }
@@ -476,7 +534,7 @@ async fn main() -> Result<()> {
 
     // Run the command locally.
     let client = RpcClient::new_local_from_wire(tx, rx);
-    let result = matches.run(client, config, utc_offset).await;
+    let result = cli.run(client, config, utc_offset).await;
 
     // Wait for the server to shut down
     _ = handle.await.unwrap();
