@@ -47,38 +47,54 @@ impl Operation for Verify {
 
 pub(super) enum FlashData {
     Raw(FlashLayout),
-    Loaded(FlashEncoder),
+    Loaded {
+        encoder: FlashEncoder,
+        ignore_fills: bool,
+    },
 }
 
 impl FlashData {
     pub fn layout(&self) -> &FlashLayout {
         match self {
             FlashData::Raw(layout) => layout,
-            FlashData::Loaded(encoder) => encoder.flash_layout(),
+            FlashData::Loaded { encoder, .. } => encoder.flash_layout(),
         }
     }
 
     pub fn layout_mut(&mut self) -> &mut FlashLayout {
         // We're mutating the data, let's invalidate the encoder
-        if let FlashData::Loaded(encoder) = self {
+        if let FlashData::Loaded { encoder, .. } = self {
             *self = FlashData::Raw(encoder.flash_layout().clone());
         }
 
         match self {
             FlashData::Raw(layout) => layout,
-            FlashData::Loaded(_) => unreachable!(),
+            FlashData::Loaded { .. } => unreachable!(),
         }
     }
 
-    pub fn encoder(&mut self, encoding: TransferEncoding) -> &FlashEncoder {
+    pub fn encoder(&mut self, encoding: TransferEncoding, ignore_fills: bool) -> &FlashEncoder {
+        if let FlashData::Loaded {
+            encoder,
+            ignore_fills: was_ignore_fills,
+        } = self
+        {
+            if *was_ignore_fills != ignore_fills {
+                // Fill handling changed, invalidate the encoder
+                *self = FlashData::Raw(encoder.flash_layout().clone());
+            }
+        }
         if let FlashData::Raw(layout) = self {
             let layout = std::mem::take(layout);
-            let encoder = FlashEncoder::new(encoding, layout);
-            *self = FlashData::Loaded(encoder);
+            let encoder = FlashEncoder::new(encoding, layout, ignore_fills);
+            *self = FlashData::Loaded {
+                encoder,
+                ignore_fills,
+            };
         }
 
         match self {
-            FlashData::Loaded(encoder) => encoder,
+            FlashData::Loaded { encoder, .. } => encoder,
             FlashData::Raw(_) => unreachable!(),
         }
     }
@@ -419,7 +435,7 @@ impl Flasher {
                     tracing::debug!("Verify using CMSIS function");
 
                     // Prefer Verify as we may use compression
-                    let flash_encoder = region.data.encoder(encoding);
+                    let flash_encoder = region.data.encoder(encoding, ignore_filled);
 
                     for page in flash_encoder.pages() {
                         let start = Instant::now();
@@ -523,7 +539,7 @@ impl Flasher {
 
         let result = self.run_erase(session, progress, |active, data| {
             for region in data.iter_mut() {
-                for sector in region.data.encoder(encoding).sectors() {
+                for sector in region.data.encoder(encoding, false).sectors() {
                     active
                         .erase_sector(sector)
                         .map_err(|e| FlashError::EraseFailed {
@@ -578,7 +594,7 @@ impl Flasher {
                     region.region.range,
                     region.region.range.end - region.region.range.start
                 );
-                let flash_encoder = region.data.encoder(encoding);
+                let flash_encoder = region.data.encoder(encoding, false);
                 for page in flash_encoder.pages() {
                     active
                         .program_page(page)
@@ -614,7 +630,7 @@ impl Flasher {
                     region.region.range,
                     region.region.range.end - region.region.range.start
                 );
-                let flash_encoder = region.data.encoder(encoding);
+                let flash_encoder = region.data.encoder(encoding, false);
 
                 let mut current_buf = 0;
                 let mut t = Instant::now();
