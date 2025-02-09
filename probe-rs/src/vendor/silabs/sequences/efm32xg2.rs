@@ -1,14 +1,12 @@
 //! Sequences for Silicon Labs EFM32 Series 2 chips
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use crate::{
     architecture::arm::{
-        ap::AccessPortError,
         core::armv8m::{Aircr, Demcr, Dhcsr},
         memory::ArmMemoryInterface,
-        sequences::ArmDebugSequence,
+        sequences::{cortex_m_wait_for_reset, ArmDebugSequence},
         ArmError,
     },
     core::MemoryMappedRegister,
@@ -24,30 +22,6 @@ impl EFM32xG2 {
     /// Create a sequence handle for the EFM32xG2
     pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self(()))
-    }
-
-    fn wait_for_reset(&self, interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
-        let start = Instant::now();
-
-        while start.elapsed() < Duration::from_millis(500) {
-            let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
-                Ok(val) => Dhcsr(val),
-                // Some combinations of debug probe and target (in
-                // particular, hs-probe and ATSAMD21) result in
-                // register read errors while the target is
-                // resetting.
-                Err(ArmError::AccessPort {
-                    source: AccessPortError::RegisterRead { .. },
-                    ..
-                }) => continue,
-                Err(err) => return Err(err),
-            };
-            if !dhcsr.s_reset_st() {
-                return Ok(());
-            }
-        }
-
-        Err(ArmError::Timeout)
     }
 }
 
@@ -103,7 +77,7 @@ impl ArmDebugSequence for EFM32xG2 {
         aircr.set_sysresetreq(true);
 
         interface.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
-        self.wait_for_reset(interface)?;
+        cortex_m_wait_for_reset(interface)?;
 
         let dhcsr = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?);
         if dhcsr.s_lockup() {
@@ -135,7 +109,7 @@ impl ArmDebugSequence for EFM32xG2 {
             aircr.set_vectclractive(true);
             interface.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
 
-            self.wait_for_reset(interface)?;
+            cortex_m_wait_for_reset(interface)?;
 
             // We should no longer be in lokup state at this point. CoreInterface::status is going
             // to chek this soon.
