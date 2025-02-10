@@ -11,8 +11,8 @@ use probe_rs_target::CoreType;
 
 use crate::{
     architecture::arm::{
-        ap::{ApRegister, CSW, IDR},
-        armv8m::{self},
+        ap::{ApRegister, IDR},
+        armv8m::{self, Demcr, Dhcsr},
         communication_interface::Initialized,
         dp::{Abort, Ctrl, DpAccess, DpAddress, DpRegister, SelectV1, DPIDR},
         memory::ArmMemoryInterface,
@@ -26,30 +26,56 @@ use crate::{
 /// Debug sequences for MCX family MCUs.
 #[derive(Debug)]
 pub struct MCX {
-    _variant: String, // This member is useful for the other MCX Series MCUs, keep it for future.
-}
-
-/// MCX Family Variants
-#[derive(Debug)]
-pub enum MCXFamily {
-    /// MCXAxxx Variants
-    MCXA,
+    variant: String, // Part variant
 }
 
 impl MCX {
     /// Create a sequence handle for the MCX MCUs.
     pub fn create(variant: String) -> Arc<dyn ArmDebugSequence> {
-        Arc::new(MCX { _variant: variant })
+        Arc::new(MCX { variant })
+    }
+
+    /// Helper function to check if is some variants.
+    fn is_variant(&self, s: &Vec<&str>) -> bool {
+        s.iter().any(|i| self.variant.starts_with(i))
+    }
+
+    fn csw_debug_ready(
+        &self,
+        interface: &mut dyn DapAccess,
+        ap: &FullyQualifiedApAddress,
+    ) -> Result<bool, ArmError> {
+        let csw = interface.read_raw_ap_register(ap, 0x00)?;
+        Ok(csw & 0x40 != 0)
+    }
+
+    fn wait_csw_debug_ready(
+        &self,
+        interface: &mut dyn DapAccess,
+        ap: &FullyQualifiedApAddress,
+        timeout: Duration,
+    ) -> Result<(), ArmError> {
+        let start = Instant::now();
+        loop {
+            let csw = interface.read_raw_ap_register(ap, 0x00)?;
+            if csw & 0x40 != 0 {
+                break;
+            }
+            if start.elapsed() > timeout {
+                return Err(ArmError::Timeout);
+            }
+        }
+        Ok(())
     }
 
     fn enable_debug_mailbox(
         &self,
         interface: &mut dyn DapAccess,
         dp: DpAddress,
+        mem_ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
-        let csw = interface
-            .read_raw_ap_register(&FullyQualifiedApAddress::v1_with_dp(dp, 0), CSW::ADDRESS)?;
-        if csw & 0x40 != 0 {
+        if self.csw_debug_ready(interface, mem_ap)? {
+            tracing::info!("no need to enable DebugMailbox");
             return Ok(false);
         }
 
@@ -87,10 +113,10 @@ impl MCX {
     ) -> Result<(), ArmError> {
         // Give bootloader time to do what it needs to do
         thread::sleep(Duration::from_millis(100));
-
         let ap = probe.fully_qualified_address();
         let dp = ap.dp();
-        self.enable_debug_mailbox(probe.get_dap_access()?, dp)?;
+        self.wait_csw_debug_ready(probe.get_dap_access()?, &ap, Duration::from_millis(100))?;
+        self.enable_debug_mailbox(probe.get_dap_access()?, dp, &ap)?;
 
         // Halt the core in case it didn't stop at a breakpoint
         let mut dhcsr = armv8m::Dhcsr(0);
@@ -105,12 +131,15 @@ impl MCX {
         probe.write_word_32(0xE0001030, 0x0)?;
         probe.write_word_32(0xE0001038, 0x0)?;
 
-        // Clear XPSR to avoid undefined instruction fault caused by IT/ICI
-        probe.write_word_32(0xE000EDF8, 0x01000000)?;
-        probe.write_word_32(0xE000EDF4, 0x00010010)?;
-        // Set MSPLIM to 0
-        probe.write_word_32(0xE000EDF8, 0x00000000)?;
-        probe.write_word_32(0xE000EDF4, 0x0001001C)?;
+        // should we need this?
+        if self.is_variant(&vec!["MCXA165", "MCXA166", "MCXA275", "MCXA276"]) {
+            // Clear XPSR to avoid undefined instruction fault caused by IT/ICI
+            probe.write_word_32(0xE000EDF8, 0x01000000)?;
+            probe.write_word_32(0xE000EDF4, 0x00010010)?;
+            // Set MSPLIM to 0
+            probe.write_word_32(0xE000EDF8, 0x00000000)?;
+            probe.write_word_32(0xE000EDF4, 0x0001001C)?;
+        }
 
         let start = Instant::now();
         loop {
@@ -213,8 +242,8 @@ impl ArmDebugSequence for MCX {
                     interface.write_dp_register(dp, abort)?;
                 }
             }
-
-            self.enable_debug_mailbox(interface, dp)?;
+            let ap = FullyQualifiedApAddress::v1_with_dp(dp, 0);
+            self.enable_debug_mailbox(interface, dp, &ap)?;
         }
 
         Ok(())
@@ -246,10 +275,16 @@ impl ArmDebugSequence for MCX {
         probe.write_word_32(armv8m::Demcr::get_mmio_address(), demcr.into())?;
         probe.flush()?;
 
-        probe.write_word_32(0xE0001020, 0x00000000)?;
+        if self.is_variant(&vec!["MCXA165", "MCXA166", "MCXA275", "MCXA276"]) {
+            probe.write_word_32(0xE0001020, 0x00000000)?;
+            probe.write_word_32(0xE0001030, 0x000FFFFF)?;
+        } else if self.is_variant(&vec!["MCXA153"]) {
+            probe.write_word_32(0xE0001020, 0x40091036)?;
+            probe.write_word_32(0xE0001030, 0x40091040)?;
+        }
         probe.write_word_32(0xE0001028, 0xF0000412)?;
-        probe.write_word_32(0xE0001030, 0x000FFFFF)?;
         probe.write_word_32(0xE0001038, 0xF0000403)?;
+        probe.flush()?;
 
         let mut aircr = armv8m::Aircr(0);
         aircr.vectkey();
@@ -257,6 +292,50 @@ impl ArmDebugSequence for MCX {
         let _ = probe.write_word_32(armv8m::Aircr::get_mmio_address(), aircr.into());
         let _ = self.wait_for_stop_after_reset(probe);
 
+        Ok(())
+    }
+
+    fn reset_catch_set(
+        &self,
+        core: &mut dyn ArmMemoryInterface,
+        _core_type: CoreType,
+        _debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
+        demcr.set_vc_corereset(true);
+        core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+
+        if self.is_variant(&vec!["MCXA153"]) {
+            let reset_vector = core.read_word_32(0x0000_0004)?;
+            if reset_vector != 0xFFFF_FFFF {
+                core.write_word_32(0xE000_2008, reset_vector | 0b1)?;
+                core.write_word_32(0xE000_2000, 0x0000_0003)?;
+            }
+            if reset_vector == 0xFFFF_FFFF {
+                let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
+                demcr.set_vc_corereset(true);
+                core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+            }
+        }
+
+        core.read_word_32(Dhcsr::get_mmio_address())?;
+        Ok(())
+    }
+
+    fn reset_catch_clear(
+        &self,
+        core: &mut dyn ArmMemoryInterface,
+        _core_type: CoreType,
+        _debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        if self.is_variant(&vec!["MCXA153"]) {
+            core.write_word_32(0xE000_2008, 0x0000_0000)?;
+            core.write_word_32(0xE000_2000, 0x0000_0002)?;
+        }
+
+        let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
+        demcr.set_vc_corereset(false);
+        core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         Ok(())
     }
 }
