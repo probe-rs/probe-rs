@@ -128,7 +128,7 @@ impl MCX {
         let dhcsr: armv8m::Dhcsr = probe
             .read_word_32(armv8m::Dhcsr::get_mmio_address())?
             .into();
-        if dhcsr.s_halt() == false {
+        if !dhcsr.s_halt() {
             let mut dhcsr = armv8m::Dhcsr(0);
             dhcsr.enable_write();
             dhcsr.set_c_debugen(true);
