@@ -58,9 +58,6 @@ impl Stm32h7 {
             Stm32h7Line::H7 => 2,
             // The H7S/R lack power domain 3 and the third AP; their debug unit is on AP1.
             Stm32h7Line::H7S => 1,
-
-            // The H747 appears to utilize a debug unit on AP0.
-            Stm32h7Line::H747 => 0,
         };
         Arc::new(Self { ap })
     }
@@ -88,9 +85,12 @@ impl Stm32h7 {
         control.enable_traceck(enable);
 
         // Configure debug connection in all power modes.
-        control.enable_standby_debug(enable);
-        control.enable_sleep_debug(enable);
-        control.enable_stop_debug(enable);
+        control.enable_d1_standby_debug(enable);
+        control.enable_d1_sleep_debug(enable);
+        control.enable_d1_stop_debug(enable);
+        control.enable_d2_standby_debug(enable);
+        control.enable_d2_sleep_debug(enable);
+        control.enable_d2_stop_debug(enable);
 
         control.write(memory)?;
 
@@ -112,9 +112,12 @@ mod dbgmcu {
         pub struct Control(u32);
         impl Debug;
 
-        pub u8, dbgsleep_d1, enable_sleep_debug: 0;
-        pub u8, dbgstop_d1, enable_stop_debug: 1;
-        pub u8, dbgstby_d1, enable_standby_debug: 2;
+        pub u8, dbgsleep_d1, enable_d1_sleep_debug: 0;
+        pub u8, dbgstop_d1, enable_d1_stop_debug: 1;
+        pub u8, dbgstby_d1, enable_d1_standby_debug: 2;
+        pub u8, dbgsleep_d2, enable_d2_sleep_debug: 3;
+        pub u8, dbgstop_d2, enable_d2_stop_debug: 4;
+        pub u8, dbgstby_d2, enable_d2_standby_debug: 5;
 
         pub u8, d3dbgcken, enable_d3_clock: 22;
         pub u8, d1dbgcken, enable_d1_clock: 21;
