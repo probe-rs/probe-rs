@@ -79,7 +79,7 @@ ratatui = { version = "0.29.0", default-features = false, features = [
 ] }
 ansi-parser = "0.9.0"
 
-probe-rs = { version = "0.26.0", path = "../probe-rs", features = [
+probe-rs = { version = "0.27.0", path = "../probe-rs", features = [
     "gdb-server",
 ] }
 parking_lot = "0.12.2"
@@ -91,7 +91,7 @@ zip = { version = "2.0.0", default-features = false, features = [
     "time",
 ] }
 urlencoding = "2"
-probe-rs-debug = { version = "0.26.0", path = "../probe-rs-debug" }
+probe-rs-debug = { version = "0.27.0", path = "../probe-rs-debug" }
 
 [build-dependencies]
 git-version = "0.3"
