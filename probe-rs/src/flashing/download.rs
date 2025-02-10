@@ -30,6 +30,8 @@ pub struct IdfOptions {
     pub bootloader: Option<PathBuf>,
     /// The partition table
     pub partition_table: Option<PathBuf>,
+    /// The target app partition
+    pub target_app_partition: Option<String>,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.

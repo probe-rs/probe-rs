@@ -126,6 +126,9 @@ pub struct IdfCliOptions {
     /// The idf partition table path
     #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
     idf_partition_table: Option<PathBuf>,
+    /// The idf target app partition
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    idf_target_app_partition: Option<String>,
 }
 
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
@@ -175,6 +178,7 @@ impl FormatOptions {
             FormatKind::Idf => Format::Idf(IdfOptions {
                 bootloader: self.idf_options.idf_bootloader,
                 partition_table: self.idf_options.idf_partition_table,
+                target_app_partition: self.idf_options.idf_target_app_partition,
             }),
         }
     }
