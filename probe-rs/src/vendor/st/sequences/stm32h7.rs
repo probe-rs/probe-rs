@@ -19,6 +19,9 @@ pub enum Stm32h7Line {
 
     /// STM32H7Rx, STM32H7Sx
     H7S,
+
+    /// STM32H747
+    H747
 }
 
 // Base address of the trace funnel that directs trace data to the SWO peripheral.
@@ -55,6 +58,9 @@ impl Stm32h7 {
             Stm32h7Line::H7 => 2,
             // The H7S/R lack power domain 3 and the third AP; their debug unit is on AP1.
             Stm32h7Line::H7S => 1,
+
+            // The H747 appears to utilize a debug unit on AP0.
+            Stm32h7Line::H747 => 0,
         };
         Arc::new(Self { ap })
     }
