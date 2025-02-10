@@ -6,6 +6,7 @@ use crate::{
     config::DebugSequence,
     vendor::{
         nxp::sequences::{
+            mcx::MCX,
             nxp_armv6m::LPC80x,
             nxp_armv7m::{MIMXRT10xx, MIMXRT117x},
             nxp_armv8m::{
@@ -42,6 +43,8 @@ impl Vendor for Nxp {
             DebugSequence::Arm(LPC80x::create())
         } else if chip.name.starts_with("OL23D0") {
             DebugSequence::Arm(OL23D0::create())
+        } else if chip.name.starts_with("MCX") {
+            DebugSequence::Arm(MCX::create(chip.name.clone()))
         } else {
             return None;
         };
