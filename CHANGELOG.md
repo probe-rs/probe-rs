@@ -14,6 +14,7 @@ Released 2025-02-10
  - Added support for the Arm Debug Interface v6 (ADIv6). Support added for flashing RP235x targets.
    Development sponsored by osdyne. (osdyne.com) (#3005) by @ryan-summers
  - Add a function to reinitialize the connection to the Black Magic Probe. This goes through the entire initialization process with the same sequence as it was originally started with. (#3032) by @xobs
+ - Added support for the MCXA series MCUs. (#3087) by @Logiase
 
 ### Changed
 
@@ -136,6 +137,8 @@ Released 2024-12-16
  - Added support for STLink-V3PWR (#2719) by @trlim
  - Add types for each type of `MemoryAp`. (#2683) by @ithinuel
  - Add support for the LPC54102 family (only the primary Cortex-M4F is supported, not the secondary Cortex-M0+). (#2525) by @jfrimmel
+ - Added support for the CH32V305 variant (#2857) by @Dummyc0m
+ - Added support for MSPM0Gx targets (#2868) by @optlink
 
 ### Changed
 
@@ -359,6 +362,7 @@ Released 2024-02-24
  - probe-rs now supports flashing STM32WLE5CCUx MCUs (#2036) by @elpiel
  - Add support for the esp32s2 target (#2002) by @bugadani
  - probe-rs now supports flashing CH32V307 MCUs (#2136) by @Marcuss2
+ - Added support for the BCM2712 target (Raspberry Pi 5) (#2209) by @tnishinaga
 
 ### Changed
 
@@ -540,6 +544,7 @@ Released 2023-10-04
 - Support for vector catch in Armv8-M targets (#1709)
 - Add log rotation to stop disks from filling. Currently a maximum of 20 logs is kept. (#1780)
 - Allow to customize the defmt log format with `--log-format`. (#1788)
+- Added support for the STM32WBA (#1761) by @Dirbaio
 
 ### Changed
 
