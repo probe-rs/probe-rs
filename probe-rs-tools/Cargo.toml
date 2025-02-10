@@ -37,7 +37,7 @@ cargo_metadata = "0.19"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "3"
 defmt-decoder = "0.4"
-directories = "5"
+directories = "6"
 dunce = "1"
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
 goblin = { version = "0.9", default-features = false, features = [
