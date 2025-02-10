@@ -1,1 +1,0 @@
-Work around a possible infinite loop in stack unwinding
