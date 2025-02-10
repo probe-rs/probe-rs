@@ -19,9 +19,6 @@ pub enum Stm32h7Line {
 
     /// STM32H7Rx, STM32H7Sx
     H7S,
-
-    /// STM32H747
-    H747
 }
 
 // Base address of the trace funnel that directs trace data to the SWO peripheral.
