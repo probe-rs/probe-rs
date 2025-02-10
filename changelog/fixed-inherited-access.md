@@ -1,1 +1,0 @@
-Inherit access configuration for registers and fields from device if any

@@ -1,1 +1,0 @@
-Properly align addresses when reading registers and fields, and avoid reading out of the bounds of the registers
