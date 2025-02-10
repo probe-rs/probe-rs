@@ -264,7 +264,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
 
     thread::sleep(Duration::from_millis(10));
 
-    if memory.generic_status()?.SDeviceEn {
+    if memory.generic_status()?.DeviceEn {
         let dp = memory.fully_qualified_address().dp();
         enable_debug_mailbox(memory.get_dap_access()?, dp)?;
     }
