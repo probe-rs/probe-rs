@@ -112,11 +112,12 @@ impl Cmd {
                     self.word_size,
                     self.iterations,
                 );
-                if let Err(e) = res {
+                if let Err(error) = res {
                     println!(
-                        "Test failed for speed {} size {} word_size {}bit - {}",
-                        speed, size, self.word_size, e
-                    )
+                        "Test failed for speed {} size {} word_size {}bit",
+                        speed, size, self.word_size
+                    );
+                    println!("{:?}", error);
                 }
             }
         }
@@ -154,55 +155,84 @@ impl Cmd {
         iterations: usize,
     ) -> Result<(), anyhow::Error> {
         let mut probe = common_options.attach_probe(lister)?;
+        #[cfg(feature = "ci")]
+        let probe_name = probe.get_name();
+        #[cfg(feature = "ci")]
+        let speed = probe.speed_khz();
         let target = common_options.get_target_selector()?;
         if probe.set_speed(speed).is_ok() {
-            let mut session = common_options.attach_session(probe, target)?;
-            let mut test = TestData::new(address, word_size, size);
-            println!(
-                "Test: Speed {}, Word size {}bit, Data length {} bytes, Number of iterations {}",
+            println!("failed to set speed {}", speed);
+            return Ok(());
+        }
+
+        let mut session = common_options.attach_session(probe, target)?;
+        let mut test = TestData::new(address, word_size, size);
+        println!(
+            "Test: Speed {}, Word size {}bit, Data length {} bytes, Number of iterations {}",
+            speed,
+            word_size,
+            test.data_type.size() * size,
+            iterations
+        );
+        let mut core = session.core(0).context("Failed to attach to core")?;
+        core.halt(Duration::from_millis(100))
+            .context("Halting failed")?;
+
+        let mut read_results = Vec::<f64>::with_capacity(iterations);
+        let mut write_results = Vec::<f64>::with_capacity(iterations);
+        'inner: for _ in 0..iterations {
+            let write_throughput = test.block_write(&mut core)?;
+            let read_throughput = test.block_read(&mut core)?;
+            let verify_success = test.block_verify();
+            if verify_success {
+                read_results.push(read_throughput);
+                write_results.push(write_throughput);
+            } else {
+                eprintln!("Verification failed.");
+                break 'inner;
+            }
+        }
+        let read_mean = mean(&read_results).expect("invalid mean");
+        let read_std = std_deviation(&read_results).expect("invalid std deviation");
+        let write_mean = mean(&write_results).expect("invalid mean");
+        let write_std = std_deviation(&write_results).expect("invalid std deviation");
+
+        println!(
+            "Results: Read: {read_mean:.2} bytes/s Std Dev {read_std:.2}, Write: {write_mean:.2} bytes/s Std Dev {write_std:.2}",
+        );
+
+        #[cfg(feature = "ci")]
+        {
+            let selector = common_options.probe();
+            let vid = selector.as_ref().map(|s| s.vendor_id).unwrap_or_default();
+            let pid = selector.as_ref().map(|s| s.product_id).unwrap_or_default();
+            let chip = common_options
+                .chip()
+                .unwrap_or_else(|| "<unspecified>".into());
+            ci::send_benchmarks(
+                format!("{} ({vid}, {pid})", probe_name),
+                chip,
                 speed,
                 word_size,
-                test.data_type.size() * size,
-                iterations
-            );
-            let mut core = session.core(0).context("Failed to attach to core")?;
-            core.halt(Duration::from_millis(100))
-                .context("Halting failed")?;
+                size,
+                read_mean,
+                write_mean,
+                read_std,
+                write_std,
+            )?
+        };
 
-            let mut read_results = Vec::<f64>::with_capacity(iterations);
-            let mut write_results = Vec::<f64>::with_capacity(iterations);
-            'inner: for _ in 0..iterations {
-                let write_throughput = test.block_write(&mut core)?;
-                let read_throughput = test.block_read(&mut core)?;
-                let verify_success = test.block_verify();
-                if verify_success {
-                    read_results.push(read_throughput);
-                    write_results.push(write_throughput);
-                } else {
-                    eprintln!("Verification failed.");
-                    break 'inner;
-                }
-            }
+        if read_results.len() != iterations || write_results.len() != iterations {
             println!(
-                "Results: Read: {:.2} bytes/s Std Dev {:.2}, Write: {:.2} bytes/s Std Dev {:.2}",
-                mean(&read_results).expect("invalid mean"),
-                std_deviation(&read_results).expect("invalid std deviation"),
-                mean(&write_results).expect("invalid mean"),
-                std_deviation(&write_results).expect("invalid std deviation")
-            );
-            if read_results.len() != iterations || write_results.len() != iterations {
-                println!(
-                    "Warning: {} reads and {} writes successful (out of {} iterations)",
-                    read_results.len(),
-                    write_results.len(),
-                    iterations
-                )
-            }
-            // Insert another blank line to visually seperate results
-            println!();
-        } else {
-            println!("failed to set speed {}", speed);
+                "Warning: {} reads and {} writes successful (out of {} iterations)",
+                read_results.len(),
+                write_results.len(),
+                iterations
+            )
         }
+        // Insert another blank line to visually seperate results
+        println!();
+
         Ok(())
     }
 }
@@ -376,5 +406,92 @@ fn std_deviation(data: &[f64]) -> Option<f64> {
             Some(variance.sqrt())
         }
         _ => None,
+    }
+}
+
+#[cfg(feature = "ci")]
+mod ci {
+    const PERFBOT_URL: &str = "https://perfbot.drop.huesser.dev";
+
+    pub(crate) fn send_benchmarks(
+        probe: String,
+        chip: String,
+        speed: u32,
+        word_size: u32,
+        size: usize,
+        read_mean: f64,
+        write_mean: f64,
+        read_std: f64,
+        write_std: f64,
+    ) -> Result<(), anyhow::Error> {
+        let run_id = std::env::var("RUN_ID")
+            .ok()
+            .and_then(|r| r.parse().ok())
+            .expect("Please set the RUN_ID env var.");
+        let api_endpoint = format!("{PERFBOT_URL}/api/measurements/");
+
+        let client = reqwest::blocking::Client::new();
+        client
+            .post(&api_endpoint)
+            .json(&CreateMeasurement {
+                run: run_id,
+                datetime: chrono::Utc::now().into(),
+                name: format!("ram-read-{speed}-{word_size}-{size}"),
+                description: format!("Read {size} bytes of RAM in {word_size} bit chunks."),
+                unit: "bit/s".into(),
+                improves: BenchmarkImproves::Up,
+                probe: probe.clone(),
+                chip: chip.clone(),
+                speed_khz: speed as usize,
+                value: read_mean,
+                std: read_std,
+            })
+            .send()?
+            .text()?;
+
+        client
+            .post(&api_endpoint)
+            .json(&CreateMeasurement {
+                run: run_id,
+                datetime: chrono::Utc::now().into(),
+                name: format!("ram-write-{speed}-{word_size}-{size}"),
+                description: format!("Write {size} bytes of RAM in {word_size} bit chunks."),
+                unit: "bit/s".into(),
+                improves: BenchmarkImproves::Up,
+                probe,
+                chip,
+                speed_khz: speed as usize,
+                value: write_mean,
+                std: write_std,
+            })
+            .send()?
+            .text()?;
+
+        Ok(())
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Debug)]
+    #[serde(rename_all = "camelCase")]
+    pub struct CreateMeasurement {
+        pub run: i64,
+        pub datetime: chrono::DateTime<chrono::Utc>,
+
+        pub name: String,
+        pub description: String,
+        pub unit: String,
+        pub improves: BenchmarkImproves,
+
+        pub probe: String,
+        pub chip: String,
+        pub speed_khz: usize,
+
+        pub value: f64,
+        pub std: f64,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Debug, Copy)]
+    pub enum BenchmarkImproves {
+        Up,
+        Down,
     }
 }

@@ -93,6 +93,20 @@ zip = { version = "2.0.0", default-features = false, features = [
 urlencoding = "2"
 probe-rs-debug = { version = "0.27.0", path = "../probe-rs-debug" }
 
+reqwest = { version = "0.12", optional = true, default-features = false, features = [
+    "rustls-tls",
+    "charset",
+    "http2",
+    "macos-system-configuration",
+    "blocking",
+    "json",
+] }
+chrono = { version = "0.4", optional = true, features = ["serde"] }
+
+[features]
+default = ["ci"]
+ci = ["dep:reqwest", "dep:chrono"]
+
 [build-dependencies]
 git-version = "0.3"
 
