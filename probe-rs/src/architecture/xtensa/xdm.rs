@@ -565,7 +565,12 @@ impl<'probe> Xdm<'probe> {
         });
 
         self.schedule_execute_instruction(Instruction::Rfdo(0));
-        self.execute()
+        match self.execute() {
+            Ok(_) => Ok(()),
+            // Core may just have resumed into a `waiti`
+            Err(XtensaError::XdmError(_)) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     pub(super) fn schedule_write_instruction(&mut self, instruction: Instruction) {
