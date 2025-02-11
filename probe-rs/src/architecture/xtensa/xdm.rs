@@ -182,53 +182,48 @@ impl<'probe> Xdm<'probe> {
 
         self.probe.tap_reset()?;
 
+        // Reset PCM
         let mut pwr_control = PowerControl(0);
+        pwr_control.set_debug_reset(true);
+        pwr_control.set_debug_wakeup(true);
+        self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
+        // Reset must be high for 10 CPU clocks.
+        std::thread::sleep(Duration::from_millis(1));
+
+        let mut pwr_control = PowerControl(0);
         pwr_control.set_debug_wakeup(true);
         pwr_control.set_mem_wakeup(true);
         pwr_control.set_core_wakeup(true);
-
-        // Wakeup and enable the JTAG
+        // Wakeup. We enable JTAG in a separate write.
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
-        tracing::trace!("Waiting for power domain to turn on");
+        // Set JTAG_DEBUG_USE separately to ensure it doesn't get reset by a previous write.
+        // "any write to PWRCTL when JtagDebugUse is set also clears the bit".
+        pwr_control.set_jtag_debug_use(true);
+        self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
+
+        // After software deasserts this bit (DebugReset), before reading other Debug registers,
+        // polling on bit 31 of the Debug Status Register (see Table 5-22) should be performed until
+        // it returns 1'b1.
         let now = Instant::now();
         loop {
-            let mut reset_bits = PowerStatus(0);
-            reset_bits.set_core_was_reset(true);
-            reset_bits.set_debug_was_reset(true);
-            let bits = self.pwr_write(PowerDevice::PowerStat, reset_bits.0)?;
-            tracing::debug!("PowerStatus: {:?}", PowerStatus(bits));
-            if PowerStatus(bits).debug_domain_on() {
+            let status = self.status()?;
+            if status.dbgmod_power_on() {
                 break;
             }
 
-            if now.elapsed() > Duration::from_millis(500) {
+            if now.elapsed() > Duration::from_millis(100) {
                 return Err(XtensaError::CoreDisabled);
             }
         }
 
-        // Set JTAG_DEBUG_USE separately to ensure it doesn't get reset by a previous write.
-        // We don't reset anything but this is a good practice to avoid sneaky issues.
-        pwr_control.set_jtag_debug_use(true);
-        self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
-
-        let idcode = self.read_idcode()?;
-        tracing::debug!("Read IDCODE: {:#010X}", idcode);
+        let mut reset_bits = PowerStatus(0);
+        reset_bits.set_core_was_reset(true);
+        reset_bits.set_debug_was_reset(true);
+        self.pwr_write(PowerDevice::PowerStat, reset_bits.0)?;
 
         self.check_enabled()?;
-
-        // configure the debug module
-        self.debug_control({
-            let mut reg = DebugControlBits(0);
-            // We don't set enable_ocd here, it would just halt the core.
-            reg.set_break_in_en(true);
-            reg.set_break_out_en(true);
-            reg
-        })?;
-
-        let status = self.status()?;
-        tracing::debug!("{:?}", status);
 
         // we might find that an old instruction execution left the core with an exception
         // try to clear problematic bits
@@ -243,6 +238,13 @@ impl<'probe> Xdm<'probe> {
             status.set_debug_int_break(true);
 
             status
+        })?;
+
+        // configure the debug module
+        self.debug_control({
+            let mut reg = DebugControlBits(0);
+            reg.set_enable_ocd(true);
+            reg
         })?;
 
         Ok(())
@@ -290,29 +292,10 @@ impl<'probe> Xdm<'probe> {
         Ok(())
     }
 
-    fn power_status(&mut self, clear: PowerStatus) -> Result<PowerStatus, XtensaError> {
+    /// Read and clear the `PowerStatus` flags.
+    pub(crate) fn power_status(&mut self, clear: PowerStatus) -> Result<PowerStatus, XtensaError> {
         let bits = self.pwr_write(PowerDevice::PowerStat, clear.0)?;
         Ok(PowerStatus(bits))
-    }
-
-    /// Read and clear the `core_was_reset` flag.
-    pub(crate) fn core_was_reset(&mut self) -> Result<bool, XtensaError> {
-        self.power_status({
-            let mut clear_value = PowerStatus(0);
-            clear_value.set_core_was_reset(true);
-            clear_value
-        })
-        .map(|bits| bits.core_was_reset())
-    }
-
-    /// Read and clear the `debug_was_reset` flag.
-    pub(crate) fn debug_was_reset(&mut self) -> Result<bool, XtensaError> {
-        self.power_status({
-            let mut clear_value = PowerStatus(0);
-            clear_value.set_debug_was_reset(true);
-            clear_value
-        })
-        .map(|bits| bits.debug_was_reset())
     }
 
     /// Read and clear the `core_was_reset` flag.
@@ -518,8 +501,6 @@ impl<'probe> Xdm<'probe> {
 
             control.set_enable_ocd(true);
             control.set_debug_interrupt(true);
-            control.set_break_in_en(true);
-            control.set_break_out_en(true);
 
             control
         }));
@@ -734,6 +715,7 @@ fn transform_instruction_status(
 bitfield::bitfield! {
     #[derive(Copy, Clone)]
     pub struct PowerControl(u8);
+    impl Debug;
 
     pub core_wakeup,    set_core_wakeup:    0;
     pub mem_wakeup,     set_mem_wakeup:     1;
