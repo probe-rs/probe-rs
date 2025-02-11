@@ -51,7 +51,7 @@ pub(super) struct ProtocolHandler {
 
     /// The command in the queue and their additional repetitions.
     /// For now we do one command at a time.
-    command_queue: Option<(RepeatableCommand, usize)>,
+    command_queue: Option<(Command, usize)>,
     /// The buffer for all commands to be sent to the target. This already contains `repeated`
     /// commands which is the interface's RLE mechanism to reduce the amount of data sent.
     output_buffer: Vec<u8>,
@@ -274,7 +274,7 @@ impl ProtocolHandler {
             self.receive_buffer()?;
         }
 
-        self.push_command(RepeatableCommand::Clock { cap, tdi, tms })?;
+        self.push_command(Command::Clock { cap, tdi, tms })?;
 
         Ok(())
     }
@@ -289,7 +289,8 @@ impl ProtocolHandler {
 
     /// Adds a command to the command queue.
     /// This will properly add repeat commands if possible.
-    fn push_command(&mut self, command: RepeatableCommand) -> Result<(), DebugProbeError> {
+    fn push_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
+        assert!(matches!(command, Command::Clock { .. }));
         if let Some((command_in_queue, ref mut repetitions)) = self.command_queue {
             if command == command_in_queue && *repetitions < MAX_COMMAND_REPETITIONS {
                 *repetitions += 1;
@@ -348,7 +349,7 @@ impl ProtocolHandler {
     /// or if the out buffer reaches a limit of `OUT_BUFFER_SIZE`.
     fn write_stream(
         &mut self,
-        command: RepeatableCommand,
+        command: Command,
         repetitions: usize,
     ) -> Result<(), DebugProbeError> {
         tracing::trace!("add raw cmd {:?} reps={}", command, repetitions + 1);
@@ -360,7 +361,7 @@ impl ProtocolHandler {
         }
 
         // Send the actual command.
-        self.add_raw_command(command.into())?;
+        self.add_raw_command(command)?;
         self.add_repetitions(repetitions)?;
 
         if command.captures() {
@@ -497,32 +498,17 @@ impl ProtocolHandler {
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
-enum RepeatableCommand {
-    Clock { cap: bool, tdi: bool, tms: bool },
-}
-
-impl RepeatableCommand {
-    fn captures(&self) -> bool {
-        match self {
-            RepeatableCommand::Clock { cap, .. } => *cap,
-        }
-    }
-}
-
-impl From<RepeatableCommand> for Command {
-    fn from(command: RepeatableCommand) -> Self {
-        match command {
-            RepeatableCommand::Clock { cap, tdi, tms } => Command::Clock { cap, tdi, tms },
-        }
-    }
-}
-
-#[derive(PartialEq, Debug, Clone, Copy)]
 enum Command {
     Clock { cap: bool, tdi: bool, tms: bool },
     Reset(bool),
     Flush,
     Repeat(u8),
+}
+
+impl Command {
+    fn captures(&self) -> bool {
+        matches!(self, Command::Clock { cap, .. } if *cap)
+    }
 }
 
 impl From<Command> for u8 {
