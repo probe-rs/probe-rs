@@ -3,7 +3,140 @@ manufacturer:
   id: 0x15
   cc: 0x0
 variants:
-  - name: MCXA275VLH
+  - name: MCXA142
+    cores:
+      - name: main
+        type: armv8m
+        core_access_options: !Arm
+          ap: !v1 0
+    memory_map:
+      - !Nvm
+        name: PROGRAM_FLASH
+        range:
+          start: 0x0
+          end: 0x10000
+        cores:
+          - main
+        access:
+          write: false
+          boot: true
+      - !Generic
+        name: BootROM
+        range:
+          start: 0x3000000
+          end: 0x3002000
+        cores:
+          - main
+        access:
+          write: false
+      - !Ram
+        name: SRAMX1
+        range:
+          start: 0x4002000
+          end: 0x4003000
+        cores:
+          - main
+      - !Ram
+        name: SRAM
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
+    flash_algorithms:
+      - mcxa15x_64
+  - name: MCXA143
+    cores:
+      - name: main
+        type: armv8m
+        core_access_options: !Arm
+          ap: !v1 0
+    memory_map:
+      - !Nvm
+        name: PROGRAM_FLASH
+        range:
+          start: 0x0
+          end: 0x20000
+        cores:
+          - main
+        access:
+          write: false
+          boot: true
+      - !Generic
+        name: BootROM
+        range:
+          start: 0x3000000
+          end: 0x3002000
+        cores:
+          - main
+        access:
+          write: false
+      - !Ram
+        name: SRAMX0
+        range:
+          start: 0x4000000
+          end: 0x4002000
+        cores:
+          - main
+      - !Ram
+        name: SRAMX1
+        range:
+          start: 0x4002000
+          end: 0x4003000
+        cores:
+          - main
+      - !Ram
+        name: SRAM
+        range:
+          start: 0x20000000
+          end: 0x20006000
+        cores:
+          - main
+    flash_algorithms:
+      - mcxa15x_128
+  - name: MCXA144
+    cores:
+      - name: main
+        type: armv8m
+        core_access_options: !Arm
+          ap: !v1 0
+    memory_map:
+      - !Nvm
+        name: PROGRAM_FLASH
+        range:
+          start: 0x0
+          end: 0x40000
+        cores:
+          - main
+        access:
+          write: false
+          boot: true
+      - !Generic
+        name: BootROM
+        range:
+          start: 0x3000000
+          end: 0x3002000
+        cores:
+          - main
+        access:
+          write: false
+      - !Ram
+        name: SRAMX
+        range:
+          start: 0x4000000
+          end: 0x4003000
+        cores:
+          - main
+      - !Ram
+        name: SRAM
+        range:
+          start: 0x20000000
+          end: 0x2000e000
+        cores:
+          - main
+    flash_algorithms:
+      - mcxa15x_256
+  - name: MCXA145
     cores:
       - name: main
         type: armv8m
@@ -17,6 +150,135 @@ variants:
           end: 0x80000
         cores:
           - main
+        access:
+          write: false
+          boot: true
+      - !Generic
+        name: BootROM
+        range:
+          start: 0x3000000
+          end: 0x3002000
+        cores:
+          - main
+        access:
+          write: false
+      - !Ram
+        name: SRAMX
+        range:
+          start: 0x4000000
+          end: 0x4003000
+        cores:
+          - main
+      - !Ram
+        name: SRAM
+        range:
+          start: 0x20000000
+          end: 0x20014000
+        cores:
+          - main
+    flash_algorithms:
+      - mcxa15x_512
+  - name: MCXA146
+    cores:
+      - name: main
+        type: armv8m
+        core_access_options: !Arm
+          ap: !v1 0
+    memory_map:
+      - !Nvm
+        name: PROGRAM_FLASH
+        range:
+          start: 0x0
+          end: 0x100000
+        cores:
+          - main
+        access:
+          write: false
+          boot: true
+      - !Generic
+        name: BootROM
+        range:
+          start: 0x3000000
+          end: 0x3002000
+        cores:
+          - main
+        access:
+          write: false
+      - !Ram
+        name: SRAMX
+        range:
+          start: 0x4000000
+          end: 0x4003000
+        cores:
+          - main
+      - !Ram
+        name: SRAM
+        range:
+          start: 0x20000000
+          end: 0x2001e000
+        cores:
+          - main
+    flash_algorithms:
+      - mcxa15x_1024
+  - name: MCXA152
+    cores:
+      - name: main
+        type: armv8m
+        core_access_options: !Arm
+          ap: !v1 0
+    memory_map:
+      - !Nvm
+        name: PROGRAM_FLASH
+        range:
+          start: 0x0
+          end: 0x10000
+        cores:
+          - main
+        access:
+          write: false
+          boot: true
+      - !Generic
+        name: BootROM
+        range:
+          start: 0x3000000
+          end: 0x3002000
+        cores:
+          - main
+        access:
+          write: false
+      - !Ram
+        name: SRAMX1
+        range:
+          start: 0x4002000
+          end: 0x4003000
+        cores:
+          - main
+      - !Ram
+        name: SRAM
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
+    flash_algorithms:
+      - mcxa15x_64
+  - name: MCXA153
+    cores:
+      - name: main
+        type: armv8m
+        core_access_options: !Arm
+          ap: !v1 0
+    memory_map:
+      - !Nvm
+        name: PROGRAM_FLASH
+        range:
+          start: 0x0
+          end: 0x20000
+        cores:
+          - main
+        access:
+          write: false
+          boot: true
       - !Generic
         name: BootROM
         range:
@@ -37,19 +299,61 @@ variants:
         name: SRAMX1
         range:
           start: 0x4002000
-          end: 0x4004000
+          end: 0x4003000
         cores:
           - main
       - !Ram
         name: SRAM
         range:
           start: 0x20000000
-          end: 0x2001e000
+          end: 0x20006000
         cores:
           - main
     flash_algorithms:
-      - mcxa27x_512
-  - name: MCXA275VLL
+      - mcxa15x_128
+  - name: MCXA154
+    cores:
+      - name: main
+        type: armv8m
+        core_access_options: !Arm
+          ap: !v1 0
+    memory_map:
+      - !Nvm
+        name: PROGRAM_FLASH
+        range:
+          start: 0x0
+          end: 0x40000
+        cores:
+          - main
+        access:
+          write: false
+          boot: true
+      - !Generic
+        name: BootROM
+        range:
+          start: 0x3000000
+          end: 0x3002000
+        cores:
+          - main
+        access:
+          write: false
+      - !Ram
+        name: SRAMX
+        range:
+          start: 0x4000000
+          end: 0x4003000
+        cores:
+          - main
+      - !Ram
+        name: SRAM
+        range:
+          start: 0x20000000
+          end: 0x2000e000
+        cores:
+          - main
+    flash_algorithms:
+      - mcxa15x_256
+  - name: MCXA155
     cores:
       - name: main
         type: armv8m
@@ -63,6 +367,9 @@ variants:
           end: 0x80000
         cores:
           - main
+        access:
+          write: false
+          boot: true
       - !Generic
         name: BootROM
         range:
@@ -73,17 +380,52 @@ variants:
         access:
           write: false
       - !Ram
-        name: SRAMX0
+        name: SRAMX
         range:
           start: 0x4000000
-          end: 0x4002000
+          end: 0x4003000
         cores:
           - main
       - !Ram
-        name: SRAMX1
+        name: SRAM
         range:
-          start: 0x4002000
-          end: 0x4004000
+          start: 0x20000000
+          end: 0x20014000
+        cores:
+          - main
+    flash_algorithms:
+      - mcxa15x_512
+  - name: MCXA156
+    cores:
+      - name: main
+        type: armv8m
+        core_access_options: !Arm
+          ap: !v1 0
+    memory_map:
+      - !Nvm
+        name: PROGRAM_FLASH
+        range:
+          start: 0x0
+          end: 0x100000
+        cores:
+          - main
+        access:
+          write: false
+          boot: true
+      - !Generic
+        name: BootROM
+        range:
+          start: 0x3000000
+          end: 0x3002000
+        cores:
+          - main
+        access:
+          write: false
+      - !Ram
+        name: SRAMX
+        range:
+          start: 0x4000000
+          end: 0x4003000
         cores:
           - main
       - !Ram
@@ -94,662 +436,89 @@ variants:
         cores:
           - main
     flash_algorithms:
-      - mcxa27x_512
-  - name: MCXA275VLQ
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x80000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2001e000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa27x_512
-  - name: MCXA275VPN
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x80000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2001e000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa27x_512
-  - name: MCXA276VLH
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x100000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2003c000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa27x_1024
-  - name: MCXA276VLL
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x100000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2003c000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa27x_1024
-  - name: MCXA276VLQ
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x100000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2003c000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa27x_1024
-  - name: MCXA276VPN
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x100000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2003c000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa27x_1024
-  - name: MCXA165VLH
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x80000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2001e000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa16x_512
-  - name: MCXA165VLL
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x80000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2001e000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa16x_512
-  - name: MCXA165VLQ
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x80000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2001e000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa16x_512
-  - name: MCXA165VPN
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x80000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2001e000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa16x_512
-  - name: MCXA166VLH
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x100000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2003c000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa16x_1024
-  - name: MCXA166VLL
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x100000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2003c000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa16x_1024
-  - name: MCXA166VLQ
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x100000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2003c000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa16x_1024
-  - name: MCXA166VPN
-    cores:
-      - name: main
-        type: armv8m
-        core_access_options: !Arm
-          ap: !v1 0
-    memory_map:
-      - !Nvm
-        name: PROGRAM_FLASH
-        range:
-          start: 0x0
-          end: 0x100000
-        cores:
-          - main
-      - !Generic
-        name: BootROM
-        range:
-          start: 0x3000000
-          end: 0x3002000
-        cores:
-          - main
-        access:
-          write: false
-      - !Ram
-        name: SRAMX0
-        range:
-          start: 0x4000000
-          end: 0x4002000
-        cores:
-          - main
-      - !Ram
-        name: SRAMX1
-        range:
-          start: 0x4002000
-          end: 0x4004000
-        cores:
-          - main
-      - !Ram
-        name: SRAM
-        range:
-          start: 0x20000000
-          end: 0x2003c000
-        cores:
-          - main
-    flash_algorithms:
-      - mcxa16x_1024
+      - mcxa15x_1024
 flash_algorithms:
-  - name: mcxa16x_512
-    description: MCXA2XX IAP 512kB Flash
+  - name: mcxa15x_64
+    description: MCXA1XX IAP 64kB Flash
     default: true
-    instructions: QfYAUMTyCQBP9MAhAWAPIcDyAgGh9YAyAWACYE/0JBJCYAFgT/QgEUFgDyEBYE7yIADE8ggAR/J3cQFgACEBYkFigWLBYgFjQWOBY8FjAWRBZIFkwWQBZUFlgWXBZXBHgLVB9gBQxPIJAE/0wCEBYA8hwPICAaH1gDIBYAJgT/QkEkJgAWBP9CARQWAPIQFgTvIgAMTyCABH8ndxAWAAIQFiQWKBYsFiAWNBY4FjwWMBZEFkgWTBZAFlQWWBZcFlRfbkcMDyADAAaAFoQPIEAMDyAABIRIhHACgYvwEggL0AIHBHLenwQU7yAARF9uR4QPIEB0bybGXP9v90wPIAOMDyAAfG9mU12PgAAAT1AFRGaAnrBwAhRk/0AFIrRrBHACgcvwEgvejwgWALPiiEvwAgvejwgefngLVB9gBRxPIJAU/0wCIKYA8iwPICAqL1gDMKYAtgT/QkE0tgCmBP9CASSmAPIgpgTvIgAcTyCAFH8ndyCmAAIgpiSmKKYspiCmNKY4pjymMKZEpkimTKZAplSmWKZcplRfbkccDyADEKaAFGQPIEANL4BMDA8gAARvJsY0hExvZlM0/0AFLgRwAoGL8BIIC9gLWMRkH2AFFA8g8OxPIJAU/0wCPA8gIOC2Cu9YAzwfgA4AtgT/QkE0tgT/QgE8H4AOBLYA8jC2BO8iABxPIIAUfyd3MLYAAjC2JLYotiy2ILY0tji2PLYwtkS2SLZMtkC2VLZYtly2VF9uRxwPIAMQlovPGAD9H4DOCYv0/wgAwg8HBBQPIEAMDyAABIRGNG8EcAKBi/ASCAvQC/sLUMRgVGIPBwQBFGIkYA8AX4ACgIvyVEKEawvUDqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    instructions: 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
     load_address: 0x20000008
-    pc_init: 0x61
-    pc_uninit: 0xe1
-    pc_program_page: 0x1c9
-    pc_erase_sector: 0x139
-    pc_erase_all: 0xe5
-    pc_verify: 0x265
-    data_section_offset: 0x2d8
+    pc_init: 0x11d
+    pc_uninit: 0x181
+    pc_program_page: 0x2dd
+    pc_erase_sector: 0x269
+    pc_erase_all: 0x185
+    pc_verify: 0x335
+    data_section_offset: 0x690
+    flash_properties:
+      address_range:
+        start: 0x0
+        end: 0x10000
+      page_size: 0x80
+      erased_byte_value: 0xff
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 0x2000
+          address: 0x0
+  - name: mcxa15x_128
+    description: MCXA1XX IAP 128kB Flash
+    default: true
+    instructions: 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
+    load_address: 0x20000008
+    pc_init: 0x11d
+    pc_uninit: 0x181
+    pc_program_page: 0x24d
+    pc_erase_sector: 0x1d9
+    pc_erase_all: 0x185
+    pc_verify: 0x2a5
+    data_section_offset: 0x600
+    flash_properties:
+      address_range:
+        start: 0x0
+        end: 0x20000
+      page_size: 0x80
+      erased_byte_value: 0xff
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 0x2000
+          address: 0x0
+  - name: mcxa15x_256
+    description: MCXA1XX IAP 256kB Flash
+    default: true
+    instructions: T/IAIMTyCAABaCH0AAEBYAFoQfAgAQFgAWhB9AABAWABaMkBCdQBaMkBXL8BaF/qwREC1AFoyQHy1QAgcEcAv0/yACDE8ggAAWgh9AABAWABaEHwIAEBYAFoQfQAAQFgAWjJAQnUAWjJAVy/AWhf6sERAtQBaMkB8tVB8oAxxPIJAQAiymcKYE/2FGHP9v9xQlgCI2PzGmJCUE/2EGHP9v9xDOBCWALw4GKy8QB/CL9wR0JYAvDgYrLxAH8L0EJYAvDgYrLxAH8F0EJYAvDgYrLxAH/m0XBHQfYAUMTyCQBP9MAhAWAPIcDyAgGh9YAyAWACYE/0JBJCYAFgT/QgEUFgDyEBYE7yIADE8ggAR/J3cQFgACEBYkFigWLBYgFjQWOBY8FjcEeAtUH2AFDE8gkAT/TAIQFgDyHA8gIBofWAMgFgAmBP9CQSQmABYE/0IBFBYA8hAWBO8iAAxPIIAEfyd3EBYAAhAWJBYoFiwWIBY0FjgWPBY0P25HDA8gAwAGgBaEDyBADA8gAASESIRwAoGL8BIIC9ACBwRy3p8EFO8gAEQ/bkeEDyBAdG8mxlz/b/dMDyADjA8gAHxvZlNdj4AAAE9QBURmgJ6wcAIUZP9ABSK0awRwAoBL8AIL3o8IFgCx4ohL8BIL3o8IHn54C1QfYAUcTyCQFP9MAiCmAPIsDyAgKi9YAzCmALYE/0JBNLYApgT/QgEkpgDyIKYE7yIAHE8ggBR/J3cgpgACIKYkpiimLKYgpjSmOKY8pjQ/bkccDyADEKaAFGQPIEANL4BMDA8gAARvJsY0hExvZlM0/0AFLgRwAoGL8BIIC9gLWMRkH2AFFA8g8OxPIJAU/0wCPA8gIOC2Cu9YAzwfgA4AtgT/QkE0tgT/QgE8H4AOBLYA8jC2BO8iABxPIIAUfyd3MLYAAjC2JLYotiy2ILY0tji2PLY0P25HHA8gAxCWi88YAP0fgM4Ji/T/CADCDwcEFA8gQAwPIAAEhEY0bwRwAoGL8BIIC9AL+wtQxGBUYg8HBAEUYiRgDwXvgAKAi/JUQoRrC9QfJAAMTyCQBP8P8xQPhAHAFpT/SQUkHwgAEBYUFsQfCAAUFkTPKIAcTyCwEKYEpgAWgMIkH0gAEBYAFsQfSAAQFkACHA+MAQwPjEEE/yEADE8gkAgWgh9EAhgWABaGLzHGEBYAFoCCJi8wwBAWCBaEH0QCGBYHBHAXgAKQi/cEdP8hQCxPIJAgTgAL+RYBD4AR9psRNoGwL41BNoGwJcvxNoX+oDI/HUE2gbAvLV7edwR0DqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+    load_address: 0x20000008
+    pc_init: 0x129
+    pc_uninit: 0x199
+    pc_program_page: 0x271
+    pc_erase_sector: 0x1f1
+    pc_erase_all: 0x19d
+    pc_verify: 0x2fd
+    data_section_offset: 0x424
+    flash_properties:
+      address_range:
+        start: 0x0
+        end: 0x40000
+      page_size: 0x80
+      erased_byte_value: 0xff
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 0x2000
+          address: 0x0
+  - name: mcxa15x_512
+    description: MCXA1XX IAP 512kB Flash
+    default: true
+    instructions: T/IAIMTyCAABaCH0AAEBYAFoQfAgAQFgAWhB9AABAWABaMkBCdQBaMkBXL8BaF/qwREC1AFoyQHy1QAgcEcAv0/yACDE8ggAAWgh9AABAWABaEHwIAEBYAFoQfQAAQFgAWjJAQnUAWjJAVy/AWhf6sERAtQBaMkB8tVB8oAxxPIJAQAiymcKYE/2FGHP9v9xQlgCI2PzGmJCUE/2EGHP9v9xDOBCWALw4GKy8QB/CL9wR0JYAvDgYrLxAH8L0EJYAvDgYrLxAH8F0EJYAvDgYrLxAH/m0XBHQfYAUMTyCQBP9MAhAWAPIcDyAgGh9YAyAWACYE/0JBJCYAFgT/QgEUFgDyEBYE7yIADE8ggAR/J3cQFgACEBYkFigWLBYgFjQWOBY8FjcEeAtUH2AFDE8gkAT/TAIQFgDyHA8gIBofWAMgFgAmBP9CQSQmABYE/0IBFBYA8hAWBO8iAAxPIIAEfyd3EBYAAhAWJBYoFiwWIBY0FjgWPBY0P25HDA8gAwAGgBaEDyBADA8gAASESIRwAoGL8BIIC9ACBwRy3p8EFO8gAEQ/bkeEDyBAdG8mxlz/b/dMDyADjA8gAHxvZlNdj4AAAE9QBURmgJ6wcAIUZP9ABSK0awRwAoBL8AIL3o8IFgCz4ohL8BIL3o8IHn54C1QfYAUcTyCQFP9MAiCmAPIsDyAgKi9YAzCmALYE/0JBNLYApgT/QgEkpgDyIKYE7yIAHE8ggBR/J3cgpgACIKYkpiimLKYgpjSmOKY8pjQ/bkccDyADEKaAFGQPIEANL4BMDA8gAARvJsY0hExvZlM0/0AFLgRwAoGL8BIIC9gLWMRkH2AFFA8g8OxPIJAU/0wCPA8gIOC2Cu9YAzwfgA4AtgT/QkE0tgT/QgE8H4AOBLYA8jC2BO8iABxPIIAUfyd3MLYAAjC2JLYotiy2ILY0tji2PLY0P25HHA8gAxCWi88YAP0fgM4Ji/T/CADCDwcEFA8gQAwPIAAEhEY0bwRwAoGL8BIIC9AL+wtQxGBUYg8HBAEUYiRgDwXvgAKAi/JUQoRrC9QfJAAMTyCQBP8P8xQPhAHAFpT/SQUkHwgAEBYUFsQfCAAUFkTPKIAcTyCwEKYEpgAWgMIkH0gAEBYAFsQfSAAQFkACHA+MAQwPjEEE/yEADE8gkAgWgh9EAhgWABaGLzHGEBYAFoCCJi8wwBAWCBaEH0QCGBYHBHAXgAKQi/cEdP8hQCxPIJAgTgAL+RYBD4AR9psRNoGwL41BNoGwJcvxNoX+oDI/HUE2gbAvLV7edwR0DqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+    load_address: 0x20000008
+    pc_init: 0x129
+    pc_uninit: 0x199
+    pc_program_page: 0x271
+    pc_erase_sector: 0x1f1
+    pc_erase_all: 0x19d
+    pc_verify: 0x2fd
+    data_section_offset: 0x424
     flash_properties:
       address_range:
         start: 0x0
@@ -761,64 +530,18 @@ flash_algorithms:
       sectors:
         - size: 0x2000
           address: 0x0
-  - name: mcxa16x_1024
-    description: MCXA2XX IAP 1024kB Flash
+  - name: mcxa15x_1024
+    description: MCXA1XX IAP 1024kB Flash
     default: true
-    instructions: QfYAUMTyCQBP9MAhAWAPIcDyAgGh9YAyAWACYE/0JBJCYAFgT/QgEUFgDyEBYE7yIADE8ggAR/J3cQFgACEBYkFigWLBYgFjQWOBY8FjAWRBZIFkwWQBZUFlgWXBZXBHgLVB9gBQxPIJAE/0wCEBYA8hwPICAaH1gDIBYAJgT/QkEkJgAWBP9CARQWAPIQFgTvIgAMTyCABH8ndxAWAAIQFiQWKBYsFiAWNBY4FjwWMBZEFkgWTBZAFlQWWBZcFlRfbkcMDyADAAaAFoQPIEAMDyAABIRIhHACgYvwEggL0AIHBHLenwQU7yAARF9uR4QPIEB0bybGXP9v90wPIAOMDyAAfG9mU12PgAAAT1AFRGaAnrBwAhRk/0AFIrRrBHACgcvwEgvejwgWALfiiEvwAgvejwgefngLVB9gBRxPIJAU/0wCIKYA8iwPICAqL1gDMKYAtgT/QkE0tgCmBP9CASSmAPIgpgTvIgAcTyCAFH8ndyCmAAIgpiSmKKYspiCmNKY4pjymMKZEpkimTKZAplSmWKZcplRfbkccDyADEKaAFGQPIEANL4BMDA8gAARvJsY0hExvZlM0/0AFLgRwAoGL8BIIC9gLWMRkH2AFFA8g8OxPIJAU/0wCPA8gIOC2Cu9YAzwfgA4AtgT/QkE0tgT/QgE8H4AOBLYA8jC2BO8iABxPIIAUfyd3MLYAAjC2JLYotiy2ILY0tji2PLYwtkS2SLZMtkC2VLZYtly2VF9uRxwPIAMQlovPGAD9H4DOCYv0/wgAwg8HBBQPIEAMDyAABIRGNG8EcAKBi/ASCAvQC/sLUMRgVGIPBwQBFGIkYA8AX4ACgIvyVEKEawvUDqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    instructions: T/IAIMTyCAABaCH0AAEBYAFoQfAgAQFgAWhB9AABAWABaMkBCdQBaMkBXL8BaF/qwREC1AFoyQHy1QAgcEcAv0/yACDE8ggAAWgh9AABAWABaEHwIAEBYAFoQfQAAQFgAWjJAQnUAWjJAVy/AWhf6sERAtQBaMkB8tVB8oAxxPIJAQAiymcKYE/2FGHP9v9xQlgCI2PzGmJCUE/2EGHP9v9xDOBCWALw4GKy8QB/CL9wR0JYAvDgYrLxAH8L0EJYAvDgYrLxAH8F0EJYAvDgYrLxAH/m0XBHQfYAUMTyCQBP9MAhAWAPIcDyAgGh9YAyAWACYE/0JBJCYAFgT/QgEUFgDyEBYE7yIADE8ggAR/J3cQFgACEBYkFigWLBYgFjQWOBY8FjcEeAtUH2AFDE8gkAT/TAIQFgDyHA8gIBofWAMgFgAmBP9CQSQmABYE/0IBFBYA8hAWBO8iAAxPIIAEfyd3EBYAAhAWJBYoFiwWIBY0FjgWPBY0P25HDA8gAwAGgBaEDyBADA8gAASESIRwAoGL8BIIC9ACBwRy3p8EFO8gAEQ/bkeEDyBAdG8mxlz/b/dMDyADjA8gAHxvZlNdj4AAAE9QBURmgJ6wcAIUZP9ABSK0awRwAoBL8AIL3o8IFgC34ohL8BIL3o8IHn54C1QfYAUcTyCQFP9MAiCmAPIsDyAgKi9YAzCmALYE/0JBNLYApgT/QgEkpgDyIKYE7yIAHE8ggBR/J3cgpgACIKYkpiimLKYgpjSmOKY8pjQ/bkccDyADEKaAFGQPIEANL4BMDA8gAARvJsY0hExvZlM0/0AFLgRwAoGL8BIIC9gLWMRkH2AFFA8g8OxPIJAU/0wCPA8gIOC2Cu9YAzwfgA4AtgT/QkE0tgT/QgE8H4AOBLYA8jC2BO8iABxPIIAUfyd3MLYAAjC2JLYotiy2ILY0tji2PLY0P25HHA8gAxCWi88YAP0fgM4Ji/T/CADCDwcEFA8gQAwPIAAEhEY0bwRwAoGL8BIIC9AL+wtQxGBUYg8HBAEUYiRgDwXvgAKAi/JUQoRrC9QfJAAMTyCQBP8P8xQPhAHAFpT/SQUkHwgAEBYUFsQfCAAUFkTPKIAcTyCwEKYEpgAWgMIkH0gAEBYAFsQfSAAQFkACHA+MAQwPjEEE/yEADE8gkAgWgh9EAhgWABaGLzHGEBYAFoCCJi8wwBAWCBaEH0QCGBYHBHAXgAKQi/cEdP8hQCxPIJAgTgAL+RYBD4AR9psRNoGwL41BNoGwJcvxNoX+oDI/HUE2gbAvLV7edwR0DqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
     load_address: 0x20000008
-    pc_init: 0x61
-    pc_uninit: 0xe1
-    pc_program_page: 0x1c9
-    pc_erase_sector: 0x139
-    pc_erase_all: 0xe5
-    pc_verify: 0x265
-    data_section_offset: 0x2d8
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x100000
-      page_size: 0x80
-      erased_byte_value: 0xff
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 0x2000
-          address: 0x0
-  - name: mcxa27x_512
-    description: MCXA2XX IAP 512kB Flash
-    default: true
-    instructions: QfYAUMTyCQBP9MAhAWAPIcDyAgGh9YAyAWACYE/0JBJCYAFgT/QgEUFgDyEBYE7yIADE8ggAR/J3cQFgACEBYkFigWLBYgFjQWOBY8FjAWRBZIFkwWQBZUFlgWXBZXBHgLVB9gBQxPIJAE/0wCEBYA8hwPICAaH1gDIBYAJgT/QkEkJgAWBP9CARQWAPIQFgTvIgAMTyCABH8ndxAWAAIQFiQWKBYsFiAWNBY4FjwWMBZEFkgWTBZAFlQWWBZcFlRfbkcMDyADAAaAFoQPIEAMDyAABIRIhHACgYvwEggL0AIHBHLenwQU7yAARF9uR4QPIEB0bybGXP9v90wPIAOMDyAAfG9mU12PgAAAT1AFRGaAnrBwAhRk/0AFIrRrBHACgcvwEgvejwgWALPiiEvwAgvejwgefngLVB9gBRxPIJAU/0wCIKYA8iwPICAqL1gDMKYAtgT/QkE0tgCmBP9CASSmAPIgpgTvIgAcTyCAFH8ndyCmAAIgpiSmKKYspiCmNKY4pjymMKZEpkimTKZAplSmWKZcplRfbkccDyADEKaAFGQPIEANL4BMDA8gAARvJsY0hExvZlM0/0AFLgRwAoGL8BIIC9gLWMRkH2AFFA8g8OxPIJAU/0wCPA8gIOC2Cu9YAzwfgA4AtgT/QkE0tgT/QgE8H4AOBLYA8jC2BO8iABxPIIAUfyd3MLYAAjC2JLYotiy2ILY0tji2PLYwtkS2SLZMtkC2VLZYtly2VF9uRxwPIAMQlovPGAD9H4DOCYv0/wgAwg8HBBQPIEAMDyAABIRGNG8EcAKBi/ASCAvQC/sLUMRgVGIPBwQBFGIkYA8AX4ACgIvyVEKEawvUDqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-    load_address: 0x20000008
-    pc_init: 0x61
-    pc_uninit: 0xe1
-    pc_program_page: 0x1c9
-    pc_erase_sector: 0x139
-    pc_erase_all: 0xe5
-    pc_verify: 0x265
-    data_section_offset: 0x2d8
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x80000
-      page_size: 0x80
-      erased_byte_value: 0xff
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
-      sectors:
-        - size: 0x2000
-          address: 0x0
-  - name: mcxa27x_1024
-    description: MCXA2XX IAP 1024kB Flash
-    default: true
-    instructions: QfYAUMTyCQBP9MAhAWAPIcDyAgGh9YAyAWACYE/0JBJCYAFgT/QgEUFgDyEBYE7yIADE8ggAR/J3cQFgACEBYkFigWLBYgFjQWOBY8FjAWRBZIFkwWQBZUFlgWXBZXBHgLVB9gBQxPIJAE/0wCEBYA8hwPICAaH1gDIBYAJgT/QkEkJgAWBP9CARQWAPIQFgTvIgAMTyCABH8ndxAWAAIQFiQWKBYsFiAWNBY4FjwWMBZEFkgWTBZAFlQWWBZcFlRfbkcMDyADAAaAFoQPIEAMDyAABIRIhHACgYvwEggL0AIHBHLenwQU7yAARF9uR4QPIEB0bybGXP9v90wPIAOMDyAAfG9mU12PgAAAT1AFRGaAnrBwAhRk/0AFIrRrBHACgcvwEgvejwgWALfiiEvwAgvejwgefngLVB9gBRxPIJAU/0wCIKYA8iwPICAqL1gDMKYAtgT/QkE0tgCmBP9CASSmAPIgpgTvIgAcTyCAFH8ndyCmAAIgpiSmKKYspiCmNKY4pjymMKZEpkimTKZAplSmWKZcplRfbkccDyADEKaAFGQPIEANL4BMDA8gAARvJsY0hExvZlM0/0AFLgRwAoGL8BIIC9gLWMRkH2AFFA8g8OxPIJAU/0wCPA8gIOC2Cu9YAzwfgA4AtgT/QkE0tgT/QgE8H4AOBLYA8jC2BO8iABxPIIAUfyd3MLYAAjC2JLYotiy2ILY0tji2PLYwtkS2SLZMtkC2VLZYtly2VF9uRxwPIAMQlovPGAD9H4DOCYv0/wgAwg8HBBQPIEAMDyAABIRGNG8EcAKBi/ASCAvQC/sLUMRgVGIPBwQBFGIkYA8AX4ACgIvyVEKEawvUDqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-    load_address: 0x20000008
-    pc_init: 0x61
-    pc_uninit: 0xe1
-    pc_program_page: 0x1c9
-    pc_erase_sector: 0x139
-    pc_erase_all: 0xe5
-    pc_verify: 0x265
-    data_section_offset: 0x2d8
+    pc_init: 0x129
+    pc_uninit: 0x199
+    pc_program_page: 0x271
+    pc_erase_sector: 0x1f1
+    pc_erase_all: 0x19d
+    pc_verify: 0x2fd
+    data_section_offset: 0x424
     flash_properties:
       address_range:
         start: 0x0
