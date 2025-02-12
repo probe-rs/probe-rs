@@ -105,9 +105,10 @@ impl MCX {
             // DebugMailbox AP is always enabled
             return Ok(true);
         }
-        let csw = interface.read_raw_ap_register(mem_ap, CSW::ADDRESS)?;
-        let device_en = csw & 0x40 != 0;
-        Ok(device_en)
+        let csw: CSW = interface
+            .read_raw_ap_register(mem_ap, CSW::ADDRESS)?
+            .try_into()?;
+        Ok(csw.DeviceEn)
     }
 
     fn debug_mailbox_ap(&self, dp: DpAddress) -> Result<FullyQualifiedApAddress, ArmError> {
