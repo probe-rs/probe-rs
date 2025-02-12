@@ -25,18 +25,25 @@ impl InterfaceExt for Interface {
     }
 
     fn read_bulk(&self, endpoint: u8, buf: &mut [u8], timeout: Duration) -> io::Result<usize> {
-        let fut = async {
-            let comp = self.bulk_in(endpoint, RequestBuffer::new(buf.len())).await;
-            comp.status.map_err(io::Error::other)?;
-
-            let n = comp.data.len();
-            buf[..n].copy_from_slice(&comp.data);
-            Ok(n)
+        let mut queue = self.bulk_in_queue(endpoint);
+        queue.submit(RequestBuffer::new(buf.len()));
+        let Some(comp) = block_on(
+            async {
+                let comp = queue.next_complete().await;
+                Some(comp)
+            }
+            .or(async {
+                Timer::after(timeout).await;
+                None
+            }),
+        ) else {
+            queue.cancel_all();
+            let _ = block_on(queue.next_complete());
+            return Err(std::io::ErrorKind::TimedOut.into());
         };
-
-        block_on(fut.or(async {
-            Timer::after(timeout).await;
-            Err(std::io::ErrorKind::TimedOut.into())
-        }))
+        comp.status.map_err(io::Error::other)?;
+        let n = comp.data.len();
+        buf[..n].copy_from_slice(&comp.data);
+        Ok(n)
     }
 }
