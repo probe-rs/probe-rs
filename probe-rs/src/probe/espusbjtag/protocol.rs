@@ -19,7 +19,6 @@ const JTAG_PROTOCOL_CAPABILITIES_SPEED_APB_TYPE: u8 = 1;
 // so the maximum repeat counter value is 1023.
 const MAX_COMMAND_REPETITIONS: usize = 1023;
 // Each command is 4 bits, i.e. 2 commands per byte:
-const OUT_BUFFER_SIZE: usize = OUT_EP_BUFFER_SIZE * 2;
 const OUT_EP_BUFFER_SIZE: usize = 64;
 const IN_EP_BUFFER_SIZE: usize = 64;
 const HW_FIFO_SIZE: usize = 4;
@@ -52,10 +51,11 @@ pub(super) struct ProtocolHandler {
 
     /// The command in the queue and their additional repetitions.
     /// For now we do one command at a time.
-    command_queue: Option<(RepeatableCommand, usize)>,
+    command_queue: Option<(Command, usize)>,
     /// The buffer for all commands to be sent to the target. This already contains `repeated`
     /// commands which is the interface's RLE mechanism to reduce the amount of data sent.
-    output_buffer: Vec<Command>,
+    output_buffer: Vec<u8>,
+    half_byte_used: bool,
     /// A store for all the read bits (from the target) such that the BitIter the methods return
     /// can borrow and iterate over it.
     response: BitVec<u8, Lsb0>,
@@ -213,7 +213,8 @@ impl ProtocolHandler {
         let mut this = Self {
             device_handle: iface,
             command_queue: None,
-            output_buffer: Vec::with_capacity(OUT_BUFFER_SIZE),
+            output_buffer: Vec::with_capacity(OUT_EP_BUFFER_SIZE),
+            half_byte_used: false,
             response: BitVec::new(),
             ep_out,
             ep_in,
@@ -273,7 +274,7 @@ impl ProtocolHandler {
             self.receive_buffer()?;
         }
 
-        self.push_command(RepeatableCommand::Clock { cap, tdi, tms })?;
+        self.push_command(Command::Clock { cap, tdi, tms })?;
 
         Ok(())
     }
@@ -288,7 +289,8 @@ impl ProtocolHandler {
 
     /// Adds a command to the command queue.
     /// This will properly add repeat commands if possible.
-    fn push_command(&mut self, command: RepeatableCommand) -> Result<(), DebugProbeError> {
+    fn push_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
+        assert!(matches!(command, Command::Clock { .. }));
         if let Some((command_in_queue, ref mut repetitions)) = self.command_queue {
             if command == command_in_queue && *repetitions < MAX_COMMAND_REPETITIONS {
                 *repetitions += 1;
@@ -347,7 +349,7 @@ impl ProtocolHandler {
     /// or if the out buffer reaches a limit of `OUT_BUFFER_SIZE`.
     fn write_stream(
         &mut self,
-        command: RepeatableCommand,
+        command: Command,
         repetitions: usize,
     ) -> Result<(), DebugProbeError> {
         tracing::trace!("add raw cmd {:?} reps={}", command, repetitions + 1);
@@ -359,7 +361,7 @@ impl ProtocolHandler {
         }
 
         // Send the actual command.
-        self.add_raw_command(command.into())?;
+        self.add_raw_command(command)?;
         self.add_repetitions(repetitions)?;
 
         if command.captures() {
@@ -387,56 +389,53 @@ impl ProtocolHandler {
         Ok(())
     }
 
-    /// Adds a single command to the output buffer and writes it to the USB EP if the buffer reaches a limit of `OUT_BUFFER_SIZE`.
+    /// Adds a single command to the output buffer and writes it to the USB EP if the buffer reaches a limit of `OUT_EP_BUFFER_SIZE`.
     fn add_raw_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
         // If we reach a maximal size of the output buffer, we flush.
-        if self.output_buffer.len() == OUT_BUFFER_SIZE {
+        if self.output_buffer.len() == OUT_EP_BUFFER_SIZE && !self.half_byte_used {
             self.send_buffer()?;
         }
-        self.output_buffer.push(command);
+
+        self.push_raw_command(command);
 
         Ok(())
+    }
+
+    fn push_raw_command(&mut self, command: Command) {
+        let command = u8::from(command);
+        if self.half_byte_used {
+            // We have to add the lower nibble of the command to the last byte in the buffer.
+            let last_byte = unsafe {
+                // SAFETY: half_byte_used means we have at least 4 bits in the buffer
+                self.output_buffer.last_mut().unwrap_unchecked()
+            };
+            *last_byte |= command;
+            self.half_byte_used = false;
+        } else {
+            // We have to add a new byte to the buffer.
+            self.output_buffer.push(command << 4);
+            self.half_byte_used = true;
+        }
     }
 
     /// Sends the commands stored in the output buffer to the USB EP.
     fn send_buffer(&mut self) -> Result<(), DebugProbeError> {
         assert!(
-            self.output_buffer.len() <= OUT_BUFFER_SIZE,
-            "Output buffer too large: {} elements, max {OUT_BUFFER_SIZE}",
+            self.output_buffer.len() <= OUT_EP_BUFFER_SIZE,
+            "Output buffer too large: {} elements, max {OUT_EP_BUFFER_SIZE}",
             self.output_buffer.len()
         );
 
-        let mut commands = [0; OUT_EP_BUFFER_SIZE];
-        for (out, byte) in commands
-            .iter_mut()
-            .zip(self.output_buffer.chunks(2).map(|chunk| {
-                let unibble: u8 = chunk[0].into();
-                // Make sure we add an additional nibble to the command buffer if the number of
-                // nibbles is odd, as we cannot send a standalone nibble.
-                let lnibble: u8 = chunk.get(1).copied().unwrap_or(Command::Flush).into();
-
-                (unibble << 4) | lnibble
-            }))
-        {
-            *out = byte;
+        if self.half_byte_used {
+            // Make sure we add an additional nibble to the command buffer if the number of
+            // nibbles is odd, as we cannot send a standalone nibble.
+            self.push_raw_command(Command::Flush);
         }
 
-        let len = (self.output_buffer.len() + 1) / 2;
+        let mut commands = self.output_buffer.as_slice();
 
-        assert!(
-            len <= commands.len(),
-            "Output buffer too large: {len} bytes ({} nibbles), max {}",
-            self.output_buffer.len(),
-            commands.len(),
-        );
+        tracing::trace!("Writing {} bytes to usb endpoint", commands.len());
 
-        tracing::trace!(
-            "Writing {} bytes ({} nibbles) to usb endpoint",
-            len,
-            self.output_buffer.len()
-        );
-
-        let mut commands = &commands[..len];
         while !commands.is_empty() {
             let bytes = self
                 .device_handle
@@ -499,32 +498,17 @@ impl ProtocolHandler {
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
-enum RepeatableCommand {
-    Clock { cap: bool, tdi: bool, tms: bool },
-}
-
-impl RepeatableCommand {
-    fn captures(&self) -> bool {
-        match self {
-            RepeatableCommand::Clock { cap, .. } => *cap,
-        }
-    }
-}
-
-impl From<RepeatableCommand> for Command {
-    fn from(command: RepeatableCommand) -> Self {
-        match command {
-            RepeatableCommand::Clock { cap, tdi, tms } => Command::Clock { cap, tdi, tms },
-        }
-    }
-}
-
-#[derive(PartialEq, Debug, Clone, Copy)]
 enum Command {
     Clock { cap: bool, tdi: bool, tms: bool },
     Reset(bool),
     Flush,
     Repeat(u8),
+}
+
+impl Command {
+    fn captures(&self) -> bool {
+        matches!(self, Command::Clock { cap, .. } if *cap)
+    }
 }
 
 impl From<Command> for u8 {
