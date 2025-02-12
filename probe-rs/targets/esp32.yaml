@@ -72,11 +72,42 @@ variants:
     is_alias: true
   flash_algorithms:
   - esp32-flashloader
+  - esp32-flashloader-default-clocks
   default_binary_format: idf
 flash_algorithms:
 - name: esp32-flashloader
-  description: A flash loader for the esp32.
+  description: A flash loader for the esp32 that uses max CPU clock frequency.
   default: true
+  instructions: 2C4GQDwA8D8Eq/w/cID0Pwir/D/////nAAAACDSFAEBYhgBAAAAAAQAAAQAAEAAAAEAAAP//AAA4MgZAbCoGQAAA/D/wqvw/9Kr8P/iq/D/8qvw/AKv8P+7/wKoAq/w/7v/AqkwsBkAAq/w/7v/AqhQsBkAAq/w/7v/AqowECUBYAwlAAKv8P+7/wKqwBAlAWAMJQACr/D/u/8CqXAEJQACr/D/u/8CqCKv8P3CA9D8Eq/w/PADwP7AhBkD0qvw/+Kr8P/yq/D8AAPw/8Kr8PwCAAADwKvw/MO8FQGDw//9QLQZAYPD//1wBCUAAAP4/Ef//bQJ9A40E1QcALQbwQQAR+v9tAhURAC0G8EEAEff/1RIALQbwQQAR9P9tAn0DjQTVEwAtBvBBABHw/20CfQONBBUWAC0G8EEAEez/bQJ9A40ElRgALQbwQQAR6P9tAtUaAC0G8EEAAAAANkEAFvQAgaf/rQK9A80E4AgALQod8AwCHfAAADZBAHGi/8AgAIgHYaH/iQaBof/AIACYCKGg/5kKoZ//oJkQoZ//oJkgwCAAmQiioGSBnP/gCACIBnzJkIgQDCmQiCDAIACJB4GY/+AIAH0KDAKxlv/Blv/Rl//hl//xl/+Bl/+tAuAIABY6AAwSHfCBlf+tB70C4AgAgZP/KQiBk/8pCIGT/3z5mQiBkv8pCIGS/ykIgZH/kZL/mQgd8AA2QQCBkP+ICJGQ/5eYERwIAAhAIKCRgY3/4AgALQod8CKsFx3wAAAANkEAgYn/iAiRif+XmAmBiP/gCAAtCh3wIqwXHfAAAAA2QQCBhP+ICJGE/5eYDAw4gIQQFpgAIqwTHfAirBcd8NF//4F//60CvQTNA+AIAC0KHfAANkEAgXv/iAiRe/+XmAwMOICEEBaYACKsEx3wIqwXHfDRdv+Bdv+tAr0EzQPgCAAMCIcaAT0IKiMd8AAANkEAgXD/iAiRcP+XmAwMOICEEBaYACKsEx3wIqwXHfCBa/+tAr0EzQPgCAAtCh3wNmEAjQKRZv+oCbFm/7eaQKFm/6gKsWX/wCAAqQuhZP+oCrFk/8AgAKkLDAIpCWYoHQwWaQEMV1Fg/4gBYIgQFsgAosEAvQfgBQAWyv4tCh3wIqwXHfAAADbBAFkxjQRtA5FW/5lRqAmRV/9RWP+xVP+5QQwLuWEnGj32SAQirBQd8KIGA7IGAsIGANIGAehRKQ7oQfhh+Q6A3RHAzSAAuxGwvCCAqgGgqyCpCaFH//kK+QWCyPxLZqgJFhoBgCpjILrAuQkMG6c4CbmhBgIAIqwVHfAMOImhcT7/gT7/iZGBOv+JgYE8/4lxgqwWiRFZIRaiCOYbAgYhACmxiAWAh8CJwYgFmKGZ0ZkB2JHa6MLBLPLBMKiBvQaIceAIAL0KiLGHsgS4EcYDAJgFqMGqmZkFimaAIsAWmwCIBc0Hd5ivxgAAyAW4YYhRiAg4QZgDqGGpBV0HfQbKaZqoTQuxHf+IMeAIAL0EaQNtB30FWCF8+KeoAgbe/4EZ/4oqHfCCqDCKi7CfMYApEB3wNkEAFoQBgRP/rQK9A80E4AgAgRH/ioqgnzGAKRAd8AwCHfAANmECDAgm+BPAIACSoQeakYJJABuonQiNCmb465JBB2KhAFEF/xaUA2B0Y7LBB60CzQfgBQCW2gJwRMB6g6LBB50HFlkBC5kbuhvD0goA4gMArQs9DNce6YYCAHoiPQhWVPwMAh3wfPId8AAA
+  load_address: 0x40090000
+  data_load_address: 0x3ffd0000
+  pc_init: 0xf0
+  pc_uninit: 0x14c
+  pc_program_page: 0x119
+  pc_erase_sector: 0x101
+  pc_erase_all: 0x10e
+  pc_verify: 0x12a
+  pc_read: 0x13b
+  data_section_offset: 0x4009051c
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x1000000
+    page_size: 0x4000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x10000
+      address: 0x0
+  cores:
+  - main
+  - app
+  stack_overflow_check: false
+  transfer_encoding: miniz
+- name: esp32-flashloader-default-clocks
+  description: A flash loader for the esp32.
+  default: false
   instructions: 2C4GQFiGAEAAAAABAAABAAAQAAAAQAAA//8AADgyBkBsKgZABAD8P/Sq/D/4qvw//Kr8PwCr/D8AAPw/7v/AqgAA/D/u/8CqTCwGQAAA/D/u/8CqFCwGQAAA/D/u/8CqEAQJQNwCCUAAAPw/7v/AqjQECUDcAglAAAD8P+7/wKpAAQlAAAD8P+7/wKqwIQZA+Kr8P/yq/D8Aq/w/BAD8P/Sq/D8AgAAA9Cr8PzDvBUBg8P//UC0GQGDw//9AAQlAAAD+PxH//20CfQONBNUIAC0G8EEAAAAAEfr/bQKVDQAtBvBBAAAAABH2/1UPAC0G8EEAABHz/20CfQONBBUQAC0G8EEAAAAAEe7/bQJ9A40EFRIALQbwQQAAAAAR6f9tAn0DjQSVFAAtBvBBAAAAABHk/20ClRYALQbwQQAAAAA2QQAW9ACBrv+tAr0DzQTgCAAtCh3wDAId8AAANkEAgan/4AgAfQoMArGn/8Go/9Go/+Go//Go/4Gp/60C4AgAFjoADBId8IGm/60HvQLgCACBpP8pCIGk/ykIgaT/fPmZCIGj/ykIgaP/KQiBo/+Ro/+ZCB3wAAA2QQCBof+ICJGh/5eYERwIAAhAIKCRgZ7/4AgALQod8CKsFx3wAAAANkEAgZr/iAiRmv+XmAmBmf/gCAAtCh3wIqwXHfAAAAA2QQCBlf+ICJGV/5eYDAw4gIQQFpgAIqwTHfAirBcd8NGQ/4GQ/60CvQTNA+AIAC0KHfAANkEAgYz/iAiRjP+XmAwMOICEEBaYACKsEx3wIqwXHfDRh/+Bh/+tAr0EzQPgCAAMCIcaAT0IKiMd8AAANkEAgYH/iAiRgf+XmAwMOICEEBaYACKsEx3wIqwXHfCBfP+tAr0EzQPgCAAtCh3wNmEAjQKRd/+oCbF3/7eaJgwCKQlmKB0MFmkBDFdRc/+IAWCIEBbIAKLBAL0H4AUAFsr+LQod8CKsFx3wNsEAWTGNBG0DkWr/mVGoCZFr/1Fs/7Fo/7lBDAu5YScaPfZIBCKsFB3wogYDsgYCwgYA0gYB6FEpDuhB+GH5DoDdEcDNIAC7EbC8IICqAaCrIKkJoVv/+Qr5BYLI/EtmqAkWGgGAKmMgusC5CQwbpzgJuaEGAgAirBUd8Aw4iaFxUv+BUv+JkYFO/4mBgVD/iXGCrBaJEVkhFqII5hsCBiEAKbGIBYCHwInBiAWYoZnRmQHYkdrowsEs8sEwqIG9Bohx4AgAvQqIsYeyBLgRxgMAmAWowaqZmQWKZoAiwBabAIgFzQd3mK/GAADIBbhhiFGICDhBmAOoYakFXQd9BsppmqhNC7Ex/4gx4AgAvQRpA20HfQVYIXz4p6gCBt7/gS3/iiod8IKoMIqLsJ8xgCkQHfA2QQAWhAGBJ/+tAr0DzQTgCACBJf+KiqCfMYApEB3wDAId8AA2YQIMCCb4E8AgAJKhB5qRgkkAG6idCI0KZvjrkkEHYqEAURn/FpQDYHRjssEHrQLNB+AFAJbaAnBEwHqDosEHnQcWWQELmRu6G8PSCgDiAwCtCz0M1x7phgIAeiI9CFZU/AwCHfB88h3wAAA=
   load_address: 0x40090000
   data_load_address: 0x3ffd0000
