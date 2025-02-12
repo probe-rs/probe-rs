@@ -1,1 +1,0 @@
-Fixed an error in RTT pointer validation, which caused corrupted control block error messages.

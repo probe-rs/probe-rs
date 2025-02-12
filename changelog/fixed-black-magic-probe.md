@@ -1,1 +1,0 @@
-The Black Magic Probe stopped working when #2972 was merged, because it added a call to `try_as_parts()` that only worked for `ArmCommunicationInterface` probes and not for probes where the communications interface is handled by the probe itself. Replace this call with one to the new function `generic_status()`. This also fixes the issue reported in #2977.

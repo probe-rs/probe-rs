@@ -371,13 +371,22 @@ fn cortex_m_reset_catch_set(core: &mut dyn ArmMemoryInterface) -> Result<(), Arm
 
 /// ResetSystem for Cortex-M devices
 fn cortex_m_reset_system(interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv7m::{Aircr, Dhcsr};
+    use crate::architecture::arm::core::armv7m::Aircr;
 
     let mut aircr = Aircr(0);
     aircr.vectkey();
     aircr.set_sysresetreq(true);
 
     interface.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
+
+    cortex_m_wait_for_reset(interface)
+}
+
+/// Wait for Cortex-M device to reset
+pub(crate) fn cortex_m_wait_for_reset(
+    interface: &mut dyn ArmMemoryInterface,
+) -> Result<(), ArmError> {
+    use crate::architecture::arm::core::armv7m::Dhcsr;
 
     let start = Instant::now();
 

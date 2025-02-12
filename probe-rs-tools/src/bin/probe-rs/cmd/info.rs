@@ -375,7 +375,7 @@ fn handle_memory_ap(
 
         // Check if the AP is accessible
         let csw = memory.generic_status()?;
-        if !csw.SDeviceEn {
+        if !csw.DeviceEn {
             *parent = Tree::new("Memory AP is not accessible, DeviceEn bit not set".to_string());
             return Ok(());
         }

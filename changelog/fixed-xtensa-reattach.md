@@ -1,0 +1,1 @@
+Fixed an ESP32-specific issue where sometimes `probe-rs run` reported Xtensa specific errors regarding register 44 or 45.
