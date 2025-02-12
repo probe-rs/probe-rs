@@ -63,7 +63,7 @@ mod debugmailbox {
         from: value => Ok(DMREQUEST {
             Request: value
         }),
-        to: value => u32::from(value.Request)
+        to: value => value.Request
     );
 }
 
@@ -127,6 +127,8 @@ impl MCX {
         dp: DpAddress,
     ) -> Result<bool, ArmError> {
         use crate::architecture::arm::{ap::IDR, dp::DPIDR};
+
+        tracing::info!("enable debug mailbox");
 
         let ap = self.debug_mailbox_ap(dp)?;
 
