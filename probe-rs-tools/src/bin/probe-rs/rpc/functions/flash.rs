@@ -1,7 +1,4 @@
-use postcard_rpc::{
-    header::{VarHeader, VarSeq},
-    server::SpawnContext,
-};
+use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::{
     flashing::{self, FileDownloadError, FlashLoader, FlashProgress},
@@ -9,6 +6,7 @@ use probe_rs::{
     Session,
 };
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::Sender;
 
 use crate::{
     rpc::{
@@ -360,13 +358,15 @@ impl From<probe_rs::flashing::BootInfo> for BootInfo {
 }
 
 pub async fn flash(ctx: &mut RpcContext, _header: VarHeader, request: FlashRequest) -> NoResponse {
-    let ctx = ctx.spawn_ctxt();
-    tokio::task::spawn_blocking(move || flash_impl(ctx, request))
+    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, flash_impl)
         .await
-        .unwrap()
 }
 
-fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> NoResponse {
+fn flash_impl(
+    ctx: RpcSpawnContext,
+    request: FlashRequest,
+    sender: Sender<ProgressEvent>,
+) -> NoResponse {
     let dry_run = ctx.dry_run(request.sessid);
     let mut session = ctx.session_blocking(request.sessid);
 
@@ -402,10 +402,7 @@ fn flash_impl(ctx: RpcSpawnContext, request: FlashRequest) -> NoResponse {
     options.verify = request.options.verify;
     options.disable_double_buffering = request.options.disable_double_buffering;
     options.progress = Some(FlashProgress::new(move |event| {
-        ProgressEvent::from_library_event(event, |event| {
-            ctx.publish_blocking::<ProgressEventTopic>(VarSeq::Seq2(0), event)
-                .unwrap()
-        });
+        ProgressEvent::from_library_event(event, |event| sender.blocking_send(event).unwrap());
     }));
 
     // run flash download
@@ -438,13 +435,15 @@ pub enum EraseCommand {
 }
 
 pub async fn erase(ctx: &mut RpcContext, _header: VarHeader, request: EraseRequest) -> NoResponse {
-    let ctx = ctx.spawn_ctxt();
-    tokio::task::spawn_blocking(move || erase_impl(ctx, request))
+    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, erase_impl)
         .await
-        .unwrap()
 }
 
-fn erase_impl(ctx: RpcSpawnContext, request: EraseRequest) -> NoResponse {
+fn erase_impl(
+    ctx: RpcSpawnContext,
+    request: EraseRequest,
+    sender: Sender<ProgressEvent>,
+) -> NoResponse {
     let mut session = ctx.session_blocking(request.sessid);
 
     let progress = FlashProgress::new(move |event| {
@@ -465,8 +464,7 @@ fn erase_impl(ctx: RpcSpawnContext, request: EraseRequest) -> NoResponse {
             | ProgressEvent::Failed(Operation::Erase)
             | ProgressEvent::Finished(Operation::Erase) = event
             {
-                ctx.publish_blocking::<ProgressEventTopic>(VarSeq::Seq2(0), event)
-                    .unwrap()
+                sender.blocking_send(event).unwrap()
             }
         });
     });
@@ -497,13 +495,15 @@ pub async fn verify(
     _header: VarHeader,
     request: VerifyRequest,
 ) -> VerifyResponse {
-    let ctx = ctx.spawn_ctxt();
-    tokio::task::spawn_blocking(move || verify_impl(ctx, request))
+    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, verify_impl)
         .await
-        .unwrap()
 }
 
-fn verify_impl(ctx: RpcSpawnContext, request: VerifyRequest) -> VerifyResponse {
+fn verify_impl(
+    ctx: RpcSpawnContext,
+    request: VerifyRequest,
+    sender: Sender<ProgressEvent>,
+) -> VerifyResponse {
     let mut session = ctx.session_blocking(request.sessid);
     let loader = ctx.object_mut_blocking(request.loader);
 
@@ -525,8 +525,7 @@ fn verify_impl(ctx: RpcSpawnContext, request: VerifyRequest) -> VerifyResponse {
             | ProgressEvent::Failed(Operation::Verify)
             | ProgressEvent::Finished(Operation::Verify) = event
             {
-                ctx.publish_blocking::<ProgressEventTopic>(VarSeq::Seq2(0), event)
-                    .unwrap()
+                sender.blocking_send(event).unwrap()
             }
         });
     });
