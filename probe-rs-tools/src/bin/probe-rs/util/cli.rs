@@ -322,7 +322,7 @@ pub async fn test(
     let rtt_handle = rtt_client.as_ref().map(|rtt| rtt.handle);
     let test = async {
         let tests = session
-            .list_tests(boot_info, rtt_handle, |msg| _ = sender.send(msg))
+            .list_tests(boot_info, rtt_handle, |msg| sender.send(msg).unwrap())
             .await?;
 
         if token.is_cancelled() {
@@ -396,7 +396,7 @@ fn create_trial(
 
             let handle = tokio::spawn(async move {
                 match session
-                    .run_test(test, rtt_client, |msg| _ = sender.send(msg))
+                    .run_test(test, rtt_client, |msg| sender.send(msg).unwrap())
                     .await
                 {
                     Ok(TestResult::Success) => Ok(()),
