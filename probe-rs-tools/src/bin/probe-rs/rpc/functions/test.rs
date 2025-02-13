@@ -148,12 +148,6 @@ fn list_tests_impl(ctx: RpcSpawnContext, request: ListTestsRequest) -> anyhow::R
 
     let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
 
-    let mut run_loop = RunLoop {
-        core_id,
-        rtt_client: rtt_client.as_deref_mut(),
-        cancellation_token: ctx.cancellation_token(),
-    };
-
     match request.boot_info {
         BootInfo::FromRam {
             vector_table_addr, ..
@@ -166,8 +160,17 @@ fn list_tests_impl(ctx: RpcSpawnContext, request: ListTestsRequest) -> anyhow::R
             session
                 .core(core_id)?
                 .reset_and_halt(Duration::from_millis(100))?;
+            if let Some(rtt_client) = rtt_client.as_mut() {
+                rtt_client.clear_control_block(&mut session.core(core_id)?)?;
+            }
         }
     }
+
+    let mut run_loop = RunLoop {
+        core_id,
+        rtt_client: rtt_client.as_deref_mut(),
+        cancellation_token: ctx.cancellation_token(),
+    };
 
     let mut core = session.core(0)?;
     match run_loop.run_until(
@@ -236,6 +239,10 @@ fn run_test_impl(ctx: RpcSpawnContext, request: RunTestRequest) -> anyhow::Resul
     let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
     let mut core = session.core(core_id)?;
     core.reset_and_halt(Duration::from_millis(100))?;
+
+    if let Some(rtt_client) = rtt_client.as_mut() {
+        rtt_client.clear_control_block(&mut core)?;
+    }
 
     let expected_outcome = request.test.expected_outcome;
     let mut run_handler = RunEventHandler::new(request.test, {
