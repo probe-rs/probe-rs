@@ -1,0 +1,1 @@
+Added support for more NXP's MCXA MCUs.
