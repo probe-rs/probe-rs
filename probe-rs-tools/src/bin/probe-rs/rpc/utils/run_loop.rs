@@ -128,7 +128,13 @@ impl RunLoop<'_> {
                     let bytes = rtt_client.poll_channel(core, channel as u32)?;
                     if !bytes.is_empty() {
                         had_rtt_data = true;
-                        rtt_callback(channel as u32, bytes.to_vec())?;
+                        let res = rtt_callback(channel as u32, bytes.to_vec());
+
+                        if self.cancellation_token.is_cancelled() {
+                            return Ok(ReturnReason::Cancelled);
+                        }
+
+                        res?;
                     }
                 }
             }
