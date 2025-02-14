@@ -434,7 +434,7 @@ impl Session {
     /// Get access to the session when all cores are halted.
     ///
     /// Any previously running cores will be resumed once the closure is executed.
-    pub(crate) fn halted_access<R>(
+    pub fn halted_access<R>(
         &mut self,
         f: impl FnOnce(&mut Self) -> Result<R, Error>,
     ) -> Result<R, Error> {

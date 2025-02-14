@@ -1,13 +1,13 @@
-use crate::util::rtt::client::RttClient;
+use crate::util::rtt::{client::RttClient, RttDataHandler};
 use crate::{
     cmd::dap_server::{
         debug_adapter::{dap::adapter::*, protocol::ProtocolAdapter},
         DebuggerError,
     },
-    util::rtt::ChannelDataCallbacks,
+    util::rtt::RttDecoder,
 };
 use anyhow::anyhow;
-use probe_rs::{rtt::Error, Core};
+use probe_rs::{rtt, Core};
 
 /// Manage the active RTT target for a specific SessionData, as well as provide methods to reliably move RTT from target, through the debug_adapter, to the client.
 pub struct RttConnection {
@@ -43,9 +43,10 @@ impl RttConnection {
 }
 
 pub(crate) struct DebuggerRttChannel {
-    pub(crate) channel_number: usize,
+    pub(crate) channel_number: u32,
     // We will not poll target RTT channels until we have confirmation from the client that the output window has been opened.
     pub(crate) has_client_window: bool,
+    pub(crate) channel_data_format: RttDecoder,
 }
 
 impl DebuggerRttChannel {
@@ -64,11 +65,18 @@ impl DebuggerRttChannel {
 
         let mut out = StringCollector { data: None };
 
-        if let Err(e) = client.poll_channel(core, self.channel_number, &mut out) {
-            debug_adapter
-                .show_error_message(&DebuggerError::Other(anyhow!(e)))
-                .ok();
-            return false;
+        match client.poll_channel(core, self.channel_number) {
+            Ok(bytes) => {
+                self.channel_data_format
+                    .process(self.channel_number, bytes, &mut out)
+                    .ok();
+            }
+            Err(e) => {
+                debug_adapter
+                    .show_error_message(&DebuggerError::Other(anyhow!(e)))
+                    .ok();
+                return false;
+            }
         }
 
         match out.data {
@@ -82,8 +90,8 @@ struct StringCollector {
     data: Option<String>,
 }
 
-impl ChannelDataCallbacks for StringCollector {
-    fn on_string_data(&mut self, _channel: usize, data: String) -> Result<(), Error> {
+impl RttDataHandler for StringCollector {
+    fn on_string_data(&mut self, _channel: u32, data: String) -> Result<(), rtt::Error> {
         self.data = Some(data);
         Ok(())
     }

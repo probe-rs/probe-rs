@@ -1,9 +1,13 @@
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::path::Path;
+
 use svg::{
     node::element::{Group, Rectangle, Text},
     Document, Node,
 };
 
-use super::*;
+use crate::rpc::functions::flash::FlashLayout;
 
 /// A structure which can be used to visualize the built contents of a flash.
 pub struct FlashVisualizer<'layout> {
@@ -20,9 +24,9 @@ impl<'layout> FlashVisualizer<'layout> {
     fn memory_to_local(&self, address: u64) -> f32 {
         let top_sector_address = self
             .flash_layout
-            .sectors()
+            .sectors
             .last()
-            .map_or(0, |s| s.address() + s.size());
+            .map_or(0, |s| s.address + s.size);
 
         address as f32 / top_sector_address as f32 * 100.0
     }
@@ -70,34 +74,34 @@ impl<'layout> FlashVisualizer<'layout> {
         let mut document = Document::new();
         let mut group = Group::new().set("transform", "scale(1, 1)");
 
-        for sector in self.flash_layout.sectors() {
+        for sector in self.flash_layout.sectors.iter() {
             let rectangle = self
-                .memory_block(sector.address(), sector.size(), (50, 50))
+                .memory_block(sector.address, sector.size, (50, 50))
                 .set("fill", "CornflowerBlue");
 
             group.append(rectangle);
         }
 
-        for page in self.flash_layout.pages() {
+        for page in self.flash_layout.pages.iter() {
             let rectangle = self
-                .memory_block(page.address(), page.size() as u64, (100, 50))
+                .memory_block(page.address, page.data_len, (100, 50))
                 .set("fill", "Crimson");
             // .set("stroke", "Black")
             // .set("stroke-width", 1);
             group.append(rectangle);
         }
 
-        for block in self.flash_layout.data_blocks() {
+        for block in self.flash_layout.data_blocks.iter() {
             let rectangle = self
-                .memory_block(block.address(), block.size(), (150, 50))
+                .memory_block(block.address, block.size, (150, 50))
                 .set("fill", "MediumSeaGreen");
 
             group.append(rectangle);
         }
 
-        for fill in self.flash_layout.fills() {
+        for fill in self.flash_layout.fills.iter() {
             let rectangle = self
-                .memory_block(fill.address(), fill.size(), (150, 50))
+                .memory_block(fill.address, fill.size, (150, 50))
                 .set("fill", "SandyBrown");
 
             group.append(rectangle);
@@ -113,10 +117,7 @@ impl<'layout> FlashVisualizer<'layout> {
     /// and writes the SVG into the file at the given `path`.
     ///
     /// This is equivalent to [FlashVisualizer::generate_svg] with the difference of operating on a file instead of a string.
-    pub fn write_svg(&self, path: impl AsRef<std::path::Path>) -> std::io::Result<()> {
-        use std::fs::OpenOptions;
-        use std::io::Write;
-
+    pub fn write_svg(&self, path: impl AsRef<Path>) -> std::io::Result<()> {
         let svg = self.generate_svg();
 
         let mut file = OpenOptions::new()
@@ -127,5 +128,13 @@ impl<'layout> FlashVisualizer<'layout> {
             .open(path.as_ref())?;
 
         file.write_all(svg.as_bytes())
+    }
+}
+
+impl FlashLayout {
+    /// Get a visualizer for the flash layout, which can create
+    /// a graphical representation of the layout.
+    pub fn visualize(&self) -> FlashVisualizer {
+        FlashVisualizer::new(self)
     }
 }

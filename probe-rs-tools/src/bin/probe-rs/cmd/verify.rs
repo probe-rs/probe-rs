@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use probe_rs::flashing::FlashError;
-use probe_rs::probe::list::Lister;
-
+use crate::rpc::client::RpcClient;
+use crate::rpc::functions::flash::VerifyResult;
+use crate::util::cli;
 use crate::util::common_options::ProbeOptions;
-use crate::util::flash::build_loader;
+use crate::util::flash::CliProgressBars;
 use crate::FormatOptions;
 
 #[derive(clap::Parser)]
@@ -17,21 +17,36 @@ pub struct Cmd {
 
     #[clap(flatten)]
     pub format_options: FormatOptions,
+
+    #[clap(long)]
+    pub disable_progressbars: bool,
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.probe_options.simple_attach(lister)?;
+    pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
+        let session = cli::attach_probe(&client, self.probe_options, false).await?;
 
-        let loader = build_loader(&mut session, &self.path, self.format_options, None)?;
-
-        match loader.verify(&mut session) {
-            Ok(()) => {
-                println!("Verification successful")
-            }
-            Err(FlashError::Verify) => println!("Verification failed"),
-            Err(other) => return Err(other.into()),
+        let pb = if self.disable_progressbars {
+            None
+        } else {
+            Some(CliProgressBars::new())
         };
+        let loader = session
+            .build_flash_loader(self.path.to_path_buf(), self.format_options)
+            .await?;
+
+        let result = session
+            .verify(loader.loader, move |event| {
+                if let Some(pb) = pb.as_ref() {
+                    pb.handle(event);
+                }
+            })
+            .await?;
+
+        match result {
+            VerifyResult::Ok => println!("Verification successful"),
+            VerifyResult::Mismatch => println!("Verification failed: contents do not match"),
+        }
 
         Ok(())
     }
