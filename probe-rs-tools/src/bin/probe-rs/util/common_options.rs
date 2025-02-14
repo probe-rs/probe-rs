@@ -49,6 +49,8 @@ pub struct BinaryDownloadOptions {
 pub enum ReadWriteBitWidth {
     /// 8-bit width
     B8 = 8,
+    /// 16-bit width
+    B16 = 16,
     /// 32-bit width
     B32 = 32,
     /// 64-bit width
@@ -68,7 +70,7 @@ pub struct ReadWriteOptions {
 }
 
 /// Common options and logic when interfacing with a [Probe].
-#[derive(clap::Parser, Debug)]
+#[derive(clap::Parser, Clone, Debug, Serialize, Deserialize)]
 pub struct ProbeOptions {
     #[arg(long, env = "PROBE_RS_CHIP", help_heading = "PROBE CONFIGURATION")]
     pub chip: Option<String>,
@@ -143,7 +145,7 @@ impl ProbeOptions {
 }
 
 /// Common options and logic when interfacing with a [Probe] which already did all pre operation preparation.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LoadedProbeOptions(ProbeOptions);
 
 impl LoadedProbeOptions {
@@ -310,10 +312,6 @@ impl LoadedProbeOptions {
         })?;
 
         Ok(session)
-    }
-
-    pub(crate) fn protocol(&self) -> Option<WireProtocol> {
-        self.0.protocol
     }
 
     pub(crate) fn connect_under_reset(&self) -> bool {

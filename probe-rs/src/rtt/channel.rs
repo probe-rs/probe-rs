@@ -283,7 +283,7 @@ impl Channel {
 
             if buffer_offset_larger_than_size_of_buffer {
                 return Err(Error::ControlBlockCorrupted(format!(
-                    "{which} pointer is {value} while buffer size is {} for {channel_kind}channel {} ({})",
+                    "{which} pointer is {value:#010x} while buffer size is {:#010x} for {channel_kind}channel {} ({})",
                     self.info.size_of_buffer(),
                     self.number,
                     self.name().unwrap_or("no name"),
@@ -560,9 +560,10 @@ fn read_c_string(core: &mut Core, ptr: u64) -> Result<Option<String>, Error> {
         .filter(|r| r.is_ram() || r.is_nvm())
         .find_map(|r| r.contains(ptr).then_some(r.address_range()))
     else {
-        // If the pointer is not within any valid range, return None.
-        tracing::warn!("RTT channel name points to unrecognized memory. Bad target description?");
-        return Ok(None);
+        return Err(Error::ControlBlockCorrupted(format!(
+            "The channel name pointer is not in a valid memory region: {:#X}",
+            ptr
+        )));
     };
 
     // Read up to 128 bytes not going past the end of the region

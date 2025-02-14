@@ -4,7 +4,7 @@ use std::ops::Range;
 
 use probe_rs_target::{MemoryRange, NvmRegion, PageInfo};
 
-use super::{FlashAlgorithm, FlashError, FlashVisualizer};
+use super::{FlashAlgorithm, FlashError};
 
 /// The description of a page in flash.
 #[derive(Clone, PartialEq, Eq)]
@@ -137,12 +137,6 @@ impl FlashLayout {
     /// This is the data which is written during flashing.
     pub fn data_blocks(&self) -> &[FlashDataBlockSpan] {
         &self.data_blocks
-    }
-
-    /// Get a visualizer for the flash layout, which can create
-    /// a graphical representation of the layout.
-    pub fn visualize(&self) -> FlashVisualizer {
-        FlashVisualizer::new(self)
     }
 }
 
