@@ -74,6 +74,7 @@ variants:
     is_alias: true
   flash_algorithms:
   - esp32s2-flashloader
+  - esp32s2-flashloader-default-clocks
   jtag:
     scan_chain:
     - name: main
@@ -81,8 +82,37 @@ variants:
   default_binary_format: idf
 flash_algorithms:
 - name: esp32s2-flashloader
-  description: A flasher loader for the esp32s2.
+  description: A flasher loader for the esp32s2 that uses max CPU clock frequency.
   default: true
+  instructions: jHIBQBgATD8Ei/w/jABMPwiL/D//8///iNgAQKDkAEAAAABAAAABAAAQAAAAQAAA//8AAAB1AUAEcAFAAOD7P/CK/D/0ivw/+Ir8P/yK/D8Ai/w/7v/AqgCL/D/u/8CqDHEBQACL/D/u/8Cq7HABQACL/D/u/8CqiMgCQFTHAkAAi/w/7v/AqqzIAkBUxwJAAIv8P+7/wKpYxQJAAIv8P+7/wKoIi/w/jABMPwSL/D8YAEw/yF8BQPSK/D/4ivw//Ir8PwDg+z/wivw/AIAAAPAK/D8AMABAYPD//8xxAUBg8P//WMUCQADw/T8R//9tAn0DjQTVBwAtBvBBABH6/20CFREALQbwQQAR9//VEgAtBvBBABH0/20CfQONBNUTAC0G8EEAEfD/bQJ9A40EFRYALQbwQQAR7P9tAn0DjQSVGAAtBvBBABHo/20C1RoALQbwQQAAAAA2QQAW9ACBqP+tAr0DzQTgCAAtCh3wDAId8AAANkEAcaP/wCAAiAdhov+JBoGi/8AgAJgIoaH/mQqhoP+gmRCipACgmSDAIACZCKKgZIGc/+AIAIgGfMmQiBAMKZCIIMAgAIkHgZj/4AgAfQoMArGW/8GW/9GX/+GX//GX/4GX/60C4AgAFjoADBId8IGV/60HvQLgCACBk/8pCIGT/ykIgZP/fPmZCIGS/ykIgZL/KQiBkf+Rkv+ZCB3wADZBAIGQ/4gIkZD/l5gRHAgACEAgoJGBjf/gCAAtCh3wIqwXHfAAAAA2QQCBif+ICJGJ/5eYCYGI/+AIAC0KHfAirBcd8AAAADZBAIGE/4gIkYT/l5gMDDiAhBAWmAAirBMd8CKsFx3w0X//gX//rQK9BM0D4AgALQod8AA2QQCBe/+ICJF7/5eYDAw4gIQQFpgAIqwTHfAirBcd8NF2/4F2/60CvQTNA+AIAAwIhxoBPQgqIx3wAAA2QQCBcP+ICJFw/5eYDAw4gIQQFpgAIqwTHfAirBcd8IFr/60CvQTNA+AIAC0KHfA2YQCNApFm/6gJsWb/t5pAoWb/qAqxZf/AIACpC6Fk/6gKsWT/wCAAqQsMAikJZigdDBZpAQxXUWD/iAFgiBAWyACiwQC9B+AFABbK/i0KHfAirBcd8AAANsEAWTGNBG0DkVb/mVGoCZFX/1FY/7FU/7lBDAu5YScaPfZIBCKsFB3wogYDsgYCwgYA0gYB6FEpDuhB+GH5DoDdEcDNIAC7EbC8IICqAaCrIKkJoUf/+Qr5BYLI/EtmqAkWGgGAKmMgusC5CQwbpzgJuaEGAgAirBUd8Aw4iaFxPv+BPv+JkYE6/4mBgTz/iXGCrBaJEVkhFqII5hsCBiEAKbGIBYCHwInBiAWYoZnRmQHYkdrowsEs8sEwqIG9Bohx4AgAvQqIsYeyBLgRxgMAmAWowaqZmQWKZoAiwBabAIgFzQd3mK/GAADIBbhhiFGICDhBmAOoYakFXQd9BsppmqhNC7Ed/4gx4AgAvQRpA20HfQVYIXz4p6gCBt7/gRn/iiod8IKoMIqLsJ8xgCkQHfA2QQAWhAGBE/+tAr0DzQTgCACBEf+KiqCfMYApEB3wDAId8AA2YQIMCCb4E8AgAJKhB5qRgkkAG6idCI0KZvjrkkEHYqEAUQX/FpQDYHRjssEHrQLNB+AFAJbaAnBEwHqDosEHnQcWWQELmRu6G8PSCgDiAwCtCz0M1x7phgIAeiI9CFZU/AwCHfB88h3wAAA=
+  load_address: 0x4002c400
+  data_load_address: 0x3ffce000
+  pc_init: 0xec
+  pc_uninit: 0x148
+  pc_program_page: 0x115
+  pc_erase_sector: 0xfd
+  pc_erase_all: 0x10a
+  pc_verify: 0x126
+  pc_read: 0x137
+  data_section_offset: 0x4002c918
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000000
+    page_size: 0x4000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x10000
+      address: 0x0
+  cores:
+  - main
+  stack_overflow_check: false
+  transfer_encoding: miniz
+- name: esp32s2-flashloader-default-clocks
+  description: A flasher loader for the esp32s2.
+  default: false
   instructions: jHIBQKDkAEAAAABAAAABAAAQAAAAQAAA//8AAAB1AUAEcAFABOD7P/SK/D/4ivw//Ir8PwCL/D8A4Ps/7v/AqgDg+z/u/8CqDHEBQADg+z/u/8Cq7HABQADg+z/u/8CqAMgCQMzGAkAA4Ps/7v/AqiTIAkDMxgJAAOD7P+7/wKowxQJAAOD7P+7/wKrIXwFA+Ir8P/yK/D8Ai/w/BOD7P/SK/D8AgAAA9Ar8PwAwAEBg8P//zHEBQGDw//8wxQJAAPD9PxH//20CfQONBNUHAC0G8EEAEfr/bQLVDAAtBvBBABH3/5UOAC0G8EEAEfT/bQJ9A40ElQ8ALQbwQQAR8P9tAn0DjQTVEQAtBvBBABHs/20CfQONBFUUAC0G8EEAEej/bQKVFgAtBvBBAAAAADZBABb0AIGy/60CvQPNBOAIAC0KHfAMAh3wAAA2QQCBrf/gCAB9CgwCsav/waz/0az/4az/8az/ga3/rQLgCAAWOgAMEh3wgar/rQe9AuAIAIGo/ykIgaj/KQiBqP98+ZkIgaf/KQiBp/8pCIGn/5Gn/5kIHfAAADZBAIGl/4gIkaX/l5gRHAgACEAgoJGBov/gCAAtCh3wIqwXHfAAAAA2QQCBnv+ICJGe/5eYCYGd/+AIAC0KHfAirBcd8AAAADZBAIGZ/4gIkZn/l5gMDDiAhBAWmAAirBMd8CKsFx3w0ZT/gZT/rQK9BM0D4AgALQod8AA2QQCBkP+ICJGQ/5eYDAw4gIQQFpgAIqwTHfAirBcd8NGL/4GL/60CvQTNA+AIAAwIhxoBPQgqIx3wAAA2QQCBhf+ICJGF/5eYDAw4gIQQFpgAIqwTHfAirBcd8IGA/60CvQTNA+AIAC0KHfA2YQCNApF7/6gJsXv/t5omDAIpCWYoHQwWaQEMV1F3/4gBYIgQFsgAosEAvQfgBQAWyv4tCh3wIqwXHfA2wQBZMY0EbQORbv+ZUagJkW//UXD/sWz/uUEMC7lhJxo99kgEIqwUHfCiBgOyBgLCBgDSBgHoUSkO6EH4YfkOgN0RwM0gALsRsLwggKoBoKsgqQmhX//5CvkFgsj8S2aoCRYaAYAqYyC6wLkJDBunOAm5oQYCACKsFR3wDDiJoXFW/4FW/4mRgVL/iYGBVP+JcYKsFokRWSEWogjmGwIGIQApsYgFgIfAicGIBZihmdGZAdiR2ujCwSzywTCogb0GiHHgCAC9Coixh7IEuBHGAwCYBajBqpmZBYpmgCLAFpsAiAXNB3eYr8YAAMgFuGGIUYgIOEGYA6hhqQVdB30GymmaqE0LsTX/iDHgCAC9BGkDbQd9BVghfPinqAIG3v+BMf+KKh3wgqgwiouwnzGAKRAd8DZBABaEAYEr/60CvQPNBOAIAIEp/4qKoJ8xgCkQHfAMAh3wADZhAgwIJvgTwCAAkqEHmpGCSQAbqJ0IjQpm+OuSQQdioQBRHf8WlANgdGOywQetAs0H4AUAltoCcETAeoOiwQedBxZZAQuZG7obw9IKAOIDAK0LPQzXHumGAgB6Ij0IVlT8DAId8HzyHfAAAA==
   load_address: 0x4002c400
   data_load_address: 0x3ffce000

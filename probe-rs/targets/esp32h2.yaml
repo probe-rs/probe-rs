@@ -39,6 +39,7 @@ variants:
     is_alias: true
   flash_algorithms:
   - esp32h2-flashloader
+  - esp32h2-flashloader-default-clocks
   jtag:
     scan_chain:
     - name: main
@@ -46,8 +47,37 @@ variants:
   default_binary_format: idf
 flash_algorithms:
 - name: esp32h2-flashloader
-  description: A flasher loader for the esp32h2.
+  description: A flasher loader for the esp32h2 that uses max CPU clock frequency.
   default: true
+  instructions: FwMAAGcAYwQXAwAAZwCDCxcDAABnACMNFwMAAGcAow4XAwAAZwDjERcDAABnAOMWFwMAAGcAoxkJxhcDf/9nAOMQAUWCgEERBsYixDdlCWCDJcUQN7SCQCMitLA3Bv3/fRbxjcFn3Y0jJrUQ/Re3BQABQWaFZhFnAUWXAH//54DgDaqFBUWN6QFFlwB//+eAoBQBRbcFgkAjoAUAIygErv1VIyq0riMsBK4jLgSutwXBqrkVIyC0sLJAIkRBAYKAt7WCQIOlBbA3BsGqORZjl8UAQYEXA3//ZwDDBhMFcMGCgDe1gkADJQWwtwXBqrkVYxa1ABcDf/9nAIMCEwVwwYKAt7aCQIOmBrAuh7cFwaqTh+X+kwVwwWOX9gCTdjYAkwUwwZnCLoWCgLcFgUCThuU2soU6hhcDAABnAKMOQREGxiLEJsK3toJAg6YGsK6EKoQ3BcGqkwXl/hMFcMFjl7YCk3U2ABMFMMGN4TcFgUCTBiU5IoWyhSaGlwAAAOeAYAozNaAAfRVljSKVskAiRJJEQQGCgLe2gkADpwawroa3BcGqk4fl/pMFcMFjF/cAE3c2AJMFMMEZwy6FgoCyhTaGFwMAAGcAY+dBEQbGN7aCQIMmBrCqhTcFwaoTB+X+EwVwwWOb5gKDJkawAUU3ZwlgIybXEIlGIyAGsGOf1QAFRSrEA0WBAAWJAckoAJVFlwB//+eAwPR11bJAQQGCgHlxBtYi1CbSStBOzlLMVspayF7GYsQ3t4JAgydHrzaJLopjhacEkUaTBUDBY2TWEINFCgCDRhoAg0c6AINEKgARCnEW4gfCBKIG1Y3Fj92Nt7aCQCOqpq4jrAauI662rjcFgkAjIAUAI6gGrgMlx69hwSqMY2PFADKMswWFQTe7gkAjLruuhUSNSWNjpgCFSaFrNzWCQJMKBa9jBQwIY1OQCGLAAyULrzOFq0AqwgMnC69WlzcFgkAKhlwA0oXWhk6IlwB//+eAYOGCRWN1vACTBGDBIaiqhBJFAyYLrzMMvEAumjKVIyirrpnEAyULryFm4xTF+hmgAyYLr4Mli68DJUuvLpUjKAuuM4TFANaFApkjLIuu41IF+BMFBYCTBQWGCagThQSDk9X0QemNGaCTBVDBLoWyUCJUklQCWfJJYkrSSkJLsksiTEVhgoAFwkERBsaXAH//54AA3ZMFBYCThQWGfYVtjbJAQQGCgAFFgoAtcRQCI64WAIDOxMojqCYBI6Y2AbKJroQqiQFFEwYF8AHKEwYVAKMFoRCqhTKF/bejBbEAY4kJBBMFABBOhGPkqQATBAAQkwWxAEqFIoaXAAAA54CAxWNKBQIzhYQAs4mJQJMFsQAihhnKg8YEAAPHBQCFBIUFfRbjiOb+OaAimaqE45sJ+gFFEaB9VQwCg6DFAYBNxEkDqQUBg6nFABVhgoA=
+  load_address: 0x40810000
+  data_load_address: 0x40830000
+  pc_init: 0x0
+  pc_uninit: 0x30
+  pc_program_page: 0x18
+  pc_erase_sector: 0x8
+  pc_erase_all: 0x10
+  pc_verify: 0x20
+  pc_read: 0x28
+  data_section_offset: 0x40810434
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x1000000
+    page_size: 0x4000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x10000
+      address: 0x0
+  cores:
+  - main
+  stack_overflow_check: false
+  transfer_encoding: miniz
+- name: esp32h2-flashloader-default-clocks
+  description: A flasher loader for the esp32h2.
+  default: false
   instructions: FwMAAGcAYwQXAwAAZwCDCRcDAABnAAMLFwMAAGcAYwwXAwAAZwCDDxcDAABnAGMUFwMAAGcAAxcJxhcDf/9nAOMQAUWCgEERBsbBZ/0XtwUAAUFmhWYRZwFFlwB//+eA4A+qhQVFlekBRZcAf//ngKAWAUW3BYJAI6IFADe2gkAjKgau/VYjLNauIy4GriMgBrA3BsGqORaQwbJAQQGCgLcFgkCMQTcGwao5FmOXxQBBgRcDf/9nAOMIEwVwwYKANwWCQAhBtwXBqrkVYxa1ABcDf/9nAMMEEwVwwYKAtwaCQJRCLoe3BcGqk4fl/pMFcMFjl/YAk3Y2AJMFMMGZwi6FgoC3BYFAk4blM7KFOoYXAwAAZwCDDUERBsYixCbCtwaCQJRCroQqhDcFwaqTBeX+EwVwwWOXtgKTdTYAEwUwwY3hNwWBQJMGJTYihbKFJoaXAAAA54BgCTM1oAB9FWWNIpWyQCJEkkRBAYKAtwaCQJhCroa3BcGqk4fl/pMFcMFjF/cAE3c2AJMFMMEZwy6FgoCyhTaGFwMAAGcAA+pBEQbGNwaCQBRCqoU3BcGqEwfl/hMFcMFjleYCAUWJRiMgBgBjn9UABUUqxANFgQAFiQHJKACVRZcAf//ngED4ddWyQEEBgoA5cQbeItwm2krYTtZS1FbSWtBezmLMZso3t4JAgyeHrzaJropjhacEkUaTBUDBY2bWEIPFCgCDxhoAg8c6AIPEKgCRCnEW4gfCBKIG1Y3Fj92Nt7aCQCOspq4jrgauI6C2sDcFgkAjIgUAI6oGrgMlB7BxwaqMY2PFALKMswWVQbe7gkAjoLuwhUSNSWNjpgCFSSFsNzWCQBMLRa83CoJAEQpjhAwIY1KQCGbGA6VLrzMFrEAqyAOnS69al3AAHAhShdaF2oZOiJcAf//ngIDkskVj9bwAkwRgwSGoqoRCRQOmS6+zjLxArpoylSOqq66ZxAOlS68hZuMVxfoZoAOmS6+DpcuvA6WLry6VI6oLrjOExQDahQKZI66LruNTBfgTBQWAkwUFhgmoE4UEg5PV9EHpjRmgkwVQwS6F8lBiVNJUQlmyWSJakloCW/JLYkzSTCFhgoAFwkERBsaXAH//54AA4JMFBYCThQWGfYVtjbJAQQGCgAFFgoAtcRQCI64WAIDOxMojqCYBI6Y2AbKJroQqiQFFEwYF8AHKEwYVAKMFoRCqhTKF/bejBbEAY4kJBBMFABBOhGPkqQATBAAQkwWxAEqFIoaXAAAA54CAyGNKBQIzhYQAs4mJQJMFsQAihhnKg8YEAAPHBQCFBIUFfRbjiOb+OaAimaqE45sJ+gFFEaB9VQwCg6DFAYBNxEkDqQUBg6nFABVhgoA=
   load_address: 0x40810000
   data_load_address: 0x40830000

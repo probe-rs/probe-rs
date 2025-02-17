@@ -1,0 +1,1 @@
+ESP32 flash algorithms now use maximum CPU clock frequency.
