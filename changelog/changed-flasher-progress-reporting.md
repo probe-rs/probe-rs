@@ -1,0 +1,1 @@
+The `ProgressEvent` type has been reworked, different phases have now been unified.

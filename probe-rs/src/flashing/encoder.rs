@@ -48,7 +48,7 @@ struct ZlibEncoder {
 }
 
 impl ZlibEncoder {
-    fn new(flash: FlashLayout) -> Self {
+    fn new(flash: FlashLayout, ignore_fills: bool) -> Self {
         let mut compressed_pages = vec![];
 
         let page_size = flash.pages()[0].data().len();
@@ -60,6 +60,8 @@ impl ZlibEncoder {
 
             use flate2::write::ZlibEncoder;
             use flate2::Compression;
+
+            tracing::debug!("Image length: {} @ {:#010x}", image.len(), start_addr);
 
             // This page is not contiguous with the previous one, finish the previous image.
             let mut e = ZlibEncoder::new(Vec::new(), Compression::best());
@@ -77,6 +79,8 @@ impl ZlibEncoder {
                 .into_iter()
                 .chain(first.iter().copied())
                 .collect::<Vec<u8>>();
+
+            tracing::debug!("Compressed length: {}", image_len + 4);
 
             // We add each page with `start_addr`. The address identifies the image and the
             // flash loader is responsible for tracking the write offset in the current image.
@@ -97,15 +101,57 @@ impl ZlibEncoder {
         let mut previous_image = vec![];
         let mut previous_start_addr = 0;
 
-        for page in flash.pages() {
-            if page.address() != previous_start_addr + previous_image.len() as u64 {
-                compress_image(&previous_image, previous_start_addr);
+        for (page_idx, page) in flash.pages().iter().enumerate() {
+            let mut pieces_vec = Vec::new();
+            let pieces = if ignore_fills {
+                // Remove filled ranges from the data before we compress it.
 
-                previous_image.clear();
-                previous_start_addr = page.address();
+                // First, collect the relevant fills (the ones that touch the current page).
+                let mut relevant_fills = vec![];
+                for fill in flash.fills() {
+                    if fill.page_index() != page_idx {
+                        continue;
+                    }
+
+                    relevant_fills.push(fill);
+                }
+
+                // Sort them by address, just in case.
+                relevant_fills.sort_by_key(|fill| fill.address());
+
+                // Now break the page into pieces, separated by the fills.
+                let mut last_offset = 0;
+                for fill in relevant_fills {
+                    let offset = (fill.address() - page.address()) as usize;
+
+                    let data = &page.data()[last_offset..offset];
+                    if !data.is_empty() {
+                        pieces_vec.push((page.address() + last_offset as u64, data));
+                    }
+
+                    last_offset = offset + fill.size() as usize;
+                }
+
+                // Handle the remainder
+                let data = &page.data()[last_offset..];
+                if !data.is_empty() {
+                    pieces_vec.push((page.address() + last_offset as u64, data));
+                }
+
+                pieces_vec.as_slice()
+            } else {
+                &[(page.address(), page.data())]
+            };
+            for &(address, data) in pieces {
+                if address != previous_start_addr + previous_image.len() as u64 {
+                    compress_image(&previous_image, previous_start_addr);
+
+                    previous_image.clear();
+                    previous_start_addr = address;
+                }
+
+                previous_image.extend_from_slice(data);
             }
-
-            previous_image.extend_from_slice(page.data());
         }
 
         compress_image(&previous_image, previous_start_addr);
@@ -142,11 +188,11 @@ pub struct FlashEncoder {
 }
 
 impl FlashEncoder {
-    pub fn new(encoding: TransferEncoding, flash: FlashLayout) -> Self {
+    pub fn new(encoding: TransferEncoding, flash: FlashLayout, ignore_fills: bool) -> Self {
         Self {
             encoder: match encoding {
                 TransferEncoding::Raw => Box::new(RawEncoder::new(flash)),
-                TransferEncoding::Miniz => Box::new(ZlibEncoder::new(flash)),
+                TransferEncoding::Miniz => Box::new(ZlibEncoder::new(flash, ignore_fills)),
             },
         }
     }
