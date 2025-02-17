@@ -30,7 +30,7 @@ use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOp
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
 use crate::util::rtt::client::RttClient;
-use crate::util::rtt::{RttChannelConfig, RttConfig};
+use crate::util::rtt::{self, RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
 use crate::FormatOptions;
 
@@ -250,12 +250,18 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     } else {
         None
     };
-    let rtt_client = RttClient::new(
-        elf.as_deref(),
-        session.target(),
-        create_rtt_config(&config).clone(),
-        ScanRegion::Ram,
-    )?;
+
+    let scan = if let Some(ref elf) = elf {
+        match rtt::get_rtt_symbol_from_bytes(elf) {
+            Ok(address) => ScanRegion::Exact(address),
+            // Do not scan the memory for the control block.
+            _ => ScanRegion::Ranges(vec![]),
+        }
+    } else {
+        ScanRegion::Ram
+    };
+
+    let rtt_client = RttClient::new(create_rtt_config(&config).clone(), scan);
 
     // FIXME: we should probably figure out in a different way which core we can work with.
     // It seems arbitrary that we reset the target using the same core we use for polling RTT.
@@ -348,6 +354,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         // GDB is also using the session, so we do not lock on the outside.
         run_rttui_app(
             name,
+            elf,
             &session,
             config,
             offset,
@@ -387,6 +394,7 @@ fn should_resume_core(config: &config::Config) -> bool {
 
 fn run_rttui_app(
     name: &str,
+    elf: Option<Vec<u8>>,
     session: &FairMutex<Session>,
     config: config::Config,
     timezone_offset: UtcOffset,
@@ -453,7 +461,7 @@ fn run_rttui_app(
         / 1_000_000;
 
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-    let mut app = rttui::app::App::new(rtt, config, logname)?;
+    let mut app = rttui::app::App::new(rtt, elf, config, timezone_offset, logname)?;
     loop {
         app.render();
 

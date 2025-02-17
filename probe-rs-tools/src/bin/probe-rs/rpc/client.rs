@@ -42,7 +42,7 @@ use crate::{
             },
             reset::ResetCoreRequest,
             resume::ResumeAllCoresRequest,
-            rtt_client::{CreateRttClientRequest, LogOptions},
+            rtt_client::{CreateRttClientRequest, RttClientData, ScanRegion},
             stack_trace::{StackTraces, TakeStackTraceRequest},
             test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
             AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint,
@@ -58,7 +58,7 @@ use crate::{
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
         Key,
     },
-    util::rtt::client::RttClient,
+    util::rtt::{client::RttClient, RttChannelConfig},
     FormatOptions,
 };
 
@@ -552,19 +552,14 @@ impl SessionInterface {
 
     pub async fn create_rtt_client(
         &self,
-        mut path: Option<PathBuf>,
-        log_options: LogOptions,
-    ) -> anyhow::Result<Key<RttClient>> {
-        // TODO: RTT shouldn't need the firmware, we can extract location and process output locally
-        if let Some(ref mut path) = path {
-            *path = self.client.upload_file(&*path).await?;
-        }
-
+        scan_regions: ScanRegion,
+        config: Vec<RttChannelConfig>,
+    ) -> anyhow::Result<RttClientData> {
         self.client
             .send_resp::<CreateRttClientEndpoint, _>(&CreateRttClientRequest {
                 sessid: self.sessid,
-                path: path.map(|path| path.display().to_string()),
-                log_options,
+                scan_regions,
+                config,
             })
             .await
     }
