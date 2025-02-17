@@ -1,18 +1,17 @@
 use std::time::Duration;
 
-use postcard_rpc::{
-    header::{VarHeader, VarSeq},
-    server::Sender,
-};
+use anyhow::Context;
+use postcard_rpc::{header::VarHeader, server::Sender};
 use postcard_schema::Schema;
 use probe_rs::{semihosting::SemihostingCommand, BreakpointCause, Core, HaltReason, Session};
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc;
 
 use crate::{
     rpc::{
         functions::{
             flash::BootInfo,
-            monitor::{MonitorEvent, RttStreamer, SemihostingOutput, SemihostingReader},
+            monitor::{MonitorEvent, SemihostingOutput, SemihostingReader},
             ListTestsEndpoint, MonitorTopic, RpcResult, RpcSpawnContext, RunTestEndpoint,
             WireTxImpl,
         },
@@ -116,15 +115,15 @@ pub struct ListTestsRequest {
 pub type ListTestsResponse = RpcResult<Tests>;
 
 pub async fn list_tests(
-    ctx: RpcSpawnContext,
+    mut ctx: RpcSpawnContext,
     header: VarHeader,
     request: ListTestsRequest,
     sender: Sender<WireTxImpl>,
 ) {
-    let resp =
-        tokio::task::spawn_blocking(move || list_tests_impl(ctx, request).map_err(Into::into))
-            .await
-            .unwrap();
+    let resp = ctx
+        .run_blocking::<MonitorTopic, _, _, _>(request, list_tests_impl)
+        .await
+        .map_err(Into::into);
 
     sender
         .reply::<ListTestsEndpoint>(header.seq_no, &resp)
@@ -132,28 +131,19 @@ pub async fn list_tests(
         .unwrap();
 }
 
-fn list_tests_impl(ctx: RpcSpawnContext, request: ListTestsRequest) -> anyhow::Result<Tests> {
+fn list_tests_impl(
+    ctx: RpcSpawnContext,
+    request: ListTestsRequest,
+    sender: mpsc::Sender<MonitorEvent>,
+) -> anyhow::Result<Tests> {
     let mut session = ctx.session_blocking(request.sessid);
-    let mut list_handler = ListEventHandler::new({
-        let ctx = ctx.clone();
-        move |event| {
-            ctx.publish_blocking::<MonitorTopic>(VarSeq::Seq2(0), event)
-                .unwrap();
-        }
-    });
-    let mut rtt_sink = RttStreamer::new(ctx.clone());
+    let mut list_handler = ListEventHandler::new(|event| sender.blocking_send(event).unwrap());
 
     let mut rtt_client = request
         .rtt_client
         .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
 
     let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
-
-    let mut run_loop = RunLoop {
-        core_id,
-        rtt_client: rtt_client.as_deref_mut(),
-        cancellation_token: ctx.cancellation_token(),
-    };
 
     match request.boot_info {
         BootInfo::FromRam {
@@ -167,15 +157,28 @@ fn list_tests_impl(ctx: RpcSpawnContext, request: ListTestsRequest) -> anyhow::R
             session
                 .core(core_id)?
                 .reset_and_halt(Duration::from_millis(100))?;
+            if let Some(rtt_client) = rtt_client.as_mut() {
+                rtt_client.clear_control_block(&mut session.core(core_id)?)?;
+            }
         }
     }
+
+    let mut run_loop = RunLoop {
+        core_id,
+        rtt_client: rtt_client.as_deref_mut(),
+        cancellation_token: ctx.cancellation_token(),
+    };
 
     let mut core = session.core(0)?;
     match run_loop.run_until(
         &mut core,
         true,
         true,
-        &mut rtt_sink,
+        |channel, bytes| {
+            sender
+                .blocking_send(MonitorEvent::RttOutput { channel, bytes })
+                .with_context(|| "Failed to send RTT output")
+        },
         Some(Duration::from_secs(5)),
         |halt_reason, core| list_handler.handle_halt(halt_reason, core),
     )? {
@@ -201,15 +204,15 @@ pub struct RunTestRequest {
 pub type RunTestResponse = RpcResult<TestResult>;
 
 pub async fn run_test(
-    ctx: RpcSpawnContext,
+    mut ctx: RpcSpawnContext,
     header: VarHeader,
     request: RunTestRequest,
     sender: Sender<WireTxImpl>,
 ) {
-    let resp: RunTestResponse =
-        tokio::task::spawn_blocking(move || run_test_impl(ctx, request).map_err(Into::into))
-            .await
-            .unwrap();
+    let resp = ctx
+        .run_blocking::<MonitorTopic, _, _, _>(request, run_test_impl)
+        .await
+        .map_err(Into::into);
 
     sender
         .reply::<RunTestEndpoint>(header.seq_no, &resp)
@@ -217,7 +220,11 @@ pub async fn run_test(
         .unwrap();
 }
 
-fn run_test_impl(ctx: RpcSpawnContext, request: RunTestRequest) -> anyhow::Result<TestResult> {
+fn run_test_impl(
+    ctx: RpcSpawnContext,
+    request: RunTestRequest,
+    sender: mpsc::Sender<MonitorEvent>,
+) -> anyhow::Result<TestResult> {
     tracing::info!("Running test {}", request.test.name);
 
     let timeout = request.test.timeout.map(|t| Duration::from_secs(t as u64));
@@ -233,15 +240,13 @@ fn run_test_impl(ctx: RpcSpawnContext, request: RunTestRequest) -> anyhow::Resul
     let mut core = session.core(core_id)?;
     core.reset_and_halt(Duration::from_millis(100))?;
 
+    if let Some(rtt_client) = rtt_client.as_mut() {
+        rtt_client.clear_control_block(&mut core)?;
+    }
+
     let expected_outcome = request.test.expected_outcome;
-    let mut run_handler = RunEventHandler::new(request.test, {
-        let ctx = ctx.clone();
-        move |event| {
-            ctx.publish_blocking::<MonitorTopic>(VarSeq::Seq2(0), event)
-                .unwrap();
-        }
-    });
-    let mut rtt_sink = RttStreamer::new(ctx.clone());
+    let mut run_handler =
+        RunEventHandler::new(request.test, |event| sender.blocking_send(event).unwrap());
 
     let mut run_loop = RunLoop {
         core_id,
@@ -253,7 +258,11 @@ fn run_test_impl(ctx: RpcSpawnContext, request: RunTestRequest) -> anyhow::Resul
         &mut core,
         true,
         true,
-        &mut rtt_sink,
+        |channel, bytes| {
+            sender
+                .blocking_send(MonitorEvent::RttOutput { channel, bytes })
+                .with_context(|| "Failed to send RTT output")
+        },
         Some(timeout),
         |halt_reason, core| run_handler.handle_halt(halt_reason, core),
     )? {

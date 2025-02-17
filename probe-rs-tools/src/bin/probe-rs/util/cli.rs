@@ -1,10 +1,12 @@
 //! CLI-specific building blocks.
 
-use std::{future::Future, path::Path, time::Instant};
+use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
 
+use anyhow::Context;
 use colored::Colorize;
 use libtest_mimic::{Failed, Trial};
-use tokio::runtime::Handle;
+use time::UtcOffset;
+use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -16,6 +18,7 @@ use crate::{
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
             },
+            rtt_client::ScanRegion,
             stack_trace::StackTrace,
             test::{Test, TestResult},
             CancelTopic,
@@ -26,7 +29,10 @@ use crate::{
         common_options::{BinaryDownloadOptions, ProbeOptions},
         flash::CliProgressBars,
         logging,
-        rtt::client::RttClient,
+        rtt::{
+            self, client::RttClient, DataFormat, DefmtProcessor, DefmtState, RttChannelConfig,
+            RttDataHandler, RttDecoder, RttSymbolError,
+        },
     },
     FormatOptions,
 };
@@ -111,13 +117,86 @@ pub async fn select_probe(
     }
 }
 
+pub async fn rtt_client(
+    session: &SessionInterface,
+    path: &Path,
+    mut scan_regions: ScanRegion,
+    log_format: Option<String>,
+    show_location: bool,
+    timestamp_offset: Option<UtcOffset>,
+) -> anyhow::Result<CliRttClient> {
+    let elf = tokio::fs::read(path)
+        .await
+        .with_context(|| format!("Failed to read firmware from {}", path.display()))?;
+
+    let mut load_defmt_data = false;
+    match rtt::get_rtt_symbol_from_bytes(&elf) {
+        // Do not scan the memory for the control block.
+        Ok(address) => {
+            scan_regions = ScanRegion::Exact(address);
+            load_defmt_data = true;
+        }
+        Err(RttSymbolError::RttSymbolNotFound) => {
+            load_defmt_data = true;
+        }
+        _ => {}
+    }
+
+    let defmt_data = if load_defmt_data {
+        DefmtState::try_from_bytes(&elf)?
+    } else {
+        None
+    };
+
+    // The CLI only supports a single RTT up channel, and no down channels.
+    let data_format;
+    let decoder = if let Some(defmt_data) = defmt_data.clone() {
+        data_format = DataFormat::Defmt;
+        RttDecoder::Defmt {
+            processor: DefmtProcessor::new(
+                defmt_data,
+                timestamp_offset.is_some(),
+                show_location,
+                log_format.as_deref(),
+            ),
+        }
+    } else {
+        data_format = DataFormat::String;
+        RttDecoder::String {
+            timestamp_offset,
+            last_line_done: false,
+        }
+    };
+
+    let rtt_client = session
+        .create_rtt_client(
+            scan_regions,
+            vec![RttChannelConfig {
+                channel_number: Some(0),
+                mode: if data_format == DataFormat::Defmt {
+                    Some(rtt::ChannelMode::BlockIfFull)
+                } else {
+                    None
+                },
+                ..Default::default()
+            }],
+        )
+        .await?;
+    let client_handle = rtt_client.handle;
+
+    Ok(CliRttClient {
+        handle: client_handle,
+        data_format: decoder,
+    })
+}
+
 pub async fn flash(
     session: &SessionInterface,
     path: &Path,
     chip_erase: bool,
     format: FormatOptions,
     download_options: BinaryDownloadOptions,
-    rtt_client: Option<Key<RttClient>>,
+    rtt_client: Option<&mut CliRttClient>,
 ) -> anyhow::Result<BootInfo> {
     // Start timer.
     let flash_timer = Instant::now();
@@ -169,7 +248,7 @@ pub async fn flash(
             .flash(
                 options,
                 loader.loader,
-                rtt_client,
+                rtt_client.as_ref().map(|c| c.handle),
                 &mut handle_progress_events,
             )
             .await?;
@@ -204,10 +283,13 @@ pub async fn monitor(
     session: &SessionInterface,
     mode: MonitorMode,
     path: &Path,
+    mut rtt_client: Option<CliRttClient>,
     options: MonitorOptions,
     print_stack_trace: bool,
 ) -> anyhow::Result<()> {
-    let monitor = session.monitor(mode, options, print_monitor_event);
+    let monitor = session.monitor(mode, options, |msg| {
+        print_monitor_event(&mut rtt_client.as_mut(), msg)
+    });
 
     let mut cancelled = false;
 
@@ -230,14 +312,17 @@ pub async fn test(
     libtest_args: libtest_mimic::Arguments,
     print_stack_trace: bool,
     path: &Path,
-    rtt_client: Option<Key<RttClient>>,
+    mut rtt_client: Option<CliRttClient>,
 ) -> anyhow::Result<()> {
     tracing::info!("libtest args {:?}", libtest_args);
     let token = CancellationToken::new();
 
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<MonitorEvent>();
+
+    let rtt_handle = rtt_client.as_ref().map(|rtt| rtt.handle);
     let test = async {
         let tests = session
-            .list_tests(boot_info, rtt_client, print_monitor_event)
+            .list_tests(boot_info, rtt_handle, |msg| sender.send(msg).unwrap())
             .await?;
 
         if token.is_cancelled() {
@@ -247,7 +332,7 @@ pub async fn test(
         let tests = tests
             .tests
             .into_iter()
-            .map(|test| create_trial(session, path, rtt_client, &token, test))
+            .map(|test| create_trial(session, path, rtt_handle, sender.clone(), &token, test))
             .collect::<Vec<_>>();
 
         tokio::task::spawn_blocking(move || {
@@ -260,7 +345,21 @@ pub async fn test(
         .await?
     };
 
-    let result = with_ctrl_c(test, async {
+    let log = async {
+        while let Some(event) = receiver.recv().await {
+            print_monitor_event(&mut rtt_client.as_mut(), event);
+        }
+        futures_util::future::pending().await
+    };
+
+    let test_and_log = async {
+        tokio::select! {
+            result = test => result,
+            _ = log => anyhow::bail!("Log task resolved unexpectedly"),
+        }
+    };
+
+    let result = with_ctrl_c(test_and_log, async {
         token.cancel();
         session.client().publish::<CancelTopic>(&()).await.unwrap();
     })
@@ -277,6 +376,7 @@ fn create_trial(
     session: &SessionInterface,
     path: &Path,
     rtt_client: Option<Key<RttClient>>,
+    sender: UnboundedSender<MonitorEvent>,
     token: &CancellationToken,
     test: Test,
 ) -> Trial {
@@ -287,35 +387,37 @@ fn create_trial(
     let session = session.clone();
     let token = token.clone();
 
-    Trial::test(name, move || {
-        if token.is_cancelled() {
-            eprintln!("Cancelled");
-            std::process::exit(0);
-        }
-
-        let handle = tokio::spawn(async move {
-            match session
-                .run_test(test, rtt_client, print_monitor_event)
-                .await
-            {
-                Ok(TestResult::Success) => Ok(()),
-                Ok(TestResult::Cancelled) => {
-                    eprintln!("Cancelled");
-                    std::process::exit(0);
-                }
-                Ok(TestResult::Failed(message)) => {
-                    display_stack_trace(&session, &path).await?;
-
-                    Err(Failed::from(message))
-                }
-                Err(e) => {
-                    eprintln!("Error: {:?}", e);
-                    std::process::exit(1);
-                }
+    Trial::test(name, {
+        move || {
+            if token.is_cancelled() {
+                eprintln!("Cancelled");
+                std::process::exit(0);
             }
-        });
 
-        Handle::current().block_on(handle).unwrap()
+            let handle = tokio::spawn(async move {
+                match session
+                    .run_test(test, rtt_client, |msg| sender.send(msg).unwrap())
+                    .await
+                {
+                    Ok(TestResult::Success) => Ok(()),
+                    Ok(TestResult::Cancelled) => {
+                        eprintln!("Cancelled");
+                        std::process::exit(0);
+                    }
+                    Ok(TestResult::Failed(message)) => {
+                        display_stack_trace(&session, &path).await?;
+
+                        Err(Failed::from(message))
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {:?}", e);
+                        std::process::exit(1);
+                    }
+                }
+            });
+
+            Handle::current().block_on(handle).unwrap()
+        }
     })
     .with_ignored_flag(ignored)
 }
@@ -331,18 +433,6 @@ async fn display_stack_trace(session: &SessionInterface, path: &Path) -> anyhow:
     }
 
     Ok(())
-}
-
-fn print_monitor_event(event: MonitorEvent) {
-    match event {
-        MonitorEvent::RttOutput(str) => print!("{}", str),
-        MonitorEvent::SemihostingOutput(SemihostingOutput::StdOut(str)) => {
-            print!("{}", str)
-        }
-        MonitorEvent::SemihostingOutput(SemihostingOutput::StdErr(str)) => {
-            eprint!("{}", str)
-        }
-    }
 }
 
 /// Runs a future until complation, running another future when Ctrl+C is received.
@@ -365,4 +455,44 @@ where
     };
 
     r
+}
+
+pub struct CliRttClient {
+    handle: Key<RttClient>,
+    data_format: RttDecoder,
+}
+
+impl CliRttClient {
+    pub fn handle(&self) -> Key<RttClient> {
+        self.handle
+    }
+}
+
+fn print_monitor_event(
+    rtt_client: &mut Option<impl DerefMut<Target = CliRttClient>>,
+    event: MonitorEvent,
+) {
+    match event {
+        MonitorEvent::RttOutput { channel, bytes } => {
+            if let Some(client) = rtt_client {
+                _ = client.data_format.process(channel, &bytes, &mut Printer);
+            }
+        }
+        MonitorEvent::SemihostingOutput(SemihostingOutput::StdOut(str)) => {
+            print!("{}", str)
+        }
+        MonitorEvent::SemihostingOutput(SemihostingOutput::StdErr(str)) => {
+            eprint!("{}", str)
+        }
+    }
+}
+
+struct Printer;
+impl RttDataHandler for Printer {
+    fn on_string_data(&mut self, channel: u32, data: String) -> Result<(), probe_rs::rtt::Error> {
+        if channel == 0 {
+            print!("{}", data);
+        }
+        Ok(())
+    }
 }

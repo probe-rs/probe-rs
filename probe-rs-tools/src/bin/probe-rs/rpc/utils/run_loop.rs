@@ -1,14 +1,12 @@
 use tokio_util::sync::CancellationToken;
 
-use std::fmt::Write;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
-use probe_rs::{rtt::Error as RttError, Core, Error, HaltReason, VectorCatchCondition};
+use probe_rs::{Core, Error, HaltReason, VectorCatchCondition};
 
 use crate::util::rtt::client::RttClient;
-use crate::util::rtt::ChannelDataCallbacks;
 
 pub struct RunLoop<'a> {
     pub core_id: usize,
@@ -40,7 +38,7 @@ impl RunLoop<'_> {
         core: &mut Core,
         catch_hardfault: bool,
         catch_reset: bool,
-        output_stream: &mut dyn Write,
+        rtt_callback: impl FnMut(u32, Vec<u8>) -> Result<()>,
         timeout: Option<Duration>,
         mut predicate: F,
     ) -> Result<ReturnReason<R>>
@@ -71,7 +69,7 @@ impl RunLoop<'_> {
         }
         let start = Instant::now();
 
-        let result = self.do_run_until(core, output_stream, timeout, start, &mut predicate);
+        let result = self.do_run_until(core, rtt_callback, timeout, start, &mut predicate);
 
         // Always clean up after RTT but don't overwrite the original result.
         if let Some(ref mut rtt_client) = self.rtt_client {
@@ -89,7 +87,7 @@ impl RunLoop<'_> {
     fn do_run_until<F, R>(
         &mut self,
         core: &mut Core,
-        output_stream: &mut dyn Write,
+        mut rtt_callback: impl FnMut(u32, Vec<u8>) -> Result<()>,
         timeout: Option<Duration>,
         start: Instant,
         predicate: &mut F,
@@ -123,11 +121,23 @@ impl RunLoop<'_> {
                 }
             }
 
-            let had_rtt_data = if let Some(ref mut rtt_client) = self.rtt_client {
-                poll_rtt(rtt_client, core, output_stream)?
-            } else {
-                false
-            };
+            let mut had_rtt_data = false;
+            if let Some(ref mut rtt_client) = self.rtt_client {
+                _ = rtt_client.try_attach(core);
+                for channel in 0..rtt_client.up_channels().len() {
+                    let bytes = rtt_client.poll_channel(core, channel as u32)?;
+                    if !bytes.is_empty() {
+                        had_rtt_data = true;
+                        let res = rtt_callback(channel as u32, bytes.to_vec());
+
+                        if self.cancellation_token.is_cancelled() {
+                            return Ok(ReturnReason::Cancelled);
+                        }
+
+                        res?;
+                    }
+                }
+            }
 
             if let Some(reason) = return_reason {
                 return reason;
@@ -155,38 +165,4 @@ impl RunLoop<'_> {
             }
         }
     }
-}
-
-/// Poll RTT and print the received buffer.
-fn poll_rtt<S: Write + ?Sized>(
-    rtt_client: &mut RttClient,
-    core: &mut Core<'_>,
-    out_stream: &mut S,
-) -> Result<bool, anyhow::Error> {
-    struct OutCollector<'a, O: Write + ?Sized> {
-        out_stream: &'a mut O,
-        had_data: bool,
-    }
-
-    impl<O: Write + ?Sized> ChannelDataCallbacks for OutCollector<'_, O> {
-        fn on_string_data(&mut self, _channel: usize, data: String) -> Result<(), RttError> {
-            if data.is_empty() {
-                return Ok(());
-            }
-            self.had_data = true;
-            self.out_stream
-                .write_str(&data)
-                .map_err(|err| anyhow!(err))?;
-            Ok(())
-        }
-    }
-
-    let mut out = OutCollector {
-        out_stream,
-        had_data: false,
-    };
-
-    rtt_client.poll(core, &mut out)?;
-
-    Ok(out.had_data)
 }

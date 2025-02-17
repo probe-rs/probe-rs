@@ -2,9 +2,8 @@ use std::path::{Path, PathBuf};
 
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
-use crate::rpc::functions::rtt_client::LogOptions;
 
-use crate::util::cli;
+use crate::util::cli::{self, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::FormatOptions;
 
@@ -12,6 +11,7 @@ use libtest_mimic::{Arguments, FormatSetting};
 use probe_rs::flashing::FileDownloadError;
 use std::fs::File;
 use std::io::Read;
+use time::UtcOffset;
 
 /// Options only used in normal run mode
 #[derive(Debug, clap::Parser, Clone)]
@@ -146,6 +146,8 @@ pub struct SharedOptions {
 
     /// The format string to use when printing defmt encoded log messages from the target.
     ///
+    /// You can also use one of two presets: oneline (default) and full.
+    ///
     /// See <https://defmt.ferrous-systems.com/custom-log-output>
     #[clap(long)]
     pub(crate) log_format: Option<String>,
@@ -156,22 +158,26 @@ pub struct SharedOptions {
 }
 
 impl Cmd {
-    pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
+    pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
         // Detect run mode based on ELF file
         let run_mode = detect_run_mode(&self)?;
 
         let session = cli::attach_probe(&client, self.shared_options.probe_options, true).await?;
 
-        let rtt_client = session
-            .create_rtt_client(
-                Some(self.shared_options.path.clone()),
-                LogOptions {
-                    no_location: self.shared_options.no_location,
-                    log_format: self.shared_options.log_format,
-                    rtt_scan_memory: self.shared_options.rtt_scan_memory,
-                },
-            )
-            .await?;
+        let mut rtt_client = rtt_client(
+            &session,
+            &self.shared_options.path,
+            match self.shared_options.rtt_scan_memory {
+                true => crate::rpc::functions::rtt_client::ScanRegion::TargetDefault,
+                false => crate::rpc::functions::rtt_client::ScanRegion::Ranges(vec![]),
+            },
+            self.shared_options.log_format,
+            !self.shared_options.no_location,
+            Some(utc_offset),
+        )
+        .await?;
+
+        let client_handle = rtt_client.handle();
 
         // Flash firmware
         let boot_info = cli::flash(
@@ -180,7 +186,7 @@ impl Cmd {
             self.shared_options.chip_erase,
             self.shared_options.format_options,
             self.shared_options.download_options,
-            Some(rtt_client),
+            Some(&mut rtt_client),
         )
         .await?;
 
@@ -215,10 +221,11 @@ impl Cmd {
                 &session,
                 MonitorMode::Run(boot_info),
                 &self.shared_options.path,
+                Some(rtt_client),
                 MonitorOptions {
                     catch_reset: self.run_options.catch_reset,
                     catch_hardfault: self.run_options.catch_hardfault,
-                    rtt_client: Some(rtt_client),
+                    rtt_client: Some(client_handle),
                 },
                 self.shared_options.always_print_stacktrace,
             )

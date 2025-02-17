@@ -145,34 +145,6 @@ pub struct RpcSpawnContext {
 }
 
 impl RpcSpawnContext {
-    pub async fn publish<T>(&self, seq_no: VarSeq, msg: &T::Message) -> anyhow::Result<()>
-    where
-        T: ?Sized,
-        T: Topic,
-        T::Message: Serialize + Schema,
-    {
-        anyhow::ensure!(!self.token.is_cancelled(), "RPC call cancelled");
-
-        self.sender
-            .publish::<T>(seq_no, msg)
-            .await
-            .map_err(|e| anyhow!("{:?}", e))
-    }
-
-    pub fn publish_blocking<T>(&self, seq_no: VarSeq, msg: T::Message) -> anyhow::Result<()>
-    where
-        T: Topic,
-        T::Message: Serialize + Schema + Send + Sync + Sized + 'static,
-    {
-        let handle = tokio::runtime::Handle::current();
-        let this = self.clone();
-        handle.block_on(async move {
-            tokio::spawn(async move { this.publish::<T>(seq_no, &msg).await })
-                .await
-                .unwrap()
-        })
-    }
-
     fn dry_run(&self, sessid: Key<Session>) -> bool {
         self.state.dry_run(sessid)
     }
@@ -190,6 +162,49 @@ impl RpcSpawnContext {
 
     pub fn cancellation_token(&self) -> CancellationToken {
         self.token.clone()
+    }
+
+    pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
+    where
+        T: Topic,
+        T::Message: Serialize + Schema + Sized + Send + 'static,
+        F: FnOnce(RpcSpawnContext, REQ, Sender<T::Message>) -> RESP,
+        F: Send + 'static,
+        REQ: Send + 'static,
+        RESP: Send + 'static,
+    {
+        let (channel_sender, mut channel_receiver) = tokio::sync::mpsc::channel::<T::Message>(256);
+
+        let sender = self.sender.clone();
+        let token = self.cancellation_token();
+        let sender = async move {
+            loop {
+                tokio::select! {
+                    biased;
+
+                    _ = token.cancelled() => break,
+                    Some(event) = channel_receiver.recv() => {
+                        sender
+                            .publish::<T>(VarSeq::Seq2(0), &event)
+                            .await
+                            .unwrap();
+                    }
+                }
+            }
+            std::mem::drop(channel_receiver);
+
+            futures_util::future::pending().await
+        };
+
+        let ctx = self.clone();
+        let blocking = tokio::task::spawn_blocking(move || task(ctx, request, channel_sender));
+
+        tokio::select! {
+            _ = sender => unreachable!(),
+            response = blocking => {
+                response.unwrap()
+            }
+        }
     }
 }
 
@@ -263,6 +278,20 @@ impl RpcContext {
 
     pub fn lister(&self) -> Lister {
         Lister::new()
+    }
+
+    pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
+    where
+        T: Topic,
+        T::Message: Serialize + Schema + Sized + Send + 'static,
+        F: FnOnce(RpcSpawnContext, REQ, Sender<T::Message>) -> RESP,
+        F: Send + 'static,
+        REQ: Send + 'static,
+        RESP: Send + 'static,
+    {
+        self.spawn_ctxt()
+            .run_blocking::<T, F, REQ, RESP>(request, task)
+            .await
     }
 }
 

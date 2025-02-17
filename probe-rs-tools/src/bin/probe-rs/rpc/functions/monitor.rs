@@ -1,4 +1,4 @@
-use std::{fmt::Write, num::NonZeroU32, time::Duration};
+use std::{num::NonZeroU32, time::Duration};
 
 use crate::{
     rpc::{
@@ -8,13 +8,12 @@ use crate::{
     },
     util::rtt::client::RttClient,
 };
-use postcard_rpc::{
-    header::{VarHeader, VarSeq},
-    server::Sender,
-};
+use anyhow::Context;
+use postcard_rpc::{header::VarHeader, server::Sender};
 use postcard_schema::Schema;
 use probe_rs::{semihosting::SemihostingCommand, BreakpointCause, Core, HaltReason, Session};
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc;
 
 #[derive(Serialize, Deserialize, Schema)]
 pub enum MonitorMode {
@@ -24,7 +23,7 @@ pub enum MonitorMode {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub enum MonitorEvent {
-    RttOutput(String), // Monitor supports a single channel only
+    RttOutput { channel: u32, bytes: Vec<u8> },
     SemihostingOutput(SemihostingOutput),
 }
 
@@ -47,14 +46,15 @@ pub struct MonitorRequest {
 }
 
 pub async fn monitor(
-    ctx: RpcSpawnContext,
+    mut ctx: RpcSpawnContext,
     header: VarHeader,
     request: MonitorRequest,
     sender: Sender<WireTxImpl>,
 ) {
-    let resp = tokio::task::spawn_blocking(move || monitor_impl(ctx, request).map_err(Into::into))
+    let resp = ctx
+        .run_blocking::<MonitorTopic, _, _, _>(request, monitor_impl)
         .await
-        .unwrap();
+        .map_err(Into::into);
 
     sender
         .reply::<MonitorEndpoint>(header.seq_no, &resp)
@@ -62,17 +62,15 @@ pub async fn monitor(
         .unwrap();
 }
 
-fn monitor_impl(ctx: RpcSpawnContext, request: MonitorRequest) -> anyhow::Result<()> {
+fn monitor_impl(
+    ctx: RpcSpawnContext,
+    request: MonitorRequest,
+    sender: mpsc::Sender<MonitorEvent>,
+) -> anyhow::Result<()> {
     let mut session = ctx.session_blocking(request.sessid);
 
-    let mut semihosting_sink = MonitorEventHandler::new({
-        let ctx = ctx.clone();
-        move |event| {
-            ctx.publish_blocking::<MonitorTopic>(VarSeq::Seq2(0), event)
-                .unwrap();
-        }
-    });
-    let mut rtt_sink = RttStreamer::new(ctx.clone());
+    let mut semihosting_sink =
+        MonitorEventHandler::new(|event| sender.blocking_send(event).unwrap());
 
     let mut rtt_client = request
         .options
@@ -117,33 +115,16 @@ fn monitor_impl(ctx: RpcSpawnContext, request: MonitorRequest) -> anyhow::Result
         &mut core,
         request.options.catch_hardfault,
         request.options.catch_reset,
-        &mut rtt_sink,
+        |channel, bytes| {
+            sender
+                .blocking_send(MonitorEvent::RttOutput { channel, bytes })
+                .with_context(|| "Failed to send RTT output")
+        },
         None,
         |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
     )?;
 
     Ok(())
-}
-
-pub struct RttStreamer {
-    ctx: RpcSpawnContext,
-}
-
-impl RttStreamer {
-    pub fn new(ctx: RpcSpawnContext) -> Self {
-        Self { ctx }
-    }
-}
-
-impl Write for RttStreamer {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        self.ctx
-            .publish_blocking::<MonitorTopic>(
-                VarSeq::Seq2(0),
-                MonitorEvent::RttOutput(s.to_string()),
-            )
-            .map_err(|_| std::fmt::Error)
-    }
 }
 
 struct MonitorEventHandler<F: FnMut(MonitorEvent)> {

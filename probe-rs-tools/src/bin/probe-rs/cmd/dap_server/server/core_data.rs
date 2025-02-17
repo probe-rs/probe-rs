@@ -1,21 +1,24 @@
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
-use crate::cmd::dap_server::{
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            core_status::DapStatus,
-            dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
-        },
-        protocol::ProtocolAdapter,
-    },
-    peripherals::svd_variables::SvdCache,
-    server::debug_rtt,
-    DebuggerError,
-};
 use crate::util::rtt::client::RttClient;
-use crate::util::rtt::{self, DataFormat};
+use crate::util::rtt::{self, DataFormat, DefmtProcessor, DefmtState};
+use crate::{
+    cmd::dap_server::{
+        debug_adapter::{
+            dap::{
+                adapter::DebugAdapter,
+                core_status::DapStatus,
+                dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+            },
+            protocol::ProtocolAdapter,
+        },
+        peripherals::svd_variables::SvdCache,
+        server::debug_rtt,
+        DebuggerError,
+    },
+    util::rtt::RttDecoder,
+};
 use anyhow::{anyhow, Result};
 use probe_rs::{rtt::ScanRegion, Core, CoreStatus, HaltReason};
 use probe_rs_debug::VerifiedBreakpoint;
@@ -179,24 +182,22 @@ impl<'p> CoreHandle<'p> {
         rtt_config: &rtt::RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
+        // Create the RTT client using the RTT control block address from the ELF file.
+        let elf = std::fs::read(program_binary)
+            .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
+
         let client = if let Some(client) = self.core_data.rtt_client.as_mut() {
             client
         } else {
-            // Create the RTT client using the RTT control block address from the ELF file.
-            let elf = std::fs::read(program_binary)
-                .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
-
-            let mut client = RttClient::new(
-                Some(&elf),
-                self.core.target(),
-                rtt_config.clone(),
+            let scan = match rtt::get_rtt_symbol_from_bytes(&elf) {
+                Ok(address) => ScanRegion::Exact(address),
                 // Do not scan the memory for the control block.
-                ScanRegion::Ranges(vec![]),
-            )?;
+                _ => ScanRegion::Ranges(vec![]),
+            };
 
-            client.timezone_offset = timestamp_offset;
-
-            self.core_data.rtt_client.insert(client)
+            self.core_data
+                .rtt_client
+                .insert(RttClient::new(rtt_config.clone(), scan))
         };
 
         if !client.try_attach(&mut self.core)? {
@@ -210,16 +211,59 @@ impl<'p> CoreHandle<'p> {
 
         let mut debugger_rtt_channels = vec![];
 
+        let defmt_data = DefmtState::try_from_bytes(&elf)?;
+
         for up_channel in client.up_channels() {
+            let number = up_channel.number();
+
+            let mut channel_config = rtt_config
+                .channel_config(number)
+                .cloned()
+                .unwrap_or_default();
+
+            if up_channel.channel_name() == "defmt" {
+                channel_config.data_format = DataFormat::Defmt;
+            }
+
+            // Where `channel_config` is unspecified, apply default from `default_channel_config`.
+            let show_timestamps = channel_config.show_timestamps;
+            let show_location = channel_config.show_location;
+            let log_format = channel_config.log_format.clone();
+
+            let channel_data_format = match channel_config.data_format {
+                DataFormat::String => RttDecoder::String {
+                    timestamp_offset: Some(timestamp_offset),
+                    last_line_done: false,
+                },
+                DataFormat::BinaryLE => RttDecoder::BinaryLE,
+                DataFormat::Defmt => {
+                    let Some(defmt_data) = defmt_data.clone() else {
+                        tracing::warn!("Defmt data not found in ELF file");
+                        continue;
+                    };
+
+                    RttDecoder::Defmt {
+                        processor: DefmtProcessor::new(
+                            defmt_data,
+                            show_timestamps,
+                            show_location,
+                            log_format.as_deref(),
+                        ),
+                    }
+                }
+            };
+
             debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
                 channel_number: up_channel.number(),
                 // This value will eventually be set to true by a VSCode client request "rttWindowOpened"
                 has_client_window: false,
+                channel_data_format,
             });
+
             debug_adapter.rtt_window(
                 up_channel.number(),
                 up_channel.channel_name(),
-                DataFormat::from(&up_channel.data_format),
+                channel_config.data_format,
             );
         }
 
