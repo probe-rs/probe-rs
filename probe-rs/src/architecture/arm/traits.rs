@@ -4,6 +4,7 @@ use crate::{
 };
 
 use super::{
+    communication_interface::DapProbe,
     dp::{DpAddress, DpRegisterAddress},
     ArmError,
 };
@@ -420,4 +421,7 @@ pub trait DapAccess {
     fn flush(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
+
+    /// Gain access to the Probe that implements this trait
+    fn probe(&self) -> &dyn DapProbe;
 }
