@@ -93,7 +93,13 @@ fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
         && selector
             .serial_number
             .as_ref()
-            .map(|s| read_serial_number(info).as_ref() == Some(s))
+            .map(|s| {
+                if let Some(serial) = read_serial_number(info) {
+                    serial.as_str() == s
+                } else {
+                    s.is_empty()
+                }
+            })
             .unwrap_or(true);
 
     res
