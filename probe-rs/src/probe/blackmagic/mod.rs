@@ -713,6 +713,7 @@ impl BlackMagicProbe {
     ) -> Result<(), RemoteError> {
         let s = command.to_string();
         tracing::debug!(" > {}", s);
+        // println!("{}", s);
         write!(writer, "{}", s).map_err(RemoteError::ProbeError)?;
         writer.flush().map_err(RemoteError::ProbeError)
     }
@@ -792,6 +793,7 @@ impl BlackMagicProbe {
             let Some(buffer) = buffer else {
                 let response = Self::recv_u64(reader)?;
                 tracing::trace!(" < K{:x}", response);
+                // println!("        K{:x}", response);
                 return Ok(RemoteResponse(response));
             };
             let mut output_count = 0;
@@ -830,10 +832,12 @@ impl BlackMagicProbe {
                 }
             }
             tracing::trace!(" < K{:x?}", &buffer[0..output_count as usize]);
+            // println!("        K{:x?}", &buffer[0..output_count as usize]);
             Ok(RemoteResponse(output_count))
         } else {
             let response = Self::recv_u64(reader)?;
             tracing::trace!(" < {}{:x}", char::from(response_code), response);
+            // println!("        {}{:x}", char::from(response_code), response);
             if response_code == b'E' {
                 Err(RemoteError::Error(response))
             } else if response_code == b'P' {
@@ -1042,7 +1046,7 @@ impl DebugProbe for BlackMagicProbe {
     }
 
     fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        match self.active_protocol() {
+        match DebugProbe::active_protocol(self) {
             Some(WireProtocol::Jtag) => {
                 if let Some(ref chain) = self.jtag_state.expected_scan_chain {
                     Ok(chain.as_slice())

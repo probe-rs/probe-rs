@@ -10,13 +10,11 @@ use std::{
 use crate::{
     architecture::arm::{
         ap::{AccessPortError, AccessPortType, ApRegister, GenericAp, IDR},
-        communication_interface::Initialized,
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, DpAddress, DpRegister, SelectV1, DPIDR},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
-        Pins,
+        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, Pins,
     },
     core::MemoryMappedRegister,
 };
@@ -30,7 +28,7 @@ pub mod ol23d0;
 /// Note that this routine only supports SWD protocols. See the inline TODOs to
 /// understand where JTAG support should go.
 fn debug_port_start(
-    interface: &mut ArmCommunicationInterface<Initialized>,
+    interface: &mut dyn DapAccess,
     dp: DpAddress,
     select: SelectV1,
 ) -> Result<bool, ArmError> {
@@ -100,7 +98,7 @@ impl LPC55Sxx {
 impl ArmDebugSequence for LPC55Sxx {
     fn debug_port_start(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut dyn DapAccess,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         tracing::info!("debug_port_start");
@@ -584,7 +582,7 @@ impl MIMXRT5xxS {
 impl ArmDebugSequence for MIMXRT5xxS {
     fn debug_port_start(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut dyn DapAccess,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         let mut abort = Abort::default();

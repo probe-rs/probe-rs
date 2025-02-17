@@ -23,7 +23,7 @@ use crate::{
 use super::{
     ap::AccessPortError,
     armv6m::Demcr,
-    communication_interface::{DapProbe, Initialized},
+    communication_interface::DapProbe,
     component::{TraceFunnel, TraceSink},
     core::cortex_m::{Dhcsr, Vtor},
     dp::{Abort, DpAccess, DpAddress, SelectV1, DPIDR},
@@ -31,7 +31,7 @@ use super::{
         romtable::{CoresightComponent, PeripheralType},
         ArmMemoryInterface,
     },
-    ArmCommunicationInterface, ArmError, FullyQualifiedApAddress, Pins,
+    ArmError, DapAccess, FullyQualifiedApAddress, Pins,
 };
 
 /// An error occurred when executing an ARM debug sequence
@@ -600,7 +600,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     #[doc(alias = "DebugPortStart")]
     fn debug_port_start(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut dyn DapAccess,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         // Clear all errors.

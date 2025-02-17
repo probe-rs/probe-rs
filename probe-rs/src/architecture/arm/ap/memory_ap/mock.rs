@@ -3,7 +3,7 @@ use crate::architecture::arm::{
         memory_ap::amba_ahb3::CSW, AddressIncrement, ApClass, ApRegister, ApType, DataSize, CFG,
         DRW, IDR, TAR,
     },
-    communication_interface::FlushableArmAccess,
+    communication_interface::{DapProbe, FlushableArmAccess},
     dp::{DpAddress, DpRegisterAddress},
     ArmError, DapAccess,
 };
@@ -211,5 +211,9 @@ impl DapAccess for MockMemoryAp {
             }
             _ => panic!("MockMemoryAp: unknown register"),
         }
+    }
+
+    fn probe(&self) -> &dyn DapProbe {
+        unimplemented!()
     }
 }

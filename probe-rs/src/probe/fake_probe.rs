@@ -4,7 +4,7 @@ use crate::{
         ap::memory_ap::mock::MockMemoryAp,
         armv8m::Dhcsr,
         communication_interface::{
-            ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
+            ArmDebugState, DapProbe, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
         dp::{DpAddress, DpRegisterAddress},
         memory::{ADIMemoryInterface, ArmMemoryInterface},
@@ -767,6 +767,10 @@ impl DapAccess for FakeArmInterface<Initialized> {
         _values: &[u32],
     ) -> Result<(), ArmError> {
         todo!()
+    }
+
+    fn probe(&self) -> &dyn DapProbe {
+        unimplemented!()
     }
 }
 

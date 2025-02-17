@@ -137,7 +137,7 @@ pub trait DpAccess {
     ) -> Result<(), ArmError>;
 }
 
-impl<T: DapAccess> DpAccess for T {
+impl<T: ?Sized + DapAccess> DpAccess for T {
     #[tracing::instrument(skip(self))]
     fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, ArmError> {
         tracing::debug!("Reading DP register {}", R::NAME);
