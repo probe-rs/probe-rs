@@ -3,6 +3,7 @@ use crate::{Core, MemoryInterface};
 use probe_rs_target::RegionMergeIterator;
 use std::cmp::min;
 use std::ffi::CStr;
+use std::num::NonZeroU64;
 use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 /// Trait for channel information shared between up and down channels.
@@ -82,10 +83,10 @@ impl RttChannelBuffer {
         }
     }
 
-    pub fn standard_name_pointer(&self) -> u64 {
+    pub fn standard_name_pointer(&self) -> Option<NonZeroU64> {
         match self {
-            RttChannelBuffer::Buffer32(x) => u64::from(x.standard_name_pointer),
-            RttChannelBuffer::Buffer64(x) => x.standard_name_pointer,
+            RttChannelBuffer::Buffer32(x) => NonZeroU64::new(u64::from(x.standard_name_pointer)),
+            RttChannelBuffer::Buffer64(x) => NonZeroU64::new(x.standard_name_pointer),
         }
     }
 
@@ -226,7 +227,11 @@ impl Channel {
         // This should at least catch most cases where the control block is partially initialized.
         this.read_pointers(core, "")?;
         // Read channel name just after the pointer was validated to be within an expected range.
-        this.name = read_c_string(core, this.info.standard_name_pointer())?;
+        this.name = if let Some(ptr) = this.info.standard_name_pointer() {
+            read_c_string(core, ptr)?
+        } else {
+            None
+        };
         this.mode(core)?;
 
         Ok(Some(this))
@@ -535,13 +540,8 @@ impl RttChannel for DownChannel {
 }
 
 /// Reads a null-terminated string from target memory. Lossy UTF-8 decoding is used.
-fn read_c_string(core: &mut Core, ptr: u64) -> Result<Option<String>, Error> {
-    // Find out which memory range contains the pointer
-    if ptr == 0 {
-        // If the pointer is null, return None.
-        return Ok(None);
-    }
-
+fn read_c_string(core: &mut Core, ptr: NonZeroU64) -> Result<Option<String>, Error> {
+    let ptr = ptr.get();
     let Some(range) = core
         .memory_regions()
         .filter(|r| r.is_ram() || r.is_nvm())
