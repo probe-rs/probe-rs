@@ -76,7 +76,7 @@ impl Cmd {
                 dry_run: self.common.dry_run,
             };
 
-            client
+            let result = client
                 .info(req, |message| {
                     let is_success =
                         matches!(message, InfoEvent::Idcode { .. } | InfoEvent::ArmDp(_));
@@ -92,7 +92,11 @@ impl Cmd {
                         errors.push(message);
                     }
                 })
-                .await?;
+                .await;
+
+            if let Err(error) = result {
+                println!("Error while probing target: {}", error);
+            }
 
             if successes.is_empty() {
                 for message in errors {
