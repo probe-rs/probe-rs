@@ -60,6 +60,7 @@ impl std::fmt::Display for StLinkFactory {
 
 impl ProbeFactory for StLinkFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        tracing::debug!("Opening ST-Link: {selector:?}");
         let device = StLinkUsbDevice::new_from_selector(selector)?;
         let mut stlink = StLink {
             name: format!("ST-Link {}", &device.info.version_name),
