@@ -282,9 +282,8 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
             DebugPortVersion::DPv0 | DebugPortVersion::DPv1 | DebugPortVersion::DPv2 => {
                 Ok(ap::v1::valid_access_ports(self, dp).into_iter().collect())
             }
-            // DebugPortVersion::DPv3 => ap::v2::enumerate_access_ports(self, dp),
+            DebugPortVersion::DPv3 => ap::v2::enumerate_access_ports(self, dp),
             DebugPortVersion::Unsupported(_) => unreachable!(),
-            _ => panic!(),
         }
     }
 
