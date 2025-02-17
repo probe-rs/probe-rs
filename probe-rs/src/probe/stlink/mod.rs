@@ -11,7 +11,9 @@ use crate::{
             v1::valid_access_ports,
             AccessPortType,
         },
-        communication_interface::{ArmProbeInterface, SwdSequence, UninitializedArmProbe},
+        communication_interface::{
+            ArmProbeInterface, DapProbe, SwdSequence, UninitializedArmProbe,
+        },
         dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
@@ -1443,6 +1445,10 @@ impl DapAccess for StlinkArmDebug {
             .write_register(ap.ap_v1()? as u16, (address & 0xFF) as u8, value)?;
 
         Ok(())
+    }
+
+    fn probe(&self) -> &dyn DapProbe {
+        unimplemented!()
     }
 }
 

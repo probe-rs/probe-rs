@@ -1042,7 +1042,7 @@ impl DebugProbe for BlackMagicProbe {
     }
 
     fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        match self.active_protocol() {
+        match DebugProbe::active_protocol(self) {
             Some(WireProtocol::Jtag) => {
                 if let Some(ref chain) = self.jtag_state.expected_scan_chain {
                     Ok(chain.as_slice())
