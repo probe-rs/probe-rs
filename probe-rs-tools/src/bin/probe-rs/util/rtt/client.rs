@@ -50,8 +50,12 @@ impl RttClient {
         } else {
             let location = match Rtt::find_contol_block(core, &self.scan_region) {
                 Ok(location) => location,
-                Err(Error::ControlBlockNotFound) => return Ok(false),
+                Err(Error::ControlBlockNotFound) => {
+                    tracing::debug!("Failed to attach - control block not found");
+                    return Ok(false);
+                }
                 Err(Error::NoControlBlockLocation) => {
+                    tracing::debug!("Failed to attach - control block location not specified");
                     self.try_attaching = false;
                     return Ok(false);
                 }
@@ -66,15 +70,21 @@ impl RttClient {
             Ok(rtt) => rtt,
             Err(Error::ControlBlockNotFound) => {
                 self.last_control_block_address = None;
+                tracing::debug!("Failed to attach - control block not found");
                 return Ok(false);
             }
-            Err(Error::ControlBlockCorrupted(_)) => return Ok(false),
+            Err(Error::ControlBlockCorrupted(error)) => {
+                tracing::debug!("Failed to attach - control block corrupted: {}", error);
+                return Ok(false);
+            }
             Err(error) => return Err(error),
         };
 
         match RttConnection::new(core, rtt, &self.config) {
             Ok(rtt) => self.target = Some(rtt),
-            Err(Error::ControlBlockCorrupted(_)) => {}
+            Err(Error::ControlBlockCorrupted(error)) => {
+                tracing::debug!("Failed to attach - control block corrupted: {}", error);
+            }
             Err(error) => return Err(error),
         };
 
