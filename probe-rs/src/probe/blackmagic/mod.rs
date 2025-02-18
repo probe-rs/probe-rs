@@ -1395,7 +1395,11 @@ fn black_magic_debug_port_info(
 ) -> Option<DebugProbeInfo> {
     // Only accept /dev/cu.* values on macos, to avoid having two
     // copies of the port (both /dev/tty.* and /dev/cu.*)
-    if cfg!(target_os = "macos") && !port_name.contains("/cu.") {
+    if cfg!(target_os = "macos") && !port_name.contains("/tty.") {
+        tracing::trace!(
+            "{}: port name doesn't contain `/tty.` -- skipping",
+            port_name
+        );
         return None;
     }
 
@@ -1408,22 +1412,53 @@ fn black_magic_debug_port_info(
             info.product
                 .unwrap_or_else(|| "Black Magic Probe".to_string()),
         ),
-        _ => return None,
+        _ => {
+            tracing::trace!(
+                "{}: serial port {:?} is not USB -- skipping",
+                port_name,
+                port_type,
+            );
+            return None;
+        }
     };
 
     if vendor_id != BLACK_MAGIC_PROBE_VID {
+        tracing::trace!(
+            "{}: vid is {:04x}, not {:04x} -- skipping",
+            port_name,
+            vendor_id,
+            BLACK_MAGIC_PROBE_VID
+        );
         return None;
     }
     if product_id != BLACK_MAGIC_PROBE_PID {
+        tracing::trace!(
+            "{}: pid is {:04x}, not {:04x} -- skipping",
+            port_name,
+            product_id,
+            BLACK_MAGIC_PROBE_PID
+        );
         return None;
     }
 
     // Mac specifies the interface as the CDC Data interface, whereas Linux and
     // Windows use the CDC Communications interface. Accept either one here.
     if hid_interface != Some(0) && hid_interface != Some(1) {
+        tracing::trace!(
+            "{}: hid_interface is {:?}, not Some(0) or Some(1) -- skipping",
+            port_name,
+            hid_interface
+        );
         return None;
     }
 
+    tracing::debug!(
+        "{}: returning port {}:{}:{:?}",
+        port_name,
+        vendor_id,
+        product_id,
+        serial_number
+    );
     Some(DebugProbeInfo {
         identifier,
         vendor_id,
@@ -1510,9 +1545,14 @@ impl ProbeFactory for BlackMagicProbeFactory {
 
     fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
         let mut probes = vec![];
-        let Ok(ports) = available_ports() else {
-            return probes;
+        let ports = match available_ports() {
+            Ok(ports) => ports,
+            Err(e) => {
+                tracing::trace!("Unable to enumerate serial ports: {}", e);
+                return probes;
+            }
         };
+
         for port in ports {
             let Some(info) = black_magic_debug_port_info(port.port_type, &port.port_name) else {
                 continue;
