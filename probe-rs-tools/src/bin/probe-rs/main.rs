@@ -14,6 +14,7 @@ use anyhow::{Context, Result};
 use clap::{CommandFactory, FromArgMatches};
 use colored::Colorize;
 use figment::providers::{Data, Format as _, Json, Toml, Yaml};
+use figment::value::Value;
 use figment::Figment;
 use itertools::Itertools;
 use postcard_schema::Schema;
@@ -38,7 +39,7 @@ struct ServerUser {
     pub token: String,
 }
 
-type ConfigPreset = Vec<String>;
+type ConfigPreset = HashMap<String, Value>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -447,23 +448,33 @@ async fn main() -> Result<()> {
     let mut args_modified = false;
     if let Some(preset) = matches.get_one::<String>("preset") {
         if let Some(preset) = config.presets.get(preset) {
-            for arg in preset {
-                let (key, value) = if arg.starts_with("--") {
-                    if let Some((key, value)) = arg.split_once([' ', '=']) {
-                        (key.trim(), Some(value.trim()))
-                    } else {
-                        (arg.as_str(), None)
-                    }
-                } else {
-                    (arg.as_str(), None)
-                };
-
-                let flag = key.into();
+            for (arg, value) in preset {
+                let flag = format!("--{}", arg).into();
                 if !args.contains(&flag) {
-                    args_modified = true;
-                    args.push(flag);
-                    if let Some(value) = value {
-                        args.push(value.into());
+                    if let Value::Bool(_, bool_value) = value {
+                        if *bool_value {
+                            args_modified = true;
+                            args.push(flag);
+                        }
+                    } else {
+                        args_modified = true;
+                        args.push(flag);
+
+                        match value {
+                            Value::String(_, value) => args.push(value.into()),
+                            Value::Num(_, num) => {
+                                if let Some(uint) = num.to_u128() {
+                                    args.push(format!("{}", uint).into())
+                                } else if let Some(int) = num.to_i128() {
+                                    args.push(format!("{}", int).into())
+                                } else if let Some(float) = num.to_f64() {
+                                    args.push(format!("{}", float).into())
+                                } else {
+                                    unreachable!()
+                                }
+                            }
+                            _ => panic!("Unsupported value: {:?}", value),
+                        }
                     }
                 }
             }
