@@ -11,7 +11,7 @@ use std::str::FromStr;
 use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::{Context, Result};
-use clap::{CommandFactory, FromArgMatches};
+use clap::{ArgMatches, CommandFactory, FromArgMatches};
 use colored::Colorize;
 use figment::providers::{Data, Format as _, Json, Toml, Yaml};
 use figment::value::Value;
@@ -445,46 +445,7 @@ async fn main() -> Result<()> {
     let mut matches = Cli::command().get_matches_from(&args);
 
     // Apply the configuration preset if one is specified.
-    let mut args_modified = false;
-    if let Some(preset) = matches.get_one::<String>("preset") {
-        if let Some(preset) = config.presets.get(preset) {
-            for (arg, value) in preset {
-                let flag = format!("--{}", arg).into();
-                if !args.contains(&flag) {
-                    if let Value::Bool(_, bool_value) = value {
-                        if *bool_value {
-                            args_modified = true;
-                            args.push(flag);
-                        }
-                    } else {
-                        args_modified = true;
-                        args.push(flag);
-
-                        match value {
-                            Value::String(_, value) => args.push(value.into()),
-                            Value::Num(_, num) => {
-                                if let Some(uint) = num.to_u128() {
-                                    args.push(format!("{}", uint).into())
-                                } else if let Some(int) = num.to_i128() {
-                                    args.push(format!("{}", int).into())
-                                } else if let Some(float) = num.to_f64() {
-                                    args.push(format!("{}", float).into())
-                                } else {
-                                    unreachable!()
-                                }
-                            }
-                            _ => panic!("Unsupported value: {:?}", value),
-                        }
-                    }
-                }
-            }
-        } else {
-            eprintln!("Config preset '{preset}' not found.");
-            std::process::exit(1);
-        }
-    }
-
-    if args_modified {
+    if apply_config_preset(&config, &matches, &mut args)? {
         // Re-parse the modified CLI input. Ignore errors so that users can specify
         // options that are only valid for certain subcommands.
         matches = Cli::command().ignore_errors(true).get_matches_from(args);
@@ -551,6 +512,57 @@ async fn main() -> Result<()> {
     _ = handle.await.unwrap();
 
     compile_report(result, report_path, elf, log_path)
+}
+
+fn apply_config_preset(
+    config: &Config,
+    matches: &ArgMatches,
+    args: &mut Vec<OsString>,
+) -> anyhow::Result<bool> {
+    let Some(preset) = matches.get_one::<String>("preset") else {
+        // No --preset in the CLI arguments or environment variables.
+        return Ok(false);
+    };
+
+    let Some(preset) = config.presets.get(preset) else {
+        anyhow::bail!("Config preset '{preset}' not found.");
+    };
+
+    let mut args_modified = false;
+    for (arg, value) in preset {
+        let flag = format!("--{}", arg).into();
+        if args.contains(&flag) {
+            continue;
+        }
+
+        if let Value::Bool(_, false) = value {
+            continue;
+        }
+
+        // Append --flag. For booleans, this is all we do. For strings and
+        // numbers, we'll append a value as well.
+        args_modified = true;
+        args.push(flag);
+
+        match value {
+            Value::String(_, value) => args.push(value.into()),
+            Value::Num(_, num) => {
+                if let Some(uint) = num.to_u128() {
+                    args.push(format!("{}", uint).into())
+                } else if let Some(int) = num.to_i128() {
+                    args.push(format!("{}", int).into())
+                } else if let Some(float) = num.to_f64() {
+                    args.push(format!("{}", float).into())
+                } else {
+                    unreachable!()
+                }
+            }
+            Value::Bool(_, _) => {}
+            _ => anyhow::bail!("Unsupported value: {:?}", value),
+        }
+    }
+
+    Ok(args_modified)
 }
 
 fn reject_format_arg(args: &[OsString]) -> anyhow::Result<()> {
