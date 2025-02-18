@@ -68,7 +68,11 @@ impl RttDecoder {
         buffer: &[u8],
         collector: &mut impl RttDataHandler,
     ) -> Result<(), Error> {
-        // FIXME: clean this up by splitting the enum variants out into separate structs
+        // Prevent the format processors generating empty strings.
+        if buffer.is_empty() {
+            return Ok(());
+        }
+
         match self {
             RttDecoder::BinaryLE => collector.on_binary_data(number, buffer),
             RttDecoder::String {
