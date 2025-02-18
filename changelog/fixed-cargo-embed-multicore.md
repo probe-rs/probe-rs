@@ -1,0 +1,1 @@
+Fixed cargo-embed panicking when a core is disabled.

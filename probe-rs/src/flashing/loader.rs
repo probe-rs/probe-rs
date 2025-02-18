@@ -412,10 +412,16 @@ impl FlashLoader {
 
             // Get a unique list of core architectures
             for (core, _) in session.list_cores() {
-                if let Ok(set) = session.core(core).unwrap().instruction_set() {
-                    if !target_archs.contains(&set) {
-                        target_archs.push(set);
+                match session.core(core) {
+                    Ok(mut core) => {
+                        if let Ok(set) = core.instruction_set() {
+                            if !target_archs.contains(&set) {
+                                target_archs.push(set);
+                            }
+                        }
                     }
+                    Err(crate::Error::CoreDisabled(_)) => continue,
+                    Err(error) => return Err(FileDownloadError::Other(error)),
                 }
             }
 

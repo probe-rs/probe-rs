@@ -157,6 +157,9 @@ pub enum FileDownloadError {
         /// The image's instruction set.
         image: InstructionSet,
     },
+
+    /// An error occurred during download.
+    Other(#[source] crate::Error),
 }
 
 fn print_instr_sets(instr_sets: &[InstructionSet]) -> String {
