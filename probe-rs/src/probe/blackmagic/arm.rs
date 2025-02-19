@@ -76,15 +76,6 @@ impl UninitializedArmProbe for UninitializedBlackMagicArmProbe {
             return Err((self, err.into()));
         }
 
-        if let Err(e) = sequence.debug_port_connect(&mut *self.probe, dp) {
-            tracing::warn!("failed to switch to DP {:x?}: {}", dp, e);
-
-            // Try the more involved debug_port_setup sequence, which also handles dormant mode.
-            if let Err(e) = sequence.debug_port_setup(&mut *self.probe, dp) {
-                return Err((self, ProbeRsError::Arm(e)));
-            }
-        }
-
         let interface = BlackMagicProbeArmDebug::new(self.probe, dp, sequence)
             .map_err(|(s, e)| (s as Box<_>, ProbeRsError::from(e)))?;
 
@@ -121,7 +112,7 @@ impl BlackMagicProbeArmDebug {
             probe,
             access_ports: BTreeSet::new(),
             sequence,
-            current_dp: DpAddress::Default,
+            current_dp: dp,
             dps: HashMap::new(),
             use_overrun_detect: true,
         };
@@ -258,7 +249,7 @@ impl BlackMagicProbeArmDebug {
         Ok(())
     }
 
-    fn select_ap(&mut self, ap: &FullyQualifiedApAddress) -> Result<(u8, u8), ArmError> {
+    fn select_ap(&mut self, ap: &FullyQualifiedApAddress) -> Result<u8, ArmError> {
         let apsel = match ap.ap() {
             crate::architecture::arm::ApAddress::V1(val) => *val,
             crate::architecture::arm::ApAddress::V2(_) => {
@@ -268,7 +259,7 @@ impl BlackMagicProbeArmDebug {
             }
         };
         self.select_dp(ap.dp())?;
-        Ok((0, apsel))
+        Ok(apsel)
     }
 }
 
@@ -575,9 +566,9 @@ impl DapAccess for BlackMagicProbeArmDebug {
                 "BlackMagicProbe does not yet support APv2",
             ));
         }
+        let index = ((addr >> 8) & 0xFF) as u8;
         let addr = (addr & 0xFF) as u8;
-
-        let (index, apsel) = self.select_ap(ap)?;
+        let apsel = self.select_ap(ap)?;
 
         let command = match self.probe.remote_protocol {
             ProtocolVersion::V0 => {
@@ -619,9 +610,10 @@ impl DapAccess for BlackMagicProbeArmDebug {
                 "BlackMagicProbe does not yet support APv2",
             ));
         }
+        let index = ((addr >> 8) & 0xFF) as u8;
         let addr = (addr & 0xFF) as u8;
 
-        let (index, apsel) = self.select_ap(ap)?;
+        let apsel = self.select_ap(ap)?;
         let command = match self.probe.remote_protocol {
             ProtocolVersion::V0 => {
                 return Err(ArmError::Probe(

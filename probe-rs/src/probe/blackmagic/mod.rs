@@ -89,7 +89,7 @@ enum RemoteCommand<'a> {
     TargetClockOutput {
         enable: bool,
     },
-    SetSpeedKhz(u32),
+    SetSpeedHz(u32),
     SpeedKhz,
     TargetReset(bool),
     RawAccessV0P {
@@ -285,7 +285,7 @@ impl std::string::ToString for RemoteCommand<'_> {
             RemoteCommand::Handshake(_) => "+#!GA#".to_string(),
             RemoteCommand::GetVoltage => " !GV#".to_string(),
             RemoteCommand::GetSpeedKhz => "!Gf#".to_string(),
-            RemoteCommand::SetSpeedKhz(speed) => {
+            RemoteCommand::SetSpeedHz(speed) => {
                 format!("!GF{:08x}#", speed)
             }
             RemoteCommand::HighLevelCheck => "!HC#".to_string(),
@@ -690,7 +690,7 @@ impl BlackMagicProbe {
         probe.command(RemoteCommand::SetPower(false)).ok();
         probe.command(RemoteCommand::SetNrst(false)).ok();
         probe.command(RemoteCommand::GetVoltage).ok();
-        probe.command(RemoteCommand::SetSpeedKhz(400_0000)).ok();
+        probe.command(RemoteCommand::SetSpeedHz(400_0000)).ok();
         probe.command(RemoteCommand::GetSpeedKhz).ok();
 
         Ok(probe)
@@ -1030,7 +1030,7 @@ impl DebugProbe for BlackMagicProbe {
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-        Self::send(&mut self.writer, &RemoteCommand::SetSpeedKhz(speed_khz))?;
+        self.command(RemoteCommand::SetSpeedHz(speed_khz * 1000))?;
         self.speed_khz = self.get_speed()?;
         Ok(self.speed_khz)
     }
