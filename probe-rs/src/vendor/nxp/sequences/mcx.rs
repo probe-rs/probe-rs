@@ -259,7 +259,7 @@ impl ArmDebugSequence for MCX {
             }
         }
 
-        if let Some(protocol) = interface.probe().active_protocol() {
+        if let Some(protocol) = interface.try_dap_probe().and_then(|f| f.active_protocol()) {
             match protocol {
                 WireProtocol::Jtag => {
                     // Init AP Transfer Mode, Transaction Counter, and

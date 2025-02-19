@@ -672,8 +672,8 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.probe_mut().raw_flush()
     }
 
-    fn probe(&self) -> &dyn DapProbe {
-        self.probe.as_deref().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.")
+    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
+        self.probe.as_deref()
     }
 }
 

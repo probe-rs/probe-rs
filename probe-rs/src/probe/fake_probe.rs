@@ -769,8 +769,8 @@ impl DapAccess for FakeArmInterface<Initialized> {
         todo!()
     }
 
-    fn probe(&self) -> &dyn DapProbe {
-        unimplemented!()
+    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
+        None
     }
 }
 
