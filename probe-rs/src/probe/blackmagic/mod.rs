@@ -1450,7 +1450,7 @@ fn black_magic_debug_port_info(
             "{}: interface number is `None` -- applying interface number workaround",
             port_name
         );
-        interface = port_name.as_bytes().last().copied();
+        interface = port_name.as_bytes().last().map(|v| *v - b'0');
     }
 
     // Mac specifies the interface as the CDC Data interface, whereas Linux and
