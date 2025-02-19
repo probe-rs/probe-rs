@@ -1395,15 +1395,15 @@ fn black_magic_debug_port_info(
 ) -> Option<DebugProbeInfo> {
     // Only accept /dev/cu.* values on macos, to avoid having two
     // copies of the port (both /dev/tty.* and /dev/cu.*)
-    if cfg!(target_os = "macos") && !port_name.contains("/tty.") {
+    if cfg!(target_os = "macos") && !port_name.contains("/cu.") {
         tracing::trace!(
-            "{}: port name doesn't contain `/tty.` -- skipping",
+            "{}: port name doesn't contain `/cu.` -- skipping",
             port_name
         );
         return None;
     }
 
-    let (vendor_id, product_id, serial_number, hid_interface, identifier) = match port_type {
+    let (vendor_id, product_id, serial_number, mut interface, identifier) = match port_type {
         SerialPortType::UsbPort(info) => (
             info.vid,
             info.pid,
@@ -1431,6 +1431,7 @@ fn black_magic_debug_port_info(
         );
         return None;
     }
+
     if product_id != BLACK_MAGIC_PROBE_PID {
         tracing::trace!(
             "{}: pid is {:04x}, not {:04x} -- skipping",
@@ -1441,13 +1442,24 @@ fn black_magic_debug_port_info(
         return None;
     }
 
+    // The `interface` property has been observed on Mac to occasionally be `None`.
+    // This shouldn't happen on any known devices. If this happens, derive the
+    // interface number from the last character of the filename.
+    if cfg!(target_os = "macos") && interface.is_none() {
+        tracing::warn!(
+            "{}: interface number is `None` -- applying interface number workaround",
+            port_name
+        );
+        interface = port_name.as_bytes().last().copied();
+    }
+
     // Mac specifies the interface as the CDC Data interface, whereas Linux and
     // Windows use the CDC Communications interface. Accept either one here.
-    if hid_interface != Some(0) && hid_interface != Some(1) {
+    if interface != Some(0) && interface != Some(1) {
         tracing::trace!(
-            "{}: hid_interface is {:?}, not Some(0) or Some(1) -- skipping",
+            "{}: interface is {:?}, not Some(0) or Some(1) -- skipping",
             port_name,
-            hid_interface
+            interface
         );
         return None;
     }
@@ -1465,7 +1477,7 @@ fn black_magic_debug_port_info(
         product_id,
         serial_number,
         probe_factory: &BlackMagicProbeFactory,
-        hid_interface,
+        hid_interface: interface,
     })
 }
 
