@@ -193,18 +193,18 @@ impl ArmDebugState for Initialized {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum SelectCache {
+pub(crate) enum SelectCache {
     DPv1(SelectV1),
     DPv3(SelectV3, Select1),
 }
 impl SelectCache {
-    fn dp_bank_sel(&self) -> u8 {
+    pub fn dp_bank_sel(&self) -> u8 {
         match self {
             SelectCache::DPv1(s) => s.dp_bank_sel(),
             SelectCache::DPv3(s, _) => s.dp_bank_sel(),
         }
     }
-    fn set_dp_bank_sel(&mut self, bank: u8) {
+    pub fn set_dp_bank_sel(&mut self, bank: u8) {
         match self {
             SelectCache::DPv1(s) => s.set_dp_bank_sel(bank),
             SelectCache::DPv3(s, _) => s.set_dp_bank_sel(bank),
@@ -215,7 +215,7 @@ impl SelectCache {
 pub(crate) struct DpState {
     pub debug_port_version: DebugPortVersion,
 
-    current_select: SelectCache,
+    pub(crate) current_select: SelectCache,
 }
 
 impl DpState {
@@ -670,6 +670,10 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 
     fn flush(&mut self) -> Result<(), ArmError> {
         self.probe_mut().raw_flush()
+    }
+
+    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
+        self.probe.as_deref()
     }
 }
 

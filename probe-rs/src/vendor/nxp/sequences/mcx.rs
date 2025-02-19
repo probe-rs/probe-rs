@@ -13,12 +13,10 @@ use probe_rs_target::CoreType;
 use crate::{
     architecture::arm::{
         ap::ApRegister,
-        communication_interface::Initialized,
         dp::{DpAccess, DpAddress, DpRegister},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
-        Pins,
+        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, Pins,
     },
     probe::WireProtocol,
     MemoryMappedRegister,
@@ -217,7 +215,7 @@ impl MCX {
 impl ArmDebugSequence for MCX {
     fn debug_port_start(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut dyn DapAccess,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         use crate::architecture::arm::dp::{Abort, Ctrl, SelectV1};
@@ -261,7 +259,7 @@ impl ArmDebugSequence for MCX {
             }
         }
 
-        if let Some(protocol) = interface.probe_mut().active_protocol() {
+        if let Some(protocol) = interface.try_dap_probe().and_then(|f| f.active_protocol()) {
             match protocol {
                 WireProtocol::Jtag => {
                     // Init AP Transfer Mode, Transaction Counter, and

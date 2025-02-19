@@ -89,7 +89,7 @@ enum RemoteCommand<'a> {
     TargetClockOutput {
         enable: bool,
     },
-    SetSpeedKhz(u32),
+    SetSpeedHz(u32),
     SpeedKhz,
     TargetReset(bool),
     RawAccessV0P {
@@ -285,7 +285,7 @@ impl std::string::ToString for RemoteCommand<'_> {
             RemoteCommand::Handshake(_) => "+#!GA#".to_string(),
             RemoteCommand::GetVoltage => " !GV#".to_string(),
             RemoteCommand::GetSpeedKhz => "!Gf#".to_string(),
-            RemoteCommand::SetSpeedKhz(speed) => {
+            RemoteCommand::SetSpeedHz(speed) => {
                 format!("!GF{:08x}#", speed)
             }
             RemoteCommand::HighLevelCheck => "!HC#".to_string(),
@@ -690,7 +690,7 @@ impl BlackMagicProbe {
         probe.command(RemoteCommand::SetPower(false)).ok();
         probe.command(RemoteCommand::SetNrst(false)).ok();
         probe.command(RemoteCommand::GetVoltage).ok();
-        probe.command(RemoteCommand::SetSpeedKhz(400_0000)).ok();
+        probe.command(RemoteCommand::SetSpeedHz(400_0000)).ok();
         probe.command(RemoteCommand::GetSpeedKhz).ok();
 
         Ok(probe)
@@ -1030,7 +1030,7 @@ impl DebugProbe for BlackMagicProbe {
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-        Self::send(&mut self.writer, &RemoteCommand::SetSpeedKhz(speed_khz))?;
+        self.command(RemoteCommand::SetSpeedHz(speed_khz * 1000))?;
         self.speed_khz = self.get_speed()?;
         Ok(self.speed_khz)
     }
@@ -1042,7 +1042,7 @@ impl DebugProbe for BlackMagicProbe {
     }
 
     fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        match self.active_protocol() {
+        match DebugProbe::active_protocol(self) {
             Some(WireProtocol::Jtag) => {
                 if let Some(ref chain) = self.jtag_state.expected_scan_chain {
                     Ok(chain.as_slice())
@@ -1396,10 +1396,14 @@ fn black_magic_debug_port_info(
     // Only accept /dev/cu.* values on macos, to avoid having two
     // copies of the port (both /dev/tty.* and /dev/cu.*)
     if cfg!(target_os = "macos") && !port_name.contains("/cu.") {
+        tracing::trace!(
+            "{}: port name doesn't contain `/cu.` -- skipping",
+            port_name
+        );
         return None;
     }
 
-    let (vendor_id, product_id, serial_number, hid_interface, identifier) = match port_type {
+    let (vendor_id, product_id, serial_number, mut interface, identifier) = match port_type {
         SerialPortType::UsbPort(info) => (
             info.vid,
             info.pid,
@@ -1408,29 +1412,72 @@ fn black_magic_debug_port_info(
             info.product
                 .unwrap_or_else(|| "Black Magic Probe".to_string()),
         ),
-        _ => return None,
+        _ => {
+            tracing::trace!(
+                "{}: serial port {:?} is not USB -- skipping",
+                port_name,
+                port_type,
+            );
+            return None;
+        }
     };
 
     if vendor_id != BLACK_MAGIC_PROBE_VID {
+        tracing::trace!(
+            "{}: vid is {:04x}, not {:04x} -- skipping",
+            port_name,
+            vendor_id,
+            BLACK_MAGIC_PROBE_VID
+        );
         return None;
     }
+
     if product_id != BLACK_MAGIC_PROBE_PID {
+        tracing::trace!(
+            "{}: pid is {:04x}, not {:04x} -- skipping",
+            port_name,
+            product_id,
+            BLACK_MAGIC_PROBE_PID
+        );
         return None;
+    }
+
+    // The `interface` property has been observed on Mac to occasionally be `None`.
+    // This shouldn't happen on any known devices. If this happens, derive the
+    // interface number from the last character of the filename.
+    if cfg!(target_os = "macos") && interface.is_none() {
+        tracing::warn!(
+            "{}: interface number is `None` -- applying interface number workaround",
+            port_name
+        );
+        interface = port_name.as_bytes().last().map(|v| *v - b'0');
     }
 
     // Mac specifies the interface as the CDC Data interface, whereas Linux and
     // Windows use the CDC Communications interface. Accept either one here.
-    if hid_interface != Some(0) && hid_interface != Some(1) {
+    if interface != Some(0) && interface != Some(1) {
+        tracing::trace!(
+            "{}: interface is {:?}, not Some(0) or Some(1) -- skipping",
+            port_name,
+            interface
+        );
         return None;
     }
 
+    tracing::debug!(
+        "{}: returning port {}:{}:{:?}",
+        port_name,
+        vendor_id,
+        product_id,
+        serial_number
+    );
     Some(DebugProbeInfo {
         identifier,
         vendor_id,
         product_id,
         serial_number,
         probe_factory: &BlackMagicProbeFactory,
-        hid_interface,
+        hid_interface: interface,
     })
 }
 
@@ -1443,6 +1490,13 @@ impl ProbeFactory for BlackMagicProbeFactory {
         if selector.vendor_id != BLACK_MAGIC_PROBE_VID
             || selector.product_id != BLACK_MAGIC_PROBE_PID
         {
+            tracing::trace!(
+                "{:04x}:{:04x} doesn't match BMP VID/PID {:04x}:{:04x}",
+                selector.vendor_id,
+                selector.product_id,
+                BLACK_MAGIC_PROBE_VID,
+                BLACK_MAGIC_PROBE_PID
+            );
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             ));
@@ -1463,6 +1517,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
 
         // Otherwise, treat it as a serial port and iterate through all ports.
         let Ok(ports) = available_ports() else {
+            tracing::trace!("unable to get available serial ports");
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,
             ));
@@ -1476,7 +1531,12 @@ impl ProbeFactory for BlackMagicProbeFactory {
                 continue;
             };
 
-            if selector.serial_number != info.serial_number {
+            if selector.serial_number.is_some() && selector.serial_number != info.serial_number {
+                tracing::trace!(
+                    "serial number {:?} doesn't match requested number {:?}",
+                    info.serial_number,
+                    selector.serial_number
+                );
                 continue;
             }
 
@@ -1503,6 +1563,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
                 .map(|p| Box::new(p) as Box<dyn DebugProbe>);
         }
 
+        tracing::trace!("unable to find port {:?}", selector);
         Err(DebugProbeError::ProbeCouldNotBeCreated(
             ProbeCreationError::NotFound,
         ))
@@ -1510,9 +1571,14 @@ impl ProbeFactory for BlackMagicProbeFactory {
 
     fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
         let mut probes = vec![];
-        let Ok(ports) = available_ports() else {
-            return probes;
+        let ports = match available_ports() {
+            Ok(ports) => ports,
+            Err(e) => {
+                tracing::trace!("Unable to enumerate serial ports: {}", e);
+                return probes;
+            }
         };
+
         for port in ports {
             let Some(info) = black_magic_debug_port_info(port.port_type, &port.port_name) else {
                 continue;
