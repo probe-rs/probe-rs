@@ -774,6 +774,10 @@ impl DapAccess for FakeArmInterface<Initialized> {
     fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
         None
     }
+
+    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
+        None
+    }
 }
 
 #[cfg(all(test, feature = "builtin-targets"))]
