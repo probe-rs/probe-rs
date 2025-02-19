@@ -1490,6 +1490,13 @@ impl ProbeFactory for BlackMagicProbeFactory {
         if selector.vendor_id != BLACK_MAGIC_PROBE_VID
             || selector.product_id != BLACK_MAGIC_PROBE_PID
         {
+            tracing::trace!(
+                "{:04x}:{:04x} doesn't match BMP VID/PID {:04x}:{:04x}",
+                selector.vendor_id,
+                selector.product_id,
+                BLACK_MAGIC_PROBE_VID,
+                BLACK_MAGIC_PROBE_PID
+            );
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             ));
@@ -1510,6 +1517,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
 
         // Otherwise, treat it as a serial port and iterate through all ports.
         let Ok(ports) = available_ports() else {
+            tracing::trace!("unable to get available serial ports");
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,
             ));
@@ -1523,7 +1531,12 @@ impl ProbeFactory for BlackMagicProbeFactory {
                 continue;
             };
 
-            if selector.serial_number != info.serial_number {
+            if selector.serial_number.is_some() && selector.serial_number != info.serial_number {
+                tracing::trace!(
+                    "serial number {:?} doesn't match requested number {:?}",
+                    info.serial_number,
+                    selector.serial_number
+                );
                 continue;
             }
 
@@ -1550,6 +1563,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
                 .map(|p| Box::new(p) as Box<dyn DebugProbe>);
         }
 
+        tracing::trace!("unable to find port {:?}", selector);
         Err(DebugProbeError::ProbeCouldNotBeCreated(
             ProbeCreationError::NotFound,
         ))
