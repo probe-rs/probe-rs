@@ -213,7 +213,7 @@ impl DapAccess for MockMemoryAp {
         }
     }
 
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
+    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
         None
     }
 }
