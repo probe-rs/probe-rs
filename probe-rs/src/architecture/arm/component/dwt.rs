@@ -109,6 +109,23 @@ impl<'a> Dwt<'a> {
         ctrl.set_postpreset(0x0);
         ctrl.store(self.component, self.interface)
     }
+
+    /// Read the program counter sample register for the PC value.
+    ///
+    /// This is an optional DWT component, so your DWT may not implement
+    /// it. An implementation that doesn't include this component returns
+    /// zero.
+    ///
+    /// Make sure that tracing is enabled. Otherwise, the value is unknown.
+    ///
+    /// The PC value is `!0` if the processor is in a debug state or another
+    /// state that disables the DWT.
+    ///
+    /// For more information, see section C1.8.5 of the ARMv7-M architecture
+    /// reference manual.
+    pub fn read_pcsr(&mut self) -> Result<u32, ArmError> {
+        Ok(Pcsr::load(self.component, self.interface)?.eiasample())
+    }
 }
 
 memory_mapped_bitfield_register! {
@@ -197,3 +214,12 @@ memory_mapped_bitfield_register! {
 }
 
 impl DebugComponentInterface for Function {}
+
+memory_mapped_bitfield_register! {
+    pub struct Pcsr(u32);
+    0x1C, "DWT/PCSR",
+    impl From;
+    pub u32, eiasample, _: 31, 0;
+}
+
+impl DebugComponentInterface for Pcsr {}
