@@ -18,38 +18,24 @@ impl MonitorCmd for RuntimeTarget<'_> {
         cmd: &[u8],
         mut out: gdbstub::target::ext::monitor_cmd::ConsoleOutput<'_>,
     ) -> Result<(), Self::Error> {
-        let cmd = String::from_utf8_lossy(cmd);
-
-        match cmd.as_ref() {
-            "info" => {
-                outputln!(out, "Target info:\n\n{:#?}", self.session.lock().target());
-            }
-            "reset" => {
+        match cmd {
+            b"info" => outputln!(out, "Target info:\n\n{:#?}", self.session.lock().target()),
+            b"reset" => {
                 outputln!(out, "Resetting target");
                 match self.session.lock().core(0)?.reset() {
-                    Ok(_) => {
-                        outputln!(out, "Done")
-                    }
-                    Err(e) => {
-                        outputln!(out, "Error while resetting target:\n\t{}", e)
-                    }
+                    Ok(_) => outputln!(out, "Done"),
+                    Err(e) => outputln!(out, "Error while resetting target:\n\t{}", e),
                 }
             }
-            "reset halt" => {
+            b"reset halt" => {
                 let timeout = Duration::from_secs(1);
                 outputln!(out, "Resetting and halting target");
                 match self.session.lock().core(0)?.reset_and_halt(timeout) {
-                    Ok(_) => {
-                        outputln!(out, "Target halted")
-                    }
-                    Err(e) => {
-                        outputln!(out, "Error while halting target:\n\t{}", e)
-                    }
+                    Ok(_) => outputln!(out, "Target halted"),
+                    Err(e) => outputln!(out, "Error while halting target:\n\t{}", e),
                 }
             }
-            _ => {
-                outputln!(out, "{}", HELP_TEXT);
-            }
+            _ => outputln!(out, "{}", HELP_TEXT),
         }
 
         Ok(())
