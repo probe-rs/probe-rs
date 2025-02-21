@@ -167,6 +167,7 @@ impl<F: FnMut(MonitorEvent)> MonitorEventHandler<F> {
                 tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
                 Ok(None) // Continue running
             }
+            SemihostingCommand::Errno(_) => Ok(None),
             other @ (SemihostingCommand::Open(_)
             | SemihostingCommand::Close(_)
             | SemihostingCommand::WriteConsole(_)
