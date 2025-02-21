@@ -1,0 +1,1 @@
+Probe-rs now handles (and ignores) the ERRNO semihosting command.

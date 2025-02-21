@@ -340,6 +340,7 @@ impl<F: FnMut(MonitorEvent)> ListEventHandler<F> {
                 }
                 Ok(None)
             }
+            SemihostingCommand::Errno(_) => Ok(None),
             other => anyhow::bail!(
                 "Unexpected semihosting command {:?} cmdline_requested: {:?}",
                 other,
@@ -403,6 +404,7 @@ impl<F: FnMut(MonitorEvent)> RunEventHandler<F> {
                 }
                 Ok(None)
             }
+            SemihostingCommand::Errno(_) => Ok(None),
             other => {
                 // Invalid sequence of semihosting calls => Abort testing altogether
                 anyhow::bail!(

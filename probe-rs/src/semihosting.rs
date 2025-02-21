@@ -32,6 +32,9 @@ pub enum SemihostingCommand {
     /// The target indicated that it would like to write to the console.
     Write(WriteRequest),
 
+    /// The target indicated that it would like to read the value of errno.
+    Errno(ErrnoRequest),
+
     /// The target indicated that it would like to run a semihosting operation which we don't support yet.
     Unknown(UnknownCommandDetails),
 }
@@ -194,6 +197,17 @@ impl WriteRequest {
     }
 }
 
+/// A request to read the errno
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct ErrnoRequest {}
+impl ErrnoRequest {
+    /// Writes the errno to the target
+    pub fn write_errno(&self, core: &mut dyn CoreInterface, errno: i32) -> Result<(), Error> {
+        // On exit, the RETURN REGISTER contains the value of the C library errno variable.
+        write_status(core, errno)
+    }
+}
+
 fn write_status(core: &mut dyn CoreInterface, value: i32) -> Result<(), crate::Error> {
     let reg = core.registers().get_argument_register(0).unwrap();
     core.write_core_reg(reg.into(), RegisterValue::U32(value as u32))?;
@@ -309,6 +323,7 @@ pub fn decode_semihosting_syscall(
     const SYS_WRITEC: u32 = 0x03;
     const SYS_WRITE0: u32 = 0x04;
     const SYS_WRITE: u32 = 0x05;
+    const SYS_ERRNO: u32 = 0x13;
 
     Ok(match (operation, parameter) {
         (SYS_EXIT, SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT) => SemihostingCommand::ExitSuccess,
@@ -409,6 +424,8 @@ pub fn decode_semihosting_syscall(
             write_status(core, -1)?;
             SemihostingCommand::Write(WriteRequest { handle, bytes, len })
         }
+
+        (SYS_ERRNO, 0) => SemihostingCommand::Errno(ErrnoRequest {}),
 
         _ => {
             // signal to target: status = failure, in case the application does not answer this request
