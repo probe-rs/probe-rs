@@ -652,8 +652,8 @@ impl DapAccess for BlackMagicProbeArmDebug {
         }
     }
 
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        Some(&*self.probe)
+    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
+        Some(&mut *self.probe)
     }
 }
 

@@ -672,8 +672,11 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.probe_mut().raw_flush()
     }
 
-    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
-        self.probe.as_deref()
+    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe> {
+        self.probe
+            .as_deref_mut()
+            // Need to explicitly coerce lifetimes: https://github.com/rust-lang/rust/issues/108999
+            .map(|p: &mut (dyn DapProbe + 'static)| p as &mut (dyn DapProbe + '_))
     }
 }
 
