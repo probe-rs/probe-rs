@@ -16,7 +16,7 @@ use crate::{
         dp::{Ctrl, DebugPortError, DpRegister, DLPIDR, TARGETID},
         ArmProbeInterface, RegisterAddress,
     },
-    probe::{DebugProbeError, WireProtocol},
+    probe::WireProtocol,
     MemoryInterface, MemoryMappedRegister, Session,
 };
 
@@ -930,13 +930,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 // The TARGETSEL write is not ACKed by design. We can't use a normal register write
                 // because many probes don't even send the data phase when NAK.
                 let parity = targetsel.count_ones() % 2;
-                let data = (parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99;
+                let data = ((parity as u64) << 45) | ((targetsel as u64) << 13) | 0x1f99;
 
                 // Should this be a swd_sequence?
                 // Technically we shouldn't drive SWDIO all the time when sending a request.
-                interface
-                    .swj_sequence(6 * 8, data)
-                    .map_err(DebugProbeError::from)?;
+                interface.swj_sequence(6 * 8, data)?;
             }
 
             tracing::debug!("Reading DPIDR to enable SWD interface");

@@ -17,7 +17,12 @@ pub const fn sw(offset: u32, base: u32, width: u32, source: u32) -> u32 {
     let offset_lower = offset & 0b11111;
     let offset_upper = offset >> 5;
 
-    offset_upper << 25 | source << 20 | base << 15 | width << 12 | offset_lower << 7 | opcode
+    (offset_upper << 25)
+        | (source << 20)
+        | (base << 15)
+        | (width << 12)
+        | (offset_lower << 7)
+        | opcode
 }
 
 /// Assemble a `addi` instruction.
@@ -74,10 +79,10 @@ fn i_type_instruction(opcode: u8, rs1: u8, funct3: u8, rd: u8, imm: u16) -> u32 
     assert!(rs1 <= 0x1f); // [19:15]
     assert!(imm <= 0xfff); // [31:20]
 
-    (imm as u32) << 20
-        | (rs1 as u32) << 15
-        | (funct3 as u32) << 12
-        | (rd as u32) << 7
+    ((imm as u32) << 20)
+        | ((rs1 as u32) << 15)
+        | ((funct3 as u32) << 12)
+        | ((rd as u32) << 7)
         | opcode as u32
 }
 

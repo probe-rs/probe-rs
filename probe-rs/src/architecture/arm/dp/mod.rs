@@ -33,7 +33,7 @@ pub struct DpRegisterAddress {
 
 impl From<DpRegisterAddress> for u8 {
     fn from(addr: DpRegisterAddress) -> Self {
-        (addr.bank.unwrap_or(0) << 4 & 0xF0) | (addr.address & 0xF)
+        ((addr.bank.unwrap_or(0) << 4) & 0xF0) | (addr.address & 0xF)
     }
 }
 

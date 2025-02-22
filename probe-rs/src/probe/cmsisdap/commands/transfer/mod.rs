@@ -64,12 +64,12 @@ fn creating_inner_transfer_request() {
 impl InnerTransferRequest {
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         buffer[0] = (self.APnDP as u8)
-            | (self.RnW as u8) << 1
-            | u8::from(self.A2) << 2
-            | u8::from(self.A3) << 3
-            | u8::from(self.value_match) << 4
-            | u8::from(self.match_mask) << 5
-            | u8::from(self.td_timestamp_request) << 7;
+            | ((self.RnW as u8) << 1)
+            | (u8::from(self.A2) << 2)
+            | (u8::from(self.A3) << 3)
+            | (u8::from(self.value_match) << 4)
+            | (u8::from(self.match_mask) << 5)
+            | (u8::from(self.td_timestamp_request) << 7);
         if let Some(data) = self.data {
             let data = data.to_le_bytes();
             buffer[1..5].copy_from_slice(&data[..]);
@@ -395,9 +395,9 @@ pub(crate) struct InnerTransferBlockRequest {
 impl InnerTransferBlockRequest {
     fn as_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = (self.ap_n_dp as u8)
-            | (self.r_n_w as u8) << 1
-            | u8::from(self.a2) << 2
-            | u8::from(self.a3) << 3;
+            | ((self.r_n_w as u8) << 1)
+            | (u8::from(self.a2) << 2)
+            | (u8::from(self.a3) << 3);
         Ok(1)
     }
 }

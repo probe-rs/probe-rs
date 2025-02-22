@@ -526,9 +526,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             let confstrptr_2: Confstrptr2 = self.read_dm_register()?;
             let confstrptr_3: Confstrptr3 = self.read_dm_register()?;
             let confstrptr = (u32::from(confstrptr_0) as u128)
-                | (u32::from(confstrptr_1) as u128) << 8
-                | (u32::from(confstrptr_2) as u128) << 16
-                | (u32::from(confstrptr_3) as u128) << 32;
+                | ((u32::from(confstrptr_1) as u128) << 8)
+                | ((u32::from(confstrptr_2) as u128) << 16)
+                | ((u32::from(confstrptr_3) as u128) << 32);
             Some(confstrptr)
         } else {
             None

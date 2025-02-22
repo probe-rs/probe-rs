@@ -91,7 +91,7 @@ where
             self.memory_ap.read_data(self.interface, &mut buf)?;
 
             for i in 0..chunk_size {
-                data[i] = buf[i * 2] as u64 | (buf[i * 2 + 1] as u64) << 32;
+                data[i] = buf[i * 2] as u64 | ((buf[i * 2 + 1] as u64) << 32);
             }
 
             address = address
@@ -496,7 +496,7 @@ where
 
     /// Flushes any pending commands when the underlying probe interface implements command queuing.
     fn flush(&mut self) -> Result<(), ArmError> {
-        self.interface.flush().map_err(Into::into)
+        self.interface.flush()
     }
 
     /// True if the memory ap supports 64 bit accesses which might be more efficient than issuing

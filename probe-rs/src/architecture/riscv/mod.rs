@@ -704,7 +704,7 @@ impl Dmcontrol {
     ///
     /// Combination of the `hartselhi` and `hartsello` registers.
     pub fn hartsel(&self) -> u32 {
-        self.hartselhi() << 10 | self.hartsello()
+        (self.hartselhi() << 10) | self.hartsello()
     }
 
     /// Set the currently selected harts

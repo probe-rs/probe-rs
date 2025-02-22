@@ -464,8 +464,8 @@ impl JTAGAccess for WchLink {
                 match dmi_op {
                     DMI_OP_READ => {
                         let (addr, data, op) = self.dmi_op_read(dmi_addr)?;
-                        let ret = (addr as u128) << DMI_ADDRESS_BIT_OFFSET
-                            | (data as u128) << DMI_VALUE_BIT_OFFSET
+                        let ret = ((addr as u128) << DMI_ADDRESS_BIT_OFFSET)
+                            | ((data as u128) << DMI_VALUE_BIT_OFFSET)
                             | (op as u128);
                         tracing::trace!("dmi read 0x{:02x} 0x{:08x} op={}", addr, data, op);
                         self.last_dmi_read = Some((addr, data, op));
@@ -480,16 +480,16 @@ impl JTAGAccess for WchLink {
                             self.dmi_op_nop()?
                         };
 
-                        let ret = (addr as u128) << DMI_ADDRESS_BIT_OFFSET
-                            | (data as u128) << DMI_VALUE_BIT_OFFSET
+                        let ret = ((addr as u128) << DMI_ADDRESS_BIT_OFFSET)
+                            | ((data as u128) << DMI_VALUE_BIT_OFFSET)
                             | (op as u128);
                         tracing::trace!("dmi nop 0x{:02x} 0x{:08x} op={}", addr, data, op);
                         Ok(ret.to_le_bytes().to_vec())
                     }
                     DMI_OP_WRITE => {
                         let (addr, data, op) = self.dmi_op_write(dmi_addr, dmi_value)?;
-                        let ret = (addr as u128) << DMI_ADDRESS_BIT_OFFSET
-                            | (data as u128) << DMI_VALUE_BIT_OFFSET
+                        let ret = ((addr as u128) << DMI_ADDRESS_BIT_OFFSET)
+                            | ((data as u128) << DMI_VALUE_BIT_OFFSET)
                             | (op as u128);
                         tracing::trace!("dmi write 0x{:02x} 0x{:08x} op={}", addr, data, op);
                         if dmi_addr == 0x10 && dmi_value == 0x40000001 {
