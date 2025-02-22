@@ -1,25 +1,25 @@
 //! Register types and the core interface for armv8-a
 
 use super::{
+    CortexAState,
     instructions::{
         aarch64,
         thumb2::{build_ldr, build_mcr, build_mrc, build_str, build_vmov, build_vmrs},
     },
     registers::{aarch32::AARCH32_WITH_FP_32_CORE_REGISTERS, aarch64::AARCH64_CORE_REGISTERS},
-    CortexAState,
 };
 use crate::{
-    architecture::arm::{
-        core::armv8a_debug_regs::*, memory::ArmMemoryInterface, sequences::ArmDebugSequence,
-        ArmError,
-    },
-    core::{
-        memory_mapped_registers::MemoryMappedRegister, CoreRegisters, RegisterId, RegisterValue,
-    },
-    error::Error,
-    memory::{valid_32bit_address, MemoryNotAlignedError},
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
     InstructionSet, MemoryInterface,
+    architecture::arm::{
+        ArmError, core::armv8a_debug_regs::*, memory::ArmMemoryInterface,
+        sequences::ArmDebugSequence,
+    },
+    core::{
+        CoreRegisters, RegisterId, RegisterValue, memory_mapped_registers::MemoryMappedRegister,
+    },
+    error::Error,
+    memory::{MemoryNotAlignedError, valid_32bit_address},
 };
 use std::{
     sync::Arc,
@@ -1683,8 +1683,8 @@ impl MemoryInterface for Armv8a<'_> {
 mod test {
     use crate::{
         architecture::arm::{
-            communication_interface::SwdSequence, sequences::DefaultArmSequence,
-            FullyQualifiedApAddress,
+            FullyQualifiedApAddress, communication_interface::SwdSequence,
+            sequences::DefaultArmSequence,
         },
         probe::DebugProbeError,
     };

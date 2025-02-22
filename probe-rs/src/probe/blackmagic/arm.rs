@@ -1,24 +1,23 @@
 use crate::architecture::arm::{
+    ArmProbeInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
     ap::{
-        self,
+        self, AccessPortType, AddressIncrement, CSW, DataSize,
         memory_ap::{MemoryAp, MemoryApType},
         v1::valid_access_ports,
-        AccessPortType, AddressIncrement, DataSize, CSW,
     },
     communication_interface::{DapProbe, DpState, SelectCache, SwdSequence, UninitializedArmProbe},
     dp::{
-        Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, DpAddress,
-        DpRegisterAddress, Select1, SelectV3, DPIDR,
+        Ctrl, DPIDR, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, DpAddress,
+        DpRegisterAddress, Select1, SelectV3,
     },
     memory::ArmMemoryInterface,
     sequences::ArmDebugSequence,
-    ArmProbeInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
 };
 use crate::probe::blackmagic::{Align, BlackMagicProbe, ProtocolVersion, RemoteCommand};
 use crate::probe::{ArmError, DebugProbeError, Probe};
 use crate::{Error as ProbeRsError, MemoryInterface};
-use std::collections::hash_map;
 use std::collections::BTreeSet;
+use std::collections::hash_map;
 use std::{collections::HashMap, sync::Arc};
 use zerocopy::IntoBytes;
 
@@ -255,7 +254,7 @@ impl BlackMagicProbeArmDebug {
             crate::architecture::arm::ApAddress::V2(_) => {
                 return Err(ArmError::NotImplemented(
                     "AP address v2 currently unsupported",
-                ))
+                ));
             }
         };
         self.select_dp(ap.dp())?;

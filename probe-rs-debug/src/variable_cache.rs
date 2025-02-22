@@ -5,7 +5,7 @@ use probe_rs::Error;
 use probe_rs_target::MemoryRange;
 use serde::{Serialize, Serializer};
 use std::{
-    collections::{btree_map::Entry, BTreeMap},
+    collections::{BTreeMap, btree_map::Entry},
     ops::Range,
 };
 
@@ -176,9 +176,10 @@ impl VariableCache {
     ) -> Result<Variable, DebugError> {
         // Validate that the parent_key exists ...
         if !self.variable_hash_map.contains_key(&parent_key) {
-            return Err(DebugError::Other(
-                format!("VariableCache: Attempted to add a new variable with non existent `parent_key`: {:?}. Please report this as a bug", parent_key)
-            ));
+            return Err(DebugError::Other(format!(
+                "VariableCache: Attempted to add a new variable with non existent `parent_key`: {:?}. Please report this as a bug",
+                parent_key
+            )));
         }
 
         let mut variable_to_add = Variable::new(unit_info);
@@ -196,7 +197,10 @@ impl VariableCache {
 
         match self.variable_hash_map.entry(variable_to_add.variable_key) {
             Entry::Occupied(_) => {
-                return Err(DebugError::Other(format!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", variable_to_add.name, variable_to_add.variable_key)));
+                return Err(DebugError::Other(format!(
+                    "Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.",
+                    variable_to_add.name, variable_to_add.variable_key
+                )));
             }
             Entry::Vacant(entry) => {
                 entry.insert(variable_to_add.clone());
@@ -217,13 +221,19 @@ impl VariableCache {
     ) -> Result<(), DebugError> {
         // Validate that the parent_key exists ...
         if !self.variable_hash_map.contains_key(&parent_key) {
-            return Err(DebugError::Other(format!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", cache_variable.name, parent_key)));
+            return Err(DebugError::Other(format!(
+                "VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug",
+                cache_variable.name, parent_key
+            )));
         }
 
         cache_variable.parent_key = parent_key;
 
         if cache_variable.variable_key != ObjectRef::Invalid {
-            return Err(DebugError::Other(format!("VariableCache: Attempted to add a new variable: {} with already set key: {:?}. Please report this as a bug", cache_variable.name, cache_variable.variable_key)));
+            return Err(DebugError::Other(format!(
+                "VariableCache: Attempted to add a new variable: {} with already set key: {:?}. Please report this as a bug",
+                cache_variable.name, cache_variable.variable_key
+            )));
         }
 
         // The caller is telling us this is definitely a new `Variable`
@@ -240,7 +250,10 @@ impl VariableCache {
             .variable_hash_map
             .insert(cache_variable.variable_key, cache_variable.clone())
         {
-            return Err(DebugError::Other(format!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", cache_variable.name, old_variable.variable_key)));
+            return Err(DebugError::Other(format!(
+                "Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.",
+                cache_variable.name, old_variable.variable_key
+            )));
         }
 
         Ok(())
@@ -258,7 +271,10 @@ impl VariableCache {
         );
 
         let Some(prev_entry) = self.variable_hash_map.get_mut(&cache_variable.variable_key) else {
-            return Err(DebugError::Other(format!("Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key)));
+            return Err(DebugError::Other(format!(
+                "Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.",
+                cache_variable.name, cache_variable.variable_key
+            )));
         };
 
         if cache_variable != prev_entry {
@@ -392,7 +408,10 @@ impl VariableCache {
     pub fn remove_cache_entry(&mut self, variable_key: ObjectRef) -> Result<(), Error> {
         self.remove_cache_entry_children(variable_key)?;
         if self.variable_hash_map.remove(&variable_key).is_none() {
-            return Err(Error::Other(format!("Failed to remove a `VariableCache` entry with key: {:?}. Please report this as a bug.", variable_key)));
+            return Err(Error::Other(format!(
+                "Failed to remove a `VariableCache` entry with key: {:?}. Please report this as a bug.",
+                variable_key
+            )));
         };
         Ok(())
     }

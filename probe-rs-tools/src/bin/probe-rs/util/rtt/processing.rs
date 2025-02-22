@@ -1,10 +1,10 @@
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use defmt_decoder::{
-    log::format::{Formatter, FormatterConfig, FormatterFormat},
     DecodeError, StreamDecoder,
+    log::format::{Formatter, FormatterConfig, FormatterFormat},
 };
 use probe_rs::rtt::Error;
-use time::{macros::format_description, OffsetDateTime, UtcOffset};
+use time::{OffsetDateTime, UtcOffset, macros::format_description};
 
 use std::{
     fmt::{self, Write},
@@ -150,7 +150,9 @@ impl DefmtStateInner {
             .with_context(|| "Failed to parse defmt data")?;
 
         let locs = if !table.is_empty() && locs.is_empty() {
-            tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+            tracing::warn!(
+                "Insufficient DWARF info; compile your program with `debug = 2` to enable location info."
+            );
             None
         } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
             Some(locs)

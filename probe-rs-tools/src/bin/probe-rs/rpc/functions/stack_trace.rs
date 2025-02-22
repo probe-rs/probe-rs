@@ -1,13 +1,13 @@
 use std::fmt::Write as _;
 
 use crate::rpc::{
-    functions::{RpcContext, RpcResult},
     Key,
+    functions::{RpcContext, RpcResult},
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::Session;
-use probe_rs_debug::{exception_handler_for_core, DebugInfo, DebugRegisters};
+use probe_rs_debug::{DebugInfo, DebugRegisters, exception_handler_for_core};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Schema)]

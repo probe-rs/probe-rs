@@ -1,7 +1,6 @@
 use super::{
-    canonical_path_eq,
+    ColumnType, DebugError, DebugInfo, GimliReader, canonical_path_eq,
     unit_info::{self, UnitInfo},
-    ColumnType, DebugError, DebugInfo, GimliReader,
 };
 use gimli::LineSequence;
 use serde::Serialize;
@@ -45,7 +44,9 @@ impl VerifiedBreakpoint {
             return Ok(verified_breakpoint);
         }
         // If we get here, we have not found a valid breakpoint location.
-        let message = format!("Could not identify a valid breakpoint for address: {address:#010x}. Please consider using instruction level stepping.");
+        let message = format!(
+            "Could not identify a valid breakpoint for address: {address:#010x}. Please consider using instruction level stepping."
+        );
         Err(DebugError::WarnAndContinue { message })
     }
 
@@ -161,7 +162,10 @@ impl VerifiedBreakpoint {
             }
         }
         // If we get here, we have not found a valid breakpoint location.
-        Err(DebugError::Other(format!("No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}", path.display())))
+        Err(DebugError::Other(format!(
+            "No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}",
+            path.display()
+        )))
     }
 }
 
@@ -575,7 +579,8 @@ fn log_row_eval(
     row: &gimli::LineRow,
     status: &str,
 ) {
-    tracing::trace!("Sequence: line={:04} col={:05} f={:02} stmt={:5} ep={:5} es={:5} eb={:5} : {:#010X}<={:#010X}<{:#010X} : {}",
+    tracing::trace!(
+        "Sequence: line={:04} col={:05} f={:02} stmt={:5} ep={:5} es={:5} eb={:5} : {:#010X}<={:#010X}<{:#010X} : {}",
         match row.line() {
             Some(line) => line.get(),
             None => 0,
@@ -592,5 +597,6 @@ fn log_row_eval(
         active_sequence.start,
         row.address(),
         active_sequence.end,
-        status);
+        status
+    );
 }

@@ -10,7 +10,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::architecture::arm::communication_interface::DapProbe;
-use crate::{probe::DebugProbeError, MemoryMappedRegister};
+use crate::{MemoryMappedRegister, probe::DebugProbeError};
 
 /// An Infineon XMC4xxx MCU.
 #[derive(Debug)]
@@ -375,7 +375,9 @@ impl ArmDebugSequence for XMC4000 {
                 }) if pin_select.swdio_tms() => {
                     // J-Link probes return this error when we try to set pins besides nRST
                     // Settle for resetting, but warn the user that HWCON is uncontrolled
-                    tracing::debug!("swj_pins(nRST|TCK|TMS) unsupported by probe; falling back to swj_pins(nRST)");
+                    tracing::debug!(
+                        "swj_pins(nRST|TCK|TMS) unsupported by probe; falling back to swj_pins(nRST)"
+                    );
                     tracing::warn!(
                         "This probe cannot manipulate HWCON, so the boot mode after power on reset cannot be controlled"
                     );

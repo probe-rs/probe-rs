@@ -6,9 +6,9 @@ use std::fmt::Write;
 use bytesize::ByteSize;
 
 use probe_rs::{
+    Error as ProbeRsError, Target,
     config::{RegistryError, TargetDescriptionSource},
     flashing::{FileDownloadError, FlashError},
-    Error as ProbeRsError, Target,
 };
 
 use crate::util::cargo::ArtifactError;

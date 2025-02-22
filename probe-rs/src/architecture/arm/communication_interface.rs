@@ -1,20 +1,19 @@
 use crate::{
+    CoreStatus, Error,
     architecture::arm::{
-        ap,
-        dp::{Ctrl, DebugPortId, DebugPortVersion, DpAccess, DPIDR},
+        ApAddress, ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
+        SwoAccess, SwoConfig, ap,
+        dp::{Ctrl, DPIDR, DebugPortId, DebugPortVersion, DpAccess},
         dp::{DpAddress, DpRegisterAddress, Select1, SelectV1, SelectV3},
         memory::{ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::{ArmDebugSequence, DefaultArmSequence},
-        ApAddress, ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
-        SwoAccess, SwoConfig,
     },
     probe::{DebugProbe, DebugProbeError, Probe},
-    CoreStatus, Error,
 };
 use jep106::JEP106Code;
 
 use std::{
-    collections::{hash_map, BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap, hash_map},
     fmt::Debug,
     sync::Arc,
     time::Duration,

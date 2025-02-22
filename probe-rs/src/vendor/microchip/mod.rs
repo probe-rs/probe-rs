@@ -1,15 +1,15 @@
 //! Microchip vendor support.
 
-use probe_rs_target::{chip_detection::ChipDetectionMethod, Chip};
+use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
-    architecture::arm::{ArmChipInfo, ArmProbeInterface, FullyQualifiedApAddress},
-    config::{registry, DebugSequence},
-    vendor::{
-        microchip::sequences::atsam::{AtSAM, DsuDid},
-        Vendor,
-    },
     Error,
+    architecture::arm::{ArmChipInfo, ArmProbeInterface, FullyQualifiedApAddress},
+    config::{DebugSequence, registry},
+    vendor::{
+        Vendor,
+        microchip::sequences::atsam::{AtSAM, DsuDid},
+    },
 };
 
 pub mod sequences;

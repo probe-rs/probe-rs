@@ -1,4 +1,5 @@
 use crate::{
+    CoreType, InstructionSet, MemoryInterface, Target,
     architecture::{
         arm::sequences::ArmDebugSequence, riscv::sequences::RiscvDebugSequence,
         xtensa::sequences::XtensaDebugSequence,
@@ -6,7 +7,6 @@ use crate::{
     config::DebugSequence,
     error::Error,
     memory::CoreMemoryInterface,
-    CoreType, InstructionSet, MemoryInterface, Target,
 };
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{

@@ -5,10 +5,11 @@ use std::{sync::Arc, time::Duration};
 use probe_rs_target::{Architecture, CoreType, InstructionSet};
 
 use crate::{
+    CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
     architecture::xtensa::{
         arch::{
-            instruction::{Instruction, InstructionEncoding},
             Register, SpecialRegister,
+            instruction::{Instruction, InstructionEncoding},
         },
         communication_interface::{DebugCause, IBreakEn, XtensaCommunicationInterface},
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
@@ -16,12 +17,11 @@ use crate::{
         xdm::PowerStatus,
     },
     core::{
-        registers::{CoreRegisters, RegisterId, RegisterValue},
         BreakpointCause,
+        registers::{CoreRegisters, RegisterId, RegisterValue},
     },
     memory::CoreMemoryInterface,
-    semihosting::{decode_semihosting_syscall, SemihostingCommand},
-    CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
+    semihosting::{SemihostingCommand, decode_semihosting_syscall},
 };
 
 pub(crate) mod arch;

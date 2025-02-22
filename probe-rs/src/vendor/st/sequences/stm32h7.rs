@@ -5,10 +5,10 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    component::{TraceFunnel, TraceSink},
-    memory::{romtable::RomTableError, ArmMemoryInterface, CoresightComponent, PeripheralType},
-    sequences::ArmDebugSequence,
     ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+    component::{TraceFunnel, TraceSink},
+    memory::{ArmMemoryInterface, CoresightComponent, PeripheralType, romtable::RomTableError},
+    sequences::ArmDebugSequence,
 };
 
 /// Supported lines for custom sequences on STM32H7xx devices.
@@ -96,8 +96,8 @@ impl Stm32h7 {
 }
 
 mod dbgmcu {
-    use crate::architecture::arm::memory::ArmMemoryInterface;
     use crate::architecture::arm::ArmError;
+    use crate::architecture::arm::memory::ArmMemoryInterface;
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component

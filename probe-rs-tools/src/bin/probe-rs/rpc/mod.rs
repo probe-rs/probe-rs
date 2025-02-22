@@ -4,14 +4,14 @@ use std::{
     marker::PhantomData,
     ops::DerefMut,
     sync::{
-        atomic::{AtomicU64, Ordering},
         Arc,
+        atomic::{AtomicU64, Ordering},
     },
 };
 
 use postcard_schema::{
-    schema::{DataModelType, NamedType, NamedValue},
     Schema,
+    schema::{DataModelType, NamedType, NamedValue},
 };
 use probe_rs::Session;
 use serde::{Deserialize, Serialize};

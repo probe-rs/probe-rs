@@ -1,9 +1,9 @@
 use crate::architecture::arm::{
-    ap::{
-        define_ap_register, AccessPortType, AddressIncrement, ApAccess, ApRegAccess, ApRegister,
-        DataSize, CFG,
-    },
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
+    ap::{
+        AccessPortType, AddressIncrement, ApAccess, ApRegAccess, ApRegister, CFG, DataSize,
+        define_ap_register,
+    },
 };
 
 /// Memory AP

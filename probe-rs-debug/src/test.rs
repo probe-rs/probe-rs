@@ -1,6 +1,7 @@
 //! Helper functions for testing
 
 use probe_rs::{
+    CoreDump, CoreType, RegisterDataType,
     architecture::{
         arm::core::registers::{
             aarch32::{
@@ -13,7 +14,6 @@ use probe_rs::{
         riscv::registers::RISCV_CORE_REGISTERS,
         xtensa::registers::XTENSA_CORE_REGISTERS,
     },
-    CoreDump, CoreType, RegisterDataType,
 };
 
 use crate::{DebugRegister, DebugRegisters};

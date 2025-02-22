@@ -1,4 +1,4 @@
-use crate::{architecture, CoreRegister, CoreRegisters, CoreType, InstructionSet, RegisterId};
+use crate::{CoreRegister, CoreRegisters, CoreType, InstructionSet, RegisterId, architecture};
 use itertools::Itertools;
 use std::fmt::Write;
 

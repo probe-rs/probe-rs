@@ -5,8 +5,8 @@ use std::time::{Duration, Instant};
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
 use probe_rs::probe::list::Lister;
 
-use crate::util::common_options::ProbeOptions;
 use crate::CoreOptions;
+use crate::util::common_options::ProbeOptions;
 
 #[derive(clap::Subcommand)]
 pub(crate) enum ItmSource {

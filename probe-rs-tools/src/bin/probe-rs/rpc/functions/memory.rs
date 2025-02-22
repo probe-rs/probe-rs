@@ -1,6 +1,6 @@
 use crate::rpc::{
-    functions::{NoResponse, RpcContext, RpcResult},
     Key,
+    functions::{NoResponse, RpcContext, RpcResult},
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;

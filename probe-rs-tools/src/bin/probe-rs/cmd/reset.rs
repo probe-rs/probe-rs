@@ -1,7 +1,7 @@
 use crate::{
+    CoreOptions,
     rpc::client::RpcClient,
     util::{cli, common_options::ProbeOptions},
-    CoreOptions,
 };
 
 #[derive(clap::Parser)]

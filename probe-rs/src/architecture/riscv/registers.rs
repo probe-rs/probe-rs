@@ -3,8 +3,8 @@
 use std::sync::LazyLock;
 
 use crate::{
-    core::{CoreRegister, RegisterDataType, RegisterId, RegisterRole, UnwindRule},
     CoreRegisters,
+    core::{CoreRegister, RegisterDataType, RegisterId, RegisterRole, UnwindRule},
 };
 
 /// The program counter register.

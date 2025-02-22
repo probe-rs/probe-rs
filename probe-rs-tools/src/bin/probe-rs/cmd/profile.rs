@@ -8,10 +8,10 @@ use anyhow::anyhow;
 use itm::TracePacket;
 use probe_rs::{
     architecture::arm::{
-        component::{find_component, Dwt, TraceSink},
+        SwoConfig,
+        component::{Dwt, TraceSink, find_component},
         dp::DpAddress,
         memory::PeripheralType,
-        SwoConfig,
     },
     probe::list::Lister,
 };

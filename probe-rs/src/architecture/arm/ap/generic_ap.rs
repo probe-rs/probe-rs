@@ -1,7 +1,7 @@
 //! Generic access port
 use crate::architecture::arm::{
-    ap::{AccessPortType, ApRegAccess, IDR},
     FullyQualifiedApAddress,
+    ap::{AccessPortType, ApRegAccess, IDR},
 };
 
 /// A generic access port which implements just the register every access port has to implement

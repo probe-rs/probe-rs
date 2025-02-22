@@ -1,10 +1,10 @@
 use crate::{
-    language::{
-        value::{format_float, Value},
-        ProgrammingLanguage,
-    },
     DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
     VariableValue,
+    language::{
+        ProgrammingLanguage,
+        value::{Value, format_float},
+    },
 };
 
 use probe_rs::MemoryInterface;

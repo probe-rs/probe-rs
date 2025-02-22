@@ -8,13 +8,13 @@
 
 use anyhow::Context as _;
 use postcard_rpc::{
+    Topic,
     header::{VarSeq, VarSeqKind},
     host_client::{HostClient, HostClientConfig, HostErr, IoClosed, Subscription},
-    Topic,
 };
 use postcard_schema::Schema;
-use probe_rs::{flashing::FlashLoader, Session};
-use serde::{de::DeserializeOwned, Serialize};
+use probe_rs::{Session, flashing::FlashLoader};
+use serde::{Serialize, de::DeserializeOwned};
 use tokio::sync::Mutex;
 
 use std::{
@@ -25,8 +25,19 @@ use std::{
 };
 
 use crate::{
+    FormatOptions,
     rpc::{
+        Key,
         functions::{
+            AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint,
+            CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint,
+            ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint,
+            MonitorTopic, ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint,
+            ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint,
+            RpcResult, RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint,
+            TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner,
+            VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
+            WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
             flash::{
@@ -45,21 +56,10 @@ use crate::{
             rtt_client::{CreateRttClientRequest, RttClientData, ScanRegion},
             stack_trace::{StackTraces, TakeStackTraceRequest},
             test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
-            AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint,
-            CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint,
-            ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint,
-            MonitorTopic, ProgressEventTopic, ReadMemory16Endpoint, ReadMemory32Endpoint,
-            ReadMemory64Endpoint, ReadMemory8Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint,
-            RpcResult, RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint,
-            TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner,
-            VerifyEndpoint, WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
-            WriteMemory8Endpoint,
         },
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
-        Key,
     },
-    util::rtt::{client::RttClient, RttChannelConfig},
-    FormatOptions,
+    util::rtt::{RttChannelConfig, client::RttClient},
 };
 
 #[cfg(feature = "remote")]
@@ -141,10 +141,10 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
 
 #[cfg(feature = "remote")]
 mod tls {
-    use rustls::client::danger::HandshakeSignatureValid;
-    use rustls::crypto::{verify_tls12_signature, verify_tls13_signature, CryptoProvider};
-    use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
     use rustls::DigitallySignedStruct;
+    use rustls::client::danger::HandshakeSignatureValid;
+    use rustls::crypto::{CryptoProvider, verify_tls12_signature, verify_tls13_signature};
+    use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 
     #[derive(Debug)]
     pub struct NoCertificateVerification(CryptoProvider);

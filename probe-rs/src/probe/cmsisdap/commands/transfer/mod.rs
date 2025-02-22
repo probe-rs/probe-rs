@@ -4,7 +4,7 @@ use std::iter;
 
 use super::{CommandId, Request, SendError};
 use crate::architecture::arm::RegisterAddress;
-use scroll::{Pread, Pwrite, LE};
+use scroll::{LE, Pread, Pwrite};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RW {

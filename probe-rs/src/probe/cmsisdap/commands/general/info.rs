@@ -1,6 +1,6 @@
 use super::super::{CommandId, Request, SendError};
 
-use scroll::{Pread, LE};
+use scroll::{LE, Pread};
 
 macro_rules! info_command {
     ($id:expr, $name:ident, $response_type:ty) => {

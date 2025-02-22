@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Error, Result};
+use anyhow::{Context, Error, Result, anyhow, bail};
 use cmsis_pack::pdsc::{AccessPort, Algorithm, Core, Device, Package, Processor};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
@@ -546,7 +546,11 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
     let mut mem_map = vec![];
     for region in device_memories {
         if is_multi_core && region.p_name.is_none() {
-            log::warn!("Device {}, memory region {} has no processor name, but this is required for a multicore device. Assigning memory to all cores!", device.name, region.name);
+            log::warn!(
+                "Device {}, memory region {} has no processor name, but this is required for a multicore device. Assigning memory to all cores!",
+                device.name,
+                region.name
+            );
         }
 
         let cores = region

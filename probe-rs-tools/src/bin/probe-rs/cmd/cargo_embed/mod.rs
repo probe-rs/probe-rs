@@ -2,7 +2,7 @@ mod config;
 mod error;
 mod rttui;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use colored::Colorize;
 use parking_lot::FairMutex;
@@ -10,7 +10,7 @@ use probe_rs::flashing::{BootInfo, FormatKind};
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
-use probe_rs::{probe::DebugProbeSelector, Session};
+use probe_rs::{Session, probe::DebugProbeSelector};
 use std::ffi::OsString;
 use std::time::Instant;
 use std::{fs, thread};
@@ -25,6 +25,7 @@ use std::{
 };
 use time::{OffsetDateTime, UtcOffset};
 
+use crate::FormatOptions;
 use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
@@ -32,7 +33,6 @@ use crate::util::logging::setup_logging;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
-use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]
 #[clap(
@@ -218,7 +218,8 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         Err(OperationError::MultipleProbesFound { list }) => {
             use std::fmt::Write;
 
-            return Err(anyhow!("The following devices were found:\n \
+            return Err(anyhow!(
+                "The following devices were found:\n \
                     {} \
                         \
                     Use '--probe VID:PID'\n \
@@ -226,7 +227,13 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
                     You can also set the [default.probe] config attribute \
                     (in your Embed.toml) to select which probe to use. \
                     For usage examples see https://github.com/probe-rs/probe-rs/blob/master/probe-rs-tools/src/bin/probe-rs/cmd/cargo_embed/config/default.toml .",
-                    list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link}"); s })));
+                list.iter()
+                    .enumerate()
+                    .fold(String::new(), |mut s, (num, link)| {
+                        let _ = writeln!(s, "[{num}]: {link}");
+                        s
+                    })
+            ));
         }
         Err(OperationError::AttachingFailed {
             source,
@@ -237,7 +244,9 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
                 tracing::info!(
                     "A hard reset during attaching might help. This will reset the entire chip."
                 );
-                tracing::info!("Set `general.connect_under_reset` in your cargo-embed configuration file to enable this feature.");
+                tracing::info!(
+                    "Set `general.connect_under_reset` in your cargo-embed configuration file to enable this feature."
+                );
             }
             return Err(source).context("failed attaching to target");
         }

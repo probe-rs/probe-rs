@@ -4,13 +4,13 @@ use std::{sync::Arc, thread, time::Duration};
 use probe_rs_target::CoreType;
 
 use crate::{
+    MemoryMappedRegister,
     architecture::arm::{
+        ArmError, ArmProbeInterface, FullyQualifiedApAddress,
         armv7m::Demcr,
         memory::ArmMemoryInterface,
-        sequences::{cortex_m_core_start, ArmDebugSequence},
-        ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+        sequences::{ArmDebugSequence, cortex_m_core_start},
     },
-    MemoryMappedRegister,
 };
 
 /// Marker structure for the VA416xx device

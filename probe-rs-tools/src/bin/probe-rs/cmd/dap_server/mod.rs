@@ -9,10 +9,10 @@ mod test;
 
 use anyhow::Result;
 use probe_rs::{
+    CoreDumpError, Error,
     architecture::arm::ap::AccessPortError,
     flashing::FileDownloadError,
-    probe::{list::Lister, DebugProbeError},
-    CoreDumpError, Error,
+    probe::{DebugProbeError, list::Lister},
 };
 use probe_rs_debug::DebugError;
 use server::startup::debug;

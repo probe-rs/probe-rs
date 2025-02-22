@@ -6,8 +6,8 @@ use self::register::CPUID;
 
 use super::super::memory::romtable::CoresightComponent;
 use crate::{
-    architecture::arm::{ArmError, ArmProbeInterface},
     MemoryMappedRegister,
+    architecture::arm::{ArmError, ArmProbeInterface},
 };
 
 /// An interface to control the SCS (System Control Space) of a MCU.

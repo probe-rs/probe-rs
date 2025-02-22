@@ -12,7 +12,7 @@ impl Request for SWJClockRequest {
     type Response = SWJClockResponse;
 
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
-        use scroll::{Pwrite, LE};
+        use scroll::{LE, Pwrite};
 
         buffer
             .pwrite_with(self.clock_speed_hz, 0, LE)

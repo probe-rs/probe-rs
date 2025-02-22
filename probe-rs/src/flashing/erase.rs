@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use probe_rs_target::{MemoryRange, MemoryRegion, NvmRegion};
 
-use crate::flashing::progress::ProgressOperation;
-use crate::flashing::{flasher::Flasher, FlashError, FlashLoader};
-use crate::flashing::{FlashLayout, FlashSector};
 use crate::Session;
+use crate::flashing::progress::ProgressOperation;
+use crate::flashing::{FlashError, FlashLoader, flasher::Flasher};
+use crate::flashing::{FlashLayout, FlashSector};
 
 use super::FlashProgress;
 

@@ -4,16 +4,16 @@
 //! client. The server also provides a status webpage that shows the available probes.
 
 use axum::{
+    Router,
     extract::{
-        ws::{self, WebSocket},
         State, WebSocketUpgrade,
+        ws::{self, WebSocket},
     },
     http::HeaderValue,
     response::{Html, IntoResponse},
     routing::{any, get},
-    Router,
 };
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use futures_util::{SinkExt, StreamExt};
 use postcard_rpc::server::WireRxErrorKind;
 use probe_rs::probe::list::Lister;
@@ -24,11 +24,11 @@ use tokio_util::bytes::Bytes;
 use std::{fmt::Write, sync::Arc};
 
 use crate::{
+    Config,
     rpc::{
         functions::RpcApp,
         transport::websocket::{AxumWebsocketTx, WebsocketRx},
     },
-    Config,
 };
 
 struct ServerState {

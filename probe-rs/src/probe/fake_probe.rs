@@ -1,6 +1,9 @@
 #![allow(missing_docs)] // Don't require docs for test code
 use crate::{
+    Error, MemoryInterface, MemoryMappedRegister,
     architecture::arm::{
+        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess,
+        RegisterAddress, SwoAccess,
         ap::memory_ap::mock::MockMemoryAp,
         armv8m::Dhcsr,
         communication_interface::{
@@ -9,16 +12,13 @@ use crate::{
         dp::{DpAddress, DpRegisterAddress},
         memory::{ADIMemoryInterface, ArmMemoryInterface},
         sequences::ArmDebugSequence,
-        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess,
-        RegisterAddress, SwoAccess,
     },
     probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
-    Error, MemoryInterface, MemoryMappedRegister,
 };
 use object::{
+    Endianness, Object, ObjectSection,
     elf::{FileHeader32, FileHeader64, PT_LOAD},
     read::elf::{ElfFile, FileHeader, ProgramHeader},
-    Endianness, Object, ObjectSection,
 };
 use probe_rs_target::{MemoryRange, ScanChainElement};
 use std::{
@@ -409,7 +409,9 @@ impl FakeProbe {
 
                 Ok(result)
             }
-            None => panic!("No more operations expected, but got read_raw_ap_register ap={expected_ap:?}, address:{expected_address}"),
+            None => panic!(
+                "No more operations expected, but got read_raw_ap_register ap={expected_ap:?}, address:{expected_address}"
+            ),
             //other => panic!("Unexpected operation: {:?}", other),
         }
     }

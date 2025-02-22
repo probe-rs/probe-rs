@@ -3,10 +3,10 @@ use std::time::Duration;
 use nusb::Interface;
 
 use crate::probe::{
-    usb_util::InterfaceExt, DebugProbeError, DebugProbeSelector, ProbeCreationError,
+    DebugProbeError, DebugProbeSelector, ProbeCreationError, usb_util::InterfaceExt,
 };
 
-use super::{commands::WchLinkCommand, get_wlink_info, WchLinkError};
+use super::{WchLinkError, commands::WchLinkCommand, get_wlink_info};
 
 const ENDPOINT_OUT: u8 = 0x01;
 const ENDPOINT_IN: u8 = 0x81;

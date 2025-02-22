@@ -3,9 +3,9 @@
 use anyhow::Result;
 use probe_rs::{
     architecture::arm::{
+        FullyQualifiedApAddress,
         ap::{ApRegister, IDR},
         dp::DpAddress,
-        FullyQualifiedApAddress,
     },
     probe::list::Lister,
 };

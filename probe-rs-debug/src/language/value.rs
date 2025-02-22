@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use crate::{
-    language::parsing::ParseToBytes, DebugError, Variable, VariableCache, VariableName,
-    VariableValue,
+    DebugError, Variable, VariableCache, VariableName, VariableValue,
+    language::parsing::ParseToBytes,
 };
 
 use probe_rs::MemoryInterface;

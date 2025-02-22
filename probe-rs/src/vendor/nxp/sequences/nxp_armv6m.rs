@@ -1,9 +1,9 @@
 //! Sequences for NXP chips that use ARMv6-M cores.
 
+use crate::architecture::arm::ArmError;
 use crate::architecture::arm::armv6m::{Aircr, Demcr, Dhcsr};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::ArmError;
 use crate::core::MemoryMappedRegister;
 use std::sync::Arc;
 use std::time::{Duration, Instant};

@@ -1,12 +1,12 @@
 use probe_rs::rtt::{Rtt, RttChannel, ScanRegion};
+use probe_rs::{Permissions, probe::list::Lister};
 use probe_rs::{config::TargetSelector, probe::DebugProbeInfo};
-use probe_rs::{probe::list::Lister, Permissions};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::Parser;
 use std::io::prelude::*;
 use std::io::{stdin, stdout};
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::{Receiver, channel};
 use std::thread;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -114,7 +114,9 @@ fn main() -> Result<()> {
     let probes = lister.list_all();
 
     if probes.is_empty() {
-        bail!("No debug probes available. Make sure your probe is plugged in, supported and up-to-date.");
+        bail!(
+            "No debug probes available. Make sure your probe is plugged in, supported and up-to-date."
+        );
     }
 
     let probe_number = match opts.probe {

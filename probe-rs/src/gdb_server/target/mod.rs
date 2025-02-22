@@ -9,7 +9,7 @@ mod utils;
 
 use super::arch::RuntimeArch;
 use crate::{BreakpointCause, CoreStatus, Error, HaltReason, Session};
-use gdbstub::stub::state_machine::{state, GdbStubStateMachine, GdbStubStateMachineInner};
+use gdbstub::stub::state_machine::{GdbStubStateMachine, GdbStubStateMachineInner, state};
 use parking_lot::FairMutex;
 
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -19,12 +19,12 @@ use std::time::Duration;
 use gdbstub::common::Signal;
 use gdbstub::conn::ConnectionExt;
 use gdbstub::stub::{GdbStub, MultiThreadStopReason};
+use gdbstub::target::Target;
 use gdbstub::target::ext::base::BaseOps;
 use gdbstub::target::ext::breakpoints::BreakpointsOps;
 use gdbstub::target::ext::memory_map::MemoryMapOps;
 use gdbstub::target::ext::monitor_cmd::MonitorCmdOps;
 use gdbstub::target::ext::target_description_xml_override::TargetDescriptionXmlOverrideOps;
-use gdbstub::target::Target;
 
 pub(crate) use traits::GdbErrorExt;
 

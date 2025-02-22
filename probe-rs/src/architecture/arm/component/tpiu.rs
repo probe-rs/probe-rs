@@ -1,6 +1,6 @@
 use super::super::memory::romtable::CoresightComponent;
-use crate::architecture::arm::ArmProbeInterface;
 use crate::Error;
+use crate::architecture::arm::ArmProbeInterface;
 
 pub const _TPIU_PID: [u8; 8] = [0xA1, 0xB9, 0x0B, 0x0, 0x4, 0x0, 0x0, 0x0];
 

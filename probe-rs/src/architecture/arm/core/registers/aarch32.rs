@@ -4,8 +4,8 @@ use std::sync::LazyLock;
 
 use super::cortex_m::ARM32_COMMON_REGS_SET;
 use crate::{
-    core::{RegisterDataType, RegisterRole, UnwindRule},
     CoreRegister, CoreRegisters, RegisterId,
+    core::{RegisterDataType, RegisterRole, UnwindRule},
 };
 
 /// Core registers used in the AARCH32 instruction set.

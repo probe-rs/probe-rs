@@ -6,19 +6,19 @@ use parking_lot::{RwLock, RwLockReadGuard};
 use probe_rs_target::Chip;
 
 use crate::{
+    Error, Target,
     architecture::{
         arm::{
-            communication_interface::read_chip_info_from_rom_table, dp::DpAddress,
-            sequences::DefaultArmSequence, ArmChipInfo, ArmProbeInterface,
+            ArmChipInfo, ArmProbeInterface, communication_interface::read_chip_info_from_rom_table,
+            dp::DpAddress, sequences::DefaultArmSequence,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    config::{registry, ChipInfo, DebugSequence},
+    config::{ChipInfo, DebugSequence, registry},
     probe::{DebugProbeError, Probe},
-    Error, Target,
 };
 
 pub mod espressif;

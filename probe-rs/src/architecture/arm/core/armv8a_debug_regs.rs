@@ -1,6 +1,6 @@
 //! Debug register definitions for ARMv8-A
 
-use crate::{core::BreakpointCause, memory_mapped_bitfield_register, HaltReason};
+use crate::{HaltReason, core::BreakpointCause, memory_mapped_bitfield_register};
 
 memory_mapped_bitfield_register! {
     /// EDSCR - Debug Status and Control Register

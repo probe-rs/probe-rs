@@ -3,7 +3,7 @@ use tokio_util::sync::CancellationToken;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use probe_rs::{Core, Error, HaltReason, VectorCatchCondition};
 
 use crate::util::rtt::client::RttClient;

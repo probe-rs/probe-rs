@@ -13,12 +13,12 @@ use std::{ffi::OsString, path::PathBuf};
 use anyhow::{Context, Result};
 use clap::{ArgMatches, CommandFactory, FromArgMatches};
 use colored::Colorize;
+use figment::Figment;
 use figment::providers::{Data, Format as _, Json, Toml, Yaml};
 use figment::value::Value;
-use figment::Figment;
 use itertools::Itertools;
 use postcard_schema::Schema;
-use probe_rs::{probe::list::Lister, Target};
+use probe_rs::{Target, probe::list::Lister};
 use report::Report;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
@@ -570,7 +570,10 @@ fn reject_format_arg(args: &[OsString]) -> anyhow::Result<()> {
         if let Some(format_arg) = args.get(format_arg_pos + 1) {
             if let Some(format_arg) = format_arg.to_str() {
                 if FormatKind::from_str(format_arg).is_ok() {
-                    anyhow::bail!("--format has been renamed to --binary-format. Please use --binary-format {0} instead of --format {0}", format_arg);
+                    anyhow::bail!(
+                        "--format has been renamed to --binary-format. Please use --binary-format {0} instead of --format {0}",
+                        format_arg
+                    );
                 }
             }
         }

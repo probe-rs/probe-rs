@@ -2,13 +2,14 @@ use super::{
     configuration::{self, ConsoleLog},
     logger::DebugLogger,
     session_data::SessionData,
-    startup::{get_file_timestamp, TargetSessionType},
+    startup::{TargetSessionType, get_file_timestamp},
 };
 use crate::{
     cmd::dap_server::{
+        DebuggerError,
         debug_adapter::{
             dap::{
-                adapter::{get_arguments, DebugAdapter},
+                adapter::{DebugAdapter, get_arguments},
                 dap_types::{
                     Capabilities, Event, ExitedEventBody, InitializeRequestArguments,
                     MessageSeverity, Request, RttWindowOpenedArguments, TerminatedEventBody,
@@ -18,17 +19,16 @@ use crate::{
             protocol::ProtocolAdapter,
         },
         peripherals::svd_variables::SvdCache,
-        DebuggerError,
     },
     util::flash::build_loader,
 };
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use probe_rs::{
+    Architecture, CoreStatus,
     flashing::{
         DownloadOptions, FileDownloadError, FlashProgress, ProgressEvent, ProgressOperation,
     },
     probe::list::Lister,
-    Architecture, CoreStatus,
 };
 use std::{
     cell::RefCell,
@@ -128,7 +128,9 @@ impl Debugger {
                         );
                         thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
                     } else {
-                        tracing::trace!("Retrieving data from the core, no delay required between iterations of polling the core.");
+                        tracing::trace!(
+                            "Retrieving data from the core, no delay required between iterations of polling the core."
+                        );
                     };
                 }
 
@@ -473,7 +475,9 @@ impl Debugger {
             };
 
             let Some(path_to_elf) = target_core_config.program_binary.clone() else {
-                let error =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
+                let error = DebuggerError::Other(anyhow!(
+                    "Please specify use the `program-binary` option in `launch.json` to specify an executable"
+                ));
                 debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
                 return Err(error);
             };
@@ -571,7 +575,9 @@ impl Debugger {
                 ))
             })?;
             let Some(path_to_elf) = target_core_config.program_binary.clone() else {
-                let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
+                let err = DebuggerError::Other(anyhow!(
+                    "Please specify use the `program-binary` option in `launch.json` to specify an executable"
+                ));
 
                 debug_adapter.show_error_message(&err)?;
                 return Err(err);
@@ -778,7 +784,10 @@ impl Debugger {
                 debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
                     Ok(debug_adapter) => debug_adapter.into_inner(),
                     Err(too_many_strong_references) => {
-                        let reference_error = DebuggerError::Other(anyhow!("Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.", Rc::strong_count(&too_many_strong_references)));
+                        let reference_error = DebuggerError::Other(anyhow!(
+                            "Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.",
+                            Rc::strong_count(&too_many_strong_references)
+                        ));
                         tracing::error!("{reference_error:?}");
                         return Err(reference_error);
                     }
@@ -799,7 +808,10 @@ impl Debugger {
         debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
             Ok(debug_adapter) => debug_adapter.into_inner(),
             Err(too_many_strong_references) => {
-                let reference_error = DebuggerError::Other(anyhow!("Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.", Rc::strong_count(&too_many_strong_references)));
+                let reference_error = DebuggerError::Other(anyhow!(
+                    "Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.",
+                    Rc::strong_count(&too_many_strong_references)
+                ));
                 tracing::error!("{reference_error:?}");
                 return Err(reference_error);
             }
@@ -968,6 +980,7 @@ mod test {
     #![allow(clippy::unwrap_used, clippy::panic)]
 
     use crate::cmd::dap_server::{
+        DebuggerError,
         debug_adapter::{
             dap::{
                 adapter::DebugAdapter,
@@ -982,14 +995,13 @@ mod test {
         },
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
         test::TestLister,
-        DebuggerError,
     };
     use probe_rs::{
         architecture::arm::FullyQualifiedApAddress,
         integration::{FakeProbe, Operation},
         probe::{
-            list::Lister, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-            ProbeFactory,
+            DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
+            list::Lister,
         },
     };
     use serde_json::json;

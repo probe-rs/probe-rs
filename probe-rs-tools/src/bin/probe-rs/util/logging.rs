@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::{fs::File, path::Path, sync::LazyLock};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{
-    fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer,
+    EnvFilter, Layer, fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt,
 };
 
 /// Stores the progress bar for the logging facility.

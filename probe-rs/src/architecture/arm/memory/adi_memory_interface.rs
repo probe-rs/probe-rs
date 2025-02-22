@@ -1,18 +1,18 @@
 use std::any::Any;
 
 use crate::{
+    CoreStatus, MemoryInterface,
     architecture::arm::{
+        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
         ap::{
+            AccessPortType, ApAccess, CSW, DataSize,
             memory_ap::{MemoryAp, MemoryApType},
-            AccessPortType, ApAccess, DataSize, CSW,
         },
         communication_interface::{FlushableArmAccess, Initialized},
         dp::DpAccess,
         memory::ArmMemoryInterface,
-        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
     },
     probe::DebugProbeError,
-    CoreStatus, MemoryInterface,
 };
 
 /// Calculate the maximum number of bytes we can write starting at address
@@ -574,10 +574,10 @@ mod tests {
     use test_log::test;
 
     use crate::{
-        architecture::arm::{
-            ap::memory_ap::mock::MockMemoryAp, memory::ADIMemoryInterface, FullyQualifiedApAddress,
-        },
         MemoryInterface,
+        architecture::arm::{
+            FullyQualifiedApAddress, ap::memory_ap::mock::MockMemoryAp, memory::ADIMemoryInterface,
+        },
     };
 
     impl<'interface> ADIMemoryInterface<'interface, MockMemoryAp> {

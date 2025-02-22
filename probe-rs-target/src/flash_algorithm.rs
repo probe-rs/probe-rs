@@ -1,6 +1,6 @@
 use super::flash_properties::FlashProperties;
 use crate::serialize::{hex_option, hex_u_int};
-use base64::{engine::general_purpose as base64_engine, Engine as _};
+use base64::{Engine as _, engine::general_purpose as base64_engine};
 use serde::{Deserialize, Serialize};
 
 /// Data encoding used by the flash algorithm.

@@ -26,7 +26,13 @@ impl MockMemory {
             .binary_search_by_key(&address, |(addr, _data)| *addr)
         {
             Ok(index) => {
-                panic!("Failed to add data at {:#010x} - {:#010x}, already exists at {:#010x} - {:#010x}", address, address + data.len() as u64, self.values[index].0, self.values[index].0 + self.values[index].1.len() as u64);
+                panic!(
+                    "Failed to add data at {:#010x} - {:#010x}, already exists at {:#010x} - {:#010x}",
+                    address,
+                    address + data.len() as u64,
+                    self.values[index].0,
+                    self.values[index].0 + self.values[index].1.len() as u64
+                );
             }
             Err(index) => {
                 // This is the index where the new entry should be inserted,
@@ -36,26 +42,26 @@ impl MockMemory {
                     let previous_entry = &self.values[index - 1];
 
                     assert!(
-                            previous_entry.0 + previous_entry.1.len() as u64 <= address,
-                            "Failed to add data at {:#010x} - {:#010x}, overlaps with existing entry at {:#010x} - {:#010x}",
-                            address,
-                            address + data.len() as u64,
-                            previous_entry.0,
-                            previous_entry.0 + previous_entry.1.len() as u64
-                        );
+                        previous_entry.0 + previous_entry.1.len() as u64 <= address,
+                        "Failed to add data at {:#010x} - {:#010x}, overlaps with existing entry at {:#010x} - {:#010x}",
+                        address,
+                        address + data.len() as u64,
+                        previous_entry.0,
+                        previous_entry.0 + previous_entry.1.len() as u64
+                    );
                 }
 
                 if index + 1 < self.values.len() {
                     let next_entry = &self.values[index + 1];
 
                     assert!(
-                            next_entry.0 >= address + data.len() as u64,
-                            "Failed to add data at {:#010x} - {:#010x}, overlaps with existing entry at {:#010x} - {:#010x}",
-                            address,
-                            address + data.len() as u64,
-                            next_entry.0,
-                            next_entry.0 + next_entry.1.len() as u64
-                        );
+                        next_entry.0 >= address + data.len() as u64,
+                        "Failed to add data at {:#010x} - {:#010x}, overlaps with existing entry at {:#010x} - {:#010x}",
+                        address,
+                        address + data.len() as u64,
+                        next_entry.0,
+                        next_entry.0 + next_entry.1.len() as u64
+                    );
                 }
 
                 self.values.insert(index, (address, data));

@@ -13,11 +13,11 @@ pub mod list;
 pub mod stlink;
 pub mod wlink;
 
-use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::ArmError;
+use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{
-    communication_interface::{DapProbe, UninitializedArmProbe},
     RegisterAddress, SwoAccess,
+    communication_interface::{DapProbe, UninitializedArmProbe},
 };
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
@@ -1064,7 +1064,9 @@ pub trait JTAGAccess: DebugProbe {
         &mut self,
         writes: &JtagCommandQueue,
     ) -> Result<DeferredResultSet, BatchExecutionError> {
-        tracing::debug!("Using default `JTAGAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe.");
+        tracing::debug!(
+            "Using default `JTAGAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe."
+        );
         let mut results = DeferredResultSet::new();
 
         for (idx, write) in writes.iter() {

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use probe_rs::MemoryInterface;
-use probe_rs_debug::{get_object_reference, DebugError, ObjectRef};
+use probe_rs_debug::{DebugError, ObjectRef, get_object_reference};
 
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, Clone, PartialEq)]
@@ -93,7 +93,12 @@ impl SvdVariableCache {
             [] => None,
             [variable] => Some(variable),
             [.., last] => {
-                tracing::error!("Found {} variables with parent_key={:?} and name={}. Please report this as a bug.", child_variables.len(), parent_key, variable_name);
+                tracing::error!(
+                    "Found {} variables with parent_key={:?} and name={}. Please report this as a bug.",
+                    child_variables.len(),
+                    parent_key,
+                    variable_name
+                );
                 Some(last)
             }
         }
@@ -117,7 +122,10 @@ impl SvdVariableCache {
 
         // Validate that the parent_key exists ...
         if !self.variable_hash_map.contains_key(&parent_key) {
-            return Err(DebugError::Other(format!("SvdVariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", cache_variable.name, parent_key)));
+            return Err(DebugError::Other(format!(
+                "SvdVariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug",
+                cache_variable.name, parent_key
+            )));
         }
 
         tracing::trace!(
@@ -131,7 +139,10 @@ impl SvdVariableCache {
             .variable_hash_map
             .insert(cache_variable.variable_key, cache_variable.clone())
         {
-            return Err(DebugError::Other(format!("Attempt to insert a new `SvdVariable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", cache_variable.name, old_variable.variable_key)));
+            return Err(DebugError::Other(format!(
+                "Attempt to insert a new `SvdVariable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.",
+                cache_variable.name, old_variable.variable_key
+            )));
         }
 
         Ok(cache_variable.variable_key)

@@ -3,25 +3,26 @@ mod commands;
 mod tools;
 
 use crate::{
+    CoreStatus,
     architecture::arm::{
+        ArmCommunicationInterface, ArmError, DapError, Pins, RawDapAccess, RegisterAddress,
+        SwoAccess, SwoConfig, SwoMode,
         communication_interface::{DapProbe, UninitializedArmProbe},
         dp::{Abort, Ctrl, DpRegister},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, ArmError, DapError, Pins, RawDapAccess, RegisterAddress,
-        SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
-        cmsisdap::commands::{
-            general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
-            CmsisDapError, RequestError,
-        },
         BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         JtagChainItem, ProbeFactory, WireProtocol,
+        cmsisdap::commands::{
+            CmsisDapError, RequestError,
+            general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
+        },
     },
-    CoreStatus,
 };
 
 use commands::{
+    CmsisDapDevice, Status,
     general::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
@@ -44,10 +45,9 @@ use commands::{
     },
     swo,
     transfer::{
-        configure::ConfigureRequest, Ack, TransferBlockRequest, TransferBlockResponse,
-        TransferRequest,
+        Ack, TransferBlockRequest, TransferBlockResponse, TransferRequest,
+        configure::ConfigureRequest,
     },
-    CmsisDapDevice, Status,
 };
 use probe_rs_target::ScanChainElement;
 
@@ -55,7 +55,7 @@ use std::{fmt::Write, time::Duration};
 
 use bitvec::prelude::*;
 
-use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
+use super::common::{ScanChainError, extract_idcodes, extract_ir_lengths};
 
 /// A factory for creating [`CmsisDap`] probes.
 #[derive(Debug)]

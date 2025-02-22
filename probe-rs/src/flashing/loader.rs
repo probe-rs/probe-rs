@@ -12,15 +12,15 @@ use std::time::Duration;
 
 use super::builder::FlashBuilder;
 use super::{
-    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, Flasher,
-    IdfOptions,
+    BinOptions, DownloadOptions, FileDownloadError, FlashError, Flasher, IdfOptions,
+    extract_from_elf,
 };
+use crate::Target;
 use crate::config::DebugSequence;
 use crate::flashing::progress::ProgressOperation;
 use crate::flashing::{FlashLayout, FlashProgress, Format};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
-use crate::Target;
 
 /// Helper trait for object safety.
 pub trait ImageReader: Read + Seek {}
@@ -366,7 +366,7 @@ impl FlashLoader {
                     return Err(FlashError::NoSuitableNvm {
                         range,
                         description_source: self.source.clone(),
-                    })
+                    });
                 }
             }
         }
@@ -518,7 +518,9 @@ impl FlashLoader {
 
             let mut do_use_double_buffering = flasher.double_buffering_supported();
             if do_use_double_buffering && options.disable_double_buffering {
-                tracing::info!("Disabled double-buffering support for loader via passed option, though target supports it.");
+                tracing::info!(
+                    "Disabled double-buffering support for loader via passed option, though target supports it."
+                );
                 do_use_double_buffering = false;
             }
 
@@ -724,7 +726,9 @@ impl FlashLoader {
             // TODO: we could sort by support but it's unlikely to make a difference.
             if options.do_chip_erase && !flasher.is_chip_erase_supported(session) {
                 options.do_chip_erase = false;
-                tracing::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
+                tracing::warn!(
+                    "Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet)."
+                );
                 tracing::warn!("A manual sector erase will be performed.");
             }
         }

@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use serde::{ser::SerializeMap as _, Serialize, Serializer};
+use serde::{Serialize, Serializer, ser::SerializeMap as _};
 
 use crate::serialize::{hex_u_int, serialize_u_int::SerializeUnsignedInt};
 

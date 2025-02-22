@@ -13,10 +13,10 @@ use std::sync::{Arc, Mutex};
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
+    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
     component::TraceSink,
     memory::{ArmMemoryInterface, CoresightComponent},
     sequences::ArmDebugSequence,
-    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
 
 /// Marker structure for most ARMv7 STM32 devices.
@@ -35,7 +35,7 @@ impl Stm32Armv7 {
 }
 
 mod dbgmcu {
-    use crate::architecture::arm::{memory::ArmMemoryInterface, ArmError};
+    use crate::architecture::arm::{ArmError, memory::ArmMemoryInterface};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component

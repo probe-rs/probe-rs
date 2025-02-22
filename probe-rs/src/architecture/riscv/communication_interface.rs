@@ -6,8 +6,8 @@
 
 use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
 use crate::{
-    architecture::riscv::*, config::Target, memory_mapped_bitfield_register,
-    probe::DeferredResultIndex, Error as ProbeRsError,
+    Error as ProbeRsError, architecture::riscv::*, config::Target, memory_mapped_bitfield_register,
+    probe::DeferredResultIndex,
 };
 use std::any::Any;
 use std::collections::HashMap;
@@ -824,7 +824,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // if not supported
         match self.abstract_cmd_register_read(address) {
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                tracing::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
+                tracing::debug!(
+                    "Could not read core register {:#x} with abstract command, falling back to program buffer",
+                    address
+                );
                 self.read_csr_progbuf(address)
             }
             other => other,
@@ -1827,7 +1830,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
         match self.abstract_cmd_register_write(0x7b0, dcsr.0) {
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                tracing::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", 0x7b0);
+                tracing::debug!(
+                    "Could not write core register {:#x} with abstract command, falling back to program buffer",
+                    0x7b0
+                );
                 self.write_csr_progbuf(0x7b0, dcsr.0)
             }
             other => other,

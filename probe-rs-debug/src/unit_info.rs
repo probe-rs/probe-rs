@@ -1,8 +1,8 @@
 use std::ops::Range;
 
 use super::{
-    debug_info::*, extract_byte_size, extract_file, extract_line, function_die::FunctionDie,
-    variable::*, DebugError, DebugRegisters, EndianReader, SourceLocation, VariableCache,
+    DebugError, DebugRegisters, EndianReader, SourceLocation, VariableCache, debug_info::*,
+    extract_byte_size, extract_file, extract_line, function_die::FunctionDie, variable::*,
 };
 use crate::{language, stack_frame::StackFrameInfo};
 use gimli::{
@@ -1025,10 +1025,16 @@ impl UnitInfo {
 
                             // TODO: This is langauge specific, and should be moved to the language implementations.
                             referenced_variable.name = match &child_variable.name {
-                                    VariableName::Named(name) if name.starts_with("Some ") => VariableName::Named(name.replacen('&', "*", 1)) ,
-                                    VariableName::Named(name) => VariableName::Named(format!("*{name}")),
-                                    other => VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
-                                };
+                                VariableName::Named(name) if name.starts_with("Some ") => {
+                                    VariableName::Named(name.replacen('&', "*", 1))
+                                }
+                                VariableName::Named(name) => {
+                                    VariableName::Named(format!("*{name}"))
+                                }
+                                other => VariableName::Named(format!(
+                                    "Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}"
+                                )),
+                            };
 
                             let referenced_node = self.unit.entry(unit_ref)?;
 
@@ -1606,7 +1612,9 @@ impl UnitInfo {
                         "Unsupported location expression while resolving the location. Please reduce optimization levels in your build profile.".to_string()
                     );
                     let variable_name = &child_variable.name;
-                    tracing::debug!("Encountered an unsupported location expression while resolving the location for variable {variable_name:?}: {debug_error:?}. Please reduce optimization levels in your build profile.");
+                    tracing::debug!(
+                        "Encountered an unsupported location expression while resolving the location for variable {variable_name:?}: {debug_error:?}. Please reduce optimization levels in your build profile."
+                    );
                     return Ok(());
                 }
             };
@@ -1698,8 +1706,7 @@ impl UnitInfo {
                         let location = if let VariableLocation::Address(address) = parent_location {
                             let Some(location) = address.checked_add(offset_from_location) else {
                                 return Err(DebugError::WarnAndContinue {
-                                    message: "Overflow calculating variable address"
-                                        .to_string(),
+                                    message: "Overflow calculating variable address".to_string(),
                                 });
                             };
 
@@ -1739,12 +1746,10 @@ impl UnitInfo {
                                 "Unimplemented: extract_location() found unsupported DW_AT_address_class(gimli::DwAddr({address_class:?}))"
                             ))
                         }
-                        other_attribute_value => {
-                            VariableLocation::Unsupported(format!(
-                                "Unimplemented: extract_location() found invalid DW_AT_address_class: {:.100}",
-                                format!("{other_attribute_value:?}")
-                            ))
-                        }
+                        other_attribute_value => VariableLocation::Unsupported(format!(
+                            "Unimplemented: extract_location() found invalid DW_AT_address_class: {:.100}",
+                            format!("{other_attribute_value:?}")
+                        )),
                     };
 
                     ExpressionResult::Location(location)
@@ -1781,7 +1786,7 @@ impl UnitInfo {
             Err(error) => {
                 return Ok(ExpressionResult::Location(VariableLocation::Error(
                     format!("Error: Resolving variable Location: {:?}", error),
-                )))
+                )));
             }
         };
         let Some(program_counter) = frame_info
@@ -1834,7 +1839,10 @@ impl UnitInfo {
     ) -> Result<ExpressionResult, DebugError> {
         fn evaluate_address(address: u64, memory: &mut dyn MemoryInterface) -> ExpressionResult {
             let location = if address >= u32::MAX as u64 && !memory.supports_native_64bit_access() {
-                VariableLocation::Error(format!("The memory location for this variable value ({:#010X}) is invalid. Please report this as a bug.", address))
+                VariableLocation::Error(format!(
+                    "The memory location for this variable value ({:#010X}) is invalid. Please report this as a bug.",
+                    address
+                ))
             } else {
                 VariableLocation::Address(address)
             };
@@ -1941,8 +1949,10 @@ impl UnitInfo {
                 }
                 unimplemented_expression => {
                     return Err(DebugError::WarnAndContinue {
-                        message: format!("Unimplemented: Expressions that include {unimplemented_expression:?} are not currently supported."
-                    )});
+                        message: format!(
+                            "Unimplemented: Expressions that include {unimplemented_expression:?} are not currently supported."
+                        ),
+                    });
                 }
             }
         }
@@ -1990,8 +2000,14 @@ impl UnitInfo {
                                 VariableLocation::Address(memory_location as u64)
                             }
                             Err(error) => {
-                                tracing::debug!("Failed to read referenced variable address from memory location {} : {error}.", parent_variable.memory_location);
-                                VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {error}.", parent_variable.memory_location))
+                                tracing::debug!(
+                                    "Failed to read referenced variable address from memory location {} : {error}.",
+                                    parent_variable.memory_location
+                                );
+                                VariableLocation::Error(format!(
+                                    "Failed to read referenced variable address from memory location {} : {error}.",
+                                    parent_variable.memory_location
+                                ))
                             }
                         }
                     }

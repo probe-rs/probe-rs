@@ -1,7 +1,7 @@
 use anyhow::bail;
 use figment::{
-    providers::{Format, Json, Toml, Yaml},
     Figment,
+    providers::{Format, Json, Toml, Yaml},
 };
 use probe_rs::probe::WireProtocol;
 use serde::{Deserialize, Serialize};
@@ -211,8 +211,8 @@ impl Configs {
             Some("yml" | "yaml") => original.merge(Yaml::file(conf_file).nested()),
             _ => {
                 return Err(anyhow::anyhow!(
-                "File format not recognized from extension (supported: .toml, .json, .yaml / .yml)"
-            ))
+                    "File format not recognized from extension (supported: .toml, .json, .yaml / .yml)"
+                ));
             }
         };
         Ok(())

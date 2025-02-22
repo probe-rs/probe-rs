@@ -1,10 +1,10 @@
 use std::net::SocketAddr;
 
-use probe_rs::{rtt::Error, Core};
+use probe_rs::{Core, rtt::Error};
 
 use crate::{
     cmd::cargo_embed::rttui::tcp::TcpPublisher,
-    util::rtt::{client::RttClient, RttActiveUpChannel, RttDataHandler, RttDecoder},
+    util::rtt::{RttActiveUpChannel, RttDataHandler, RttDecoder, client::RttClient},
 };
 
 pub enum ChannelData {

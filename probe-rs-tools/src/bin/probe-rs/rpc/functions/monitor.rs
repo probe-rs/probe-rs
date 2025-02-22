@@ -2,16 +2,16 @@ use std::{num::NonZeroU32, time::Duration};
 
 use crate::{
     rpc::{
-        functions::{flash::BootInfo, MonitorEndpoint, MonitorTopic, RpcSpawnContext, WireTxImpl},
-        utils::run_loop::RunLoop,
         Key,
+        functions::{MonitorEndpoint, MonitorTopic, RpcSpawnContext, WireTxImpl, flash::BootInfo},
+        utils::run_loop::RunLoop,
     },
     util::rtt::client::RttClient,
 };
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
 use postcard_schema::Schema;
-use probe_rs::{semihosting::SemihostingCommand, BreakpointCause, Core, HaltReason, Session};
+use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
@@ -164,7 +164,9 @@ impl<F: FnMut(MonitorEvent)> MonitorEventHandler<F> {
                 Ok(None) // Continue running
             }
             SemihostingCommand::GetCommandLine(_) => {
-                tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
+                tracing::warn!(
+                    "Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing..."
+                );
                 Ok(None) // Continue running
             }
             SemihostingCommand::Errno(_) => Ok(None),

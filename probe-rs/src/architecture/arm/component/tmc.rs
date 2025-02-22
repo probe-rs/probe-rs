@@ -4,10 +4,11 @@
 //! on-device SRAM for extraction either via the TPIU or via the debug interface.
 
 use crate::{
+    Error,
     architecture::arm::{
-        component::DebugComponentInterface, memory::CoresightComponent, ArmError, ArmProbeInterface,
+        ArmError, ArmProbeInterface, component::DebugComponentInterface, memory::CoresightComponent,
     },
-    memory_mapped_bitfield_register, Error,
+    memory_mapped_bitfield_register,
 };
 
 const REGISTER_OFFSET_RSZ: u32 = 0x04;

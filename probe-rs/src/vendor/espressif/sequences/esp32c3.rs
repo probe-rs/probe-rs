@@ -4,11 +4,11 @@ use std::{sync::Arc, time::Duration};
 
 use super::esp::EspFlashSizeDetector;
 use crate::{
-    architecture::riscv::{
-        communication_interface::RiscvCommunicationInterface, sequences::RiscvDebugSequence,
-        Dmcontrol, Dmstatus,
-    },
     MemoryInterface, Session,
+    architecture::riscv::{
+        Dmcontrol, Dmstatus, communication_interface::RiscvCommunicationInterface,
+        sequences::RiscvDebugSequence,
+    },
 };
 
 /// The debug sequence implementation for the ESP32C3.

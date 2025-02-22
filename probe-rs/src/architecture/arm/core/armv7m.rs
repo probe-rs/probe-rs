@@ -1,24 +1,24 @@
 //! Register types and the core interface for armv7-M
 
 use super::{
+    CortexMState, Dfsr,
     cortex_m::Mvfr0,
     registers::cortex_m::{
         CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS, FP, PC, RA, SP,
     },
-    CortexMState, Dfsr,
 };
 use crate::{
+    BreakpointCause, CoreRegister, CoreType, InstructionSet, MemoryInterface,
     architecture::arm::{
-        core::registers::cortex_m::XPSR, memory::ArmMemoryInterface, sequences::ArmDebugSequence,
-        ArmError,
+        ArmError, core::registers::cortex_m::XPSR, memory::ArmMemoryInterface,
+        sequences::ArmDebugSequence,
     },
     core::{
         Architecture, CoreInformation, CoreInterface, CoreRegisters, CoreStatus, HaltReason,
         MemoryMappedRegister, RegisterId, RegisterValue, VectorCatchCondition,
     },
     error::Error,
-    memory::{valid_32bit_address, CoreMemoryInterface},
-    BreakpointCause, CoreRegister, CoreType, InstructionSet, MemoryInterface,
+    memory::{CoreMemoryInterface, valid_32bit_address},
 };
 use bitfield::bitfield;
 use std::{
@@ -502,7 +502,10 @@ impl FpRev1CompX {
         } else if fp1_val.replace() == 0b10 {
             Ok((fp1_val.comp() << 2) | 0x2)
         } else {
-            Err(Error::Arm(ArmError::Other(format!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", fp1_val.0))))
+            Err(Error::Arm(ArmError::Other(format!(
+                "Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries",
+                fp1_val.0
+            ))))
         }
     }
     /// Get the correct register configuration which enables
@@ -879,7 +882,10 @@ impl CoreInterface for Armv7m<'_> {
                     .hw_breakpoints()?
                     .contains(&pc_before_step.try_into().ok())
             {
-                tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
+                tracing::debug!(
+                    "Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.",
+                    pc_after_step
+                );
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
                 pc_after_step.increment_address(2)?;
                 self.write_core_reg(self.program_counter().into(), pc_after_step)?;
@@ -920,10 +926,14 @@ impl CoreInterface for Armv7m<'_> {
         if reg.rev() == 0 || reg.rev() == 1 {
             Ok(reg.num_code())
         } else {
-            tracing::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
-            Err(
-                Error::Arm(ArmError::Other(format!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev())))
-            )
+            tracing::warn!(
+                "This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.",
+                reg.rev()
+            );
+            Err(Error::Arm(ArmError::Other(format!(
+                "This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.",
+                reg.rev()
+            ))))
         }
     }
 
@@ -993,8 +1003,14 @@ impl CoreInterface for Armv7m<'_> {
         } else if ctrl_reg.rev() == 1 {
             val = FpRev2CompX::breakpoint_configuration(addr).into();
         } else {
-            tracing::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
-            return Err(Error::Other(format!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
+            tracing::warn!(
+                "This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.",
+                ctrl_reg.rev()
+            );
+            return Err(Error::Other(format!(
+                "This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.",
+                ctrl_reg.rev()
+            )));
         }
 
         // This is fine as FpRev1CompX and Rev2CompX are just two different

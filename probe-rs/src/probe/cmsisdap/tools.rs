@@ -1,11 +1,11 @@
 use super::CmsisDapDevice;
 use crate::probe::{
-    cmsisdap::CmsisDapFactory, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+    DebugProbeInfo, DebugProbeSelector, ProbeCreationError, cmsisdap::CmsisDapFactory,
 };
 use hidapi::HidApi;
 use nusb::{
-    transfer::{Direction, EndpointType},
     DeviceInfo,
+    transfer::{Direction, EndpointType},
 };
 
 const USB_CLASS_HID: u8 = 0x03;

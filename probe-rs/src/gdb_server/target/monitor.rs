@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use super::RuntimeTarget;
 
-use gdbstub::target::ext::monitor_cmd::outputln;
 use gdbstub::target::ext::monitor_cmd::MonitorCmd;
+use gdbstub::target::ext::monitor_cmd::outputln;
 
 const HELP_TEXT: &str = r#"Supported Commands:
 

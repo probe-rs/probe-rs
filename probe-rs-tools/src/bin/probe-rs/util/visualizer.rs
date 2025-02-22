@@ -3,8 +3,8 @@ use std::io::Write;
 use std::path::Path;
 
 use svg::{
-    node::element::{Group, Rectangle, Text},
     Document, Node,
+    node::element::{Group, Rectangle, Text},
 };
 
 use crate::rpc::functions::flash::FlashLayout;

@@ -17,7 +17,7 @@ impl Request for ConfigureRequest {
     type Response = ConfigureResponse;
 
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
-        use scroll::{Pwrite, LE};
+        use scroll::{LE, Pwrite};
 
         buffer[0] = self.idle_cycles;
         buffer

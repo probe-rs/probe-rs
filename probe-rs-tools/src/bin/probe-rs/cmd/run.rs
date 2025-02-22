@@ -3,9 +3,9 @@ use std::path::{Path, PathBuf};
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
 
+use crate::FormatOptions;
 use crate::util::cli::{self, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
-use crate::FormatOptions;
 
 use libtest_mimic::{Arguments, FormatSetting};
 use probe_rs::flashing::FileDownloadError;
@@ -277,7 +277,9 @@ fn detect_run_mode(cmd: &Cmd) -> anyhow::Result<RunMode> {
             || !cmd.test_options.filter.is_empty();
 
         if test_args_specified {
-            anyhow::bail!("probe-rs was invoked with arguments exclusive to test mode, but the binary does not contain embedded-test");
+            anyhow::bail!(
+                "probe-rs was invoked with arguments exclusive to test mode, but the binary does not contain embedded-test"
+            );
         }
 
         tracing::debug!("No embedded-test in ELF file. Running as normal");

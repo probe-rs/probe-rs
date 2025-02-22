@@ -2,8 +2,8 @@
 use crate::{
     architecture::{
         arm::{
-            communication_interface::{DapProbe, UninitializedArmProbe},
             ArmCommunicationInterface,
+            communication_interface::{DapProbe, UninitializedArmProbe},
         },
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
         xtensa::communication_interface::{
@@ -11,10 +11,10 @@ use crate::{
         },
     },
     probe::{
-        arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
-        common::{JtagDriverState, RawJtagIo},
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
         ProbeCreationError, ProbeFactory, ScanChainElement, WireProtocol,
+        arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
+        common::{JtagDriverState, RawJtagIo},
     },
 };
 use bitvec::prelude::*;
@@ -29,7 +29,7 @@ mod command_compacter;
 mod ftdaye;
 
 use command_compacter::Command;
-use ftdaye::{error::FtdiError, ChipType};
+use ftdaye::{ChipType, error::FtdiError};
 
 #[derive(Debug)]
 struct JtagAdapter {

@@ -1,7 +1,7 @@
 use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection};
 use probe_rs::{
-    rtt::{Error, Rtt, ScanRegion},
     Core, MemoryInterface,
+    rtt::{Error, Rtt, ScanRegion},
 };
 
 pub struct RttClient {

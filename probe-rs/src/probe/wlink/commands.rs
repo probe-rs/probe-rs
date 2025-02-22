@@ -1,6 +1,6 @@
 //! WCH-LinkRV commands
 
-use super::{RiscvChip, WchLinkError, WchLinkVariant, DMI_OP_NOP, DMI_OP_READ, DMI_OP_WRITE};
+use super::{DMI_OP_NOP, DMI_OP_READ, DMI_OP_WRITE, RiscvChip, WchLinkError, WchLinkVariant};
 
 /// Only part of commands are implemented
 #[repr(u8)]

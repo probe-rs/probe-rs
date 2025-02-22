@@ -4,12 +4,12 @@ use std::{
 };
 
 use crate::{
+    Error as ProbeRsError,
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
         CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
         JtagWriteCommand, ShiftDrCommand,
     },
-    Error as ProbeRsError,
 };
 
 use super::communication_interface::XtensaError;
@@ -860,7 +860,7 @@ impl NexusRegister for DebugControlSet {
     }
 
     fn bits(&self) -> u32 {
-        self.0 .0
+        self.0.0
     }
 }
 
@@ -877,7 +877,7 @@ impl NexusRegister for DebugControlClear {
     }
 
     fn bits(&self) -> u32 {
-        self.0 .0
+        self.0.0
     }
 }
 
