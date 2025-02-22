@@ -547,7 +547,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33d852cb9b869c2a9b3df2f71a3074817f01e1844f839a144f5fcef059a4eb5d"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1207,7 +1207,7 @@ dependencies = [
 [[package]]
 name = "nusb"
 version = "0.1.12"
-source = "git+https://github.com/Yatekii/nusb?branch=task%2Fwebusb#d7b95cb9d786a3d6eec23fc87e5b531c70ad1f50"
+source = "git+https://github.com/Yatekii/nusb?branch=task%2Fwebusb#a9ab3d96731717df6f21a41a21520a317a5a2965"
 dependencies = [
  "atomic-waker",
  "core-foundation 0.9.4",
@@ -1530,7 +1530,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2314,7 +2314,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

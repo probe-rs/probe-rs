@@ -136,7 +136,7 @@ impl FlashProgress {
 ///
 /// If an error occurs in any stage, one of the `Failed*` event will be returned,
 /// and no further events will be returned.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ProgressEvent {
     /// The flash layout has been built and the flashing procedure was initialized.
     Initialized {
