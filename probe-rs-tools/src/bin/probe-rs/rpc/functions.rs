@@ -2,38 +2,38 @@ use std::{any::Any, ops::DerefMut};
 use std::{convert::Infallible, future::Future};
 
 use crate::rpc::functions::file::{
-    append_temp_file, create_temp_file, AppendFileRequest, CreateFileResponse,
+    AppendFileRequest, CreateFileResponse, append_temp_file, create_temp_file,
 };
-use crate::rpc::functions::probe::{select_probe, SelectProbeRequest, SelectProbeResponse};
+use crate::rpc::functions::probe::{SelectProbeRequest, SelectProbeResponse, select_probe};
 use crate::rpc::transport::memory::{WireRx, WireTx};
 use crate::{
     rpc::{
+        Key, SessionState,
         functions::{
             chip::{
-                chip_info, list_families, load_chip_family, ChipInfoRequest, ChipInfoResponse,
-                ListFamiliesResponse, LoadChipFamilyRequest,
+                ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse, LoadChipFamilyRequest,
+                chip_info, list_families, load_chip_family,
             },
             flash::{
-                build, erase, flash, verify, BuildRequest, BuildResponse, EraseRequest,
-                FlashRequest, ProgressEvent, VerifyRequest, VerifyResponse,
+                BuildRequest, BuildResponse, EraseRequest, FlashRequest, ProgressEvent,
+                VerifyRequest, VerifyResponse, build, erase, flash, verify,
             },
-            info::{target_info, InfoEvent, TargetInfoRequest},
-            memory::{read_memory, write_memory, ReadMemoryRequest, WriteMemoryRequest},
-            monitor::{monitor, MonitorEvent, MonitorRequest},
+            info::{InfoEvent, TargetInfoRequest, target_info},
+            memory::{ReadMemoryRequest, WriteMemoryRequest, read_memory, write_memory},
+            monitor::{MonitorEvent, MonitorRequest, monitor},
             probe::{
-                attach, list_probes, AttachRequest, AttachResponse, ListProbesRequest,
-                ListProbesResponse,
+                AttachRequest, AttachResponse, ListProbesRequest, ListProbesResponse, attach,
+                list_probes,
             },
-            reset::{reset, ResetCoreRequest},
-            resume::{resume_all_cores, ResumeAllCoresRequest},
-            rtt_client::{create_rtt_client, CreateRttClientRequest, CreateRttClientResponse},
-            stack_trace::{take_stack_trace, TakeStackTraceRequest, TakeStackTraceResponse},
+            reset::{ResetCoreRequest, reset},
+            resume::{ResumeAllCoresRequest, resume_all_cores},
+            rtt_client::{CreateRttClientRequest, CreateRttClientResponse, create_rtt_client},
+            stack_trace::{TakeStackTraceRequest, TakeStackTraceResponse, take_stack_trace},
             test::{
-                list_tests, run_test, ListTestsRequest, ListTestsResponse, RunTestRequest,
-                RunTestResponse,
+                ListTestsRequest, ListTestsResponse, RunTestRequest, RunTestResponse, list_tests,
+                run_test,
             },
         },
-        Key, SessionState,
     },
     util::common_options::OperationError,
 };
@@ -43,11 +43,11 @@ use postcard_rpc::header::{VarHeader, VarSeq};
 use postcard_rpc::server::{
     Dispatch, Sender as PostcardSender, Server, SpawnContext, WireRxErrorKind, WireTxErrorKind,
 };
-use postcard_rpc::{endpoints, host_client, server, topics, Topic, TopicDirection};
+use postcard_rpc::{Topic, TopicDirection, endpoints, host_client, server, topics};
 use postcard_schema::Schema;
-use probe_rs::{probe::list::Lister, Session};
+use probe_rs::{Session, probe::list::Lister};
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{Receiver, Sender, channel};
 use tokio_util::sync::CancellationToken;
 
 pub mod chip;

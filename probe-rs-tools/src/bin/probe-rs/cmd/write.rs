@@ -1,8 +1,8 @@
 use crate::rpc::client::RpcClient;
 
+use crate::CoreOptions;
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
 use crate::util::{cli, parse_u64};
-use crate::CoreOptions;
 
 /// Write to target memory address
 ///

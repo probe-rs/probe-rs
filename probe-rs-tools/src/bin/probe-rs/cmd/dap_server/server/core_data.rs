@@ -5,6 +5,7 @@ use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, DataFormat, DefmtProcessor, DefmtState};
 use crate::{
     cmd::dap_server::{
+        DebuggerError,
         debug_adapter::{
             dap::{
                 adapter::DebugAdapter,
@@ -15,15 +16,14 @@ use crate::{
         },
         peripherals::svd_variables::SvdCache,
         server::debug_rtt,
-        DebuggerError,
     },
     util::rtt::RttDecoder,
 };
-use anyhow::{anyhow, Result};
-use probe_rs::{rtt::ScanRegion, Core, CoreStatus, HaltReason};
+use anyhow::{Result, anyhow};
+use probe_rs::{Core, CoreStatus, HaltReason, rtt::ScanRegion};
 use probe_rs_debug::VerifiedBreakpoint;
 use probe_rs_debug::{
-    debug_info::DebugInfo, stack_frame::StackFrameInfo, ColumnType, ObjectRef, VariableCache,
+    ColumnType, ObjectRef, VariableCache, debug_info::DebugInfo, stack_frame::StackFrameInfo,
 };
 use time::UtcOffset;
 use typed_path::TypedPath;

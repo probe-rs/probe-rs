@@ -3,10 +3,10 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    CoreStatus, HaltReason,
     core::{BreakpointCause, RegisterValue},
     memory_mapped_bitfield_register,
     semihosting::SemihostingCommand,
-    CoreStatus, HaltReason,
 };
 
 use super::memory::ArmMemoryInterface;

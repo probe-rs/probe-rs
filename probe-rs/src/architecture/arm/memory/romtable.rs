@@ -1,8 +1,8 @@
 //! CoreSight ROM table parsing and handling.
 
 use crate::architecture::arm::{
-    ap::AccessPortError, communication_interface::ArmProbeInterface, memory::ArmMemoryInterface,
-    ArmError, FullyQualifiedApAddress,
+    ArmError, FullyQualifiedApAddress, ap::AccessPortError,
+    communication_interface::ArmProbeInterface, memory::ArmMemoryInterface,
 };
 
 /// The ARCHID associated with all CoreSight ROM tables.
@@ -311,7 +311,10 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
             if preambles[i] != expected[i] {
                 tracing::warn!(
                     "Component at 0x{:x}: CIDR{} has invalid preamble (expected 0x{:x}, got 0x{:x})",
-                    self.base_address, i, expected[i], preambles[i],
+                    self.base_address,
+                    i,
+                    expected[i],
+                    preambles[i],
                 );
                 // Technically invalid preambles are a no-go.
                 // We are not sure if we need to abort earlier or if just emitting a warning is okay.

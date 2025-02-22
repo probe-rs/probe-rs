@@ -7,13 +7,13 @@ use std::{
 use super::cargo::ArtifactError;
 use crate::util::parse_u64;
 use probe_rs::{
+    Permissions, Session, Target,
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
     integration::FakeProbe,
     probe::{
-        list::Lister, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, WireProtocol,
+        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, WireProtocol, list::Lister,
     },
-    Permissions, Session, Target,
 };
 use serde::{Deserialize, Serialize};
 

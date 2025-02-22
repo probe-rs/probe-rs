@@ -7,8 +7,8 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    memory::ArmMemoryInterface, sequences::ArmDebugSequence, ArmError, ArmProbeInterface,
-    FullyQualifiedApAddress,
+    ArmError, ArmProbeInterface, FullyQualifiedApAddress, memory::ArmMemoryInterface,
+    sequences::ArmDebugSequence,
 };
 
 /// Supported families for custom sequences on ARMv6 STM32 devices.
@@ -38,7 +38,7 @@ impl Stm32Armv6 {
 }
 
 mod rcc {
-    use crate::architecture::arm::{memory::ArmMemoryInterface, ArmError};
+    use crate::architecture::arm::{ArmError, memory::ArmMemoryInterface};
     use bitfield::bitfield;
 
     /// The base address of the RCC peripheral
@@ -78,7 +78,7 @@ mod rcc {
 }
 
 mod dbgmcu {
-    use crate::architecture::arm::{memory::ArmMemoryInterface, ArmError};
+    use crate::architecture::arm::{ArmError, memory::ArmMemoryInterface};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component

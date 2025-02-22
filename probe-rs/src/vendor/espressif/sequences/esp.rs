@@ -85,8 +85,8 @@ fn call_function(
 ) -> Result<(), crate::Error> {
     if core.architecture() == Architecture::Xtensa {
         use crate::architecture::xtensa::arch::{
-            instruction::{into_binary, Instruction},
             CpuRegister,
+            instruction::{Instruction, into_binary},
         };
         let instructions = into_binary([
             Instruction::CallX8(CpuRegister::A4),

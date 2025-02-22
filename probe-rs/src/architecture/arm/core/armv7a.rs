@@ -1,6 +1,7 @@
 //! Register types and the core interface for armv7-a
 
 use super::{
+    CortexAState,
     instructions::aarch32::{
         build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc, build_vmov,
         build_vmrs,
@@ -12,18 +13,17 @@ use super::{
         },
         cortex_m::{FP, PC, RA, SP},
     },
-    CortexAState,
 };
 use crate::{
+    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
+    InstructionSet, MemoryInterface,
     architecture::arm::{
-        core::armv7a_debug_regs::*, memory::ArmMemoryInterface, sequences::ArmDebugSequence,
-        ArmError,
+        ArmError, core::armv7a_debug_regs::*, memory::ArmMemoryInterface,
+        sequences::ArmDebugSequence,
     },
     core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
     error::Error,
     memory::valid_32bit_address,
-    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
-    InstructionSet, MemoryInterface,
 };
 use std::{
     mem::size_of,
@@ -995,8 +995,8 @@ impl MemoryInterface for Armv7a<'_> {
 mod test {
     use crate::{
         architecture::arm::{
-            communication_interface::SwdSequence, sequences::DefaultArmSequence,
-            FullyQualifiedApAddress,
+            FullyQualifiedApAddress, communication_interface::SwdSequence,
+            sequences::DefaultArmSequence,
         },
         probe::DebugProbeError,
     };

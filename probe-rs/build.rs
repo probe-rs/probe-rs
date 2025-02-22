@@ -73,8 +73,8 @@ mod builtin_targets {
         // Check if we can deserialize the bincode again, otherwise the binary will not be usable.
         if let Err(deserialize_error) = bincode::deserialize::<Vec<ChipFamily>>(&families_bin) {
             panic!(
-           "Failed to deserialize supported target definitions from bincode: {deserialize_error:?}"
-       );
+                "Failed to deserialize supported target definitions from bincode: {deserialize_error:?}"
+            );
         }
     }
 

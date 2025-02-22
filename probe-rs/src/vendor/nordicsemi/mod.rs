@@ -1,23 +1,23 @@
 //! Nordic Semiconductor vendor support.
 
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{HashMap, hash_map::Entry};
 
 use probe_rs_target::{
-    chip_detection::{NordicConfigIdDetection, NordicFicrDetection},
     Chip,
+    chip_detection::{NordicConfigIdDetection, NordicFicrDetection},
 };
 use sequences::nrf54l::Nrf54L;
 
 use crate::{
-    architecture::arm::{
-        memory::ArmMemoryInterface, ArmChipInfo, ArmProbeInterface, FullyQualifiedApAddress,
-    },
-    config::{registry, DebugSequence},
-    vendor::{
-        nordicsemi::sequences::{nrf52::Nrf52, nrf53::Nrf5340, nrf91::Nrf9160},
-        Vendor,
-    },
     Error,
+    architecture::arm::{
+        ArmChipInfo, ArmProbeInterface, FullyQualifiedApAddress, memory::ArmMemoryInterface,
+    },
+    config::{DebugSequence, registry},
+    vendor::{
+        Vendor,
+        nordicsemi::sequences::{nrf52::Nrf52, nrf53::Nrf5340, nrf91::Nrf9160},
+    },
 };
 
 pub mod sequences;

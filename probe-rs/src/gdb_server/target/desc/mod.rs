@@ -7,9 +7,9 @@ use anyhow::anyhow;
 
 use data::build_target_description;
 
+use gdbstub::target::TargetError;
 use gdbstub::target::ext::memory_map::MemoryMap;
 use gdbstub::target::ext::target_description_xml_override::TargetDescriptionXmlOverride;
-use gdbstub::target::TargetError;
 
 use crate::config::MemoryRegion;
 use crate::{CoreType, Session};

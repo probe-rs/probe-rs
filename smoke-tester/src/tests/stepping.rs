@@ -3,11 +3,11 @@ use std::time::Duration;
 use linkme::distributed_slice;
 use miette::IntoDiagnostic;
 use probe_rs::{
-    config::MemoryRegion, probe::DebugProbeError, Architecture, BreakpointCause, Core, CoreStatus,
-    Error, HaltReason, MemoryInterface,
+    Architecture, BreakpointCause, Core, CoreStatus, Error, HaltReason, MemoryInterface,
+    config::MemoryRegion, probe::DebugProbeError,
 };
 
-use crate::{TestFailure, TestResult, TestTracker, CORE_TESTS};
+use crate::{CORE_TESTS, TestFailure, TestResult, TestTracker};
 
 const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
 

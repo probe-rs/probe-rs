@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Context;
-use probe_rs::{probe::list::Lister, MemoryInterface};
+use probe_rs::{MemoryInterface, probe::list::Lister};
 
 use crate::util::common_options::LoadedProbeOptions;
 use crate::util::common_options::ProbeOptions;

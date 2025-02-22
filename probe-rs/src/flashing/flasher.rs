@@ -8,7 +8,7 @@ use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector};
 use crate::memory::MemoryInterface;
 use crate::rtt::{self, Rtt, ScanRegion};
-use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
+use crate::{Core, InstructionSet, core::CoreRegisters, session::Session};
 use crate::{CoreStatus, Target};
 use std::marker::PhantomData;
 use std::{
@@ -1044,7 +1044,8 @@ impl<O: Operation> ActiveFlasher<'_, O> {
         assert!(
             buffer_number < self.flash_algorithm.page_buffers.len(),
             "Trying to use non-existing buffer ({}/{}) for flashing. This is a bug. Please report it.",
-            buffer_number, self.flash_algorithm.page_buffers.len()
+            buffer_number,
+            self.flash_algorithm.page_buffers.len()
         );
 
         let buffer_address = self.flash_algorithm.page_buffers[buffer_number];

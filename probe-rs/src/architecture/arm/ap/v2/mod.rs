@@ -3,14 +3,14 @@
 use std::collections::BTreeSet;
 
 use crate::architecture::arm::{
+    ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, ArmProbeInterface,
+    FullyQualifiedApAddress,
     communication_interface::Initialized,
     dp::DpAddress,
     memory::{
-        romtable::{RomTable, CORESIGHT_ROM_TABLE_ARCHID},
         ADIMemoryInterface, ArmMemoryInterface, Component, PeripheralType,
+        romtable::{CORESIGHT_ROM_TABLE_ARCHID, RomTable},
     },
-    ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, ArmProbeInterface,
-    FullyQualifiedApAddress,
 };
 
 mod root_memory_interface;

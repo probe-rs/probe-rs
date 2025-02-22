@@ -1,16 +1,16 @@
 //! Sequences for ATSAM D1x/D2x/DAx/D5x/E5x target families
 
 use crate::{
+    MemoryMappedRegister, Permissions,
     architecture::arm::{
+        ArmError, ArmProbeInterface, FullyQualifiedApAddress, Pins,
         armv7m::Dhcsr,
         communication_interface::{DapProbe, SwdSequence},
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
-        ArmError, ArmProbeInterface, FullyQualifiedApAddress, Pins,
     },
     probe::DebugProbeError,
     session::MissingPermissions,
-    MemoryMappedRegister, Permissions,
 };
 use bitfield::bitfield;
 use probe_rs_target::CoreType;

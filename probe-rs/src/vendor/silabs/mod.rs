@@ -4,7 +4,7 @@ use probe_rs_target::Chip;
 
 use crate::{
     config::DebugSequence,
-    vendor::{silabs::sequences::efm32xg2::EFM32xG2, Vendor},
+    vendor::{Vendor, silabs::sequences::efm32xg2::EFM32xG2},
 };
 
 pub mod sequences;

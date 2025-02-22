@@ -1,11 +1,11 @@
 use crate::architecture::arm::{
+    ArmError, DapAccess,
     ap::{
-        memory_ap::amba_ahb3::CSW, AddressIncrement, ApClass, ApRegister, ApType, DataSize, CFG,
-        DRW, IDR, TAR,
+        AddressIncrement, ApClass, ApRegister, ApType, CFG, DRW, DataSize, IDR, TAR,
+        memory_ap::amba_ahb3::CSW,
     },
     communication_interface::{DapProbe, FlushableArmAccess},
     dp::{DpAddress, DpRegisterAddress},
-    ArmError, DapAccess,
 };
 use std::collections::HashMap;
 

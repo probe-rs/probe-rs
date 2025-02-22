@@ -7,9 +7,9 @@ use miette::IntoDiagnostic;
 use miette::Result;
 use miette::WrapErr;
 use probe_rs::{
-    config::get_target_by_name,
-    probe::{list::Lister, DebugProbeSelector, Probe},
     Target,
+    config::get_target_by_name,
+    probe::{DebugProbeSelector, Probe, list::Lister},
 };
 use serde::Deserialize;
 use std::{
@@ -216,7 +216,11 @@ fn lookup_unique_target(chip: &str) -> Result<Target> {
     let target = get_target_by_name(chip).into_diagnostic()?;
 
     if !target.name.eq_ignore_ascii_case(chip) {
-        miette::bail!("Chip definition does not match exactly, the chip is specified as {}, but the entry in the registry is {}", chip, target.name);
+        miette::bail!(
+            "Chip definition does not match exactly, the chip is specified as {}, but the entry in the registry is {}",
+            chip,
+            target.name
+        );
     }
 
     Ok(target)

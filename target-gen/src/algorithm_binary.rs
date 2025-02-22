@@ -4,7 +4,7 @@ use goblin::{
 };
 use probe_rs_target::MemoryRange;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 const CODE_SECTION_KEY: (&str, u32) = ("PrgCode", SHT_PROGBITS);
 const DATA_SECTION_KEY: (&str, u32) = ("PrgData", SHT_PROGBITS);
@@ -92,13 +92,19 @@ impl AlgorithmBinary {
         }
 
         if !suspicious_sections.is_empty() {
-            log::warn!("The ELF file contains some unexpected sections, which should not be part of a flash loader: ");
+            log::warn!(
+                "The ELF file contains some unexpected sections, which should not be part of a flash loader: "
+            );
 
             for section in suspicious_sections {
                 log::warn!("\t{}", section);
             }
 
-            log::warn!("Code should be placed in the '{}' section, and data should be placed in the '{}' section.", CODE_SECTION_KEY.0, DATA_SECTION_KEY.0);
+            log::warn!(
+                "Code should be placed in the '{}' section, and data should be placed in the '{}' section.",
+                CODE_SECTION_KEY.0,
+                DATA_SECTION_KEY.0
+            );
         }
 
         // Check all the sections for validity and return the binary blob if possible.

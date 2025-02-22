@@ -1,12 +1,12 @@
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::{probe::DebugProbeInfo, Session};
+use probe_rs::{Session, probe::DebugProbeInfo};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     rpc::{
-        functions::{RpcContext, RpcResult},
         Key,
+        functions::{RpcContext, RpcResult},
     },
     util::common_options::{OperationError, ProbeOptions},
 };

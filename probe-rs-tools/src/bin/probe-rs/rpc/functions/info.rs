@@ -4,20 +4,19 @@
 
 use anyhow::anyhow;
 use postcard_rpc::header::{VarHeader, VarSeq};
-use postcard_schema::{schema, Schema};
+use postcard_schema::{Schema, schema};
 use probe_rs::{
     architecture::{
         arm::{
-            self,
+            self, ApAddress, ApV2Address, ArmProbeInterface,
             ap::{ApClass, ApRegister, IDR},
             component::Scs,
-            dp::{self, Ctrl, DpRegister, DLPIDR, DPIDR, TARGETID},
+            dp::{self, Ctrl, DLPIDR, DPIDR, DpRegister, TARGETID},
             memory::{
-                romtable::{PeripheralID, RomTable},
                 ArmMemoryInterface, Component, ComponentId, CoresightComponent, PeripheralType,
+                romtable::{PeripheralID, RomTable},
             },
             sequences::DefaultArmSequence,
-            ApAddress, ApV2Address, ArmProbeInterface,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
@@ -30,9 +29,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     rpc::functions::{
+        NoResponse, RpcContext, TargetInfoDataTopic,
         chip::JEP106Code,
         probe::{DebugProbeEntry, WireProtocol},
-        NoResponse, RpcContext, TargetInfoDataTopic,
     },
     util::common_options::ProbeOptions,
 };
@@ -318,7 +317,9 @@ async fn try_show_info(
                 (probe_moved, Ok(dp_version)) => {
                     probe = probe_moved;
                     if dp_version < dp::DebugPortVersion::DPv2 && target_sel.is_none() {
-                        let message = format!("Debug port version {dp_version} does not support SWD multidrop. Stopping here.");
+                        let message = format!(
+                            "Debug port version {dp_version} does not support SWD multidrop. Stopping here."
+                        );
 
                         ctx.publish::<TargetInfoDataTopic>(
                             VarSeq::Seq2(0),
@@ -646,8 +647,7 @@ fn coresight_component_tree(
                     peripheral_id.part(),
                     peripheral_id.dev_type(),
                     peripheral_id.arch_id(),
-                    peripheral_id.designer()
-                        .unwrap_or("<unknown>"),
+                    peripheral_id.designer().unwrap_or("<unknown>"),
                 )
             };
 

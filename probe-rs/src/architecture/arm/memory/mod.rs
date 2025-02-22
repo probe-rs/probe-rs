@@ -5,11 +5,11 @@ pub mod romtable;
 
 pub(crate) use adi_memory_interface::ADIMemoryInterface;
 
-use crate::{memory::MemoryInterface, probe::DebugProbeError, CoreStatus};
+use crate::{CoreStatus, memory::MemoryInterface, probe::DebugProbeError};
 
 use super::{
-    communication_interface::SwdSequence, ArmError, ArmProbeInterface, DapAccess,
-    FullyQualifiedApAddress,
+    ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
+    communication_interface::SwdSequence,
 };
 pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, RomTable};
 

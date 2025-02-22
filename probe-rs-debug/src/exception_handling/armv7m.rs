@@ -1,6 +1,6 @@
-use super::{armv6m_armv7m_shared, ExceptionInfo, ExceptionInterface};
+use super::{ExceptionInfo, ExceptionInterface, armv6m_armv7m_shared};
 use crate::{DebugError, DebugInfo, DebugRegisters};
-use probe_rs::{memory_mapped_bitfield_register, Error, MemoryInterface, MemoryMappedRegister};
+use probe_rs::{Error, MemoryInterface, MemoryMappedRegister, memory_mapped_bitfield_register};
 
 memory_mapped_bitfield_register! {
     /// HFSR - HardFault Status Register

@@ -61,7 +61,9 @@ pub enum FlashError {
     #[error("The chip erase routine is not supported with the given flash algorithm.")]
     ChipEraseNotSupported,
     /// Calling the given routine returned the given error code.
-    #[error("The execution of '{name}' failed with code {error_code}. This might indicate a problem with the flash algorithm.")]
+    #[error(
+        "The execution of '{name}' failed with code {error_code}. This might indicate a problem with the flash algorithm."
+    )]
     RoutineCallFailed {
         /// The name of the routine that was called.
         name: &'static str,
@@ -116,7 +118,9 @@ pub enum FlashError {
         size: u64,
     },
     /// Failed to configure the data region of a flash algorithm.
-    #[error("Failed to place data to address {data_load_addr:#010x} in RAM. The data must be placed in the range {data_ram:#x?}.")]
+    #[error(
+        "Failed to place data to address {data_load_addr:#010x} in RAM. The data must be placed in the range {data_ram:#x?}."
+    )]
     InvalidDataAddress {
         /// The address where the data was supposed to be loaded to.
         data_load_addr: u64,
@@ -127,7 +131,9 @@ pub enum FlashError {
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)
     /// No flash algorithm was linked to this target.
-    #[error("Trying to write to flash region {range:#010x?}, but no suitable (default) flash loader algorithm is linked to the given target: {name}.")]
+    #[error(
+        "Trying to write to flash region {range:#010x?}, but no suitable (default) flash loader algorithm is linked to the given target: {name}."
+    )]
     NoFlashLoaderAlgorithmAttached {
         /// The name of the chip.
         name: String,
@@ -135,13 +141,17 @@ pub enum FlashError {
         range: Range<u64>,
     },
     /// More than one matching flash algorithm was found for the given memory range and all of them is marked as default.
-    #[error("Trying to write flash, but found more than one suitable flash loader algorithim marked as default for {region:?}.")]
+    #[error(
+        "Trying to write flash, but found more than one suitable flash loader algorithim marked as default for {region:?}."
+    )]
     MultipleDefaultFlashLoaderAlgorithms {
         /// The region which matched more than one flash algorithm.
         region: NvmRegion,
     },
     /// More than one matching flash algorithm was found for the given memory range and none of them is marked as default.
-    #[error("Trying to write flash, but found more than one suitable flash algorithims but none marked as default for {region:?}.")]
+    #[error(
+        "Trying to write flash, but found more than one suitable flash algorithims but none marked as default for {region:?}."
+    )]
     MultipleFlashLoaderAlgorithmsNoDefault {
         /// The region which matched more than one flash algorithm.
         region: NvmRegion,
@@ -170,7 +180,9 @@ pub enum FlashError {
     /// Two blocks of data overlap each other which means the loaded binary is broken.
     ///
     /// Please check your data and try again.
-    #[error("Adding data for addresses {added_addresses:#010x?} overlaps previously added data for addresses {existing_addresses:#010x?}.")]
+    #[error(
+        "Adding data for addresses {added_addresses:#010x?} overlaps previously added data for addresses {existing_addresses:#010x?}."
+    )]
     DataOverlaps {
         /// The address range that was tried to be added.
         added_addresses: Range<u64>,

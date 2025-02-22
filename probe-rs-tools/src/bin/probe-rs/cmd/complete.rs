@@ -1,12 +1,11 @@
 use std::path::PathBuf;
 use std::{fmt::Write, path::Path};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::CommandFactory;
 use clap_complete::{
-    generate,
+    Generator, Shell, generate,
     shells::{Bash, PowerShell, Zsh},
-    Generator, Shell,
 };
 use probe_rs::probe::list::Lister;
 
@@ -303,7 +302,9 @@ impl ShellExt for PowerShell {
             println!("{script}");
             eprintln!("The user home directory could not be located.");
             eprintln!("Write the script to ~\\Documents\\WindowsPowerShell\\{file_name}");
-            eprintln!("Install the autocompletion with `Import-Module ~\\Documents\\WindowsPowerShell\\{file_name}`");
+            eprintln!(
+                "Install the autocompletion with `Import-Module ~\\Documents\\WindowsPowerShell\\{file_name}`"
+            );
             return Ok(());
         };
         let path = dir

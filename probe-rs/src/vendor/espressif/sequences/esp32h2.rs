@@ -4,12 +4,12 @@ use std::{sync::Arc, time::Duration};
 
 use super::esp::EspFlashSizeDetector;
 use crate::{
+    MemoryInterface, Session,
     architecture::riscv::{
+        Dmcontrol,
         communication_interface::{RiscvCommunicationInterface, Sbaddress0, Sbcs, Sbdata0},
         sequences::RiscvDebugSequence,
-        Dmcontrol,
     },
-    MemoryInterface, Session,
 };
 
 /// The debug sequence implementation for the ESP32H2.

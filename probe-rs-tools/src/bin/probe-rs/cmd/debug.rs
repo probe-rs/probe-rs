@@ -4,25 +4,25 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use capstone::{
-    arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
-    arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
+    Endian, arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
+    arch::riscv::ArchMode as riscvArchMode, prelude::*,
 };
 use num_traits::Num;
 use parse_int::parse;
-use probe_rs::architecture::arm::ap::AccessPortError;
-use probe_rs::flashing::FileDownloadError;
-use probe_rs::probe::list::Lister;
-use probe_rs::probe::DebugProbeError;
 use probe_rs::CoreDump;
 use probe_rs::CoreDumpError;
 use probe_rs::CoreInterface;
+use probe_rs::architecture::arm::ap::AccessPortError;
+use probe_rs::flashing::FileDownloadError;
+use probe_rs::probe::DebugProbeError;
+use probe_rs::probe::list::Lister;
 use probe_rs::{Core, CoreType, InstructionSet, MemoryInterface, RegisterValue};
 use probe_rs_debug::exception_handler_for_core;
 use probe_rs_debug::stack_frame::StackFrameInfo;
 use probe_rs_debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame};
-use rustyline::{error::ReadlineError, DefaultEditor};
+use rustyline::{DefaultEditor, error::ReadlineError};
 
-use crate::{util::common_options::ProbeOptions, CoreOptions};
+use crate::{CoreOptions, util::common_options::ProbeOptions};
 
 #[derive(clap::Parser)]
 pub struct Cmd {

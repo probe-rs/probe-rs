@@ -1,5 +1,5 @@
-use crate::probe::stlink::StLinkFactory;
 use crate::probe::DebugProbeInfo;
+use crate::probe::stlink::StLinkFactory;
 
 use super::usb_interface::USB_PID_EP_MAP;
 use super::usb_interface::USB_VID;

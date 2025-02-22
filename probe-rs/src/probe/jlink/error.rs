@@ -29,7 +29,9 @@ pub enum JlinkError {
     #[error("probe does not support target interface {0:?}")]
     InterfaceNotSupported(Interface),
 
-    #[error("interface {needed:?} must be selected for this operation (currently using interface {selected:?})")]
+    #[error(
+        "interface {needed:?} must be selected for this operation (currently using interface {selected:?})"
+    )]
     WrongInterfaceSelected {
         selected: Interface,
         needed: Interface,

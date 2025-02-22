@@ -3,20 +3,20 @@ use std::time::Duration;
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
 use postcard_schema::Schema;
-use probe_rs::{semihosting::SemihostingCommand, BreakpointCause, Core, HaltReason, Session};
+use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::{
     rpc::{
+        Key,
         functions::{
-            flash::BootInfo,
-            monitor::{MonitorEvent, SemihostingOutput, SemihostingReader},
             ListTestsEndpoint, MonitorTopic, RpcResult, RpcSpawnContext, RunTestEndpoint,
             WireTxImpl,
+            flash::BootInfo,
+            monitor::{MonitorEvent, SemihostingOutput, SemihostingReader},
         },
         utils::run_loop::{ReturnReason, RunLoop},
-        Key,
     },
     util::rtt::client::RttClient,
 };
@@ -376,7 +376,10 @@ impl<F: FnMut(MonitorEvent)> RunEventHandler<F> {
             HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => cmd,
             e => {
                 // Exception occurred (e.g. hardfault) => Abort testing altogether
-                anyhow::bail!("The CPU halted unexpectedly: {:?}. Test should signal failure via a panic handler that calls `semihosting::proces::abort()` instead", e)
+                anyhow::bail!(
+                    "The CPU halted unexpectedly: {:?}. Test should signal failure via a panic handler that calls `semihosting::proces::abort()` instead",
+                    e
+                )
             }
         };
 

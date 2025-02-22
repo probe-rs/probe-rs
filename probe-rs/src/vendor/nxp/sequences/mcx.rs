@@ -11,15 +11,15 @@ use debugmailbox::{DMCSW, DMREQUEST};
 use probe_rs_target::CoreType;
 
 use crate::{
+    MemoryMappedRegister,
     architecture::arm::{
+        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, Pins,
         ap::ApRegister,
         dp::{DpAccess, DpAddress, DpRegister},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, Pins,
     },
     probe::WireProtocol,
-    MemoryMappedRegister,
 };
 
 mod debugmailbox {

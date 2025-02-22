@@ -8,32 +8,32 @@ use super::{
     },
 };
 use crate::cmd::dap_server::{
+    DebuggerError,
     debug_adapter::protocol::{ProtocolAdapter, ProtocolHelper},
     server::{
         configuration::ConsoleLog,
         core_data::CoreHandle,
         session_data::{BreakpointType, SourceLocationScope},
     },
-    DebuggerError,
 };
 use crate::util::rtt;
-use anyhow::{anyhow, Result};
-use base64::{engine::general_purpose as base64_engine, Engine as _};
+use anyhow::{Result, anyhow};
+use base64::{Engine as _, engine::general_purpose as base64_engine};
 use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
+    Architecture::Riscv,
+    CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
     },
-    Architecture::Riscv,
-    CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
 };
 use probe_rs_debug::{
-    stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, SteppingMode, VariableName,
-    VerifiedBreakpoint,
+    ColumnType, ObjectRef, SourceLocation, SteppingMode, VariableName, VerifiedBreakpoint,
+    stack_frame::StackFrameInfo,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use typed_path::NativePathBuf;
 
 use std::{fmt::Display, str, time::Duration};
@@ -367,7 +367,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                             {
                                                 response_body = evaluate_response;
                                             } else {
-                                                response_body.result = format!("Error: Could not parse response body: {repl_response_body:?}");
+                                                response_body.result = format!(
+                                                    "Error: Could not parse response body: {repl_response_body:?}"
+                                                );
                                             };
                                         } else {
                                             response_body.result = repl_response
@@ -817,7 +819,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 });
                 self.send_event("stopped", event_body)?;
             } else {
-                tracing::debug!("Core is halted, but not due to a breakpoint and halt_after_reset is not set. Continuing.");
+                tracing::debug!(
+                    "Core is halted, but not due to a breakpoint and halt_after_reset is not set. Continuing."
+                );
                 self.r#continue(target_core, request)?;
             }
         }
@@ -850,7 +854,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             "Failed to clear existing breakpoints before setting new ones : {}",
                             error
                         ))),
-                    )
+                    );
                 }
             }
 
@@ -1010,7 +1014,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
             Err(error) => {
-                return self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error)))
+                return self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error)));
             }
         };
 
@@ -1484,7 +1488,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             frame_info,
                         )?;
                     } else {
-                        tracing::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name);
+                        tracing::error!(
+                            "Could not cache deferred child variables for variable: {}. No register data available.",
+                            parent_variable.name
+                        );
                     }
                 }
             }

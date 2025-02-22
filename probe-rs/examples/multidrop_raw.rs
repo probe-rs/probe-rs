@@ -3,7 +3,7 @@
 use anyhow::Result;
 use probe_rs::{
     architecture::arm::dp::{DpAddress, DpRegisterAddress},
-    probe::{list::Lister, Probe},
+    probe::{Probe, list::Lister},
 };
 
 fn main() -> Result<()> {

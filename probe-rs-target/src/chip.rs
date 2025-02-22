@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::memory::MemoryRegion;
-use crate::{serialize::hex_option, CoreType};
+use crate::{CoreType, serialize::hex_option};
 use serde::{Deserialize, Serialize};
 
 /// Represents a DAP scan chain element.

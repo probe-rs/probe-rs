@@ -1,21 +1,21 @@
 use crate::cmd::dap_server::{
-    debug_adapter::{dap::adapter::DebugAdapter, protocol::ProtocolAdapter},
     DebuggerError,
+    debug_adapter::{dap::adapter::DebugAdapter, protocol::ProtocolAdapter},
 };
 use parking_lot::{Mutex, MutexGuard};
 use std::{
     fs::File,
-    io::{stderr, Write},
+    io::{Write, stderr},
     path::Path,
     sync::Arc,
 };
 
 use tracing::{level_filters::LevelFilter, subscriber::DefaultGuard};
 use tracing_subscriber::{
-    fmt::{format::FmtSpan, MakeWriter},
+    EnvFilter, Layer,
+    fmt::{MakeWriter, format::FmtSpan},
     prelude::__tracing_subscriber_SubscriberExt,
     util::SubscriberInitExt,
-    EnvFilter, Layer,
 };
 
 /// DebugLogger manages the temporary file that is used to store the tracing messages that are generated during the DAP sessions.

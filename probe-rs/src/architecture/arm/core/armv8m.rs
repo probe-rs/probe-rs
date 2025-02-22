@@ -1,22 +1,22 @@
 //! Register types and the core interface for armv8-M
 
 use super::{
+    CortexMState, Dfsr,
     cortex_m::{IdPfr1, Mvfr0},
     registers::cortex_m::{
         CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS, FP, PC, RA, SP,
     },
-    CortexMState, Dfsr,
 };
 use crate::{
+    Architecture, BreakpointCause, CoreInformation, CoreInterface, CoreRegister, CoreStatus,
+    CoreType, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
     architecture::arm::{
-        core::registers::cortex_m::XPSR, memory::ArmMemoryInterface, sequences::ArmDebugSequence,
-        ArmError,
+        ArmError, core::registers::cortex_m::XPSR, memory::ArmMemoryInterface,
+        sequences::ArmDebugSequence,
     },
     core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
     error::Error,
-    memory::{valid_32bit_address, CoreMemoryInterface},
-    Architecture, BreakpointCause, CoreInformation, CoreInterface, CoreRegister, CoreStatus,
-    CoreType, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
+    memory::{CoreMemoryInterface, valid_32bit_address},
 };
 use bitfield::bitfield;
 use std::{
@@ -304,7 +304,10 @@ impl CoreInterface for Armv8m<'_> {
                     .hw_breakpoints()?
                     .contains(&pc_before_step.try_into().ok())
             {
-                tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
+                tracing::debug!(
+                    "Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.",
+                    pc_after_step
+                );
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
                 pc_after_step.increment_address(2)?;
                 self.write_core_reg(self.program_counter().into(), pc_after_step)?;

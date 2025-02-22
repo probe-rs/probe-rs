@@ -5,11 +5,13 @@ mod tools;
 mod usb_interface;
 
 use crate::{
+    Error as ProbeRsError, MemoryInterface,
     architecture::arm::{
+        ArmError, DapAccess, FullyQualifiedApAddress, Pins, SwoAccess, SwoConfig, SwoMode,
         ap::{
+            AccessPortType,
             memory_ap::{MemoryAp, MemoryApType},
             v1::valid_access_ports,
-            AccessPortType,
         },
         communication_interface::{
             ArmProbeInterface, DapProbe, SwdSequence, UninitializedArmProbe,
@@ -17,24 +19,22 @@ use crate::{
         dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        valid_32bit_arm_address, ArmError, DapAccess, FullyQualifiedApAddress, Pins, SwoAccess,
-        SwoConfig, SwoMode,
+        valid_32bit_arm_address,
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
         ProbeFactory, WireProtocol,
     },
-    Error as ProbeRsError, MemoryInterface,
 };
 
 use probe_rs_target::ScanChainElement;
-use scroll::{Pread, Pwrite, BE, LE};
+use scroll::{BE, LE, Pread, Pwrite};
 
 use std::collections::BTreeSet;
 use std::thread;
 use std::{cmp::Ordering, sync::Arc, time::Duration};
 
-use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
+use constants::{JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount, commands};
 use usb_interface::{StLinkUsb, StLinkUsbDevice, TIMEOUT};
 
 /// Maximum length of 32 bit reads in bytes.
@@ -1360,7 +1360,9 @@ impl StlinkArmDebug {
         };
 
         if bank != 0 && !self.probe.supports_dp_bank_selection() {
-            tracing::warn!("Trying to access DP register at address {address:#x?}, which is not supported on ST-Links.");
+            tracing::warn!(
+                "Trying to access DP register at address {address:#x?}, which is not supported on ST-Links."
+            );
             return Err(DebugProbeError::from(StlinkError::BanksNotAllowedOnDPRegister).into());
         }
 

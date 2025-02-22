@@ -10,8 +10,8 @@ use error::FtdiError;
 use nusb::transfer::{Control, ControlType, Direction, EndpointType, Recipient};
 use tracing::{debug, trace, warn};
 
-use crate::probe::usb_util::InterfaceExt;
 use crate::probe::DebugProbeError;
+use crate::probe::usb_util::InterfaceExt;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ChipType {

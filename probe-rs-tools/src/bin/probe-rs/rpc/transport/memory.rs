@@ -1,17 +1,17 @@
 use std::{
     future::Future,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 
 use postcard_rpc::host_client;
 use postcard_rpc::{
+    Topic,
     header::{VarHeader, VarKey, VarKeyKind, VarSeq},
     server::{self, WireRxErrorKind, WireTxErrorKind},
     standard_icd::LoggingTopic,
-    Topic,
 };
 use serde::Serialize;
 use tokio::sync::mpsc::{Receiver, Sender};

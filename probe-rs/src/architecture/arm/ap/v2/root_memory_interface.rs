@@ -1,14 +1,14 @@
 //! Functions to access the root memory interface of the Debug Port (DP) in an ADIv6
 //! implementation.
 use crate::{
+    MemoryInterface,
     architecture::arm::{
-        communication_interface::SwdSequence,
-        dp::{DpAccess, DpAddress, BASEPTR0, BASEPTR1},
-        memory::ArmMemoryInterface,
         ApV2Address, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
+        communication_interface::SwdSequence,
+        dp::{BASEPTR0, BASEPTR1, DpAccess, DpAddress},
+        memory::ArmMemoryInterface,
     },
     probe::DebugProbeError,
-    MemoryInterface,
 };
 
 /// The Root Memory Interface accesses the Debug Port (DP) address space. This memory interface can

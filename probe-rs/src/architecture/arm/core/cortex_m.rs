@@ -1,12 +1,12 @@
 //! Common functions and data types for Cortex-M core variants
 
 use crate::{
-    architecture::arm::{memory::ArmMemoryInterface, ArmError},
+    CoreInterface, Error, MemoryMappedRegister,
+    architecture::arm::{ArmError, memory::ArmMemoryInterface},
     core::RegisterId,
     memory_mapped_bitfield_register,
-    semihosting::decode_semihosting_syscall,
     semihosting::SemihostingCommand,
-    CoreInterface, Error, MemoryMappedRegister,
+    semihosting::decode_semihosting_syscall,
 };
 use std::time::{Duration, Instant};
 

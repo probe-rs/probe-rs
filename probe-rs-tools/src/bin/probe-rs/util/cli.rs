@@ -10,9 +10,12 @@ use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
+    FormatOptions,
     rpc::{
+        Key,
         client::{RpcClient, SessionInterface},
         functions::{
+            CancelTopic,
             flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
             monitor::{MonitorEvent, MonitorMode, MonitorOptions, SemihostingOutput},
             probe::{
@@ -21,20 +24,17 @@ use crate::{
             rtt_client::ScanRegion,
             stack_trace::StackTrace,
             test::{Test, TestResult},
-            CancelTopic,
         },
-        Key,
     },
     util::{
         common_options::{BinaryDownloadOptions, ProbeOptions},
         flash::CliProgressBars,
         logging,
         rtt::{
-            self, client::RttClient, DataFormat, DefmtProcessor, DefmtState, RttChannelConfig,
-            RttDataHandler, RttDecoder, RttSymbolError,
+            self, DataFormat, DefmtProcessor, DefmtState, RttChannelConfig, RttDataHandler,
+            RttDecoder, RttSymbolError, client::RttClient,
         },
     },
-    FormatOptions,
 };
 
 pub async fn attach_probe(

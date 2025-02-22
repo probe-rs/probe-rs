@@ -3,8 +3,8 @@
 //! # Description
 //! This module provides access and control of the SWO CoreSight component block.
 use super::super::memory::romtable::CoresightComponent;
-use crate::architecture::arm::ArmProbeInterface;
 use crate::Error;
+use crate::architecture::arm::ArmProbeInterface;
 
 const REGISTER_OFFSET_SWO_CODR: u32 = 0x10;
 const REGISTER_OFFSET_SWO_SPPR: u32 = 0xF0;

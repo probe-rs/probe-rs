@@ -1,12 +1,12 @@
 use crate::cmd::dap_server::{
+    DebuggerError,
     debug_adapter::dap::dap_types::{
         ErrorResponseBody, Event, Message, MessageSeverity, OutputEventBody, ProtocolMessage,
         Request, Response, ShowMessageEventBody,
     },
     server::configuration::ConsoleLog,
-    DebuggerError,
 };
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use serde::Serialize;
 use std::{
     collections::{BTreeMap, HashMap},

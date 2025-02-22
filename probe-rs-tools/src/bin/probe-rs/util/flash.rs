@@ -11,11 +11,11 @@ use std::{path::Path, time::Instant};
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
-use probe_rs::flashing::{BinOptions, FlashProgress, Format, IdfOptions};
 use probe_rs::InstructionSet;
+use probe_rs::flashing::{BinOptions, FlashProgress, Format, IdfOptions};
 use probe_rs::{
-    flashing::{DownloadOptions, FileDownloadError, FlashLoader},
     Session,
+    flashing::{DownloadOptions, FileDownloadError, FlashLoader},
 };
 
 /// Performs the flash download with the given loader. Ensure that the loader has the data to load already stored.

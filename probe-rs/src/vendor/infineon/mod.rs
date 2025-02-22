@@ -1,16 +1,16 @@
 //! Infineon vendor support.
 
 use jep106::JEP106Code;
-use probe_rs_target::{chip_detection::ChipDetectionMethod, Chip};
+use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
     architecture::arm::{
-        memory::ArmMemoryInterface, ArmChipInfo, ArmError, ArmProbeInterface,
-        FullyQualifiedApAddress,
+        ArmChipInfo, ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+        memory::ArmMemoryInterface,
     },
-    config::{registry, DebugSequence},
+    config::{DebugSequence, registry},
     error::Error,
-    vendor::{infineon::sequences::xmc4000::XMC4000, Vendor},
+    vendor::{Vendor, infineon::sequences::xmc4000::XMC4000},
 };
 
 pub mod sequences;

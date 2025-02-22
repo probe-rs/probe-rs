@@ -8,8 +8,8 @@ use std::{
 use crate::{
     architecture::{
         arm::{
-            communication_interface::{DapProbe, UninitializedArmProbe},
             ArmCommunicationInterface,
+            communication_interface::{DapProbe, UninitializedArmProbe},
         },
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
         xtensa::communication_interface::{
@@ -20,12 +20,12 @@ use crate::{
 };
 use bitvec::{order::Lsb0, vec::BitVec};
 use probe_rs_target::ScanChainElement;
-use serialport::{available_ports, SerialPortType};
+use serialport::{SerialPortType, available_ports};
 
 use super::{
+    DebugProbeError, ProbeCreationError, ProbeError, WireProtocol,
     arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
     common::{JtagDriverState, RawJtagIo},
-    DebugProbeError, ProbeCreationError, ProbeError, WireProtocol,
 };
 
 const BLACK_MAGIC_PROBE_VID: u16 = 0x1d50;
@@ -664,7 +664,7 @@ impl BlackMagicProbe {
                         ProbeCreationError::ProbeSpecific(
                             RemoteError::UnsupportedVersion(version).into(),
                         ),
-                    ))
+                    ));
                 }
             }
         } else {

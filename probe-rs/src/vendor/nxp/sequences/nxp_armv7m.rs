@@ -2,8 +2,8 @@
 
 use std::{
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
     thread,
     time::{Duration, Instant},
@@ -11,6 +11,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
+        ArmError,
         ap::AccessPortError,
         armv7m::{FpCtrl, FpRev2CompX},
         core::{
@@ -19,7 +20,6 @@ use crate::{
         },
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
-        ArmError,
     },
     core::MemoryMappedRegister,
 };
@@ -249,7 +249,10 @@ impl MIMXRT11xx {
         loop {
             match probe.generic_status() {
                 Ok(csw) if csw.DeviceEn => {
-                    tracing::debug!("Device enabled after {}ms with {errors} errors and {disables} invalid statuses", start.elapsed().as_millis());
+                    tracing::debug!(
+                        "Device enabled after {}ms with {errors} errors and {disables} invalid statuses",
+                        start.elapsed().as_millis()
+                    );
                     return Ok(());
                 }
                 Ok(_) => disables += 1,
@@ -257,7 +260,10 @@ impl MIMXRT11xx {
             }
 
             if start.elapsed() > timeout {
-                tracing::debug!("Exceeded {}ms timeout while waiting for enable with {errors} errors and {disables} invalid statuses", timeout.as_millis());
+                tracing::debug!(
+                    "Exceeded {}ms timeout while waiting for enable with {errors} errors and {disables} invalid statuses",
+                    timeout.as_millis()
+                );
                 return Err(ArmError::Timeout);
             }
 

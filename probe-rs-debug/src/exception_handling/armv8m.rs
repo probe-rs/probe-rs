@@ -1,13 +1,13 @@
-use crate::{get_object_reference, DebugError, DebugInfo, DebugRegisters, StackFrame};
+use crate::{DebugError, DebugInfo, DebugRegisters, StackFrame, get_object_reference};
 use bitfield::bitfield;
 use probe_rs::{
-    memory_mapped_bitfield_register, Error, MemoryInterface, MemoryMappedRegister, RegisterRole,
-    RegisterValue,
+    Error, MemoryInterface, MemoryMappedRegister, RegisterRole, RegisterValue,
+    memory_mapped_bitfield_register,
 };
 
 use super::{
-    armv6m_armv7m_shared::{Xpsr, EXCEPTION_STACK_REGISTERS},
     ExceptionInfo, ExceptionInterface,
+    armv6m_armv7m_shared::{EXCEPTION_STACK_REGISTERS, Xpsr},
 };
 
 bitfield! {

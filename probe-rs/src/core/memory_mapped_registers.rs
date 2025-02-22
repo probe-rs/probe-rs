@@ -1,5 +1,7 @@
 #[derive(Debug, thiserror::Error)]
-#[error("Overflow while attempting to determine the MMIO address for register {register} at offset {offset:#x} from base address {base_address:#x}")]
+#[error(
+    "Overflow while attempting to determine the MMIO address for register {register} at offset {offset:#x} from base address {base_address:#x}"
+)]
 pub struct RegisterAddressOutOfBounds {
     register: &'static str,
     base_address: u64,

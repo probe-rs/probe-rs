@@ -5,17 +5,17 @@ use probe_rs_target::Chip;
 use crate::{
     config::DebugSequence,
     vendor::{
+        Vendor,
         nxp::sequences::{
             mcx::MCX,
             nxp_armv6m::LPC80x,
             nxp_armv7m::{MIMXRT10xx, MIMXRT11xx},
             nxp_armv8m::{
-                ol23d0::OL23D0,
-                LPC55Sxx, MIMXRT118x, MIMXRT5xxS,
+                LPC55Sxx, MIMXRT5xxS, MIMXRT118x,
                 MIMXRTFamily::{MIMXRT5, MIMXRT6},
+                ol23d0::OL23D0,
             },
         },
-        Vendor,
     },
 };
 

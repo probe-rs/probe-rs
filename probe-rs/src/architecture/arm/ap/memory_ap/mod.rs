@@ -13,11 +13,11 @@ mod amba_axi3_axi4;
 mod amba_axi5;
 
 use crate::architecture::arm::ap::{
-    AddressIncrement, ApRegister, BaseAddrFormat, DataSize, BASE, BASE2, DRW, TAR, TAR2,
+    AddressIncrement, ApRegister, BASE, BASE2, BaseAddrFormat, DRW, DataSize, TAR, TAR2,
 };
 
 use super::{AccessPortError, AccessPortType, ApAccess, ApRegAccess};
-use crate::architecture::arm::{ap::CSW, ArmError, DapAccess, FullyQualifiedApAddress};
+use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress, ap::CSW};
 
 /// Implements all default registers of a memory AP to the given type.
 ///

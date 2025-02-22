@@ -5,9 +5,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{ensure, Context};
+use anyhow::{Context, ensure};
 use clap::Parser;
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 use anyhow::Result;
 
@@ -376,7 +376,9 @@ fn disallow_editing_main_changelog(info: &PrInfo) -> Result<()> {
         .iter()
         .any(|f| f.path == Path::new(CHANGELOG_FILE))
     {
-        let message = format!("Please do not edit {CHANGELOG_FILE} directly. Take a look at [CONTRIBUTING.md](https://github.com/probe-rs/probe-rs/blob/master/CONTRIBUTING.md) for information on changelog fragments instead.");
+        let message = format!(
+            "Please do not edit {CHANGELOG_FILE} directly. Take a look at [CONTRIBUTING.md](https://github.com/probe-rs/probe-rs/blob/master/CONTRIBUTING.md) for information on changelog fragments instead."
+        );
 
         write_comment(info.number, &message)?;
         anyhow::bail!("Please do not edit {CHANGELOG_FILE} directly");

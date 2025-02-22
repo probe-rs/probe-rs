@@ -1,12 +1,11 @@
 use gimli::RunTimeEndian;
 use std::ops::Range;
 
-use crate::{stack_frame::StackFrameInfo, MemoryInterface};
+use crate::{MemoryInterface, stack_frame::StackFrameInfo};
 
 use super::{
-    debug_info, extract_file,
+    ColumnType, DebugError, DebugInfo, SourceLocation, VariableLocation, debug_info, extract_file,
     unit_info::{ExpressionResult, UnitInfo},
-    ColumnType, DebugError, DebugInfo, SourceLocation, VariableLocation,
 };
 
 pub(crate) type Die<'abbrev, 'unit> =

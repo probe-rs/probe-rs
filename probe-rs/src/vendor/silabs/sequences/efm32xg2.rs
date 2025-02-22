@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use crate::{
     architecture::arm::{
+        ArmError,
         core::armv8m::{Aircr, Demcr, Dhcsr},
         memory::ArmMemoryInterface,
-        sequences::{cortex_m_wait_for_reset, ArmDebugSequence},
-        ArmError,
+        sequences::{ArmDebugSequence, cortex_m_wait_for_reset},
     },
     core::MemoryMappedRegister,
 };

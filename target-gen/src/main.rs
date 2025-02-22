@@ -1,4 +1,4 @@
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use clap::Parser;
 use probe_rs_target::ChipFamily;
 use std::{
@@ -7,7 +7,7 @@ use std::{
     num::ParseIntError,
     path::{Path, PathBuf},
 };
-use tracing_subscriber::{filter::LevelFilter, EnvFilter};
+use tracing_subscriber::{EnvFilter, filter::LevelFilter};
 
 use target_gen::{
     commands::{

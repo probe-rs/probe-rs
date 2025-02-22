@@ -4,8 +4,8 @@ mod protocol;
 use crate::{
     architecture::{
         arm::{
-            communication_interface::{DapProbe, UninitializedArmProbe},
             SwoAccess,
+            communication_interface::{DapProbe, UninitializedArmProbe},
         },
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
         xtensa::communication_interface::{
@@ -13,15 +13,15 @@ use crate::{
         },
     },
     probe::{
-        common::RawJtagIo, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        ProbeFactory, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
+        WireProtocol, common::RawJtagIo,
     },
 };
 use bitvec::prelude::*;
 
 use self::protocol::ProtocolHandler;
 
-use super::{common::JtagDriverState, JTAGAccess};
+use super::{JTAGAccess, common::JtagDriverState};
 
 use probe_rs_target::ScanChainElement;
 

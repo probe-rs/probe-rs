@@ -1,20 +1,20 @@
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::{
+    Session,
     flashing::{self, FileDownloadError, FlashLoader, FlashProgress},
     rtt::ScanRegion,
-    Session,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 
 use crate::{
+    FormatOptions,
     rpc::{
-        functions::{NoResponse, ProgressEventTopic, RpcContext, RpcResult, RpcSpawnContext},
         Key,
+        functions::{NoResponse, ProgressEventTopic, RpcContext, RpcResult, RpcSpawnContext},
     },
     util::{flash::build_loader, rtt::client::RttClient},
-    FormatOptions,
 };
 
 #[derive(Serialize, Deserialize, Default, Schema)]

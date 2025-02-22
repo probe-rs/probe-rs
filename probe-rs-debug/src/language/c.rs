@@ -1,12 +1,12 @@
 use probe_rs::MemoryInterface;
 
 use crate::{
-    language::{
-        value::{format_float, Value},
-        ProgrammingLanguage,
-    },
     Bitfield, DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
     VariableValue,
+    language::{
+        ProgrammingLanguage,
+        value::{Value, format_float},
+    },
 };
 use std::fmt::{Display, Write};
 

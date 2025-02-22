@@ -4,17 +4,17 @@ use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use colored::Colorize;
 use probe_rs::{
-    flashing::{
-        erase_all, erase_sectors, DownloadOptions, FlashLoader, FlashProgress, ProgressEvent,
-        ProgressOperation,
-    },
     MemoryInterface, Permissions, Session,
+    flashing::{
+        DownloadOptions, FlashLoader, FlashProgress, ProgressEvent, ProgressOperation, erase_all,
+        erase_sectors,
+    },
 };
 use probe_rs_target::RawFlashAlgorithm;
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 use crate::commands::elf::cmd_elf;
 

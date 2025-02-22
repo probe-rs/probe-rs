@@ -2,13 +2,13 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::MemoryMappedRegister;
 use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::communication_interface::DapProbe;
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
-use crate::architecture::arm::{dp::DpAddress, ArmError};
+use crate::architecture::arm::{ArmError, dp::DpAddress};
 use crate::probe::{DebugProbeError, WireProtocol};
-use crate::MemoryMappedRegister;
 
 /// Marker struct indicating initialization sequencing for cc13xx_cc26xx family parts.
 #[derive(Debug)]

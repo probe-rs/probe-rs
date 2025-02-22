@@ -58,8 +58,8 @@ impl ZlibEncoder {
                 return;
             }
 
-            use flate2::write::ZlibEncoder;
             use flate2::Compression;
+            use flate2::write::ZlibEncoder;
 
             tracing::debug!("Image length: {} @ {:#010x}", image.len(), start_addr);
 

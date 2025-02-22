@@ -7,8 +7,8 @@ use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
 use crate::rpc::{
-    functions::{NoResponse, RpcContext, RpcResult},
     Key,
+    functions::{NoResponse, RpcContext, RpcResult},
 };
 
 #[cfg(feature = "remote")]

@@ -11,27 +11,27 @@ use std::{
 use probe_rs_target::CoreType;
 
 use crate::{
+    MemoryInterface, MemoryMappedRegister, Session,
     architecture::arm::{
-        core::registers::cortex_m::{PC, SP},
-        dp::{Ctrl, DebugPortError, DpRegister, DLPIDR, TARGETID},
         ArmProbeInterface, RegisterAddress,
+        core::registers::cortex_m::{PC, SP},
+        dp::{Ctrl, DLPIDR, DebugPortError, DpRegister, TARGETID},
     },
     probe::WireProtocol,
-    MemoryInterface, MemoryMappedRegister, Session,
 };
 
 use super::{
+    ArmError, DapAccess, FullyQualifiedApAddress, Pins,
     ap::AccessPortError,
     armv6m::Demcr,
     communication_interface::DapProbe,
     component::{TraceFunnel, TraceSink},
     core::cortex_m::{Dhcsr, Vtor},
-    dp::{Abort, DpAccess, DpAddress, SelectV1, DPIDR},
+    dp::{Abort, DPIDR, DpAccess, DpAddress, SelectV1},
     memory::{
-        romtable::{CoresightComponent, PeripheralType},
         ArmMemoryInterface,
+        romtable::{CoresightComponent, PeripheralType},
     },
-    ArmError, DapAccess, FullyQualifiedApAddress, Pins,
 };
 
 /// An error occurred when executing an ARM debug sequence
@@ -911,7 +911,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 return Err(ArmDebugSequenceError::SequenceSpecific(
                     "Cannot detect current protocol".into(),
                 )
-                .into())
+                .into());
             }
         }
 

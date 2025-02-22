@@ -48,7 +48,7 @@ mod channel;
 pub use channel::*;
 
 use crate::Session;
-use crate::{config::MemoryRegion, Core, MemoryInterface};
+use crate::{Core, MemoryInterface, config::MemoryRegion};
 use std::ops::Range;
 use std::thread;
 use std::time::Duration;
@@ -352,7 +352,9 @@ impl Rtt {
             }
             ScanRegion::Ranges(regions) if regions.is_empty() => {
                 // We have no regions to scan so we cannot initialize RTT.
-                tracing::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
+                tracing::debug!(
+                    "ELF file has no RTT block symbol, and this target does not support automatic scanning"
+                );
                 return Err(Error::NoControlBlockLocation);
             }
             ScanRegion::Ranges(regions) => {

@@ -1,7 +1,7 @@
 use bitvec::prelude::*;
 use nusb::{
-    transfer::{Direction, EndpointType},
     DeviceInfo,
+    transfer::{Direction, EndpointType},
 };
 use std::{
     fmt::Debug,
@@ -9,8 +9,8 @@ use std::{
 };
 
 use crate::probe::{
-    espusbjtag::EspUsbJtagFactory, usb_util::InterfaceExt, DebugProbeError, DebugProbeInfo,
-    DebugProbeSelector, ProbeCreationError, ProbeError,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeError,
+    espusbjtag::EspUsbJtagFactory, usb_util::InterfaceExt,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
@@ -200,7 +200,9 @@ impl ProtocolHandler {
                     u16::from_le_bytes([cap_data_bytes[0], cap_data_bytes[1]]) as u32 * 10 / 2;
                 div_min = u16::from_le_bytes([cap_data_bytes[2], cap_data_bytes[3]]);
                 div_max = u16::from_le_bytes([cap_data_bytes[4], cap_data_bytes[5]]);
-                tracing::debug!("Found ESP USB JTAG adapter, base speed is {base_speed_khz}kHz. Available dividers: ({div_min}..{div_max})");
+                tracing::debug!(
+                    "Found ESP USB JTAG adapter, base speed is {base_speed_khz}kHz. Available dividers: ({div_min}..{div_max})"
+                );
             } else {
                 tracing::debug!("Unknown capabilities type {cap_type}");
             }
