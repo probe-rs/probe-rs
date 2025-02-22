@@ -515,7 +515,7 @@ impl From<Command> for u8 {
     fn from(command: Command) -> Self {
         match command {
             Command::Clock { cap, tdi, tms } => {
-                u8::from(cap) << 2 | u8::from(tms) << 1 | u8::from(tdi)
+                (u8::from(cap) << 2) | (u8::from(tms) << 1) | u8::from(tdi)
             }
             Command::Reset(srst) => 8 | u8::from(srst),
             Command::Flush => 0xA,

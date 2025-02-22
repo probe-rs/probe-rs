@@ -40,7 +40,7 @@ impl RiscvDebugSequence for ESP32H2 {
         // disable super wdt
         interface.write_word_32(0x600B1C24, 0x50D83AA1)?; // write protection off
         let current = interface.read_word_32(0x600B1C20)?;
-        interface.write_word_32(0x600B1C20, current | 1 << 18)?; // set RTC_CNTL_SWD_AUTO_FEED_EN
+        interface.write_word_32(0x600B1C20, current | (1 << 18))?; // set RTC_CNTL_SWD_AUTO_FEED_EN
         interface.write_word_32(0x600B1C24, 0x0)?; // write protection on
 
         // tg0 wdg

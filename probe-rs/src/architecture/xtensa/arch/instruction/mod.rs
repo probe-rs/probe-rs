@@ -46,8 +46,8 @@ pub enum InstructionEncoding {
 impl Instruction {
     const fn encode_bytes(self) -> (usize, u32) {
         let word = match self {
-            Instruction::Lddr32P(src) => 0x0070E0 | (src as u32 & 0x0F) << 8,
-            Instruction::Sddr32P(src) => 0x0070F0 | (src as u32 & 0x0F) << 8,
+            Instruction::Lddr32P(src) => 0x0070E0 | ((src as u32 & 0x0F) << 8),
+            Instruction::Sddr32P(src) => 0x0070F0 | ((src as u32 & 0x0F) << 8),
             Instruction::L32I(s, t, imm) => format::rri8(0x002002, s as u8, t as u8, imm),
             Instruction::S32I(s, t, imm) => format::rri8(0x006002, s as u8, t as u8, imm),
             Instruction::Rsr(sr, t) => format::rsr(0x030000, sr as u8, t as u8),

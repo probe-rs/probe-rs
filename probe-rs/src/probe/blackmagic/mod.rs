@@ -822,7 +822,7 @@ impl BlackMagicProbe {
                         break;
                     }
 
-                    *dest = *dest << 4
+                    *dest = (*dest << 4)
                         | Self::hex_val(byte[0])
                             .or(Err(RemoteError::ParameterError(byte[0] as _)))?;
                 } else {

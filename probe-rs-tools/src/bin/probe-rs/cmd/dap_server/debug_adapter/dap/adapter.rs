@@ -1872,7 +1872,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Some(ProgressUpdateEventBody {
                 message: message.map(|msg| match percentage {
                     None => msg.to_string(),
-                    Some(percentage) if percentage == 100.0 => msg.to_string(),
+                    Some(100.0) => msg.to_string(),
                     Some(percentage) => format!("{msg} ({percentage:02.0}%)"),
                 }),
                 percentage,
