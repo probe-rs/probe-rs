@@ -97,7 +97,7 @@ fn main_try(args: &[OsString]) -> Result<(), OperationError> {
         path_buf.clone()
     } else {
         let cargo_options = opt.cargo_options.to_cargo_options();
-        image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
+        image_instr_set = target_instruction_set(opt.cargo_options.target.as_deref());
 
         // Build the project, and extract the path of the built artifact.
         build_artifact(&work_dir, &cargo_options)

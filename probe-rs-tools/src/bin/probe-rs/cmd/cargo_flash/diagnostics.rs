@@ -240,75 +240,68 @@ fn generate_flash_error_hints(
     target: &Target,
     target_spec: &Option<String>,
 ) -> (String, Vec<String>) {
-    (
-        error.to_string(),
-        match error {
-            FlashError::NoSuitableNvm { description_source, .. } => {
-                if &TargetDescriptionSource::Generic == description_source {
-                    return (
-                        error.to_string(),
-                        vec![
-                            "A generic chip was selected as the target. For flashing, it is necessary to specify a concrete chip.\n\
-                            You can list all the available chips by running `probe-rs chip list`.".to_owned()
-                        ]
+    let hints = match error {
+        FlashError::NoSuitableNvm { description_source: TargetDescriptionSource::Generic, .. } => {
+            vec![
+                "A generic chip was selected as the target. For flashing, it is necessary to specify a concrete chip.\n\
+                You can list all the available chips by running `probe-rs chip list`.".to_owned()
+            ]
+        }
+        FlashError::NoSuitableNvm { .. } => {
+            // Show the available flash regions
+            let mut hint_available_regions = format!(
+                "The following flash memory is available for the chip '{}':",
+                target.name
+            );
+
+            for memory_region in &target.memory_map {
+                if let Some(flash) = memory_region.as_nvm_region() {
+                    let _ = writeln!(
+                        hint_available_regions,
+                        "  {:#010x?} ({})",
+                        flash.range,
+                        ByteSize(flash.range.end - flash.range.start)
+                            .to_string_as(true)
                     );
                 }
+            }
 
-                let mut hints = Vec::new();
+            let mut hints = vec![hint_available_regions];
 
-                let mut hint_available_regions = String::new();
+            if let Some(target_spec) = target_spec {
+                // Check if the chip specification was unique
+                let matching_chips = probe_rs::config::search_chips(target_spec).unwrap();
 
-                // Show the available flash regions
-                let _ = writeln!(
-                    hint_available_regions,
-                    "The following flash memory is available for the chip '{}':",
-                    target.name
+                tracing::info!(
+                    "Searching for all chips for spec '{}', found {}",
+                    target_spec,
+                    matching_chips.len()
                 );
 
-                for memory_region in &target.memory_map {
-                    if let Some(flash) = memory_region.as_nvm_region() {
-                        let _ = writeln!(
-                            hint_available_regions,
-                            "  {:#010x?} ({})",
-                            flash.range,
-                            ByteSize(flash.range.end - flash.range.start)
-                                .to_string_as(true)
-                        );
+                if matching_chips.len() > 1 {
+                    let mut non_unique_target_hint = format!("The specified chip '{target_spec}' did match multiple possible targets. Try to specify your chip more exactly. The following possible targets were found:\n");
+
+                    for target in matching_chips {
+                        non_unique_target_hint.push('\t');
+                        non_unique_target_hint.push_str(&target);
+                        non_unique_target_hint.push('\n');
                     }
+
+                    hints.push(non_unique_target_hint)
                 }
+            }
 
-                hints.push(hint_available_regions);
+            hints
+        },
+        FlashError::EraseFailed { ..} => vec![
+            "Perhaps your chip has write protected sectors that need to be cleared?".into(),
+            "Perhaps you need the --nmagic linker arg. See https://github.com/rust-embedded/cortex-m-quickstart/pull/95 for more information.".into()
+        ],
 
-                if let Some(target_spec) = target_spec {
-                    // Check if the chip specification was unique
-                    let matching_chips = probe_rs::config::search_chips(target_spec).unwrap();
+        _ => vec![],
+    };
 
-                    tracing::info!(
-                        "Searching for all chips for spec '{}', found {}",
-                        target_spec,
-                        matching_chips.len()
-                    );
-
-                    if matching_chips.len() > 1 {
-                        let mut non_unique_target_hint = format!("The specified chip '{target_spec}' did match multiple possible targets. Try to specify your chip more exactly. The following possible targets were found:\n");
-
-                        for target in matching_chips {
-                            non_unique_target_hint.push_str(&format!("\t{target}\n"));
-                        }
-
-                        hints.push(non_unique_target_hint)
-                    }
-                }
-
-                hints
-            },
-            FlashError::EraseFailed { ..} => vec![
-                "Perhaps your chip has write protected sectors that need to be cleared?".into(),
-                "Perhaps you need the --nmagic linker arg. See https://github.com/rust-embedded/cortex-m-quickstart/pull/95 for more information.".into()
-            ],
-            _ => vec![],
-        }
-    )
+    (error.to_string(), hints)
 }
 
 fn write_with_offset(mut output: impl std::io::Write, header: ColoredString, msg: &str) {
