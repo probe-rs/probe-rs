@@ -58,7 +58,7 @@ pub struct CoreHandle<'p> {
     pub(crate) core_data: &'p mut CoreData,
 }
 
-impl<'p> CoreHandle<'p> {
+impl CoreHandle<'_> {
     /// Some MS DAP requests (e.g. `step`) implicitly expect the core to resume processing and then to optionally halt again, before the request completes.
     ///
     /// This method is used to set the `last_known_status` to [`CoreStatus::Unknown`] (because we cannot verify that it will indeed resume running until we have polled it again),
@@ -78,96 +78,83 @@ impl<'p> CoreHandle<'p> {
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<CoreStatus, DebuggerError> {
-        if debug_adapter.configuration_is_done() {
-            match self.core.status() {
-                Ok(status) => {
-                    let has_changed_state = status != self.core_data.last_known_status;
-                    if has_changed_state {
-                        match status {
-                            CoreStatus::Running | CoreStatus::Sleeping => {
-                                let event_body = Some(ContinuedEventBody {
-                                    all_threads_continued: Some(true), // TODO: Implement multi-core awareness here
-                                    thread_id: self.core.id() as i64,
-                                });
-                                debug_adapter.send_event("continued", event_body)?;
-                                tracing::trace!(
-                                    "Notified DAP client that the core continued: {:?}",
-                                    status
-                                );
-                            }
-                            CoreStatus::Halted(_) => {
-                                // HaltReason::Step is a special case, where we have to send a custome event to the client that the core halted.
-                                // In this case, we don't re-send the "stopped" event, but further down, we will
-                                // update the `last_known_status` to the actual HaltReason returned by the core.
-                                if self.core_data.last_known_status
-                                    != CoreStatus::Halted(HaltReason::Step)
-                                {
-                                    let program_counter =
-                                        self.core.read_core_reg(self.core.program_counter()).ok();
-                                    let event_body = Some(StoppedEventBody {
-                                        reason: status
-                                            .short_long_status(program_counter)
-                                            .0
-                                            .to_owned(),
-                                        description: Some(
-                                            status.short_long_status(program_counter).1,
-                                        ),
-                                        thread_id: Some(self.core.id() as i64),
-                                        preserve_focus_hint: Some(false),
-                                        text: None,
-                                        all_threads_stopped: Some(debug_adapter.all_cores_halted),
-                                        hit_breakpoint_ids: None,
-                                    });
-                                    debug_adapter.send_event("stopped", event_body)?;
-                                    tracing::trace!(
-                                        "Notified DAP client that the core halted: {:?}",
-                                        status
-                                    );
-                                }
-                            }
-                            CoreStatus::LockedUp => {
-                                debug_adapter.show_message(
-                                    MessageSeverity::Error,
-                                    status.short_long_status(None).1,
-                                );
-                                return Err(DebuggerError::Other(anyhow!(
-                                    status.short_long_status(None).1
-                                )));
-                            }
-                            CoreStatus::Unknown => {
-                                debug_adapter.show_error_message(&DebuggerError::Other(
-                                    anyhow!("Unknown Device status reveived from Probe-rs"),
-                                ))?;
-
-                                return Err(DebuggerError::Other(anyhow!(
-                                    "Unknown Device status reveived from Probe-rs"
-                                )));
-                            }
-                        }
-                    }
-                    self.core_data.last_known_status = status; // Update this unconditionally, because halted() can have more than one variant.
-                    Ok(status)
-                }
-                Err(error) => {
-                    self.core_data.last_known_status = CoreStatus::Unknown;
-                    Err(error.into())
-                }
-            }
-        } else {
+        if !debug_adapter.configuration_is_done() {
             tracing::trace!(
                 "Ignored last_known_status: {:?} during `configuration_done=false`, and reset it to {:?}.",
                 self.core_data.last_known_status,
                 CoreStatus::Unknown
             );
-            Ok(CoreStatus::Unknown)
+            return Ok(CoreStatus::Unknown);
         }
+
+        let status = match self.core.status() {
+            Ok(status) => {
+                if status == self.core_data.last_known_status {
+                    return Ok(status);
+                }
+
+                status
+            }
+            Err(error) => {
+                self.core_data.last_known_status = CoreStatus::Unknown;
+                return Err(error.into());
+            }
+        };
+
+        // Update this unconditionally, because halted() can have more than one variant.
+        self.core_data.last_known_status = status;
+
+        match status {
+            CoreStatus::Running | CoreStatus::Sleeping => {
+                let event_body = Some(ContinuedEventBody {
+                    all_threads_continued: Some(true), // TODO: Implement multi-core awareness here
+                    thread_id: self.core.id() as i64,
+                });
+                debug_adapter.send_event("continued", event_body)?;
+                tracing::trace!("Notified DAP client that the core continued: {:?}", status);
+            }
+            CoreStatus::Halted(_) => {
+                // HaltReason::Step is a special case, where we have to send a custome event to the client that the core halted.
+                // In this case, we don't re-send the "stopped" event, but further down, we will
+                // update the `last_known_status` to the actual HaltReason returned by the core.
+                if self.core_data.last_known_status != CoreStatus::Halted(HaltReason::Step) {
+                    let program_counter = self.core.read_core_reg(self.core.program_counter()).ok();
+                    let (reason, description) = status.short_long_status(program_counter);
+                    let event_body = Some(StoppedEventBody {
+                        reason: reason.to_string(),
+                        description: Some(description),
+                        thread_id: Some(self.core.id() as i64),
+                        preserve_focus_hint: Some(false),
+                        text: None,
+                        all_threads_stopped: Some(debug_adapter.all_cores_halted),
+                        hit_breakpoint_ids: None,
+                    });
+                    debug_adapter.send_event("stopped", event_body)?;
+                    tracing::trace!("Notified DAP client that the core halted: {:?}", status);
+                }
+            }
+            CoreStatus::LockedUp => {
+                let (_, description) = status.short_long_status(None);
+                debug_adapter.show_message(MessageSeverity::Error, &description);
+                return Err(DebuggerError::Other(anyhow!(description)));
+            }
+            CoreStatus::Unknown => {
+                let error =
+                    DebuggerError::Other(anyhow!("Unknown Device status reveived from Probe-rs"));
+                debug_adapter.show_error_message(&error)?;
+
+                return Err(error);
+            }
+        }
+
+        Ok(status)
     }
 
     /// Search available [`probe_rs::debug::StackFrame`]'s for the given `id`
     pub(crate) fn get_stackframe(
-        &'p self,
+        &self,
         id: ObjectRef,
-    ) -> Option<&'p probe_rs_debug::stack_frame::StackFrame> {
+    ) -> Option<&probe_rs_debug::stack_frame::StackFrame> {
         self.core_data
             .stack_frames
             .iter()

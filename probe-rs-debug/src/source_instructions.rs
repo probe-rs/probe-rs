@@ -521,7 +521,7 @@ impl<'debug_info> InstructionSequence<'debug_info> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 /// The type of instruction, as defined by [`gimli::LineRow`] attributes and relative position in the sequence.
 enum InstructionType {
     /// We need to keep track of source lines that signal function signatures,
@@ -535,7 +535,7 @@ enum InstructionType {
     Unspecified,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 /// - A [`InstructionLocation`] filters and maps [`gimli::LineRow`] entries to be used for determining valid halt points.
 ///   - Each [`InstructionLocation`] maps to a single machine instruction on target.
 ///   - For establishing valid halt locations (breakpoint or stepping), we are only interested,
@@ -557,19 +557,18 @@ impl Debug for InstructionLocation {
         write!(
             f,
             "Instruction @ {:010x}, on line={:04}  col={:05}  f={:02}, type={:?}",
-            &self.address,
-            match &self.line {
+            self.address,
+            match self.line {
                 Some(line) => line.get(),
                 None => 0,
             },
-            match &self.column {
+            match self.column {
                 ColumnType::LeftEdge => 0,
-                ColumnType::Column(column) => column.to_owned(),
+                ColumnType::Column(column) => column,
             },
-            &self.file_index,
-            &self.instruction_type,
-        )?;
-        Ok(())
+            self.file_index,
+            self.instruction_type,
+        )
     }
 }
 
