@@ -1,5 +1,4 @@
-target
-!/gdb-server/src/target
+/target
 **/*.rs.bk
 
 # It's a Mac Thing

@@ -1,7 +1,7 @@
+use super::super::arch::{RuntimeRegId, RuntimeRegisters};
 use super::desc::GdbRegisterSource;
 use super::{GdbErrorExt, RuntimeTarget};
-use crate::gdb_server::arch::{RuntimeRegId, RuntimeRegisters};
-use crate::{Core, Error, MemoryInterface};
+
 use gdbstub::common::Tid;
 use gdbstub::target::ext::base::multithread::MultiThreadBase;
 use gdbstub::target::ext::base::multithread::MultiThreadResumeOps;
@@ -9,6 +9,7 @@ use gdbstub::target::ext::base::single_register_access::SingleRegisterAccess;
 use gdbstub::target::ext::base::single_register_access::SingleRegisterAccessOps;
 use gdbstub::target::ext::thread_extra_info::ThreadExtraInfoOps;
 use gdbstub::target::{TargetError, TargetResult};
+use probe_rs::{Core, Error, MemoryInterface};
 
 impl MultiThreadBase for RuntimeTarget<'_> {
     fn read_registers(&mut self, regs: &mut RuntimeRegisters, tid: Tid) -> TargetResult<(), Self> {
