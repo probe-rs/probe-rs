@@ -1,20 +1,20 @@
 //! Sequences for cc23xx_cc27xx devices
 use bitfield::bitfield;
 use std::ops::DerefMut;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::MemoryMappedRegister;
+use crate::architecture::arm::ArmProbeInterface;
+use crate::architecture::arm::DapAccess;
 use crate::architecture::arm::armv6m::{Aircr, BpCtrl, Demcr, Dhcsr};
 use crate::architecture::arm::core::cortex_m;
 use crate::architecture::arm::dp::{Abort, Ctrl, DebugPortError, DpAccess, DpAddress, SelectV1};
 use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::{cortex_m_core_start, ArmDebugSequence};
-use crate::architecture::arm::ArmProbeInterface;
-use crate::architecture::arm::DapAccess;
+use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_core_start};
 use crate::architecture::arm::{ArmError, FullyQualifiedApAddress};
-use crate::MemoryMappedRegister;
 use probe_rs_target::CoreType;
 
 static BOOT_LOOP: AtomicBool = AtomicBool::new(false);

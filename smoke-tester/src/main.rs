@@ -11,7 +11,7 @@ use clap::{Parser, Subcommand};
 use colored::Colorize;
 use linkme::distributed_slice;
 use miette::{Context, IntoDiagnostic, Result};
-use probe_rs::{probe::WireProtocol, Permissions};
+use probe_rs::{Permissions, probe::WireProtocol};
 
 mod dut_definition;
 mod macros;
