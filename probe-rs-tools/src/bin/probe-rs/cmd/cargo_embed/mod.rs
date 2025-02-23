@@ -2,12 +2,12 @@ mod config;
 mod error;
 mod rttui;
 
+use crate::cmd::gdb_server::GdbInstanceConfiguration;
 use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use colored::Colorize;
 use parking_lot::FairMutex;
 use probe_rs::flashing::{BootInfo, FormatKind};
-use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
 use probe_rs::{Session, probe::DebugProbeSelector};
@@ -352,7 +352,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
                 GdbInstanceConfiguration::from_session(&session, Some(gdb_connection_string))
             };
 
-            if let Err(e) = probe_rs::gdb_server::run(&session, instances.iter()) {
+            if let Err(e) = crate::cmd::gdb_server::run(&session, instances.iter()) {
                 logging::eprintln("During the execution of GDB an error was encountered:");
                 logging::eprintln(format!("{e:?}"));
             }

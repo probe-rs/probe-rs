@@ -1,5 +1,6 @@
 ---
-source: probe-rs/src/gdb_server/target/desc/test.rs
+source: probe-rs-tools/src/bin/probe-rs/cmd/gdb_server/target/desc/test.rs
+assertion_line: 10
 expression: description
 ---
 <?xml version="1.0"?>

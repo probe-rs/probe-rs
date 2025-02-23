@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use super::RuntimeTarget;
 
+use gdbstub::target::ext::monitor_cmd::ConsoleOutput;
 use gdbstub::target::ext::monitor_cmd::MonitorCmd;
 use gdbstub::target::ext::monitor_cmd::outputln;
 
@@ -16,7 +17,7 @@ impl MonitorCmd for RuntimeTarget<'_> {
     fn handle_monitor_cmd(
         &mut self,
         cmd: &[u8],
-        mut out: gdbstub::target::ext::monitor_cmd::ConsoleOutput<'_>,
+        mut out: ConsoleOutput<'_>,
     ) -> Result<(), Self::Error> {
         match cmd {
             b"info" => outputln!(out, "Target info:\n\n{:#?}", self.session.lock().target()),

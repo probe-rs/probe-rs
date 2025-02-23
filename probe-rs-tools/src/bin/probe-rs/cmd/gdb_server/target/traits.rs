@@ -1,5 +1,5 @@
 use super::RuntimeTarget;
-use crate::Error;
+use probe_rs::Error;
 
 use gdbstub::target::{TargetError, TargetResult};
 

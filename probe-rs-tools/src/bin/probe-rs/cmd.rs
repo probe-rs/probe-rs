@@ -8,7 +8,7 @@ pub mod dap_server;
 pub mod debug;
 pub mod download;
 pub mod erase;
-pub mod gdb;
+pub mod gdb_server;
 pub mod info;
 pub mod itm;
 pub mod list;
