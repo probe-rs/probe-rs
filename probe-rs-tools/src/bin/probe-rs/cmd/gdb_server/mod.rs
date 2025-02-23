@@ -1,3 +1,11 @@
+//! GDB server
+
+mod arch;
+mod stub;
+mod target;
+
+pub(crate) use stub::{GdbInstanceConfiguration, run};
+
 use std::time::Duration;
 
 use parking_lot::FairMutex;
@@ -38,7 +46,7 @@ impl Cmd {
             .gdb_connection_string
             .unwrap_or_else(|| "localhost:1337".to_string());
 
-        let instances = probe_rs::gdb_server::GdbInstanceConfiguration::from_session(
+        let instances = crate::cmd::gdb_server::GdbInstanceConfiguration::from_session(
             &session,
             Some(gdb_connection_string),
         );
@@ -52,7 +60,7 @@ impl Cmd {
 
         let session = FairMutex::new(session);
 
-        if let Err(e) = probe_rs::gdb_server::run(&session, instances.iter()) {
+        if let Err(e) = run(&session, instances.iter()) {
             eprintln!("During the execution of GDB an error was encountered:");
             eprintln!("{e:?}");
         }

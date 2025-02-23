@@ -1166,7 +1166,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut dap_scopes: Vec<Scope> = vec![];
 
-        if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
+        if let Some(core_peripherals) = &target_core.core_data.core_peripherals {
             let peripherals_root_variable = core_peripherals.svd_variable_cache.root_variable_key();
             dap_scopes.push(Scope {
                 line: None,
@@ -1250,7 +1250,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     source: None,
                     variables_reference: locals_root_variable.variable_key().into(),
                 });
-            };
+            }
         }
         self.send_response(request, Ok(Some(ScopesResponseBody { scopes: dap_scopes })))
     }

@@ -340,7 +340,7 @@ impl FakeProbe {
     /// Fake probe with a mocked core
     /// with access to an actual binary file.
     pub fn with_mocked_core_and_binary(program_binary: &Path) -> Self {
-        let file_data = std::fs::read(program_binary).unwrap().to_owned();
+        let file_data = std::fs::read(program_binary).unwrap();
         let file_data_slice = file_data.as_slice();
 
         let file_kind = object::FileKind::parse(file_data.as_slice()).unwrap();

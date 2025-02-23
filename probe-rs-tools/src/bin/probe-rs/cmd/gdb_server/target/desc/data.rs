@@ -1,5 +1,5 @@
-use crate::{CoreRegister, CoreRegisters, CoreType, InstructionSet, RegisterId, architecture};
 use itertools::Itertools;
+use probe_rs::{CoreRegister, CoreRegisters, CoreType, InstructionSet, RegisterId, architecture};
 use std::fmt::Write;
 
 /// A feature that will be sent to GDB

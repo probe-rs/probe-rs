@@ -85,12 +85,11 @@ impl DebugLogger {
     }
 
     fn process_new_log_lines(&self, mut callback: impl FnMut(&str)) -> Result<(), DebuggerError> {
-        let new = {
+        let new_bytes = {
             let mut locked_log = self.buffer.lock();
-            let new_bytes = std::mem::take(&mut *locked_log);
-
-            String::from_utf8_lossy(&new_bytes).to_string()
+            std::mem::take(&mut *locked_log)
         };
+        let new = String::from_utf8_lossy(&new_bytes);
 
         let buffer_lines = new.lines();
         for next_line in buffer_lines {

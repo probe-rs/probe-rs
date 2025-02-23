@@ -1,5 +1,5 @@
-use crate::{CoreType, Session};
 use parking_lot::FairMutex;
+use probe_rs::{CoreType, Session};
 
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::Duration;

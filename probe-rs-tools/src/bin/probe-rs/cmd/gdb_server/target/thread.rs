@@ -1,5 +1,5 @@
+use super::super::target::utils::copy_to_buf;
 use super::RuntimeTarget;
-use crate::gdb_server::target::utils::copy_to_buf;
 
 use gdbstub::target::ext::thread_extra_info::ThreadExtraInfo;
 
