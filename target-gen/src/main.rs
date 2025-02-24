@@ -1,5 +1,6 @@
 use anyhow::{Context, Result, ensure};
 use clap::Parser;
+use probe_rs::probe::WireProtocol;
 use probe_rs_target::ChipFamily;
 use std::{
     env::current_dir,
@@ -104,6 +105,12 @@ enum TargetGen {
         /// Name of the flash algorithm to test
         #[clap(long = "name", short = 'n')]
         name: Option<String>,
+        /// Speed to run the probe at
+        #[clap(long = "speed", default_value = None)]
+        speed: Option<u32>,
+        /// Protocol to use for the probe
+        #[clap(long = "protocol", default_value = None)]
+        protocol: Option<WireProtocol>,
     },
     /// Loads and updates target description from YAML files.
     Reformat {
@@ -158,6 +165,8 @@ async fn main() -> Result<()> {
             test_start_sector_address,
             chip,
             name,
+            speed,
+            protocol,
         } => cmd_test(
             target_artifact.as_path(),
             template_path.as_path(),
@@ -165,6 +174,8 @@ async fn main() -> Result<()> {
             test_start_sector_address,
             chip,
             name,
+            speed,
+            protocol,
         )?,
         TargetGen::Reformat { yaml_path } => {
             if yaml_path.is_dir() {

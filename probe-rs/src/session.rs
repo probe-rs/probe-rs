@@ -19,8 +19,8 @@ use crate::{
     config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector, registry::Registry},
     core::{Architecture, CombinedCoreState},
     probe::{
-        AttachMethod, DebugProbeError, Probe, ProbeCreationError, fake_probe::FakeProbe,
-        list::Lister,
+        AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
+        fake_probe::FakeProbe, list::Lister,
     },
 };
 use std::ops::DerefMut;
@@ -50,6 +50,21 @@ pub struct Session {
     interfaces: ArchitectureInterface,
     cores: Vec<CombinedCoreState>,
     configured_trace_sink: Option<TraceSink>,
+}
+
+/// The `SessionConfig` struct is used to configure a new `Session` during auto-attach.
+///
+/// ## Configuring auto attach
+/// The SessionConfig can be used to control the behavior of the auto-attach function.
+/// It should be used in the [Session::auto_attach()] method.
+/// This includes setting the speed of the probe and the protocol to use.
+///
+#[derive(Debug)]
+pub struct SessionConfig {
+    /// Speed of the WireProtocol in kHz
+    pub speed: Option<u32>,
+    /// WireProtocol to use
+    pub protocol: Option<WireProtocol>,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -411,6 +426,7 @@ impl Session {
     pub fn auto_attach(
         target: impl Into<TargetSelector>,
         permissions: Permissions,
+        session_config: Option<SessionConfig>,
     ) -> Result<Session, Error> {
         // Get a list of all available debug probes.
         let lister = Lister::new();
@@ -418,12 +434,22 @@ impl Session {
         let probes = lister.list_all();
 
         // Use the first probe found.
-        let probe = probes
+        let mut probe = probes
             .first()
             .ok_or(Error::Probe(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             )))?
             .open()?;
+
+        if let Some(config) = session_config {
+            if let Some(speed) = config.speed {
+                probe.set_speed(speed)?;
+            }
+
+            if let Some(protocol) = config.protocol {
+                probe.select_protocol(protocol)?;
+            }
+        }
 
         // Attach to a chip.
         probe.attach(target, permissions)

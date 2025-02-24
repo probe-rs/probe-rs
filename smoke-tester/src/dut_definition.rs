@@ -6,8 +6,8 @@
 use miette::IntoDiagnostic;
 use miette::Result;
 use miette::WrapErr;
-use probe_rs::probe::WireProtocol;
 use probe_rs::config::Registry;
+use probe_rs::probe::WireProtocol;
 use probe_rs::{
     Target,
     probe::{DebugProbeSelector, Probe, list::Lister},
