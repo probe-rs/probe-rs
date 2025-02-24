@@ -1,0 +1,1 @@
+Changed `auto_attach` to optionally set speed and protocol.

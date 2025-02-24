@@ -16,7 +16,7 @@
 //! ```no_run
 //! use probe_rs::{Session, flashing, Permissions};
 //!
-//! let mut session = Session::auto_attach("nrf51822", Permissions::default())?;
+//! let mut session = Session::auto_attach("nrf51822", Permissions::default(), None)?;
 //!
 //! flashing::download_file(&mut session, "binary.hex", flashing::Format::Hex)?;
 //!
@@ -29,7 +29,7 @@
 //! use probe_rs::{Session, flashing::{FlashLoader, DownloadOptions}, Permissions};
 //!
 //!
-//! let mut session = Session::auto_attach("nrf51822", Permissions::default())?;
+//! let mut session = Session::auto_attach("nrf51822", Permissions::default(), None)?;
 //!
 //! let mut loader = session.target().flash_loader();
 //!

@@ -248,7 +248,10 @@ impl ArmDebugSequence for CC23xxCC27xx {
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         // TODO:
-        // COPY_PASTE BEGIN
+        // Copy-pasted from the default Trait implementation, but we need to add
+        // the cc23xx_cc27xx specific parts at the end
+        // This code is from `debug_port_start` in `probe-rs/src/architecture/arm/sequences.rs`
+
         let mut abort = Abort(0);
         abort.set_dapabort(true);
         abort.set_orunerrclr(true);
@@ -297,7 +300,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
             // According to CMSIS docs, here's where we would clear errors
             // in ABORT, but we do that above instead.
         }
-        // TODO: COPY_PASTE END
+        // End of copy paste from `debug_port_start` in `probe-rs/src/architecture/arm/sequences.rs`
 
         // This code is unique to the cc23xx_cc27xx family
         // First connect to the config AP to read the device status register
