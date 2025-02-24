@@ -22,8 +22,11 @@ pub enum ChipDetectionMethod {
     /// Nordic Semiconductor FICR INFO-based chip detection information.
     NordicFicrInfo(NordicFicrDetection),
 
-    /// Infineon SCU chip detection information.
-    InfineonScu(InfinionScuDetection),
+    /// Infineon XMC4000 SCU chip detection information.
+    InfineonXmcScu(InfineonXmcScuDetection),
+
+    /// Infineon PSOC silicon ID chip detection information.
+    InfineonPsocSiid(InfineonPsocSiidDetection),
 }
 
 impl ChipDetectionMethod {
@@ -63,9 +66,18 @@ impl ChipDetectionMethod {
         }
     }
 
-    /// Returns the Infineon SCU detection information if available.
-    pub fn as_infineon_scu(&self) -> Option<&InfinionScuDetection> {
-        if let Self::InfineonScu(v) = self {
+    /// Returns the Infineon XMC SCU detection information if available.
+    pub fn as_infineon_xmc_scu(&self) -> Option<&InfineonXmcScuDetection> {
+        if let Self::InfineonXmcScu(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the Infineon PSOC silicon ID detection information if available.
+    pub fn as_infineon_psoc_siid(&self) -> Option<&InfineonPsocSiidDetection> {
+        if let Self::InfineonPsocSiid(v) = self {
             Some(v)
         } else {
             None
@@ -142,10 +154,10 @@ pub struct NordicFicrDetection {
     pub variants: IndexMap<u32, String>,
 }
 
-/// Infineon SCU chip detection information.
+/// Infineon XMC4000 SCU chip detection information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct InfinionScuDetection {
+pub struct InfineonXmcScuDetection {
     /// Chip partid
     #[serde(serialize_with = "hex_u_int")]
     pub part: u16,
@@ -158,4 +170,14 @@ pub struct InfinionScuDetection {
     // Intentionally not hex-keyed, sizes look better in decimal.
     #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
     pub variants: IndexMap<u32, String>,
+}
+
+/// Infineon PSOC SIID chip detection information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InfineonPsocSiidDetection {
+    /// Silicon ID => Target name.
+    #[serde(serialize_with = "hex_keys_indexmap")]
+    #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
+    pub ids: IndexMap<u16, String>,
 }
