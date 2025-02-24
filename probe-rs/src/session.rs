@@ -19,8 +19,8 @@ use crate::{
     config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector},
     core::{Architecture, CombinedCoreState},
     probe::{
-        AttachMethod, DebugProbeError, Probe, ProbeCreationError, fake_probe::FakeProbe,
-        list::Lister,
+        AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
+        fake_probe::FakeProbe, list::Lister,
     },
 };
 use std::ops::DerefMut;
@@ -410,6 +410,8 @@ impl Session {
     pub fn auto_attach(
         target: impl Into<TargetSelector>,
         permissions: Permissions,
+        speed: Option<u32>,
+        protocol: Option<WireProtocol>,
     ) -> Result<Session, Error> {
         // Get a list of all available debug probes.
         let lister = Lister::new();
@@ -417,12 +419,20 @@ impl Session {
         let probes = lister.list_all();
 
         // Use the first probe found.
-        let probe = probes
+        let mut probe = probes
             .first()
             .ok_or(Error::Probe(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             )))?
             .open()?;
+
+        if let Some(speed) = speed {
+            probe.set_speed(speed)?;
+        }
+
+        if let Some(protocol) = protocol {
+            probe.select_protocol(protocol)?;
+        }
 
         // Attach to a chip.
         probe.attach(target, permissions)
