@@ -21,7 +21,6 @@ exclude = ["tests/"]
 
 [features]
 default = ["builtin-targets"]
-gdb-server = ["dep:gdbstub"]
 
 # Enable all built in targets.
 builtin-targets = ["dep:bincode", "dep:serde_yaml", "dep:probe-rs-target"]
@@ -69,9 +68,6 @@ serde_yaml = "0.9"
 # optional
 hexdump = { version = "0.1", optional = true }
 
-# gdb server
-gdbstub = { version = "0.7", optional = true }
-
 rmp-serde = { version = "1" }
 dunce = "1.0.5"
 
@@ -104,7 +100,7 @@ search = "\\[unreleased\\]: https://github.com/probe-rs/probe-rs/compare/v([a-z0
 replace = "[unreleased]: https://github.com/probe-rs/probe-rs/compare/v{{version}}...master\n[{{version}}]: https://github.com/probe-rs/probe-rs/compare/v$1...v{{version}}"
 
 [package.metadata.docs.rs]
-features = ["builtin-targets", "gdb-server"]
+features = ["builtin-targets"]
 
 # Define a new cfg flag for docs.rs
 rustdoc-args = ["--cfg", "probers_docsrs"]
