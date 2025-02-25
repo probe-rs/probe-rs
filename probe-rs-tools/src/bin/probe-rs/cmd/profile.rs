@@ -167,10 +167,10 @@ impl ProfileCmd {
             let name = symbols
                 .get_name(address as u64)
                 .unwrap_or(format!("UNKNOWN - {:08X}", address));
-            let (file, num) = symbols
-                .get_location(address as u64)
-                .unwrap_or(("UNKNOWN".to_owned(), 0));
             if self.line_info {
+                let (file, num) = symbols
+                    .get_location(address as u64)
+                    .unwrap_or(("UNKNOWN", 0));
                 println!("{}:{}", file, num);
             }
             println!(
@@ -218,17 +218,14 @@ impl Symbols {
     }
 
     /// Returns the file name and line number of the function at the given address, if one can be.
-    pub fn get_location(&self, addr: u64) -> Option<(String, u32)> {
-        // Find the location which `addr` is in. If we can dedetermine a file name and
+    pub fn get_location(&self, addr: u64) -> Option<(&str, u32)> {
+        // Find the location which `addr` is in. If we can determine a file name and
         // line number for this function we will return them both in a tuple.
-        self.loader.find_location(addr).ok()?.map(|location| {
-            let file = location.file.map(|f| f.to_string());
-            let line = location.line;
+        self.loader.find_location(addr).ok()?.and_then(|location| {
+            let file = location.file?;
+            let line = location.line?;
 
-            match (file, line) {
-                (Some(file), Some(line)) => Some((file, line)),
-                _ => None,
-            }
-        })?
+            Some((file, line))
+        })
     }
 }
