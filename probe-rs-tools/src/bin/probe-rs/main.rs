@@ -50,13 +50,13 @@ pub(crate) struct Config {
     long_version = env!("PROBE_RS_LONG_VERSION")
 )]
 struct Cli {
-    /// Location for log file
+    /// Location for log file for probe-rs's own debug output
     ///
     /// If no location is specified, the behaviour depends on `--log-to-folder`.
-    #[clap(long, global = true, help_heading = "LOG CONFIGURATION")]
+    #[clap(long, global = true, help_heading = "DEBUG LOG CONFIGURATION")]
     log_file: Option<PathBuf>,
-    /// Enable logging to the default folder. This option is ignored if `--log-file` is specified.
-    #[clap(long, global = true, help_heading = "LOG CONFIGURATION")]
+    /// Enable logging of probe-rs's own debug data to the default folder. This option is ignored if `--log-file` is specified.
+    #[clap(long, global = true, help_heading = "DEBUG LOG CONFIGURATION")]
     log_to_folder: bool,
     #[clap(
         long,
