@@ -1,0 +1,1 @@
+Added support for NXP's LPC865.
