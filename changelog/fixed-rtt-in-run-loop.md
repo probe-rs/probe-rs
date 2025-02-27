@@ -1,0 +1,1 @@
+RTT channel modes should no longer be reset during a test run

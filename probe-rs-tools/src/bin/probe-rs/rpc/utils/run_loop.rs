@@ -61,6 +61,8 @@ impl RunLoop {
             }
         }
 
+        poller.start(core)?;
+
         if core.core_halted()? {
             core.run()?;
         }
@@ -141,6 +143,7 @@ impl RunLoop {
 }
 
 pub trait RunLoopPoller {
+    fn start(&mut self, core: &mut Core<'_>) -> anyhow::Result<()>;
     fn poll(&mut self, core: &mut Core<'_>) -> Result<Duration>;
     fn exit(&mut self, core: &mut Core<'_>) -> Result<()>;
 }
@@ -148,6 +151,10 @@ pub trait RunLoopPoller {
 pub struct NoopPoller;
 
 impl RunLoopPoller for NoopPoller {
+    fn start(&mut self, _core: &mut Core<'_>) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn poll(&mut self, _core: &mut Core<'_>) -> Result<Duration> {
         Ok(Duration::from_secs(u64::MAX))
     }
@@ -161,6 +168,14 @@ impl<T> RunLoopPoller for Option<T>
 where
     T: RunLoopPoller,
 {
+    fn start(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
+        if let Some(poller) = self {
+            poller.start(core)
+        } else {
+            NoopPoller.start(core)
+        }
+    }
+
     fn poll(&mut self, core: &mut Core<'_>) -> Result<Duration> {
         if let Some(poller) = self {
             poller.poll(core)
