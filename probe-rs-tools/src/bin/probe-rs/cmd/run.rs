@@ -162,7 +162,7 @@ impl Cmd {
         // Detect run mode based on ELF file
         let run_mode = detect_run_mode(&self)?;
 
-        let session = cli::attach_probe(&client, self.shared_options.probe_options, true).await?;
+        let session = cli::attach_probe(&client, self.shared_options.probe_options, false).await?;
 
         let mut rtt_client = rtt_client(
             &session,
