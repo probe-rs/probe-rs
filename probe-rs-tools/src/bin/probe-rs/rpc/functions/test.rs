@@ -374,13 +374,10 @@ impl<F: FnMut(MonitorEvent)> RunEventHandler<F> {
     ) -> anyhow::Result<Option<TestOutcome>> {
         let cmd = match halt_reason {
             HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => cmd,
-            e => {
-                // Exception occurred (e.g. hardfault) => Abort testing altogether
-                anyhow::bail!(
-                    "The CPU halted unexpectedly: {:?}. Test should signal failure via a panic handler that calls `semihosting::proces::abort()` instead",
-                    e
-                )
-            }
+            // Exception occurred (e.g. hardfault) => Abort testing altogether
+            reason => anyhow::bail!(
+                "The CPU halted unexpectedly: {reason:?}. Test should signal failure via a panic handler that calls `semihosting::proces::abort()` instead",
+            ),
         };
 
         match cmd {
@@ -408,14 +405,12 @@ impl<F: FnMut(MonitorEvent)> RunEventHandler<F> {
                 Ok(None)
             }
             SemihostingCommand::Errno(_) => Ok(None),
-            other => {
-                // Invalid sequence of semihosting calls => Abort testing altogether
-                anyhow::bail!(
-                    "Unexpected semihosting command {:?} cmdline_requested: {:?}",
-                    other,
-                    self.cmdline_requested
-                );
-            }
+            // Invalid sequence of semihosting calls => Abort testing altogether
+            other => anyhow::bail!(
+                "Unexpected semihosting command {:?} cmdline_requested: {:?}",
+                other,
+                self.cmdline_requested
+            ),
         }
     }
 }

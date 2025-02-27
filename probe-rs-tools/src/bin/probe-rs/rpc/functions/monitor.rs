@@ -11,7 +11,10 @@ use crate::{
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
 use postcard_schema::Schema;
-use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
+use probe_rs::{
+    BreakpointCause, Core, HaltReason, Session,
+    semihosting::{CloseRequest, OpenRequest, SemihostingCommand, WriteRequest},
+};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
@@ -152,7 +155,7 @@ impl<F: FnMut(MonitorEvent)> MonitorEventHandler<F> {
         match cmd {
             SemihostingCommand::ExitSuccess => Ok(Some(())), // Exit the run loop
             SemihostingCommand::ExitError(details) => {
-                Err(anyhow::anyhow!("Semihosting indicated exit with {details}"))
+                anyhow::bail!("Semihosting indicated exit with {details}")
             }
             SemihostingCommand::Unknown(details) => {
                 tracing::warn!(
@@ -212,74 +215,14 @@ impl SemihostingReader {
     ) -> anyhow::Result<Option<SemihostingOutput>> {
         let out = match command {
             SemihostingCommand::Open(request) => {
-                let path = request.path(core)?;
-                if path == ":tt" {
-                    match request.mode().as_bytes()[0] {
-                        b'w' => {
-                            self.stdout_open = true;
-                            request.respond_with_handle(core, Self::STDOUT)?;
-                        }
-                        b'a' => {
-                            self.stderr_open = true;
-                            request.respond_with_handle(core, Self::STDERR)?;
-                        }
-                        other => {
-                            tracing::warn!(
-                                "Target wanted to open file {path} with mode {mode}, but probe-rs does not support this operation yet. Continuing...",
-                                path = path,
-                                mode = other
-                            );
-                        }
-                    };
-                } else {
-                    tracing::warn!(
-                        "Target wanted to open file {path}, but probe-rs does not support this operation yet. Continuing..."
-                    );
-                }
+                self.handle_open(core, request)?;
                 None
             }
             SemihostingCommand::Close(request) => {
-                let handle = request.file_handle(core)?;
-                if handle == Self::STDOUT.get() {
-                    self.stdout_open = false;
-                    request.success(core)?;
-                } else if handle == Self::STDERR.get() {
-                    self.stderr_open = false;
-                    request.success(core)?;
-                } else {
-                    tracing::warn!(
-                        "Target wanted to close file handle {handle}, but probe-rs does not support this operation yet. Continuing..."
-                    );
-                }
+                self.handle_close(core, request)?;
                 None
             }
-            SemihostingCommand::Write(request) => {
-                let mut out = None;
-                match request.file_handle() {
-                    handle if handle == Self::STDOUT.get() => {
-                        if self.stdout_open {
-                            let bytes = request.read(core)?;
-                            let str = String::from_utf8_lossy(&bytes);
-                            out = Some(SemihostingOutput::StdOut(str.to_string()));
-                            request.write_status(core, 0)?;
-                        }
-                    }
-                    handle if handle == Self::STDERR.get() => {
-                        if self.stderr_open {
-                            let bytes = request.read(core)?;
-                            let str = String::from_utf8_lossy(&bytes);
-                            out = Some(SemihostingOutput::StdErr(str.to_string()));
-                            request.write_status(core, 0)?;
-                        }
-                    }
-                    other => {
-                        tracing::warn!(
-                            "Target wanted to write to file handle {other}, but probe-rs does not support this operation yet. Continuing...",
-                        );
-                    }
-                }
-                out
-            }
+            SemihostingCommand::Write(request) => self.handle_write(core, request)?,
             SemihostingCommand::WriteConsole(request) => {
                 let str = request.read(core)?;
                 Some(SemihostingOutput::StdOut(str))
@@ -290,4 +233,80 @@ impl SemihostingReader {
 
         Ok(out)
     }
+
+    fn handle_open(&mut self, core: &mut Core<'_>, request: OpenRequest) -> anyhow::Result<()> {
+        let path = request.path(core)?;
+        if path != ":tt" {
+            tracing::warn!(
+                "Target wanted to open file {path}, but probe-rs does not support this operation yet. Continuing..."
+            );
+            return Ok(());
+        }
+
+        match request.mode().as_bytes()[0] {
+            b'w' => {
+                self.stdout_open = true;
+                request.respond_with_handle(core, Self::STDOUT)?;
+            }
+            b'a' => {
+                self.stderr_open = true;
+                request.respond_with_handle(core, Self::STDERR)?;
+            }
+            mode => tracing::warn!(
+                "Target wanted to open file {path} with mode {mode}, but probe-rs does not support this operation yet. Continuing..."
+            ),
+        }
+
+        Ok(())
+    }
+
+    fn handle_close(&mut self, core: &mut Core<'_>, request: CloseRequest) -> anyhow::Result<()> {
+        let handle = request.file_handle(core)?;
+        if handle == Self::STDOUT.get() {
+            self.stdout_open = false;
+            request.success(core)?;
+        } else if handle == Self::STDERR.get() {
+            self.stderr_open = false;
+            request.success(core)?;
+        } else {
+            tracing::warn!(
+                "Target wanted to close file handle {handle}, but probe-rs does not support this operation yet. Continuing..."
+            );
+        }
+
+        Ok(())
+    }
+
+    fn handle_write(
+        &mut self,
+        core: &mut Core<'_>,
+        request: WriteRequest,
+    ) -> anyhow::Result<Option<SemihostingOutput>> {
+        match request.file_handle() {
+            handle if handle == Self::STDOUT.get() => {
+                if self.stdout_open {
+                    let string = read_written_string(core, request)?;
+                    return Ok(Some(SemihostingOutput::StdOut(string)));
+                }
+            }
+            handle if handle == Self::STDERR.get() => {
+                if self.stderr_open {
+                    let string = read_written_string(core, request)?;
+                    return Ok(Some(SemihostingOutput::StdErr(string)));
+                }
+            }
+            other => tracing::warn!(
+                "Target wanted to write to file handle {other}, but probe-rs does not support this operation yet. Continuing...",
+            ),
+        }
+
+        Ok(None)
+    }
+}
+
+fn read_written_string(core: &mut Core<'_>, request: WriteRequest) -> anyhow::Result<String> {
+    let bytes = request.read(core)?;
+    let str = String::from_utf8_lossy(&bytes);
+    request.write_status(core, 0)?;
+    Ok(str.to_string())
 }

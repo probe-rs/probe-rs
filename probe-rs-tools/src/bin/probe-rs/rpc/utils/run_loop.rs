@@ -3,7 +3,7 @@ use tokio_util::sync::CancellationToken;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use probe_rs::{Core, Error, HaltReason, VectorCatchCondition};
 
 use crate::util::rtt::client::RttClient;
@@ -110,7 +110,7 @@ impl RunLoop<'_> {
                         // Poll at 1kHz if the core was halted, to speed up reading strings
                         // from semihosting. The core is not expected to be halted for other reasons.
                         next_poll = Duration::from_millis(1);
-                        core.run()?
+                        core.run()?;
                     }
                 },
                 probe_rs::CoreStatus::Running
@@ -119,7 +119,7 @@ impl RunLoop<'_> {
                     // Carry on
                 }
 
-                probe_rs::CoreStatus::LockedUp => return Err(anyhow!("The core is locked up.")),
+                probe_rs::CoreStatus::LockedUp => anyhow::bail!("The core is locked up."),
             }
 
             if let Some(ref mut rtt_client) = self.rtt_client {
