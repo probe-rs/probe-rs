@@ -73,7 +73,7 @@ impl XtensaDebugSequence for ESP32S3 {
 
         // rtc wdg
         const RTC_CNTL_BASE: u64 = 0x60008000;
-        const RTC_WRITE_PROT: u64 = RTC_CNTL_BASE | 0xa4;
+        const RTC_WRITE_PROT: u64 = RTC_CNTL_BASE | 0xb0;
         const RTC_WDTCONFIG0: u64 = RTC_CNTL_BASE | 0x98;
         core.write_word_32(RTC_WRITE_PROT, 0x50D83AA1)?; // write protection off
         core.write_word_32(RTC_WDTCONFIG0, 0x0)?;
