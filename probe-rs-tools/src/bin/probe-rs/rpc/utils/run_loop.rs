@@ -6,11 +6,8 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use probe_rs::{Core, Error, HaltReason, VectorCatchCondition};
 
-use crate::util::rtt::client::RttClient;
-
-pub struct RunLoop<'a> {
+pub struct RunLoop {
     pub core_id: usize,
-    pub rtt_client: Option<&'a mut RttClient>,
     pub cancellation_token: CancellationToken,
 }
 
@@ -24,7 +21,7 @@ pub enum ReturnReason<R> {
     Cancelled,
 }
 
-impl RunLoop<'_> {
+impl RunLoop {
     /// Attaches to RTT and runs the core until it halts.
     ///
     /// Upon halt the predicate is invoked with the halt reason:
@@ -38,7 +35,7 @@ impl RunLoop<'_> {
         core: &mut Core,
         catch_hardfault: bool,
         catch_reset: bool,
-        rtt_callback: impl FnMut(u32, Vec<u8>) -> Result<()>,
+        mut poller: impl RunLoopPoller,
         timeout: Option<Duration>,
         mut predicate: F,
     ) -> Result<ReturnReason<R>>
@@ -69,16 +66,13 @@ impl RunLoop<'_> {
         }
         let start = Instant::now();
 
-        let result = self.do_run_until(core, rtt_callback, timeout, start, &mut predicate);
+        let result = self.do_run_until(core, &mut poller, timeout, start, &mut predicate);
 
         // Always clean up after RTT but don't overwrite the original result.
-        if let Some(ref mut rtt_client) = self.rtt_client {
-            let cleanup_result = rtt_client.clean_up(core);
-
-            if result.is_ok() {
-                // If the result is Ok, we return the potential error during cleanup.
-                cleanup_result?;
-            }
+        let poller_exit_result = poller.exit(core);
+        if result.is_ok() {
+            // If the result is Ok, we return the potential error during cleanup.
+            poller_exit_result?;
         }
 
         result
@@ -87,7 +81,7 @@ impl RunLoop<'_> {
     fn do_run_until<F, R>(
         &mut self,
         core: &mut Core,
-        mut rtt_callback: impl FnMut(u32, Vec<u8>) -> Result<()>,
+        poller: &mut impl RunLoopPoller,
         timeout: Option<Duration>,
         start: Instant,
         predicate: &mut F,
@@ -122,26 +116,7 @@ impl RunLoop<'_> {
                 probe_rs::CoreStatus::LockedUp => anyhow::bail!("The core is locked up."),
             }
 
-            if let Some(ref mut rtt_client) = self.rtt_client {
-                if !rtt_client.is_attached() && matches!(rtt_client.try_attach(core), Ok(true)) {
-                    tracing::debug!("Attached to RTT");
-                }
-                for channel in 0..rtt_client.up_channels().len() {
-                    let bytes = rtt_client.poll_channel(core, channel as u32)?;
-                    if !bytes.is_empty() {
-                        // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
-                        // Once we receive new data, we bump the frequency to 1kHz.
-                        next_poll = Duration::from_millis(1);
-                        let res = rtt_callback(channel as u32, bytes.to_vec());
-
-                        if self.cancellation_token.is_cancelled() {
-                            return Ok(ReturnReason::Cancelled);
-                        }
-
-                        res?;
-                    }
-                }
-            }
+            let poller_result = poller.poll(core);
 
             if let Some(reason) = return_reason {
                 return reason;
@@ -153,10 +128,52 @@ impl RunLoop<'_> {
             if self.cancellation_token.is_cancelled() {
                 return Ok(ReturnReason::Cancelled);
             }
+            match poller_result {
+                Ok(delay) => next_poll = next_poll.min(delay),
+                Err(error) => return Err(error),
+            }
 
             // If the polling frequency is too high, the USB connection to the probe
             // can become unstable. Hence we only poll as little as necessary.
             thread::sleep(next_poll);
+        }
+    }
+}
+
+pub trait RunLoopPoller {
+    fn poll(&mut self, core: &mut Core<'_>) -> Result<Duration>;
+    fn exit(&mut self, core: &mut Core<'_>) -> Result<()>;
+}
+
+pub struct NoopPoller;
+
+impl RunLoopPoller for NoopPoller {
+    fn poll(&mut self, _core: &mut Core<'_>) -> Result<Duration> {
+        Ok(Duration::from_secs(u64::MAX))
+    }
+
+    fn exit(&mut self, _core: &mut Core<'_>) -> Result<()> {
+        Ok(())
+    }
+}
+
+impl<T> RunLoopPoller for Option<T>
+where
+    T: RunLoopPoller,
+{
+    fn poll(&mut self, core: &mut Core<'_>) -> Result<Duration> {
+        if let Some(poller) = self {
+            poller.poll(core)
+        } else {
+            NoopPoller.poll(core)
+        }
+    }
+
+    fn exit(&mut self, core: &mut Core<'_>) -> Result<()> {
+        if let Some(poller) = self {
+            poller.exit(core)
+        } else {
+            NoopPoller.exit(core)
         }
     }
 }

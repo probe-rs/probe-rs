@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
 use postcard_schema::Schema;
 use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
@@ -14,7 +13,7 @@ use crate::{
             ListTestsEndpoint, MonitorTopic, RpcResult, RpcSpawnContext, RunTestEndpoint,
             WireTxImpl,
             flash::BootInfo,
-            monitor::{MonitorEvent, SemihostingOutput, SemihostingReader},
+            monitor::{MonitorEvent, RttPoller, SemihostingOutput, SemihostingReader},
         },
         utils::run_loop::{ReturnReason, RunLoop},
     },
@@ -165,20 +164,20 @@ fn list_tests_impl(
 
     let mut run_loop = RunLoop {
         core_id,
-        rtt_client: rtt_client.as_deref_mut(),
         cancellation_token: ctx.cancellation_token(),
     };
+
+    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
+        rtt_client: client,
+        sender: sender.clone(),
+    });
 
     let mut core = session.core(0)?;
     match run_loop.run_until(
         &mut core,
         true,
         true,
-        |channel, bytes| {
-            sender
-                .blocking_send(MonitorEvent::RttOutput { channel, bytes })
-                .with_context(|| "Failed to send RTT output")
-        },
+        poller,
         Some(Duration::from_secs(5)),
         |halt_reason, core| list_handler.handle_halt(halt_reason, core),
     )? {
@@ -250,19 +249,19 @@ fn run_test_impl(
 
     let mut run_loop = RunLoop {
         core_id,
-        rtt_client: rtt_client.as_deref_mut(),
         cancellation_token: ctx.cancellation_token(),
     };
+
+    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
+        rtt_client: client,
+        sender: sender.clone(),
+    });
 
     match run_loop.run_until(
         &mut core,
         true,
         true,
-        |channel, bytes| {
-            sender
-                .blocking_send(MonitorEvent::RttOutput { channel, bytes })
-                .with_context(|| "Failed to send RTT output")
-        },
+        poller,
         Some(timeout),
         |halt_reason, core| run_handler.handle_halt(halt_reason, core),
     )? {

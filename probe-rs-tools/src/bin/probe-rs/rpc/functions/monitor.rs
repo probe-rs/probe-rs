@@ -4,7 +4,7 @@ use crate::{
     rpc::{
         Key,
         functions::{MonitorEndpoint, MonitorTopic, RpcSpawnContext, WireTxImpl, flash::BootInfo},
-        utils::run_loop::RunLoop,
+        utils::run_loop::{RunLoop, RunLoopPoller},
     },
     util::rtt::client::RttClient,
 };
@@ -84,9 +84,13 @@ fn monitor_impl(
 
     let mut run_loop = RunLoop {
         core_id,
-        rtt_client: rtt_client.as_deref_mut(),
         cancellation_token: ctx.cancellation_token(),
     };
+
+    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
+        rtt_client: client,
+        sender: sender.clone(),
+    });
 
     let monitor_mode = if session.core(core_id)?.core_halted()? {
         request.mode
@@ -118,16 +122,49 @@ fn monitor_impl(
         &mut core,
         request.options.catch_hardfault,
         request.options.catch_reset,
-        |channel, bytes| {
-            sender
-                .blocking_send(MonitorEvent::RttOutput { channel, bytes })
-                .with_context(|| "Failed to send RTT output")
-        },
+        poller,
         None,
         |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
     )?;
 
     Ok(())
+}
+
+pub struct RttPoller<'c> {
+    pub rtt_client: &'c mut RttClient,
+    pub sender: mpsc::Sender<MonitorEvent>,
+}
+
+impl RunLoopPoller for RttPoller<'_> {
+    fn poll(&mut self, core: &mut Core<'_>) -> anyhow::Result<Duration> {
+        if !self.rtt_client.is_attached() && matches!(self.rtt_client.try_attach(core), Ok(true)) {
+            tracing::debug!("Attached to RTT");
+        }
+
+        let mut next_poll = Duration::from_millis(100);
+        for channel in 0..self.rtt_client.up_channels().len() {
+            let bytes = self.rtt_client.poll_channel(core, channel as u32)?;
+            if !bytes.is_empty() {
+                // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
+                // Once we receive new data, we bump the frequency to 1kHz.
+                next_poll = Duration::from_millis(1);
+
+                self.sender
+                    .blocking_send(MonitorEvent::RttOutput {
+                        channel: channel as u32,
+                        bytes: bytes.to_vec(),
+                    })
+                    .with_context(|| "Failed to send RTT output")?;
+            }
+        }
+
+        Ok(next_poll)
+    }
+
+    fn exit(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
+        self.rtt_client.clean_up(core)?;
+        Ok(())
+    }
 }
 
 struct MonitorEventHandler<F: FnMut(MonitorEvent)> {
