@@ -123,7 +123,9 @@ impl RunLoop<'_> {
 
             let mut had_rtt_data = false;
             if let Some(ref mut rtt_client) = self.rtt_client {
-                _ = rtt_client.try_attach(core);
+                if !rtt_client.is_attached() && matches!(rtt_client.try_attach(core), Ok(true)) {
+                    tracing::debug!("Attached to RTT");
+                }
                 for channel in 0..rtt_client.up_channels().len() {
                     let bytes = rtt_client.poll_channel(core, channel as u32)?;
                     if !bytes.is_empty() {

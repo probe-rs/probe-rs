@@ -36,8 +36,12 @@ impl RttClient {
         }
     }
 
+    pub fn is_attached(&self) -> bool {
+        self.target.is_some()
+    }
+
     pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
-        if self.target.is_some() {
+        if self.is_attached() {
             return Ok(true);
         }
 
