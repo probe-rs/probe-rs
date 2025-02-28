@@ -118,7 +118,10 @@ impl Cli {
     async fn run(self, client: RpcClient, _config: Config, utc_offset: UtcOffset) -> Result<()> {
         let lister = Lister::new();
         match self.subcommand {
-            Subcommand::DapServer { .. } => unreachable!(),
+            Subcommand::DapServer(cmd) => {
+                let log_path = self.log_file.as_deref();
+                cmd::dap_server::run(cmd, &lister, utc_offset, log_path)
+            }
             #[cfg(feature = "remote")]
             Subcommand::Serve(cmd) => cmd.run(_config).await,
             Subcommand::List(cmd) => cmd.run(client).await,
@@ -363,7 +366,8 @@ fn default_logfile_location() -> Result<PathBuf> {
             ..Default::default()
         },
     );
-    fs::create_dir_all(directory).context(format!("{directory:?} could not be created"))?;
+    fs::create_dir_all(directory)
+        .with_context(|| format!("{} could not be created", directory.display()))?;
 
     let log_path = directory.join(logname);
 
@@ -451,14 +455,13 @@ async fn main() -> Result<()> {
         matches = Cli::command().ignore_errors(true).get_matches_from(args);
     }
 
-    let cli = match Cli::from_arg_matches(&matches) {
+    let mut cli = match Cli::from_arg_matches(&matches) {
         Ok(matches) => matches,
         Err(err) => err.exit(),
     };
 
-    let log_path = if let Some(ref location) = cli.log_file {
-        Some(location.clone())
-    } else if cli.log_to_folder || cli.report.is_some() {
+    // If the user has not specified a log file, we will try to create one in the default location.
+    if cli.log_file.is_none() && (cli.log_to_folder || cli.report.is_some()) {
         // We always log if we create a report.
         let location =
             default_logfile_location().context("Unable to determine default log file location.")?;
@@ -467,20 +470,16 @@ async fn main() -> Result<()> {
                 .parent()
                 .expect("A file parent directory. Please report this as a bug."),
         )?;
-        Some(location)
-    } else {
-        None
+        cli.log_file = Some(location);
     };
-    let log_path = log_path.as_deref();
+    let log_path = cli.log_file.clone();
 
-    // the DAP server has special logging requirements. Run it before initializing logging,
-    // so it can do its own special init.
-    if let Subcommand::DapServer(cmd) = cli.subcommand {
-        let lister = Lister::new();
-        return cmd::dap_server::run(cmd, &lister, utc_offset, log_path);
-    }
-
-    let _logger_guard = setup_logging(log_path, None);
+    let _logger_guard = if matches!(cli.subcommand, Subcommand::DapServer(_)) {
+        // The DAP server has special logging requirements, so skip initializing the logger for it.
+        Ok(None)
+    } else {
+        setup_logging(log_path.as_deref(), None)
+    };
 
     let elf = cli.elf();
     let report_path = cli.report.clone();
@@ -511,7 +510,7 @@ async fn main() -> Result<()> {
     // Wait for the server to shut down
     _ = handle.await.unwrap();
 
-    compile_report(result, report_path, elf, log_path)
+    compile_report(result, report_path, elf, log_path.as_deref())
 }
 
 fn apply_config_preset(
