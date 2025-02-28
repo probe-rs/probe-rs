@@ -366,7 +366,8 @@ fn default_logfile_location() -> Result<PathBuf> {
             ..Default::default()
         },
     );
-    fs::create_dir_all(directory).context(format!("{directory:?} could not be created"))?;
+    fs::create_dir_all(directory)
+        .with_context(|| format!("{} could not be created", directory.display()))?;
 
     let log_path = directory.join(logname);
 
