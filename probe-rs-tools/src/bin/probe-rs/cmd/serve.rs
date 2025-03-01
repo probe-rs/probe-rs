@@ -31,6 +31,19 @@ use crate::{
     },
 };
 
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ServerConfig {
+    pub users: Vec<ServerUser>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ServerUser {
+    pub name: String,
+    pub token: String,
+}
+
 struct ServerState {
     config: Config,
 }

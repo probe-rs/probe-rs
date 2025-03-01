@@ -31,27 +31,12 @@ use crate::util::parse_u64;
 
 const MAX_LOG_FILES: usize = 20;
 
-#[cfg(feature = "remote")]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ServerUser {
-    pub name: String,
-    pub token: String,
-}
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-#[cfg(feature = "remote")]
-pub(crate) struct ServerConfig {
-    pub users: Vec<ServerUser>,
-}
-
 type ConfigPreset = HashMap<String, Value>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub(crate) struct Config {
     #[cfg(feature = "remote")]
-    pub server: ServerConfig,
+    pub server: cmd::serve::ServerConfig,
 
     /// A named set of `--key=value` pairs.
     pub presets: HashMap<String, ConfigPreset>,
