@@ -117,7 +117,9 @@ impl CoreDump {
             }
         }
         // If we get here, then no range with the requested memory address and size was found.
-        Err(crate::Error::Other(format!("The coredump does not include the memory for address {address:#x} of size {size_in_bytes:#x}")))
+        Err(crate::Error::Other(format!(
+            "The coredump does not include the memory for address {address:#x} of size {size_in_bytes:#x}"
+        )))
     }
 
     /// Read the requested memory range from the coredump, and return the data in the requested buffer.

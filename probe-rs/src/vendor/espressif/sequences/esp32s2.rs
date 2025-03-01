@@ -7,12 +7,12 @@ use std::{
 
 use super::esp::EspFlashSizeDetector;
 use crate::{
+    MemoryInterface, Session,
     architecture::xtensa::{
         communication_interface::{XtensaCommunicationInterface, XtensaError},
         sequences::XtensaDebugSequence,
         xdm::{self, DebugControlBits, DebugRegisterError},
     },
-    MemoryInterface, Session,
 };
 
 /// The debug sequence implementation for the ESP32-S2.

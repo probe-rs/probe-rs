@@ -1,5 +1,5 @@
 use super::serialize_u_int::SerializeUnsignedInt;
-use serde::{ser::Serializer, Serialize};
+use serde::{Serialize, ser::Serializer};
 
 pub fn serialize<T, S>(variant_value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
 where

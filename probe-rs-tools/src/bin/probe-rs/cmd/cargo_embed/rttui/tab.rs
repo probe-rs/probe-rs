@@ -13,11 +13,11 @@ use super::channel::UpChannel;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TabConfig {
     /// Which up channel to use.
-    pub up_channel: usize,
+    pub up_channel: u32,
 
     /// Which down channel to use, if any.
     #[serde(default)]
-    pub down_channel: Option<usize>,
+    pub down_channel: Option<u32>,
 
     /// The name of the tab. If not set, the name of the up channel is used.
     #[serde(default)]
@@ -30,7 +30,7 @@ pub struct TabConfig {
 
 pub struct Tab {
     up_channel: Rc<RefCell<UpChannel>>,
-    down_channel: Option<(usize, String)>,
+    down_channel: Option<(u32, String)>,
     name: String,
     scroll_offset: usize,
     messages: Vec<String>,
@@ -41,7 +41,7 @@ pub struct Tab {
 impl Tab {
     pub fn new(
         up_channel: Rc<RefCell<UpChannel>>,
-        down_channel: Option<usize>,
+        down_channel: Option<u32>,
         name: Option<String>,
     ) -> Self {
         Self {

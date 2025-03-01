@@ -1,17 +1,17 @@
 use crate::{
+    Core, CoreType, Error, Target,
     architecture::{
         arm::{
+            ApV2Address, ArmProbeInterface, FullyQualifiedApAddress,
             core::{CortexAState, CortexMState},
             dp::DpAddress,
-            ApV2Address, ArmProbeInterface, FullyQualifiedApAddress,
         },
         riscv::{
-            communication_interface::{RiscvCommunicationInterface, RiscvError},
             RiscvCoreState,
+            communication_interface::{RiscvCommunicationInterface, RiscvError},
         },
-        xtensa::{communication_interface::XtensaCommunicationInterface, XtensaCoreState},
+        xtensa::{XtensaCoreState, communication_interface::XtensaCommunicationInterface},
     },
-    Core, CoreType, Error, Target,
 };
 
 use super::ResolvedCoreOptions;

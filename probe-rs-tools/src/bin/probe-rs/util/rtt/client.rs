@@ -1,23 +1,16 @@
-use std::sync::Arc;
-
-use crate::util::rtt::{
-    ChannelDataCallbacks, DefmtState, RttActiveDownChannel, RttActiveTarget, RttActiveUpChannel,
-    RttConfig, RttSymbolError,
-};
+use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection};
 use probe_rs::{
+    Core, MemoryInterface,
     rtt::{Error, Rtt, ScanRegion},
-    Core, Target,
 };
-use time::UtcOffset;
 
 pub struct RttClient {
-    pub defmt_data: Option<Arc<DefmtState>>,
     pub scan_region: ScanRegion,
-    pub timezone_offset: UtcOffset,
-    rtt_config: RttConfig,
+    pub config: RttConfig,
 
     /// The internal RTT handle, if we have successfully attached to the target.
-    target: Option<RttActiveTarget>,
+    target: Option<RttConnection>,
+    last_control_block_address: Option<u64>,
 
     /// If false, don't try to attach to the target.
     try_attaching: bool,
@@ -31,47 +24,16 @@ pub struct RttClient {
 }
 
 impl RttClient {
-    pub fn new(
-        elf: Option<&[u8]>,
-        target: &Target,
-        rtt_config: RttConfig,
-        scan_region: ScanRegion,
-    ) -> Result<Self, Error> {
-        let mut this = Self {
-            defmt_data: None,
+    pub fn new(config: RttConfig, scan_region: ScanRegion) -> Self {
+        Self {
             scan_region,
-            rtt_config,
+            config,
             target: None,
+            last_control_block_address: None,
             try_attaching: true,
-            timezone_offset: UtcOffset::UTC,
             polled_data: false,
             core_id: 0,
-        };
-
-        if let Some(elf) = elf {
-            let mut init_defmt = false;
-            match RttActiveTarget::get_rtt_symbol_from_bytes(elf) {
-                Ok(address) => {
-                    this.scan_region = ScanRegion::Exact(address);
-                    this.core_id = target.core_index_by_address(address).unwrap_or(0);
-
-                    init_defmt = true;
-                }
-                Err(RttSymbolError::Goblin(_)) => {
-                    // Not an ELF
-                }
-                Err(RttSymbolError::RttSymbolNotFound) => {
-                    // We can still try to use defmt, we might find the control block.
-                    init_defmt = true;
-                }
-            }
-
-            if init_defmt {
-                this.defmt_data = DefmtState::try_from_bytes(elf)?.map(Arc::new);
-            }
         }
-
-        Ok(this)
     }
 
     pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
@@ -83,85 +45,89 @@ impl RttClient {
             return Ok(false);
         }
 
-        match Rtt::attach_region(core, &self.scan_region).and_then(|rtt| {
-            RttActiveTarget::new(
-                core,
-                rtt,
-                self.defmt_data.clone(),
-                &self.rtt_config,
-                self.timezone_offset,
-            )
-            .map(Some)
-        }) {
-            Ok(rtt) => self.target = rtt,
-            Err(Error::ControlBlockNotFound) => {}
-            Err(Error::ControlBlockCorrupted(error)) => {
-                tracing::debug!("RTT control block corrupted ({error})");
+        let location = if let Some(location) = self.last_control_block_address {
+            location
+        } else {
+            let location = match Rtt::find_contol_block(core, &self.scan_region) {
+                Ok(location) => location,
+                Err(Error::ControlBlockNotFound) => {
+                    tracing::debug!("Failed to attach - control block not found");
+                    return Ok(false);
+                }
+                Err(Error::NoControlBlockLocation) => {
+                    tracing::debug!("Failed to attach - control block location not specified");
+                    self.try_attaching = false;
+                    return Ok(false);
+                }
+                Err(error) => return Err(error),
+            };
+
+            self.last_control_block_address = Some(location);
+            location
+        };
+
+        let rtt = match Rtt::attach_at(core, location) {
+            Ok(rtt) => rtt,
+            Err(Error::ControlBlockNotFound) => {
+                self.last_control_block_address = None;
+                tracing::debug!("Failed to attach - control block not found");
+                return Ok(false);
             }
-            Err(Error::NoControlBlockLocation) => self.try_attaching = false,
+            Err(Error::ControlBlockCorrupted(error)) => {
+                tracing::debug!("Failed to attach - control block corrupted: {}", error);
+                return Ok(false);
+            }
+            Err(error) => return Err(error),
+        };
+
+        match RttConnection::new(core, rtt, &self.config) {
+            Ok(rtt) => self.target = Some(rtt),
+            Err(Error::ControlBlockCorrupted(error)) => {
+                tracing::debug!("Failed to attach - control block corrupted: {}", error);
+            }
             Err(error) => return Err(error),
         };
 
         Ok(self.target.is_some())
     }
 
-    pub fn poll(
-        &mut self,
-        core: &mut Core,
-        collector: &mut impl ChannelDataCallbacks,
-    ) -> Result<(), Error> {
+    pub fn poll_channel(&mut self, core: &mut Core, channel: u32) -> Result<&[u8], Error> {
         self.try_attach(core)?;
 
-        let Some(target) = self.target.as_mut() else {
-            return Ok(());
-        };
+        if let Some(ref mut target) = self.target {
+            match target.poll_channel(core, channel) {
+                Ok(()) => self.polled_data = true,
 
-        let result = target.poll_rtt_fallible(core, collector);
-        self.handle_poll_result(result)
-    }
-
-    pub fn poll_channel(
-        &mut self,
-        core: &mut Core,
-        channel: usize,
-        collector: &mut impl ChannelDataCallbacks,
-    ) -> Result<(), Error> {
-        self.try_attach(core)?;
-
-        let Some(target) = self.target.as_mut() else {
-            return Ok(());
-        };
-
-        let result = target.poll_channel_fallible(core, channel, collector);
-        self.handle_poll_result(result)
-    }
-
-    fn handle_poll_result(&mut self, result: Result<(), Error>) -> Result<(), Error> {
-        match result {
-            Ok(()) => self.polled_data = true,
-            Err(Error::ControlBlockCorrupted(error)) => {
-                if self.polled_data {
-                    tracing::warn!("RTT control block corrupted ({error}), re-attaching");
+                Err(Error::ControlBlockCorrupted(error)) => {
+                    if self.polled_data {
+                        tracing::warn!("RTT control block corrupted ({error}), re-attaching");
+                    }
+                    self.target = None;
+                    self.polled_data = false;
                 }
-                self.target = None;
-                self.polled_data = false;
-            }
-            Err(Error::ReadPointerChanged) => {
-                if self.polled_data {
-                    tracing::warn!("RTT read pointer changed, re-attaching");
+                Err(Error::ReadPointerChanged) => {
+                    if self.polled_data {
+                        tracing::warn!("RTT read pointer changed, re-attaching");
+                    }
+                    self.target = None;
+                    self.polled_data = false;
                 }
-                self.target = None;
-                self.polled_data = false;
+
+                Err(other) => return Err(other),
             }
-            other => return other,
         }
-        Ok(())
+
+        if let Some(ref target) = self.target {
+            return target.channel_data(channel);
+        }
+
+        Ok(&[])
     }
 
     pub(crate) fn write_down_channel(
         &mut self,
         core: &mut Core,
-        channel: usize,
+        channel: u32,
         input: impl AsRef<[u8]>,
     ) -> Result<(), Error> {
         self.try_attach(core)?;
@@ -181,18 +147,47 @@ impl RttClient {
         Ok(())
     }
 
+    /// This function prevents probe-rs from attaching to an RTT control block that is not
+    /// supposed to be valid. This is useful when probe-rs has reset the MCU before attaching,
+    /// or during/after flashing, when the MCU has not yet been started.
     pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
         self.try_attach(core)?;
 
-        let Some(target) = self.target.as_mut() else {
-            // If we can't attach, we don't have a valid
-            // control block and don't have to do anything.
-            return Ok(());
-        };
+        if let Some(mut target) = self.target.take() {
+            target.clear_control_block(core)?;
+        } else {
+            // While the entire block isn't valid in itself, some parts of it may be.
+            // Depending on the firmware, the control block may be initialized in such
+            // an order where probe-rs can attach to it before it is fully valid.
+            if let Some(location) = self.last_control_block_address.take() {
+                if let ScanRegion::Exact(scan_location) = self.scan_region {
+                    // If we know the exact location where a control block should be, we can clear
+                    // the whole block.
+                    if location == scan_location {
+                        const SIZE_32B: usize = 16 + 2 * 4;
+                        const SIZE_64B: usize = 16 + 2 * 8;
 
-        target.clear_control_block(core)?;
+                        let zeros = [0; SIZE_64B];
 
-        self.target = None;
+                        if core.is_64_bit() {
+                            core.write_8(location, &zeros[..SIZE_64B])?;
+                        } else {
+                            core.write_8(location, &zeros[..SIZE_32B])?;
+                        }
+                    }
+                } else {
+                    // If we have to scan for the location or we somehow found the magic string
+                    // somewhere else, we can only clear the magic string.
+                    let mut magic = [0; Rtt::RTT_ID.len()];
+                    core.read_8(location, &mut magic)?;
+                    if magic == Rtt::RTT_ID {
+                        core.write_8(location, &[0; 16])?;
+                    }
+                }
+            }
+
+            // There's nothing we can do if we don't know where the control block is.
+        }
 
         Ok(())
     }

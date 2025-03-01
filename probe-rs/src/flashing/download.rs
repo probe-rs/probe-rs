@@ -1,6 +1,6 @@
 use object::{
-    elf::FileHeader32, elf::FileHeader64, elf::PT_LOAD, read::elf::ElfFile, read::elf::FileHeader,
-    read::elf::ProgramHeader, Endianness, Object, ObjectSection,
+    Endianness, Object, ObjectSection, elf::FileHeader32, elf::FileHeader64, elf::PT_LOAD,
+    read::elf::ElfFile, read::elf::FileHeader, read::elf::ProgramHeader,
 };
 use probe_rs_target::{InstructionSet, MemoryRange};
 use serde::{Deserialize, Serialize};
@@ -30,6 +30,8 @@ pub struct IdfOptions {
     pub bootloader: Option<PathBuf>,
     /// The partition table
     pub partition_table: Option<PathBuf>,
+    /// The target app partition
+    pub target_app_partition: Option<String>,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
@@ -155,6 +157,9 @@ pub enum FileDownloadError {
         /// The image's instruction set.
         image: InstructionSet,
     },
+
+    /// An error occurred during download.
+    Other(#[source] crate::Error),
 }
 
 fn print_instr_sets(instr_sets: &[InstructionSet]) -> String {

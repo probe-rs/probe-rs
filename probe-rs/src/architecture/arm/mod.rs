@@ -13,7 +13,7 @@ pub mod sequences;
 pub mod swo;
 mod traits;
 
-pub use self::core::{armv6m, armv7a, armv7m, armv8a, armv8m, Dump};
+pub use self::core::{Dump, armv6m, armv7a, armv7m, armv8a, armv8m};
 use self::{
     ap::AccessPortError,
     dp::DebugPortError,

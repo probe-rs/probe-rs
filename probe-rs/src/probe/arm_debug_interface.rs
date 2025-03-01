@@ -5,16 +5,16 @@
 //! See <https://developer.arm.com/documentation/ihi0031/f/?lang=en> for the ADIv5 specification.
 
 use crate::{
+    Error,
     architecture::arm::{
-        ap::AccessPortError,
-        dp::{Abort, Ctrl, DebugPortError, DpRegister, RdBuff, DPIDR},
         ArmError, DapError, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
+        ap::AccessPortError,
+        dp::{Abort, Ctrl, DPIDR, DebugPortError, DpRegister, RdBuff},
     },
     probe::{
-        common::bits_to_byte, CommandResult, DebugProbe, DebugProbeError, JTAGAccess,
-        JtagCommandQueue, JtagWriteCommand, WireProtocol,
+        CommandResult, DebugProbe, DebugProbeError, JTAGAccess, JtagCommandQueue, JtagWriteCommand,
+        WireProtocol, common::bits_to_byte,
     },
-    Error,
 };
 
 const CTRL_PORT: RegisterAddress = RegisterAddress::DpRegister(Ctrl::ADDRESS);
@@ -1078,7 +1078,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 if address == CTRL_PORT {
                     //  This is not necessarily the CTRL/STAT register, because the dpbanksel field in the SELECT register
                     //  might be set so that the read wasn't actually from the CTRL/STAT register.
-                    tracing::debug!("Read might have been from CTRL/STAT register, not reading it again to dermine fault reason");
+                    tracing::debug!(
+                        "Read might have been from CTRL/STAT register, not reading it again to dermine fault reason"
+                    );
 
                     // We still clear the sticky error, otherwise all future accesses will fail.
                     //
@@ -1297,17 +1299,17 @@ mod test {
 
     use crate::{
         architecture::arm::{
-            dp::{Ctrl, DpRegister, RdBuff},
             ApAddress, RawDapAccess, RegisterAddress,
+            dp::{Ctrl, DpRegister, RdBuff},
         },
         error::Error,
         probe::{DebugProbe, DebugProbeError, JTAGAccess, ScanChainElement, WireProtocol},
     };
 
     use super::{
-        parse_jtag_response, ProbeStatistics, RawProtocolIo, SwdSettings, JTAG_ABORT_IR_VALUE,
-        JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE, JTAG_DR_BIT_LENGTH, JTAG_STATUS_OK,
-        JTAG_STATUS_WAIT,
+        JTAG_ABORT_IR_VALUE, JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE,
+        JTAG_DR_BIT_LENGTH, JTAG_STATUS_OK, JTAG_STATUS_WAIT, ProbeStatistics, RawProtocolIo,
+        SwdSettings, parse_jtag_response,
     };
 
     use bitvec::prelude::*;
@@ -1874,12 +1876,12 @@ mod test {
     /// the appropriate extra reads added as necessary.
     mod transfer_handling {
         use super::{
-            super::{perform_transfers, DapTransfer, TransferStatus},
+            super::{DapTransfer, TransferStatus, perform_transfers},
             DapAcknowledge, MockJaylink,
         };
         use crate::architecture::arm::{
-            dp::{Abort, Ctrl, DpRegister, DpRegisterAddress, DPIDR},
             ApAddress,
+            dp::{Abort, Ctrl, DPIDR, DpRegister, DpRegisterAddress},
         };
 
         #[test]

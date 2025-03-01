@@ -102,11 +102,7 @@ impl Command {
 
                     // Stop at 6 bits to sidestep the 7-bit issue which may or may not affect TMS
                     // shifts. We normally don't need more than 6 bits anyway.
-                    if *bit_count == 6 {
-                        self.take()
-                    } else {
-                        None
-                    }
+                    if *bit_count == 6 { self.take() } else { None }
                 } else {
                     // We need to start assembling a different command for one of the above reasons.
                     self.start_new_command(tms, tdi, capture)

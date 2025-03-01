@@ -1,26 +1,29 @@
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
-use crate::cmd::dap_server::{
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            core_status::DapStatus,
-            dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
-        },
-        protocol::ProtocolAdapter,
-    },
-    peripherals::svd_variables::SvdCache,
-    server::debug_rtt,
-    DebuggerError,
-};
 use crate::util::rtt::client::RttClient;
-use crate::util::rtt::{self, DataFormat};
-use anyhow::{anyhow, Result};
-use probe_rs::{rtt::ScanRegion, Core, CoreStatus, HaltReason};
+use crate::util::rtt::{self, DataFormat, DefmtProcessor, DefmtState};
+use crate::{
+    cmd::dap_server::{
+        DebuggerError,
+        debug_adapter::{
+            dap::{
+                adapter::DebugAdapter,
+                core_status::DapStatus,
+                dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+            },
+            protocol::ProtocolAdapter,
+        },
+        peripherals::svd_variables::SvdCache,
+        server::debug_rtt,
+    },
+    util::rtt::RttDecoder,
+};
+use anyhow::{Result, anyhow};
+use probe_rs::{Core, CoreStatus, HaltReason, rtt::ScanRegion};
 use probe_rs_debug::VerifiedBreakpoint;
 use probe_rs_debug::{
-    debug_info::DebugInfo, stack_frame::StackFrameInfo, ColumnType, ObjectRef, VariableCache,
+    ColumnType, ObjectRef, VariableCache, debug_info::DebugInfo, stack_frame::StackFrameInfo,
 };
 use time::UtcOffset;
 use typed_path::TypedPath;
@@ -55,7 +58,7 @@ pub struct CoreHandle<'p> {
     pub(crate) core_data: &'p mut CoreData,
 }
 
-impl<'p> CoreHandle<'p> {
+impl CoreHandle<'_> {
     /// Some MS DAP requests (e.g. `step`) implicitly expect the core to resume processing and then to optionally halt again, before the request completes.
     ///
     /// This method is used to set the `last_known_status` to [`CoreStatus::Unknown`] (because we cannot verify that it will indeed resume running until we have polled it again),
@@ -75,96 +78,83 @@ impl<'p> CoreHandle<'p> {
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<CoreStatus, DebuggerError> {
-        if debug_adapter.configuration_is_done() {
-            match self.core.status() {
-                Ok(status) => {
-                    let has_changed_state = status != self.core_data.last_known_status;
-                    if has_changed_state {
-                        match status {
-                            CoreStatus::Running | CoreStatus::Sleeping => {
-                                let event_body = Some(ContinuedEventBody {
-                                    all_threads_continued: Some(true), // TODO: Implement multi-core awareness here
-                                    thread_id: self.core.id() as i64,
-                                });
-                                debug_adapter.send_event("continued", event_body)?;
-                                tracing::trace!(
-                                    "Notified DAP client that the core continued: {:?}",
-                                    status
-                                );
-                            }
-                            CoreStatus::Halted(_) => {
-                                // HaltReason::Step is a special case, where we have to send a custome event to the client that the core halted.
-                                // In this case, we don't re-send the "stopped" event, but further down, we will
-                                // update the `last_known_status` to the actual HaltReason returned by the core.
-                                if self.core_data.last_known_status
-                                    != CoreStatus::Halted(HaltReason::Step)
-                                {
-                                    let program_counter =
-                                        self.core.read_core_reg(self.core.program_counter()).ok();
-                                    let event_body = Some(StoppedEventBody {
-                                        reason: status
-                                            .short_long_status(program_counter)
-                                            .0
-                                            .to_owned(),
-                                        description: Some(
-                                            status.short_long_status(program_counter).1,
-                                        ),
-                                        thread_id: Some(self.core.id() as i64),
-                                        preserve_focus_hint: Some(false),
-                                        text: None,
-                                        all_threads_stopped: Some(debug_adapter.all_cores_halted),
-                                        hit_breakpoint_ids: None,
-                                    });
-                                    debug_adapter.send_event("stopped", event_body)?;
-                                    tracing::trace!(
-                                        "Notified DAP client that the core halted: {:?}",
-                                        status
-                                    );
-                                }
-                            }
-                            CoreStatus::LockedUp => {
-                                debug_adapter.show_message(
-                                    MessageSeverity::Error,
-                                    status.short_long_status(None).1,
-                                );
-                                return Err(DebuggerError::Other(anyhow!(
-                                    status.short_long_status(None).1
-                                )));
-                            }
-                            CoreStatus::Unknown => {
-                                debug_adapter.show_error_message(&DebuggerError::Other(
-                                    anyhow!("Unknown Device status reveived from Probe-rs"),
-                                ))?;
-
-                                return Err(DebuggerError::Other(anyhow!(
-                                    "Unknown Device status reveived from Probe-rs"
-                                )));
-                            }
-                        }
-                    }
-                    self.core_data.last_known_status = status; // Update this unconditionally, because halted() can have more than one variant.
-                    Ok(status)
-                }
-                Err(error) => {
-                    self.core_data.last_known_status = CoreStatus::Unknown;
-                    Err(error.into())
-                }
-            }
-        } else {
+        if !debug_adapter.configuration_is_done() {
             tracing::trace!(
                 "Ignored last_known_status: {:?} during `configuration_done=false`, and reset it to {:?}.",
                 self.core_data.last_known_status,
                 CoreStatus::Unknown
             );
-            Ok(CoreStatus::Unknown)
+            return Ok(CoreStatus::Unknown);
         }
+
+        let status = match self.core.status() {
+            Ok(status) => {
+                if status == self.core_data.last_known_status {
+                    return Ok(status);
+                }
+
+                status
+            }
+            Err(error) => {
+                self.core_data.last_known_status = CoreStatus::Unknown;
+                return Err(error.into());
+            }
+        };
+
+        // Update this unconditionally, because halted() can have more than one variant.
+        self.core_data.last_known_status = status;
+
+        match status {
+            CoreStatus::Running | CoreStatus::Sleeping => {
+                let event_body = Some(ContinuedEventBody {
+                    all_threads_continued: Some(true), // TODO: Implement multi-core awareness here
+                    thread_id: self.core.id() as i64,
+                });
+                debug_adapter.send_event("continued", event_body)?;
+                tracing::trace!("Notified DAP client that the core continued: {:?}", status);
+            }
+            CoreStatus::Halted(_) => {
+                // HaltReason::Step is a special case, where we have to send a custome event to the client that the core halted.
+                // In this case, we don't re-send the "stopped" event, but further down, we will
+                // update the `last_known_status` to the actual HaltReason returned by the core.
+                if self.core_data.last_known_status != CoreStatus::Halted(HaltReason::Step) {
+                    let program_counter = self.core.read_core_reg(self.core.program_counter()).ok();
+                    let (reason, description) = status.short_long_status(program_counter);
+                    let event_body = Some(StoppedEventBody {
+                        reason: reason.to_string(),
+                        description: Some(description),
+                        thread_id: Some(self.core.id() as i64),
+                        preserve_focus_hint: Some(false),
+                        text: None,
+                        all_threads_stopped: Some(debug_adapter.all_cores_halted),
+                        hit_breakpoint_ids: None,
+                    });
+                    debug_adapter.send_event("stopped", event_body)?;
+                    tracing::trace!("Notified DAP client that the core halted: {:?}", status);
+                }
+            }
+            CoreStatus::LockedUp => {
+                let (_, description) = status.short_long_status(None);
+                debug_adapter.show_message(MessageSeverity::Error, &description);
+                return Err(DebuggerError::Other(anyhow!(description)));
+            }
+            CoreStatus::Unknown => {
+                let error =
+                    DebuggerError::Other(anyhow!("Unknown Device status reveived from Probe-rs"));
+                debug_adapter.show_error_message(&error)?;
+
+                return Err(error);
+            }
+        }
+
+        Ok(status)
     }
 
     /// Search available [`probe_rs::debug::StackFrame`]'s for the given `id`
     pub(crate) fn get_stackframe(
-        &'p self,
+        &self,
         id: ObjectRef,
-    ) -> Option<&'p probe_rs_debug::stack_frame::StackFrame> {
+    ) -> Option<&probe_rs_debug::stack_frame::StackFrame> {
         self.core_data
             .stack_frames
             .iter()
@@ -179,24 +169,22 @@ impl<'p> CoreHandle<'p> {
         rtt_config: &rtt::RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
+        // Create the RTT client using the RTT control block address from the ELF file.
+        let elf = std::fs::read(program_binary)
+            .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
+
         let client = if let Some(client) = self.core_data.rtt_client.as_mut() {
             client
         } else {
-            // Create the RTT client using the RTT control block address from the ELF file.
-            let elf = std::fs::read(program_binary)
-                .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
-
-            let mut client = RttClient::new(
-                Some(&elf),
-                self.core.target(),
-                rtt_config.clone(),
+            let scan = match rtt::get_rtt_symbol_from_bytes(&elf) {
+                Ok(address) => ScanRegion::Exact(address),
                 // Do not scan the memory for the control block.
-                ScanRegion::Ranges(vec![]),
-            )?;
+                _ => ScanRegion::Ranges(vec![]),
+            };
 
-            client.timezone_offset = timestamp_offset;
-
-            self.core_data.rtt_client.insert(client)
+            self.core_data
+                .rtt_client
+                .insert(RttClient::new(rtt_config.clone(), scan))
         };
 
         if !client.try_attach(&mut self.core)? {
@@ -210,16 +198,59 @@ impl<'p> CoreHandle<'p> {
 
         let mut debugger_rtt_channels = vec![];
 
+        let defmt_data = DefmtState::try_from_bytes(&elf)?;
+
         for up_channel in client.up_channels() {
+            let number = up_channel.number();
+
+            let mut channel_config = rtt_config
+                .channel_config(number)
+                .cloned()
+                .unwrap_or_default();
+
+            if up_channel.channel_name() == "defmt" {
+                channel_config.data_format = DataFormat::Defmt;
+            }
+
+            // Where `channel_config` is unspecified, apply default from `default_channel_config`.
+            let show_timestamps = channel_config.show_timestamps;
+            let show_location = channel_config.show_location;
+            let log_format = channel_config.log_format.clone();
+
+            let channel_data_format = match channel_config.data_format {
+                DataFormat::String => RttDecoder::String {
+                    timestamp_offset: Some(timestamp_offset),
+                    last_line_done: false,
+                },
+                DataFormat::BinaryLE => RttDecoder::BinaryLE,
+                DataFormat::Defmt => {
+                    let Some(defmt_data) = defmt_data.clone() else {
+                        tracing::warn!("Defmt data not found in ELF file");
+                        continue;
+                    };
+
+                    RttDecoder::Defmt {
+                        processor: DefmtProcessor::new(
+                            defmt_data,
+                            show_timestamps,
+                            show_location,
+                            log_format.as_deref(),
+                        ),
+                    }
+                }
+            };
+
             debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
                 channel_number: up_channel.number(),
                 // This value will eventually be set to true by a VSCode client request "rttWindowOpened"
                 has_client_window: false,
+                channel_data_format,
             });
+
             debug_adapter.rtt_window(
                 up_channel.number(),
                 up_channel.channel_name(),
-                DataFormat::from(&up_channel.data_format),
+                channel_config.data_format,
             );
         }
 

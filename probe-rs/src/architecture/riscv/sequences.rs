@@ -1,8 +1,8 @@
 //! Debug sequences to operate special requirements RISC-V targets.
 
-use crate::architecture::riscv::communication_interface::RiscvError;
-use crate::architecture::riscv::Dmcontrol;
 use crate::Session;
+use crate::architecture::riscv::Dmcontrol;
+use crate::architecture::riscv::communication_interface::RiscvError;
 
 use super::communication_interface::RiscvCommunicationInterface;
 use std::fmt::Debug;

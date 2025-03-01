@@ -31,8 +31,8 @@ pub use probe_rs_target::{
 };
 
 pub use registry::{
-    add_target_from_yaml, families, get_target_and_family_by_name, get_target_by_name,
-    get_targets_by_family_name, search_chips, RegistryError,
+    RegistryError, add_target_family, add_target_from_yaml, families, get_family_by_name,
+    get_target_and_family_by_name, get_target_by_name, get_targets_by_family_name, search_chips,
 };
 pub use target::{DebugSequence, Target, TargetSelector};
 

@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use crate::{
-    language::parsing::ParseToBytes, DebugError, Variable, VariableCache, VariableName,
-    VariableValue,
+    DebugError, Variable, VariableCache, VariableName, VariableValue,
+    language::parsing::ParseToBytes,
 };
 
 use probe_rs::MemoryInterface;
@@ -117,32 +117,32 @@ impl Value for String {
         let children: Vec<_> = variable_cache.get_children(variable.variable_key).collect();
         if !children.is_empty() {
             let mut string_length = match children.iter().find(|child_variable| {
-                    matches!(child_variable.name, VariableName::Named(ref name) if name == "length")
-                }) {
-                    Some(string_length) => {
-                        // TODO: maybe avoid accessing value directly?
-                        if let VariableValue::Valid(length_value) = &string_length.value {
-                            length_value.parse().unwrap_or(0_usize)
-                        } else {
-                            0_usize
-                        }
+                matches!(child_variable.name, VariableName::Named(ref name) if name == "length")
+            }) {
+                Some(string_length) => {
+                    // TODO: maybe avoid accessing value directly?
+                    if let VariableValue::Valid(length_value) = &string_length.value {
+                        length_value.parse().unwrap_or(0_usize)
+                    } else {
+                        0_usize
                     }
-                    None => 0_usize,
-                };
+                }
+                None => 0_usize,
+            };
 
             let string_location = match children.iter().find(|child_variable| {
-                    matches!(child_variable.name, VariableName::Named(ref name) if name == "data_ptr")
-                }) {
-                    Some(location_value) => {
-                        let mut child_variables = variable_cache.get_children(location_value.variable_key);
-                        if let Some(first_child) = child_variables.next() {
-                            first_child.memory_location.memory_address()?
-                        } else {
-                            0_u64
-                        }
+                matches!(child_variable.name, VariableName::Named(ref name) if name == "data_ptr")
+            }) {
+                Some(location_value) => {
+                    let mut child_variables = variable_cache.get_children(location_value.variable_key);
+                    if let Some(first_child) = child_variables.next() {
+                        first_child.memory_location.memory_address()?
+                    } else {
+                        0_u64
                     }
-                    None => 0_u64,
-                };
+                }
+                None => 0_u64,
+            };
             if string_location == 0 {
                 str_value = "Error: Failed to determine &str memory location".to_string();
             } else {

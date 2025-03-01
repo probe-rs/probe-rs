@@ -1,4 +1,4 @@
-use crate::{get_object_reference, DebugError, DebugRegisters, StackFrame};
+use crate::{DebugError, DebugRegisters, StackFrame, get_object_reference};
 use bitfield::bitfield;
 use probe_rs::{Error, MemoryInterface, RegisterRole, RegisterValue};
 

@@ -1,7 +1,7 @@
 use crate::{DebugError, DebugInfo, DebugRegisters};
 use probe_rs::MemoryInterface;
 
-use super::{armv6m_armv7m_shared, ExceptionInfo, ExceptionInterface};
+use super::{ExceptionInfo, ExceptionInterface, armv6m_armv7m_shared};
 
 /// Decode the exception number.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -155,9 +155,9 @@ mod test {
 
     use super::ArmV6MExceptionHandler;
     use probe_rs::{
+        RegisterValue,
         architecture::arm::core::registers::cortex_m::{RA, XPSR},
         test::MockMemory,
-        RegisterValue,
     };
 
     use crate::exception_handling::ExceptionInterface;

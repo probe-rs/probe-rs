@@ -1,13 +1,13 @@
 use super::{
+    DebugError, DebugRegisters, StackFrame, VariableCache,
     exception_handling::ExceptionInterface,
     function_die::{Die, FunctionDie},
     get_object_reference,
     unit_info::UnitInfo,
     variable::*,
-    DebugError, DebugRegisters, StackFrame, VariableCache,
 };
 use crate::{
-    registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation, VerifiedBreakpoint,
+    SourceLocation, VerifiedBreakpoint, registers, stack_frame::StackFrameInfo, unit_info::RangeExt,
 };
 use gimli::{
     BaseAddresses, DebugFrame, DebugInfoOffset, RunTimeEndian, UnwindContext, UnwindSection,
@@ -560,7 +560,9 @@ impl DebugInfo {
             // PART 1: Construct the `StackFrame`s for the current program counter.
             //
             //         Multiple stack frames can be constructed if we are inside inlined functions.
-            tracing::trace!("UNWIND: Will generate `StackFrame` for function at address (PC) {frame_pc_register_value:#}");
+            tracing::trace!(
+                "UNWIND: Will generate `StackFrame` for function at address (PC) {frame_pc_register_value:#}"
+            );
             let unwind_info = get_unwind_info(&mut unwind_context, &self.frame_section, frame_pc);
 
             // Determining the frame base may need the CFA (Canonical Frame Address) to be calculated first.
@@ -713,7 +715,9 @@ impl DebugInfo {
                         );
                     }
                     Err(e) => {
-                        let message = format!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {e:?}");
+                        let message = format!(
+                            "UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {e:?}"
+                        );
                         tracing::warn!("{message}");
                         stack_frames.push(StackFrame {
                             id: get_object_reference(),
@@ -882,7 +886,9 @@ impl DebugInfo {
             };
         }
         Err(DebugError::WarnAndContinue {
-            message: format!("No debug information available for the instruction at {address:#010x}. Please consider using instruction level stepping.")
+            message: format!(
+                "No debug information available for the instruction at {address:#010x}. Please consider using instruction level stepping."
+            ),
         })
     }
 
@@ -1011,7 +1017,10 @@ pub fn determine_cfa<R: gimli::ReaderOffset>(
 
     let cfa = match reg_val {
         None => {
-            tracing::error!("UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}", register.0);
+            tracing::error!(
+                "UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}",
+                register.0
+            );
             None
         }
 
@@ -1274,15 +1283,13 @@ fn unwind_register_using_rule(
                         unwind_cfa
                     );
 
-                    return Err(
-                        Error::Other(format!(
-                            "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
-                            debug_register,
-                            RegisterValue::from(previous_frame_register_address),
-                            4,
-                            error
-                        ),
-                    ));
+                    return Err(Error::Other(format!(
+                        "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
+                        debug_register,
+                        RegisterValue::from(previous_frame_register_address),
+                        4,
+                        error
+                    )));
                 }
             }
         }
@@ -1311,7 +1318,9 @@ fn unwind_program_counter_register(
     register_rule_string: &mut String,
 ) -> Option<RegisterValue> {
     if return_address.is_max_value() || return_address.is_zero() {
-        tracing::warn!("No reliable return address is available, so we cannot determine the program counter to unwind the previous frame.");
+        tracing::warn!(
+            "No reliable return address is available, so we cannot determine the program counter to unwind the previous frame."
+        );
         return None;
     }
 
@@ -1391,20 +1400,20 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
 #[cfg(test)]
 mod test {
     use crate::{
+        DebugInfo, DebugRegister, DebugRegisters,
         exception_handling::{
             armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler,
             exception_handler_for_core,
         },
         stack_frame::{StackFrameInfo, TestFormatter},
         test::debug_registers,
-        DebugInfo, DebugRegister, DebugRegisters,
     };
 
     use gimli::RegisterRule;
     use probe_rs::{
+        CoreDump, RegisterValue,
         architecture::arm::core::registers::cortex_m::{self, CORTEX_M_CORE_REGISTERS},
         test::MockMemory,
-        CoreDump, RegisterValue,
     };
     use std::path::{Path, PathBuf};
     use test_case::test_case;

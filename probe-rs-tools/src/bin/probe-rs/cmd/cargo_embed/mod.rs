@@ -2,15 +2,15 @@ mod config;
 mod error;
 mod rttui;
 
-use anyhow::{anyhow, Context, Result};
+use crate::cmd::gdb_server::GdbInstanceConfiguration;
+use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use colored::Colorize;
 use parking_lot::FairMutex;
 use probe_rs::flashing::{BootInfo, FormatKind};
-use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
-use probe_rs::{probe::DebugProbeSelector, Session};
+use probe_rs::{Session, probe::DebugProbeSelector};
 use std::ffi::OsString;
 use std::time::Instant;
 use std::{fs, thread};
@@ -25,14 +25,14 @@ use std::{
 };
 use time::{OffsetDateTime, UtcOffset};
 
+use crate::FormatOptions;
 use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
 use crate::util::rtt::client::RttClient;
-use crate::util::rtt::{RttChannelConfig, RttConfig};
+use crate::util::rtt::{self, RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
-use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]
 #[clap(
@@ -150,7 +150,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         path_buf.clone()
     } else {
         let cargo_options = opt.cargo_options.to_cargo_options();
-        image_instr_set = target_instruction_set(opt.cargo_options.target.clone());
+        image_instr_set = target_instruction_set(opt.cargo_options.target.as_deref());
 
         // Build the project, and extract the path of the built artifact.
         build_artifact(&work_dir, &cargo_options)?.path().into()
@@ -218,7 +218,8 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         Err(OperationError::MultipleProbesFound { list }) => {
             use std::fmt::Write;
 
-            return Err(anyhow!("The following devices were found:\n \
+            return Err(anyhow!(
+                "The following devices were found:\n \
                     {} \
                         \
                     Use '--probe VID:PID'\n \
@@ -226,7 +227,13 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
                     You can also set the [default.probe] config attribute \
                     (in your Embed.toml) to select which probe to use. \
                     For usage examples see https://github.com/probe-rs/probe-rs/blob/master/probe-rs-tools/src/bin/probe-rs/cmd/cargo_embed/config/default.toml .",
-                    list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link}"); s })));
+                list.iter()
+                    .enumerate()
+                    .fold(String::new(), |mut s, (num, link)| {
+                        let _ = writeln!(s, "[{num}]: {link}");
+                        s
+                    })
+            ));
         }
         Err(OperationError::AttachingFailed {
             source,
@@ -237,25 +244,33 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
                 tracing::info!(
                     "A hard reset during attaching might help. This will reset the entire chip."
                 );
-                tracing::info!("Set `general.connect_under_reset` in your cargo-embed configuration file to enable this feature.");
+                tracing::info!(
+                    "Set `general.connect_under_reset` in your cargo-embed configuration file to enable this feature."
+                );
             }
             return Err(source).context("failed attaching to target");
         }
         Err(e) => return Err(e.into()),
     };
 
-    let format = FormatOptions::default().to_format_kind(session.target());
+    let format = FormatKind::from(FormatOptions::default().to_format_kind(session.target()));
     let elf = if matches!(format, FormatKind::Elf | FormatKind::Idf) {
         Some(fs::read(&path)?)
     } else {
         None
     };
-    let rtt_client = RttClient::new(
-        elf.as_deref(),
-        session.target(),
-        create_rtt_config(&config).clone(),
-        ScanRegion::Ram,
-    )?;
+
+    let scan = if let Some(ref elf) = elf {
+        match rtt::get_rtt_symbol_from_bytes(elf) {
+            Ok(address) => ScanRegion::Exact(address),
+            // Do not scan the memory for the control block.
+            _ => ScanRegion::Ranges(vec![]),
+        }
+    } else {
+        ScanRegion::Ram
+    };
+
+    let rtt_client = RttClient::new(create_rtt_config(&config).clone(), scan);
 
     // FIXME: we should probably figure out in a different way which core we can work with.
     // It seems arbitrary that we reset the target using the same core we use for polling RTT.
@@ -337,7 +352,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
                 GdbInstanceConfiguration::from_session(&session, Some(gdb_connection_string))
             };
 
-            if let Err(e) = probe_rs::gdb_server::run(&session, instances.iter()) {
+            if let Err(e) = crate::cmd::gdb_server::run(&session, instances.iter()) {
                 logging::eprintln("During the execution of GDB an error was encountered:");
                 logging::eprintln(format!("{e:?}"));
             }
@@ -348,6 +363,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         // GDB is also using the session, so we do not lock on the outside.
         run_rttui_app(
             name,
+            elf,
             &session,
             config,
             offset,
@@ -387,6 +403,7 @@ fn should_resume_core(config: &config::Config) -> bool {
 
 fn run_rttui_app(
     name: &str,
+    elf: Option<Vec<u8>>,
     session: &FairMutex<Session>,
     config: config::Config,
     timezone_offset: UtcOffset,
@@ -453,7 +470,7 @@ fn run_rttui_app(
         / 1_000_000;
 
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-    let mut app = rttui::app::App::new(rtt, config, logname)?;
+    let mut app = rttui::app::App::new(rtt, elf, config, timezone_offset, logname)?;
     loop {
         app.render();
 

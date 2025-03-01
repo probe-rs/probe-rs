@@ -1,10 +1,10 @@
-use super::{debug_info::DebugInfo, DebugError, VerifiedBreakpoint};
+use super::{DebugError, VerifiedBreakpoint, debug_info::DebugInfo};
 use probe_rs::{
+    CoreInterface, CoreStatus, HaltReason,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
     },
-    CoreInterface, CoreStatus, HaltReason,
 };
 use std::{ops::RangeInclusive, time::Duration};
 
@@ -49,7 +49,7 @@ impl SteppingMode {
             _ => {
                 return Err(DebugError::Other(
                     "Core must be halted before stepping.".to_string(),
-                ))
+                ));
             }
         };
         let origin_program_counter = program_counter;
@@ -89,7 +89,9 @@ impl SteppingMode {
                     match error {
                         DebugError::WarnAndContinue { message } => {
                             // Step on target instruction, and then try again.
-                            tracing::trace!("Incomplete stepping information @{program_counter:#010X}: {message}");
+                            tracing::trace!(
+                                "Incomplete stepping information @{program_counter:#010X}: {message}"
+                            );
                             program_counter = core.step()?.pc;
                             return_address =
                                 core.read_core_reg(core.return_address().id())?.try_into()?;
@@ -235,7 +237,9 @@ impl SteppingMode {
                     // We have halted at an address after the current instruction (either in the same sequence,
                     // or at the return address of the current function),
                     // so we can conclude there were no branching calls in this instruction.
-                    tracing::debug!("Stepping into next statement, but no branching calls found. Stepped to next available location.");
+                    tracing::debug!(
+                        "Stepping into next statement, but no branching calls found. Stepped to next available location."
+                    );
                 } else if matches!(core_status, CoreStatus::Halted(HaltReason::Breakpoint(_))) {
                     // We have halted at a PC that is within the current statement, so there must be another breakpoint.
                     tracing::debug!("Stepping into next statement, but encountered a breakpoint.");
@@ -265,7 +269,10 @@ impl SteppingMode {
                         {
                             return Err(DebugError::Other(format!(
                                 "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
-                                function.function_name(debug_info).as_deref().unwrap_or("<unknown>")
+                                function
+                                    .function_name(debug_info)
+                                    .as_deref()
+                                    .unwrap_or("<unknown>")
                             )));
                         } else if function.range_contains(program_counter) {
                             if function.is_inline() {
@@ -283,9 +290,9 @@ impl SteppingMode {
                                 );
                             } else if let Some(return_address) = return_address {
                                 tracing::debug!(
-                                        "Step Out target: non-inline function, stepping over return address: {:#010x}",
-                                            return_address
-                                    );
+                                    "Step Out target: non-inline function, stepping over return address: {:#010x}",
+                                    return_address
+                                );
                                 // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
                                 return SteppingMode::BreakPoint.get_halt_location(
                                     core,
@@ -362,9 +369,7 @@ fn run_to_address(
                     // Something else is wrong.
                     return Err(DebugError::Other(format!(
                         "Unexpected error while waiting for the core to halt after stepping to {:#010X}. Forced a halt at {:#010X}. {:?}.",
-                        program_counter,
-                        target_address,
-                        error
+                        program_counter, target_address, error
                     )));
                 }
             }
@@ -400,14 +405,21 @@ fn step_to_address(
                     break;
                 }
                 // This is a recoverable error kind, and can be reported to the user higher up in the call stack.
-                other_halt_reason => return Err(DebugError::WarnAndContinue {
-                    message: format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}")
-                }),
+                other_halt_reason => {
+                    return Err(DebugError::WarnAndContinue {
+                        message: format!(
+                            "Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}"
+                        ),
+                    });
+                }
             },
             // This is not a recoverable error, and will result in the debug session ending (we have no predicatable way of successfully continuing the session)
-            other_status => return Err(DebugError::Other(
-                format!("Target failed to reach the destination address of a step operation: {:?}", other_status))
-            ),
+            other_status => {
+                return Err(DebugError::Other(format!(
+                    "Target failed to reach the destination address of a step operation: {:?}",
+                    other_status
+                )));
+            }
         }
     }
     Ok((

@@ -5,34 +5,36 @@ mod tools;
 mod usb_interface;
 
 use crate::{
+    Error as ProbeRsError, MemoryInterface,
     architecture::arm::{
+        ArmError, DapAccess, FullyQualifiedApAddress, Pins, SwoAccess, SwoConfig, SwoMode,
         ap::{
+            AccessPortType,
             memory_ap::{MemoryAp, MemoryApType},
             v1::valid_access_ports,
-            AccessPortType,
         },
-        communication_interface::{ArmProbeInterface, SwdSequence, UninitializedArmProbe},
+        communication_interface::{
+            ArmProbeInterface, DapProbe, SwdSequence, UninitializedArmProbe,
+        },
         dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        valid_32bit_arm_address, ArmError, DapAccess, FullyQualifiedApAddress, Pins, SwoAccess,
-        SwoConfig, SwoMode,
+        valid_32bit_arm_address,
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeError,
         ProbeFactory, WireProtocol,
     },
-    Error as ProbeRsError, MemoryInterface,
 };
 
 use probe_rs_target::ScanChainElement;
-use scroll::{Pread, Pwrite, BE, LE};
+use scroll::{BE, LE, Pread, Pwrite};
 
 use std::collections::BTreeSet;
 use std::thread;
 use std::{cmp::Ordering, sync::Arc, time::Duration};
 
-use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
+use constants::{JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount, commands};
 use usb_interface::{StLinkUsb, StLinkUsbDevice, TIMEOUT};
 
 /// Maximum length of 32 bit reads in bytes.
@@ -60,6 +62,7 @@ impl std::fmt::Display for StLinkFactory {
 
 impl ProbeFactory for StLinkFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        tracing::debug!("Opening ST-Link: {selector:?}");
         let device = StLinkUsbDevice::new_from_selector(selector)?;
         let mut stlink = StLink {
             name: format!("ST-Link {}", &device.info.version_name),
@@ -1357,7 +1360,9 @@ impl StlinkArmDebug {
         };
 
         if bank != 0 && !self.probe.supports_dp_bank_selection() {
-            tracing::warn!("Trying to access DP register at address {address:#x?}, which is not supported on ST-Links.");
+            tracing::warn!(
+                "Trying to access DP register at address {address:#x?}, which is not supported on ST-Links."
+            );
             return Err(DebugProbeError::from(StlinkError::BanksNotAllowedOnDPRegister).into());
         }
 
@@ -1442,6 +1447,10 @@ impl DapAccess for StlinkArmDebug {
             .write_register(ap.ap_v1()? as u16, (address & 0xFF) as u8, value)?;
 
         Ok(())
+    }
+
+    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
+        None
     }
 }
 

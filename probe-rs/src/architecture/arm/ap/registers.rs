@@ -1,6 +1,6 @@
 use crate::architecture::arm::{
-    ap::{AddressIncrement, ApClass, ApType, BaseAddrFormat, DataSize},
     RegisterParseError,
+    ap::{AddressIncrement, ApClass, ApType, BaseAddrFormat, DataSize},
 };
 
 /// Defines a new typed access port register for a specific access port.

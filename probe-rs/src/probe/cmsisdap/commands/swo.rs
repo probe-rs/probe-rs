@@ -1,4 +1,4 @@
-use scroll::{Pread, LE};
+use scroll::{LE, Pread};
 
 use super::{CommandId, Request, SendError, Status};
 

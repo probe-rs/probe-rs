@@ -1,9 +1,9 @@
 //! Types and functions for interacting with v1 access ports.
 
 use crate::architecture::arm::{
+    DapAccess, FullyQualifiedApAddress,
     ap::{ApAccess, ApRegister, GenericAp, IDR},
     dp::DpAddress,
-    DapAccess, FullyQualifiedApAddress,
 };
 
 /// Return a Vec of all valid access ports found that the target connected to the debug_probe.

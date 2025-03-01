@@ -3,25 +3,26 @@ mod commands;
 mod tools;
 
 use crate::{
+    CoreStatus,
     architecture::arm::{
+        ArmCommunicationInterface, ArmError, DapError, Pins, RawDapAccess, RegisterAddress,
+        SwoAccess, SwoConfig, SwoMode,
         communication_interface::{DapProbe, UninitializedArmProbe},
         dp::{Abort, Ctrl, DpRegister},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, ArmError, DapError, Pins, RawDapAccess, RegisterAddress,
-        SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
-        cmsisdap::commands::{
-            general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
-            CmsisDapError, RequestError,
-        },
         BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         JtagChainItem, ProbeFactory, WireProtocol,
+        cmsisdap::commands::{
+            CmsisDapError, RequestError,
+            general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
+        },
     },
-    CoreStatus,
 };
 
 use commands::{
+    CmsisDapDevice, Status,
     general::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
@@ -44,10 +45,9 @@ use commands::{
     },
     swo,
     transfer::{
-        configure::ConfigureRequest, Ack, TransferBlockRequest, TransferBlockResponse,
-        TransferRequest,
+        Ack, TransferBlockRequest, TransferBlockResponse, TransferRequest,
+        configure::ConfigureRequest,
     },
-    CmsisDapDevice, Status,
 };
 use probe_rs_target::ScanChainElement;
 
@@ -55,7 +55,7 @@ use std::{fmt::Write, time::Duration};
 
 use bitvec::prelude::*;
 
-use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
+use super::common::{ScanChainError, extract_idcodes, extract_ir_lengths};
 
 /// A factory for creating [`CmsisDap`] probes.
 #[derive(Debug)]
@@ -160,39 +160,33 @@ impl CmsisDap {
     /// The actual clock frequency used by the device might be lower.
     fn set_swj_clock(&mut self, clock_speed_hz: u32) -> Result<(), CmsisDapError> {
         let request = SWJClockRequest { clock_speed_hz };
-        commands::send_command(&mut self.device, &request)
-            .map_err(CmsisDapError::from)
-            .and_then(|v| match v.status {
-                Status::DapOk => Ok(()),
-                Status::DapError => Err(CmsisDapError::ErrorResponse(RequestError::SWJClock {
-                    request,
-                })),
-            })
+        commands::send_command(&mut self.device, &request).and_then(|v| match v.status {
+            Status::DapOk => Ok(()),
+            Status::DapError => Err(CmsisDapError::ErrorResponse(RequestError::SWJClock {
+                request,
+            })),
+        })
     }
 
     fn transfer_configure(&mut self, request: ConfigureRequest) -> Result<(), CmsisDapError> {
-        commands::send_command(&mut self.device, &request)
-            .map_err(CmsisDapError::from)
-            .and_then(|v| match v.status {
-                Status::DapOk => Ok(()),
-                Status::DapError => Err(CmsisDapError::ErrorResponse(
-                    RequestError::TransferConfigure { request },
-                )),
-            })
+        commands::send_command(&mut self.device, &request).and_then(|v| match v.status {
+            Status::DapOk => Ok(()),
+            Status::DapError => Err(CmsisDapError::ErrorResponse(
+                RequestError::TransferConfigure { request },
+            )),
+        })
     }
 
     fn configure_swd(
         &mut self,
         request: swd::configure::ConfigureRequest,
     ) -> Result<(), CmsisDapError> {
-        commands::send_command(&mut self.device, &request)
-            .map_err(CmsisDapError::from)
-            .and_then(|v| match v.status {
-                Status::DapOk => Ok(()),
-                Status::DapError => Err(CmsisDapError::ErrorResponse(RequestError::SwdConfigure {
-                    request,
-                })),
-            })
+        commands::send_command(&mut self.device, &request).and_then(|v| match v.status {
+            Status::DapOk => Ok(()),
+            Status::DapError => Err(CmsisDapError::ErrorResponse(RequestError::SwdConfigure {
+                request,
+            })),
+        })
     }
 
     /// Reset JTAG state machine to Test-Logic-Reset.
@@ -386,48 +380,40 @@ impl CmsisDap {
     }
 
     fn send_jtag_configure(&mut self, request: JtagConfigureRequest) -> Result<(), CmsisDapError> {
-        commands::send_command(&mut self.device, &request)
-            .map_err(CmsisDapError::from)
-            .and_then(|v| match v.status {
-                Status::DapOk => Ok(()),
-                Status::DapError => {
-                    Err(CmsisDapError::ErrorResponse(RequestError::JtagConfigure {
-                        request,
-                    }))
-                }
-            })
+        commands::send_command(&mut self.device, &request).and_then(|v| match v.status {
+            Status::DapOk => Ok(()),
+            Status::DapError => Err(CmsisDapError::ErrorResponse(RequestError::JtagConfigure {
+                request,
+            })),
+        })
     }
 
     fn send_jtag_sequences(
         &mut self,
         request: JtagSequenceRequest,
     ) -> Result<Vec<u8>, CmsisDapError> {
-        commands::send_command(&mut self.device, &request)
-            .map_err(CmsisDapError::from)
-            .and_then(|v| match v {
-                JtagSequenceResponse(Status::DapOk, tdo) => Ok(tdo),
-                JtagSequenceResponse(Status::DapError, _) => {
-                    Err(CmsisDapError::ErrorResponse(RequestError::JtagSequence {
-                        request,
-                    }))
-                }
-            })
+        commands::send_command(&mut self.device, &request).and_then(|v| match v {
+            JtagSequenceResponse(Status::DapOk, tdo) => Ok(tdo),
+            JtagSequenceResponse(Status::DapError, _) => {
+                Err(CmsisDapError::ErrorResponse(RequestError::JtagSequence {
+                    request,
+                }))
+            }
+        })
     }
 
     fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), CmsisDapError> {
         // Ensure all pending commands are processed.
         //self.process_batch()?;
 
-        commands::send_command(&mut self.device, &request)
-            .map_err(CmsisDapError::from)
-            .and_then(|v| match v {
-                SequenceResponse(Status::DapOk) => Ok(()),
-                SequenceResponse(Status::DapError) => {
-                    Err(CmsisDapError::ErrorResponse(RequestError::SwjSequence {
-                        request,
-                    }))
-                }
-            })
+        commands::send_command(&mut self.device, &request).and_then(|v| match v {
+            SequenceResponse(Status::DapOk) => Ok(()),
+            SequenceResponse(Status::DapError) => {
+                Err(CmsisDapError::ErrorResponse(RequestError::SwjSequence {
+                    request,
+                }))
+            }
+        })
     }
 
     /// Read the CTRL register from the currently selected debug port.
@@ -441,7 +427,6 @@ impl CmsisDap {
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
         let response =
             commands::send_command(&mut self.device, &TransferRequest::read(Ctrl::ADDRESS))
-                .map_err(CmsisDapError::from)
                 .map_err(DebugProbeError::from)?;
 
         // We can assume that the single transfer is always executed,
@@ -477,7 +462,6 @@ impl CmsisDap {
             &mut self.device,
             &TransferRequest::write(Abort::ADDRESS, abort.into()),
         )
-        .map_err(CmsisDapError::from)
         .map_err(DebugProbeError::from)?;
 
         // We can assume that the single transfer is always executed,
@@ -532,7 +516,6 @@ impl CmsisDap {
             }
 
             let response = commands::send_command(&mut self.device, &transfers)
-                .map_err(CmsisDapError::from)
                 .map_err(DebugProbeError::from)?;
 
             let count = response.transfers.len();
@@ -758,9 +741,8 @@ impl CmsisDap {
             ConnectRequest::DefaultPort
         };
 
-        let used_protocol = commands::send_command(&mut self.device, &protocol)
-            .map_err(CmsisDapError::from)
-            .and_then(|v| match v {
+        let used_protocol =
+            commands::send_command(&mut self.device, &protocol).and_then(|v| match v {
                 ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
                 ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
                 ConnectResponse::InitFailed => {

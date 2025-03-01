@@ -1,18 +1,18 @@
 use std::any::Any;
 
 use crate::{
+    CoreStatus, MemoryInterface,
     architecture::arm::{
+        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
         ap::{
+            AccessPortType, ApAccess, CSW, DataSize,
             memory_ap::{MemoryAp, MemoryApType},
-            AccessPortType, ApAccess, DataSize, CSW,
         },
         communication_interface::{FlushableArmAccess, Initialized},
         dp::DpAccess,
         memory::ArmMemoryInterface,
-        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
     },
     probe::DebugProbeError,
-    CoreStatus, MemoryInterface,
 };
 
 /// Calculate the maximum number of bytes we can write starting at address
@@ -91,7 +91,7 @@ where
             self.memory_ap.read_data(self.interface, &mut buf)?;
 
             for i in 0..chunk_size {
-                data[i] = buf[i * 2] as u64 | (buf[i * 2 + 1] as u64) << 32;
+                data[i] = buf[i * 2] as u64 | ((buf[i * 2 + 1] as u64) << 32);
             }
 
             address = address
@@ -496,7 +496,7 @@ where
 
     /// Flushes any pending commands when the underlying probe interface implements command queuing.
     fn flush(&mut self) -> Result<(), ArmError> {
-        self.interface.flush().map_err(Into::into)
+        self.interface.flush()
     }
 
     /// True if the memory ap supports 64 bit accesses which might be more efficient than issuing
@@ -574,10 +574,10 @@ mod tests {
     use test_log::test;
 
     use crate::{
-        architecture::arm::{
-            ap::memory_ap::mock::MockMemoryAp, memory::ADIMemoryInterface, FullyQualifiedApAddress,
-        },
         MemoryInterface,
+        architecture::arm::{
+            FullyQualifiedApAddress, ap::memory_ap::mock::MockMemoryAp, memory::ADIMemoryInterface,
+        },
     };
 
     impl<'interface> ADIMemoryInterface<'interface, MockMemoryAp> {

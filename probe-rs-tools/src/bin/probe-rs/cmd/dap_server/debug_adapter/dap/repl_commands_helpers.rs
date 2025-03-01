@@ -1,14 +1,14 @@
 use probe_rs::MemoryInterface;
 use probe_rs_debug::{ObjectRef, VariableName};
 
-use crate::cmd::dap_server::{server::core_data::CoreHandle, DebuggerError};
+use crate::cmd::dap_server::{DebuggerError, server::core_data::CoreHandle};
 
 use super::{
     dap_types::{
         CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
         EvaluateArguments, EvaluateResponseBody, Response,
     },
-    repl_commands::{ReplCommand, ReplHandler, REPL_COMMANDS},
+    repl_commands::{REPL_COMMANDS, ReplCommand, ReplHandler},
     repl_types::*,
     request_helpers::disassemble_target_memory,
 };
@@ -153,7 +153,7 @@ pub(crate) fn memory_read(
             Err(err) => {
                 return Err(DebuggerError::UserMessage(format!(
                     "Cannot read memory at address {address:#010x}: {err:?}"
-                )))
+                )));
             }
         }
     }

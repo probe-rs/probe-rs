@@ -1,11 +1,11 @@
 use crate::architecture::arm::{
-    ap::{
-        memory_ap::amba_ahb3::CSW, AddressIncrement, ApClass, ApRegister, ApType, DataSize, CFG,
-        DRW, IDR, TAR,
-    },
-    communication_interface::FlushableArmAccess,
-    dp::{DpAddress, DpRegisterAddress},
     ArmError, DapAccess,
+    ap::{
+        AddressIncrement, ApClass, ApRegister, ApType, CFG, DRW, DataSize, IDR, TAR,
+        memory_ap::amba_ahb3::CSW,
+    },
+    communication_interface::{DapProbe, FlushableArmAccess},
+    dp::{DpAddress, DpRegisterAddress},
 };
 use std::collections::HashMap;
 
@@ -211,5 +211,9 @@ impl DapAccess for MockMemoryAp {
             }
             _ => panic!("MockMemoryAp: unknown register"),
         }
+    }
+
+    fn try_dap_probe(&self) -> Option<&dyn DapProbe> {
+        None
     }
 }

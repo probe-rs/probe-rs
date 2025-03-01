@@ -4,11 +4,11 @@ use std::{sync::Arc, time::Duration};
 
 use super::esp::EspFlashSizeDetector;
 use crate::{
-    architecture::riscv::{
-        communication_interface::RiscvCommunicationInterface, sequences::RiscvDebugSequence,
-        Dmcontrol, Dmstatus,
-    },
     MemoryInterface, Session,
+    architecture::riscv::{
+        Dmcontrol, Dmstatus, communication_interface::RiscvCommunicationInterface,
+        sequences::RiscvDebugSequence,
+    },
 };
 
 /// The debug sequence implementation for the ESP32C3.
@@ -42,7 +42,7 @@ impl RiscvDebugSequence for ESP32C3 {
         // disable super wdt
         interface.write_word_32(0x600080B0, 0x8F1D312A)?; // write protection off
         let current = interface.read_word_32(0x600080AC)?;
-        interface.write_word_32(0x600080AC, current | 1 << 31)?; // set RTC_CNTL_SWD_AUTO_FEED_EN
+        interface.write_word_32(0x600080AC, current | (1 << 31))?; // set RTC_CNTL_SWD_AUTO_FEED_EN
         interface.write_word_32(0x600080B0, 0x0)?; // write protection on
 
         // tg0 wdg

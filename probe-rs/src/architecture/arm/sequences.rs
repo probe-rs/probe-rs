@@ -11,27 +11,27 @@ use std::{
 use probe_rs_target::CoreType;
 
 use crate::{
-    architecture::arm::{
-        core::registers::cortex_m::{PC, SP},
-        dp::{Ctrl, DebugPortError, DpRegister, DLPIDR, TARGETID},
-        ArmProbeInterface, RegisterAddress,
-    },
-    probe::{DebugProbeError, WireProtocol},
     MemoryInterface, MemoryMappedRegister, Session,
+    architecture::arm::{
+        ArmProbeInterface, RegisterAddress,
+        core::registers::cortex_m::{PC, SP},
+        dp::{Ctrl, DLPIDR, DebugPortError, DpRegister, TARGETID},
+    },
+    probe::WireProtocol,
 };
 
 use super::{
+    ArmError, DapAccess, FullyQualifiedApAddress, Pins,
     ap::AccessPortError,
     armv6m::Demcr,
-    communication_interface::{DapProbe, Initialized},
+    communication_interface::DapProbe,
     component::{TraceFunnel, TraceSink},
     core::cortex_m::{Dhcsr, Vtor},
-    dp::{Abort, DpAccess, DpAddress, SelectV1, DPIDR},
+    dp::{Abort, DPIDR, DpAccess, DpAddress, SelectV1},
     memory::{
-        romtable::{CoresightComponent, PeripheralType},
         ArmMemoryInterface,
+        romtable::{CoresightComponent, PeripheralType},
     },
-    ArmCommunicationInterface, ArmError, FullyQualifiedApAddress, Pins,
 };
 
 /// An error occurred when executing an ARM debug sequence
@@ -371,13 +371,22 @@ fn cortex_m_reset_catch_set(core: &mut dyn ArmMemoryInterface) -> Result<(), Arm
 
 /// ResetSystem for Cortex-M devices
 fn cortex_m_reset_system(interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv7m::{Aircr, Dhcsr};
+    use crate::architecture::arm::core::armv7m::Aircr;
 
     let mut aircr = Aircr(0);
     aircr.vectkey();
     aircr.set_sysresetreq(true);
 
     interface.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
+
+    cortex_m_wait_for_reset(interface)
+}
+
+/// Wait for Cortex-M device to reset
+pub(crate) fn cortex_m_wait_for_reset(
+    interface: &mut dyn ArmMemoryInterface,
+) -> Result<(), ArmError> {
+    use crate::architecture::arm::core::armv7m::Dhcsr;
 
     let start = Instant::now();
 
@@ -591,7 +600,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     #[doc(alias = "DebugPortStart")]
     fn debug_port_start(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut dyn DapAccess,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         // Clear all errors.
@@ -902,7 +911,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 return Err(ArmDebugSequenceError::SequenceSpecific(
                     "Cannot detect current protocol".into(),
                 )
-                .into())
+                .into());
             }
         }
 
@@ -921,13 +930,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 // The TARGETSEL write is not ACKed by design. We can't use a normal register write
                 // because many probes don't even send the data phase when NAK.
                 let parity = targetsel.count_ones() % 2;
-                let data = (parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99;
+                let data = ((parity as u64) << 45) | ((targetsel as u64) << 13) | 0x1f99;
 
                 // Should this be a swd_sequence?
                 // Technically we shouldn't drive SWDIO all the time when sending a request.
-                interface
-                    .swj_sequence(6 * 8, data)
-                    .map_err(DebugProbeError::from)?;
+                interface.swj_sequence(6 * 8, data)?;
             }
 
             tracing::debug!("Reading DPIDR to enable SWD interface");

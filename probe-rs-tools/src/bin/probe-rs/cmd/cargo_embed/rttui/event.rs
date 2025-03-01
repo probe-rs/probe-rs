@@ -1,5 +1,5 @@
 use std::sync::mpsc;
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::{Arc, atomic::AtomicBool};
 use std::thread;
 use std::time::Duration;
 

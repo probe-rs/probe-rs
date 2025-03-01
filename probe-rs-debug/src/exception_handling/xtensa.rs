@@ -1,8 +1,9 @@
 use std::ops::ControlFlow;
 
 use crate::{
+    DebugError, DebugInfo, DebugRegisters, StackFrame,
     exception_handling::{ExceptionInfo, ExceptionInterface},
-    unwind_pc_without_debuginfo, DebugError, DebugInfo, DebugRegisters, StackFrame,
+    unwind_pc_without_debuginfo,
 };
 
 use probe_rs::{MemoryInterface, RegisterRole, RegisterValue};

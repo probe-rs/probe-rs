@@ -1,6 +1,6 @@
 use crate::memory::RegionMergeIterator as _;
 use crate::serialize::hex_jep106_option;
-use crate::{chip_detection::ChipDetectionMethod, CoreAccessOptions};
+use crate::{CoreAccessOptions, chip_detection::ChipDetectionMethod};
 use crate::{MemoryRange, MemoryRegion};
 
 use super::chip::Chip;

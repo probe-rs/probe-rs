@@ -4,18 +4,18 @@ use super::{
 };
 use crate::{
     cmd::dap_server::{
+        DebuggerError,
         debug_adapter::{
             dap::{adapter::DebugAdapter, dap_types::Source},
             protocol::ProtocolAdapter,
         },
-        DebuggerError,
     },
     util::common_options::OperationError,
 };
-use anyhow::{anyhow, Result};
-use probe_rs::{config::TargetSelector, probe::list::Lister, CoreStatus, Session};
+use anyhow::{Result, anyhow};
+use probe_rs::{CoreStatus, Session, config::TargetSelector, probe::list::Lister};
 use probe_rs_debug::{
-    debug_info::DebugInfo, exception_handler_for_core, DebugRegisters, SourceLocation,
+    DebugRegisters, SourceLocation, debug_info::DebugInfo, exception_handler_for_core,
 };
 use std::env::set_current_dir;
 use time::UtcOffset;
@@ -111,7 +111,9 @@ impl SessionData {
         // `CoreConfig` probe level initialization.
         if config.core_configs.len() != 1 {
             // TODO: For multi-core, allow > 1.
-            return Err(DebuggerError::Other(anyhow!("probe-rs-debugger requires that one, and only one, core be configured for debugging.")));
+            return Err(DebuggerError::Other(anyhow!(
+                "probe-rs-debugger requires that one, and only one, core be configured for debugging."
+            )));
         }
 
         // Filter `CoreConfig` entries based on those that match an actual core on the target probe.

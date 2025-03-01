@@ -1,6 +1,6 @@
 use scroll::Pread;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 /// A struct to describe one sector in Flash.
 #[derive(Clone, Debug)]

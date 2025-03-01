@@ -58,7 +58,8 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
         work_dir: format!("{}", work_dir.display()),
     })?;
 
-    let cargo_executable = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+    let cargo_executable = std::env::var("CARGO");
+    let cargo_executable = cargo_executable.as_deref().unwrap_or("cargo");
 
     tracing::debug!(
         "Running '{}' in directory {}",
@@ -94,9 +95,9 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
                         // We found multiple binary artifacts,
                         // so we don't know which one to use.
                         return Err(ArtifactError::MultipleArtifacts);
-                    } else {
-                        target_artifact = Some(artifact);
                     }
+
+                    target_artifact = Some(artifact);
                 }
             }
             Message::CompilerMessage(message) => {
@@ -129,18 +130,17 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
 }
 
 /// Returns the target instruction set for the given target triple, or the current cargo project.
-pub fn target_instruction_set(target: Option<String>) -> Option<InstructionSet> {
-    target
-        .or_else(|| {
-            let cargo_config = cargo_config2::Config::load().ok()?;
-            cargo_config
-                .build
-                .target
-                .as_ref()
-                .and_then(|ts| Some(ts.first()?.triple()))
-                .map(|triple| triple.to_string())
-        })
-        .as_deref()
+pub fn target_instruction_set(target: Option<&str>) -> Option<InstructionSet> {
+    if let Some(target) = target {
+        return InstructionSet::from_target_triple(target);
+    }
+
+    let cargo_config = cargo_config2::Config::load().ok()?;
+    cargo_config
+        .build
+        .target
+        .as_ref()
+        .and_then(|ts| Some(ts.first()?.triple()))
         .and_then(InstructionSet::from_target_triple)
 }
 

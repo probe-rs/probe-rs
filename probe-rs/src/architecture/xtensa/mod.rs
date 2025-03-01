@@ -5,23 +5,23 @@ use std::{sync::Arc, time::Duration};
 use probe_rs_target::{Architecture, CoreType, InstructionSet};
 
 use crate::{
+    CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
     architecture::xtensa::{
         arch::{
-            instruction::{Instruction, InstructionEncoding},
             Register, SpecialRegister,
+            instruction::{Instruction, InstructionEncoding},
         },
         communication_interface::{DebugCause, IBreakEn, XtensaCommunicationInterface},
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
         sequences::XtensaDebugSequence,
+        xdm::PowerStatus,
     },
     core::{
-        registers::{CoreRegisters, RegisterId, RegisterValue},
         BreakpointCause,
+        registers::{CoreRegisters, RegisterId, RegisterValue},
     },
     memory::CoreMemoryInterface,
-    semihosting::decode_semihosting_syscall,
-    semihosting::SemihostingCommand,
-    CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
+    semihosting::{SemihostingCommand, decode_semihosting_syscall},
 };
 
 pub(crate) mod arch;
@@ -106,8 +106,14 @@ impl<'probe> Xtensa<'probe> {
         // If the core was reset, force a reconnection.
         let core_reset;
         if self.state.enabled {
-            core_reset = self.interface.xdm.core_was_reset()?;
-            let debug_reset = self.interface.xdm.debug_was_reset()?;
+            let status = self.interface.xdm.power_status({
+                let mut clear_value = PowerStatus(0);
+                clear_value.set_core_was_reset(true);
+                clear_value.set_debug_was_reset(true);
+                clear_value
+            })?;
+            core_reset = status.core_was_reset() || !status.core_domain_on();
+            let debug_reset = status.debug_was_reset() || !status.debug_domain_on();
 
             if core_reset {
                 tracing::debug!("Core was reset");

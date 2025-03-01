@@ -16,8 +16,8 @@ use std::time::{Duration, Instant};
 use bitvec::prelude::*;
 
 use itertools::Itertools;
-use nusb::transfer::{Direction, EndpointType};
 use nusb::DeviceInfo;
+use nusb::transfer::{Direction, EndpointType};
 use probe_rs_target::ScanChainElement;
 
 use self::bits::BitIter;
@@ -30,25 +30,25 @@ use crate::architecture::arm::{ArmError, Pins};
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState,
 };
+use crate::probe::JTAGAccess;
 use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
 use crate::probe::usb_util::InterfaceExt;
-use crate::probe::JTAGAccess;
 use crate::{
     architecture::{
         arm::{
+            ArmCommunicationInterface, SwoAccess,
             communication_interface::{DapProbe, UninitializedArmProbe},
             swo::SwoConfig,
-            ArmCommunicationInterface, SwoAccess,
         },
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
     },
     probe::{
-        arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
         WireProtocol,
+        arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
     },
 };
 
@@ -130,7 +130,10 @@ impl ProbeFactory for JLinkFactory {
                     let endpoints: Vec<_> = descr.endpoints().collect();
                     tracing::trace!("endpoint descriptors: {:#x?}", endpoints);
                     if endpoints.len() != 2 {
-                        tracing::warn!("vendor-specific interface with {} endpoints, expected 2 (skipping interface)", endpoints.len());
+                        tracing::warn!(
+                            "vendor-specific interface with {} endpoints, expected 2 (skipping interface)",
+                            endpoints.len()
+                        );
                         continue;
                     }
 

@@ -1,14 +1,14 @@
 use crate::cmd::dap_server::{
+    DebuggerError,
     debug_adapter::dap::dap_types::{DisassembledInstruction, Source},
     peripherals::svd_cache::{SvdVariableCache, Variable},
     server::{core_data::CoreHandle, session_data::BreakpointType},
-    DebuggerError,
 };
 use addr2line::gimli::RunTimeEndian;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use capstone::{
-    arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
-    arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
+    Endian, arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
+    arch::riscv::ArchMode as riscvArchMode, prelude::*,
 };
 use itertools::Itertools;
 use probe_rs::{CoreType, Error, InstructionSet, MemoryInterface};
@@ -312,7 +312,10 @@ pub(crate) fn disassemble_target_memory(
                     maybe_previous_source_location = Some(current_source_location);
                 } else {
                     // It won't affect the outcome, but log it for completeness.
-                    tracing::debug!("The request `Disassemble` could not resolve a source location for memory reference: {:#010}", instruction.address());
+                    tracing::debug!(
+                        "The request `Disassemble` could not resolve a source location for memory reference: {:#010}",
+                        instruction.address()
+                    );
                 }
 
                 disassembled_instructions.push(DisassembledInstruction {
@@ -602,20 +605,28 @@ pub(crate) fn set_instruction_breakpoint(
                             ColumnType::LeftEdge => 0_i64,
                             ColumnType::Column(c) => c as i64,
                         });
-                        breakpoint_response.message = Some(format!("Instruction breakpoint set @:{memory_reference:#010x}. File: {}: Line: {}, Column: {}",
-                        &source_location.file_name().unwrap_or_else(|| "<unknown source file>".to_string()),
-                        breakpoint_response.line.unwrap_or(0),
-                        breakpoint_response.column.unwrap_or(0)));
+                        breakpoint_response.message = Some(format!(
+                            "Instruction breakpoint set @:{memory_reference:#010x}. File: {}: Line: {}, Column: {}",
+                            &source_location
+                                .file_name()
+                                .unwrap_or_else(|| "<unknown source file>".to_string()),
+                            breakpoint_response.line.unwrap_or(0),
+                            breakpoint_response.column.unwrap_or(0)
+                        ));
                     }
                     None => {
-                        breakpoint_response.message = Some(format!("Instruction breakpoint set @:{memory_reference:#010x}, but could not resolve a source location."));
+                        breakpoint_response.message = Some(format!(
+                            "Instruction breakpoint set @:{memory_reference:#010x}, but could not resolve a source location."
+                        ));
                     }
                 }
             }
             Err(error) => {
                 breakpoint_response.instruction_reference =
                     Some(requested_breakpoint.instruction_reference);
-                breakpoint_response.message = Some(format!("Warning: Could not set breakpoint at memory address: {memory_reference:#010x}: {error}"));
+                breakpoint_response.message = Some(format!(
+                    "Warning: Could not set breakpoint at memory address: {memory_reference:#010x}: {error}"
+                ));
             }
         }
     } else {

@@ -1,0 +1,1 @@
+Added config presets. Define a set of values in the probe-rs config file, and activate them all by using `--preset name_of_preset`.

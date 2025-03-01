@@ -1,5 +1,8 @@
+use std::io::Write;
+
 use bytesize::ByteSize;
-use probe_rs::config::MemoryRegion;
+
+use crate::rpc::{client::RpcClient, functions::chip::MemoryRegion};
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -22,24 +25,25 @@ enum Subcommand {
 }
 
 impl Cmd {
-    pub fn run(self) -> anyhow::Result<()> {
+    pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
         let output = std::io::stdout().lock();
 
         match self.subcommand {
-            Subcommand::List => print_families(output),
-            Subcommand::Info { name } => print_chip_info(output, &name),
+            Subcommand::List => print_families(&client, output).await,
+            Subcommand::Info { name } => print_chip_info(&client, output, &name).await,
         }
     }
 }
 
 /// Print all the available families and their contained chips to the
 /// commandline.
-pub fn print_families(mut output: impl std::io::Write) -> anyhow::Result<()> {
+pub async fn print_families(client: &RpcClient, mut output: impl Write) -> anyhow::Result<()> {
     writeln!(output, "Available chips:")?;
-    for family in probe_rs::config::families() {
+    let families = client.list_chip_families().await?;
+    for family in families {
         writeln!(output, "{}", &family.name)?;
         writeln!(output, "    Variants:")?;
-        for variant in family.variants() {
+        for variant in family.variants {
             writeln!(output, "        {}", variant.name)?;
         }
     }
@@ -48,9 +52,13 @@ pub fn print_families(mut output: impl std::io::Write) -> anyhow::Result<()> {
 
 /// Print all the available families and their contained chips to the
 /// commandline.
-pub fn print_chip_info(mut output: impl std::io::Write, name: &str) -> anyhow::Result<()> {
+pub async fn print_chip_info(
+    client: &RpcClient,
+    mut output: impl Write,
+    name: &str,
+) -> anyhow::Result<()> {
     writeln!(output, "{}", name)?;
-    let target = probe_rs::config::get_target_by_name(name)?;
+    let target = client.chip_info(name).await?;
     writeln!(output, "Cores ({}):", target.cores.len())?;
     for core in target.cores {
         writeln!(
@@ -78,21 +86,61 @@ pub fn print_chip_info(mut output: impl std::io::Write, name: &str) -> anyhow::R
     Ok(())
 }
 
-#[test]
-fn single_chip_output() {
-    let mut buff = Vec::new();
-    print_chip_info(&mut buff, "nrf52840_xxaa").unwrap();
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::future::Future;
 
-    // output should be valid utf8
-    let output = String::from_utf8(buff).unwrap();
+    async fn run_on_local_server<F, Fut>(f: F)
+    where
+        F: Fn(RpcClient) -> Fut,
+        Fut: Future<Output = ()>,
+    {
+        use crate::rpc::functions::RpcApp;
 
-    insta::assert_snapshot!(output);
-}
+        // Create a local server to run commands against.
+        let (mut local_server, tx, rx) = RpcApp::create_server(true, 16);
+        let handle = tokio::spawn(async move { local_server.run().await });
 
-#[test]
-fn multiple_chip_output() {
-    let mut buff = Vec::new();
-    let error = print_chip_info(&mut buff, "nrf52").unwrap_err();
+        // Run the command locally.
+        let client = RpcClient::new_local_from_wire(tx, rx);
 
-    insta::assert_snapshot!(error.to_string());
+        f(client).await;
+
+        // Wait for the server to shut down
+        _ = handle.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn single_chip_output() {
+        run_on_local_server(|client| {
+            async move {
+                let mut buff = Vec::new();
+
+                print_chip_info(&client, &mut buff, "nrf52840_xxaa")
+                    .await
+                    .unwrap();
+
+                // output should be valid utf8
+                let output = String::from_utf8(buff).unwrap();
+
+                insta::assert_snapshot!(output);
+            }
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn multiple_chip_output() {
+        run_on_local_server(|client| async move {
+            let mut buff = Vec::new();
+
+            let error = print_chip_info(&client, &mut buff, "nrf52")
+                .await
+                .unwrap_err();
+
+            insta::assert_snapshot!(error.to_string());
+        })
+        .await;
+    }
 }

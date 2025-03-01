@@ -58,6 +58,7 @@ variants:
     is_alias: true
   flash_algorithms:
   - esp32c3-flashloader
+  - esp32c3-flashloader-default-clocks
   jtag:
     scan_chain:
     - name: main
@@ -65,8 +66,37 @@ variants:
   default_binary_format: idf
 flash_algorithms:
 - name: esp32c3-flashloader
-  description: A flash loader for the esp32c3.
+  description: A flash loader for the esp32c3 that uses max CPU clock frequency.
   default: true
+  instructions: FwMAAGcAYwQXAwAAZwADDhcDAABnAKMPFwMAAGcAIxEXAwAAZwBjFBcDAABnAGMZFwMAAGcAIxwJxhcDx/9nAGMPAUWCgEERBsYixCbCNwQMYAhEt7TLPyOipLAoTCOkpLD9dZOF9T9tjRMFBUAozBMFQAaXAMf/54DA/QOlRLBxmQUFCMSXAMf/54BgaSqEwWf9F7cFAAFBZoVmEWcBRZcAx//ngEAJqoUFRY3pIoWXAMf/54BACwFFtwXLPyOgBQAjqASu/VUjqrSuI6wEriOuBK63BcGquRUjoLSwskAiRJJEQQGCgLe1yz+DpQWwNwbBqjkWY5fFAEGBFwPH/2cAgwITBXDBgoA3tcs/AyUFsLcFwaq5FWMWtQAXA8f/ZwBDABMFcMGCgLe2yz+DpgawLoe3BcGqk4fl/pMFcMFjl/YAk3Y2AJMFMMGZwi6FgoC3BTlAk4YFOrKFOoYXAwAAZwBDD0ERBsYixCbCt7bLP4OmBrCuhCqENwXBqpMF5f4TBXDBY5e2ApN1NgATBTDBjeE3BTlAkwZFPCKFsoUmhpcAAADngAALMzWgAH0VZY0ilbJAIkSSREEBgoC3tss/A6cGsK6GtwXBqpOH5f6TBXDBYxf3ABN3NgCTBTDBGcMuhYKAsoU2hhcDAABnAOPkQREGxje2yz+DJgawtwXBqhOH5f6TBXDBY5DmBIMlhrC3BgxgrM4DJ0awgUWYxolGIyAGsGMS1QIFRSrEA0WBAAWJEckoAJVFlwDH/+eA4O911aqFEaCBRS6FskBBAYKAeXEG1iLUJtJK0E7OUsxWylrIXsZixDe3yz+DJ0evNokuimOFpwSRRpMFQMFjZNYQg0UKAINGGgCDRzoAg0QqABEKcRbiB8IEogbVjcWP3Y23tss/I6qmriOsBq4jrrauNwXLPyMgBQAjqAauAyXHr2HBKoxjY8UAMoyzBYVBN7vLPyMuu66FRI1JY2OmAIVJoWs3Ncs/kwoFr2MFDAhjU5AIYsADJQuvM4WrQCrCAycLr1aXNwXLPwqGXADShdaGToiXAMf/54AA3oJFY3W8AJMEYMEhqKqEEkUDJguvMwy8QC6aMpUjKKuumcQDJQuvIWbjFMX6GaADJguvgyWLrwMlS68ulSMoC64zhMUA1oUCmSMsi67jUgX4EwUFgJMFBYYJqBOFBIOT1fRB6Y0ZoJMFUMEuhbJQIlSSVAJZ8kliStJKQkuySyJMRWGCgAXCQREGxpcAx//ngGDYkwUFgJOFBYZ9hW2NskBBAYKAAUWCgC1xFAIjrhYAgM7EyiOoJgEjpjYBsomuhCqJAUUTBgXwAcoTBhUAowWhEKqFMoX9t6MFsQBjiQkEEwUAEE6EY+SpABMEABCTBbEASoUihpcAAADngGDCY0oFAjOFhACziYlAkwWxACKGGcqDxgQAA8cFAIUEhQV9FuOI5v45oCKZqoTjmwn6AUURoH1VDAKDoMUBgE3ESQOpBQGDqcUAFWGCgAAA
+  load_address: 0x40390000
+  data_load_address: 0x403c0000
+  pc_init: 0x0
+  pc_uninit: 0x30
+  pc_program_page: 0x18
+  pc_erase_sector: 0x8
+  pc_erase_all: 0x10
+  pc_verify: 0x20
+  pc_read: 0x28
+  data_section_offset: 0x40390468
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x1000000
+    page_size: 0x4000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x10000
+      address: 0x0
+  cores:
+  - main
+  stack_overflow_check: false
+  transfer_encoding: miniz
+- name: esp32c3-flashloader-default-clocks
+  description: A flash loader for the esp32c3.
+  default: false
   instructions: FwMAAGcAYwQXAwAAZwBjChcDAABnAOMLFwMAAGcAQw0XAwAAZwBjEBcDAABnAEMVFwMAAGcA4xcJxhcDx/9nAGMPAUWCgEERBsYixJcAx//ngABtKoTBZ/0XtwUAAUFmhWYRZwFFlwDH/+eA4AyqhQVFlekihZcAx//ngOAOAUW3Bcs/I6IFADe2yz8jKgau/VYjLNauIy4GriMgBrA3BsGqORaQwbJAIkRBAYKAtwXLP4xBNwbBqjkWY5fFAEGBFwPH/2cAQwYTBXDBgoA3Bcs/CEG3BcGquRVjFrUAFwPH/2cAIwQTBXDBgoC3Bss/lEIuh7cFwaqTh+X+kwVwwWOX9gCTdjYAkwUwwZnCLoWCgLcFOUCThsU0soU6hhcDAABnAIMNQREGxiLEJsK3Bss/lEKuhCqENwXBqpMF5f4TBXDBY5e2ApN1NgATBTDBjeE3BTlAkwYFNyKFsoUmhpcAAADngGAJMzWgAH0VZY0ilbJAIkSSREEBgoC3Bss/mEKuhrcFwaqTh+X+kwVwwWMX9wATdzYAkwUwwRnDLoWCgLKFNoYXAwAAZwAj6UERBsY3Bss/FEKqhTcFwaoTB+X+EwVwwWOV5gIBRYlGIyAGAGOf1QAFRSrEA0WBAAWJAckoAJVFlwDH/+eAIPV11bJAQQGCgDlxBt4i3CbaSthO1lLUVtJa0F7OYsxmyje3yz+DJ4evNomuimOFpwSRRpMFQMFjZtYQg8UKAIPGGgCDxzoAg8QqAJEKcRbiB8IEogbVjcWP3Y23tss/I6ymriOuBq4joLawNwXLPyMiBQAjqgauAyUHsHHBqoxjY8UAsoyzBZVBt7vLPyOgu7CFRI1JY2OmAIVJIWw3Ncs/EwtFrzcKyz8RCmOEDAhjUpAIZsYDpUuvMwWsQCrIA6dLr1qXcAAcCFKF1oXahk6IlwDH/+eAYOOyRWP1vACTBGDBIaiqhEJFA6ZLr7OMvECumjKVI6qrrpnEA6VLryFm4xXF+hmgA6ZLr4Oly68DpYuvLpUjqguuM4TFANqFApkjrouu41MF+BMFBYCTBQWGCagThQSDk9X0QemNGaCTBVDBLoXyUGJU0lRCWbJZIlqSWgJb8ktiTNJMIWGCgAXCQREGxpcAx//ngKDdkwUFgJOFBYZ9hW2NskBBAYKAAUWCgC1xFAIjrhYAgM7EyiOoJgEjpjYBsomuhCqJAUUTBgXwAcoTBhUAowWhEKqFMoX9t6MFsQBjiQkEEwUAEE6EY+SpABMEABCTBbEASoUihpcAAADngKDHY0oFAjOFhACziYlAkwWxACKGGcqDxgQAA8cFAIUEhQV9FuOI5v45oCKZqoTjmwn6AUURoH1VDAKDoMUBgE3ESQOpBQGDqcUAFWGCgAAA
   load_address: 0x40390000
   data_load_address: 0x403c0000

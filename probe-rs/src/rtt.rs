@@ -48,11 +48,11 @@ mod channel;
 pub use channel::*;
 
 use crate::Session;
-use crate::{config::MemoryRegion, Core, MemoryInterface};
+use crate::{Core, MemoryInterface, config::MemoryRegion};
 use std::ops::Range;
 use std::thread;
+use std::time::Duration;
 use std::time::Instant;
-use std::{borrow::Cow, time::Duration};
 use zerocopy::FromBytes;
 
 /// The RTT interface.
@@ -147,7 +147,7 @@ impl RttControlBlockHeader {
         }
     }
 
-    pub fn minimal_header_size(is_64_bit: bool) -> usize {
+    pub const fn minimal_header_size(is_64_bit: bool) -> usize {
         if is_64_bit {
             std::mem::size_of::<RttControlBlockHeaderInner<u64>>()
         } else {
@@ -231,27 +231,19 @@ impl RttControlBlockHeader {
 //     RttChannel down_channels[max_down_channels]; // array of down (host to target) channels.
 // }
 impl Rtt {
-    const RTT_ID: [u8; 16] = *b"SEGGER RTT\0\0\0\0\0\0";
+    /// The magic string expected to be found at the beginning of the RTT control block.
+    pub const RTT_ID: [u8; 16] = *b"SEGGER RTT\0\0\0\0\0\0";
 
-    fn from(
+    /// Tries to attach to an RTT control block at the specified memory address.
+    pub fn attach_at(
         core: &mut Core,
         // Pointer from which to scan
         ptr: u64,
-        // Memory contents read in advance, starting from ptr
-        mem_in: Option<&[u8]>,
-    ) -> Result<Option<Rtt>, Error> {
+    ) -> Result<Rtt, Error> {
         let is_64_bit = core.is_64_bit();
 
-        let mut mem = match mem_in {
-            Some(mem) => Cow::Borrowed(mem),
-            None => {
-                // If memory wasn't passed in, read the minimum header size
-                let new_length = RttControlBlockHeader::minimal_header_size(is_64_bit);
-                let mut mem = vec![0; new_length];
-                core.read(ptr, &mut mem)?;
-                Cow::Owned(mem)
-            }
-        };
+        let mut mem = [0u8; RttControlBlockHeader::minimal_header_size(true)];
+        core.read(ptr, &mut mem)?;
 
         let rtt_header = RttControlBlockHeader::try_from_header(is_64_bit, &mem)
             .ok_or(Error::ControlBlockNotFound)?;
@@ -277,29 +269,17 @@ impl Rtt {
             )));
         }
 
-        let cb_len = rtt_header.total_rtt_buffer_size();
-
-        if let Cow::Owned(mem) = &mut mem {
-            // If memory wasn't passed in, read the rest of the control block
-            mem.resize(cb_len, 0);
-            core.read(
-                ptr + rtt_header.header_size() as u64,
-                &mut mem[rtt_header.header_size()..cb_len],
-            )?;
-        }
-
-        // Validate that the entire control block fits within the region
-        if mem.len() < cb_len {
-            tracing::debug!("Control block doesn't fit in scanned memory region.");
-            return Ok(None);
-        }
+        // Read the rest of the control block
+        let channel_buffer_len = rtt_header.total_rtt_buffer_size() - rtt_header.header_size();
+        let mut mem = vec![0; channel_buffer_len];
+        core.read(ptr + rtt_header.header_size() as u64, &mut mem)?;
 
         let mut up_channels = Vec::new();
         let mut down_channels = Vec::new();
 
         let channel_buffer_size = rtt_header.channel_buffer_size();
 
-        let up_channels_start = rtt_header.header_size();
+        let up_channels_start = 0;
         let up_channels_len = max_up_channels * channel_buffer_size;
         let up_channels_raw_buffer = &mem[up_channels_start..][..up_channels_len];
         let up_channels_buffer = rtt_header.parse_channel_buffers(up_channels_raw_buffer)?;
@@ -309,54 +289,58 @@ impl Rtt {
         let down_channels_raw_buffer = &mem[down_channels_start..][..down_channels_len];
         let down_channels_buffer = rtt_header.parse_channel_buffers(down_channels_raw_buffer)?;
 
-        let mut offset = up_channels_start as u64;
-        for (i, b) in up_channels_buffer.into_iter().enumerate() {
-            let buffer_size = b.size() as u64;
+        let mut offset = ptr + rtt_header.header_size() as u64 + up_channels_start as u64;
+        for (channel_index, buffer) in up_channels_buffer.into_iter().enumerate() {
+            let buffer_size = buffer.size() as u64;
 
-            if let Some(chan) = Channel::from(core, i, ptr + offset, b)? {
+            if let Some(chan) = Channel::from(core, channel_index, offset, buffer)? {
                 up_channels.push(UpChannel(chan));
             } else {
-                tracing::warn!("Buffer for up channel {i} not initialized");
+                tracing::warn!("Buffer for up channel {channel_index} not initialized");
             }
             offset += buffer_size;
         }
 
-        for (i, b) in down_channels_buffer.into_iter().enumerate() {
-            let buffer_size = b.size() as u64;
+        let mut offset = ptr + rtt_header.header_size() as u64 + down_channels_start as u64;
+        for (channel_index, buffer) in down_channels_buffer.into_iter().enumerate() {
+            let buffer_size = buffer.size() as u64;
 
-            if let Some(chan) = Channel::from(core, i, ptr + offset, b)? {
+            if let Some(chan) = Channel::from(core, channel_index, offset, buffer)? {
                 down_channels.push(DownChannel(chan));
             } else {
-                tracing::warn!("Buffer for down channel {i} not initialized");
+                tracing::warn!("Buffer for down channel {channel_index} not initialized");
             }
             offset += buffer_size;
         }
 
-        Ok(Some(Rtt {
+        Ok(Rtt {
             ptr,
             up_channels,
             down_channels,
-        }))
+        })
+    }
+
+    /// Attempts to detect an RTT control block in the specified RAM region(s) and returns an
+    /// instance if a valid control block was found.
+    pub fn attach_region(core: &mut Core, region: &ScanRegion) -> Result<Rtt, Error> {
+        let ptr = Self::find_contol_block(core, region)?;
+        Self::attach_at(core, ptr)
     }
 
     /// Attempts to detect an RTT control block anywhere in the target RAM and returns an instance
     /// if a valid control block was found.
-    ///
-    /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`.
     pub fn attach(core: &mut Core) -> Result<Rtt, Error> {
         Self::attach_region(core, &ScanRegion::default())
     }
 
     /// Attempts to detect an RTT control block in the specified RAM region(s) and returns an
-    /// instance if a valid control block was found.
-    ///
-    /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`.
-    pub fn attach_region(core: &mut Core, region: &ScanRegion) -> Result<Rtt, Error> {
+    /// address if a valid control block location was found.
+    pub fn find_contol_block(core: &mut Core, region: &ScanRegion) -> Result<u64, Error> {
         let ranges = match region.clone() {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: {:#010x}", addr);
 
-                return Rtt::from(core, addr, None)?.ok_or(Error::ControlBlockNotFound);
+                return Ok(addr);
             }
             ScanRegion::Ram => {
                 tracing::debug!("Scanning whole RAM");
@@ -368,7 +352,9 @@ impl Rtt {
             }
             ScanRegion::Ranges(regions) if regions.is_empty() => {
                 // We have no regions to scan so we cannot initialize RTT.
-                tracing::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
+                tracing::debug!(
+                    "ELF file has no RTT block symbol, and this target does not support automatic scanning"
+                );
                 return Err(Error::NoControlBlockLocation);
             }
             ScanRegion::Ranges(regions) => {
@@ -399,9 +385,9 @@ impl Rtt {
 
                 let target_ptr = range.start + offset as u64;
 
-                Rtt::from(core, target_ptr, Some(&mem[offset..])).transpose()
+                Some(target_ptr)
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Vec<_>>();
 
         match instances.len() {
             0 => Err(Error::ControlBlockNotFound),
@@ -484,7 +470,7 @@ pub enum Error {
     ControlBlockNotFound,
 
     /// Multiple control blocks found in target memory: {display_list(_0)}.
-    MultipleControlBlocksFound(Vec<Rtt>),
+    MultipleControlBlocksFound(Vec<u64>),
 
     /// The control block has been corrupted: {0}
     ControlBlockCorrupted(String),
@@ -508,9 +494,9 @@ pub enum Error {
     MissingChannel(usize),
 }
 
-fn display_list(list: &[Rtt]) -> String {
+fn display_list(list: &[u64]) -> String {
     list.iter()
-        .map(|rtt| format!("{:#010x}", rtt.ptr))
+        .map(|ptr| format!("{:#010x}", ptr))
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -568,15 +554,7 @@ mod test {
 
     #[test]
     fn test_how_control_block_list_looks() {
-        fn rtt(ptr: u32) -> Rtt {
-            Rtt {
-                ptr: ptr.into(),
-                up_channels: Vec::new(),
-                down_channels: Vec::new(),
-            }
-        }
-
-        let error = Error::MultipleControlBlocksFound(vec![rtt(0x2000), rtt(0x3000)]);
+        let error = Error::MultipleControlBlocksFound(vec![0x2000, 0x3000]);
         assert_eq!(
             error.to_string(),
             "Multiple control blocks found in target memory: 0x00002000, 0x00003000."

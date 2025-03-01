@@ -1,7 +1,7 @@
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
-use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::Session;
+use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 
 /// A interface to operate debug sequences for Xtensa targets.
 ///

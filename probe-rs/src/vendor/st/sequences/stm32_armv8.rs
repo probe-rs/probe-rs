@@ -9,10 +9,10 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
+    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
     component::TraceSink,
     memory::{ArmMemoryInterface, CoresightComponent},
     sequences::ArmDebugSequence,
-    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
 };
 
 /// Marker structure for ARMv8 STM32 devices.
@@ -27,7 +27,7 @@ impl Stm32Armv8 {
 }
 
 mod dbgmcu {
-    use crate::architecture::arm::{memory::ArmMemoryInterface, ArmError};
+    use crate::architecture::arm::{ArmError, memory::ArmMemoryInterface};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component

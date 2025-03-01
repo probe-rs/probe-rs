@@ -8,32 +8,32 @@ use super::{
     },
 };
 use crate::cmd::dap_server::{
+    DebuggerError,
     debug_adapter::protocol::{ProtocolAdapter, ProtocolHelper},
     server::{
         configuration::ConsoleLog,
         core_data::CoreHandle,
         session_data::{BreakpointType, SourceLocationScope},
     },
-    DebuggerError,
 };
 use crate::util::rtt;
-use anyhow::{anyhow, Result};
-use base64::{engine::general_purpose as base64_engine, Engine as _};
+use anyhow::{Result, anyhow};
+use base64::{Engine as _, engine::general_purpose as base64_engine};
 use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
+    Architecture::Riscv,
+    CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
     },
-    Architecture::Riscv,
-    CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
 };
 use probe_rs_debug::{
-    stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, SteppingMode, VariableName,
-    VerifiedBreakpoint,
+    ColumnType, ObjectRef, SourceLocation, SteppingMode, VariableName, VerifiedBreakpoint,
+    stack_frame::StackFrameInfo,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use typed_path::NativePathBuf;
 
 use std::{fmt::Display, str, time::Duration};
@@ -367,7 +367,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                             {
                                                 response_body = evaluate_response;
                                             } else {
-                                                response_body.result = format!("Error: Could not parse response body: {repl_response_body:?}");
+                                                response_body.result = format!(
+                                                    "Error: Could not parse response body: {repl_response_body:?}"
+                                                );
                                             };
                                         } else {
                                             response_body.result = repl_response
@@ -817,7 +819,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 });
                 self.send_event("stopped", event_body)?;
             } else {
-                tracing::debug!("Core is halted, but not due to a breakpoint and halt_after_reset is not set. Continuing.");
+                tracing::debug!(
+                    "Core is halted, but not due to a breakpoint and halt_after_reset is not set. Continuing."
+                );
                 self.r#continue(target_core, request)?;
             }
         }
@@ -850,7 +854,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             "Failed to clear existing breakpoints before setting new ones : {}",
                             error
                         ))),
-                    )
+                    );
                 }
             }
 
@@ -1010,7 +1014,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
             Err(error) => {
-                return self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error)))
+                return self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error)));
             }
         };
 
@@ -1162,7 +1166,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut dap_scopes: Vec<Scope> = vec![];
 
-        if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
+        if let Some(core_peripherals) = &target_core.core_data.core_peripherals {
             let peripherals_root_variable = core_peripherals.svd_variable_cache.root_variable_key();
             dap_scopes.push(Scope {
                 line: None,
@@ -1246,7 +1250,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     source: None,
                     variables_reference: locals_root_variable.variable_key().into(),
                 });
-            };
+            }
         }
         self.send_response(request, Ok(Some(ScopesResponseBody { scopes: dap_scopes })))
     }
@@ -1484,7 +1488,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             frame_info,
                         )?;
                     } else {
-                        tracing::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name);
+                        tracing::error!(
+                            "Could not cache deferred child variables for variable: {}. No register data available.",
+                            parent_variable.name
+                        );
                     }
                 }
             }
@@ -1773,7 +1780,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Send a custom `probe-rs-rtt-channel-config` event to the MS DAP Client, to create a window for a specific RTT channel.
     pub fn rtt_window(
         &mut self,
-        channel_number: usize,
+        channel_number: u32,
         channel_name: String,
         data_format: rtt::DataFormat,
     ) -> bool {
@@ -1790,7 +1797,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     /// Send a custom `probe-rs-rtt-data` event to the MS DAP Client, to
-    pub fn rtt_output(&mut self, channel_number: usize, rtt_data: String) -> bool {
+    pub fn rtt_output(&mut self, channel_number: u32, rtt_data: String) -> bool {
         let Ok(event_body) = serde_json::to_value(RttDataEventBody {
             channel_number,
             data: rtt_data,
@@ -1872,7 +1879,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Some(ProgressUpdateEventBody {
                 message: message.map(|msg| match percentage {
                     None => msg.to_string(),
-                    Some(percentage) if percentage == 100.0 => msg.to_string(),
+                    Some(100.0) => msg.to_string(),
                     Some(percentage) => format!("{msg} ({percentage:02.0}%)"),
                 }),
                 percentage,

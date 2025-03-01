@@ -7,12 +7,12 @@ use std::{
 
 use super::esp::EspFlashSizeDetector;
 use crate::{
+    MemoryInterface, Session,
     architecture::xtensa::{
         communication_interface::{ProgramCounter, XtensaCommunicationInterface, XtensaError},
         sequences::XtensaDebugSequence,
         xdm,
     },
-    MemoryInterface, Session,
 };
 
 /// The debug sequence implementation for the ESP32.
@@ -24,7 +24,9 @@ pub struct ESP32 {
 impl ESP32 {
     /// Creates a new debug sequence handle for the ESP32.
     pub fn create() -> Arc<dyn XtensaDebugSequence> {
-        tracing::warn!("Be careful not to reset your ESP32 while connected to the debugger! Depending on the specific device, this may render it temporarily inoperable or permanently damage it.");
+        tracing::warn!(
+            "Be careful not to reset your ESP32 while connected to the debugger! Depending on the specific device, this may render it temporarily inoperable or permanently damage it."
+        );
         Arc::new(Self {
             inner: EspFlashSizeDetector {
                 stack_pointer: 0x3ffd0000,

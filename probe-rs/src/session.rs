@@ -1,12 +1,13 @@
 use crate::{
+    Core, CoreType, Error,
     architecture::{
         arm::{
+            ArmError, SwoReader,
             communication_interface::ArmProbeInterface,
-            component::{get_arm_components, TraceSink},
+            component::{TraceSink, get_arm_components},
             dp::DpAddress,
             memory::CoresightComponent,
             sequences::{ArmDebugSequence, DefaultArmSequence},
-            ArmError, SwoReader,
         },
         riscv::communication_interface::{
             RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
@@ -18,10 +19,9 @@ use crate::{
     config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector},
     core::{Architecture, CombinedCoreState},
     probe::{
-        fake_probe::FakeProbe, list::Lister, AttachMethod, DebugProbeError, Probe,
-        ProbeCreationError,
+        AttachMethod, DebugProbeError, Probe, ProbeCreationError, fake_probe::FakeProbe,
+        list::Lister,
     },
-    Core, CoreType, Error,
 };
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
@@ -254,7 +254,9 @@ impl Session {
                     sequence_handle.reset_hardware_deassert(&mut *interface, &default_memory_ap)
                 {
                     if matches!(e, ArmError::Timeout) {
-                        tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
+                        tracing::warn!(
+                            "Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup."
+                        );
                     }
 
                     return Err(e.into());
@@ -434,7 +436,7 @@ impl Session {
     /// Get access to the session when all cores are halted.
     ///
     /// Any previously running cores will be resumed once the closure is executed.
-    pub(crate) fn halted_access<R>(
+    pub fn halted_access<R>(
         &mut self,
         f: impl FnOnce(&mut Self) -> Result<R, Error>,
     ) -> Result<R, Error> {

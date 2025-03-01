@@ -1,4 +1,4 @@
-use probe_rs_debug::{debug_info::DebugInfo, ColumnType, SourceLocation};
+use probe_rs_debug::{ColumnType, SourceLocation, debug_info::DebugInfo};
 use std::path::PathBuf;
 use typed_path::{TypedPath, UnixPathBuf};
 
@@ -106,9 +106,11 @@ fn find_non_existing_unit_by_path() {
 
     let debug_info = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
-    assert!(debug_info
-        .get_breakpoint_location(unit_path.to_path(), 14, None)
-        .is_err());
+    assert!(
+        debug_info
+            .get_breakpoint_location(unit_path.to_path(), 14, None)
+            .is_err()
+    );
 }
 
 #[test]

@@ -9,14 +9,12 @@ use std::{
 
 use crate::{
     architecture::arm::{
+        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, Pins,
         ap::{AccessPortError, AccessPortType, ApRegister, GenericAp, IDR},
-        communication_interface::Initialized,
         core::armv8m::{Aircr, Demcr, Dhcsr},
-        dp::{Abort, Ctrl, DpAccess, DpAddress, DpRegister, SelectV1, DPIDR},
+        dp::{Abort, Ctrl, DPIDR, DpAccess, DpAddress, DpRegister, SelectV1},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
-        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
-        Pins,
     },
     core::MemoryMappedRegister,
 };
@@ -30,7 +28,7 @@ pub mod ol23d0;
 /// Note that this routine only supports SWD protocols. See the inline TODOs to
 /// understand where JTAG support should go.
 fn debug_port_start(
-    interface: &mut ArmCommunicationInterface<Initialized>,
+    interface: &mut dyn DapAccess,
     dp: DpAddress,
     select: SelectV1,
 ) -> Result<bool, ArmError> {
@@ -100,7 +98,7 @@ impl LPC55Sxx {
 impl ArmDebugSequence for LPC55Sxx {
     fn debug_port_start(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut dyn DapAccess,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         tracing::info!("debug_port_start");
@@ -264,7 +262,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
 
     thread::sleep(Duration::from_millis(10));
 
-    if memory.generic_status()?.SDeviceEn {
+    if memory.generic_status()?.DeviceEn {
         let dp = memory.fully_qualified_address().dp();
         enable_debug_mailbox(memory.get_dap_access()?, dp)?;
     }
@@ -455,7 +453,9 @@ impl MIMXRT5xxS {
         if enabled_mailbox {
             // We'll double-check now to make sure we're in a reasonable state.
             if !self.csw_debug_ready(probe.get_dap_access()?, &ap)? {
-                tracing::warn!("MIMXRT5xxS is still not ready to debug, even after using DebugMailbox to activate session");
+                tracing::warn!(
+                    "MIMXRT5xxS is still not ready to debug, even after using DebugMailbox to activate session"
+                );
             }
         }
 
@@ -475,7 +475,8 @@ impl MIMXRT5xxS {
         if probed != Self::FLEXSPI_NOR_FLASH_HEADER_MAGIC {
             tracing::warn!(
                 "FlexSPI0 NOR flash config block starts with {:#010x} (valid blocks start with {:#010x})",
-                probed, Self::FLEXSPI_NOR_FLASH_HEADER_MAGIC,
+                probed,
+                Self::FLEXSPI_NOR_FLASH_HEADER_MAGIC,
             );
         } else {
             tracing::trace!(
@@ -584,7 +585,7 @@ impl MIMXRT5xxS {
 impl ArmDebugSequence for MIMXRT5xxS {
     fn debug_port_start(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
+        interface: &mut dyn DapAccess,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         let mut abort = Abort::default();

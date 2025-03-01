@@ -1,17 +1,17 @@
 //! All the interface bits for RISC-V.
 
 use crate::{
+    CoreInterface, CoreRegister, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
+    MemoryInterface, MemoryMappedRegister,
     architecture::riscv::sequences::RiscvDebugSequence,
     core::{
         Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
     },
-    memory::{valid_32bit_address, CoreMemoryInterface},
+    memory::{CoreMemoryInterface, valid_32bit_address},
     memory_mapped_bitfield_register,
     probe::DebugProbeError,
-    semihosting::decode_semihosting_syscall,
     semihosting::SemihostingCommand,
-    CoreInterface, CoreRegister, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
-    MemoryInterface, MemoryMappedRegister,
+    semihosting::decode_semihosting_syscall,
 };
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
@@ -59,7 +59,10 @@ impl<'state> Riscv32<'state> {
 
         match self.interface.abstract_cmd_register_write(address, value) {
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                tracing::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", address);
+                tracing::debug!(
+                    "Could not write core register {:#x} with abstract command, falling back to program buffer",
+                    address
+                );
                 self.interface.write_csr_progbuf(address, value)
             }
             other => other,
@@ -704,7 +707,7 @@ impl Dmcontrol {
     ///
     /// Combination of the `hartselhi` and `hartsello` registers.
     pub fn hartsel(&self) -> u32 {
-        self.hartselhi() << 10 | self.hartsello()
+        (self.hartselhi() << 10) | self.hartsello()
     }
 
     /// Set the currently selected harts

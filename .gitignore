@@ -1,9 +1,8 @@
-target
-!/gdb-server/src/target
+/target
 **/*.rs.bk
 
 # It's a Mac Thing
-**/.DS_Store 
+**/.DS_Store
 
 # IDE settings
 .vscode/settings.json

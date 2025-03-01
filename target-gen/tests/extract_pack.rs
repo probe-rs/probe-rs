@@ -69,9 +69,11 @@ fn missing_output_directory() {
         .run();
 
     assert!(!result.status.success());
-    assert!(result
-        .stderr
-        .contains("the following required arguments were not provided:"));
+    assert!(
+        result
+            .stderr
+            .contains("the following required arguments were not provided:")
+    );
 }
 
 #[test]

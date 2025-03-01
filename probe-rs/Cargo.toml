@@ -21,7 +21,6 @@ exclude = ["tests/"]
 
 [features]
 default = ["builtin-targets"]
-gdb-server = ["dep:gdbstub"]
 
 # Enable all built in targets.
 builtin-targets = ["dep:bincode", "dep:serde_yaml", "dep:probe-rs-target"]
@@ -36,7 +35,7 @@ thiserror.workspace = true
 probe-rs-target.workspace = true
 
 bincode = { version = "1", optional = true }
-bitfield = "0.18.0"
+bitfield = "0.19.0"
 bitvec = "1"
 hidapi = { version = "2", default-features = false, features = [
     "linux-native",
@@ -57,7 +56,6 @@ scroll = "0.12"
 serialport = { version = "4.6.0", default-features = false, features = [
     "usbportinfo-interface",
 ] }
-svg = "0.18"
 tracing = "0.1"
 uf2-decode = "0.2"
 espflash = { version = "3", default-features = false }
@@ -69,9 +67,6 @@ serde_yaml = "0.9"
 
 # optional
 hexdump = { version = "0.1", optional = true }
-
-# gdb server
-gdbstub = { version = "0.7", optional = true }
 
 rmp-serde = { version = "1" }
 dunce = "1.0.5"
@@ -105,7 +100,7 @@ search = "\\[unreleased\\]: https://github.com/probe-rs/probe-rs/compare/v([a-z0
 replace = "[unreleased]: https://github.com/probe-rs/probe-rs/compare/v{{version}}...master\n[{{version}}]: https://github.com/probe-rs/probe-rs/compare/v$1...v{{version}}"
 
 [package.metadata.docs.rs]
-features = ["builtin-targets", "debug", "gdb-server"]
+features = ["builtin-targets"]
 
 # Define a new cfg flag for docs.rs
 rustdoc-args = ["--cfg", "probers_docsrs"]

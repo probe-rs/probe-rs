@@ -1,7 +1,7 @@
 use crate::util::common_options::ProbeOptions;
 use crate::util::rtt;
-use crate::{cmd::dap_server::DebuggerError, FormatOptions};
-use anyhow::{anyhow, Result};
+use crate::{FormatOptions, cmd::dap_server::DebuggerError};
+use anyhow::{Result, anyhow};
 use probe_rs::probe::{DebugProbeSelector, WireProtocol};
 use serde::{Deserialize, Serialize};
 use std::{env::current_dir, path::PathBuf};
@@ -93,8 +93,8 @@ impl SessionConfig {
                 }
                 Err(error) => {
                     return Err(DebuggerError::Other(anyhow!(
-                            "Please use the `program-binary` option to specify an executable for this target core. {error:?}"
-                        )));
+                        "Please use the `program-binary` option to specify an executable for this target core. {error:?}"
+                    )));
                 }
             };
             // Update the `svd_file` and validate that the file exists, or else warn the user and continue.
@@ -145,7 +145,9 @@ impl SessionConfig {
                 if let Ok(current_dir) = current_dir() {
                     Some(current_dir)
                 } else {
-                    tracing::error!("Cannot use current working directory. Please check existence and permissions.");
+                    tracing::error!(
+                        "Cannot use current working directory. Please check existence and permissions."
+                    );
                     None
                 }
             }

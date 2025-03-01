@@ -338,12 +338,7 @@ impl Registry {
         Target::new(family, chip)
     }
 
-    fn add_target_from_yaml<R>(&mut self, yaml_reader: R) -> Result<String, RegistryError>
-    where
-        R: Read,
-    {
-        let family: ChipFamily = serde_yaml::from_reader(yaml_reader)?;
-
+    fn add_target_family(&mut self, family: ChipFamily) -> Result<String, RegistryError> {
         validate_family(&family).map_err(|error| {
             RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), error)
         })?;
@@ -357,6 +352,18 @@ impl Registry {
 
         Ok(family_name)
     }
+}
+
+/// Get a target from the internal registry based on its name.
+pub fn get_family_by_name(name: impl AsRef<str>) -> Result<ChipFamily, RegistryError> {
+    let registry = REGISTRY.read_recursive();
+
+    registry
+        .families
+        .iter()
+        .find(|f| f.name.eq_ignore_ascii_case(name.as_ref()))
+        .cloned()
+        .ok_or_else(|| RegistryError::ChipNotFound(name.as_ref().to_string()))
 }
 
 /// Get a target from the internal registry based on its name.
@@ -419,7 +426,14 @@ pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<String, RegistryError>
 where
     R: Read,
 {
-    REGISTRY.write().add_target_from_yaml(yaml_reader)
+    let family: ChipFamily = serde_yaml::from_reader(yaml_reader)?;
+
+    add_target_family(family)
+}
+
+/// Add a target family to the internal registry.
+pub fn add_target_family(family: ChipFamily) -> Result<String, RegistryError> {
+    REGISTRY.write().add_target_family(family)
 }
 
 /// Get a list of all families which are contained in the internal

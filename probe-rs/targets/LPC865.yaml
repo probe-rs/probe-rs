@@ -1,0 +1,136 @@
+name: LPC865
+manufacturer:
+  id: 0x15
+  cc: 0x0
+generated_from_pack: true
+pack_file_release: 25.03.00-pvw2
+variants:
+- name: LPC865M201JBD64
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001fe0
+    cores:
+    - main
+  - !Generic
+    name: IAP_SRAM
+    range:
+      start: 0x10001fe0
+      end: 0x10002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - lpc860_64
+- name: LPC865M201JHI33
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001fe0
+    cores:
+    - main
+  - !Generic
+    name: IAP_SRAM
+    range:
+      start: 0x10001fe0
+      end: 0x10002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - lpc860_64
+- name: LPC865M201JHI48
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x10000000
+      end: 0x10001fe0
+    cores:
+    - main
+  - !Generic
+    name: IAP_SRAM
+    range:
+      start: 0x10001fe0
+      end: 0x10002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - lpc860_64
+flash_algorithms:
+- name: lpc860_64
+  description: LPC860 IAP 64kB Flash
+  default: true
+  instructions: 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
+  load_address: 0x10000008
+  pc_init: 0x1
+  pc_uninit: 0x39
+  pc_program_page: 0xa1
+  pc_erase_sector: 0x6d
+  pc_erase_all: 0x3d
+  pc_verify: 0xfd
+  data_section_offset: 0x724
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x400
+      address: 0x0

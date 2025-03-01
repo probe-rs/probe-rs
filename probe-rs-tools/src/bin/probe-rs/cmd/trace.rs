@@ -3,12 +3,12 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::time::Instant;
 
-use probe_rs::probe::list::Lister;
 use probe_rs::MemoryInterface;
-use scroll::{Pwrite, LE};
+use probe_rs::probe::list::Lister;
+use scroll::{LE, Pwrite};
 
-use crate::util::{common_options::ProbeOptions, parse_u64};
 use crate::CoreOptions;
+use crate::util::{common_options::ProbeOptions, parse_u64};
 
 #[derive(clap::Parser)]
 pub struct Cmd {

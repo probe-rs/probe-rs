@@ -394,7 +394,7 @@ impl VariableType {
             } => return language.format_array_type(&item_type_name.type_name(language), *count),
 
             VariableType::Bitfield(_, ty) | VariableType::Modified(_, ty) => {
-                return ty.type_name(language)
+                return ty.type_name(language);
             }
         };
 

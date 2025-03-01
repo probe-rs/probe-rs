@@ -7,15 +7,15 @@ use std::{
 use probe_rs_target::CoreType;
 
 use crate::{
+    Error,
     architecture::arm::{
+        ArmError, ArmProbeInterface, FullyQualifiedApAddress,
         armv8m::Aircr,
         core::armv8m::Dhcsr,
         memory::ArmMemoryInterface,
-        sequences::{cortex_m_core_start, ArmDebugSequence},
-        ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+        sequences::{ArmDebugSequence, cortex_m_core_start},
     },
     core::MemoryMappedRegister,
-    Error,
 };
 
 /// The sequence handle for the OL23D0 family.

@@ -2,8 +2,8 @@
 
 use std::{
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
     thread,
     time::{Duration, Instant},
@@ -11,6 +11,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
+        ArmError,
         ap::AccessPortError,
         armv7m::{FpCtrl, FpRev2CompX},
         core::{
@@ -19,7 +20,6 @@ use crate::{
         },
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
-        ArmError,
     },
     core::MemoryMappedRegister,
 };
@@ -167,20 +167,24 @@ impl ArmDebugSequence for MIMXRT10xx {
     }
 }
 
-/// Debug sequences for MIMXRT117x MCUs.
+/// Backwards-compatible debug sequence for MIMXRT1170 MCUs.
+#[deprecated(note = "Prefer MIMXRT11xx, which supports 1170 and 1160 targets")]
+pub type MIMXRT117x = MIMXRT11xx;
+
+/// Debug sequences for MIMXRT1170 / MIMXRT1160 MCUs.
 ///
 /// Currently only supports the Cortex M7. In fact, if you try to interact with the Cortex M4,
 /// you'll have a bad time: its access port doesn't appear until it's released from reset!
 /// For the time being, you can only do things through the CM7.
 #[derive(Debug)]
-pub struct MIMXRT117x {
+pub struct MIMXRT11xx {
     /// Given the reset we're performing, we won't be able to perform
     /// a normal vector catch. (The boot ROM doesn't care about us.)
     /// We'll simulate that behavior for the user.
     simulate_reset_catch: AtomicBool,
 }
 
-impl MIMXRT117x {
+impl MIMXRT11xx {
     /// System reset controller base address.
     const SRC: u64 = 0x40C0_4000;
     /// SRC reset mode register.
@@ -192,7 +196,7 @@ impl MIMXRT117x {
         }
     }
 
-    /// Create a sequence handle for the MIMXRT117x.
+    /// Create a sequence handle for the MIMXRT1170 / MIMXRT1160.
     pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self::new())
     }
@@ -244,8 +248,11 @@ impl MIMXRT117x {
 
         loop {
             match probe.generic_status() {
-                Ok(csw) if csw.SDeviceEn => {
-                    tracing::debug!("Device enabled after {}ms with {errors} errors and {disables} invalid statuses", start.elapsed().as_millis());
+                Ok(csw) if csw.DeviceEn => {
+                    tracing::debug!(
+                        "Device enabled after {}ms with {errors} errors and {disables} invalid statuses",
+                        start.elapsed().as_millis()
+                    );
                     return Ok(());
                 }
                 Ok(_) => disables += 1,
@@ -253,7 +260,10 @@ impl MIMXRT117x {
             }
 
             if start.elapsed() > timeout {
-                tracing::debug!("Exceeded {}ms timeout while waiting for enable with {errors} errors and {disables} invalid statuses", timeout.as_millis());
+                tracing::debug!(
+                    "Exceeded {}ms timeout while waiting for enable with {errors} errors and {disables} invalid statuses",
+                    timeout.as_millis()
+                );
                 return Err(ArmError::Timeout);
             }
 
@@ -294,7 +304,9 @@ impl MIMXRT117x {
             .read_core_reg(probe, PC)
             .map_err(|err| ArmDebugSequenceError::SequenceSpecific(err.into()))?;
         if pc != expected {
-            let err = format!("The MIMXRT1170's Cortex M7 should be at address {expected:#010X} but it's at {pc:#010X}");
+            let err = format!(
+                "The Cortex M7 should be at address {expected:#010X} but it's at {pc:#010X}"
+            );
             return Err(ArmDebugSequenceError::SequenceSpecific(err.into()));
         }
         Ok(())
@@ -387,7 +399,7 @@ impl MIMXRT117x {
     }
 }
 
-impl ArmDebugSequence for MIMXRT117x {
+impl ArmDebugSequence for MIMXRT11xx {
     fn reset_catch_set(
         &self,
         _: &mut dyn ArmMemoryInterface,

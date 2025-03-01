@@ -7,7 +7,7 @@ use super::{
     repl_types::*,
     request_helpers::set_instruction_breakpoint,
 };
-use crate::cmd::dap_server::{server::core_data::CoreHandle, DebuggerError};
+use crate::cmd::dap_server::{DebuggerError, server::core_data::CoreHandle};
 use itertools::Itertools;
 use probe_rs::{CoreDump, CoreStatus, HaltReason};
 use probe_rs_debug::{ObjectRef, VariableName};
@@ -186,9 +186,9 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                     }
                 }
             }
-            Err(DebuggerError::UserMessage(
-                format!("Invalid parameters {command_arguments:?}. See the `help` command for more information."),
-            ))
+            Err(DebuggerError::UserMessage(format!(
+                "Invalid parameters {command_arguments:?}. See the `help` command for more information."
+            )))
         },
     },
     ReplCommand {
@@ -239,8 +239,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         sub_commands: Some(&[
             ReplCommand {
                 command: "frame",
-                help_text:
-                    "Describe the current frame, or the frame at the specified (hex) address.",
+                help_text: "Describe the current frame, or the frame at the specified (hex) address.",
                 sub_commands: None,
                 args: Some(&[ReplCommandArgs::Optional("address")]),
                 // TODO: This is easy to implement ... just requires deciding how to format the output.
@@ -380,9 +379,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             if input_address == 0 {
                 // No address was specified, so we'll use the frame address, if available.
 
-                let frame_id = request_arguments
-                    .frame_id
-                    .map(ObjectRef::from);
+                let frame_id = request_arguments.frame_id.map(ObjectRef::from);
 
                 input_address = if let Some(frame_pc) = frame_id
                     .and_then(|frame_id| {

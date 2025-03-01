@@ -1,6 +1,6 @@
-use async_io::{block_on, Timer};
+use async_io::{Timer, block_on};
 use futures_lite::FutureExt;
-use nusb::{transfer::RequestBuffer, Interface};
+use nusb::{Interface, transfer::RequestBuffer};
 use std::{io, time::Duration};
 
 pub trait InterfaceExt {

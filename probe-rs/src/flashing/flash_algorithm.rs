@@ -1,8 +1,8 @@
 use super::FlashError;
 use crate::{
+    Target,
     architecture::{arm, riscv},
     core::Architecture,
-    Target,
 };
 use probe_rs_target::{
     FlashProperties, MemoryRegion, PageInfo, RamRegion, RawFlashAlgorithm, RegionMergeIterator,

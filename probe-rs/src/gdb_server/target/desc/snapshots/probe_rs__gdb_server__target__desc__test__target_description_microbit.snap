@@ -1,8 +1,0 @@
----
-source: probe-rs/src/gdb_server/target/desc/test.rs
-expression: description
----
-<?xml version="1.0"?>
-        <!DOCTYPE target SYSTEM "gdb-target.dtd">
-        <target version="1.0">
-        <architecture>armv6-m</architecture></target>

@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use probe_rs_target::{
     ArmCoreAccessOptions, Chip, ChipFamily, Core, CoreAccessOptions, CoreType, MemoryAccess,
     MemoryRange as _, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
@@ -50,7 +50,11 @@ pub fn cmd_elf(
             .iter()
             .position(|old_algorithm| old_algorithm.name == algorithm.name)
         else {
-            bail!("Unable to update flash algorithm in target description file '{}'. Did not find an existing algorithm with name '{}'", target_description_file.display(), &algorithm.name)
+            bail!(
+                "Unable to update flash algorithm in target description file '{}'. Did not find an existing algorithm with name '{}'",
+                target_description_file.display(),
+                &algorithm.name
+            )
         };
 
         let current = &family.flash_algorithms[algorithm_to_update];

@@ -9,12 +9,12 @@ use std::{
 use probe_rs_target::MemoryRange;
 
 use crate::{
+    BreakpointCause, Error as ProbeRsError, HaltReason, MemoryInterface,
     architecture::xtensa::{
-        arch::{instruction::Instruction, CpuRegister, Register, SpecialRegister},
+        arch::{CpuRegister, Register, SpecialRegister, instruction::Instruction},
         xdm::{DebugStatus, XdmState},
     },
     probe::{DebugProbeError, DeferredResultIndex, JTAGAccess},
-    BreakpointCause, Error as ProbeRsError, HaltReason, MemoryInterface,
 };
 
 use super::xdm::{Error as XdmError, Xdm};

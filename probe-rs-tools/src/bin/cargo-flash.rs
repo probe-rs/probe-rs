@@ -1,6 +1,6 @@
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
-use std::process::{exit, Command};
+use std::process::{Command, exit};
 
 fn main() {
     let mut args: Vec<_> = std::env::args_os().collect();

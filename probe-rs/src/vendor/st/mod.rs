@@ -5,13 +5,13 @@ use probe_rs_target::Chip;
 use crate::{
     config::DebugSequence,
     vendor::{
+        Vendor,
         st::sequences::{
             stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
             stm32_armv7::Stm32Armv7,
             stm32_armv8::Stm32Armv8,
             stm32h7::{Stm32h7, Stm32h7Line},
         },
-        Vendor,
     },
 };
 

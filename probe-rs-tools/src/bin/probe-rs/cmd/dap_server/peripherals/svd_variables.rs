@@ -1,6 +1,6 @@
 use crate::cmd::dap_server::{
-    debug_adapter::{dap::adapter::DebugAdapter, protocol::ProtocolAdapter},
     DebuggerError,
+    debug_adapter::{dap::adapter::DebugAdapter, protocol::ProtocolAdapter},
 };
 use std::{fmt::Debug, fs::File, io::Read, path::Path};
 use svd_parser::Config;

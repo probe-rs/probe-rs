@@ -2,13 +2,14 @@ use super::{
     configuration::{self, ConsoleLog},
     logger::DebugLogger,
     session_data::SessionData,
-    startup::{get_file_timestamp, TargetSessionType},
+    startup::{TargetSessionType, get_file_timestamp},
 };
 use crate::{
     cmd::dap_server::{
+        DebuggerError,
         debug_adapter::{
             dap::{
-                adapter::{get_arguments, DebugAdapter},
+                adapter::{DebugAdapter, get_arguments},
                 dap_types::{
                     Capabilities, Event, ExitedEventBody, InitializeRequestArguments,
                     MessageSeverity, Request, RttWindowOpenedArguments, TerminatedEventBody,
@@ -18,15 +19,16 @@ use crate::{
             protocol::ProtocolAdapter,
         },
         peripherals::svd_variables::SvdCache,
-        DebuggerError,
     },
     util::flash::build_loader,
 };
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use probe_rs::{
-    flashing::{DownloadOptions, FileDownloadError, FlashProgress, ProgressEvent},
-    probe::list::Lister,
     Architecture, CoreStatus,
+    flashing::{
+        DownloadOptions, FileDownloadError, FlashProgress, ProgressEvent, ProgressOperation,
+    },
+    probe::list::Lister,
 };
 use std::{
     cell::RefCell,
@@ -126,7 +128,9 @@ impl Debugger {
                         );
                         thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
                     } else {
-                        tracing::trace!("Retrieving data from the core, no delay required between iterations of polling the core.");
+                        tracing::trace!(
+                            "Retrieving data from the core, no delay required between iterations of polling the core."
+                        );
                     };
                 }
 
@@ -471,7 +475,9 @@ impl Debugger {
             };
 
             let Some(path_to_elf) = target_core_config.program_binary.clone() else {
-                let error =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
+                let error = DebuggerError::Other(anyhow!(
+                    "Please specify use the `program-binary` option in `launch.json` to specify an executable"
+                ));
                 debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
                 return Err(error);
             };
@@ -569,7 +575,9 @@ impl Debugger {
                 ))
             })?;
             let Some(path_to_elf) = target_core_config.program_binary.clone() else {
-                let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
+                let err = DebuggerError::Other(anyhow!(
+                    "Please specify use the `program-binary` option in `launch.json` to specify an executable"
+                ));
 
                 debug_adapter.show_error_message(&err)?;
                 return Err(err);
@@ -641,12 +649,12 @@ impl Debugger {
         let rc_debug_adapter_clone = rc_debug_adapter.clone();
 
         struct ProgressState {
-            total_page_size: usize,
-            total_sector_size: usize,
-            total_fill_size: usize,
-            page_size_done: usize,
-            sector_size_done: usize,
-            fill_size_done: usize,
+            total_page_size: u64,
+            total_sector_size: u64,
+            total_fill_size: u64,
+            page_size_done: u64,
+            sector_size_done: u64,
+            fill_size_done: u64,
         }
 
         let progress_state = Rc::new(RefCell::new(ProgressState {
@@ -663,34 +671,27 @@ impl Debugger {
                 let mut flash_progress = progress_state.borrow_mut();
                 let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
                 match event {
-                    ProgressEvent::Initialized { phases, .. } => {
-                        for phase_layout in phases {
-                            flash_progress.total_page_size += phase_layout
-                                .pages()
-                                .iter()
-                                .map(|s| s.size() as usize)
-                                .sum::<usize>();
+                    ProgressEvent::AddProgressBar {
+                        operation,
+                        total: Some(total),
+                    } => match operation {
+                        ProgressOperation::Fill => flash_progress.total_fill_size += total,
+                        ProgressOperation::Erase => flash_progress.total_sector_size += total,
+                        ProgressOperation::Program => flash_progress.total_page_size += total,
 
-                            flash_progress.total_sector_size += phase_layout
-                                .sectors()
-                                .iter()
-                                .map(|s| s.size() as usize)
-                                .sum::<usize>();
-
-                            flash_progress.total_fill_size += phase_layout
-                                .fills()
-                                .iter()
-                                .map(|s| s.size() as usize)
-                                .sum::<usize>();
-                        }
-                    }
-                    ProgressEvent::StartedFilling => {
+                        _ => {}
+                    },
+                    ProgressEvent::Started(ProgressOperation::Fill) => {
                         debug_adapter
                             .update_progress(None, Some("Reading Old Pages"), id)
                             .ok();
                     }
-                    ProgressEvent::PageFilled { size, .. } => {
-                        flash_progress.fill_size_done += size as usize;
+                    ProgressEvent::Progress {
+                        operation: ProgressOperation::Fill,
+                        size,
+                        ..
+                    } => {
+                        flash_progress.fill_size_done += size;
                         let progress = flash_progress.fill_size_done as f64
                             / flash_progress.total_fill_size as f64;
 
@@ -698,64 +699,71 @@ impl Debugger {
                             .update_progress(Some(progress), Some("Reading Old Pages"), id)
                             .ok();
                     }
-                    ProgressEvent::FailedFilling => {
+                    ProgressEvent::Failed(ProgressOperation::Fill) => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Reading Old Pages Failed!"), id)
                             .ok();
                     }
-                    ProgressEvent::FinishedFilling => {
+                    ProgressEvent::Finished(ProgressOperation::Fill) => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Reading Old Pages Complete!"), id)
                             .ok();
                     }
-                    ProgressEvent::StartedErasing => {
+                    ProgressEvent::Started(ProgressOperation::Erase) => {
                         debug_adapter
                             .update_progress(None, Some("Erasing Sectors"), id)
                             .ok();
                     }
-                    ProgressEvent::SectorErased { size, .. } => {
-                        flash_progress.sector_size_done += size as usize;
+                    ProgressEvent::Progress {
+                        operation: ProgressOperation::Erase,
+                        size,
+                        ..
+                    } => {
+                        flash_progress.sector_size_done += size;
                         let progress = flash_progress.sector_size_done as f64
                             / flash_progress.total_sector_size as f64;
                         debug_adapter
                             .update_progress(Some(progress), Some("Erasing Sectors"), id)
                             .ok();
                     }
-                    ProgressEvent::FailedErasing => {
+                    ProgressEvent::Failed(ProgressOperation::Erase) => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Erasing Sectors Failed!"), id)
                             .ok();
                     }
-                    ProgressEvent::FinishedErasing => {
+                    ProgressEvent::Finished(ProgressOperation::Erase) => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Erasing Sectors Complete!"), id)
                             .ok();
                     }
-                    ProgressEvent::StartedProgramming { length } => {
-                        flash_progress.total_page_size = length as usize;
+                    ProgressEvent::Started(ProgressOperation::Program) => {
                         debug_adapter
                             .update_progress(None, Some("Programming Pages"), id)
                             .ok();
                     }
-                    ProgressEvent::PageProgrammed { size, .. } => {
-                        flash_progress.page_size_done += size as usize;
+                    ProgressEvent::Progress {
+                        operation: ProgressOperation::Program,
+                        size,
+                        ..
+                    } => {
+                        flash_progress.page_size_done += size;
                         let progress = flash_progress.page_size_done as f64
                             / flash_progress.total_page_size as f64;
                         debug_adapter
                             .update_progress(Some(progress), Some("Programming Pages"), id)
                             .ok();
                     }
-                    ProgressEvent::FailedProgramming => {
+                    ProgressEvent::Failed(ProgressOperation::Program) => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Flashing Pages Failed!"), id)
                             .ok();
                     }
-                    ProgressEvent::FinishedProgramming => {
+                    ProgressEvent::Finished(ProgressOperation::Program) => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Flashing Pages Complete!"), id)
                             .ok();
                     }
-                    ProgressEvent::DiagnosticMessage { .. } => (),
+                    _ => {}
                 }
             })
         });
@@ -776,7 +784,10 @@ impl Debugger {
                 debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
                     Ok(debug_adapter) => debug_adapter.into_inner(),
                     Err(too_many_strong_references) => {
-                        let reference_error = DebuggerError::Other(anyhow!("Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.", Rc::strong_count(&too_many_strong_references)));
+                        let reference_error = DebuggerError::Other(anyhow!(
+                            "Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.",
+                            Rc::strong_count(&too_many_strong_references)
+                        ));
                         tracing::error!("{reference_error:?}");
                         return Err(reference_error);
                     }
@@ -797,7 +808,10 @@ impl Debugger {
         debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
             Ok(debug_adapter) => debug_adapter.into_inner(),
             Err(too_many_strong_references) => {
-                let reference_error = DebuggerError::Other(anyhow!("Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.", Rc::strong_count(&too_many_strong_references)));
+                let reference_error = DebuggerError::Other(anyhow!(
+                    "Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.",
+                    Rc::strong_count(&too_many_strong_references)
+                ));
                 tracing::error!("{reference_error:?}");
                 return Err(reference_error);
             }
@@ -966,6 +980,7 @@ mod test {
     #![allow(clippy::unwrap_used, clippy::panic)]
 
     use crate::cmd::dap_server::{
+        DebuggerError,
         debug_adapter::{
             dap::{
                 adapter::DebugAdapter,
@@ -980,14 +995,13 @@ mod test {
         },
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
         test::TestLister,
-        DebuggerError,
     };
     use probe_rs::{
         architecture::arm::FullyQualifiedApAddress,
         integration::{FakeProbe, Operation},
         probe::{
-            list::Lister, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-            ProbeFactory,
+            DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
+            list::Lister,
         },
     };
     use serde_json::json;

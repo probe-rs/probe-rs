@@ -1,6 +1,6 @@
 use crate::architecture::arm::{
-    ap::{define_ap_register, AccessPortType, ApAccess, ApRegAccess, ApRegister, CFG},
     ArmError, DapAccess, FullyQualifiedApAddress, RegisterParseError,
+    ap::{AccessPortType, ApAccess, ApRegAccess, ApRegister, CFG, define_ap_register},
 };
 
 use super::{AddressIncrement, DataSize};
@@ -64,7 +64,7 @@ impl super::MemoryApType for AmbaAxi3Axi4 {
             DataSize::U64 | DataSize::U128 | DataSize::U256 => {
                 return Err(ArmError::UnsupportedTransferWidth(
                     data_size.to_byte_count() * 8,
-                ))
+                ));
             }
             _ => {}
         }

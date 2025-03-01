@@ -4,16 +4,17 @@ use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use colored::Colorize;
 use probe_rs::{
-    flashing::{
-        erase_all, erase_sectors, DownloadOptions, FlashLoader, FlashProgress, ProgressEvent,
-    },
     MemoryInterface, Permissions, Session,
+    flashing::{
+        DownloadOptions, FlashLoader, FlashProgress, ProgressEvent, ProgressOperation, erase_all,
+        erase_sectors,
+    },
 };
 use probe_rs_target::RawFlashAlgorithm;
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 use crate::commands::elf::cmd_elf;
 
@@ -88,24 +89,24 @@ pub fn cmd_test(
     // Register callback to update the progress.
     let t = Rc::new(RefCell::new(Instant::now()));
     let progress = FlashProgress::new(move |event| match event {
-        ProgressEvent::StartedProgramming { .. } => {
+        ProgressEvent::Started(ProgressOperation::Program) => {
             let mut t = t.borrow_mut();
             *t = Instant::now();
         }
-        ProgressEvent::StartedErasing => {
+        ProgressEvent::Started(ProgressOperation::Erase) => {
             let mut t = t.borrow_mut();
             *t = Instant::now();
         }
-        ProgressEvent::FailedErasing => {
+        ProgressEvent::Failed(ProgressOperation::Erase) => {
             println!("Failed erasing in {:?}", t.borrow().elapsed());
         }
-        ProgressEvent::FinishedErasing => {
+        ProgressEvent::Finished(ProgressOperation::Erase) => {
             println!("Finished erasing in {:?}", t.borrow().elapsed());
         }
-        ProgressEvent::FailedProgramming => {
+        ProgressEvent::Failed(ProgressOperation::Program) => {
             println!("Failed programming in {:?}", t.borrow().elapsed());
         }
-        ProgressEvent::FinishedProgramming => {
+        ProgressEvent::Finished(ProgressOperation::Program) => {
             println!("Finished programming in {:?}", t.borrow().elapsed());
         }
         ProgressEvent::DiagnosticMessage { message } => {

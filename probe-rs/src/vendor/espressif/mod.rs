@@ -1,24 +1,24 @@
 //! Espressif vendor support.
 
 use probe_rs_target::{
-    chip_detection::{ChipDetectionMethod, EspressifDetection},
     Chip,
+    chip_detection::{ChipDetectionMethod, EspressifDetection},
 };
 
 use crate::{
+    Error, MemoryInterface,
     architecture::{
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
-    config::{registry, DebugSequence},
+    config::{DebugSequence, registry},
     vendor::{
+        Vendor,
         espressif::sequences::{
             esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6::ESP32C6, esp32h2::ESP32H2,
             esp32s2::ESP32S2, esp32s3::ESP32S3,
         },
-        Vendor,
     },
-    Error, MemoryInterface,
 };
 
 pub mod sequences;

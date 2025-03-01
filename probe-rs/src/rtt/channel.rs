@@ -3,6 +3,7 @@ use crate::{Core, MemoryInterface};
 use probe_rs_target::RegionMergeIterator;
 use std::cmp::min;
 use std::ffi::CStr;
+use std::num::NonZeroU64;
 use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 /// Trait for channel information shared between up and down channels.
@@ -82,10 +83,10 @@ impl RttChannelBuffer {
         }
     }
 
-    pub fn standard_name_pointer(&self) -> u64 {
+    pub fn standard_name_pointer(&self) -> Option<NonZeroU64> {
         match self {
-            RttChannelBuffer::Buffer32(x) => u64::from(x.standard_name_pointer),
-            RttChannelBuffer::Buffer64(x) => x.standard_name_pointer,
+            RttChannelBuffer::Buffer32(x) => NonZeroU64::new(u64::from(x.standard_name_pointer)),
+            RttChannelBuffer::Buffer64(x) => NonZeroU64::new(x.standard_name_pointer),
         }
     }
 
@@ -212,11 +213,11 @@ impl Channel {
             return Ok(None);
         };
 
-        let this = Channel {
+        let mut this = Channel {
             number,
             core_id: core.id(),
             metadata_ptr,
-            name: read_c_string(core, info.standard_name_pointer())?,
+            name: None,
             info,
             last_read_ptr: None,
         };
@@ -225,6 +226,12 @@ impl Channel {
         // We call read_pointers to validate that the channel pointers are in an expected range.
         // This should at least catch most cases where the control block is partially initialized.
         this.read_pointers(core, "")?;
+        // Read channel name just after the pointer was validated to be within an expected range.
+        this.name = if let Some(ptr) = this.info.standard_name_pointer() {
+            read_c_string(core, ptr)?
+        } else {
+            None
+        };
         this.mode(core)?;
 
         Ok(Some(this))
@@ -281,7 +288,7 @@ impl Channel {
 
             if buffer_offset_larger_than_size_of_buffer {
                 return Err(Error::ControlBlockCorrupted(format!(
-                    "{which} pointer is {value} while buffer size is {} for {channel_kind}channel {} ({})",
+                    "{which} pointer is {value:#010x} while buffer size is {:#010x} for {channel_kind}channel {} ({})",
                     self.info.size_of_buffer(),
                     self.number,
                     self.name().unwrap_or("no name"),
@@ -309,19 +316,6 @@ impl Channel {
                     "the {which} buffer doesn't fully fit in any known (consecutive) ram region according to its own pointers: (start_pointer: {:#X}, size: {})",
                     self.info.buffer_start_pointer(),
                     self.info.size_of_buffer(),
-                )));
-            }
-
-            let name_in_memory_region = core
-                .target()
-                .memory_map
-                .iter()
-                .any(|mr| mr.contains(self.info.standard_name_pointer()));
-
-            if !name_in_memory_region {
-                return Err(Error::ControlBlockCorrupted(format!(
-                    "the {which} buffer name pointer doesn't point to valid memory: (pointer: {:#X})",
-                    self.info.standard_name_pointer(),
                 )));
             }
 
@@ -546,21 +540,17 @@ impl RttChannel for DownChannel {
 }
 
 /// Reads a null-terminated string from target memory. Lossy UTF-8 decoding is used.
-fn read_c_string(core: &mut Core, ptr: u64) -> Result<Option<String>, Error> {
-    // Find out which memory range contains the pointer
-    if ptr == 0 {
-        // If the pointer is null, return None.
-        return Ok(None);
-    }
-
+fn read_c_string(core: &mut Core, ptr: NonZeroU64) -> Result<Option<String>, Error> {
+    let ptr = ptr.get();
     let Some(range) = core
         .memory_regions()
         .filter(|r| r.is_ram() || r.is_nvm())
         .find_map(|r| r.contains(ptr).then_some(r.address_range()))
     else {
-        // If the pointer is not within any valid range, return None.
-        tracing::warn!("RTT channel name points to unrecognized memory. Bad target description?");
-        return Ok(None);
+        return Err(Error::ControlBlockCorrupted(format!(
+            "The channel name pointer is not in a valid memory region: {:#X}",
+            ptr
+        )));
     };
 
     // Read up to 128 bytes not going past the end of the region

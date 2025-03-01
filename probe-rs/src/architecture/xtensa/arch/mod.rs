@@ -1,4 +1,4 @@
-use crate::{architecture::xtensa::communication_interface::XtensaError, RegisterId};
+use crate::{RegisterId, architecture::xtensa::communication_interface::XtensaError};
 
 pub mod instruction;
 

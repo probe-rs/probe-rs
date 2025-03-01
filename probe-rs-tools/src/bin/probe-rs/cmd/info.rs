@@ -1,33 +1,26 @@
-use std::fmt::Write;
+use std::fmt::Display;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use jep106::JEP106Code;
 use probe_rs::{
-    architecture::{
-        arm::{
-            ap::{ApClass, ApRegister, IDR},
-            component::Scs,
-            dp::{
-                Ctrl, DebugPortId, DebugPortVersion, DpAddress, DpRegister, MinDpSupport, DLPIDR,
-                DPIDR, TARGETID,
-            },
-            memory::{
-                romtable::{PeripheralID, RomTable},
-                ArmMemoryInterface, Component, ComponentId, CoresightComponent, PeripheralType,
-            },
-            sequences::DefaultArmSequence,
-            ApAddress, ApV2Address, ArmProbeInterface, FullyQualifiedApAddress,
-        },
-        riscv::communication_interface::RiscvCommunicationInterface,
-        xtensa::communication_interface::{
-            XtensaCommunicationInterface, XtensaDebugInterfaceState,
-        },
+    architecture::arm::{
+        ap::IDR,
+        dp::{DLPIDR, TARGETID},
     },
-    probe::{list::Lister, Probe, WireProtocol},
+    probe::WireProtocol,
 };
 use termtree::Tree;
 
-use crate::util::common_options::ProbeOptions;
+use crate::{
+    rpc::{
+        client::RpcClient,
+        functions::info::{
+            ApInfo, ComponentTreeNode, DebugPortInfo, DebugPortInfoNode, DebugPortVersion,
+            InfoEvent, MinDpSupport, TargetInfoRequest,
+        },
+    },
+    util::{cli::select_probe, common_options::ProbeOptions},
+};
 
 const JEP_ARM: JEP106Code = JEP106Code::new(4, 0x3b);
 
@@ -55,581 +48,252 @@ fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let probe_options = self.common.load()?;
-        let mut probe = probe_options.attach_probe(lister)?;
-
-        let protocols = if let Some(protocol) = probe_options.protocol() {
+    pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
+        let protocols = if let Some(protocol) = self.common.protocol {
             vec![protocol]
         } else {
             vec![WireProtocol::Jtag, WireProtocol::Swd]
         };
 
+        let probe = select_probe(&client, self.common.probe.map(Into::into)).await?;
+
         for protocol in protocols {
-            println!("Probing target via {protocol}");
+            let msg = format!("Probing target via {protocol}");
+            println!("{msg}");
+            println!("{}", "-".repeat(msg.len()));
             println!();
 
-            let (new_probe, result) = try_show_info(
-                probe,
-                protocol,
-                probe_options.connect_under_reset(),
-                self.target_sel,
-            );
+            let mut successes = vec![];
+            let mut errors = vec![];
 
-            probe = new_probe;
+            let req = TargetInfoRequest {
+                target_sel: self.target_sel,
+                protocol: protocol.into(),
 
-            probe.detach()?;
+                probe: probe.clone(),
+                speed: self.common.speed,
+                connect_under_reset: self.common.connect_under_reset,
+                dry_run: self.common.dry_run,
+            };
 
-            if let Err(e) = result {
-                println!("Error identifying target using protocol {protocol}: {e}");
+            let result = client
+                .info(req, |message| {
+                    let is_success =
+                        matches!(message, InfoEvent::Idcode { .. } | InfoEvent::ArmDp(_));
+
+                    if matches!(message, InfoEvent::Message(_)) {
+                        successes.push(message.clone());
+                        errors.push(message.clone());
+                    }
+
+                    if is_success {
+                        successes.push(message);
+                    } else {
+                        errors.push(message);
+                    }
+                })
+                .await;
+
+            if let Err(error) = result {
+                println!("Error while probing target: {}", error);
             }
 
-            println!();
+            if successes.is_empty() {
+                for message in errors {
+                    println!("{}", message);
+                }
+            } else {
+                for message in successes {
+                    println!("{}", message);
+                }
+            }
         }
 
         Ok(())
     }
 }
 
-const ALTERNATE_DP_ADRESSES: [DpAddress; 2] = [
-    DpAddress::Multidrop(0x01002927),
-    DpAddress::Multidrop(0x11002927),
-];
+impl std::fmt::Display for InfoEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InfoEvent::Message(message) => writeln!(f, "{message}"),
+            InfoEvent::ProtocolNotSupportedByArch {
+                architecture,
+                protocol,
+            } => {
+                writeln!(
+                    f,
+                    "Debugging {architecture} targets over {protocol} is not supported. {architecture} specific information cannot be printed."
+                )
+            }
+            InfoEvent::ProbeInterfaceMissing {
+                interface,
+                architecture,
+            } => {
+                writeln!(
+                    f,
+                    "No {interface} interface was found on the connected probe. {architecture} specific information cannot be printed."
+                )
+            }
+            InfoEvent::Error {
+                architecture,
+                error,
+            } => {
+                writeln!(f, "Error showing {architecture} chip information: {error}")
+            }
+            InfoEvent::ArmError { dp_addr, error } => {
+                writeln!(
+                    f,
+                    "Error showing ARM chip information for Debug Port {dp_addr:?}: {error}",
+                )
+            }
+            InfoEvent::Idcode {
+                architecture,
+                idcode: Some(idcode),
+            } => {
+                let version = (idcode >> 28) & 0xf;
+                let part_number = (idcode >> 12) & 0xffff;
+                let manufacturer_id = (idcode >> 1) & 0x7ff;
 
-fn try_show_info(
-    mut probe: Probe,
-    protocol: WireProtocol,
-    connect_under_reset: bool,
-    target_sel: Option<u32>,
-) -> (Probe, Result<()>) {
-    if let Err(e) = probe.select_protocol(protocol) {
-        return (probe, Err(e.into()));
-    }
+                let jep_cc = (manufacturer_id >> 7) & 0xf;
+                let jep_id = manufacturer_id & 0x7f;
 
-    let attach_result = if connect_under_reset {
-        probe.attach_to_unspecified_under_reset()
-    } else {
-        probe.attach_to_unspecified()
-    };
+                let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
 
-    if let Err(e) = attach_result {
-        return (probe, Err(e.into()));
-    }
-
-    if probe.has_arm_interface() {
-        let dp_addr = if let Some(target_sel) = target_sel {
-            DpAddress::Multidrop(target_sel)
-        } else {
-            DpAddress::Default
-        };
-
-        let print_err = |dp_addr, e| {
-            println!(
-                "Error showing ARM chip information for Debug Port {:?}: {:?}",
-                dp_addr, e
-            );
-            println!();
-        };
-        match try_show_arm_dp_info(probe, dp_addr) {
-            (probe_moved, Ok(_)) => probe = probe_moved,
-            (probe_moved, Err(e)) => {
-                probe = probe_moved;
-                print_err(dp_addr, e);
-
-                if dp_addr == DpAddress::Default {
-                    println!("Trying alternate multi-drop debug ports");
-
-                    for address in ALTERNATE_DP_ADRESSES {
-                        match try_show_arm_dp_info(probe, address) {
-                            (probe_moved, Ok(dp_version)) => {
-                                probe = probe_moved;
-                                if dp_version < DebugPortVersion::DPv2 {
-                                    println!("Debug port version {} does not support SWD multidrop. Stopping here.", dp_version);
-                                    break;
-                                }
-                            }
-                            (probe_moved, Err(e)) => {
-                                probe = probe_moved;
-                                print_err(address, e);
-                            }
-                        }
-                    }
-                }
+                writeln!(f, "{architecture} Chip:")?;
+                writeln!(f, "  IDCODE: {idcode:010x}")?;
+                writeln!(f, "    Version:      {version}")?;
+                writeln!(f, "    Part:         {part_number}")?;
+                writeln!(f, "    Manufacturer: {manufacturer_id} ({jep_id})")
+            }
+            InfoEvent::Idcode {
+                architecture,
+                idcode: None,
+            } => {
+                writeln!(f, "No IDCODE info for this {architecture} chip.")
+            }
+            InfoEvent::ArmDp(dp_info) => {
+                writeln!(f, "{dp_info}")
             }
         }
-    } else {
-        println!("No DAP interface was found on the connected probe. ARM-specific information cannot be printed.");
     }
+}
 
-    // This check is a bit weird, but `try_into_riscv_interface` will try to switch the protocol to JTAG.
-    // If the current protocol we want to use is SWD, we have avoid this.
-    if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
-        tracing::debug!("Trying to show RISC-V chip information");
-        match probe.try_get_riscv_interface_builder() {
-            Ok(factory) => {
-                let mut state = factory.create_state();
-                match factory.attach(&mut state) {
-                    Ok(mut interface) => {
-                        if let Err(e) = show_riscv_info(&mut interface) {
-                            println!("Error showing RISC-V chip information: {:?}", anyhow!(e));
+impl From<&ComponentTreeNode> for Tree<String> {
+    fn from(node: &ComponentTreeNode) -> Self {
+        let mut tree = Tree::new(node.node.clone());
+
+        for child in node.children.iter() {
+            tree.push(child);
+        }
+
+        tree
+    }
+}
+
+impl Display for DebugPortInfoNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fn format_jep(f: &mut std::fmt::Formatter<'_>, jep: JEP106Code) -> std::fmt::Result {
+            write!(f, ", Designer: {}", jep.get().unwrap_or("<unknown>"))
+        }
+
+        write!(
+            f,
+            "Debug Port: {}",
+            match self.dp_info.version {
+                DebugPortVersion::DPv0 => "DPv0".to_string(),
+                DebugPortVersion::DPv1 => "DPv1".to_string(),
+                DebugPortVersion::DPv2 => "DPv2".to_string(),
+                DebugPortVersion::DPv3 => "DPv3".to_string(),
+                DebugPortVersion::Unsupported(version) =>
+                    format!("<unsupported Debugport Version {version}>"),
+            }
+        )?;
+
+        if self.dp_info.min_dp_support == MinDpSupport::Implemented {
+            write!(f, ", MINDP")?;
+        }
+
+        if self.dp_info.version == DebugPortVersion::DPv2 {
+            let target_id = TARGETID(self.targetid);
+            let dlpidr = DLPIDR(self.dlpidr);
+
+            let part_no = target_id.tpartno();
+            let revision = target_id.trevision();
+
+            let designer_id = target_id.tdesigner();
+
+            let cc = (designer_id >> 7) as u8;
+            let id = (designer_id & 0x7f) as u8;
+
+            let designer = jep106::JEP106Code::new(cc, id);
+
+            format_jep(f, designer)?;
+            write!(f, ", Part: {part_no:#x}")?;
+            write!(f, ", Revision: {revision:#x}")?;
+
+            let instance = dlpidr.tinstance();
+
+            write!(f, ", Instance: {:#04x}", instance)?;
+        } else {
+            format_jep(f, self.dp_info.designer.into())?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Display for DebugPortInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut tree = Tree::new(self.dp_info.to_string());
+        if self.aps.is_empty() {
+            tree.push(Tree::new("No access ports found on this chip.".to_string()));
+        } else {
+            for ap in &self.aps {
+                match ap {
+                    ApInfo::MemoryAp {
+                        ap_addr,
+                        component_tree,
+                    } => {
+                        let mut ap_root = Tree::new(format!("{} MemoryAP", ap_addr.ap));
+
+                        ap_root.push(component_tree);
+
+                        tree.push(ap_root);
+                    }
+                    ApInfo::ApV2Root { component_tree } => {
+                        for child in component_tree.children.iter() {
+                            tree.push(child);
                         }
                     }
-                    Err(e) => println!(
-                        "Error while attaching to RISC-V interface: {:?}",
-                        anyhow!(e)
-                    ),
+                    ApInfo::Unknown { ap_addr, idr } => {
+                        let idr = IDR::try_from(*idr).unwrap();
+                        let jep = idr.DESIGNER;
+
+                        let ap_type = if idr.DESIGNER == JEP_ARM {
+                            format!("{:?}", idr.TYPE)
+                        } else {
+                            format!("{:#x}", idr.TYPE as u8)
+                        };
+
+                        let ap_node = Tree::new(format!(
+                            "{} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
+                            ap_addr.ap,
+                            jep.get().unwrap_or("<unknown>"),
+                            idr.CLASS,
+                            ap_type,
+                            idr.VARIANT,
+                            idr.REVISION
+                        ));
+
+                        tree.push(ap_node);
+                    }
                 };
             }
-            Err(e) => println!("Error while reading RISC-V info: {:?}", anyhow!(e)),
         }
-    } else if protocol == WireProtocol::Swd {
-        println!(
-            "Debugging RISC-V targets over SWD is not supported. For these targets, JTAG is the only supported protocol. RISC-V specific information cannot be printed."
-        );
-    } else {
-        println!(
-            "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
-        );
+
+        write!(f, "{tree}")
     }
-
-    // This check is a bit weird, but `try_into_xtensa_interface` will try to switch the protocol to JTAG.
-    // If the current protocol we want to use is SWD, we have avoid this.
-    if probe.has_xtensa_interface() && protocol == WireProtocol::Jtag {
-        tracing::debug!("Trying to show Xtensa chip information");
-        let mut state = XtensaDebugInterfaceState::default();
-        match probe.try_get_xtensa_interface(&mut state) {
-            Ok(mut interface) => {
-                if let Err(e) = show_xtensa_info(&mut interface) {
-                    println!("Error showing Xtensa chip information: {:?}", anyhow!(e));
-                }
-            }
-            Err(e) => {
-                println!("Error showing Xtensa chip information: {:?}", anyhow!(e));
-            }
-        }
-    } else if protocol == WireProtocol::Swd {
-        println!(
-            "Debugging Xtensa targets over SWD is not supported. For these targets, JTAG is the only supported protocol. Xtensa specific information cannot be printed."
-        );
-    } else {
-        println!(
-            "Unable to debug Xtensa targets using the current probe. Xtensa specific information cannot be printed."
-        );
-    }
-
-    (probe, Ok(()))
-}
-
-fn try_show_arm_dp_info(probe: Probe, dp_address: DpAddress) -> (Probe, Result<DebugPortVersion>) {
-    tracing::debug!("Trying to show ARM chip information");
-    match probe
-        .try_into_arm_interface()
-        .map_err(|(iface, e)| (iface, anyhow!(e)))
-        .and_then(|interface| {
-            interface
-                .initialize(DefaultArmSequence::create(), dp_address)
-                .map_err(|(interface, e)| (interface.close(), anyhow!(e)))
-        }) {
-        Ok(mut interface) => {
-            let res = show_arm_info(&mut *interface, dp_address);
-            (interface.close(), res)
-        }
-        Err((probe, e)) => (probe, Err(e)),
-    }
-}
-
-/// Try to show information about the ARM chip, connected to a DP at the given address.
-///
-/// Returns the version of the DP.
-fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result<DebugPortVersion> {
-    let dp_info = interface.read_raw_dp_register(dp, DPIDR::ADDRESS)?;
-    let dp_info = DebugPortId::from(DPIDR(dp_info));
-
-    let mut dp_node = String::new();
-
-    write!(dp_node, "Debug Port: {}", dp_info.version)?;
-
-    if dp_info.min_dp_support == MinDpSupport::Implemented {
-        write!(dp_node, ", MINDP")?;
-    }
-
-    if dp_info.version == DebugPortVersion::DPv2 {
-        let target_id = interface.read_raw_dp_register(dp, TARGETID::ADDRESS)?;
-
-        let target_id = TARGETID(target_id);
-
-        let part_no = target_id.tpartno();
-        let revision = target_id.trevision();
-
-        let designer_id = target_id.tdesigner();
-
-        let cc = (designer_id >> 7) as u8;
-        let id = (designer_id & 0x7f) as u8;
-
-        let designer = jep106::JEP106Code::new(cc, id);
-
-        write!(
-            dp_node,
-            ", Designer: {}",
-            designer.get().unwrap_or("<unknown>")
-        )?;
-        write!(dp_node, ", Part: {part_no:#x}")?;
-        write!(dp_node, ", Revision: {revision:#x}")?;
-
-        // Read Instance ID
-        let dlpidr = DLPIDR(interface.read_raw_dp_register(dp, DLPIDR::ADDRESS)?);
-
-        let instance = dlpidr.tinstance();
-
-        write!(dp_node, ", Instance: {:#04x}", instance)?;
-
-        // Read from the CTRL/STAT register, to ensure that the dpbanksel field is set to zero.
-        // This helps with error handling later, because it means the CTRL/AP register can be
-        // read in case of an error.
-        let _ = interface.read_raw_dp_register(dp, Ctrl::ADDRESS)?;
-    } else {
-        write!(
-            dp_node,
-            ", DP Designer: {}",
-            dp_info.designer.get().unwrap_or("<unknown>")
-        )?;
-    }
-
-    let mut tree = Tree::new(dp_node);
-
-    println!("ARM Chip with debug port {:x?}:", dp);
-    if dp_info.version != DebugPortVersion::DPv3 {
-        let access_ports = interface.access_ports(dp)?;
-        if access_ports.is_empty() {
-            println!("No access ports found on this chip.");
-        } else {
-            for ap_address in access_ports {
-                match ap_address.ap() {
-                    ApAddress::V1(_) => {
-                        let idr: IDR = interface
-                            .read_raw_ap_register(&ap_address, IDR::ADDRESS)?
-                            .try_into()?;
-
-                        if idr.CLASS == ApClass::MemAp {
-                            let mut ap_nodes = Tree::new(format!(
-                                "{} MemoryAP ({:?})",
-                                ap_address.ap_v1()?,
-                                idr.TYPE
-                            ));
-                            if let Err(e) = handle_memory_ap(interface, &ap_address, &mut ap_nodes)
-                            {
-                                ap_nodes.push(format!("Error during access: {e}"));
-                            };
-                            ap_nodes.leaves.sort_by(|a, b| a.root.cmp(&b.root));
-                            tree.push(ap_nodes);
-                        } else {
-                            let jep = idr.DESIGNER;
-
-                            let ap_type = if idr.DESIGNER == JEP_ARM {
-                                format!("{:?}", idr.TYPE)
-                            } else {
-                                format!("{:#x}", idr.TYPE as u8)
-                            };
-
-                            tree.push(format!(
-                                "{} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
-                                ap_address.ap_v1()?,
-                                jep.get().unwrap_or("<unknown>"),
-                                idr.CLASS,
-                                ap_type,
-                                idr.VARIANT,
-                                idr.REVISION
-                                ));
-                        }
-                    }
-                    ApAddress::V2(_) => {
-                        unreachable!("Ap V1 and V2 cannot be mixed.")
-                    }
-                }
-            }
-        }
-    } else {
-        let fqa = FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::root());
-        let root_rom_table = {
-            let mut root_memory = interface.memory_interface(&fqa)?;
-            let base_address = root_memory.base_address()?;
-            Component::try_parse(&mut *root_memory, base_address)?
-        };
-        coresight_component_tree(interface, root_rom_table, &fqa, &mut tree)?;
-        tree.leaves.sort_by(|a, b| a.root.cmp(&b.root));
-    }
-
-    println!("{tree}");
-    println!();
-
-    Ok(dp_info.version)
-}
-
-fn handle_memory_ap(
-    interface: &mut dyn ArmProbeInterface,
-    access_port: &FullyQualifiedApAddress,
-    parent: &mut Tree<String>,
-) -> Result<(), anyhow::Error> {
-    let component = {
-        let mut memory = interface.memory_interface(access_port)?;
-
-        // Check if the AP is accessible
-        let csw = memory.generic_status()?;
-        if !csw.SDeviceEn {
-            *parent = Tree::new("Memory AP is not accessible, DeviceEn bit not set".to_string());
-            return Ok(());
-        }
-
-        let base_address = memory.base_address()?;
-        Component::try_parse(&mut *memory, base_address)?
-    };
-    coresight_component_tree(interface, component, access_port, parent)
-}
-
-fn coresight_component_tree(
-    interface: &mut dyn ArmProbeInterface,
-    component: Component,
-    access_port: &FullyQualifiedApAddress,
-    parent: &mut Tree<String>,
-) -> Result<()> {
-    match &component {
-        Component::GenericVerificationComponent(id) => {
-            parent.push(Tree::new(format!(
-                "{:#06x} Generic",
-                id.component_address()
-            )));
-        }
-        Component::Class1RomTable(id, table) => {
-            let peripheral_id = id.peripheral_id();
-
-            let root = if let Some(part) = peripheral_id.determine_part() {
-                format!("{} (ROM Table, Class 1)", part.name())
-            } else {
-                match peripheral_id.designer() {
-                    Some(designer) => format!("ROM Table (Class 1), Designer: {designer}"),
-                    None => "ROM Table (Class 1)".to_string(),
-                }
-            };
-
-            let mut tree = Tree::new(format!("{:#06x} {}", id.component_address(), root));
-            process_vendor_rom_tables(interface, id, table, access_port, &mut tree)?;
-            parent.push(tree);
-
-            for entry in table.entries() {
-                let component = entry.component().clone();
-
-                coresight_component_tree(interface, component, access_port, parent)?;
-            }
-        }
-        Component::CoresightComponent(id) => {
-            let peripheral_id = id.peripheral_id();
-            let part_info = peripheral_id.determine_part();
-
-            let component_description = if let Some(part_info) = part_info {
-                format!("{: <15} (Coresight Component)", part_info.name())
-            } else {
-                format!(
-                    "Coresight Component, Part: {:#06x}, Devtype: {:#04x}, Archid: {:#06x}, Designer: {}",
-                    peripheral_id.part(),
-                    peripheral_id.dev_type(),
-                    peripheral_id.arch_id(),
-                    peripheral_id.designer()
-                        .unwrap_or("<unknown>"),
-                )
-            };
-
-            let mut tree = Tree::new(format!(
-                "{:#06x} {}",
-                id.component_address(),
-                component_description
-            ));
-            let is_rom = part_info
-                .map(|p| p.peripheral_type() == PeripheralType::Rom)
-                .unwrap_or(false);
-            process_component_entry(
-                if is_rom { &mut *parent } else { &mut tree },
-                interface,
-                peripheral_id,
-                &component,
-                access_port,
-            )?;
-            tree.leaves.sort_by(|a, b| a.root.cmp(&b.root));
-            parent.push(tree);
-        }
-
-        Component::PeripheralTestBlock(id) => {
-            parent.push(Tree::new(format!(
-                "{:#06x} Peripheral test block",
-                id.component_address()
-            )));
-        }
-        Component::GenericIPComponent(id) => {
-            let peripheral_id = id.peripheral_id();
-
-            let desc = if let Some(part_desc) = peripheral_id.determine_part() {
-                format!("{: <15} (Generic IP component)", part_desc.name())
-            } else {
-                "Generic IP component".to_string()
-            };
-
-            let mut tree = Tree::new(format!("{:#06x} {}", id.component_address(), desc));
-            process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)?;
-            parent.push(tree);
-        }
-
-        Component::CoreLinkOrPrimeCellOrSystemComponent(id) => {
-            let desc = "Core Link / Prime Cell / System component";
-            let desc = if let Some(part_desc) = id.peripheral_id().determine_part() {
-                format!("{: <15} ({})", part_desc.name(), desc)
-            } else {
-                desc.to_string()
-            };
-
-            parent.push(Tree::new(format!(
-                "{:#06x} {}",
-                id.component_address(),
-                desc
-            )));
-        }
-    };
-
-    Ok(())
-}
-
-/// Processes information from/around manufacturer-specific ROM tables and adds them to the tree.
-///
-/// Some manufacturer-specific ROM tables contain more than just entries. This function tries
-/// to make sense of these tables.
-fn process_vendor_rom_tables(
-    interface: &mut dyn ArmProbeInterface,
-    id: &ComponentId,
-    _table: &RomTable,
-    access_port: &FullyQualifiedApAddress,
-    tree: &mut Tree<String>,
-) -> Result<()> {
-    let peripheral_id = id.peripheral_id();
-    let Some(part_info) = peripheral_id.determine_part() else {
-        return Ok(());
-    };
-
-    if part_info.peripheral_type() == PeripheralType::Custom && part_info.name() == "Atmel DSU" {
-        use probe_rs::vendor::microchip::sequences::atsam::DsuDid;
-
-        // Read and parse the DID register
-        let did = DsuDid(
-            interface
-                .memory_interface(access_port)?
-                .read_word_32(DsuDid::ADDRESS)?,
-        );
-
-        tree.push(format!("Atmel device (DID = {:#010x})", did.0));
-    }
-
-    Ok(())
-}
-
-/// Processes ROM table entries and adds them to the tree.
-fn process_component_entry(
-    parent: &mut Tree<String>,
-    interface: &mut dyn ArmProbeInterface,
-    peripheral_id: &PeripheralID,
-    component: &Component,
-    access_port: &FullyQualifiedApAddress,
-) -> Result<()> {
-    let Some(part) = peripheral_id.determine_part() else {
-        return Ok(());
-    };
-
-    match part.peripheral_type() {
-        PeripheralType::Scs => {
-            let cc = &CoresightComponent::new(component.clone(), access_port.clone());
-            let scs = &mut Scs::new(interface, cc);
-            let cpu_tree = cpu_info_tree(scs)?;
-
-            parent.push(cpu_tree);
-        }
-        PeripheralType::MemAp => {
-            let dp = access_port.dp();
-            let ApAddress::V2(addr) = access_port.ap() else {
-                unreachable!("This should only happen on ap v2 addresses.");
-            };
-            if addr.0.is_some() {
-                return Err(anyhow::anyhow!("Nested memory APs are not yet supported."));
-            }
-            let addr = FullyQualifiedApAddress::v2_with_dp(
-                dp,
-                ApV2Address::new(component.id().component_address()),
-            );
-            handle_memory_ap(interface, &addr, parent)?;
-        }
-        PeripheralType::Rom => {
-            let id = component.id();
-            let mut memory = interface.memory_interface(access_port)?;
-            let rom_table = RomTable::try_parse(
-                memory.as_mut() as &mut dyn ArmMemoryInterface,
-                id.component_address(),
-            )?;
-            drop(memory);
-
-            process_vendor_rom_tables(interface, id, &rom_table, access_port, parent)?;
-            for entry in rom_table.entries() {
-                let component = entry.component().clone();
-
-                coresight_component_tree(interface, component, access_port, parent)?;
-            }
-        }
-        _ => {}
-    }
-
-    Ok(())
-}
-
-fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
-    let mut tree = Tree::new("CPUID".into());
-
-    let cpuid = scs.cpuid()?;
-
-    tree.push(format!("IMPLEMENTER: {}", cpuid.implementer_name()));
-    tree.push(format!("VARIANT: {}", cpuid.variant()));
-    tree.push(format!("PARTNO: {}", cpuid.part_name()));
-    tree.push(format!("REVISION: {}", cpuid.revision()));
-
-    Ok(tree)
-}
-
-fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
-    if let Some(idcode) = interface.read_idcode()? {
-        print_idcode_info("RISC-V", idcode);
-    } else {
-        println!("No IDCODE info for this RISC-V chip.")
-    }
-
-    Ok(())
-}
-
-fn show_xtensa_info(interface: &mut XtensaCommunicationInterface) -> Result<()> {
-    let idcode = interface.read_idcode()?;
-
-    print_idcode_info("Xtensa", idcode);
-
-    Ok(())
-}
-
-fn print_idcode_info(architecture: &str, idcode: u32) {
-    let version = (idcode >> 28) & 0xf;
-    let part_number = (idcode >> 12) & 0xffff;
-    let manufacturer_id = (idcode >> 1) & 0x7ff;
-
-    let jep_cc = (manufacturer_id >> 7) & 0xf;
-    let jep_id = manufacturer_id & 0x7f;
-
-    let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
-
-    println!("{architecture} Chip:");
-    println!("  IDCODE: {idcode:010x}");
-    println!("    Version:      {version}");
-    println!("    Part:         {part_number}");
-    println!("    Manufacturer: {manufacturer_id} ({jep_id})");
 }
 
 #[cfg(test)]

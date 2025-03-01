@@ -14,6 +14,17 @@ description = "A collection of on chip debugging tools to communicate with micro
 
 default-run = "probe-rs"
 
+[features]
+default = []
+# Include server/client functionality
+remote = [
+    "dep:tokio-tungstenite",
+    "dep:axum",
+    "dep:axum-extra",
+    "dep:rustls",
+    "dep:tempfile",
+]
+
 [dependencies]
 anyhow = { workspace = true }
 base64 = "0.22"
@@ -32,12 +43,12 @@ itertools = "0.14"
 # CLI-only
 addr2line = "0.24"
 bytesize = "1"
-capstone = "0.12"
+capstone = "0.13"
 cargo_metadata = "0.19"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "3"
 defmt-decoder = "0.4"
-directories = "5"
+directories = "6"
 dunce = "1"
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
 goblin = { version = "0.9", default-features = false, features = [
@@ -61,7 +72,7 @@ schemafy = "0.6"
 serde_json = "1.0.116"
 signal-hook = { version = "0.3", default-features = false }
 # Version 0.14.6 fails to compile
-svd-parser = { version = "=0.14.7", features = ["expand"] }
+svd-parser = { version = "=0.14.8", features = ["expand"] }
 termtree = "0.5"
 textwrap = { version = "0.16", default-features = false, features = [
     "unicode-linebreak",
@@ -79,9 +90,7 @@ ratatui = { version = "0.29.0", default-features = false, features = [
 ] }
 ansi-parser = "0.9.0"
 
-probe-rs = { version = "0.26.0", path = "../probe-rs", features = [
-    "gdb-server",
-] }
+probe-rs = { version = "0.27.0", path = "../probe-rs" }
 parking_lot = "0.12.2"
 cargo-config2 = "0.1.26"
 clap_complete = "4.5.2"
@@ -91,7 +100,26 @@ zip = { version = "2.0.0", default-features = false, features = [
     "time",
 ] }
 urlencoding = "2"
-probe-rs-debug = { version = "0.26.0", path = "../probe-rs-debug" }
+probe-rs-debug = { version = "0.27.0", path = "../probe-rs-debug" }
+probe-rs-target = { workspace = true }
+svg = "0.18"
+
+# Server-only
+tokio = { version = "1.0", features = ["full"] }
+tokio-util = "0.7"
+futures-util = { version = "0.3" }
+rustls = { version = "0.23", default-features = false, features = ["std", "ring"], optional = true }
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"], optional = true }
+axum = { version = "0.8", features = ["ws"], optional = true }
+axum-extra = { version = "0.10", features = ["typed-header"], optional = true }
+tempfile = { version = "3.0", optional = true }
+postcard = { version = "1.0", features = ["use-std"] }
+postcard-rpc = { version = "0.11.8", features = ["use-std"] }
+postcard-schema = { version = "0.2.0", features = ["use-std", "derive"] }
+sha2 = "0.10"
+
+# gdb server
+gdbstub = "0.7"
 
 [build-dependencies]
 git-version = "0.3"
