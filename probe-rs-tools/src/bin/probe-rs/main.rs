@@ -39,13 +39,19 @@ struct ServerUser {
     pub token: String,
 }
 
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[cfg(feature = "remote")]
+pub(crate) struct ServerConfig {
+    pub users: Vec<ServerUser>,
+}
+
 type ConfigPreset = HashMap<String, Value>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub(crate) struct Config {
     #[cfg(feature = "remote")]
-    pub server_users: Vec<ServerUser>,
+    pub server: ServerConfig,
 
     /// A named set of `--key=value` pairs.
     pub presets: HashMap<String, ConfigPreset>,

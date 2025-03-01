@@ -76,7 +76,7 @@ pub struct Cmd {}
 
 impl Cmd {
     pub async fn run(self, config: Config) -> anyhow::Result<()> {
-        if config.server_users.is_empty() {
+        if config.server.users.is_empty() {
             tracing::warn!("No users configured.");
         }
 
@@ -139,7 +139,7 @@ async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerSt
 
     // TODO: we might want to include the username to avoid hashing a bunch of times
     let mut authed_user = None;
-    for user in state.config.server_users.iter() {
+    for user in state.config.server.users.iter() {
         let mut hasher = Sha512::new();
         hasher.update(challenge.as_bytes());
         hasher.update(user.token.as_bytes());
