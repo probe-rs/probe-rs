@@ -114,7 +114,7 @@ impl Cli {
                 cmd::dap_server::run(cmd, &lister, utc_offset, log_path)
             }
             #[cfg(feature = "remote")]
-            Subcommand::Serve(cmd) => cmd.run(_config).await,
+            Subcommand::Serve(cmd) => cmd.run(_config.server).await,
             Subcommand::List(cmd) => cmd.run(client).await,
             Subcommand::Info(cmd) => cmd.run(client).await,
             Subcommand::Gdb(cmd) => cmd.run(&lister),

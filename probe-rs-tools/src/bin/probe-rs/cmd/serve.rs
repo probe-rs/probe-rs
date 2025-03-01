@@ -23,18 +23,27 @@ use tokio_util::bytes::Bytes;
 
 use std::{fmt::Write, sync::Arc};
 
-use crate::{
-    Config,
-    rpc::{
-        functions::RpcApp,
-        transport::websocket::{AxumWebsocketTx, WebsocketRx},
-    },
+use crate::rpc::{
+    functions::RpcApp,
+    transport::websocket::{AxumWebsocketTx, WebsocketRx},
 };
+
+fn default_port() -> u16 {
+    3000
+}
+
+fn default_address() -> String {
+    String::from("0.0.0.0")
+}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct ServerConfig {
     pub users: Vec<ServerUser>,
+    #[serde(default = "default_address")]
+    pub address: String,
+    #[serde(default = "default_port")]
+    pub port: u16,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,11 +54,11 @@ pub(crate) struct ServerUser {
 }
 
 struct ServerState {
-    config: Config,
+    config: ServerConfig,
 }
 
 impl ServerState {
-    fn new(config: Config) -> Self {
+    fn new(config: ServerConfig) -> Self {
         Self { config }
     }
 }
@@ -88,19 +97,21 @@ async fn server_info() -> Html<String> {
 pub struct Cmd {}
 
 impl Cmd {
-    pub async fn run(self, config: Config) -> anyhow::Result<()> {
-        if config.server.users.is_empty() {
+    pub async fn run(self, config: ServerConfig) -> anyhow::Result<()> {
+        if config.users.is_empty() {
             tracing::warn!("No users configured.");
         }
+
+        let listener = tokio::net::TcpListener::bind(format!("{}:{}", config.address, config.port))
+            .await
+            .unwrap();
 
         let state = Arc::new(ServerState::new(config));
 
         let app = Router::new()
             .route("/", get(server_info))
             .route("/worker", any(ws_handler))
-            .with_state(state.clone());
-
-        let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+            .with_state(state);
 
         tracing::info!("listening on {}", listener.local_addr().unwrap());
 
@@ -152,7 +163,7 @@ async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerSt
 
     // TODO: we might want to include the username to avoid hashing a bunch of times
     let mut authed_user = None;
-    for user in state.config.server.users.iter() {
+    for user in state.config.users.iter() {
         let mut hasher = Sha512::new();
         hasher.update(challenge.as_bytes());
         hasher.update(user.token.as_bytes());
