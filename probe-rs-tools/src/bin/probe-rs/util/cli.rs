@@ -182,10 +182,9 @@ pub async fn rtt_client(
             }],
         )
         .await?;
-    let client_handle = rtt_client.handle;
 
     Ok(CliRttClient {
-        handle: client_handle,
+        handle: rtt_client.handle,
         data_format: decoder,
     })
 }
@@ -487,6 +486,7 @@ fn print_monitor_event(
                 _ = client.data_format.process(channel, &bytes, &mut Printer);
             }
         }
+        MonitorEvent::RttDiscovered { .. } => {}
         MonitorEvent::SemihostingOutput(SemihostingOutput::StdOut(str)) => {
             print!("{}", str)
         }

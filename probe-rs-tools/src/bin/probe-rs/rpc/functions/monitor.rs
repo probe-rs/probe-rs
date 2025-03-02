@@ -26,7 +26,14 @@ pub enum MonitorMode {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub enum MonitorEvent {
-    RttOutput { channel: u32, bytes: Vec<u8> },
+    RttDiscovered {
+        up_channels: Vec<String>,
+        down_channels: Vec<String>,
+    },
+    RttOutput {
+        channel: u32,
+        bytes: Vec<u8>,
+    },
     SemihostingOutput(SemihostingOutput),
 }
 
@@ -151,6 +158,24 @@ impl RunLoopPoller for RttPoller<'_> {
     fn poll(&mut self, core: &mut Core<'_>) -> anyhow::Result<Duration> {
         if !self.rtt_client.is_attached() && matches!(self.rtt_client.try_attach(core), Ok(true)) {
             tracing::debug!("Attached to RTT");
+            let up_channels = self
+                .rtt_client
+                .up_channels()
+                .iter()
+                .map(|c| c.channel_name())
+                .collect::<Vec<_>>();
+            let down_channels = self
+                .rtt_client
+                .down_channels()
+                .iter()
+                .map(|c| c.channel_name())
+                .collect::<Vec<_>>();
+            self.sender
+                .blocking_send(MonitorEvent::RttDiscovered {
+                    up_channels,
+                    down_channels,
+                })
+                .with_context(|| "Failed to send RTT discovery")?;
         }
 
         let mut next_poll = Duration::from_millis(100);
