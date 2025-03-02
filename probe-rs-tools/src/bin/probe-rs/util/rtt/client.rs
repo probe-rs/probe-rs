@@ -1,4 +1,6 @@
-use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection};
+use crate::util::rtt::{
+    ChannelMode, RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection,
+};
 use probe_rs::{
     Core, MemoryInterface,
     rtt::{Error, Rtt, ScanRegion},
@@ -220,10 +222,17 @@ impl RttClient {
         let up_channels = target.active_up_channels.as_mut_slice();
 
         for (idx, channel) in up_channels.iter_mut().enumerate() {
-            if let Some(config) = self.config.channel_config(idx as u32) {
-                if let Some(mode) = config.mode {
-                    channel.change_mode(core, mode)?;
-                }
+            let channel_mode = if let Some(config) = self.config.channel_config(idx as u32) {
+                config.mode
+            } else if channel.channel_name() == "defmt" {
+                // defmt channel is always blocking
+                Some(ChannelMode::BlockIfFull)
+            } else {
+                None
+            };
+
+            if let Some(mode) = channel_mode {
+                channel.change_mode(core, mode)?;
             }
         }
 
