@@ -31,8 +31,8 @@ use crate::{
         flash::CliProgressBars,
         logging,
         rtt::{
-            self, DataFormat, DefmtProcessor, DefmtState, RttChannelConfig, RttDataHandler,
-            RttDecoder, RttSymbolError, client::RttClient,
+            self, DefmtProcessor, DefmtState, RttDataHandler, RttDecoder, RttSymbolError,
+            client::RttClient,
         },
     },
 };
@@ -148,45 +148,18 @@ pub async fn rtt_client(
         None
     };
 
-    // The CLI only supports a single RTT up channel, and no down channels.
-    let data_format;
-    let decoder = if let Some(defmt_data) = defmt_data.clone() {
-        data_format = DataFormat::Defmt;
-        RttDecoder::Defmt {
-            processor: DefmtProcessor::new(
-                defmt_data,
-                timestamp_offset.is_some(),
-                show_location,
-                log_format.as_deref(),
-            ),
-        }
-    } else {
-        data_format = DataFormat::String;
-        RttDecoder::String {
-            timestamp_offset,
-            last_line_done: false,
-        }
-    };
+    // We don't really know what to configure here, so we just use the defaults: Defmt channels
+    // will be set to BlockIfFull, others will not be changed.
+    let rtt_client = session.create_rtt_client(scan_regions, vec![]).await?;
 
-    let rtt_client = session
-        .create_rtt_client(
-            scan_regions,
-            vec![RttChannelConfig {
-                channel_number: Some(0),
-                mode: if data_format == DataFormat::Defmt {
-                    Some(rtt::ChannelMode::BlockIfFull)
-                } else {
-                    None
-                },
-                ..Default::default()
-            }],
-        )
-        .await?;
-    let client_handle = rtt_client.handle;
-
+    // The actual data processor objects will be created once we have the channel names.
     Ok(CliRttClient {
-        handle: client_handle,
-        data_format: decoder,
+        handle: rtt_client.handle,
+        timestamp_offset,
+        show_location,
+        channel_processors: vec![],
+        defmt_data,
+        log_format,
     })
 }
 
@@ -468,12 +441,60 @@ where
 
 pub struct CliRttClient {
     handle: Key<RttClient>,
-    data_format: RttDecoder,
+    channel_processors: Vec<Channel>,
+
+    // Data necessary to create the channel processors once we know the channel names.
+    log_format: Option<String>,
+    show_location: bool,
+    timestamp_offset: Option<UtcOffset>,
+    defmt_data: Option<DefmtState>,
 }
 
 impl CliRttClient {
     pub fn handle(&self) -> Key<RttClient> {
         self.handle
+    }
+
+    fn on_channels_discovered(&mut self, up_channels: &[String]) {
+        // Already configured.
+        if !self.channel_processors.is_empty() {
+            return;
+        }
+
+        // Apply our heuristics based on channel names.
+        for channel in up_channels.iter() {
+            let decoder = if channel == "defmt" {
+                if let Some(defmt_data) = self.defmt_data.clone() {
+                    RttDecoder::Defmt {
+                        processor: DefmtProcessor::new(
+                            defmt_data,
+                            self.timestamp_offset.is_some(),
+                            self.show_location,
+                            self.log_format.as_deref(),
+                        ),
+                    }
+                } else {
+                    // Not much we can do. Don't silently eat the data.
+                    RttDecoder::BinaryLE
+                }
+            } else {
+                RttDecoder::String {
+                    timestamp_offset: self.timestamp_offset,
+                    last_line_done: false,
+                }
+            };
+
+            self.channel_processors
+                .push(Channel::new(channel.clone(), decoder));
+        }
+
+        // If there are multiple channels, print the channel names.
+        if up_channels.len() > 1 {
+            let width = up_channels.iter().map(|c| c.len()).max().unwrap();
+            for processor in self.channel_processors.iter_mut() {
+                processor.print_channel_name(width);
+            }
+        }
     }
 }
 
@@ -482,10 +503,23 @@ fn print_monitor_event(
     event: MonitorEvent,
 ) {
     match event {
+        MonitorEvent::RttDiscovered { up_channels, .. } => {
+            let Some(client) = rtt_client else {
+                return;
+            };
+
+            client.on_channels_discovered(&up_channels);
+        }
         MonitorEvent::RttOutput { channel, bytes } => {
-            if let Some(client) = rtt_client {
-                _ = client.data_format.process(channel, &bytes, &mut Printer);
-            }
+            let Some(client) = rtt_client else {
+                return;
+            };
+
+            let Some(processor) = client.channel_processors.get_mut(channel as usize) else {
+                return;
+            };
+
+            processor.process(&bytes);
         }
         MonitorEvent::SemihostingOutput(SemihostingOutput::StdOut(str)) => {
             print!("{}", str)
@@ -496,12 +530,38 @@ fn print_monitor_event(
     }
 }
 
-struct Printer;
-impl RttDataHandler for Printer {
-    fn on_string_data(&mut self, channel: u32, data: String) -> Result<(), probe_rs::rtt::Error> {
-        if channel == 0 {
-            print!("{}", data);
+struct Channel {
+    channel: String,
+    decoder: RttDecoder,
+    printer: Printer,
+}
+
+impl Channel {
+    fn new(channel: String, decoder: RttDecoder) -> Self {
+        Self {
+            channel,
+            decoder,
+            printer: Printer {
+                prefix: String::new(),
+            },
         }
+    }
+
+    fn print_channel_name(&mut self, width: usize) {
+        self.printer.prefix = format!("[{:width$}] ", self.channel, width = width);
+    }
+
+    fn process(&mut self, bytes: &[u8]) {
+        _ = self.decoder.process(bytes, &mut self.printer);
+    }
+}
+
+struct Printer {
+    prefix: String,
+}
+impl RttDataHandler for Printer {
+    fn on_string_data(&mut self, data: String) -> Result<(), probe_rs::rtt::Error> {
+        print!("{}{}", self.prefix, data);
         Ok(())
     }
 }
