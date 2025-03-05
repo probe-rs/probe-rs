@@ -480,7 +480,7 @@ impl<D: StLinkUsb> StLink<D> {
         }
     }
 
-    /// Reads the ST-Links version.
+    /// Reads the ST-Link's version.
     /// Returns a tuple (hardware version, firmware version).
     /// This method stores the version data on the struct to make later use of it.
     fn get_version(&mut self) -> Result<(u8, u8), StlinkError> {

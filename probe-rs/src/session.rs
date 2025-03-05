@@ -91,7 +91,7 @@ impl fmt::Debug for ArchitectureInterface {
         match self {
             ArchitectureInterface::Arm(_) => f.write_str("ArchitectureInterface::Arm(..)"),
             ArchitectureInterface::Jtag(_, ifaces) => f
-                .debug_tuple("ArchitectureInterface::Other(..)")
+                .debug_tuple("ArchitectureInterface::Jtag(..)")
                 .field(ifaces)
                 .finish(),
         }
