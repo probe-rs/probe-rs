@@ -31,21 +31,12 @@ use crate::util::parse_u64;
 
 const MAX_LOG_FILES: usize = 20;
 
-#[cfg(feature = "remote")]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ServerUser {
-    pub name: String,
-    pub token: String,
-}
-
 type ConfigPreset = HashMap<String, Value>;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub(crate) struct Config {
     #[cfg(feature = "remote")]
-    pub server_users: Vec<ServerUser>,
+    pub server: cmd::serve::ServerConfig,
 
     /// A named set of `--key=value` pairs.
     pub presets: HashMap<String, ConfigPreset>,
@@ -123,7 +114,7 @@ impl Cli {
                 cmd::dap_server::run(cmd, &lister, utc_offset, log_path)
             }
             #[cfg(feature = "remote")]
-            Subcommand::Serve(cmd) => cmd.run(_config).await,
+            Subcommand::Serve(cmd) => cmd.run(_config.server).await,
             Subcommand::List(cmd) => cmd.run(client).await,
             Subcommand::Info(cmd) => cmd.run(client).await,
             Subcommand::Gdb(cmd) => cmd.run(&lister),
