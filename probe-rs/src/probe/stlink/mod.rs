@@ -1283,7 +1283,15 @@ impl UninitializedArmProbe for UninitializedStLink {
         _sequence: Arc<dyn ArmDebugSequence>,
         dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
-        assert_eq!(dp, DpAddress::Default, "Multidrop not supported on ST-Link");
+        if dp != DpAddress::Default {
+            return Err((
+                self,
+                ProbeRsError::Probe(DebugProbeError::Other(String::from(
+                    "Multidrop is not supported on ST-Link",
+                ))),
+            ));
+        }
+
         let interface = StlinkArmDebug::new(self.probe)
             .map_err(|(s, e)| (s as Box<_>, ProbeRsError::from(e)))?;
 

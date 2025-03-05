@@ -75,7 +75,7 @@ pub async fn print_chip_info(
 
     for memory in target.memory_map {
         let range = memory.address_range();
-        let size = ByteSize(get_range_len(&range)).to_string_as(true);
+        let size = ByteSize(get_range_len(&range)).display().iec();
         let kind = match memory {
             MemoryRegion::Ram(_) => "RAM",
             MemoryRegion::Generic(_) => "Generic",

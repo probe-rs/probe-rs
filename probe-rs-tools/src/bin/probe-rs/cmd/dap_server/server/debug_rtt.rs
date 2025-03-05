@@ -66,18 +66,14 @@ impl DebuggerRttChannel {
         let mut out = StringCollector { data: None };
 
         match client.poll_channel(core, self.channel_number) {
-            Ok(bytes) => {
-                self.channel_data_format
-                    .process(self.channel_number, bytes, &mut out)
-                    .ok();
-            }
+            Ok(bytes) => self.channel_data_format.process(bytes, &mut out).ok(),
             Err(e) => {
                 debug_adapter
                     .show_error_message(&DebuggerError::Other(anyhow!(e)))
                     .ok();
                 return false;
             }
-        }
+        };
 
         match out.data {
             Some(data) => debug_adapter.rtt_output(self.channel_number, data),
@@ -91,7 +87,7 @@ struct StringCollector {
 }
 
 impl RttDataHandler for StringCollector {
-    fn on_string_data(&mut self, _channel: u32, data: String) -> Result<(), rtt::Error> {
+    fn on_string_data(&mut self, data: String) -> Result<(), rtt::Error> {
         self.data = Some(data);
         Ok(())
     }

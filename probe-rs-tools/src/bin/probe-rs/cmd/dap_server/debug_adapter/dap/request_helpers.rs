@@ -433,7 +433,7 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
     #[cfg(unix)]
     let native_path = file_path.with_unix_encoding_checked().ok()?;
     #[cfg(windows)]
-    let native_path = file_path.with_windows_encoding_checked().ok()?;
+    let native_path = file_path.with_windows_encoding();
     let native_path = std::path::PathBuf::try_from(native_path)
         .map(|mut path| {
             if path.is_relative() {

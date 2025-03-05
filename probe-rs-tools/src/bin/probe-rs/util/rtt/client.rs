@@ -1,4 +1,6 @@
-use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection};
+use crate::util::rtt::{
+    ChannelMode, RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection,
+};
 use probe_rs::{
     Core, MemoryInterface,
     rtt::{Error, Rtt, ScanRegion},
@@ -36,8 +38,12 @@ impl RttClient {
         }
     }
 
+    pub fn is_attached(&self) -> bool {
+        self.target.is_some()
+    }
+
     pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
-        if self.target.is_some() {
+        if self.is_attached() {
             return Ok(true);
         }
 
@@ -206,5 +212,30 @@ impl RttClient {
 
     pub(crate) fn core_id(&self) -> usize {
         self.core_id
+    }
+
+    pub(crate) fn configure(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
+        let Some(target) = self.target.as_mut() else {
+            return Ok(());
+        };
+
+        let up_channels = target.active_up_channels.as_mut_slice();
+
+        for (idx, channel) in up_channels.iter_mut().enumerate() {
+            let channel_mode = if let Some(config) = self.config.channel_config(idx as u32) {
+                config.mode
+            } else if channel.channel_name() == "defmt" {
+                // defmt channel is always blocking
+                Some(ChannelMode::BlockIfFull)
+            } else {
+                None
+            };
+
+            if let Some(mode) = channel_mode {
+                channel.change_mode(core, mode)?;
+            }
+        }
+
+        Ok(())
     }
 }

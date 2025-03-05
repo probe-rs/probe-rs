@@ -42,7 +42,7 @@ itertools = "0.14"
 
 # CLI-only
 addr2line = "0.24"
-bytesize = "1"
+bytesize = "2"
 capstone = "0.13"
 cargo_metadata = "0.19"
 clap = { version = "4", features = ["derive", "env"] }

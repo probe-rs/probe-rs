@@ -260,8 +260,7 @@ fn generate_flash_error_hints(
                         hint_available_regions,
                         "  {:#010x?} ({})",
                         flash.range,
-                        ByteSize(flash.range.end - flash.range.start)
-                            .to_string_as(true)
+                        ByteSize(flash.range.end - flash.range.start).display().iec()
                     );
                 }
             }
