@@ -1287,7 +1287,7 @@ impl UninitializedArmProbe for UninitializedStLink {
             return Err((
                 self,
                 ProbeRsError::Probe(DebugProbeError::Other(String::from(
-                    "Multidrop not supported on ST-Link",
+                    "Multidrop is not supported on ST-Link",
                 ))),
             ));
         }
