@@ -161,7 +161,7 @@ impl Debugger {
 
                 // Attach to the core. so that we have the handle available for processing the request.
 
-                let Some(target_core_config) = self.config.core_configs.get_mut(core_id) else {
+                let Some(target_core_config) = self.config.core_configs.get(core_id) else {
                     return Err(DebuggerError::Other(anyhow!(
                         "No core configuration found for core id {}",
                         core_id
