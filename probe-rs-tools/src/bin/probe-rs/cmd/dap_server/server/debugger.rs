@@ -169,12 +169,9 @@ impl Debugger {
                     )));
                 };
 
-                let Ok(mut target_core) = session_data.attach_core(target_core_config.core_index)
-                else {
-                    return Err(DebuggerError::Other(anyhow!(
-                        "Unable to connect to target core"
-                    )));
-                };
+                let mut target_core = session_data
+                    .attach_core(target_core_config.core_index)
+                    .context("Unable to connect to target core")?;
 
                 // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
                 // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
@@ -195,9 +192,7 @@ impl Debugger {
                     | "disassemble" => {
                         if new_status == &CoreStatus::Sleeping {
                             match target_core.core.halt(Duration::from_millis(100)) {
-                                Ok(_) => {
-                                    unhalt_me = true;
-                                }
+                                Ok(_) => unhalt_me = true,
                                 Err(error) => {
                                     let err = DebuggerError::from(error);
                                     debug_adapter.send_response::<()>(&request, Err(&err))?;
