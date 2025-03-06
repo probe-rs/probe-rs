@@ -19,6 +19,7 @@ use crate::{
             protocol::ProtocolAdapter,
         },
         peripherals::svd_variables::SvdCache,
+        server::configuration::SessionConfig,
     },
     util::flash::build_loader,
 };
@@ -150,10 +151,10 @@ impl Debugger {
                         return Err(DebuggerError::Other(anyhow!(
                             "Cannot continue unless one target core configuration is defined."
                         )));
-                    } else {
-                        // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
-                        return Ok(DebugSessionStatus::Continue);
                     }
+
+                    // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
+                    return Ok(DebugSessionStatus::Continue);
                 }
 
                 // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand to a multi-core implementation that understands which MS DAP requests are core specific.
@@ -462,19 +463,16 @@ impl Debugger {
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
-        if self.config.flashing_config.flashing_enabled {
-            let target_core_config = match self.config.core_configs.first_mut() {
-                Some(config) => config,
-                None => {
-                    let error = DebuggerError::Other(anyhow!(
-                        "Cannot continue unless one target core configuration is defined."
-                    ));
-                    debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                    return Err(error);
-                }
-            };
+        let Some(target_core_config) = self.config.core_configs.first() else {
+            let error = DebuggerError::Other(anyhow!(
+                "Cannot continue unless one target core configuration is defined."
+            ));
+            debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
+            return Err(error);
+        };
 
-            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
+        if self.config.flashing_config.flashing_enabled {
+            let Some(path_to_elf) = &target_core_config.program_binary else {
                 let error = DebuggerError::Other(anyhow!(
                     "Please specify use the `program-binary` option in `launch.json` to specify an executable"
                 ));
@@ -483,26 +481,16 @@ impl Debugger {
             };
 
             // Store timestamp of flashed binary
-            self.binary_timestamp = get_file_timestamp(&path_to_elf);
+            self.binary_timestamp = get_file_timestamp(path_to_elf);
 
-            debug_adapter = self.flash(
-                &path_to_elf,
+            debug_adapter = Self::flash(
+                &self.config,
+                path_to_elf,
                 debug_adapter,
                 launch_attach_request,
                 &mut session_data,
             )?;
         }
-
-        let target_core_config = match self.config.core_configs.first_mut() {
-            Some(config) => config,
-            None => {
-                let error = DebuggerError::Other(anyhow!(
-                    "Cannot continue unless one target core configuration is defined."
-                ));
-                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                return Err(error);
-            }
-        };
 
         // First, attach to the core
         let mut target_core = match session_data.attach_core(target_core_config.core_index) {
@@ -568,13 +556,14 @@ impl Debugger {
         session_data: &mut SessionData,
         request: &Request,
     ) -> Result<DebugAdapter<P>, DebuggerError> {
+        let Some(target_core_config) = self.config.core_configs.first() else {
+            return Err(DebuggerError::Other(anyhow!(
+                "Cannot continue unless one target core configuration is defined."
+            )));
+        };
+
         if self.config.flashing_config.flashing_enabled {
-            let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
-                DebuggerError::Other(anyhow!(
-                    "Cannot continue unless one target core configuration is defined."
-                ))
-            })?;
-            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
+            let Some(path_to_elf) = &target_core_config.program_binary else {
                 let err = DebuggerError::Other(anyhow!(
                     "Please specify use the `program-binary` option in `launch.json` to specify an executable"
                 ));
@@ -583,7 +572,7 @@ impl Debugger {
                 return Err(err);
             };
 
-            if is_file_newer(&mut self.binary_timestamp, &path_to_elf) {
+            if is_file_newer(&mut self.binary_timestamp, path_to_elf) {
                 // If there is a new binary as part of a restart, there are some key things that
                 // need to be 'reset' for things to work properly.
                 session_data.load_debug_info_for_core(target_core_config)?;
@@ -591,15 +580,15 @@ impl Debugger {
                     .attach_core(target_core_config.core_index)
                     .map(|mut target_core| target_core.recompute_breakpoints())??;
 
-                debug_adapter = self.flash(&path_to_elf, debug_adapter, request, session_data)?;
+                debug_adapter = Self::flash(
+                    &self.config,
+                    path_to_elf,
+                    debug_adapter,
+                    request,
+                    session_data,
+                )?;
             }
         }
-
-        let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
-            DebuggerError::Other(anyhow!(
-                "Cannot continue unless one target core configuration is defined."
-            ))
-        })?;
 
         // First, attach to the core
         let mut target_core = session_data
@@ -627,7 +616,7 @@ impl Debugger {
     /// debug adapter.
     // Note: This function consumes the 'debug_adapter', so all error reporting via that handle must be done before returning from this function.
     fn flash<P: ProtocolAdapter + 'static>(
-        &mut self,
+        config: &SessionConfig,
         path_to_elf: &Path,
         mut debug_adapter: DebugAdapter<P>,
         launch_attach_request: &Request,
@@ -642,8 +631,8 @@ impl Debugger {
             .ok();
 
         let mut download_options = DownloadOptions::default();
-        download_options.keep_unwritten_bytes = self.config.flashing_config.restore_unwritten_bytes;
-        download_options.do_chip_erase = self.config.flashing_config.full_chip_erase;
+        download_options.keep_unwritten_bytes = config.flashing_config.restore_unwritten_bytes;
+        download_options.do_chip_erase = config.flashing_config.full_chip_erase;
 
         let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
         let rc_debug_adapter_clone = rc_debug_adapter.clone();
@@ -773,7 +762,7 @@ impl Debugger {
         let loader = match build_loader(
             &mut session_data.session,
             path_to_elf,
-            self.config.flashing_config.format_options.clone(),
+            config.flashing_config.format_options.clone(),
             None,
         ) {
             Ok(loader) => loader,
