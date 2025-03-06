@@ -371,23 +371,12 @@ impl Debugger {
         }
 
         // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
-        loop {
-            let debug_session_status = self
-                .process_next_request(&mut session_data, &mut debug_adapter)
-                .or_else(|e| {
-                    debug_adapter.show_message(
-                        MessageSeverity::Error,
-                        format!("Debug Adapter terminated unexpectedly with an error: {e:?}"),
-                    );
-                    debug_adapter
-                        .send_event("terminated", Some(TerminatedEventBody { restart: None }))?;
-                    debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
-                    // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
-                    for _loop_count in 0..10 {
-                        thread::sleep(Duration::from_millis(50));
-                    }
-                    Err(e)
-                })?;
+        let error = loop {
+            let debug_session_status =
+                match self.process_next_request(&mut session_data, &mut debug_adapter) {
+                    Ok(status) => status,
+                    Err(error) => break error,
+                };
 
             match debug_session_status {
                 DebugSessionStatus::Continue => {
@@ -406,7 +395,20 @@ impl Debugger {
                     return Ok(());
                 }
             };
+        };
+
+        debug_adapter.show_message(
+            MessageSeverity::Error,
+            format!("Debug Adapter terminated unexpectedly with an error: {error:?}"),
+        );
+        debug_adapter.send_event("terminated", Some(TerminatedEventBody { restart: None }))?;
+        debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
+        // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
+        for _loop_count in 0..10 {
+            thread::sleep(Duration::from_millis(50));
         }
+
+        Err(error)
     }
 
     /// Process launch or attach request
