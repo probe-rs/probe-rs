@@ -217,12 +217,12 @@ impl Flasher {
         Ok(())
     }
 
-    pub(super) fn init<'s, O: Operation>(
+    pub(super) fn init<'s, 'p, O: Operation>(
         &'s mut self,
         session: &'s mut Session,
-        progress: &'s FlashProgress,
+        progress: &'s FlashProgress<'p>,
         clock: Option<u32>,
-    ) -> Result<(ActiveFlasher<'s, O>, &'s mut [LoadedRegion]), FlashError> {
+    ) -> Result<(ActiveFlasher<'s, 'p, O>, &'s mut [LoadedRegion]), FlashError> {
         self.ensure_loaded(session)?;
 
         // Attach to memory and core.
@@ -272,14 +272,14 @@ impl Flasher {
         result
     }
 
-    pub(super) fn run_erase<T, F>(
+    pub(super) fn run_erase<'p, T, F>(
         &mut self,
         session: &mut Session,
-        progress: &FlashProgress,
+        progress: &FlashProgress<'p>,
         f: F,
     ) -> Result<T, FlashError>
     where
-        F: FnOnce(&mut ActiveFlasher<'_, Erase>, &mut [LoadedRegion]) -> Result<T, FlashError>,
+        F: FnOnce(&mut ActiveFlasher<'_, 'p, Erase>, &mut [LoadedRegion]) -> Result<T, FlashError>,
     {
         let (mut active, data) = self.init(session, progress, None)?;
         let r = f(&mut active, data)?;
@@ -287,14 +287,17 @@ impl Flasher {
         Ok(r)
     }
 
-    pub(super) fn run_program<T, F>(
+    pub(super) fn run_program<'p, T, F>(
         &mut self,
         session: &mut Session,
-        progress: &FlashProgress,
+        progress: &FlashProgress<'p>,
         f: F,
     ) -> Result<T, FlashError>
     where
-        F: FnOnce(&mut ActiveFlasher<'_, Program>, &mut [LoadedRegion]) -> Result<T, FlashError>,
+        F: FnOnce(
+            &mut ActiveFlasher<'_, 'p, Program>,
+            &mut [LoadedRegion],
+        ) -> Result<T, FlashError>,
     {
         let (mut active, data) = self.init(session, progress, None)?;
         let r = f(&mut active, data)?;
@@ -302,14 +305,14 @@ impl Flasher {
         Ok(r)
     }
 
-    pub(super) fn run_verify<T, F>(
+    pub(super) fn run_verify<'p, T, F>(
         &mut self,
         session: &mut Session,
-        progress: &FlashProgress,
+        progress: &FlashProgress<'p>,
         f: F,
     ) -> Result<T, FlashError>
     where
-        F: FnOnce(&mut ActiveFlasher<'_, Verify>, &mut [LoadedRegion]) -> Result<T, FlashError>,
+        F: FnOnce(&mut ActiveFlasher<'_, 'p, Verify>, &mut [LoadedRegion]) -> Result<T, FlashError>,
     {
         let (mut active, data) = self.init(session, progress, None)?;
         let r = f(&mut active, data)?;
@@ -714,16 +717,16 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
     Ok(reg_value)
 }
 
-pub(super) struct ActiveFlasher<'op, O: Operation> {
+pub(super) struct ActiveFlasher<'op, 'p, O: Operation> {
     core: Core<'op>,
     instruction_set: InstructionSet,
     rtt: Option<Rtt>,
-    progress: &'op FlashProgress,
+    progress: &'op FlashProgress<'p>,
     flash_algorithm: &'op FlashAlgorithm,
     _operation: PhantomData<O>,
 }
 
-impl<O: Operation> ActiveFlasher<'_, O> {
+impl<O: Operation> ActiveFlasher<'_, '_, O> {
     #[tracing::instrument(name = "Call to flash algorithm init", skip(self, clock))]
     pub(super) fn init(&mut self, clock: Option<u32>) -> Result<(), FlashError> {
         let algo = &self.flash_algorithm;
@@ -1094,7 +1097,7 @@ impl<O: Operation> ActiveFlasher<'_, O> {
     }
 }
 
-impl ActiveFlasher<'_, Erase> {
+impl ActiveFlasher<'_, '_, Erase> {
     pub(super) fn erase_all(&mut self) -> Result<(), FlashError> {
         tracing::debug!("Erasing entire chip.");
         let algo = &self.flash_algorithm;
@@ -1167,7 +1170,7 @@ impl ActiveFlasher<'_, Erase> {
     }
 }
 
-impl ActiveFlasher<'_, Program> {
+impl ActiveFlasher<'_, '_, Program> {
     pub(super) fn program_page(&mut self, page: &FlashPage) -> Result<(), FlashError> {
         let t1 = Instant::now();
 
