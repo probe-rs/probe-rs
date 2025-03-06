@@ -158,7 +158,6 @@ impl Debugger {
 
                 // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand to a multi-core implementation that understands which MS DAP requests are core specific.
                 let core_id = 0;
-                let new_status = &core_statuses[0]; // Checked above
 
                 // Attach to the core. so that we have the handle available for processing the request.
 
@@ -168,6 +167,8 @@ impl Debugger {
                         core_id
                     )));
                 };
+
+                let new_status = core_statuses[core_id]; // Checked above
 
                 let mut target_core = session_data
                     .attach_core(target_core_config.core_index)
@@ -190,7 +191,7 @@ impl Debugger {
                     | "readMemory"
                     | "writeMemory"
                     | "disassemble" => {
-                        if new_status == &CoreStatus::Sleeping {
+                        if new_status == CoreStatus::Sleeping {
                             match target_core.core.halt(Duration::from_millis(100)) {
                                 Ok(_) => unhalt_me = true,
                                 Err(error) => {
@@ -207,7 +208,7 @@ impl Debugger {
                 let mut debug_session = DebugSessionStatus::Continue;
 
                 // Now we are ready to execute supported commands, or return an error if it isn't supported.
-                let result = match request.command.clone().as_ref() {
+                let result = match request.command.as_ref() {
                     "rttWindowOpened" => {
                         if let Some(debugger_rtt_target) =
                             target_core.core_data.rtt_connection.as_mut()
@@ -289,26 +290,24 @@ impl Debugger {
                         // Unimplemented command.
                         debug_adapter.send_response::<()>(
                             &request,
-                            Err(&DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other_command))),)
-                            .and(Ok(()))
+                            Err(&DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other_command)))
+                        )
                     }
                 };
 
-                match result {
-                    Ok(()) => {
-                        if unhalt_me {
-                            if let Err(error) = target_core.core.run() {
-                                debug_adapter.show_error_message(&DebuggerError::Other(
-                                    anyhow!("{}", error),
-                                ))?;
-                                return Err(error.into());
-                            }
-                        }
+                result.map_err(|e| DebuggerError::Other(e.context("Error executing request.")))?;
 
-                        Ok(debug_session)
+                if unhalt_me {
+                    if let Err(error) = target_core.core.run() {
+                        let error = DebuggerError::Other(
+                            anyhow!(error).context("Failed to resume target."),
+                        );
+                        debug_adapter.show_error_message(&error)?;
+                        return Err(error);
                     }
-                    Err(e) => Err(DebuggerError::Other(e.context("Error executing request."))),
                 }
+
+                Ok(debug_session)
             }
         }
     }
