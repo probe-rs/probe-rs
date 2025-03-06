@@ -33,9 +33,8 @@ use probe_rs::{
 };
 use std::{
     cell::RefCell,
-    fs::{self},
+    fs,
     path::Path,
-    rc::Rc,
     thread,
     time::{Duration, UNIX_EPOCH},
 };
@@ -349,10 +348,11 @@ impl Debugger {
         };
 
         // Process either the Launch or Attach request.
-        let (mut debug_adapter, mut session_data) =
-            match self.handle_launch_attach(&launch_attach_request, debug_adapter, lister) {
-                Ok((debug_adapter, session_data)) => (debug_adapter, session_data),
+        let mut session_data =
+            match self.handle_launch_attach(&launch_attach_request, &mut debug_adapter, lister) {
+                Ok(session_data) => session_data,
                 Err(_) => {
+                    // FIXME send errors here
                     // Because the `handle_launch_attach request handler consumes the `debug_adapter`,
                     // we have to ensure that it reports all its own errors to the user.
                     // By the time we get here, we assume that has happened, and exit the debug session gracefully.
@@ -397,7 +397,8 @@ impl Debugger {
                     // All is good. We can process the next request.
                 }
                 DebugSessionStatus::Restart(request) => {
-                    debug_adapter = self.restart(debug_adapter, &mut session_data, &request)?;
+                    // FIXME send errors here
+                    self.restart(&mut debug_adapter, &mut session_data, &request)?;
                 }
                 DebugSessionStatus::Terminate => {
                     session_data.clean_up(&self.config)?;
@@ -413,9 +414,9 @@ impl Debugger {
     fn handle_launch_attach<P: ProtocolAdapter + 'static>(
         &mut self,
         launch_attach_request: &Request,
-        mut debug_adapter: DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter<P>,
         lister: &Lister,
-    ) -> Result<(DebugAdapter<P>, SessionData), DebuggerError> {
+    ) -> Result<SessionData, DebuggerError> {
         let requested_target_session_type = match launch_attach_request.command.as_str() {
             "attach" => TargetSessionType::AttachRequest,
             "launch" => TargetSessionType::LaunchRequest,
@@ -428,7 +429,7 @@ impl Debugger {
             }
         };
 
-        self.config = match get_arguments(&mut debug_adapter, launch_attach_request) {
+        self.config = match get_arguments(debug_adapter, launch_attach_request) {
             Ok(config) => config,
             Err(error) => {
                 debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
@@ -483,7 +484,7 @@ impl Debugger {
             // Store timestamp of flashed binary
             self.binary_timestamp = get_file_timestamp(path_to_elf);
 
-            debug_adapter = Self::flash(
+            Self::flash(
                 &self.config,
                 path_to_elf,
                 debug_adapter,
@@ -512,7 +513,7 @@ impl Debugger {
         // Configure the [CorePeripherals].
         if let Some(svd_file) = &target_core_config.svd_file {
             target_core.core_data.core_peripherals =
-                match SvdCache::new(svd_file, &mut debug_adapter, launch_attach_request.seq) {
+                match SvdCache::new(svd_file, debug_adapter, launch_attach_request.seq) {
                     Ok(core_peripherals) => Some(core_peripherals),
                     Err(error) => {
                         // This is not a fatal error. We can continue the debug session without the SVD file.
@@ -546,16 +547,16 @@ impl Debugger {
 
         debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
 
-        Ok((debug_adapter, session_data))
+        Ok(session_data)
     }
 
     #[tracing::instrument(skip_all)]
     fn restart<P: ProtocolAdapter + 'static>(
         &mut self,
-        mut debug_adapter: DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter<P>,
         session_data: &mut SessionData,
         request: &Request,
-    ) -> Result<DebugAdapter<P>, DebuggerError> {
+    ) -> Result<(), DebuggerError> {
         let Some(target_core_config) = self.config.core_configs.first() else {
             return Err(DebuggerError::Other(anyhow!(
                 "Cannot continue unless one target core configuration is defined."
@@ -580,7 +581,7 @@ impl Debugger {
                     .attach_core(target_core_config.core_index)
                     .map(|mut target_core| target_core.recompute_breakpoints())??;
 
-                debug_adapter = Self::flash(
+                Self::flash(
                     &self.config,
                     path_to_elf,
                     debug_adapter,
@@ -609,7 +610,7 @@ impl Debugger {
             .restart(&mut target_core, Some(request))
             .context("Failed to restart core")?;
 
-        Ok(debug_adapter)
+        Ok(())
     }
 
     /// Flash the given binary, and report the progress to the
@@ -618,10 +619,10 @@ impl Debugger {
     fn flash<P: ProtocolAdapter + 'static>(
         config: &SessionConfig,
         path_to_elf: &Path,
-        mut debug_adapter: DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter<P>,
         launch_attach_request: &Request,
         session_data: &mut SessionData,
-    ) -> Result<DebugAdapter<P>, DebuggerError> {
+    ) -> Result<(), DebuggerError> {
         debug_adapter.log_to_console(format!(
             "FLASHING: Starting write of {:?} to device memory",
             &path_to_elf
@@ -634,8 +635,7 @@ impl Debugger {
         download_options.keep_unwritten_bytes = config.flashing_config.restore_unwritten_bytes;
         download_options.do_chip_erase = config.flashing_config.full_chip_erase;
 
-        let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
-        let rc_debug_adapter_clone = rc_debug_adapter.clone();
+        let ref_debug_adapter = RefCell::new(&mut *debug_adapter);
 
         struct ProgressState {
             total_page_size: u64,
@@ -646,19 +646,19 @@ impl Debugger {
             fill_size_done: u64,
         }
 
-        let progress_state = Rc::new(RefCell::new(ProgressState {
+        let progress_state = RefCell::new(ProgressState {
             total_page_size: 0,
             total_sector_size: 0,
             total_fill_size: 0,
             page_size_done: 0,
             sector_size_done: 0,
             fill_size_done: 0,
-        }));
+        });
 
         let flash_progress = progress_id.map(|id| {
             FlashProgress::new(move |event| {
                 let mut flash_progress = progress_state.borrow_mut();
-                let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
+                let mut debug_adapter = ref_debug_adapter.borrow_mut();
                 match event {
                     ProgressEvent::AddProgressBar {
                         operation,
@@ -770,17 +770,6 @@ impl Debugger {
                 // `download-options` need to be dropped, to free the `debug_adapter`,
                 // before we can use it to return the error to the user.
                 drop(download_options);
-                debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
-                    Ok(debug_adapter) => debug_adapter.into_inner(),
-                    Err(too_many_strong_references) => {
-                        let reference_error = DebuggerError::Other(anyhow!(
-                            "Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.",
-                            Rc::strong_count(&too_many_strong_references)
-                        ));
-                        tracing::error!("{reference_error:?}");
-                        return Err(reference_error);
-                    }
-                };
                 if let Some(id) = progress_id {
                     let _ = debug_adapter.end_progress(id);
                 }
@@ -794,18 +783,6 @@ impl Debugger {
             .commit(&mut session_data.session, download_options)
             .map_err(FileDownloadError::Flash);
 
-        debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
-            Ok(debug_adapter) => debug_adapter.into_inner(),
-            Err(too_many_strong_references) => {
-                let reference_error = DebuggerError::Other(anyhow!(
-                    "Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.",
-                    Rc::strong_count(&too_many_strong_references)
-                ));
-                tracing::error!("{reference_error:?}");
-                return Err(reference_error);
-            }
-        };
-
         if let Some(id) = progress_id {
             let _ = debug_adapter.end_progress(id);
         }
@@ -816,7 +793,7 @@ impl Debugger {
                     "FLASHING: Completed write of {:?} to device memory",
                     &path_to_elf
                 ));
-                Ok(debug_adapter)
+                Ok(())
             }
             Err(error) => {
                 let error = DebuggerError::FileDownload(error);
