@@ -45,14 +45,21 @@ pub async fn attach_probe(
 ) -> anyhow::Result<SessionInterface> {
     // Load the chip description if provided.
     if let Some(chip_description) = probe_options.chip_description_path.take() {
-        let file = std::fs::File::open(chip_description)?;
-        let family: ChipFamily = serde_yaml::from_reader(file)?;
+        let file = tokio::fs::read_to_string(&chip_description)
+            .await
+            .with_context(|| {
+                format!(
+                    "Failed to read chip description from {}",
+                    chip_description.display()
+                )
+            })?;
 
         // Load the YAML locally to validate it before sending it to the remote.
         // We may also need it locally.
-        client.registry().await.add_target_family(family.clone())?;
+        let family: ChipFamily = serde_yaml::from_str(&file)?;
+        client.registry().await.add_target_family(family)?;
 
-        client.load_chip_family(family).await?;
+        client.load_chip_family(file).await?;
     }
 
     let probe = select_probe(client, probe_options.probe.map(Into::into)).await?;
