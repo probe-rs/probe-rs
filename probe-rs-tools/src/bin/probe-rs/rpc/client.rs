@@ -378,7 +378,7 @@ impl RpcClient {
         &self,
         families: probe_rs_target::ChipFamily,
     ) -> anyhow::Result<()> {
-        // I refuse to add a schema to ChipFamily until we can actually load it on the server.
+        // FIXME: There's a chance ChipFamily won't match on the client and server
         let family = postcard::to_stdvec(&families).context("Failed to serialize chip family")?;
 
         self.send_resp::<LoadChipFamilyEndpoint, _>(&LoadChipFamilyRequest {
