@@ -374,17 +374,9 @@ impl RpcClient {
             .await
     }
 
-    pub async fn load_chip_family(
-        &self,
-        families: probe_rs_target::ChipFamily,
-    ) -> anyhow::Result<()> {
-        // FIXME: There's a chance ChipFamily won't match on the client and server
-        let family = postcard::to_stdvec(&families).context("Failed to serialize chip family")?;
-
-        self.send_resp::<LoadChipFamilyEndpoint, _>(&LoadChipFamilyRequest {
-            family_data: family,
-        })
-        .await
+    pub async fn load_chip_family(&self, families_yaml: String) -> anyhow::Result<()> {
+        self.send_resp::<LoadChipFamilyEndpoint, _>(&LoadChipFamilyRequest { families_yaml })
+            .await
     }
 
     pub async fn list_chip_families(&self) -> anyhow::Result<Vec<ChipFamily>> {

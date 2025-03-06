@@ -334,7 +334,9 @@ pub async fn chip_info(
 // Used to avoid uploading a temp file to the remote.
 #[derive(Serialize, Deserialize, Schema)]
 pub struct LoadChipFamilyRequest {
-    pub family_data: Vec<u8>,
+    /// Chip description in YAML format.
+    // TODO: instead, serialize the whole ChipFamily struct
+    pub families_yaml: String,
 }
 
 pub async fn load_chip_family(
@@ -342,7 +344,7 @@ pub async fn load_chip_family(
     _header: VarHeader,
     request: LoadChipFamilyRequest,
 ) -> NoResponse {
-    let family = postcard::from_bytes::<probe_rs_target::ChipFamily>(&request.family_data)
+    let family = serde_yaml::from_str(&request.families_yaml)
         .context("Failed to deserialize chip family data")?;
 
     ctx.registry().await.add_target_family(family)?;
