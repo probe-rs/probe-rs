@@ -6,6 +6,7 @@ use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 use crate::{
     architecture::arm::{
         ArmChipInfo, ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+        dp::{DpRegister, TARGETID},
         memory::ArmMemoryInterface,
     },
     config::{DebugSequence, registry},
@@ -20,6 +21,7 @@ pub mod sequences;
 pub struct Infineon;
 
 const INFINEON: JEP106Code = JEP106Code { id: 0x41, cc: 0x00 };
+const CYPRESS: JEP106Code = JEP106Code { id: 0x34, cc: 0x00 };
 
 impl Vendor for Infineon {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
@@ -37,15 +39,11 @@ impl Vendor for Infineon {
         interface: &mut dyn ArmProbeInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
-        if chip_info.manufacturer != INFINEON {
-            return Ok(None);
+        match chip_info.manufacturer {
+            INFINEON => try_detect_xmc4xxx(interface, &chip_info),
+            CYPRESS => try_detect_psoc(interface, &chip_info),
+            _ => Ok(None),
         }
-
-        if let Some(target) = try_detect_xmc4xxx(interface, &chip_info)? {
-            return Ok(Some(target));
-        }
-
-        Ok(None)
     }
 }
 
@@ -81,7 +79,7 @@ fn try_detect_xmc4xxx(
         for info in family
             .chip_detection
             .iter()
-            .filter_map(ChipDetectionMethod::as_infineon_scu)
+            .filter_map(ChipDetectionMethod::as_infineon_xmc_scu)
         {
             if info.part != chip_info.part || info.scu_id != (scu_idchip & 0xFFFF0) >> 4 {
                 continue;
@@ -146,4 +144,20 @@ fn probe_xmc4xxx_flash_size(start_addr: u32, memory: &mut dyn ArmMemoryInterface
         last_successful_size = size;
     }
     last_successful_size
+}
+
+fn try_detect_psoc(
+    interface: &mut dyn ArmProbeInterface,
+    _chip_info: &ArmChipInfo,
+) -> Result<Option<String>, Error> {
+    let tid = TARGETID(
+        interface.read_raw_dp_register(interface.current_debug_port(), TARGETID::ADDRESS)?,
+    );
+    let siid = tid.tpartno();
+
+    Ok(registry::families()
+        .iter()
+        .flat_map(|f| f.chip_detection.iter())
+        .flat_map(ChipDetectionMethod::as_infineon_psoc_siid)
+        .find_map(|detect| detect.ids.get(&siid).cloned()))
 }
