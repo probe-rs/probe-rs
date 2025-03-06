@@ -7,14 +7,14 @@ use bytesize::ByteSize;
 
 use probe_rs::{
     Error as ProbeRsError, Target,
-    config::{RegistryError, TargetDescriptionSource},
+    config::{Registry, RegistryError, TargetDescriptionSource},
     flashing::{FileDownloadError, FlashError},
 };
 
 use crate::util::cargo::ArtifactError;
 use crate::util::common_options::OperationError;
 
-pub(crate) fn render_diagnostics(error: OperationError) {
+pub(crate) fn render_diagnostics(registry: &Registry, error: OperationError) {
     let (selected_error, hints) = match &error {
         OperationError::IOError(_e) => (
             error.to_string(),
@@ -76,7 +76,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                 "You can select a probe with the `--probe` argument. See `--help` for how to use it.".into()
             ],
         ),
-        OperationError::FlashingFailed { source, target, target_spec, .. } => generate_flash_error_hints(source, target, target_spec),
+        OperationError::FlashingFailed { source, target, target_spec, .. } => generate_flash_error_hints(registry, source, target, target_spec),
         OperationError::ChipDescriptionNotFound{ .. } => (
             error.to_string(),
             vec![],
@@ -236,6 +236,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
 }
 
 fn generate_flash_error_hints(
+    registry: &Registry,
     error: &FlashError,
     target: &Target,
     target_spec: &Option<String>,
@@ -269,7 +270,7 @@ fn generate_flash_error_hints(
 
             if let Some(target_spec) = target_spec {
                 // Check if the chip specification was unique
-                let matching_chips = probe_rs::config::search_chips(target_spec).unwrap();
+                let matching_chips = registry.search_chips(target_spec);
 
                 tracing::info!(
                     "Searching for all chips for spec '{}', found {}",

@@ -6,9 +6,9 @@
 use miette::IntoDiagnostic;
 use miette::Result;
 use miette::WrapErr;
+use probe_rs::config::Registry;
 use probe_rs::{
     Target,
-    config::get_target_by_name,
     probe::{DebugProbeSelector, Probe, list::Lister},
 };
 use serde::Deserialize;
@@ -213,7 +213,8 @@ impl DutDefinition {
 }
 
 fn lookup_unique_target(chip: &str) -> Result<Target> {
-    let target = get_target_by_name(chip).into_diagnostic()?;
+    let registry = Registry::from_builtin_families();
+    let target = registry.get_target_by_name(chip).into_diagnostic()?;
 
     if !target.name.eq_ignore_ascii_case(chip) {
         miette::bail!(

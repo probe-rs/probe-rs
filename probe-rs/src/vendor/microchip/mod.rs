@@ -5,7 +5,7 @@ use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 use crate::{
     Error,
     architecture::arm::{ArmChipInfo, ArmProbeInterface, FullyQualifiedApAddress},
-    config::{DebugSequence, registry},
+    config::{DebugSequence, Registry},
     vendor::{
         Vendor,
         microchip::sequences::atsam::{AtSAM, DsuDid},
@@ -36,6 +36,7 @@ impl Vendor for Microchip {
 
     fn try_detect_arm_chip(
         &self,
+        registry: &Registry,
         interface: &mut dyn ArmProbeInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
@@ -52,8 +53,7 @@ impl Vendor for Microchip {
                 .read_word_32(DsuDid::ADDRESS)?,
         );
 
-        let families = registry::families_ref();
-        for family in families.iter() {
+        for family in registry.families() {
             for info in family
                 .chip_detection
                 .iter()

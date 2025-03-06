@@ -13,6 +13,7 @@ use probe_rs::CoreDump;
 use probe_rs::CoreDumpError;
 use probe_rs::CoreInterface;
 use probe_rs::architecture::arm::ap::AccessPortError;
+use probe_rs::config::Registry;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::probe::DebugProbeError;
 use probe_rs::probe::list::Lister;
@@ -38,8 +39,8 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
+    pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
+        let (mut session, _probe_options) = self.common.simple_attach(registry, lister)?;
 
         let di = self
             .exe
