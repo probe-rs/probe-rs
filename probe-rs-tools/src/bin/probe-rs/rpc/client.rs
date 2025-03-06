@@ -13,9 +13,9 @@ use postcard_rpc::{
     host_client::{HostClient, HostClientConfig, HostErr, IoClosed, Subscription},
 };
 use postcard_schema::Schema;
-use probe_rs::{Session, flashing::FlashLoader};
+use probe_rs::{Session, config::Registry, flashing::FlashLoader};
 use serde::{Serialize, de::DeserializeOwned};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, MutexGuard};
 
 use std::{
     collections::HashMap,
@@ -208,6 +208,7 @@ mod tls {
 pub struct RpcClient {
     client: HostClient<String>,
     uploaded_files: Arc<Mutex<HashMap<PathBuf, PathBuf>>>,
+    registry: Arc<Mutex<Registry>>,
     is_localhost: bool,
 }
 
@@ -238,6 +239,7 @@ impl RpcClient {
                 },
             ),
             uploaded_files: Arc::new(Mutex::new(HashMap::new())),
+            registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
             is_localhost: false,
         }
     }
@@ -392,6 +394,10 @@ impl RpcClient {
     pub async fn chip_info(&self, name: &str) -> anyhow::Result<ChipData> {
         self.send_resp::<ChipInfoEndpoint, _>(&ChipInfoRequest { name: name.into() })
             .await
+    }
+
+    pub(crate) async fn registry(&self) -> MutexGuard<'_, Registry> {
+        self.registry.lock().await
     }
 }
 

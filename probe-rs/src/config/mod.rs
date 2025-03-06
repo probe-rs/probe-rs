@@ -30,13 +30,9 @@ pub use probe_rs_target::{
     SectorDescription, SectorInfo, TargetDescriptionSource,
 };
 
-pub use registry::{
-    RegistryError, add_target_family, add_target_from_yaml, families, get_family_by_name,
-    get_target_and_family_by_name, get_target_by_name, get_targets_by_family_name, search_chips,
-};
+pub use registry::{Registry, RegistryError};
 pub use target::{DebugSequence, Target, TargetSelector};
 
 // Crate-internal API
 pub(crate) use chip_info::ChipInfo;
-pub(crate) use registry::get_target_by_chip_info;
 pub(crate) use target::CoreExt;

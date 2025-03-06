@@ -9,7 +9,7 @@ use crate::{
         dp::{DpRegister, TARGETID},
         memory::ArmMemoryInterface,
     },
-    config::{DebugSequence, registry},
+    config::{DebugSequence, Registry},
     error::Error,
     vendor::{Vendor, infineon::sequences::xmc4000::XMC4000},
 };
@@ -36,18 +36,20 @@ impl Vendor for Infineon {
 
     fn try_detect_arm_chip(
         &self,
+        registry: &Registry,
         interface: &mut dyn ArmProbeInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
         match chip_info.manufacturer {
-            INFINEON => try_detect_xmc4xxx(interface, &chip_info),
-            CYPRESS => try_detect_psoc(interface, &chip_info),
+            INFINEON => try_detect_xmc4xxx(registry, interface, &chip_info),
+            CYPRESS => try_detect_psoc(registry, interface, &chip_info),
             _ => Ok(None),
         }
     }
 }
 
 fn try_detect_xmc4xxx(
+    registry: &Registry,
     interface: &mut dyn ArmProbeInterface,
     chip_info: &ArmChipInfo,
 ) -> Result<Option<String>, Error> {
@@ -74,8 +76,7 @@ fn try_detect_xmc4xxx(
     // Now look up a closest match. We are not able to tell exactly which device this is, because
     // the identical die is packaged up differently for different devices.
 
-    let families = registry::families_ref();
-    for family in families.iter() {
+    for family in registry.families() {
         for info in family
             .chip_detection
             .iter()
@@ -147,6 +148,7 @@ fn probe_xmc4xxx_flash_size(start_addr: u32, memory: &mut dyn ArmMemoryInterface
 }
 
 fn try_detect_psoc(
+    registry: &Registry,
     interface: &mut dyn ArmProbeInterface,
     _chip_info: &ArmChipInfo,
 ) -> Result<Option<String>, Error> {
@@ -155,7 +157,8 @@ fn try_detect_psoc(
     );
     let siid = tid.tpartno();
 
-    Ok(registry::families()
+    Ok(registry
+        .families()
         .iter()
         .flat_map(|f| f.chip_detection.iter())
         .flat_map(ChipDetectionMethod::as_infineon_psoc_siid)

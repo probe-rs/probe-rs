@@ -1,0 +1,2 @@
+- `Registry` is now a public structure instead of internally global configuration.
+- The `add_target_family, add_target_from_yaml, families, get_family_by_name, get_target_and_family_by_name, get_target_by_name, get_targets_by_family_name search_chips` functions have been removed in favour of `Registry` methods.

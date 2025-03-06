@@ -33,6 +33,7 @@ jep106 = "0.2"
 num-traits = "0.2"
 scroll = "0.12"
 serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
 thiserror = { workspace = true }
 tracing = "0.1"
 typed-path = "0.10"

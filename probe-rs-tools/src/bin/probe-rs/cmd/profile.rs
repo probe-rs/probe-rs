@@ -6,6 +6,7 @@ use std::time::Instant;
 use addr2line::Loader;
 use anyhow::anyhow;
 use itm::TracePacket;
+use probe_rs::config::Registry;
 use probe_rs::{
     architecture::arm::{
         SwoConfig,
@@ -67,12 +68,12 @@ impl std::fmt::Display for ProfileMethod {
 }
 
 impl ProfileCmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
+    pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, probe_options) = self
             .run
             .shared_options
             .probe_options
-            .simple_attach(lister)?;
+            .simple_attach(registry, lister)?;
 
         let loader = build_loader(
             &mut session,

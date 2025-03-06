@@ -16,7 +16,7 @@ use crate::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
         },
     },
-    config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector},
+    config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector, registry::Registry},
     core::{Architecture, CombinedCoreState},
     probe::{
         AttachMethod, DebugProbeError, Probe, ProbeCreationError, fake_probe::FakeProbe,
@@ -137,8 +137,9 @@ impl Session {
         target: TargetSelector,
         attach_method: AttachMethod,
         permissions: Permissions,
+        registry: &Registry,
     ) -> Result<Self, Error> {
-        let (probe, target) = get_target_from_selector(target, attach_method, probe)?;
+        let (probe, target) = get_target_from_selector(target, attach_method, probe, registry)?;
 
         let cores = target
             .cores
@@ -858,9 +859,10 @@ fn get_target_from_selector(
     target: TargetSelector,
     attach_method: AttachMethod,
     mut probe: Probe,
+    registry: &Registry,
 ) -> Result<(Probe, Target), Error> {
     let target = match target {
-        TargetSelector::Unspecified(name) => crate::config::get_target_by_name(name)?,
+        TargetSelector::Unspecified(name) => registry.get_target_by_name(name)?,
         TargetSelector::Specified(target) => target,
         TargetSelector::Auto => {
             // At this point we do not know what the target is, so we cannot use the chip specific reset sequence.
@@ -871,7 +873,8 @@ fn get_target_from_selector(
             }
             probe.attach_to_unspecified()?;
 
-            let (returned_probe, found_target) = crate::vendor::auto_determine_target(probe)?;
+            let (returned_probe, found_target) =
+                crate::vendor::auto_determine_target(registry, probe)?;
             probe = returned_probe;
 
             if AttachMethod::UnderReset == attach_method {
