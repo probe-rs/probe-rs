@@ -10,7 +10,6 @@ use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     ProbeFactory, WireProtocol,
 };
-use itertools::Itertools;
 use probe_rs_target::ScanChainElement;
 use serialport::{SerialPort, SerialPortType, available_ports};
 use std::io::{BufReader, BufWriter, Read, Write};
@@ -39,7 +38,7 @@ enum SifliUartResponse {
     MEMWrite,
 }
 
-impl<'a> fmt::Display for SifliUartCommand<'a> {
+impl fmt::Display for SifliUartCommand<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SifliUartCommand::Enter => write!(f, "Enter"),
@@ -107,7 +106,7 @@ impl fmt::Display for CommandError {
 pub struct SifliUart {
     reader: BufReader<Box<dyn Read + Send>>,
     writer: BufWriter<Box<dyn Write + Send>>,
-    serial_port: Box<dyn SerialPort>,
+    _serial_port: Box<dyn SerialPort>,
     baud: u32,
 }
 
@@ -139,7 +138,7 @@ impl SifliUart {
             reader,
             writer,
             baud: DEFUALT_UART_BAUD,
-            serial_port: port,
+            _serial_port: port,
         };
         Ok(probe)
     }

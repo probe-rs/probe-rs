@@ -1,6 +1,5 @@
 use crate::MemoryMappedRegister;
 use crate::architecture::arm::ArmError;
-use crate::architecture::arm::armv8m::Dhcsr;
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use probe_rs_target::CoreType;
@@ -15,6 +14,7 @@ impl Sf32lb52 {
     }
 }
 
+#[allow(dead_code)]
 mod pmuc {
     use crate::architecture::arm::{ArmError, memory::ArmMemoryInterface};
     use bitfield::bitfield;
@@ -52,16 +52,6 @@ mod pmuc {
             memory.write_word_32(PMUC + Self::ADDRESS, self.0)
         }
     }
-}
-
-fn halt_core(interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
-    let mut value = Dhcsr(0);
-    value.set_c_halt(true);
-    value.set_c_debugen(true);
-    value.enable_write();
-
-    interface.write_word_32(Dhcsr::get_mmio_address(), value.into())?;
-    Ok(())
 }
 
 impl ArmDebugSequence for Sf32lb52 {

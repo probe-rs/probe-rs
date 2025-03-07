@@ -31,22 +31,22 @@ pub(crate) struct SifliUartArmDebug {
 
     /// Information about the APs of the target.
     /// APs are identified by a number, starting from zero.
-    pub access_ports: BTreeSet<FullyQualifiedApAddress>,
+    pub _access_ports: BTreeSet<FullyQualifiedApAddress>,
 
     /// A copy of the sequence that was passed during initialization
-    sequence: Arc<dyn ArmDebugSequence>,
+    _sequence: Arc<dyn ArmDebugSequence>,
 }
 
 impl SifliUartArmDebug {
     fn new(
         probe: Box<SifliUart>,
-        sequence: Arc<dyn ArmDebugSequence>,
+        _sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, (Box<dyn UninitializedArmProbe>, ArmError)> {
         // Determine the number and type of available APs.
         let interface = Self {
             probe,
-            access_ports: BTreeSet::new(),
-            sequence,
+            _access_ports: BTreeSet::new(),
+            _sequence,
         };
 
         Ok(interface)
