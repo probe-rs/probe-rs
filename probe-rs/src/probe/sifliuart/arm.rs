@@ -120,7 +120,7 @@ impl DapAccess for SifliUartArmDebug {
         ap: &FullyQualifiedApAddress,
         addr: u64,
     ) -> Result<u32, ArmError> {
-        // 伪造一个MEM-AP的IDR寄存器
+        // Fake a MEM-AP's IDR registers
         if addr == IDR::ADDRESS {
             let idr = 0x24770031;
             return Ok(idr);
