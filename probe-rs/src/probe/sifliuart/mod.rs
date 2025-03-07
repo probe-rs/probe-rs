@@ -1,5 +1,5 @@
 //! SiFli UART Debug Probe, Only support SiFli chip.
-//! Refer to https://webfile.lovemcu.cn/file/user%20manual/UM5201-SF32LB52x-%E7%94%A8%E6%88%B7%E6%89%8B%E5%86%8C%20V0p81.pdf#153 for specific communication formats
+//! Refer to <https://webfile.lovemcu.cn/file/user%20manual/UM5201-SF32LB52x-%E7%94%A8%E6%88%B7%E6%89%8B%E5%86%8C%20V0p81.pdf#153> for specific communication formats
 
 mod arm;
 
