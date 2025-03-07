@@ -208,6 +208,10 @@ pub struct FlashingConfig {
     #[serde(default)]
     pub(crate) halt_after_reset: bool,
 
+    /// Verify chip contents before erasing, to prevent unnecessary reprogramming
+    #[serde(default)]
+    pub(crate) verify_before_flashing: bool,
+
     /// Do a full chip erase, versus page-by-page erase
     #[serde(default)]
     pub(crate) full_chip_erase: bool,
@@ -215,6 +219,10 @@ pub struct FlashingConfig {
     /// Restore erased bytes that will not be rewritten from ELF
     #[serde(default)]
     pub(crate) restore_unwritten_bytes: bool,
+
+    /// Verify chip contents after flashing
+    #[serde(default)]
+    pub(crate) verify_after_flashing: bool,
 
     /// [`FormatOptions`] to control the flashing operation, depending on the type of binary ( [`probe_rs::flashing::Format`] ) to be flashed.
     #[serde(default)]
