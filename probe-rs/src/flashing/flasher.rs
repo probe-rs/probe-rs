@@ -375,8 +375,12 @@ impl Flasher {
     ) -> Result<(), FlashError> {
         progress.started_filling();
 
-        let result = self.run_verify(session, progress, |active, data| {
-            for region in data.iter_mut() {
+        fn fill_pages(
+            regions: &mut [LoadedRegion],
+            progress: &FlashProgress,
+            mut read: impl FnMut(u64, &mut [u8]) -> Result<(), FlashError>,
+        ) -> Result<(), FlashError> {
+            for region in regions.iter_mut() {
                 let layout = region.data.layout_mut();
                 for fill in layout.fills.iter() {
                     let t = Instant::now();
@@ -385,14 +389,29 @@ impl Flasher {
                     let page_offset = (fill.address() - page.address()) as usize;
                     let page_slice = &mut page.data_mut()[page_offset..][..fill.size() as usize];
 
-                    active.read_flash(fill.address(), page_slice)?;
+                    read(fill.address(), page_slice)?;
 
                     progress.page_filled(fill.size(), t.elapsed());
                 }
             }
 
             Ok(())
-        });
+        }
+
+        let result = if self.flash_algorithm.pc_read.is_some() {
+            self.run_verify(session, progress, |active, data| {
+                fill_pages(data, progress, |address, data| {
+                    active.read_flash(address, data)
+                })
+            })
+        } else {
+            // Not using a flash algorithm function, so there's no need to go
+            // through ActiveFlasher.
+            let mut core = session.core(0).map_err(FlashError::Core)?;
+            fill_pages(&mut self.regions, progress, |address, data| {
+                core.read(address, data).map_err(FlashError::Core)
+            })
+        };
 
         match result.is_ok() {
             true => progress.finished_filling(),
@@ -483,16 +502,21 @@ impl Flasher {
         } else {
             tracing::debug!("Verify by reading back flash contents");
 
-            self.run_verify(session, progress, |active, data| {
-                for region in data {
+            fn compare_flash(
+                regions: &[LoadedRegion],
+                progress: &FlashProgress,
+                ignore_filled: bool,
+                mut read: impl FnMut(u64, &mut [u8]) -> Result<(), FlashError>,
+            ) -> Result<bool, FlashError> {
+                for region in regions {
                     let layout = region.data.layout();
-                    for (idx, page) in layout.pages().iter().enumerate() {
+                    for (idx, page) in layout.pages.iter().enumerate() {
                         let start = Instant::now();
                         let address = page.address();
                         let data = page.data();
 
                         let mut read_back = vec![0; data.len()];
-                        active.read_flash(address, &mut read_back)?;
+                        read(address, &mut read_back)?;
 
                         if ignore_filled {
                             // "Unfill" fill regions. These don't get flashed, so their contents are
@@ -523,7 +547,22 @@ impl Flasher {
                     }
                 }
                 Ok(true)
-            })
+            }
+
+            if self.flash_algorithm.pc_read.is_some() {
+                self.run_verify(session, progress, |active, data| {
+                    compare_flash(data, progress, ignore_filled, |address, data| {
+                        active.read_flash(address, data)
+                    })
+                })
+            } else {
+                // Not using a flash algorithm function, so there's no need to go
+                // through ActiveFlasher.
+                let mut core = session.core(0).map_err(FlashError::Core)?;
+                compare_flash(&self.regions, progress, ignore_filled, |address, data| {
+                    core.read(address, data).map_err(FlashError::Core)
+                })
+            }
         }
     }
 
