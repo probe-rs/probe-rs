@@ -10,6 +10,7 @@ pub mod fake_probe;
 pub mod ftdi;
 pub mod jlink;
 pub mod list;
+pub mod sifliuart;
 pub mod stlink;
 pub mod wlink;
 
