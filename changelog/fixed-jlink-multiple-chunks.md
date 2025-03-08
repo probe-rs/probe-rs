@@ -1,0 +1,1 @@
+Fixed an issue where longer command sequences with j-link probes may be transmitted incorrectly.

@@ -798,10 +798,10 @@ impl JLink {
     {
         self.require_interface_selected(Interface::Swd)?;
 
-        const COMMAND_OVERHEAD: u32 = 4;
+        const COMMAND_OVERHEAD: usize = 4;
 
-        let max_bits = ((self.max_mem_block_size - COMMAND_OVERHEAD) / 2 * 8) as usize;
-        let max_bits = max_bits.min(65535);
+        let max_bits = ((self.max_mem_block_size - COMMAND_OVERHEAD as u32) / 2 * 8) as usize;
+        let max_bits = std::cmp::min(max_bits, 65535);
 
         let dir_chunks = dir.into_iter().chunks(max_bits);
         let swdio_chunks = swdio.into_iter().chunks(max_bits);
@@ -811,14 +811,10 @@ impl JLink {
 
         let mut output = Vec::new();
         let mut buf = Vec::with_capacity(self.max_mem_block_size as usize);
-        buf.resize(4, 0);
-        buf[0] = Command::HwJtag3 as u8;
-        // buf[1] is dummy data for alignment
-        buf[1] = 0;
-        // buf[2..=3] is the bit count, which we'll fill in later
+        buf.resize(COMMAND_OVERHEAD, 0);
 
         for (dir, swdio) in chunks {
-            buf.truncate(4);
+            buf.truncate(COMMAND_OVERHEAD);
 
             let mut dir_bit_count = 0;
             buf.extend(dir.inspect(|_| dir_bit_count += 1).collapse_bytes());
@@ -831,6 +827,10 @@ impl JLink {
             );
 
             let num_bits = dir_bit_count as u16;
+
+            buf[0] = Command::HwJtag3 as u8;
+            // buf[1] is dummy data for alignment
+            buf[1] = 0;
             buf[2..=3].copy_from_slice(&num_bits.to_le_bytes());
             let num_bytes = usize::from(num_bits.div_ceil(8));
 
