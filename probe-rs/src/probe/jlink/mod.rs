@@ -238,7 +238,7 @@ impl ProbeFactory for JLinkFactory {
         };
 
         if this.caps.contains(Capability::GetMaxBlockSize) {
-            this.max_mem_block_size = this.read_max_mem_block()?;
+            this.max_mem_block_size = this.read_max_mem_block()? as usize;
 
             tracing::debug!(
                 "J-Link max mem block size for SWD IO: {} byte",
@@ -394,7 +394,7 @@ pub struct JLink {
     /// Maximum memory block size, as report by the `GET_MAX_MEM_BLOCK` command.
     ///
     /// Used to determine maximum transfer length for SWD IO.
-    max_mem_block_size: u32,
+    max_mem_block_size: usize,
 
     probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
@@ -790,7 +790,7 @@ impl JLink {
     /// Perform a single SWDIO command
     ///
     /// The caller needs to ensure that the given iterators are not longer than the maximum transfer size
-    /// allowed. It seems that the maximum transfer size is determined by [`self.max_mem_block_size`].
+    /// allowed. It seems that the maximum transfer size is determined by [`JLink::max_mem_block_size`].
     fn perform_swdio_transfer<D, S>(&self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         D: IntoIterator<Item = bool>,
@@ -800,7 +800,7 @@ impl JLink {
 
         const COMMAND_OVERHEAD: usize = 4;
 
-        let max_bits = ((self.max_mem_block_size - COMMAND_OVERHEAD as u32) / 2 * 8) as usize;
+        let max_bits = (self.max_mem_block_size - COMMAND_OVERHEAD) / 2 * 8;
         let max_bits = std::cmp::min(max_bits, 65535);
 
         let dir_chunks = dir.into_iter().chunks(max_bits);
@@ -810,7 +810,7 @@ impl JLink {
         let chunks = dir_chunks.into_iter().zip(swdio_chunks.into_iter());
 
         let mut output = Vec::new();
-        let mut buf = Vec::with_capacity(self.max_mem_block_size as usize);
+        let mut buf = Vec::with_capacity(self.max_mem_block_size);
         buf.resize(COMMAND_OVERHEAD, 0);
 
         for (dir, swdio) in chunks {
