@@ -117,19 +117,19 @@ impl Cli {
             Subcommand::Serve(cmd) => cmd.run(_config.server).await,
             Subcommand::List(cmd) => cmd.run(client).await,
             Subcommand::Info(cmd) => cmd.run(client).await,
-            Subcommand::Gdb(cmd) => cmd.run(&lister),
+            Subcommand::Gdb(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Reset(cmd) => cmd.run(client).await,
-            Subcommand::Debug(cmd) => cmd.run(&lister),
+            Subcommand::Debug(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Download(cmd) => cmd.run(client).await,
             Subcommand::Run(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Attach(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Verify(cmd) => cmd.run(client).await,
             Subcommand::Erase(cmd) => cmd.run(client).await,
-            Subcommand::Trace(cmd) => cmd.run(&lister),
-            Subcommand::Itm(cmd) => cmd.run(&lister),
+            Subcommand::Trace(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Itm(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Chip(cmd) => cmd.run(client).await,
-            Subcommand::Benchmark(cmd) => cmd.run(&lister),
-            Subcommand::Profile(cmd) => cmd.run(&lister),
+            Subcommand::Benchmark(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Profile(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Read(cmd) => cmd.run(client).await,
             Subcommand::Write(cmd) => cmd.run(client).await,
             Subcommand::Complete(cmd) => cmd.run(&lister),
@@ -491,7 +491,7 @@ async fn main() -> Result<()> {
     }
 
     // Create a local server to run commands against.
-    let (mut local_server, tx, rx) = RpcApp::create_server(true, 16);
+    let (mut local_server, tx, rx) = RpcApp::create_server(16);
     let handle = tokio::spawn(async move { local_server.run().await });
 
     // Run the command locally.

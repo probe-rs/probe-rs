@@ -7,6 +7,7 @@ use clap_complete::{
     Generator, Shell, generate,
     shells::{Bash, PowerShell, Zsh},
 };
+use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
 
 use crate::Cli;
@@ -118,7 +119,7 @@ pub enum CompleteKind {
 /// Output will be one line per chip and print the full name probe-rs expects.
 pub fn list_chips(starts_with: &str) -> Result<String> {
     let mut output = String::new();
-    for family in probe_rs::config::families() {
+    for family in Registry::from_builtin_families().families() {
         for variant in family.variants() {
             if variant.name.starts_with(starts_with) {
                 writeln!(output, "{}", variant.name)?;

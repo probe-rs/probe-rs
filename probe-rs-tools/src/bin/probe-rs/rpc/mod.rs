@@ -13,7 +13,7 @@ use postcard_schema::{
     Schema,
     schema::{DataModelType, NamedType, NamedValue},
 };
-use probe_rs::Session;
+use probe_rs::{Session, config::Registry};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
@@ -120,6 +120,7 @@ impl ObjectStorage {
 pub struct SessionState {
     dry_run: bool,
     object_storage: Arc<Mutex<ObjectStorage>>,
+    registry: Arc<Mutex<Registry>>,
 }
 
 #[allow(unused)]
@@ -128,6 +129,7 @@ impl SessionState {
         Self {
             dry_run: false,
             object_storage: Arc::new(Mutex::new(ObjectStorage::new())),
+            registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
         }
     }
 

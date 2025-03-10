@@ -26,6 +26,7 @@ use crate::{
 use anyhow::{Context, anyhow};
 use probe_rs::{
     Architecture, CoreStatus,
+    config::Registry,
     flashing::{
         DownloadOptions, FileDownloadError, FlashProgress, ProgressEvent, ProgressOperation,
     },
@@ -315,6 +316,7 @@ impl Debugger {
         mut debug_adapter: DebugAdapter<P>,
         lister: &Lister,
     ) -> Result<(), DebuggerError> {
+        let mut registry = Registry::from_builtin_families();
         // The DapClient startup process has a specific sequence.
         // Handle it here before starting a probe-rs session and looping through user generated requests.
         // Handling the initialize, and Attach/Launch requests here in this method,
@@ -336,14 +338,18 @@ impl Debugger {
         };
 
         // Process either the Launch or Attach request.
-        let mut session_data =
-            match self.handle_launch_attach(&launch_attach_request, &mut debug_adapter, lister) {
-                Ok(session_data) => session_data,
-                Err(error) => {
-                    debug_adapter.send_response::<()>(&launch_attach_request, Err(&error))?;
-                    return Ok(());
-                }
-            };
+        let mut session_data = match self.handle_launch_attach(
+            &mut registry,
+            &launch_attach_request,
+            &mut debug_adapter,
+            lister,
+        ) {
+            Ok(session_data) => session_data,
+            Err(error) => {
+                debug_adapter.send_response::<()>(&launch_attach_request, Err(&error))?;
+                return Ok(());
+            }
+        };
         self.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
         if debug_adapter
@@ -403,6 +409,7 @@ impl Debugger {
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
     fn handle_launch_attach<P: ProtocolAdapter + 'static>(
         &mut self,
+        registry: &mut Registry,
         launch_attach_request: &Request,
         debug_adapter: &mut DebugAdapter<P>,
         lister: &Lister,
@@ -427,7 +434,8 @@ impl Debugger {
 
         self.config.validate_config_files()?;
 
-        let mut session_data = SessionData::new(lister, &mut self.config, self.timestamp_offset)?;
+        let mut session_data =
+            SessionData::new(registry, lister, &mut self.config, self.timestamp_offset)?;
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 

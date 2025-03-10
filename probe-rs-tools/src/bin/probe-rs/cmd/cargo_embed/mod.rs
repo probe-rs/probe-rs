@@ -7,6 +7,7 @@ use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use colored::Colorize;
 use parking_lot::FairMutex;
+use probe_rs::config::Registry;
 use probe_rs::flashing::{BootInfo, FormatKind};
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
@@ -15,7 +16,6 @@ use std::ffi::OsString;
 use std::time::Instant;
 use std::{fs, thread};
 use std::{
-    fs::File,
     io::Write,
     panic,
     path::{Path, PathBuf},
@@ -138,10 +138,13 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     let _log_guard = setup_logging(None, config.general.log_level);
 
+    let mut registry = Registry::from_builtin_families();
+
     // Make sure we load the config given in the cli parameters.
     for cdp in &config.general.chip_descriptions {
-        let file = File::open(Path::new(cdp))?;
-        probe_rs::config::add_target_from_yaml(file)
+        let file = std::fs::read_to_string(Path::new(cdp))?;
+        registry
+            .add_target_family_from_yaml(&file)
             .with_context(|| format!("failed to load the chip description from {cdp}"))?;
     }
     let image_instr_set;
@@ -212,7 +215,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     };
 
     let lister = Lister::new();
-    let (mut session, probe_options) = match probe_options.simple_attach(&lister) {
+    let (mut session, probe_options) = match probe_options.simple_attach(&mut registry, &lister) {
         Ok((session, probe_options)) => (session, probe_options),
 
         Err(OperationError::MultipleProbesFound { list }) => {

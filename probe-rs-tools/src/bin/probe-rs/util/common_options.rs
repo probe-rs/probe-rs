@@ -1,14 +1,10 @@
-use std::{
-    fs::File,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{io::Write, path::PathBuf};
 
 use super::cargo::ArtifactError;
 use crate::util::parse_u64;
 use probe_rs::{
     Permissions, Session, Target,
-    config::{RegistryError, TargetSelector},
+    config::{Registry, RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
     integration::FakeProbe,
     probe::{
@@ -124,17 +120,18 @@ pub struct ProbeOptions {
 }
 
 impl ProbeOptions {
-    pub fn load(self) -> Result<LoadedProbeOptions, OperationError> {
-        LoadedProbeOptions::new(self)
+    pub fn load(self, registry: &mut Registry) -> Result<LoadedProbeOptions, OperationError> {
+        LoadedProbeOptions::new(self, registry)
     }
 
     /// Convenience method that attaches to the specified probe, target,
     /// and target session.
-    pub fn simple_attach(
+    pub fn simple_attach<'r>(
         self,
+        registry: &'r mut Registry,
         lister: &Lister,
-    ) -> Result<(Session, LoadedProbeOptions), OperationError> {
-        let common_options = self.load()?;
+    ) -> Result<(Session, LoadedProbeOptions<'r>), OperationError> {
+        let common_options = self.load(registry)?;
 
         let target = common_options.get_target_selector()?;
         let probe = common_options.attach_probe(lister)?;
@@ -145,14 +142,16 @@ impl ProbeOptions {
 }
 
 /// Common options and logic when interfacing with a [Probe] which already did all pre operation preparation.
-#[derive(Debug, Clone)]
-pub struct LoadedProbeOptions(ProbeOptions);
+pub struct LoadedProbeOptions<'r>(ProbeOptions, &'r mut Registry);
 
-impl LoadedProbeOptions {
+impl<'r> LoadedProbeOptions<'r> {
     /// Performs necessary init calls such as loading all chip descriptions
     /// and returns a newtype that ensures initialization.
-    pub(crate) fn new(probe_options: ProbeOptions) -> Result<Self, OperationError> {
-        let options = Self(probe_options);
+    pub(crate) fn new(
+        probe_options: ProbeOptions,
+        registry: &'r mut Registry,
+    ) -> Result<Self, OperationError> {
+        let mut options = Self(probe_options, registry);
         // Load the target description, if given in the cli parameters.
         options.maybe_load_chip_desc()?;
         Ok(options)
@@ -162,15 +161,16 @@ impl LoadedProbeOptions {
     /// to probe-rs registry.
     ///
     /// Note: should be called before any functions in [ProbeOptions].
-    fn maybe_load_chip_desc(&self) -> Result<(), OperationError> {
+    fn maybe_load_chip_desc(&mut self) -> Result<(), OperationError> {
         if let Some(ref cdp) = self.0.chip_description_path {
-            let file = File::open(Path::new(cdp)).map_err(|error| {
+            let yaml = std::fs::read_to_string(cdp).map_err(|error| {
                 OperationError::ChipDescriptionNotFound {
                     source: error,
                     path: cdp.clone(),
                 }
             })?;
-            probe_rs::config::add_target_from_yaml(file).map_err(|error| {
+
+            self.1.add_target_family_from_yaml(&yaml).map_err(|error| {
                 OperationError::FailedChipDescriptionParsing {
                     source: error,
                     path: cdp.clone(),
@@ -184,7 +184,7 @@ impl LoadedProbeOptions {
     /// Resolves a resultant target selector from passed [ProbeOptions].
     pub fn get_target_selector(&self) -> Result<TargetSelector, OperationError> {
         let target = if let Some(chip_name) = &self.0.chip {
-            let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
+            let target = self.1.get_target_by_name(chip_name).map_err(|error| {
                 OperationError::ChipNotFound {
                     source: error,
                     name: chip_name.clone(),
@@ -327,7 +327,7 @@ impl LoadedProbeOptions {
     }
 }
 
-impl AsRef<ProbeOptions> for LoadedProbeOptions {
+impl AsRef<ProbeOptions> for LoadedProbeOptions<'_> {
     fn as_ref(&self) -> &ProbeOptions {
         &self.0
     }

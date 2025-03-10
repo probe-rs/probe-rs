@@ -2,16 +2,9 @@
 
 use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
-use parking_lot::{RwLock, RwLockReadGuard};
 use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::io::Read;
-use std::ops::Deref;
-use std::sync::LazyLock;
-
-static REGISTRY: LazyLock<RwLock<Registry>> =
-    LazyLock::new(|| RwLock::new(Registry::from_builtin_families()));
 
 /// Error type for all errors which occur when working
 /// with the internal registry of targets.
@@ -121,7 +114,8 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
 }
 
 /// Registry of all available targets.
-struct Registry {
+#[derive(Default)]
+pub struct Registry {
     /// All the available chips.
     families: Vec<ChipFamily>,
 }
@@ -141,7 +135,13 @@ fn builtin_targets() -> Vec<ChipFamily> {
 }
 
 impl Registry {
-    fn from_builtin_families() -> Self {
+    /// Create a new registry.
+    pub fn new() -> Self {
+        Self { families: vec![] }
+    }
+
+    /// Add a target from the built-in targets.
+    pub fn from_builtin_families() -> Self {
         let mut families = builtin_targets();
 
         add_generic_targets(&mut families);
@@ -153,7 +153,13 @@ impl Registry {
         Self { families }
     }
 
-    fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
+    /// Returns the list of chip families.
+    pub fn families(&self) -> &[ChipFamily] {
+        &self.families
+    }
+
+    /// Returns a particular target by its name.
+    pub fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
         let (target, _) = self.get_target_and_family_by_name(name.as_ref())?;
         Ok(target)
     }
@@ -250,7 +256,8 @@ impl Registry {
         Ok((targ, family.clone()))
     }
 
-    fn get_targets_by_family_name(&self, name: &str) -> Result<Vec<String>, RegistryError> {
+    /// Get all target names in a given family.
+    pub fn get_targets_by_family_name(&self, name: &str) -> Result<Vec<String>, RegistryError> {
         let mut found_family = None;
         let mut exact_matches = 0;
         for family in self.families.iter() {
@@ -274,7 +281,11 @@ impl Registry {
         Ok(family.variants.iter().map(|v| v.name.to_string()).collect())
     }
 
-    fn search_chips(&self, name: &str) -> Vec<String> {
+    /// Search for a chip.
+    ///
+    /// This function returns chips that have the given name as a prefix, with any lowercase `x`
+    /// characters in the prefix matching any character in the chip name.
+    pub fn search_chips(&self, name: &str) -> Vec<String> {
         tracing::debug!("Searching registry for chip with name {name}");
 
         let mut targets = Vec::new();
@@ -294,7 +305,10 @@ impl Registry {
         targets
     }
 
-    fn get_target_by_chip_info(&self, chip_info: ChipInfo) -> Result<Target, RegistryError> {
+    pub(crate) fn get_target_by_chip_info(
+        &self,
+        chip_info: ChipInfo,
+    ) -> Result<Target, RegistryError> {
         let (family, chip) = match chip_info {
             ChipInfo::Arm(chip_info) => {
                 // Try get the corresponding chip.
@@ -339,7 +353,8 @@ impl Registry {
         Target::new(family, chip)
     }
 
-    fn add_target_family(&mut self, family: ChipFamily) -> Result<String, RegistryError> {
+    /// Add a target family to the registry.
+    pub fn add_target_family(&mut self, family: ChipFamily) -> Result<String, RegistryError> {
         validate_family(&family).map_err(|error| {
             RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), error)
         })?;
@@ -353,105 +368,12 @@ impl Registry {
 
         Ok(family_name)
     }
-}
 
-/// Get a target from the internal registry based on its name.
-pub fn get_family_by_name(name: impl AsRef<str>) -> Result<ChipFamily, RegistryError> {
-    let registry = REGISTRY.read_recursive();
-
-    registry
-        .families
-        .iter()
-        .find(|f| f.name.eq_ignore_ascii_case(name.as_ref()))
-        .cloned()
-        .ok_or_else(|| RegistryError::ChipNotFound(name.as_ref().to_string()))
-}
-
-/// Get a target from the internal registry based on its name.
-pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError> {
-    REGISTRY.read_recursive().get_target_by_name(name)
-}
-
-/// Get a target & chip family from the internal registry based on its name.
-pub fn get_target_and_family_by_name(
-    name: impl AsRef<str>,
-) -> Result<(Target, ChipFamily), RegistryError> {
-    REGISTRY
-        .read_recursive()
-        .get_target_and_family_by_name(name.as_ref())
-}
-
-/// Get all target from the internal registry based on its family name.
-pub fn get_targets_by_family_name(
-    family_name: impl AsRef<str>,
-) -> Result<Vec<String>, RegistryError> {
-    REGISTRY
-        .read_recursive()
-        .get_targets_by_family_name(family_name.as_ref())
-}
-
-/// Returns targets from the internal registry that match the given name.
-pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
-    Ok(REGISTRY.read_recursive().search_chips(name.as_ref()))
-}
-
-/// Try to retrieve a target based on [ChipInfo] read from a target.
-pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, RegistryError> {
-    REGISTRY.read_recursive().get_target_by_chip_info(chip_info)
-}
-
-/// Parse a target description and add the contained targets
-/// to the internal target registry.
-///
-/// # Examples
-///
-/// ## Add targets from a YAML file
-///
-/// ```no_run
-/// use std::path::Path;
-/// use std::fs::File;
-///
-/// let file = File::open(Path::new("/path/target.yaml"))?;
-/// probe_rs::config::add_target_from_yaml(file)?;
-///
-/// # Ok::<(), anyhow::Error>(())
-/// ```
-///
-/// ## Add targets from a embedded YAML file
-///
-/// ```ignore
-/// const BUILTIN_TARGET_YAML: &[u8] = include_bytes!("/path/target.yaml");
-/// probe_rs::config::add_target_from_yaml(BUILTIN_TARGET_YAML)?;
-/// ```
-pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<String, RegistryError>
-where
-    R: Read,
-{
-    let family: ChipFamily = serde_yaml::from_reader(yaml_reader)?;
-
-    add_target_family(family)
-}
-
-/// Add a target family to the internal registry.
-pub fn add_target_family(family: ChipFamily) -> Result<String, RegistryError> {
-    REGISTRY.write().add_target_family(family)
-}
-
-/// Get a list of all families which are contained in the internal
-/// registry.
-///
-/// As opposed to `families()` this function does not clone the families, but using it is
-/// slightly more cumbersome.
-pub fn families_ref() -> impl Deref<Target = [ChipFamily]> {
-    RwLockReadGuard::map(REGISTRY.read_recursive(), |registry| {
-        registry.families.as_slice()
-    })
-}
-
-/// Get a list of all families which are contained in the internal
-/// registry.
-pub fn families() -> Vec<ChipFamily> {
-    families_ref().to_vec()
+    /// Add a target family to the registry from a YAML-formatted string.
+    pub fn add_target_family_from_yaml(&mut self, yaml: &str) -> Result<String, RegistryError> {
+        let family: ChipFamily = serde_yaml::from_str(yaml)?;
+        self.add_target_family(family)
+    }
 }
 
 /// See if `name` matches the start of `pattern`, treating any lower-case `x`
@@ -486,7 +408,6 @@ mod tests {
     use crate::flashing::FlashAlgorithm;
 
     use super::*;
-    use std::fs::File;
     type TestResult = Result<(), RegistryError>;
 
     // Need to synchronize this with probe-rs/tests/scan_chain_test.yaml
@@ -583,11 +504,13 @@ mod tests {
 
     #[test]
     fn add_targets_with_and_without_scanchain() -> TestResult {
-        let file = File::open("tests/scan_chain_test.yaml")?;
-        add_target_from_yaml(file)?;
+        let mut registry = Registry::new();
+
+        let file = std::fs::read_to_string("tests/scan_chain_test.yaml")?;
+        registry.add_target_family_from_yaml(&file)?;
 
         // Check that the scan chain can read from a target correctly
-        let mut target = get_target_by_name("FULL_SCAN_CHAIN").unwrap();
+        let mut target = registry.get_target_by_name("FULL_SCAN_CHAIN").unwrap();
         let scan_chain = target.jtag.unwrap().scan_chain.unwrap();
         for device in scan_chain {
             if device.name == Some("core0".to_string()) {
@@ -598,15 +521,15 @@ mod tests {
         }
 
         // Now check that a device without a scan chain is read correctly
-        target = get_target_by_name("NO_JTAG_INFO").unwrap();
+        target = registry.get_target_by_name("NO_JTAG_INFO").unwrap();
         assert_eq!(target.jtag, None);
 
         // Now check that a device without a scan chain is read correctly
-        target = get_target_by_name("NO_SCAN_CHAIN").unwrap();
+        target = registry.get_target_by_name("NO_SCAN_CHAIN").unwrap();
         assert_eq!(target.jtag.unwrap().scan_chain, None);
 
         // Check a device with a minimal scan chain
-        target = get_target_by_name("PARTIAL_SCAN_CHAIN").unwrap();
+        target = registry.get_target_by_name("PARTIAL_SCAN_CHAIN").unwrap();
         let scan_chain = target.jtag.unwrap().scan_chain.unwrap();
         assert_eq!(scan_chain[0].ir_len, Some(FIRST_IR_LENGTH));
         assert_eq!(scan_chain[1].ir_len, Some(SECOND_IR_LENGTH));

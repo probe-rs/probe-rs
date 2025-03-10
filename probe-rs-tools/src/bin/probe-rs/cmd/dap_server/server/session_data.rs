@@ -13,7 +13,11 @@ use crate::{
     util::common_options::OperationError,
 };
 use anyhow::{Result, anyhow};
-use probe_rs::{CoreStatus, Session, config::TargetSelector, probe::list::Lister};
+use probe_rs::{
+    CoreStatus, Session,
+    config::{Registry, TargetSelector},
+    probe::list::Lister,
+};
 use probe_rs_debug::{
     DebugRegisters, SourceLocation, debug_info::DebugInfo, exception_handler_for_core,
 };
@@ -64,13 +68,14 @@ pub(crate) struct SessionData {
 
 impl SessionData {
     pub(crate) fn new(
+        registry: &mut Registry,
         lister: &Lister,
         config: &mut configuration::SessionConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self, DebuggerError> {
         let target_selector = TargetSelector::from(config.chip.as_deref());
 
-        let options = config.probe_options().load()?;
+        let options = config.probe_options().load(registry)?;
         let target_probe = options.attach_probe(lister)?;
         let target_session = options
             .attach_session(target_probe, target_selector)

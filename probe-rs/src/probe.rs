@@ -24,6 +24,7 @@ use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
 };
 use crate::config::TargetSelector;
+use crate::config::registry::Registry;
 use crate::probe::common::IdCode;
 use crate::{Error, Permissions, Session};
 use common::ScanChainError;
@@ -334,13 +335,36 @@ impl Probe {
     ///
     /// This runs all the necessary protocol init routines.
     ///
-    /// If this doesn't work, you might want to try [`Probe::attach_under_reset`]
+    /// The target is loaded from the builtin list of targets.
+    /// If this doesn't work, you might want to try [`Probe::attach_under_reset`].
     pub fn attach(
         self,
         target: impl Into<TargetSelector>,
         permissions: Permissions,
     ) -> Result<Session, Error> {
-        Session::new(self, target.into(), AttachMethod::Normal, permissions)
+        let registry = Registry::from_builtin_families();
+        self.attach_with_registry(target, permissions, &registry)
+    }
+
+    /// Attach to the chip.
+    ///
+    /// This runs all the necessary protocol init routines.
+    ///
+    /// The target is loaded from a custom registry.
+    /// If this doesn't work, you might want to try [`Probe::attach_under_reset`].
+    pub fn attach_with_registry(
+        self,
+        target: impl Into<TargetSelector>,
+        permissions: Permissions,
+        registry: &Registry,
+    ) -> Result<Session, Error> {
+        Session::new(
+            self,
+            target.into(),
+            AttachMethod::Normal,
+            permissions,
+            registry,
+        )
     }
 
     /// Attach to a target without knowing what target you have at hand.
@@ -372,27 +396,51 @@ impl Probe {
     /// This asserts the reset pin via the probe, plays the protocol init routines and deasserts the pin.
     /// This is necessary if the chip is not responding to the SWD reset sequence.
     /// For example this can happen if the chip has the SWDIO pin remapped.
+    ///
+    /// The target is loaded from the builtin list of targets.
     pub fn attach_under_reset(
         self,
         target: impl Into<TargetSelector>,
         permissions: Permissions,
     ) -> Result<Session, Error> {
+        let registry = Registry::from_builtin_families();
+        self.attach_under_reset_with_registry(target, permissions, &registry)
+    }
+
+    /// Attach to the chip under hard-reset.
+    ///
+    /// This asserts the reset pin via the probe, plays the protocol init routines and deasserts the pin.
+    /// This is necessary if the chip is not responding to the SWD reset sequence.
+    /// For example this can happen if the chip has the SWDIO pin remapped.
+    ///
+    /// The target is loaded from a custom registry.
+    pub fn attach_under_reset_with_registry(
+        self,
+        target: impl Into<TargetSelector>,
+        permissions: Permissions,
+        registry: &Registry,
+    ) -> Result<Session, Error> {
         // The session will de-assert reset after connecting to the debug interface.
-        Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(
-            |e| match e {
-                Error::Arm(ArmError::Timeout)
-                | Error::Riscv(RiscvError::Timeout)
-                | Error::Xtensa(XtensaError::Timeout) => Error::Other(
-                    "Timeout while attaching to target under reset. \
+        Session::new(
+            self,
+            target.into(),
+            AttachMethod::UnderReset,
+            permissions,
+            registry,
+        )
+        .map_err(|e| match e {
+            Error::Arm(ArmError::Timeout)
+            | Error::Riscv(RiscvError::Timeout)
+            | Error::Xtensa(XtensaError::Timeout) => Error::Other(
+                "Timeout while attaching to target under reset. \
                     This can happen if the target is not responding to the reset sequence. \
                     Ensure the chip's reset pin is connected, or try attaching without reset \
                     (`connectUnderReset = false` for DAP Clients, or remove `connect-under-reset` \
                         option from CLI options.)."
-                        .to_string(),
-                ),
-                e => e,
-            },
-        )
+                    .to_string(),
+            ),
+            e => e,
+        })
     }
 
     /// Selects the transport protocol to be used by the debug probe.

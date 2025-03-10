@@ -45,6 +45,7 @@ use postcard_rpc::server::{
 };
 use postcard_rpc::{Topic, TopicDirection, endpoints, host_client, server, topics};
 use postcard_schema::Schema;
+use probe_rs::config::Registry;
 use probe_rs::{Session, probe::list::Lister};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{Receiver, Sender, channel};
@@ -212,7 +213,6 @@ pub struct RpcContext {
     state: SessionState,
     token: CancellationToken,
     sender: Option<PostcardSender<WireTxImpl>>,
-    local: bool,
 }
 
 impl SpawnContext for RpcContext {
@@ -229,17 +229,12 @@ impl SpawnContext for RpcContext {
 }
 
 impl RpcContext {
-    pub fn new(local: bool) -> Self {
+    pub fn new() -> Self {
         Self {
             state: SessionState::new(),
             token: CancellationToken::new(),
             sender: None,
-            local,
         }
-    }
-
-    pub fn is_local(&self) -> bool {
-        self.local
     }
 
     pub fn set_sender(&mut self, sender: PostcardSender<WireTxImpl>) {
@@ -278,6 +273,10 @@ impl RpcContext {
 
     pub fn lister(&self) -> Lister {
         Lister::new()
+    }
+
+    pub async fn registry(&self) -> impl DerefMut<Target = Registry> + Send {
+        self.state.registry.clone().lock_owned().await
     }
 
     pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
@@ -429,8 +428,8 @@ postcard_rpc::define_dispatch! {
         | CreateTempFileEndpoint    | async     | create_temp_file  |
         | TempFileDataEndpoint      | async     | append_temp_file  |
 
-        | ListChipFamiliesEndpoint  | blocking  | list_families     |
-        | ChipInfoEndpoint          | blocking  | chip_info         |
+        | ListChipFamiliesEndpoint  | async     | list_families     |
+        | ChipInfoEndpoint          | async     | chip_info         |
         | LoadChipFamilyEndpoint    | async     | load_chip_family  |
 
         | TargetInfoEndpoint        | async     | target_info       |
@@ -466,14 +465,14 @@ type TxChannel = Sender<Result<Vec<u8>, WireRxErrorKind>>;
 type RxChannel = Receiver<Vec<u8>>;
 
 impl RpcApp {
-    pub fn create_server(local: bool, depth: usize) -> (ServerImpl, TxChannel, RxChannel) {
+    pub fn create_server(depth: usize) -> (ServerImpl, TxChannel, RxChannel) {
         let client_to_server = channel::<Result<Vec<u8>, WireRxErrorKind>>(depth);
         let server_to_client = channel::<Vec<u8>>(depth);
 
         let client_to_server_rx = WireRx::new(client_to_server.1);
         let server_to_client_tx = WireTx::new(server_to_client.0);
 
-        let mut dispatcher = RpcApp::new(RpcContext::new(local), TokioSpawner);
+        let mut dispatcher = RpcApp::new(RpcContext::new(), TokioSpawner);
         let vkk = dispatcher.min_key_len();
         dispatcher
             .context

@@ -1,12 +1,11 @@
 use std::ops::Range;
 
-use anyhow::Context;
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::Target;
 use serde::{Deserialize, Serialize};
 
-use crate::rpc::functions::{NoResponse, RpcContext, RpcError, RpcResult};
+use crate::rpc::functions::{NoResponse, RpcContext, RpcResult};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Schema)]
 pub struct JEP106Code {
@@ -47,12 +46,12 @@ pub struct ChipFamily {
     pub variants: Vec<Chip>,
 }
 
-impl From<probe_rs_target::ChipFamily> for ChipFamily {
-    fn from(value: probe_rs_target::ChipFamily) -> Self {
+impl From<&probe_rs_target::ChipFamily> for ChipFamily {
+    fn from(value: &probe_rs_target::ChipFamily) -> Self {
         Self {
-            name: value.name,
+            name: value.name.clone(),
             manufacturer: value.manufacturer.map(|m| m.into()),
-            variants: value.variants.into_iter().map(|v| v.into()).collect(),
+            variants: value.variants.iter().map(|v| v.into()).collect(),
         }
     }
 }
@@ -70,17 +69,26 @@ pub struct Chip {
     pub name: String,
 }
 
-impl From<probe_rs_target::Chip> for Chip {
-    fn from(value: probe_rs_target::Chip) -> Self {
-        Self { name: value.name }
+impl From<&probe_rs_target::Chip> for Chip {
+    fn from(value: &probe_rs_target::Chip) -> Self {
+        Self {
+            name: value.name.clone(),
+        }
     }
 }
 
 pub type ListFamiliesResponse = RpcResult<Vec<ChipFamily>>;
 
-pub fn list_families(_ctx: &mut RpcContext, _header: VarHeader, _req: ()) -> ListFamiliesResponse {
-    Ok(probe_rs::config::families()
-        .into_iter()
+pub async fn list_families(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    _req: (),
+) -> ListFamiliesResponse {
+    Ok(ctx
+        .registry()
+        .await
+        .families()
+        .iter()
         .map(|f| f.into())
         .collect())
 }
@@ -310,18 +318,24 @@ impl Default for MemoryAccess {
 
 pub type ChipInfoResponse = RpcResult<ChipData>;
 
-pub fn chip_info(
-    _ctx: &mut RpcContext,
+pub async fn chip_info(
+    ctx: &mut RpcContext,
     _header: VarHeader,
     request: ChipInfoRequest,
 ) -> ChipInfoResponse {
-    Ok(probe_rs::config::get_target_by_name(request.name)?.into())
+    Ok(ctx
+        .registry()
+        .await
+        .get_target_by_name(request.name)?
+        .into())
 }
 
 // Used to avoid uploading a temp file to the remote.
 #[derive(Serialize, Deserialize, Schema)]
 pub struct LoadChipFamilyRequest {
-    pub family_data: Vec<u8>,
+    /// Chip description in YAML format.
+    // TODO: instead, serialize the whole ChipFamily struct
+    pub families_yaml: String,
 }
 
 pub async fn load_chip_family(
@@ -329,17 +343,9 @@ pub async fn load_chip_family(
     _header: VarHeader,
     request: LoadChipFamilyRequest,
 ) -> NoResponse {
-    if !ctx.is_local() {
-        return RpcResult::Err(RpcError::from(
-            "Loading chip families is not supported in the remote interface yet.",
-        ));
-    }
-
-    let family = postcard::from_bytes::<probe_rs_target::ChipFamily>(&request.family_data)
-        .context("Failed to deserialize chip family data")?;
-
-    // TODO: this can only be done safely if we have separate registries per connection.
-    probe_rs::config::add_target_family(family)?;
+    ctx.registry()
+        .await
+        .add_target_family_from_yaml(&request.families_yaml)?;
 
     Ok(())
 }
