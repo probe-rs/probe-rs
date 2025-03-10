@@ -19,6 +19,7 @@ use crate::{
             protocol::ProtocolAdapter,
         },
         peripherals::svd_variables::SvdCache,
+        server::configuration::SessionConfig,
     },
     util::flash::build_loader,
 };
@@ -32,9 +33,8 @@ use probe_rs::{
 };
 use std::{
     cell::RefCell,
-    fs::{self},
+    fs,
     path::Path,
-    rc::Rc,
     thread,
     time::{Duration, UNIX_EPOCH},
 };
@@ -108,214 +108,202 @@ impl Debugger {
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         self.debug_logger.flush_to_dap(debug_adapter)?;
-        match debug_adapter.listen_for_request()? {
-            None => {
-                let _poll_span = tracing::trace_span!("Polling for core status").entered();
-                if debug_adapter.all_cores_halted {
-                    // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
-                    tracing::trace!(
-                        "Sleeping (all cores are halted) for 100ms to reduce polling overheaads."
-                    );
-                    thread::sleep(Duration::from_millis(100)); // Medium delay to reduce fast looping costs.
-                } else {
-                    // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-                    let (_, suggest_delay_required) =
-                        session_data.poll_cores(&self.config, debug_adapter)?;
-                    // If there are no requests from the DAP Client, and there was no RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
-                    if debug_adapter.configuration_is_done() && suggest_delay_required {
-                        tracing::trace!(
-                            "Sleeping (core is running) for 50ms to reduce polling overheads."
-                        );
-                        thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
-                    } else {
-                        tracing::trace!(
-                            "Retrieving data from the core, no delay required between iterations of polling the core."
-                        );
-                    };
-                }
-
-                Ok(DebugSessionStatus::Continue)
-            }
-            Some(request) => {
-                let _req_span =
-                    tracing::info_span!("Handling request", request = ?request).entered();
-
+        let Some(request) = debug_adapter.listen_for_request()? else {
+            let _poll_span = tracing::trace_span!("Polling for core status").entered();
+            if debug_adapter.all_cores_halted {
+                // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
+                tracing::trace!(
+                    "Sleeping (all cores are halted) for 100ms to reduce polling overheaads."
+                );
+                thread::sleep(Duration::from_millis(100)); // Medium delay to reduce fast looping costs.
+            } else {
                 // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-                let (core_statuses, _) = session_data.poll_cores(&self.config, debug_adapter)?;
-
-                // Check if we have configured cores
-                if core_statuses.is_empty() {
-                    if debug_adapter.configuration_is_done() {
-                        // We've passed `configuration_done` and still do not have at least one core configured.
-                        return Err(DebuggerError::Other(anyhow!(
-                            "Cannot continue unless one target core configuration is defined."
-                        )));
-                    } else {
-                        // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
-                        return Ok(DebugSessionStatus::Continue);
-                    }
-                }
-
-                // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand to a multi-core implementation that understands which MS DAP requests are core specific.
-                let core_id = 0;
-                let new_status = &core_statuses[0]; // Checked above
-
-                // Attach to the core. so that we have the handle available for processing the request.
-
-                let Some(target_core_config) = self.config.core_configs.get_mut(core_id) else {
-                    return Err(DebuggerError::Other(anyhow!(
-                        "No core configuration found for core id {}",
-                        core_id
-                    )));
+                let (_, suggest_delay_required) =
+                    session_data.poll_cores(&self.config, debug_adapter)?;
+                // If there are no requests from the DAP Client, and there was no RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
+                if debug_adapter.configuration_is_done() && suggest_delay_required {
+                    tracing::trace!(
+                        "Sleeping (core is running) for 50ms to reduce polling overheads."
+                    );
+                    thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
+                } else {
+                    tracing::trace!(
+                        "Retrieving data from the core, no delay required between iterations of polling the core."
+                    );
                 };
+            }
 
-                let Ok(mut target_core) = session_data.attach_core(target_core_config.core_index)
-                else {
-                    return Err(DebuggerError::Other(anyhow!(
-                        "Unable to connect to target core"
-                    )));
-                };
+            return Ok(DebugSessionStatus::Continue);
+        };
 
-                // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
-                // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
-                // NOTE: The target will exit sleep mode as a result of this command.
-                let mut unhalt_me = false;
+        let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
 
-                match request.command.as_ref() {
-                    "configurationDone"
-                    | "setBreakpoints"
-                    | "setInstructionBreakpoints"
-                    | "clearBreakpoint"
-                    | "stackTrace"
-                    | "threads"
-                    | "scopes"
-                    | "variables"
-                    | "readMemory"
-                    | "writeMemory"
-                    | "disassemble" => {
-                        if new_status == &CoreStatus::Sleeping {
-                            match target_core.core.halt(Duration::from_millis(100)) {
-                                Ok(_) => {
-                                    unhalt_me = true;
-                                }
-                                Err(error) => {
-                                    let err = DebuggerError::from(error);
-                                    debug_adapter.send_response::<()>(&request, Err(&err))?;
-                                    return Err(err);
-                                }
-                            }
+        // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
+        let (core_statuses, _) = session_data.poll_cores(&self.config, debug_adapter)?;
+
+        // Check if we have configured cores
+        if core_statuses.is_empty() {
+            if debug_adapter.configuration_is_done() {
+                // We've passed `configuration_done` and still do not have at least one core configured.
+                return Err(DebuggerError::Other(anyhow!(
+                    "Cannot continue unless one target core configuration is defined."
+                )));
+            }
+
+            // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
+            return Ok(DebugSessionStatus::Continue);
+        }
+
+        // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand to a multi-core implementation that understands which MS DAP requests are core specific.
+        let core_id = 0;
+
+        // Attach to the core. so that we have the handle available for processing the request.
+
+        let Some(target_core_config) = self.config.core_configs.get(core_id) else {
+            return Err(DebuggerError::Other(anyhow!(
+                "No core configuration found for core id {}",
+                core_id
+            )));
+        };
+
+        let new_status = core_statuses[core_id]; // Checked above
+
+        let mut target_core = session_data
+            .attach_core(target_core_config.core_index)
+            .context("Unable to connect to target core")?;
+
+        // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
+        // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
+        // NOTE: The target will exit sleep mode as a result of this command.
+        let mut unhalt_me = false;
+
+        match request.command.as_ref() {
+            "configurationDone"
+            | "setBreakpoints"
+            | "setInstructionBreakpoints"
+            | "clearBreakpoint"
+            | "stackTrace"
+            | "threads"
+            | "scopes"
+            | "variables"
+            | "readMemory"
+            | "writeMemory"
+            | "disassemble" => {
+                if new_status == CoreStatus::Sleeping {
+                    match target_core.core.halt(Duration::from_millis(100)) {
+                        Ok(_) => unhalt_me = true,
+                        Err(error) => {
+                            let err = DebuggerError::from(error);
+                            debug_adapter.send_response::<()>(&request, Err(&err))?;
+                            return Err(err);
                         }
                     }
-                    _ => {}
                 }
+            }
+            _ => {}
+        }
 
-                let mut debug_session = DebugSessionStatus::Continue;
+        let mut debug_session = DebugSessionStatus::Continue;
 
-                // Now we are ready to execute supported commands, or return an error if it isn't supported.
-                let result = match request.command.clone().as_ref() {
-                    "rttWindowOpened" => {
-                        if let Some(debugger_rtt_target) =
-                            target_core.core_data.rtt_connection.as_mut()
-                        {
-                            let arguments: RttWindowOpenedArguments =
-                                get_arguments(debug_adapter, &request)?;
+        // Now we are ready to execute supported commands, or return an error if it isn't supported.
+        let result = match request.command.as_ref() {
+            "rttWindowOpened" => {
+                if let Some(debugger_rtt_target) = target_core.core_data.rtt_connection.as_mut() {
+                    let arguments: RttWindowOpenedArguments =
+                        get_arguments(debug_adapter, &request)?;
 
-                            if let Some(rtt_channel) = debugger_rtt_target
-                                .debugger_rtt_channels
-                                .iter_mut()
-                                .find(|debugger_rtt_channel| {
-                                    debugger_rtt_channel.channel_number == arguments.channel_number
-                                })
-                            {
-                                rtt_channel.has_client_window = arguments.window_is_open;
-                            }
-
-                            debug_adapter
-                                .send_response::<()>(&request, Ok(None))
-                                .map_err(|error| {
-                                    DebuggerError::Other(anyhow!(
-                                        "Could not deserialize arguments for RttWindowOpened : {:?}.",
-                                        error
-                                    ))
-                                })?;
-                        }
-                        Ok(())
+                    if let Some(rtt_channel) = debugger_rtt_target
+                        .debugger_rtt_channels
+                        .iter_mut()
+                        .find(|debugger_rtt_channel| {
+                            debugger_rtt_channel.channel_number == arguments.channel_number
+                        })
+                    {
+                        rtt_channel.has_client_window = arguments.window_is_open;
                     }
-                    "disconnect" => {
-                        let result = debug_adapter.disconnect(&mut target_core, &request);
-                        debug_session = DebugSessionStatus::Terminate;
-                        result
-                    }
-                    "next" => debug_adapter.next(&mut target_core, &request),
-                    "stepIn" => debug_adapter.step_in(&mut target_core, &request),
-                    "stepOut" => debug_adapter.step_out(&mut target_core, &request),
-                    "pause" => debug_adapter.pause(&mut target_core, &request),
-                    "readMemory" => debug_adapter.read_memory(&mut target_core, &request),
-                    "writeMemory" => debug_adapter.write_memory(&mut target_core, &request),
-                    "setVariable" => debug_adapter.set_variable(&mut target_core, &request),
-                    "configurationDone" => {
-                        debug_adapter.configuration_done(&mut target_core, &request)
-                    }
-                    "threads" => debug_adapter.threads(&mut target_core, &request),
-                    "restart" => {
-                        if target_core.core.architecture() == Architecture::Riscv
-                            && self.config.flashing_config.flashing_enabled
-                        {
-                            debug_adapter.show_message(
+
+                    debug_adapter
+                        .send_response::<()>(&request, Ok(None))
+                        .map_err(|error| {
+                            DebuggerError::Other(anyhow!(
+                                "Could not deserialize arguments for RttWindowOpened : {:?}.",
+                                error
+                            ))
+                        })?;
+                }
+                Ok(())
+            }
+            "disconnect" => {
+                let result = debug_adapter.disconnect(&mut target_core, &request);
+                debug_session = DebugSessionStatus::Terminate;
+                result
+            }
+            "next" => debug_adapter.next(&mut target_core, &request),
+            "stepIn" => debug_adapter.step_in(&mut target_core, &request),
+            "stepOut" => debug_adapter.step_out(&mut target_core, &request),
+            "pause" => debug_adapter.pause(&mut target_core, &request),
+            "readMemory" => debug_adapter.read_memory(&mut target_core, &request),
+            "writeMemory" => debug_adapter.write_memory(&mut target_core, &request),
+            "setVariable" => debug_adapter.set_variable(&mut target_core, &request),
+            "configurationDone" => debug_adapter.configuration_done(&mut target_core, &request),
+            "threads" => debug_adapter.threads(&mut target_core, &request),
+            "restart" => {
+                if target_core.core.architecture() == Architecture::Riscv
+                    && self.config.flashing_config.flashing_enabled
+                {
+                    debug_adapter.show_message(
                                 MessageSeverity::Information,
                                 "Re-flashing the target during on-session `restart` is not currently supported for RISC-V. Flashing will be disabled for the remainder of this session.",
                             );
-                            self.config.flashing_config.flashing_enabled = false;
-                        }
-
-                        // Reset RTT so that the link can be re-established
-                        target_core.core_data.rtt_connection = None;
-                        let result = target_core
-                            .core
-                            .halt(Duration::from_millis(500))
-                            .map_err(|error| anyhow!("Failed to halt core: {}", error))
-                            .and(Ok(()));
-
-                        debug_session = DebugSessionStatus::Restart(request);
-                        result
-                    }
-                    "setBreakpoints" => debug_adapter.set_breakpoints(&mut target_core, &request),
-                    "setInstructionBreakpoints" => {
-                        debug_adapter.set_instruction_breakpoints(&mut target_core, &request)
-                    }
-                    "stackTrace" => debug_adapter.stack_trace(&mut target_core, &request),
-                    "scopes" => debug_adapter.scopes(&mut target_core, &request),
-                    "disassemble" => debug_adapter.disassemble(&mut target_core, &request),
-                    "variables" => debug_adapter.variables(&mut target_core, &request),
-                    "continue" => debug_adapter.r#continue(&mut target_core, &request),
-                    "evaluate" => debug_adapter.evaluate(&mut target_core, &request),
-                    "completions" => debug_adapter.completions(&mut target_core, &request),
-                    other_command => {
-                        // Unimplemented command.
-                        debug_adapter.send_response::<()>(
-                            &request,
-                            Err(&DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other_command))),)
-                            .and(Ok(()))
-                    }
-                };
-
-                match result {
-                    Ok(()) => {
-                        if unhalt_me {
-                            if let Err(error) = target_core.core.run() {
-                                debug_adapter.show_error_message(&DebuggerError::Other(
-                                    anyhow!("{}", error),
-                                ))?;
-                                return Err(error.into());
-                            }
-                        }
-
-                        Ok(debug_session)
-                    }
-                    Err(e) => Err(DebuggerError::Other(e.context("Error executing request."))),
+                    self.config.flashing_config.flashing_enabled = false;
                 }
+
+                // Reset RTT so that the link can be re-established
+                target_core.core_data.rtt_connection = None;
+                let result = target_core
+                    .core
+                    .halt(Duration::from_millis(500))
+                    .map_err(|error| anyhow!("Failed to halt core: {}", error))
+                    .and(Ok(()));
+
+                debug_session = DebugSessionStatus::Restart(request);
+                result
+            }
+            "setBreakpoints" => debug_adapter.set_breakpoints(&mut target_core, &request),
+            "setInstructionBreakpoints" => {
+                debug_adapter.set_instruction_breakpoints(&mut target_core, &request)
+            }
+            "stackTrace" => debug_adapter.stack_trace(&mut target_core, &request),
+            "scopes" => debug_adapter.scopes(&mut target_core, &request),
+            "disassemble" => debug_adapter.disassemble(&mut target_core, &request),
+            "variables" => debug_adapter.variables(&mut target_core, &request),
+            "continue" => debug_adapter.r#continue(&mut target_core, &request),
+            "evaluate" => debug_adapter.evaluate(&mut target_core, &request),
+            "completions" => debug_adapter.completions(&mut target_core, &request),
+            other_command => {
+                // Unimplemented command.
+                debug_adapter.send_response::<()>(
+                    &request,
+                    Err(&DebuggerError::Other(anyhow!(
+                        "Received request '{}', which is not supported or not implemented yet",
+                        other_command
+                    ))),
+                )
+            }
+        };
+
+        result.map_err(|e| DebuggerError::Other(e.context("Error executing request.")))?;
+
+        if unhalt_me {
+            if let Err(error) = target_core.core.run() {
+                let error =
+                    DebuggerError::Other(anyhow!(error).context("Failed to resume target."));
+                debug_adapter.show_error_message(&error)?;
+                return Err(error);
             }
         }
+
+        Ok(debug_session)
     }
 
     /// `debug_session` is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
@@ -348,13 +336,11 @@ impl Debugger {
         };
 
         // Process either the Launch or Attach request.
-        let (mut debug_adapter, mut session_data) =
-            match self.handle_launch_attach(&launch_attach_request, debug_adapter, lister) {
-                Ok((debug_adapter, session_data)) => (debug_adapter, session_data),
-                Err(_) => {
-                    // Because the `handle_launch_attach request handler consumes the `debug_adapter`,
-                    // we have to ensure that it reports all its own errors to the user.
-                    // By the time we get here, we assume that has happened, and exit the debug session gracefully.
+        let mut session_data =
+            match self.handle_launch_attach(&launch_attach_request, &mut debug_adapter, lister) {
+                Ok(session_data) => session_data,
+                Err(error) => {
+                    debug_adapter.send_response::<()>(&launch_attach_request, Err(&error))?;
                     return Ok(());
                 }
             };
@@ -373,158 +359,115 @@ impl Debugger {
         }
 
         // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
-        loop {
-            let debug_session_status = self
-                .process_next_request(&mut session_data, &mut debug_adapter)
-                .or_else(|e| {
-                    debug_adapter.show_message(
-                        MessageSeverity::Error,
-                        format!("Debug Adapter terminated unexpectedly with an error: {e:?}"),
-                    );
-                    debug_adapter
-                        .send_event("terminated", Some(TerminatedEventBody { restart: None }))?;
-                    debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
-                    // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
-                    for _loop_count in 0..10 {
-                        thread::sleep(Duration::from_millis(50));
-                    }
-                    Err(e)
-                })?;
+        let error = loop {
+            let debug_session_status =
+                match self.process_next_request(&mut session_data, &mut debug_adapter) {
+                    Ok(status) => status,
+                    Err(error) => break error,
+                };
 
             match debug_session_status {
                 DebugSessionStatus::Continue => {
                     // All is good. We can process the next request.
                 }
                 DebugSessionStatus::Restart(request) => {
-                    debug_adapter = self.restart(debug_adapter, &mut session_data, &request)?;
+                    if let Err(error) =
+                        self.restart(&mut debug_adapter, &mut session_data, &request)
+                    {
+                        debug_adapter.send_response::<()>(&request, Err(&error))?;
+                        return Err(error);
+                    }
                 }
                 DebugSessionStatus::Terminate => {
                     session_data.clean_up(&self.config)?;
                     return Ok(());
                 }
             };
+        };
+
+        debug_adapter.show_message(
+            MessageSeverity::Error,
+            format!("Debug Adapter terminated unexpectedly with an error: {error:?}"),
+        );
+        debug_adapter.send_event("terminated", Some(TerminatedEventBody { restart: None }))?;
+        debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
+        // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
+        for _loop_count in 0..10 {
+            thread::sleep(Duration::from_millis(50));
         }
+
+        Err(error)
     }
 
     /// Process launch or attach request
-    // Note: This function consumes the 'debug_adapter', so all error reporting via that handle must be done before returning from this function.
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
     fn handle_launch_attach<P: ProtocolAdapter + 'static>(
         &mut self,
         launch_attach_request: &Request,
-        mut debug_adapter: DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter<P>,
         lister: &Lister,
-    ) -> Result<(DebugAdapter<P>, SessionData), DebuggerError> {
+    ) -> Result<SessionData, DebuggerError> {
         let requested_target_session_type = match launch_attach_request.command.as_str() {
             "attach" => TargetSessionType::AttachRequest,
             "launch" => TargetSessionType::LaunchRequest,
             other => {
-                let error = DebuggerError::Other(anyhow!(
+                return Err(DebuggerError::Other(anyhow!(
                     "Expected request 'launch' or 'attach', but received '{other}'"
-                ));
-                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                return Err(error);
+                )));
             }
         };
 
-        self.config = match get_arguments(&mut debug_adapter, launch_attach_request) {
-            Ok(config) => config,
-            Err(error) => {
-                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                return Err(error);
-            }
-        };
+        self.config = get_arguments(debug_adapter, launch_attach_request)?;
 
-        if let Err(bad_config) = self
-            .config
-            .validate_configuration_option_compatibility(requested_target_session_type)
-        {
-            debug_adapter.send_response::<()>(launch_attach_request, Err(&bad_config))?;
-            return Err(bad_config);
-        }
+        self.config
+            .validate_configuration_option_compatibility(requested_target_session_type)?;
 
         debug_adapter
             .set_console_log_level(self.config.console_log_level.unwrap_or(ConsoleLog::Console));
 
-        if let Err(error) = self.config.validate_config_files() {
-            debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-            return Err(error);
-        }
+        self.config.validate_config_files()?;
 
-        let mut session_data =
-            match SessionData::new(lister, &mut self.config, self.timestamp_offset) {
-                Ok(session_data) => session_data,
-                Err(error) => {
-                    debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                    return Err(error);
-                }
-            };
+        let mut session_data = SessionData::new(lister, &mut self.config, self.timestamp_offset)?;
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
-        if self.config.flashing_config.flashing_enabled {
-            let target_core_config = match self.config.core_configs.first_mut() {
-                Some(config) => config,
-                None => {
-                    let error = DebuggerError::Other(anyhow!(
-                        "Cannot continue unless one target core configuration is defined."
-                    ));
-                    debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                    return Err(error);
-                }
-            };
+        let Some(target_core_config) = self.config.core_configs.first() else {
+            return Err(DebuggerError::Other(anyhow!(
+                "Cannot continue unless one target core configuration is defined."
+            )));
+        };
 
-            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
-                let error = DebuggerError::Other(anyhow!(
+        if self.config.flashing_config.flashing_enabled {
+            let Some(path_to_elf) = &target_core_config.program_binary else {
+                return Err(DebuggerError::Other(anyhow!(
                     "Please specify use the `program-binary` option in `launch.json` to specify an executable"
-                ));
-                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                return Err(error);
+                )));
             };
 
             // Store timestamp of flashed binary
-            self.binary_timestamp = get_file_timestamp(&path_to_elf);
+            self.binary_timestamp = get_file_timestamp(path_to_elf);
 
-            debug_adapter = self.flash(
-                &path_to_elf,
+            Self::flash(
+                &self.config,
+                path_to_elf,
                 debug_adapter,
                 launch_attach_request,
                 &mut session_data,
             )?;
         }
 
-        let target_core_config = match self.config.core_configs.first_mut() {
-            Some(config) => config,
-            None => {
-                let error = DebuggerError::Other(anyhow!(
-                    "Cannot continue unless one target core configuration is defined."
-                ));
-                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                return Err(error);
-            }
-        };
-
         // First, attach to the core
-        let mut target_core = match session_data.attach_core(target_core_config.core_index) {
-            Ok(session_data) => session_data,
-            Err(error) => {
-                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                return Err(error);
-            }
-        };
+        let mut target_core = session_data.attach_core(target_core_config.core_index)?;
 
         // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
         // Depending on supplied `config`, the core will be restarted at the end of initialization in the `configuration_done` request.
-        if let Err(error) = halt_core(&mut target_core.core) {
-            debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-            return Err(error);
-        }
+        halt_core(&mut target_core.core)?;
 
         // Before we complete, load the (optional) CMSIS-SVD file and its variable cache.
         // Configure the [CorePeripherals].
         if let Some(svd_file) = &target_core_config.svd_file {
             target_core.core_data.core_peripherals =
-                match SvdCache::new(svd_file, &mut debug_adapter, launch_attach_request.seq) {
+                match SvdCache::new(svd_file, debug_adapter, launch_attach_request.seq) {
                     Ok(core_peripherals) => Some(core_peripherals),
                     Err(error) => {
                         // This is not a fatal error. We can continue the debug session without the SVD file.
@@ -536,54 +479,43 @@ impl Debugger {
 
         if requested_target_session_type == TargetSessionType::LaunchRequest {
             // This will effectively do a `reset` and `halt` of the core, which is what we want until after the `configuration_done` request.
-            if let Err(error) = debug_adapter
+            debug_adapter
                 .restart(&mut target_core, None)
-                .context("Failed to restart core")
-            {
-                let error = error.into();
-                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                return Err(error);
-            }
+                .context("Failed to restart core")?;
         } else {
             // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
             // For LaunchRequest, this is done in the `restart` above.
-            if let Err(error) = target_core.core.debug_on_sw_breakpoint(true) {
-                let error = error.into();
-                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                return Err(error);
-            }
+            target_core.core.debug_on_sw_breakpoint(true)?;
         }
 
         drop(target_core);
 
         debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
 
-        Ok((debug_adapter, session_data))
+        Ok(session_data)
     }
 
     #[tracing::instrument(skip_all)]
     fn restart<P: ProtocolAdapter + 'static>(
         &mut self,
-        mut debug_adapter: DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter<P>,
         session_data: &mut SessionData,
         request: &Request,
-    ) -> Result<DebugAdapter<P>, DebuggerError> {
-        if self.config.flashing_config.flashing_enabled {
-            let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
-                DebuggerError::Other(anyhow!(
-                    "Cannot continue unless one target core configuration is defined."
-                ))
-            })?;
-            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
-                let err = DebuggerError::Other(anyhow!(
-                    "Please specify use the `program-binary` option in `launch.json` to specify an executable"
-                ));
+    ) -> Result<(), DebuggerError> {
+        let Some(target_core_config) = self.config.core_configs.first() else {
+            return Err(DebuggerError::Other(anyhow!(
+                "Cannot continue unless one target core configuration is defined."
+            )));
+        };
 
-                debug_adapter.show_error_message(&err)?;
-                return Err(err);
+        if self.config.flashing_config.flashing_enabled {
+            let Some(path_to_elf) = &target_core_config.program_binary else {
+                return Err(DebuggerError::Other(anyhow!(
+                    "Please specify use the `program-binary` option in `launch.json` to specify an executable"
+                )));
             };
 
-            if is_file_newer(&mut self.binary_timestamp, &path_to_elf) {
+            if is_file_newer(&mut self.binary_timestamp, path_to_elf) {
                 // If there is a new binary as part of a restart, there are some key things that
                 // need to be 'reset' for things to work properly.
                 session_data.load_debug_info_for_core(target_core_config)?;
@@ -591,48 +523,40 @@ impl Debugger {
                     .attach_core(target_core_config.core_index)
                     .map(|mut target_core| target_core.recompute_breakpoints())??;
 
-                debug_adapter = self.flash(&path_to_elf, debug_adapter, request, session_data)?;
+                Self::flash(
+                    &self.config,
+                    path_to_elf,
+                    debug_adapter,
+                    request,
+                    session_data,
+                )?;
             }
         }
 
-        let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
-            DebuggerError::Other(anyhow!(
-                "Cannot continue unless one target core configuration is defined."
-            ))
-        })?;
-
         // First, attach to the core
-        let mut target_core = session_data
-            .attach_core(target_core_config.core_index)
-            .or_else(|error| {
-                debug_adapter.show_error_message(&error)?;
-                Err(error)
-            })?;
+        let mut target_core = session_data.attach_core(target_core_config.core_index)?;
 
         // Immediately after attaching, halt the core, so that we can finish restart logic without bumping into user code.
-        if let Err(error) = halt_core(&mut target_core.core) {
-            debug_adapter.show_error_message(&error)?;
-            return Err(error);
-        }
+        halt_core(&mut target_core.core)?;
 
         // After completing optional flashing and other config, we can run the debug adapter's restart logic.
         debug_adapter
             .restart(&mut target_core, Some(request))
             .context("Failed to restart core")?;
 
-        Ok(debug_adapter)
+        Ok(())
     }
 
     /// Flash the given binary, and report the progress to the
     /// debug adapter.
     // Note: This function consumes the 'debug_adapter', so all error reporting via that handle must be done before returning from this function.
     fn flash<P: ProtocolAdapter + 'static>(
-        &mut self,
+        config: &SessionConfig,
         path_to_elf: &Path,
-        mut debug_adapter: DebugAdapter<P>,
+        debug_adapter: &mut DebugAdapter<P>,
         launch_attach_request: &Request,
         session_data: &mut SessionData,
-    ) -> Result<DebugAdapter<P>, DebuggerError> {
+    ) -> Result<(), DebuggerError> {
         debug_adapter.log_to_console(format!(
             "FLASHING: Starting write of {:?} to device memory",
             &path_to_elf
@@ -642,11 +566,10 @@ impl Debugger {
             .ok();
 
         let mut download_options = DownloadOptions::default();
-        download_options.keep_unwritten_bytes = self.config.flashing_config.restore_unwritten_bytes;
-        download_options.do_chip_erase = self.config.flashing_config.full_chip_erase;
+        download_options.keep_unwritten_bytes = config.flashing_config.restore_unwritten_bytes;
+        download_options.do_chip_erase = config.flashing_config.full_chip_erase;
 
-        let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
-        let rc_debug_adapter_clone = rc_debug_adapter.clone();
+        let ref_debug_adapter = RefCell::new(&mut *debug_adapter);
 
         struct ProgressState {
             total_page_size: u64,
@@ -657,19 +580,19 @@ impl Debugger {
             fill_size_done: u64,
         }
 
-        let progress_state = Rc::new(RefCell::new(ProgressState {
+        let progress_state = RefCell::new(ProgressState {
             total_page_size: 0,
             total_sector_size: 0,
             total_fill_size: 0,
             page_size_done: 0,
             sector_size_done: 0,
             fill_size_done: 0,
-        }));
+        });
 
-        let flash_progress = progress_id.map(|id| {
+        download_options.progress = progress_id.map(|id| {
             FlashProgress::new(move |event| {
                 let mut flash_progress = progress_state.borrow_mut();
-                let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
+                let mut debug_adapter = ref_debug_adapter.borrow_mut();
                 match event {
                     ProgressEvent::AddProgressBar {
                         operation,
@@ -768,52 +691,18 @@ impl Debugger {
             })
         });
 
-        download_options.progress = flash_progress;
-
-        let loader = match build_loader(
+        let result = match build_loader(
             &mut session_data.session,
             path_to_elf,
-            self.config.flashing_config.format_options.clone(),
+            config.flashing_config.format_options.clone(),
             None,
         ) {
-            Ok(loader) => loader,
+            Ok(loader) => loader
+                .commit(&mut session_data.session, download_options)
+                .map_err(FileDownloadError::Flash),
             Err(error) => {
-                // `download-options` need to be dropped, to free the `debug_adapter`,
-                // before we can use it to return the error to the user.
                 drop(download_options);
-                debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
-                    Ok(debug_adapter) => debug_adapter.into_inner(),
-                    Err(too_many_strong_references) => {
-                        let reference_error = DebuggerError::Other(anyhow!(
-                            "Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.",
-                            Rc::strong_count(&too_many_strong_references)
-                        ));
-                        tracing::error!("{reference_error:?}");
-                        return Err(reference_error);
-                    }
-                };
-                if let Some(id) = progress_id {
-                    let _ = debug_adapter.end_progress(id);
-                }
-                let error = DebuggerError::FileDownload(error);
-                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                return Err(error);
-            }
-        };
-
-        let flash_result = loader
-            .commit(&mut session_data.session, download_options)
-            .map_err(FileDownloadError::Flash);
-
-        debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
-            Ok(debug_adapter) => debug_adapter.into_inner(),
-            Err(too_many_strong_references) => {
-                let reference_error = DebuggerError::Other(anyhow!(
-                    "Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.",
-                    Rc::strong_count(&too_many_strong_references)
-                ));
-                tracing::error!("{reference_error:?}");
-                return Err(reference_error);
+                Err(error)
             }
         };
 
@@ -821,20 +710,14 @@ impl Debugger {
             let _ = debug_adapter.end_progress(id);
         }
 
-        match flash_result {
-            Ok(_) => {
-                debug_adapter.log_to_console(format!(
-                    "FLASHING: Completed write of {:?} to device memory",
-                    &path_to_elf
-                ));
-                Ok(debug_adapter)
-            }
-            Err(error) => {
-                let error = DebuggerError::FileDownload(error);
-                debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
-                Err(error)
-            }
+        if result.is_ok() {
+            debug_adapter.log_to_console(format!(
+                "FLASHING: Completed write of {:?} to device memory",
+                &path_to_elf
+            ));
         }
+
+        result.map_err(DebuggerError::FileDownload)
     }
 
     #[tracing::instrument(skip_all, name = "Handling initialize request")]

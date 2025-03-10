@@ -1,0 +1,1 @@
+`DownloadOptions` and `FlashProgress` now have a lifetime `'p` to allow using short-lived `FlashProgress` objects.
