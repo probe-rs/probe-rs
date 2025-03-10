@@ -63,7 +63,7 @@ itm = { version = "0.9.0-rc.1", default-features = false }
 parse_int = "0.6"
 libtest-mimic = "0.8.0"
 fastrand = "2.1"
-rustyline = { version = "14", default-features = false, features = [
+rustyline = { version = "15", default-features = false, features = [
     "with-dirs",
     "with-file-history",
 ] }
