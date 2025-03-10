@@ -34,7 +34,7 @@ docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
 
-bincode = { version = "2", optional = true }
+bincode = { version = "2", features = ["serde"], optional = true }
 bitfield = "0.19.0"
 bitvec = "1"
 hidapi = { version = "2", default-features = false, features = [
@@ -74,7 +74,7 @@ dunce = "1.0.5"
 [build-dependencies]
 probe-rs-target = { workspace = true, optional = true }
 
-bincode = { version = "2", optional = true }
+bincode = { version = "2", features = ["serde"], optional = true }
 serde_yaml = { version = "0.9", optional = true }
 
 [dev-dependencies]
