@@ -1,8 +1,4 @@
-use std::{
-    fs::File,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{io::Write, path::PathBuf};
 
 use super::cargo::ArtifactError;
 use crate::util::parse_u64;
@@ -167,20 +163,14 @@ impl<'r> LoadedProbeOptions<'r> {
     /// Note: should be called before any functions in [ProbeOptions].
     fn maybe_load_chip_desc(&mut self) -> Result<(), OperationError> {
         if let Some(ref cdp) = self.0.chip_description_path {
-            let file = File::open(Path::new(cdp)).map_err(|error| {
+            let yaml = std::fs::read_to_string(cdp).map_err(|error| {
                 OperationError::ChipDescriptionNotFound {
                     source: error,
                     path: cdp.clone(),
                 }
             })?;
-            let family = serde_yaml::from_reader(file).map_err(|error| {
-                OperationError::FailedChipDescriptionParsing {
-                    source: error.into(),
-                    path: cdp.clone(),
-                }
-            })?;
 
-            self.1.add_target_family(family).map_err(|error| {
+            self.1.add_target_family_from_yaml(&yaml).map_err(|error| {
                 OperationError::FailedChipDescriptionParsing {
                     source: error,
                     path: cdp.clone(),

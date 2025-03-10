@@ -5,7 +5,6 @@ use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
 use anyhow::Context;
 use colored::Colorize;
 use libtest_mimic::{Failed, Trial};
-use probe_rs_target::ChipFamily;
 use time::UtcOffset;
 use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
 use tokio_util::sync::CancellationToken;
@@ -56,8 +55,7 @@ pub async fn attach_probe(
 
         // Load the YAML locally to validate it before sending it to the remote.
         // We may also need it locally.
-        let family: ChipFamily = serde_yaml::from_str(&file)?;
-        client.registry().await.add_target_family(family)?;
+        client.registry().await.add_target_family_from_yaml(&file)?;
 
         client.load_chip_family(file).await?;
     }

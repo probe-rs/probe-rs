@@ -12,12 +12,10 @@ use probe_rs::flashing::{BootInfo, FormatKind};
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
 use probe_rs::{Session, probe::DebugProbeSelector};
-use probe_rs_target::ChipFamily;
 use std::ffi::OsString;
 use std::time::Instant;
 use std::{fs, thread};
 use std::{
-    fs::File,
     io::Write,
     panic,
     path::{Path, PathBuf},
@@ -144,10 +142,9 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     // Make sure we load the config given in the cli parameters.
     for cdp in &config.general.chip_descriptions {
-        let file = File::open(Path::new(cdp))?;
-        let family: ChipFamily = serde_yaml::from_reader(file)?;
+        let file = std::fs::read_to_string(Path::new(cdp))?;
         registry
-            .add_target_family(family)
+            .add_target_family_from_yaml(&file)
             .with_context(|| format!("failed to load the chip description from {cdp}"))?;
     }
     let image_instr_set;

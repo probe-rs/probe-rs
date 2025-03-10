@@ -368,6 +368,12 @@ impl Registry {
 
         Ok(family_name)
     }
+
+    /// Add a target family to the registry from a YAML-formatted string.
+    pub fn add_target_family_from_yaml(&mut self, yaml: &str) -> Result<String, RegistryError> {
+        let family: ChipFamily = serde_yaml::from_str(yaml)?;
+        self.add_target_family(family)
+    }
 }
 
 /// See if `name` matches the start of `pattern`, treating any lower-case `x`
@@ -402,7 +408,6 @@ mod tests {
     use crate::flashing::FlashAlgorithm;
 
     use super::*;
-    use std::fs::File;
     type TestResult = Result<(), RegistryError>;
 
     // Need to synchronize this with probe-rs/tests/scan_chain_test.yaml
@@ -501,9 +506,8 @@ mod tests {
     fn add_targets_with_and_without_scanchain() -> TestResult {
         let mut registry = Registry::new();
 
-        let file = File::open("tests/scan_chain_test.yaml")?;
-        let family: ChipFamily = serde_yaml::from_reader(file)?;
-        registry.add_target_family(family)?;
+        let file = std::fs::read_to_string("tests/scan_chain_test.yaml")?;
+        registry.add_target_family_from_yaml(&file)?;
 
         // Check that the scan chain can read from a target correctly
         let mut target = registry.get_target_by_name("FULL_SCAN_CHAIN").unwrap();

@@ -1,6 +1,5 @@
 use std::ops::Range;
 
-use anyhow::Context;
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::Target;
@@ -344,10 +343,9 @@ pub async fn load_chip_family(
     _header: VarHeader,
     request: LoadChipFamilyRequest,
 ) -> NoResponse {
-    let family = serde_yaml::from_str(&request.families_yaml)
-        .context("Failed to deserialize chip family data")?;
-
-    ctx.registry().await.add_target_family(family)?;
+    ctx.registry()
+        .await
+        .add_target_family_from_yaml(&request.families_yaml)?;
 
     Ok(())
 }

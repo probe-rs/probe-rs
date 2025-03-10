@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::fs::File;
 use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
@@ -62,9 +61,8 @@ pub fn cmd_test(
     let mut registry = Registry::new();
 
     // Add the target to the registry from the generated YAML file
-    let file = File::open(Path::new(definition_export_path))?;
-    let family = serde_yaml::from_reader(file)?;
-    let family_name = registry.add_target_family(family)?;
+    let yaml = std::fs::read_to_string(definition_export_path)?;
+    let family_name = registry.add_target_family_from_yaml(&yaml)?;
 
     let targets = registry
         .get_targets_by_family_name(&family_name)
