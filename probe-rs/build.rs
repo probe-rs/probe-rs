@@ -63,15 +63,19 @@ mod builtin_targets {
             println!("cargo:rerun-if-changed={additional_target_dir}");
             visit_dirs(additional_target_dir, &mut process_target_yaml).unwrap();
         }
-        let families_bin =
-            bincode::serialize(&families).expect("Failed to serialize families as bincode");
+
+        let config = bincode::config::standard();
+        let families_bin = bincode::serde::encode_to_vec(&families, config)
+            .expect("Failed to serialize families as bincode");
 
         let out_dir = env::var("OUT_DIR").unwrap();
         let dest_path = Path::new(&out_dir).join("targets.bincode");
         std::fs::write(dest_path, &families_bin).unwrap();
 
         // Check if we can deserialize the bincode again, otherwise the binary will not be usable.
-        if let Err(deserialize_error) = bincode::deserialize::<Vec<ChipFamily>>(&families_bin) {
+        if let Err(deserialize_error) =
+            bincode::serde::decode_from_slice::<Vec<ChipFamily>, _>(&families_bin, config)
+        {
             panic!(
                 "Failed to deserialize supported target definitions from bincode: {deserialize_error:?}"
             );

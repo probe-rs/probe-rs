@@ -130,8 +130,9 @@ struct Registry {
 fn builtin_targets() -> Vec<ChipFamily> {
     const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
 
-    bincode::deserialize(BUILTIN_TARGETS)
+    bincode::serde::decode_from_slice(BUILTIN_TARGETS, bincode::config::standard())
         .expect("Failed to deserialize builtin targets. This is a bug")
+        .0
 }
 
 #[cfg(not(feature = "builtin-targets"))]
