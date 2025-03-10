@@ -1,0 +1,1 @@
+Added `verifyBeforeFlashing` and `verifyAfterFlashing` options to debugger configuration.

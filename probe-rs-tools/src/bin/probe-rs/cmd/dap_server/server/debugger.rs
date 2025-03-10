@@ -28,7 +28,8 @@ use probe_rs::{
     Architecture, CoreStatus,
     config::Registry,
     flashing::{
-        DownloadOptions, FileDownloadError, FlashProgress, ProgressEvent, ProgressOperation,
+        DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent,
+        ProgressOperation,
     },
     probe::list::Lister,
 };
@@ -576,6 +577,7 @@ impl Debugger {
         let mut download_options = DownloadOptions::default();
         download_options.keep_unwritten_bytes = config.flashing_config.restore_unwritten_bytes;
         download_options.do_chip_erase = config.flashing_config.full_chip_erase;
+        download_options.verify = config.flashing_config.verify_after_flashing;
 
         let ref_debug_adapter = RefCell::new(&mut *debug_adapter);
 
@@ -583,16 +585,20 @@ impl Debugger {
             total_page_size: u64,
             total_sector_size: u64,
             total_fill_size: u64,
+            total_verify_size: u64,
             page_size_done: u64,
             sector_size_done: u64,
             fill_size_done: u64,
+            verify_size_done: u64,
         }
 
         let progress_state = RefCell::new(ProgressState {
             total_page_size: 0,
             total_sector_size: 0,
             total_fill_size: 0,
+            total_verify_size: 0,
             page_size_done: 0,
+            verify_size_done: 0,
             sector_size_done: 0,
             fill_size_done: 0,
         });
@@ -606,11 +612,22 @@ impl Debugger {
                         operation,
                         total: Some(total),
                     } => match operation {
-                        ProgressOperation::Fill => flash_progress.total_fill_size += total,
-                        ProgressOperation::Erase => flash_progress.total_sector_size += total,
-                        ProgressOperation::Program => flash_progress.total_page_size += total,
-
-                        _ => {}
+                        ProgressOperation::Fill => {
+                            flash_progress.total_fill_size += total;
+                            flash_progress.fill_size_done = 0;
+                        }
+                        ProgressOperation::Erase => {
+                            flash_progress.total_sector_size += total;
+                            flash_progress.sector_size_done = 0;
+                        }
+                        ProgressOperation::Program => {
+                            flash_progress.total_page_size += total;
+                            flash_progress.page_size_done = 0;
+                        }
+                        ProgressOperation::Verify => {
+                            flash_progress.total_verify_size += total;
+                            flash_progress.verify_size_done = 0;
+                        }
                     },
                     ProgressEvent::Started(ProgressOperation::Fill) => {
                         debug_adapter
@@ -694,6 +711,34 @@ impl Debugger {
                             .update_progress(Some(1.0), Some("Flashing Pages Complete!"), id)
                             .ok();
                     }
+                    ProgressEvent::Started(ProgressOperation::Verify) => {
+                        debug_adapter
+                            .update_progress(None, Some("Verifying"), id)
+                            .ok();
+                    }
+                    ProgressEvent::Progress {
+                        operation: ProgressOperation::Verify,
+                        size,
+                        ..
+                    } => {
+                        flash_progress.verify_size_done += size;
+                        let progress = flash_progress.verify_size_done as f64
+                            / flash_progress.total_verify_size as f64;
+
+                        debug_adapter
+                            .update_progress(Some(progress), Some("Verifying"), id)
+                            .ok();
+                    }
+                    ProgressEvent::Failed(ProgressOperation::Verify) => {
+                        debug_adapter
+                            .update_progress(Some(1.0), Some("Verifying Failed!"), id)
+                            .ok();
+                    }
+                    ProgressEvent::Finished(ProgressOperation::Verify) => {
+                        debug_adapter
+                            .update_progress(Some(1.0), Some("Verifying Complete!"), id)
+                            .ok();
+                    }
                     _ => {}
                 }
             })
@@ -705,9 +750,36 @@ impl Debugger {
             config.flashing_config.format_options.clone(),
             None,
         ) {
-            Ok(loader) => loader
-                .commit(&mut session_data.session, download_options)
-                .map_err(FileDownloadError::Flash),
+            Ok(loader) => {
+                let do_flashing = if config.flashing_config.verify_before_flashing {
+                    match loader.verify(
+                        &mut session_data.session,
+                        download_options
+                            .progress
+                            .clone()
+                            .unwrap_or_else(FlashProgress::empty),
+                    ) {
+                        Ok(_) => false,
+                        Err(FlashError::Verify) => true,
+                        Err(other) => {
+                            return Err(DebuggerError::FileDownload(FileDownloadError::Flash(
+                                other,
+                            )));
+                        }
+                    }
+                } else {
+                    true
+                };
+
+                if do_flashing {
+                    loader
+                        .commit(&mut session_data.session, download_options)
+                        .map_err(FileDownloadError::Flash)
+                } else {
+                    drop(download_options);
+                    Ok(())
+                }
+            }
             Err(error) => {
                 drop(download_options);
                 Err(error)
