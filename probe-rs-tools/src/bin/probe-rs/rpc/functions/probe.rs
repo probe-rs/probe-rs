@@ -247,7 +247,8 @@ pub async fn attach(
     _header: VarHeader,
     request: AttachRequest,
 ) -> RpcResult<AttachResult> {
-    let common_options = ProbeOptions::from(&request).load()?;
+    let mut registry = ctx.registry().await;
+    let common_options = ProbeOptions::from(&request).load(&mut registry)?;
     let target = common_options.get_target_selector()?;
 
     let Ok(probe) = common_options.attach_probe(&ctx.lister()) else {

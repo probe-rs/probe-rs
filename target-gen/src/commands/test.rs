@@ -8,6 +8,7 @@ use anyhow::{Context, Result, anyhow};
 use colored::Colorize;
 use probe_rs::{
     MemoryInterface, Permissions, Session,
+    config::Registry,
     flashing::{
         DownloadOptions, FlashLoader, FlashProgress, ProgressEvent, ProgressOperation, erase_all,
         erase_sectors,
@@ -58,11 +59,15 @@ pub fn cmd_test(
         println!("{error}");
     }
 
+    let mut registry = Registry::new();
+
     // Add the target to the registry from the generated YAML file
     let file = File::open(Path::new(definition_export_path))?;
-    let family_name = probe_rs::config::add_target_from_yaml(file)?;
+    let family = serde_yaml::from_reader(file)?;
+    let family_name = registry.add_target_family(family)?;
 
-    let targets = probe_rs::config::get_targets_by_family_name(&family_name)
+    let targets = registry
+        .get_targets_by_family_name(&family_name)
         .with_context(|| format!("Failed to get targets of {family_name}"))?;
 
     let target_name = match targets.len() {

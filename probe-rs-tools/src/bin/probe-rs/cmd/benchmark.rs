@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Context;
-use probe_rs::{MemoryInterface, probe::list::Lister};
+use probe_rs::{MemoryInterface, config::Registry, probe::list::Lister};
 
 use crate::util::common_options::LoadedProbeOptions;
 use crate::util::common_options::ProbeOptions;
@@ -83,9 +83,9 @@ struct TestData {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
+    pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
         let speed = self.common.speed;
-        let common_options = self.common.load()?;
+        let common_options = self.common.load(registry)?;
         let mut max_speed = self.max_speed;
         let mut speeds = vec![];
         // if no max-speed specified, assume the user just wants to use a single speed (as per other cli cmds)

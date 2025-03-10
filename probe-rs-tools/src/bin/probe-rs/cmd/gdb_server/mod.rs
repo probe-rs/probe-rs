@@ -9,7 +9,7 @@ pub(crate) use stub::{GdbInstanceConfiguration, run};
 use std::time::Duration;
 
 use parking_lot::FairMutex;
-use probe_rs::probe::list::Lister;
+use probe_rs::{config::Registry, probe::list::Lister};
 
 use crate::util::common_options::ProbeOptions;
 
@@ -33,8 +33,8 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
+    pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
+        let (mut session, _probe_options) = self.common.simple_attach(registry, lister)?;
 
         if self.reset_halt {
             session

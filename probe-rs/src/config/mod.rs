@@ -6,6 +6,7 @@
 //! which can be used together with a flash algorithm to program the flash memory
 //! of a target.
 //!
+//!
 //! ## Built-in targets
 //!
 //! The built-in targets are added at build-time, from the `build.rs` script.
@@ -16,9 +17,10 @@
 //!
 //! ## Adding targets at runtime
 //!
-//! To add a target at runtime, the [add_target_from_yaml] function can
-//! be used to read targets from a YAML file.
-//!
+//! Targets are collected in a [`Registry`] in families. A registry with the built-in
+//! targets can be created via the [`Registry::from_builtin_families`] function.
+//! To add a target at runtime, use [Registry::add_target_family]. The target family
+//! is a [`ChipFamily`] struct, usually read from a target description YAML file.
 
 mod chip_info;
 pub(crate) mod registry;
@@ -30,13 +32,9 @@ pub use probe_rs_target::{
     SectorDescription, SectorInfo, TargetDescriptionSource,
 };
 
-pub use registry::{
-    RegistryError, add_target_family, add_target_from_yaml, families, get_family_by_name,
-    get_target_and_family_by_name, get_target_by_name, get_targets_by_family_name, search_chips,
-};
+pub use registry::{Registry, RegistryError};
 pub use target::{DebugSequence, Target, TargetSelector};
 
 // Crate-internal API
 pub(crate) use chip_info::ChipInfo;
-pub(crate) use registry::get_target_by_chip_info;
 pub(crate) use target::CoreExt;

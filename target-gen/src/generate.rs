@@ -3,6 +3,7 @@ use cmsis_pack::pdsc::{AccessPort, Algorithm, Core, Device, Package, Processor};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
 use jep106::JEP106Code;
+use probe_rs::config::Registry;
 use probe_rs::flashing::FlashAlgorithm;
 use probe_rs_target::{
     Architecture, ArmCoreAccessOptions, Chip, ChipFamily, Core as ProbeCore, CoreAccessOptions,
@@ -79,7 +80,8 @@ where
     devices.sort_by(|a, b| a.0.cmp(&b.0));
 
     // Only process this, if this belongs to a supported family.
-    let currently_supported_chip_families = probe_rs::config::families();
+    let registry = Registry::from_builtin_families();
+    let currently_supported_chip_families = registry.families();
 
     for (device_name, device) in devices {
         if only_supported_familes

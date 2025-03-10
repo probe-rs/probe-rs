@@ -13,7 +13,7 @@ use crate::{
     architecture::arm::{
         ArmChipInfo, ArmProbeInterface, FullyQualifiedApAddress, memory::ArmMemoryInterface,
     },
-    config::{DebugSequence, registry},
+    config::{DebugSequence, Registry},
     vendor::{
         Vendor,
         nordicsemi::sequences::{nrf52::Nrf52, nrf53::Nrf5340, nrf91::Nrf9160},
@@ -45,6 +45,7 @@ impl Vendor for NordicSemi {
 
     fn try_detect_arm_chip(
         &self,
+        registry: &Registry,
         probe: &mut dyn ArmProbeInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
@@ -59,8 +60,7 @@ impl Vendor for NordicSemi {
         // Cache to avoid reading the same register multiple times
         let mut register_values: HashMap<u32, u32> = HashMap::new();
 
-        let families = registry::families_ref();
-        for family in families.iter() {
+        for family in registry.families() {
             for info in family.chip_detection.iter() {
                 let target = if let Some(spec) = info.as_nordic_ficr() {
                     ficr_info_detect(&mut register_values, memory_interface.as_mut(), spec)

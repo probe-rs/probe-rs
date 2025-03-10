@@ -70,7 +70,8 @@ pub async fn target_info(
     _hdr: VarHeader,
     request: TargetInfoRequest,
 ) -> NoResponse {
-    let probe_options = ProbeOptions::from(&request).load()?;
+    let mut registry = ctx.registry().await;
+    let probe_options = ProbeOptions::from(&request).load(&mut registry)?;
 
     let probe = probe_options.attach_probe(&ctx.lister())?;
 
