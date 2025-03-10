@@ -233,6 +233,8 @@ impl CoreInterface for Armv8m<'_> {
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;
+        // Invalidate cached core status
+        self.set_core_status(CoreStatus::Unknown);
         Ok(())
     }
 
@@ -244,8 +246,24 @@ impl CoreInterface for Armv8m<'_> {
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;
 
-        // Update core status
-        let _ = self.status()?;
+        // Invalidate cached core status
+        self.set_core_status(CoreStatus::Unknown);
+
+        // Some processors may not enter the halt state immediately after clearing the reset state.
+        // Particularly: on PSOC 6, vector catch takes effect after the core's boot ROM finishes
+        // executing, when jumping to the reset vector of the user application.
+        match self.wait_for_core_halted(Duration::from_millis(100)) {
+            Ok(()) => (),
+            Err(Error::Arm(ArmError::Timeout)) if self.status()? == CoreStatus::Sleeping => {
+                // On PSOC 6, if no application is loaded in flash, or if this core is waiting for
+                // another core to boot it, the boot ROM sleeps and vector catch is not triggered.
+                tracing::warn!(
+                    "reset_and_halt timed out and core is sleeping; assuming core is quiescent"
+                );
+                self.halt(Duration::from_millis(100))?;
+            }
+            Err(e) => return Err(e),
+        }
 
         const XPSR_THUMB: u32 = 1 << 24;
 
