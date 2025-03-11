@@ -24,7 +24,7 @@ use tokio_util::bytes::Bytes;
 use std::{fmt::Write, sync::Arc};
 
 use crate::rpc::{
-    functions::RpcApp,
+    functions::{ProbeAccess, RpcApp},
     transport::websocket::{AxumWebsocketTx, WebsocketRx},
 };
 
@@ -51,6 +51,8 @@ pub(crate) struct ServerConfig {
 pub(crate) struct ServerUser {
     pub name: String,
     pub token: String,
+    #[serde(default)]
+    pub access: ProbeAccess,
 }
 
 struct ServerState {
@@ -147,7 +149,6 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<Arc<ServerState>>) -> imp
 /// Actual websocket statemachine (one will be spawned per connection)
 async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerState>) {
     let (writer, reader) = socket.split();
-    let (mut server, tx, mut rx) = RpcApp::create_server(16);
 
     let mut reader = WebsocketRx::new(reader.map(|message| {
         message.map(|message| match message {
@@ -181,6 +182,8 @@ async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerSt
     };
 
     tracing::info!("User {} connected", user.name);
+
+    let (mut server, tx, mut rx) = RpcApp::create_server(16, user.access.clone());
 
     // Connect the server's channels to the websocket connection
     let sender = async {

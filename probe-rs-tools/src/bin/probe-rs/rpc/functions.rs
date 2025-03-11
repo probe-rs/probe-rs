@@ -46,6 +46,11 @@ use postcard_rpc::server::{
 use postcard_rpc::{Topic, TopicDirection, endpoints, host_client, server, topics};
 use postcard_schema::Schema;
 use probe_rs::config::Registry;
+use probe_rs::integration::ProbeLister;
+use probe_rs::probe::list::AllProbesLister;
+use probe_rs::probe::{
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+};
 use probe_rs::{Session, probe::list::Lister};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{Receiver, Sender, channel};
@@ -209,10 +214,74 @@ impl RpcSpawnContext {
     }
 }
 
+/// Struct to list all attached debug probes
+#[derive(Debug)]
+pub struct LimitedLister {
+    all_probes: AllProbesLister,
+    probe_access: ProbeAccess,
+}
+
+impl LimitedLister {
+    /// Create a new lister with the default lister implementation.
+    pub fn new(probe_access: ProbeAccess) -> Self {
+        Self {
+            all_probes: AllProbesLister::new(),
+            probe_access,
+        }
+    }
+
+    fn is_allowed(&self, selector: &DebugProbeSelector) -> bool {
+        // We aren't using `.to_string()` because it doesn't append an empty serial when missing.
+        let sel_without_serial = format!("{:04x}:{:04x}", selector.vendor_id, selector.product_id);
+        let mut sel_with_serial = format!("{sel_without_serial}:");
+        if let Some(sn) = selector.serial_number.as_deref() {
+            sel_with_serial.push_str(sn);
+        }
+
+        let matching = |s: &String| s == &sel_with_serial || s == &sel_without_serial;
+
+        match &self.probe_access {
+            ProbeAccess::All => true,
+            ProbeAccess::Allow(allow) => allow.iter().any(matching),
+            ProbeAccess::Deny(deny) => !deny.iter().any(matching),
+        }
+    }
+}
+
+impl ProbeLister for LimitedLister {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+        if !self.is_allowed(selector) {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::CouldNotOpen,
+            ));
+        }
+        self.all_probes.open(selector)
+    }
+
+    fn list_all(&self) -> Vec<DebugProbeInfo> {
+        self.all_probes
+            .list_all()
+            .into_iter()
+            .filter(|info| self.is_allowed(&DebugProbeSelector::from(info)))
+            .collect()
+    }
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+//#[serde(rename_all = "snake_case", tag = "type", content = "probes")]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum ProbeAccess {
+    #[default]
+    All,
+    Allow(Vec<String>),
+    Deny(Vec<String>),
+}
+
 pub struct RpcContext {
     state: SessionState,
     token: CancellationToken,
     sender: Option<PostcardSender<WireTxImpl>>,
+    probe_access: ProbeAccess,
 }
 
 impl SpawnContext for RpcContext {
@@ -229,11 +298,12 @@ impl SpawnContext for RpcContext {
 }
 
 impl RpcContext {
-    pub fn new() -> Self {
+    pub fn new(probe_access: ProbeAccess) -> Self {
         Self {
             state: SessionState::new(),
             token: CancellationToken::new(),
             sender: None,
+            probe_access,
         }
     }
 
@@ -272,7 +342,7 @@ impl RpcContext {
     }
 
     pub fn lister(&self) -> Lister {
-        Lister::new()
+        Lister::with_lister(Box::new(LimitedLister::new(self.probe_access.clone())))
     }
 
     pub async fn registry(&self) -> impl DerefMut<Target = Registry> + Send {
@@ -465,14 +535,17 @@ type TxChannel = Sender<Result<Vec<u8>, WireRxErrorKind>>;
 type RxChannel = Receiver<Vec<u8>>;
 
 impl RpcApp {
-    pub fn create_server(depth: usize) -> (ServerImpl, TxChannel, RxChannel) {
+    pub fn create_server(
+        depth: usize,
+        probe_access: ProbeAccess,
+    ) -> (ServerImpl, TxChannel, RxChannel) {
         let client_to_server = channel::<Result<Vec<u8>, WireRxErrorKind>>(depth);
         let server_to_client = channel::<Vec<u8>>(depth);
 
         let client_to_server_rx = WireRx::new(client_to_server.1);
         let server_to_client_tx = WireTx::new(server_to_client.0);
 
-        let mut dispatcher = RpcApp::new(RpcContext::new(), TokioSpawner);
+        let mut dispatcher = RpcApp::new(RpcContext::new(probe_access), TokioSpawner);
         let vkk = dispatcher.min_key_len();
         dispatcher
             .context

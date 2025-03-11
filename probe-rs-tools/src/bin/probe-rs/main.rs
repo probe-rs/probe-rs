@@ -491,7 +491,7 @@ async fn main() -> Result<()> {
     }
 
     // Create a local server to run commands against.
-    let (mut local_server, tx, rx) = RpcApp::create_server(16);
+    let (mut local_server, tx, rx) = RpcApp::create_server(16, rpc::functions::ProbeAccess::All);
     let handle = tokio::spawn(async move { local_server.run().await });
 
     // Run the command locally.
