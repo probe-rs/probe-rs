@@ -99,7 +99,8 @@ mod test {
         use crate::rpc::functions::RpcApp;
 
         // Create a local server to run commands against.
-        let (mut local_server, tx, rx) = RpcApp::create_server(16);
+        let (mut local_server, tx, rx) =
+            RpcApp::create_server(16, crate::rpc::functions::ProbeAccess::All);
         let handle = tokio::spawn(async move { local_server.run().await });
 
         // Run the command locally.
