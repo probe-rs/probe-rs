@@ -244,8 +244,7 @@ impl RttClient {
 
 pub struct ConfiguredRttClient {
     pub scan_region: ScanRegion,
-    pub config: RttConfig,
-
+    config: RttConfig,
     client: RttClient,
 }
 
@@ -254,7 +253,6 @@ impl ConfiguredRttClient {
         Self {
             scan_region,
             config,
-
             client: RttClient::new(),
         }
     }
