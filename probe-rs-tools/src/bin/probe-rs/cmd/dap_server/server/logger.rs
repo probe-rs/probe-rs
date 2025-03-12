@@ -116,10 +116,10 @@ impl DebugLogger {
 
     /// Setup logging, according to the following rules.
     /// 1. If the RUST_LOG environment variable is set, use it as a `LevelFilter` to configure a subscriber that
-    ///     logs to the given destination, or default to `RUST_LOG=probe_rs_debug=warn`
+    ///    logs to the given destination, or default to `RUST_LOG=probe_rs_debug=warn`
     /// 2. If no `log_file` destination is supplied, output will be written to the DAP client's Debug Console,
     /// 3. Irrespective of the RUST_LOG environment variable, configure a subscriber that will write with `LevelFilter::ERROR` to stderr,
-    ///     because these errors are picked up and reported to the user by the VSCode extension, when no DAP session is available.
+    ///    because these errors are picked up and reported to the user by the VSCode extension, when no DAP session is available.
     pub fn setup_logging(
         &mut self,
         log_file: Option<&Path>,

@@ -616,7 +616,7 @@ mod test {
 
     #[test]
     fn merge_consecutive_separates_ranges_with_different_cores() {
-        let regions = vec![
+        let regions = [
             RamRegion {
                 name: None,
                 range: 0..4,

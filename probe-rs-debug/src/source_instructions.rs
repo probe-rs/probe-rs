@@ -67,10 +67,10 @@ impl VerifiedBreakpoint {
     /// 3. Filter the [`Vec<LineSequence>`][LineSequence] entries to only include sequences that match the requested path.
     /// 3. Convert remaining [`LineSequence`], to [`InstructionSequence`].
     /// 4. Return the first [`InstructionSequence`] that contains the requested source location.
-    ///    4a. This may be an exact match on file/line/column, or,
-    ///    4b. Failing an exact match, a match on file/line only.
-    ///    4c. Failing that, a match on file only, where the line number is the "next" available instruction,
-    ///        on the next available line of the specified file.
+    ///    1. This may be an exact match on file/line/column, or,
+    ///    2. Failing an exact match, a match on file/line only.
+    ///    3. Failing that, a match on file only, where the line number is the "next" available instruction,
+    ///       on the next available line of the specified file.
     pub(crate) fn for_source_location(
         debug_info: &DebugInfo,
         path: TypedPath,
@@ -542,7 +542,7 @@ enum InstructionType {
 ///     in the [`InstructionLocation`]'s that represent DWARF defined `statements`,
 ///     which are not part of the prologue or epilogue.
 /// - A line of code in a source file may contain multiple instruction locations, in which case
-///     a new [`InstructionLocation`] with unique `column` is created.
+///   a new [`InstructionLocation`] with unique `column` is created.
 /// - A [`InstructionSequence`] is a series of contiguous [`InstructionLocation`]'s.
 struct InstructionLocation {
     address: u64,

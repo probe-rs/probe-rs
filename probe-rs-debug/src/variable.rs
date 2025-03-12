@@ -118,8 +118,8 @@ pub enum VariableNodeType {
     /// children. With the current implementation, the `type_offset` will point to a DIE with a tag
     /// of `DW_TAG_structure_type`.
     /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we
-    ///         have enough information to expand it on demand. Except if they fall into one of the
-    ///         special cases handled by [VariableNodeType::RecurseToBaseType]
+    ///   have enough information to expand it on demand. Except if they fall into one of the
+    ///   special cases handled by [VariableNodeType::RecurseToBaseType]
     TypeOffset(DebugInfoOffset, UnitOffset),
     /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable
     /// children.
@@ -132,26 +132,26 @@ pub enum VariableNodeType {
     /// Sometimes it doesn't make sense to recurse the children of a specific node type
     /// - Rule: Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
     /// - Rule: Once we determine that a variable can not be recursed further, we update the
-    ///         variable_node_type to indicate that no further recursion is possible/required. This
-    ///         can be because the variable is a 'base' data type, or because there was some kind of
-    ///         error in processing the current node, so we don't want to incur cascading errors.
+    ///   variable_node_type to indicate that no further recursion is possible/required. This
+    ///   can be because the variable is a 'base' data type, or because there was some kind of
+    ///   error in processing the current node, so we don't want to incur cascading errors.
     // TODO: Find code instances where we use magic values (e.g. u32::MAX) and replace with DoNotRecurse logic if appropriate.
     DoNotRecurse,
     /// Unless otherwise specified, always recurse the children of every node until we get to the
     /// base data type.
     /// - Rule: (Default) Unless it is prevented by any of the other rules, we always recurse the
-    ///         children of these variables.
+    ///   children of these variables.
     /// - Rule: Certain structured variables (e.g. `&str`, `Some`, `Ok`, `Err`, etc.) are set to
-    ///         [VariableNodeType::RecurseToBaseType] to improve the debugger UX.
+    ///   [VariableNodeType::RecurseToBaseType] to improve the debugger UX.
     /// - Rule: Pointers to `const` variables WILL ALWAYS BE recursed, because they provide
-    ///         essential information, for example about the length of strings, or the size of
-    ///         arrays.
+    ///   essential information, for example about the length of strings, or the size of
+    ///   arrays.
     /// - Rule: Enumerated types WILL ALWAYS BE recursed, because we only ever want to see the
-    ///         'active' child as the value.
+    ///   'active' child as the value.
     /// - Rule: For now, Array types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to
-    ///         defer these.
+    ///   defer these.
     /// - Rule: For now, Union types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to
-    ///         defer these.
+    ///   defer these.
     #[default]
     RecurseToBaseType,
 }

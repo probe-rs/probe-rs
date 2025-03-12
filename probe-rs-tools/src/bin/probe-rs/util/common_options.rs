@@ -471,7 +471,7 @@ pub enum OperationError {
 
     #[error("The flashing procedure failed for '{path}'.")]
     FlashingFailed {
-        source: FlashError,
+        source: Box<FlashError>,
         target: Box<Target>, // Box to reduce enum size
         target_spec: Option<String>,
         path: PathBuf,

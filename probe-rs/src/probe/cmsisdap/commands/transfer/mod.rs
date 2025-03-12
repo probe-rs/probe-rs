@@ -220,8 +220,7 @@ impl Request for TransferRequest {
 
         let mut transfers = Vec::with_capacity(transfer_count);
         if transfer_count > 0 {
-            let acks = iter::repeat(Ack::Ok)
-                .take(transfer_count - 1)
+            let acks = std::iter::repeat_n(Ack::Ok, transfer_count - 1)
                 .chain(iter::once(last_transfer_response.ack))
                 .zip(self.transfers.iter());
 

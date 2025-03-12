@@ -1294,9 +1294,6 @@ fn send_sequence<P: RawProtocolIo + JTAGAccess>(
 
 #[cfg(test)]
 mod test {
-
-    use std::iter;
-
     use crate::{
         architecture::arm::{
             ApAddress, RawDapAccess, RegisterAddress,
@@ -1500,7 +1497,7 @@ mod test {
         fn add_idle_cycles(&mut self, len: usize) {
             let last_transfer = self.transfer_responses.last_mut().unwrap();
 
-            last_transfer.extend(iter::repeat(false).take(len))
+            last_transfer.extend(std::iter::repeat_n(false, len))
         }
 
         fn add_transfer(&mut self) {

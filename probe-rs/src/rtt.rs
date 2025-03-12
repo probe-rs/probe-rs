@@ -64,17 +64,17 @@ use zerocopy::FromBytes;
 /// ## Examples of how timing between host and target effects the results
 ///
 /// 1. **Scenario: Ideal configuration**: The host RTT interface is created **AFTER** the target
-///     program has successfully executing the RTT initialization, by calling an api such as
-///     [`rtt_target::rtt_init_print!()`](https://docs.rs/rtt-target/0.5.0/rtt_target/macro.rtt_init_print.html).
+///    program has successfully executing the RTT initialization, by calling an api such as
+///    [`rtt_target::rtt_init_print!()`](https://docs.rs/rtt-target/0.5.0/rtt_target/macro.rtt_init_print.html).
 ///
-///     At this point, both the RTT Control Block and the RTT Channel configurations are present in
-///     the target memory, and this RTT interface can be expected to work as expected.
+///    At this point, both the RTT Control Block and the RTT Channel configurations are present in
+///    the target memory, and this RTT interface can be expected to work as expected.
 ///
 /// 2. **Scenario: Failure to detect RTT Control Block**: The target has been configured correctly,
-///     **BUT** the host creates this interface **BEFORE** the target program has initialized RTT.
+///    **BUT** the host creates this interface **BEFORE** the target program has initialized RTT.
 ///
-///     This most commonly occurs when the target halts processing before initializing RTT. For
-///     example, this could happen ...
+///    This most commonly occurs when the target halts processing before initializing RTT. For
+///    example, this could happen ...
 ///       * During debugging, if the user sets a breakpoint in the code before the RTT
 ///         initialization.
 ///       * After flashing, if the user has configured `probe-rs` to `reset_after_flashing` AND
@@ -85,17 +85,17 @@ use zerocopy::FromBytes;
 ///         initialization code to the very beginning of the target program logic.
 ///
 ///     The result of such a timing issue is that `probe-rs` will fail to initialize RTT with an
-///     [`Error::ControlBlockNotFound`]
+///    [`Error::ControlBlockNotFound`]
 ///
 /// 3. **Scenario: Incorrect Channel names and incorrect Channel buffer sizes**: This scenario
-///     usually occurs when two conditions coincide. Firstly, the same timing mismatch as described
-///     in point #2 above, and secondly, the target memory has NOT been cleared since a previous
-///     version of the binary program has been flashed to the target.
+///    usually occurs when two conditions coincide. Firstly, the same timing mismatch as described
+///    in point #2 above, and secondly, the target memory has NOT been cleared since a previous
+///    version of the binary program has been flashed to the target.
 ///
-///     What happens here is that the RTT Control Block is validated by reading a previously
-///     initialized RTT ID from the target memory. The next step in the logic is then to read the
-///     Channel configuration from the RTT Control block which is usually contains unreliable data
-///     at this point. The symptoms will appear as:
+///    What happens here is that the RTT Control Block is validated by reading a previously
+///    initialized RTT ID from the target memory. The next step in the logic is then to read the
+///    Channel configuration from the RTT Control block which is usually contains unreliable data
+///    at this point. The symptoms will appear as:
 ///       * RTT Channel names are incorrect and/or contain unprintable characters.
 ///       * RTT Channel names are correct, but no data, or corrupted data, will be reported from
 ///         RTT, because the buffer sizes are incorrect.

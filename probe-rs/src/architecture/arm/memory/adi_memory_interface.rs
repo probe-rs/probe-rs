@@ -263,7 +263,7 @@ where
             }
         } else {
             let start_extra_count = (address % 4) as usize;
-            let mut buffer = vec![0u32; (start_extra_count + len + 3) / 4];
+            let mut buffer = vec![0u32; (start_extra_count + len).div_ceil(4)];
             let read_address = address - start_extra_count as u64;
             self.read_32(read_address, &mut buffer)?;
             for (bytes, value) in data

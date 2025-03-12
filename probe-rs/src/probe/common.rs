@@ -530,25 +530,22 @@ fn shift_ir(
     // The last bit will be transmitted when exiting the shift state,
     // so we need to stay in the shift state for one period less than
     // we have bits to transmit.
-    let tms_data = iter::repeat(false).take(len - 1);
+    let tms_data = std::iter::repeat_n(false, len - 1);
 
     // Enter IR shift
     jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Shift))?;
 
-    let tms = iter::repeat(false)
-        .take(pre_bits)
+    let tms = std::iter::repeat_n(false, pre_bits)
         .chain(tms_data)
-        .chain(iter::repeat(false).take(post_bits))
+        .chain(std::iter::repeat_n(false, post_bits))
         .chain(iter::once(true));
 
-    let tdi = iter::repeat(true)
-        .take(pre_bits)
+    let tdi = std::iter::repeat_n(true, pre_bits)
         .chain(data.as_bits::<Lsb0>()[..len].iter().map(|b| *b))
-        .chain(iter::repeat(true).take(post_bits));
+        .chain(std::iter::repeat_n(true, post_bits));
 
-    let capture = iter::repeat(false)
-        .take(pre_bits)
-        .chain(iter::repeat(capture_data).take(len))
+    let capture = std::iter::repeat_n(false, pre_bits)
+        .chain(std::iter::repeat_n(capture_data, len))
         .chain(iter::repeat(false));
 
     tracing::trace!("tms: {:?}", tms.clone());
@@ -578,7 +575,7 @@ fn shift_dr(
     }
 
     // Last bit of data is shifted out when we exit the SHIFT-DR State
-    let tms_shift_out_value = iter::repeat(false).take(register_bits - 1);
+    let tms_shift_out_value = std::iter::repeat_n(false, register_bits - 1);
 
     // Enter DR shift
     jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Shift))?;
@@ -587,20 +584,17 @@ fn shift_dr(
     let pre_bits = protocol.state().chain_params.drpre;
     let post_bits = protocol.state().chain_params.drpost;
 
-    let tms = iter::repeat(false)
-        .take(pre_bits)
+    let tms = std::iter::repeat_n(false, pre_bits)
         .chain(tms_shift_out_value)
-        .chain(iter::repeat(false).take(post_bits))
+        .chain(std::iter::repeat_n(false, post_bits))
         .chain(iter::once(true));
 
-    let tdi = iter::repeat(false)
-        .take(pre_bits)
+    let tdi = std::iter::repeat_n(false, pre_bits)
         .chain(data.as_bits::<Lsb0>()[..register_bits].iter().map(|b| *b))
-        .chain(iter::repeat(false).take(post_bits));
+        .chain(std::iter::repeat_n(false, post_bits));
 
-    let capture = iter::repeat(false)
-        .take(pre_bits)
-        .chain(iter::repeat(capture_data).take(register_bits))
+    let capture = std::iter::repeat_n(false, pre_bits)
+        .chain(std::iter::repeat_n(capture_data, register_bits))
         .chain(iter::repeat(false));
 
     protocol.shift_bits(tms, tdi, capture)?;
@@ -612,8 +606,8 @@ fn shift_dr(
         jtag_move_to_state(protocol, JtagState::Idle)?;
 
         // We need to stay in the idle cycle a bit
-        let tms = iter::repeat(false).take(idle_cycles);
-        let tdi = iter::repeat(false).take(idle_cycles);
+        let tms = std::iter::repeat_n(false, idle_cycles);
+        let tdi = std::iter::repeat_n(false, idle_cycles);
 
         protocol.shift_bits(tms, tdi, iter::repeat(false))?;
     }
@@ -681,8 +675,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         self.reset_jtag_state_machine()?;
 
         // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
-        let input = iter::repeat(0)
-            .take(idcodes.len())
+        let input = std::iter::repeat_n(0, idcodes.len())
             .chain(input.iter().copied())
             .collect::<Vec<_>>();
         shift_ir(self, &input, input.len() * 8, true)?;

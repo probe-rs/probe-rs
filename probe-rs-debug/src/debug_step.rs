@@ -148,7 +148,7 @@ impl SteppingMode {
     /// To understand how this method works, use the following framework:
     /// - Everything is calculated from a given machine instruction address, usually the current program counter.
     /// - To calculate where the user might step to (step-over, step-into, step-out), we start from the given instruction
-    ///     address/program counter, and work our way through all the rows in the sequence of instructions it is part of.
+    ///   address/program counter, and work our way through all the rows in the sequence of instructions it is part of.
     ///   - A sequence of instructions represents a series of monotonically increasing target machine instructions,
     ///     and does not necessarily represent the whole of a function.
     ///   - Similarly, the instructions belonging to a sequence are not necessarily contiguous inside the sequence of instructions,
@@ -384,9 +384,9 @@ fn run_to_address(
 /// In some cases, we need to single-step the core, until ONE of the following conditions are met:
 /// - We reach the `target_address_range.end()`
 /// - We reach an address that is not in the sequential range of `target_address_range`,
-///     i.e. we stepped to some kind of branch instruction, or diversion to an interrupt handler.
+///   i.e. we stepped to some kind of branch instruction, or diversion to an interrupt handler.
 /// - We reach some other legitimate halt point (e.g. the user tries to step past a series of statements,
-///     but there is another breakpoint active in that "gap")
+///   but there is another breakpoint active in that "gap")
 /// - We encounter an error (e.g. the core locks up).
 fn step_to_address(
     target_address_range: RangeInclusive<u64>,

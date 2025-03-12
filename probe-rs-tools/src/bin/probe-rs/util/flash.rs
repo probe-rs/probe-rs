@@ -72,7 +72,7 @@ pub fn run_flash_download(
     loader
         .commit(session, options)
         .map_err(|error| OperationError::FlashingFailed {
-            source: error,
+            source: Box::new(error),
             target: Box::new(session.target().clone()),
             target_spec: probe_options.chip(),
             path: path.as_ref().to_path_buf(),
