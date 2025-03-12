@@ -32,7 +32,7 @@ use crate::{
         logging,
         rtt::{
             self, DefmtProcessor, DefmtState, RttDataHandler, RttDecoder, RttSymbolError,
-            client::ConfiguredRttClient,
+            client::RttClient,
         },
     },
 };
@@ -364,7 +364,7 @@ pub async fn test(
 fn create_trial(
     session: &SessionInterface,
     path: &Path,
-    rtt_client: Option<Key<ConfiguredRttClient>>,
+    rtt_client: Option<Key<RttClient>>,
     sender: UnboundedSender<MonitorEvent>,
     token: &CancellationToken,
     test: Test,
@@ -447,7 +447,7 @@ where
 }
 
 pub struct CliRttClient {
-    handle: Key<ConfiguredRttClient>,
+    handle: Key<RttClient>,
     channel_processors: Vec<Channel>,
 
     // Data necessary to create the channel processors once we know the channel names.
@@ -458,7 +458,7 @@ pub struct CliRttClient {
 }
 
 impl CliRttClient {
-    pub fn handle(&self) -> Key<ConfiguredRttClient> {
+    pub fn handle(&self) -> Key<RttClient> {
         self.handle
     }
 

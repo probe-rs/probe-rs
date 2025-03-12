@@ -6,7 +6,7 @@ use crate::{
         functions::{MonitorEndpoint, MonitorTopic, RpcSpawnContext, WireTxImpl, flash::BootInfo},
         utils::run_loop::{RunLoop, RunLoopPoller},
     },
-    util::rtt::client::ConfiguredRttClient,
+    util::rtt::client::RttClient,
 };
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
@@ -44,7 +44,7 @@ pub struct MonitorOptions {
     /// Enable hardfault vector catch if its supported on the target.
     pub catch_hardfault: bool,
     /// RTT client if used.
-    pub rtt_client: Option<Key<ConfiguredRttClient>>,
+    pub rtt_client: Option<Key<RttClient>>,
 }
 
 /// Monitor in normal run mode.
@@ -138,7 +138,7 @@ fn monitor_impl(
 }
 
 pub struct RttPoller<'c> {
-    pub rtt_client: &'c mut ConfiguredRttClient,
+    pub rtt_client: &'c mut RttClient,
     pub sender: mpsc::Sender<MonitorEvent>,
 }
 

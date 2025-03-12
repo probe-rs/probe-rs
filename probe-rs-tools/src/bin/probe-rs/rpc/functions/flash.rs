@@ -14,7 +14,7 @@ use crate::{
         Key,
         functions::{NoResponse, ProgressEventTopic, RpcContext, RpcResult, RpcSpawnContext},
     },
-    util::{flash::build_loader, rtt::client::ConfiguredRttClient},
+    util::{flash::build_loader, rtt::client::RttClient},
 };
 
 #[derive(Serialize, Deserialize, Default, Schema)]
@@ -74,7 +74,7 @@ pub struct FlashRequest {
     pub sessid: Key<Session>,
     pub loader: Key<FlashLoader>,
     pub options: DownloadOptions,
-    pub rtt_client: Option<Key<ConfiguredRttClient>>,
+    pub rtt_client: Option<Key<RttClient>>,
 }
 
 #[derive(Default, Clone, Serialize, Deserialize, Schema)]

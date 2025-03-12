@@ -3,7 +3,7 @@ use crate::{
         Key,
         functions::{RpcContext, RpcResult},
     },
-    util::rtt::{RttChannelConfig, RttConfig, client::ConfiguredRttClient},
+    util::rtt::{RttChannelConfig, RttConfig, client::RttClient},
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
@@ -44,7 +44,7 @@ pub struct CreateRttClientRequest {
 
 #[derive(Serialize, Deserialize, Schema)]
 pub struct RttClientData {
-    pub handle: Key<ConfiguredRttClient>,
+    pub handle: Key<RttClient>,
 }
 
 pub type CreateRttClientResponse = RpcResult<RttClientData>;
@@ -65,7 +65,7 @@ pub async fn create_rtt_client(
         ScanRegion::Exact(addr) => rtt::ScanRegion::Exact(addr),
     };
 
-    let client = ConfiguredRttClient::new(
+    let client = RttClient::new(
         RttConfig {
             enabled: true,
             channels: request.config,

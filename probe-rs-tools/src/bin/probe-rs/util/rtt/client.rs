@@ -6,7 +6,7 @@ use probe_rs::{
     rtt::{Error, Rtt, ScanRegion},
 };
 
-pub struct RttClient {
+pub struct InnerRttClient {
     /// The internal RTT handle, if we have successfully attached to the target.
     target: Option<RttConnection>,
     last_control_block_address: Option<u64>,
@@ -22,7 +22,7 @@ pub struct RttClient {
     core_id: usize,
 }
 
-impl RttClient {
+impl InnerRttClient {
     pub fn new() -> Self {
         Self {
             target: None,
@@ -207,18 +207,18 @@ impl RttClient {
     }
 }
 
-pub struct ConfiguredRttClient {
+pub struct RttClient {
     pub scan_region: ScanRegion,
     config: RttConfig,
-    client: RttClient,
+    client: InnerRttClient,
 }
 
-impl ConfiguredRttClient {
+impl RttClient {
     pub fn new(config: RttConfig, scan_region: ScanRegion) -> Self {
         Self {
             scan_region,
             config,
-            client: RttClient::new(),
+            client: InnerRttClient::new(),
         }
     }
 

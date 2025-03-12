@@ -4,7 +4,7 @@ use probe_rs::{Core, rtt::Error};
 
 use crate::{
     cmd::cargo_embed::rttui::tcp::TcpPublisher,
-    util::rtt::{RttActiveUpChannel, RttDataHandler, RttDecoder, client::ConfiguredRttClient},
+    util::rtt::{RttActiveUpChannel, RttDataHandler, RttDecoder, client::RttClient},
 };
 
 pub enum ChannelData {
@@ -72,7 +72,7 @@ impl UpChannel {
     pub fn poll_rtt(
         &mut self,
         core: &mut Core<'_>,
-        client: &mut ConfiguredRttClient,
+        client: &mut RttClient,
     ) -> Result<(), Error> {
         let bytes = client.poll_channel(core, self.channel_number)?;
 

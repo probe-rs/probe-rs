@@ -7,7 +7,7 @@ use std::{
 use probe_rs::Core;
 
 use crate::{
-    cmd::cargo_embed::rttui::channel::ChannelData, util::rtt::client::ConfiguredRttClient,
+    cmd::cargo_embed::rttui::channel::ChannelData, util::rtt::client::RttClient,
 };
 
 use super::channel::UpChannel;
@@ -104,7 +104,7 @@ impl Tab {
     pub fn send_input(
         &mut self,
         core: &mut Core,
-        client: &mut ConfiguredRttClient,
+        client: &mut RttClient,
     ) -> anyhow::Result<()> {
         if let Some((channel, input)) = self.down_channel.as_mut() {
             input.push('\n');
