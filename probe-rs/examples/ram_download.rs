@@ -28,7 +28,7 @@ fn parse_hex(src: &str) -> Result<u64, ParseIntError> {
 }
 
 fn main() -> Result<()> {
-    pretty_env_logger::init();
+    env_logger::init();
 
     let matches = Cli::parse();
 

@@ -98,7 +98,7 @@ struct Opt {
 }
 
 fn main() -> Result<ExitCode> {
-    pretty_env_logger::init();
+    env_logger::init();
 
     let opt = Opt::parse();
 

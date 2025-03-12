@@ -7,7 +7,7 @@ use probe_rs::{
 };
 
 fn main() -> Result<()> {
-    pretty_env_logger::init();
+    env_logger::init();
 
     // Get a list of all available debug probes.
 

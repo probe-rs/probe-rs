@@ -11,7 +11,7 @@ use probe_rs::{
 };
 
 fn main() -> Result<()> {
-    pretty_env_logger::init();
+    env_logger::init();
 
     let lister = Lister::new();
 
