@@ -211,6 +211,7 @@ pub struct RttClient {
     pub scan_region: ScanRegion,
     config: RttConfig,
     client: InnerRttClient,
+    need_configure: bool,
 }
 
 impl RttClient {
@@ -219,6 +220,7 @@ impl RttClient {
             scan_region,
             config,
             client: InnerRttClient::new(),
+            need_configure: true,
         }
     }
 
@@ -227,10 +229,11 @@ impl RttClient {
     }
 
     pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
-        let was_attached = self.is_attached();
+        self.client.try_attach(core, &self.scan_region)?;
 
-        if self.client.try_attach(core, &self.scan_region)? && !was_attached {
+        if self.need_configure {
             self.configure(core)?;
+            self.need_configure = false;
         }
 
         Ok(self.is_attached())
@@ -252,6 +255,7 @@ impl RttClient {
     }
 
     pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+        self.need_configure = true;
         self.client.clean_up(core)
     }
 
