@@ -69,11 +69,7 @@ impl UpChannel {
         }
     }
 
-    pub fn poll_rtt(
-        &mut self,
-        core: &mut Core<'_>,
-        client: &mut RttClient,
-    ) -> Result<(), Error> {
+    pub fn poll_rtt(&mut self, core: &mut Core<'_>, client: &mut RttClient) -> Result<(), Error> {
         let bytes = client.poll_channel(core, self.channel_number)?;
 
         self.data_format
