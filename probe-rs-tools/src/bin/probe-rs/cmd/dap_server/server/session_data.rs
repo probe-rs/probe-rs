@@ -32,7 +32,7 @@ pub(crate) enum BreakpointType {
     InstructionBreakpoint,
     /// A breakpoint that has a Source, and usually a result of a user requesting a breakpoint while in a 'source' view.
     SourceBreakpoint {
-        source: Source,
+        source: Box<Source>,
         location: SourceLocationScope,
     },
 }

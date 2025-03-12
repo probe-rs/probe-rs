@@ -258,7 +258,7 @@ pub(crate) fn disassemble_target_memory(
             //       instruction set at runtime, too. DebugInfo::get_source_location()
             //       has access to the DWARF line program.
             Ok(instructions) => {
-                if instructions.len() == 0 {
+                if instructions.is_empty() {
                     // The capstone library sometimes returns an empty result set
                     // instead of an Err. Catch it here or else we risk an infinite
                     // loop looking for a valid instruction.

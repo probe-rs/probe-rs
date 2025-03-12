@@ -474,10 +474,7 @@ mod test {
             if let Some(response) = self.response.take() {
                 response
             } else {
-                Err(io::Error::new(
-                    ErrorKind::Other,
-                    "Repeated use of test reader",
-                ))
+                Err(io::Error::other("Repeated use of test reader"))
             }
         }
     }
@@ -580,11 +577,11 @@ mod test {
 
     impl std::io::Write for FailingWriter {
         fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
-            Err(io::Error::new(ErrorKind::Other, "FailingWriter"))
+            Err(io::Error::other("FailingWriter"))
         }
 
         fn flush(&mut self) -> io::Result<()> {
-            Err(io::Error::new(ErrorKind::Other, "FailingWriter"))
+            Err(io::Error::other("FailingWriter"))
         }
     }
 

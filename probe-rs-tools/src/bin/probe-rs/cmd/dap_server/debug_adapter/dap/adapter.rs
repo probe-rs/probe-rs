@@ -843,7 +843,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
             // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
             match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint {
-                source: args.source.clone(),
+                source: Box::new(args.source.clone()),
                 location: SourceLocationScope::All,
             }) {
                 Ok(_) => {}
@@ -1373,12 +1373,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             get_svd_variable_reference(variable, svd_cache);
 
                         // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
-                        let name =
-                            if let Some(last_part) = variable.name().split_terminator('.').last() {
-                                last_part.to_string()
-                            } else {
-                                variable.name().to_string()
-                            };
+                        let name = if let Some(last_part) =
+                            variable.name().split_terminator('.').next_back()
+                        {
+                            last_part.to_string()
+                        } else {
+                            variable.name().to_string()
+                        };
 
                         Variable {
                             name,

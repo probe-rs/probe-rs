@@ -11,6 +11,7 @@ use probe_rs_target::{
     RiscvCoreAccessOptions, TargetDescriptionSource, XtensaCoreAccessOptions,
 };
 use std::collections::HashMap;
+use std::io::BufReader;
 use std::{fs, io::Read, path::Path};
 
 pub enum Kind<'a, T>
@@ -29,7 +30,7 @@ where
     fn read_bytes(&mut self, path: &Path) -> Result<Vec<u8>> {
         let buffer = match self {
             Kind::Archive(archive) => {
-                let reader = archive.by_name(&path.to_string_lossy())?;
+                let reader = BufReader::new(archive.by_name(&path.to_string_lossy())?);
                 reader.bytes().collect::<std::io::Result<Vec<u8>>>()?
             }
             Kind::Directory(dir) => fs::read(dir.join(path))?,

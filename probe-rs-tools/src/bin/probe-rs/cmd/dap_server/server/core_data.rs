@@ -363,7 +363,7 @@ impl CoreHandle<'_> {
         self.set_breakpoint(
             address,
             BreakpointType::SourceBreakpoint {
-                source: requested_source.clone(),
+                source: Box::new(requested_source.clone()),
                 location: SourceLocationScope::Specific(source_location.clone()),
             },
         )?;

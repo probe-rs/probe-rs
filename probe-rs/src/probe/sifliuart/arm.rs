@@ -273,7 +273,7 @@ impl SifliUartMemoryInterface<'_> {
         let addr_usize = address as usize;
         // Calculate the start address and end address after alignment
         let start_aligned = addr_usize - (addr_usize % 4);
-        let end_aligned = ((addr_usize + data.len() + 3) / 4) * 4;
+        let end_aligned = (addr_usize + data.len()).div_ceil(4) * 4;
         let total_bytes = end_aligned - start_aligned;
         let total_words = total_bytes / 4;
 
@@ -350,7 +350,7 @@ impl SifliUartMemoryInterface<'_> {
         let end_addr = addr + data.len();
 
         let start_aligned = addr - (addr % 4);
-        let end_aligned = ((end_addr + 3) / 4) * 4;
+        let end_aligned = end_addr.div_ceil(4) * 4;
         let total_bytes = end_aligned - start_aligned;
         let total_words = total_bytes / 4;
 

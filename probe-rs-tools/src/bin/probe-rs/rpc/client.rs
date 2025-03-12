@@ -6,7 +6,6 @@
 //!
 //! The command output may be a result and/or a stream of messages encoded as [ServerMessage].
 
-use anyhow::Context as _;
 use postcard_rpc::{
     Topic,
     header::{VarSeq, VarSeqKind},
@@ -65,6 +64,7 @@ use crate::{
 #[cfg(feature = "remote")]
 pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcClient> {
     use crate::rpc::transport::websocket::{WebsocketRx, WebsocketTx};
+    use anyhow::Context;
     use axum::http::Uri;
     use futures_util::StreamExt as _;
     use rustls::ClientConfig;

@@ -183,22 +183,14 @@ impl<'a> SwoReader<'a> {
 
 impl std::io::Read for SwoReader<'_> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        use std::{
-            cmp,
-            io::{Error, ErrorKind},
-            mem,
-        };
+        use std::{cmp, io::Error, mem};
 
         // Always buffer: this pulls data as quickly as possible from
         // the target to clear it's embedded trace buffer, minimizing
         // the chance of an overflow event during which packets are
         // lost.
-        self.buf.append(
-            &mut self
-                .interface
-                .read_swo()
-                .map_err(|e| Error::new(ErrorKind::Other, e))?,
-        );
+        self.buf
+            .append(&mut self.interface.read_swo().map_err(Error::other)?);
 
         let swo = {
             let next_buf = self.buf.split_off(cmp::min(self.buf.len(), buf.len()));

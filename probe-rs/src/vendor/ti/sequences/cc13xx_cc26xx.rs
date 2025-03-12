@@ -78,7 +78,7 @@ impl CC13xxCC26xx {
     /// * `cycles`    - Number of TCK cycles to shift in the data to IR
     /// * `reg`       - The value to shift into either IR
     /// * `state`     - The current state of the JTAG state machine. Note this will be updated by this function so that the
-    ///                state is correct after the function returns
+    ///   state is correct after the function returns
     /// * `end_state` - The state to end in, this can either be `JtagState::RunTestIdle` or `JtagState::SelectDRScan`
     fn shift_ir(
         &self,
@@ -108,7 +108,7 @@ impl CC13xxCC26xx {
     /// * `cycles`    - Number of TCK cycles to shift in the data to DR
     /// * `reg`       - The value to shift into either DR
     /// * `state`     - The current state of the JTAG state machine. Note this will be updated by this function so that the
-    ///                state is correct after the function returns
+    ///   state is correct after the function returns
     /// * `end_state` - The state to end in, this can either be `JtagState::RunTestIdle` or `JtagState::SelectDRScan`
     fn shift_dr(
         &self,
@@ -131,9 +131,9 @@ impl CC13xxCC26xx {
     /// * `cycles`    - Number of TCK cycles to shift in the data to either IR or DR
     /// * `reg`       - The value to shift into either IR or DR
     /// * `state`     - The current state of the JTAG state machine. Note this will be updated by this function so that the
-    ///                 state is correct after the function returns
+    ///   state is correct after the function returns
     /// * `action`    - Whether to load the IR or DR register, if IR is wanted then `JtagState::ShiftIR` should be passed
-    ///                 otherwise the default is to load DR.
+    ///   otherwise the default is to load DR.
     /// * `end_state` - The state to end in, this can either be `JtagState::RunTestIdle` or `JtagState::SelectDRScan`
     fn shift_reg(
         &self,
@@ -195,7 +195,7 @@ impl CC13xxCC26xx {
     /// * `register`  - The register to access
     /// * `payload`   - The data to write to the register
     /// * `state`     - The current state of the JTAG state machine. Note this will be updated by this function
-    ///                so that the state is correct after the function returns
+    ///   so that the state is correct after the function returns
     fn icepick_router(
         &self,
         interface: &mut dyn DapProbe,

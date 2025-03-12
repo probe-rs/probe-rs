@@ -27,8 +27,8 @@ impl GdbInstanceConfiguration {
     ///
     /// * session - the [Session] object to load target information from
     /// * connection_string - The optional connection string to use.
-    ///                       If not specified `localhost:1337` is used.
-    ///                       Multiple instances are bound by adding an offset to the supplied port.
+    ///   If not specified `localhost:1337` is used.
+    ///   Multiple instances are bound by adding an offset to the supplied port.
     ///
     /// # Returns
     /// Vec with the computed configuration

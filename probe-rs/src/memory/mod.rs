@@ -160,7 +160,7 @@ where
             self.read_mem_32bit(address, data)?;
         } else {
             let start_extra_count = (address % 4) as usize;
-            let mut buffer = vec![0u8; (start_extra_count + data.len() + 3) / 4 * 4];
+            let mut buffer = vec![0u8; (start_extra_count + data.len()).div_ceil(4) * 4];
             self.read_mem_32bit(address - start_extra_count as u64, &mut buffer)?;
             data.copy_from_slice(&buffer[start_extra_count..start_extra_count + data.len()]);
         }
