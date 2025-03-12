@@ -209,7 +209,7 @@ impl InnerRttClient {
 
 pub struct RttClient {
     pub scan_region: ScanRegion,
-    config: RttConfig,
+    channel_modes: Vec<Option<ChannelMode>>,
     client: InnerRttClient,
     need_configure: bool,
 }
@@ -218,7 +218,7 @@ impl RttClient {
     pub fn new(config: RttConfig, scan_region: ScanRegion) -> Self {
         Self {
             scan_region,
-            config,
+            channel_modes: config.channels.iter().map(|c| c.mode).collect(),
             client: InnerRttClient::new(),
             need_configure: true,
         }
@@ -287,14 +287,14 @@ impl RttClient {
         let up_channels = target.active_up_channels.as_mut_slice();
 
         for (idx, channel) in up_channels.iter_mut().enumerate() {
-            let channel_mode = if let Some(config) = self.config.channel_config(idx as u32) {
-                config.mode
-            } else if channel.channel_name() == "defmt" {
-                // defmt channel is always blocking
-                Some(ChannelMode::BlockIfFull)
-            } else {
-                None
-            };
+            let channel_mode = self.channel_modes.get(idx).copied().unwrap_or_else(|| {
+                if channel.channel_name() == "defmt" {
+                    // defmt channel is always blocking
+                    Some(ChannelMode::BlockIfFull)
+                } else {
+                    None
+                }
+            });
 
             if let Some(mode) = channel_mode {
                 channel.change_mode(core, mode)?;
