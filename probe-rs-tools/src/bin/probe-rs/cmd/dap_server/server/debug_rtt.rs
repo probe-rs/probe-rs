@@ -1,4 +1,4 @@
-use crate::util::rtt::{RttDataHandler, client::RttClient};
+use crate::util::rtt::{RttDataHandler, client::ConfiguredRttClient};
 use crate::{
     cmd::dap_server::{
         DebuggerError,
@@ -12,7 +12,7 @@ use probe_rs::{Core, rtt};
 /// Manage the active RTT target for a specific SessionData, as well as provide methods to reliably move RTT from target, through the debug_adapter, to the client.
 pub struct RttConnection {
     /// The connection to RTT on the target
-    pub(crate) client: RttClient,
+    pub(crate) client: ConfiguredRttClient,
     /// Some status fields and methods to ensure continuity in flow of data from target to debugger to client.
     pub(crate) debugger_rtt_channels: Vec<DebuggerRttChannel>,
 }
@@ -57,7 +57,7 @@ impl DebuggerRttChannel {
         &mut self,
         core: &mut Core,
         debug_adapter: &mut DebugAdapter<P>,
-        client: &mut RttClient,
+        client: &mut ConfiguredRttClient,
     ) -> bool {
         if !self.has_client_window {
             return false;

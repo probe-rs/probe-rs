@@ -7,9 +7,6 @@ use probe_rs::{
 };
 
 pub struct RttClient {
-    pub scan_region: ScanRegion,
-    pub config: RttConfig,
-
     /// The internal RTT handle, if we have successfully attached to the target.
     target: Option<RttConnection>,
     last_control_block_address: Option<u64>,
@@ -26,10 +23,8 @@ pub struct RttClient {
 }
 
 impl RttClient {
-    pub fn new(config: RttConfig, scan_region: ScanRegion) -> Self {
+    pub fn new() -> Self {
         Self {
-            scan_region,
-            config,
             target: None,
             last_control_block_address: None,
             try_attaching: true,
@@ -42,7 +37,12 @@ impl RttClient {
         self.target.is_some()
     }
 
-    pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
+    pub fn try_attach(
+        &mut self,
+        core: &mut Core,
+        config: &RttConfig,
+        scan_region: &ScanRegion,
+    ) -> Result<bool, Error> {
         if self.is_attached() {
             return Ok(true);
         }
@@ -54,7 +54,7 @@ impl RttClient {
         let location = if let Some(location) = self.last_control_block_address {
             location
         } else {
-            let location = match Rtt::find_contol_block(core, &self.scan_region) {
+            let location = match Rtt::find_contol_block(core, scan_region) {
                 Ok(location) => location,
                 Err(Error::ControlBlockNotFound) => {
                     tracing::debug!("Failed to attach - control block not found");
@@ -86,7 +86,7 @@ impl RttClient {
             Err(error) => return Err(error),
         };
 
-        match RttConnection::new(core, rtt, &self.config) {
+        match RttConnection::new(core, rtt, config) {
             Ok(rtt) => self.target = Some(rtt),
             Err(Error::ControlBlockCorrupted(error)) => {
                 tracing::debug!("Failed to attach - control block corrupted: {}", error);
@@ -98,8 +98,6 @@ impl RttClient {
     }
 
     pub fn poll_channel(&mut self, core: &mut Core, channel: u32) -> Result<&[u8], Error> {
-        self.try_attach(core)?;
-
         if let Some(ref mut target) = self.target {
             match target.poll_channel(core, channel) {
                 Ok(()) => self.polled_data = true,
@@ -136,8 +134,6 @@ impl RttClient {
         channel: u32,
         input: impl AsRef<[u8]>,
     ) -> Result<(), Error> {
-        self.try_attach(core)?;
-
         let Some(target) = self.target.as_mut() else {
             return Ok(());
         };
@@ -156,9 +152,11 @@ impl RttClient {
     /// This function prevents probe-rs from attaching to an RTT control block that is not
     /// supposed to be valid. This is useful when probe-rs has reset the MCU before attaching,
     /// or during/after flashing, when the MCU has not yet been started.
-    pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
-        self.try_attach(core)?;
-
+    pub(crate) fn clear_control_block(
+        &mut self,
+        core: &mut Core,
+        scan_region: &ScanRegion,
+    ) -> Result<(), Error> {
         if let Some(mut target) = self.target.take() {
             target.clear_control_block(core)?;
         } else {
@@ -166,10 +164,10 @@ impl RttClient {
             // Depending on the firmware, the control block may be initialized in such
             // an order where probe-rs can attach to it before it is fully valid.
             if let Some(location) = self.last_control_block_address.take() {
-                if let ScanRegion::Exact(scan_location) = self.scan_region {
+                if let ScanRegion::Exact(scan_location) = scan_region {
                     // If we know the exact location where a control block should be, we can clear
                     // the whole block.
-                    if location == scan_location {
+                    if location == *scan_location {
                         const SIZE_32B: usize = 16 + 2 * 4;
                         const SIZE_64B: usize = 16 + 2 * 8;
 
@@ -214,7 +212,11 @@ impl RttClient {
         self.core_id
     }
 
-    pub(crate) fn configure(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
+    pub(crate) fn configure(
+        &mut self,
+        core: &mut Core<'_>,
+        config: &RttConfig,
+    ) -> Result<(), Error> {
         let Some(target) = self.target.as_mut() else {
             return Ok(());
         };
@@ -222,7 +224,7 @@ impl RttClient {
         let up_channels = target.active_up_channels.as_mut_slice();
 
         for (idx, channel) in up_channels.iter_mut().enumerate() {
-            let channel_mode = if let Some(config) = self.config.channel_config(idx as u32) {
+            let channel_mode = if let Some(config) = config.channel_config(idx as u32) {
                 config.mode
             } else if channel.channel_name() == "defmt" {
                 // defmt channel is always blocking
@@ -237,5 +239,75 @@ impl RttClient {
         }
 
         Ok(())
+    }
+}
+
+pub struct ConfiguredRttClient {
+    pub scan_region: ScanRegion,
+    pub config: RttConfig,
+
+    client: RttClient,
+}
+
+impl ConfiguredRttClient {
+    pub fn new(config: RttConfig, scan_region: ScanRegion) -> Self {
+        Self {
+            scan_region,
+            config,
+
+            client: RttClient::new(),
+        }
+    }
+
+    pub fn is_attached(&self) -> bool {
+        self.client.is_attached()
+    }
+
+    pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
+        self.client
+            .try_attach(core, &self.config, &self.scan_region)
+    }
+
+    pub fn poll_channel(&mut self, core: &mut Core, channel: u32) -> Result<&[u8], Error> {
+        self.try_attach(core)?;
+        self.client.poll_channel(core, channel)
+    }
+
+    pub(crate) fn write_down_channel(
+        &mut self,
+        core: &mut Core,
+        channel: u32,
+        input: impl AsRef<[u8]>,
+    ) -> Result<(), Error> {
+        self.try_attach(core)?;
+        self.client.write_down_channel(core, channel, input)
+    }
+
+    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+        self.client.clean_up(core)
+    }
+
+    /// This function prevents probe-rs from attaching to an RTT control block that is not
+    /// supposed to be valid. This is useful when probe-rs has reset the MCU before attaching,
+    /// or during/after flashing, when the MCU has not yet been started.
+    pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
+        self.try_attach(core)?;
+        self.client.clear_control_block(core, &self.scan_region)
+    }
+
+    pub(crate) fn up_channels(&self) -> &[RttActiveUpChannel] {
+        self.client.up_channels()
+    }
+
+    pub(crate) fn down_channels(&self) -> &[RttActiveDownChannel] {
+        self.client.down_channels()
+    }
+
+    pub(crate) fn core_id(&self) -> usize {
+        self.client.core_id()
+    }
+
+    pub(crate) fn configure(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
+        self.client.configure(core, &self.config)
     }
 }

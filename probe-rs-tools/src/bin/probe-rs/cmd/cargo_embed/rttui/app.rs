@@ -18,7 +18,7 @@ use time::UtcOffset;
 
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
-    util::rtt::{DataFormat, DefmtProcessor, DefmtState, RttDecoder, client::RttClient},
+    util::rtt::{DataFormat, DefmtProcessor, DefmtState, RttDecoder, client::ConfiguredRttClient},
 };
 
 use super::super::config;
@@ -41,12 +41,12 @@ pub struct App {
 
     up_channels: Vec<Rc<RefCell<UpChannel>>>,
 
-    client: RttClient,
+    client: ConfiguredRttClient,
 }
 
 impl App {
     pub fn new(
-        client: RttClient,
+        client: ConfiguredRttClient,
         elf: Option<Vec<u8>>,
         config: config::Config,
         timestamp_offset: UtcOffset,

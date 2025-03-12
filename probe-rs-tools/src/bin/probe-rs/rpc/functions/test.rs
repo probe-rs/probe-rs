@@ -17,7 +17,7 @@ use crate::{
         },
         utils::run_loop::{ReturnReason, RunLoop},
     },
-    util::rtt::client::RttClient,
+    util::rtt::client::ConfiguredRttClient,
 };
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
@@ -108,7 +108,7 @@ pub struct ListTestsRequest {
     pub sessid: Key<Session>,
     pub boot_info: BootInfo,
     /// RTT client if used.
-    pub rtt_client: Option<Key<RttClient>>,
+    pub rtt_client: Option<Key<ConfiguredRttClient>>,
 }
 
 pub type ListTestsResponse = RpcResult<Tests>;
@@ -197,7 +197,7 @@ pub struct RunTestRequest {
     pub sessid: Key<Session>,
     pub test: Test,
     /// RTT client if used.
-    pub rtt_client: Option<Key<RttClient>>,
+    pub rtt_client: Option<Key<ConfiguredRttClient>>,
 }
 
 pub type RunTestResponse = RpcResult<TestResult>;

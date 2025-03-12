@@ -30,7 +30,7 @@ use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
-use crate::util::rtt::client::RttClient;
+use crate::util::rtt::client::ConfiguredRttClient;
 use crate::util::rtt::{self, RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
 
@@ -273,7 +273,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         ScanRegion::Ram
     };
 
-    let rtt_client = RttClient::new(create_rtt_config(&config).clone(), scan);
+    let rtt_client = ConfiguredRttClient::new(create_rtt_config(&config).clone(), scan);
 
     // FIXME: we should probably figure out in a different way which core we can work with.
     // It seems arbitrary that we reset the target using the same core we use for polling RTT.
@@ -411,7 +411,7 @@ fn run_rttui_app(
     config: config::Config,
     timezone_offset: UtcOffset,
     should_clear_rtt_header: bool,
-    mut client: RttClient,
+    mut client: ConfiguredRttClient,
 ) -> anyhow::Result<()> {
     let core_id = client.core_id();
 

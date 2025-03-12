@@ -1,7 +1,7 @@
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
-use crate::util::rtt::client::RttClient;
+use crate::util::rtt::client::ConfiguredRttClient;
 use crate::util::rtt::{self, DataFormat, DefmtProcessor, DefmtState};
 use crate::{
     cmd::dap_server::{
@@ -47,7 +47,7 @@ pub struct CoreData {
     pub stack_frames: Vec<probe_rs_debug::stack_frame::StackFrame>,
     pub breakpoints: Vec<session_data::ActiveBreakpoint>,
     pub rtt_connection: Option<debug_rtt::RttConnection>,
-    pub rtt_client: Option<RttClient>,
+    pub rtt_client: Option<ConfiguredRttClient>,
 }
 
 /// [CoreHandle] provides handles to various data structures required to debug a single instance of a core. The actual state is stored in [session_data::SessionData].
@@ -184,7 +184,7 @@ impl CoreHandle<'_> {
 
             self.core_data
                 .rtt_client
-                .insert(RttClient::new(rtt_config.clone(), scan))
+                .insert(ConfiguredRttClient::new(rtt_config.clone(), scan))
         };
 
         if !client.try_attach(&mut self.core)? {

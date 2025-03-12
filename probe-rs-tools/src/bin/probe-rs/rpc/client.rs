@@ -58,7 +58,7 @@ use crate::{
         },
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
     },
-    util::rtt::{RttChannelConfig, client::RttClient},
+    util::rtt::{RttChannelConfig, client::ConfiguredRttClient},
 };
 
 #[cfg(feature = "remote")]
@@ -462,7 +462,7 @@ impl SessionInterface {
         &self,
         options: DownloadOptions,
         loader: Key<FlashLoader>,
-        rtt_client: Option<Key<RttClient>>,
+        rtt_client: Option<Key<ConfiguredRttClient>>,
         on_msg: impl FnMut(ProgressEvent),
     ) -> anyhow::Result<()> {
         self.client
@@ -515,7 +515,7 @@ impl SessionInterface {
     pub async fn list_tests(
         &self,
         boot_info: BootInfo,
-        rtt_client: Option<Key<RttClient>>,
+        rtt_client: Option<Key<ConfiguredRttClient>>,
         on_msg: impl FnMut(MonitorEvent),
     ) -> anyhow::Result<Tests> {
         self.client
@@ -533,7 +533,7 @@ impl SessionInterface {
     pub async fn run_test(
         &self,
         test: Test,
-        rtt_client: Option<Key<RttClient>>,
+        rtt_client: Option<Key<ConfiguredRttClient>>,
         on_msg: impl FnMut(MonitorEvent),
     ) -> anyhow::Result<TestResult> {
         self.client
