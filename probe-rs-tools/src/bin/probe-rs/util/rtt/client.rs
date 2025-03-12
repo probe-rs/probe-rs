@@ -284,17 +284,19 @@ impl RttClient {
             return Ok(());
         };
 
-        let up_channels = target.active_up_channels.as_mut_slice();
-
-        for (idx, channel) in up_channels.iter_mut().enumerate() {
-            let channel_mode = self.channel_modes.get(idx).copied().unwrap_or_else(|| {
-                if channel.channel_name() == "defmt" {
-                    // defmt channel is always blocking
-                    Some(ChannelMode::BlockIfFull)
-                } else {
-                    None
-                }
-            });
+        for channel in target.active_up_channels.as_mut_slice() {
+            let channel_mode = self
+                .channel_modes
+                .get(channel.up_channel.number())
+                .copied()
+                .unwrap_or_else(|| {
+                    if channel.channel_name() == "defmt" {
+                        // defmt channel is always blocking
+                        Some(ChannelMode::BlockIfFull)
+                    } else {
+                        None
+                    }
+                });
 
             if let Some(mode) = channel_mode {
                 channel.change_mode(core, mode)?;
