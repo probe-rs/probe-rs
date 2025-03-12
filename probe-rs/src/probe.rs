@@ -946,9 +946,7 @@ pub enum DebugProbeSelectorParseError {
 /// assert_eq!(selector.vendor_id, 0x1942);
 /// assert_eq!(selector.product_id, 0x1337);
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
-// We need this so that serde will first convert from the string `VID:PID:<Serial>` to a struct before deserializing.
-#[serde(try_from = "String")]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct DebugProbeSelector {
     /// The the USB vendor id of the debug probe to be used.
     pub vendor_id: u16,
@@ -1054,6 +1052,12 @@ impl fmt::Display for DebugProbeSelector {
             write!(f, ":{sn}")?;
         }
         Ok(())
+    }
+}
+
+impl From<DebugProbeSelector> for String {
+    fn from(value: DebugProbeSelector) -> String {
+        value.to_string()
     }
 }
 
@@ -1450,9 +1454,10 @@ impl std::hash::Hash for DeferredResultIndex {
 }
 
 /// The method that should be used for attaching.
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone, Default, Serialize, Deserialize)]
 pub enum AttachMethod {
     /// Attach normally with no special behavior.
+    #[default]
     Normal,
     /// Attach to the target while it is in reset.
     ///
