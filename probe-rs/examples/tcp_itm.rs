@@ -6,7 +6,7 @@ use probe_rs::{Error, Permissions, probe::list::Lister};
 use itm::{Decoder, DecoderOptions, TracePacket};
 
 fn main() -> Result<(), Error> {
-    pretty_env_logger::init();
+    env_logger::init();
 
     let lister = Lister::new();
 

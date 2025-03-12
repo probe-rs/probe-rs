@@ -106,7 +106,7 @@ struct Opts {
 }
 
 fn main() -> Result<()> {
-    pretty_env_logger::init();
+    env_logger::init();
     let opts = Opts::parse();
 
     let lister = Lister::new();
