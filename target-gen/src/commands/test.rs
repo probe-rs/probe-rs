@@ -90,14 +90,15 @@ pub fn cmd_test(
     };
 
     // Create SessionConfig to steer auto attach
-    let session_config = SessionConfig { speed, protocol };
+    let permissions = Permissions::new().allow_erase_all();
+    let session_config = SessionConfig {
+        permissions,
+        speed,
+        protocol,
+    };
 
     // We need to get the chip name so that special startup procedure can be used. (matched on name)
-    let mut session = probe_rs::Session::auto_attach(
-        target_name,
-        Permissions::new().allow_erase_all(),
-        Some(session_config),
-    )?;
+    let mut session = probe_rs::Session::auto_attach(target_name, session_config)?;
 
     // Register callback to update the progress.
     let t = Rc::new(RefCell::new(Instant::now()));

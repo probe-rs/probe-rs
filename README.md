@@ -100,10 +100,11 @@ fn main() -> Result<(), probe_rs::Error> {
     let protocol = Some(WireProtocol::Swd);
     let session_config = SessionConfig {
       speed,
-      protocol
+      protocol,
+      ..Default::default()
     };
 
-    let mut session = Session::auto_attach("nRF52840_xxAA", Permissions::default(), Some(session_config))?;
+    let mut session = Session::auto_attach("nRF52840_xxAA", session_config)?;
 
     // Select a core.
     let mut core = session.core(0)?;
