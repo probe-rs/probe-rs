@@ -3,8 +3,8 @@
 //! The protocol is mostly undocumented, and is changing between firmware versions.
 //! For more details see: <https://github.com/ch32-rs/wlink>
 
-use std::fmt;
 use std::time::Duration;
+use std::{fmt, sync::Arc};
 
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
@@ -159,9 +159,13 @@ impl std::fmt::Display for WchLinkFactory {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ProbeFactory for WchLinkFactory {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let device = WchLinkUsbDevice::new_from_selector(selector)?;
+    async fn open(
+        &self,
+        selector: DebugProbeSelector,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        let device = WchLinkUsbDevice::new_from_selector(selector).await?;
         let mut wlink = WchLink {
             device,
             name: "WCH-Link".into(),
@@ -175,13 +179,13 @@ impl ProbeFactory for WchLinkFactory {
             idle_cycles: 0,
         };
 
-        wlink.init()?;
+        wlink.init().await?;
 
-        Ok(Box::new(wlink))
+        Ok(Box::new(wlink) as Box<dyn DebugProbe>)
     }
 
-    fn list_probes(&self) -> Vec<DebugProbeInfo> {
-        list_wlink_devices()
+    async fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
+        list_wlink_devices().await
     }
 }
 
@@ -219,8 +223,8 @@ impl fmt::Debug for WchLink {
 }
 
 impl WchLink {
-    fn get_probe_info(&mut self) -> Result<(), DebugProbeError> {
-        let probe_info = self.device.send_command(commands::GetProbeInfo)?;
+    async fn get_probe_info(&mut self) -> Result<(), DebugProbeError> {
+        let probe_info = self.device.send_command(commands::GetProbeInfo).await?;
         self.v_major = probe_info.major_version;
         self.v_minor = probe_info.minor_version;
 
@@ -233,11 +237,11 @@ impl WchLink {
         Ok(())
     }
 
-    fn init(&mut self) -> Result<(), DebugProbeError> {
+    async fn init(&mut self) -> Result<(), DebugProbeError> {
         // first stage of wlink_init
         tracing::debug!("Initializing WCH-Link...");
 
-        self.get_probe_info()?;
+        self.get_probe_info().await?;
 
         // this is the official version format. So "v31" is actually a 2.11
         let version_code = self.v_major * 10 + self.v_minor;
@@ -258,27 +262,36 @@ impl WchLink {
         Ok(())
     }
 
-    fn dmi_op_read(&mut self, addr: u8) -> Result<(u8, u32, u8), DebugProbeError> {
-        let resp = self.device.send_command(commands::DmiOp::read(addr))?;
-
-        Ok((resp.addr, resp.data, resp.op))
-    }
-
-    fn dmi_op_write(&mut self, addr: u8, data: u32) -> Result<(u8, u32, u8), DebugProbeError> {
+    async fn dmi_op_read(&mut self, addr: u8) -> Result<(u8, u32, u8), DebugProbeError> {
         let resp = self
             .device
-            .send_command(commands::DmiOp::write(addr, data))?;
+            .send_command(commands::DmiOp::read(addr))
+            .await?;
 
         Ok((resp.addr, resp.data, resp.op))
     }
 
-    fn dmi_op_nop(&mut self) -> Result<(u8, u32, u8), DebugProbeError> {
-        let resp = self.device.send_command(commands::DmiOp::nop())?;
+    async fn dmi_op_write(
+        &mut self,
+        addr: u8,
+        data: u32,
+    ) -> Result<(u8, u32, u8), DebugProbeError> {
+        let resp = self
+            .device
+            .send_command(commands::DmiOp::write(addr, data))
+            .await?;
+
+        Ok((resp.addr, resp.data, resp.op))
+    }
+
+    async fn dmi_op_nop(&mut self) -> Result<(u8, u32, u8), DebugProbeError> {
+        let resp = self.device.send_command(commands::DmiOp::nop()).await?;
 
         Ok((resp.addr, resp.data, resp.op))
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl DebugProbe for WchLink {
     fn get_name(&self) -> &str {
         &self.name
@@ -288,24 +301,26 @@ impl DebugProbe for WchLink {
         self.speed.to_khz()
     }
 
-    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+    async fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         let speed =
             Speed::from_khz(speed_khz).ok_or(DebugProbeError::UnsupportedSpeed(speed_khz))?;
         self.speed = speed;
         self.device
-            .send_command(commands::SetSpeed(self.chip_family, speed))?;
+            .send_command(commands::SetSpeed(self.chip_family, speed))
+            .await?;
         Ok(speed.to_khz())
     }
 
     /// Attach chip
-    fn attach(&mut self) -> Result<(), DebugProbeError> {
+    async fn attach(&mut self) -> Result<(), DebugProbeError> {
         // second stage of wlink_init
         tracing::trace!("attach to target chip");
 
         self.device
-            .send_command(commands::SetSpeed(self.chip_family, self.speed))?;
+            .send_command(commands::SetSpeed(self.chip_family, self.speed))
+            .await?;
 
-        let resp = self.device.send_command(commands::AttachChip)?;
+        let resp = self.device.send_command(commands::AttachChip).await?;
 
         self.chip_family = resp.chip_family;
 
@@ -314,40 +329,44 @@ impl DebugProbe for WchLink {
         self.chip_id = resp.chip_id;
 
         if self.chip_family.support_flash_protect() {
-            self.device.send_command(commands::CheckFlashProtection)?;
-            self.device.send_command(commands::UnprotectFlash)?;
+            self.device
+                .send_command(commands::CheckFlashProtection)
+                .await?;
+            self.device.send_command(commands::UnprotectFlash).await?;
         }
 
         Ok(())
     }
 
-    fn detach(&mut self) -> Result<(), crate::Error> {
+    async fn detach(&mut self) -> Result<(), crate::Error> {
         tracing::trace!("Detach chip");
-        self.device.send_command(commands::DetachChip)?;
+        self.device.send_command(commands::DetachChip).await?;
 
         Ok(())
     }
 
-    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        self.device.send_command(commands::ResetTarget)?;
+    async fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+        self.device.send_command(commands::ResetTarget).await?;
         Ok(())
     }
 
-    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         tracing::info!("target reset assert");
         self.device
-            .send_command(commands::DmiOp::write(0x10, 0x80000001))?;
+            .send_command(commands::DmiOp::write(0x10, 0x80000001))
+            .await?;
         Ok(())
     }
 
-    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         tracing::info!("target reset deassert");
         self.device
-            .send_command(commands::DmiOp::write(0x10, 0x00000001))?;
+            .send_command(commands::DmiOp::write(0x10, 0x00000001))
+            .await?;
         Ok(())
     }
 
-    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+    async fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         // Assume Jtag, as it is the only supported protocol for riscv
         match protocol {
             WireProtocol::Jtag => Ok(()),
@@ -367,13 +386,13 @@ impl DebugProbe for WchLink {
         true
     }
 
-    fn try_get_riscv_interface_builder<'probe>(
+    async fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         Ok(Box::new(JtagDtmBuilder::new(self)))
     }
 
-    fn set_scan_chain(
+    async fn set_scan_chain(
         &mut self,
         _scan_chain: Vec<ScanChainElement>,
     ) -> Result<(), DebugProbeError> {
@@ -386,16 +405,17 @@ impl DebugProbe for WchLink {
 }
 
 /// Wrap WCH-Link's USB based DMI access as a fake JTAGAccess
+#[async_trait::async_trait(?Send)]
 impl JTAGAccess for WchLink {
-    fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
+    async fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
 
-    fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+    async fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
 
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
+    async fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         tracing::debug!("read register 0x{:08x}", address);
         assert_eq!(len, 32);
 
@@ -423,7 +443,7 @@ impl JTAGAccess for WchLink {
         self.idle_cycles
     }
 
-    fn write_register(
+    async fn write_register(
         &mut self,
         address: u32,
         data: &[u8],
@@ -434,8 +454,8 @@ impl JTAGAccess for WchLink {
                 let val = u32::from_le_bytes(data.try_into().unwrap());
                 if val & DTMCS_DMIRESET_MASK != 0 {
                     tracing::debug!("DMI reset");
-                    self.dmi_op_write(0x10, 0x00000000)?;
-                    self.dmi_op_write(0x10, 0x00000001)?;
+                    self.dmi_op_write(0x10, 0x00000000).await?;
+                    self.dmi_op_write(0x10, 0x00000001).await?;
                     // dmcontrol.dmactive is checked later
                 } else if val & DTMCS_DMIHARDRESET_MASK != 0 {
                     return Err(WchLinkError::UnsupportedOperation.into());
@@ -463,7 +483,7 @@ impl JTAGAccess for WchLink {
 
                 match dmi_op {
                     DMI_OP_READ => {
-                        let (addr, data, op) = self.dmi_op_read(dmi_addr)?;
+                        let (addr, data, op) = self.dmi_op_read(dmi_addr).await?;
                         let ret = ((addr as u128) << DMI_ADDRESS_BIT_OFFSET)
                             | ((data as u128) << DMI_VALUE_BIT_OFFSET)
                             | (op as u128);
@@ -477,7 +497,7 @@ impl JTAGAccess for WchLink {
                         let (addr, data, op) = if dmi_addr == 0 && dmi_value == 0 {
                             self.last_dmi_read.unwrap()
                         } else {
-                            self.dmi_op_nop()?
+                            self.dmi_op_nop().await?
                         };
 
                         let ret = ((addr as u128) << DMI_ADDRESS_BIT_OFFSET)
@@ -487,7 +507,7 @@ impl JTAGAccess for WchLink {
                         Ok(ret.to_le_bytes().to_vec())
                     }
                     DMI_OP_WRITE => {
-                        let (addr, data, op) = self.dmi_op_write(dmi_addr, dmi_value)?;
+                        let (addr, data, op) = self.dmi_op_write(dmi_addr, dmi_value).await?;
                         let ret = ((addr as u128) << DMI_ADDRESS_BIT_OFFSET)
                             | ((data as u128) << DMI_VALUE_BIT_OFFSET)
                             | (op as u128);
@@ -505,7 +525,7 @@ impl JTAGAccess for WchLink {
         }
     }
 
-    fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<Vec<u8>, DebugProbeError> {
+    async fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<Vec<u8>, DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "write_dr",
         })
@@ -519,7 +539,7 @@ fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             VENDOR_ID,
             PRODUCT_ID,
             device.serial_number().map(|s| s.to_string()),
-            &WchLinkFactory,
+            Arc::new(WchLinkFactory) as Arc<dyn ProbeFactory>,
             None,
         ))
     } else {
@@ -528,9 +548,9 @@ fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
 }
 
 #[tracing::instrument(skip_all)]
-fn list_wlink_devices() -> Vec<DebugProbeInfo> {
+async fn list_wlink_devices() -> Vec<DebugProbeInfo> {
     tracing::debug!("Searching for WCH-Link(RV) probes");
-    let Ok(devices) = nusb::list_devices() else {
+    let Ok(devices) = crate::probe::list::list_devices().await else {
         return vec![];
     };
     let probes: Vec<_> = devices

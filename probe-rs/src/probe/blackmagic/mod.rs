@@ -2,6 +2,7 @@
 use std::{
     char,
     io::{BufReader, BufWriter, Read, Write},
+    sync::Arc,
     time::Duration,
 };
 
@@ -1020,6 +1021,7 @@ impl BlackMagicProbe {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl DebugProbe for BlackMagicProbe {
     fn get_name(&self) -> &str {
         "Black Magic probe"
@@ -1029,13 +1031,16 @@ impl DebugProbe for BlackMagicProbe {
         self.speed_khz
     }
 
-    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+    async fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         self.command(RemoteCommand::SetSpeedHz(speed_khz * 1000))?;
         self.speed_khz = self.get_speed()?;
         Ok(self.speed_khz)
     }
 
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
+    async fn set_scan_chain(
+        &mut self,
+        scan_chain: Vec<ScanChainElement>,
+    ) -> Result<(), DebugProbeError> {
         tracing::info!("Setting scan chain to {:?}", scan_chain);
         self.jtag_state.expected_scan_chain = Some(scan_chain);
         Ok(())
@@ -1056,7 +1061,7 @@ impl DebugProbe for BlackMagicProbe {
         }
     }
 
-    fn attach(&mut self) -> Result<(), DebugProbeError> {
+    async fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching with protocol '{:?}'", self.protocol);
 
         // Enable output on the clock pin (if supported)
@@ -1069,7 +1074,7 @@ impl DebugProbe for BlackMagicProbe {
 
         match self.protocol {
             Some(WireProtocol::Jtag) => {
-                self.scan_chain()?;
+                self.scan_chain().await?;
                 self.select_target(0)?;
 
                 if let ProtocolVersion::V1
@@ -1097,15 +1102,15 @@ impl DebugProbe for BlackMagicProbe {
         }
     }
 
-    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
+    async fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
         self.select_target(index)
     }
 
-    fn detach(&mut self) -> Result<(), crate::Error> {
+    async fn detach(&mut self) -> Result<(), crate::Error> {
         Ok(())
     }
 
-    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         // TODO we could add this by using a GPIO. However, different probes may connect
         // different pins (if any) to the reset line, so we would need to make this configurable.
         Err(DebugProbeError::NotImplemented {
@@ -1113,17 +1118,17 @@ impl DebugProbe for BlackMagicProbe {
         })
     }
 
-    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         self.command(RemoteCommand::TargetReset(true))?;
         Ok(())
     }
 
-    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         self.command(RemoteCommand::TargetReset(false))?;
         Ok(())
     }
 
-    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+    async fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         self.protocol = Some(protocol);
 
         tracing::debug!("Switching to protocol {}", protocol);
@@ -1143,7 +1148,7 @@ impl DebugProbe for BlackMagicProbe {
         self.protocol
     }
 
-    fn try_get_riscv_interface_builder<'probe>(
+    async fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         Ok(Box::new(JtagDtmBuilder::new(self)))
@@ -1188,7 +1193,7 @@ impl DebugProbe for BlackMagicProbe {
         true
     }
 
-    fn try_get_xtensa_interface<'probe>(
+    async fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
         state: &'probe mut XtensaDebugInterfaceState,
     ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
@@ -1202,8 +1207,9 @@ impl DebugProbe for BlackMagicProbe {
 
 impl DapProbe for BlackMagicProbe {}
 
+#[async_trait::async_trait(?Send)]
 impl RawProtocolIo for BlackMagicProbe {
-    fn jtag_shift_tms<M>(&mut self, tms: M, _tdi: bool) -> Result<(), DebugProbeError>
+    async fn jtag_shift_tms<M>(&mut self, tms: M, _tdi: bool) -> Result<(), DebugProbeError>
     where
         M: IntoIterator<Item = bool>,
     {
@@ -1236,7 +1242,7 @@ impl RawProtocolIo for BlackMagicProbe {
         Ok(())
     }
 
-    fn jtag_shift_tdi<I>(&mut self, _tms: bool, tdi: I) -> Result<(), DebugProbeError>
+    async fn jtag_shift_tdi<I>(&mut self, _tms: bool, tdi: I) -> Result<(), DebugProbeError>
     where
         I: IntoIterator<Item = bool>,
     {
@@ -1271,7 +1277,7 @@ impl RawProtocolIo for BlackMagicProbe {
         Ok(())
     }
 
-    fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    async fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>,
@@ -1280,7 +1286,7 @@ impl RawProtocolIo for BlackMagicProbe {
         self.perform_swdio_transfer(dir, swdio)
     }
 
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
         pin_out: u32,
         pin_select: u32,
@@ -1309,8 +1315,9 @@ impl RawProtocolIo for BlackMagicProbe {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl RawJtagIo for BlackMagicProbe {
-    fn shift_bit(
+    async fn shift_bit(
         &mut self,
         tms: bool,
         tdi: bool,
@@ -1324,7 +1331,7 @@ impl RawJtagIo for BlackMagicProbe {
         Ok(())
     }
 
-    fn shift_bits(
+    async fn shift_bits(
         &mut self,
         tms: impl IntoIterator<Item = bool>,
         tdi: impl IntoIterator<Item = bool>,
@@ -1362,7 +1369,7 @@ impl RawJtagIo for BlackMagicProbe {
 
         if special_transaction {
             for (tms, tdi, cap) in transaction {
-                self.shift_bit(tms, tdi, cap)?;
+                self.shift_bit(tms, tdi, cap).await?;
             }
         } else {
             self.jtag_state.state.update(tms_true_count > 0);
@@ -1372,7 +1379,7 @@ impl RawJtagIo for BlackMagicProbe {
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+    async fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         tracing::trace!("reading captured bits");
         Ok(std::mem::take(&mut self.in_bits))
     }
@@ -1476,15 +1483,16 @@ fn black_magic_debug_port_info(
         vendor_id,
         product_id,
         serial_number,
-        probe_factory: &BlackMagicProbeFactory,
+        probe_factory: Arc::new(BlackMagicProbeFactory) as Arc<dyn ProbeFactory>,
         hid_interface: interface,
     })
 }
 
+#[async_trait::async_trait(?Send)]
 impl ProbeFactory for BlackMagicProbeFactory {
-    fn open(
+    async fn open(
         &self,
-        selector: &super::DebugProbeSelector,
+        selector: super::DebugProbeSelector,
     ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Ensure the VID and PID match Black Magic Probes
         if selector.vendor_id != BLACK_MAGIC_PROBE_VID
@@ -1569,7 +1577,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
         ))
     }
 
-    fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
+    async fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
         let mut probes = vec![];
         let ports = match available_ports() {
             Ok(ports) => ports,

@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use super::CmsisDapDevice;
 use crate::probe::{
-    DebugProbeInfo, DebugProbeSelector, ProbeCreationError, cmsisdap::CmsisDapFactory,
+    DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeFactory, cmsisdap::CmsisDapFactory,
 };
 use hidapi::HidApi;
 use nusb::{
@@ -16,10 +18,10 @@ const USB_CLASS_HID: u8 = 0x03;
 /// to permission or driver errors, so it falls back to listing only
 /// HID devices if it does not find any suitable devices.
 #[tracing::instrument(skip_all)]
-pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
+pub async fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
     tracing::debug!("Searching for CMSIS-DAP probes using nusb");
 
-    let mut probes = match nusb::list_devices() {
+    let mut probes = match crate::probe::list::list_devices().await {
         Ok(devices) => devices
             .filter_map(|device| get_cmsisdap_info(&device))
             .collect(),
@@ -34,7 +36,7 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
         probes.len()
     );
 
-    if let Ok(api) = hidapi::HidApi::new() {
+    if let Ok(api) = hidapi::HidApi::new().await {
         for device in api.device_list() {
             if let Some(info) = get_cmsisdap_hid_info(device) {
                 if !probes.iter().any(|p| {
@@ -110,7 +112,7 @@ fn get_cmsisdap_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             device.vendor_id(),
             device.product_id(),
             sn_str.map(Into::into),
-            &CmsisDapFactory,
+            Arc::new(CmsisDapFactory) as Arc<dyn ProbeFactory>,
             hid_interface,
         ))
     } else {
@@ -135,7 +137,7 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
             device.vendor_id(),
             device.product_id(),
             device.serial_number().map(|s| s.to_owned()),
-            &CmsisDapFactory,
+            Arc::new(CmsisDapFactory) as Arc<dyn ProbeFactory>,
             Some(device.interface_number() as u8),
         ))
     } else {
@@ -144,12 +146,12 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
 }
 
 /// Attempt to open the given device in CMSIS-DAP v2 mode
-pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
+pub async fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
     // Open device handle and read basic information
     let vid = device_info.vendor_id();
     let pid = device_info.product_id();
 
-    let device = device_info.open().ok()?;
+    let device = device_info.open().await.ok()?;
 
     // Go through interfaces to try and find a v2 interface.
     // The CMSIS-DAPv2 spec says that v2 interfaces should use a specific
@@ -160,6 +162,7 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
     let c_desc = device.configurations().next()?;
     for interface in c_desc.interfaces() {
         for i_desc in interface.alt_settings() {
+            tracing::debug!("Found interface {:#?}", i_desc);
             // Skip interfaces without "CMSIS-DAP" like pattern in their string
             let Some(interface_str) = device_info
                 .interfaces()
@@ -168,15 +171,19 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
             else {
                 continue;
             };
+            tracing::debug!("with name {}", interface_str);
             if !is_cmsis_dap(interface_str) {
                 continue;
             }
+            tracing::info!("passed");
 
             // Skip interfaces without 2 or 3 endpoints
             let n_ep = i_desc.num_endpoints();
             if !(2..=3).contains(&n_ep) {
                 continue;
             }
+
+            tracing::info!("passed");
 
             let eps: Vec<_> = i_desc.endpoints().collect();
 
@@ -185,6 +192,7 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
             {
                 continue;
             }
+            tracing::info!("passed 2");
 
             // Check the second endpoint is bulk in
             if eps[1].transfer_type() != EndpointType::Bulk || eps[1].direction() != Direction::In {
@@ -201,8 +209,10 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
                 swo_ep = Some((eps[2].address(), eps[2].max_packet_size()));
             }
 
+            tracing::info!("passed 3");
+
             // Attempt to claim this interface
-            match device.claim_interface(interface.interface_number()) {
+            match device.claim_interface(interface.interface_number()).await {
                 Ok(handle) => {
                     tracing::debug!("Opening {:04x}:{:04x} in CMSIS-DAPv2 mode", vid, pid);
                     return Some(CmsisDapDevice::V2 {
@@ -213,7 +223,10 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
                         max_packet_size: eps[1].max_packet_size(),
                     });
                 }
-                Err(_) => continue,
+                Err(e) => {
+                    tracing::info!("{e:?}");
+                    continue;
+                }
             }
         }
     }
@@ -229,7 +242,7 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
 
 /// Attempt to open the given DebugProbeInfo in CMSIS-DAP v2 mode if possible,
 /// otherwise in v1 mode.
-pub fn open_device_from_selector(
+pub async fn open_device_from_selector(
     selector: &DebugProbeSelector,
 ) -> Result<CmsisDapDevice, ProbeCreationError> {
     tracing::trace!("Attempting to open device matching {}", selector);
@@ -246,7 +259,7 @@ pub fn open_device_from_selector(
     // Try using nusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver
     // or permission issues with opening bulk devices.
-    if let Ok(devices) = nusb::list_devices() {
+    if let Ok(devices) = crate::probe::list::list_devices().await {
         for device in devices {
             tracing::trace!("Trying device {:?}", device);
 
@@ -257,7 +270,7 @@ pub fn open_device_from_selector(
                     // If the VID, PID, and potentially SN all match,
                     // and the device is a valid CMSIS-DAP probe,
                     // attempt to open the device in v2 mode.
-                    if let Some(device) = open_v2_device(&device) {
+                    if let Some(device) = open_v2_device(&device).await {
                         return Ok(device);
                     }
                 }
@@ -280,7 +293,7 @@ pub fn open_device_from_selector(
 
     // Attempt to open provided VID/PID/SN with hidapi
 
-    let hid_api = HidApi::new()?;
+    let hid_api = HidApi::new().await.map_err(ProbeCreationError::HidApi)?;
 
     let mut device_list = hid_api.device_list();
 
@@ -305,7 +318,7 @@ pub fn open_device_from_selector(
         })
         .ok_or(ProbeCreationError::NotFound)?;
 
-    let device = device_info.open_device(&hid_api)?;
+    let device = device_info.open_device(&hid_api).await?;
 
     match device.get_product_string() {
         Ok(Some(s)) if is_cmsis_dap(&s) => {

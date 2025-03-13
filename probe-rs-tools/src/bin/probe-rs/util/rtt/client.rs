@@ -42,7 +42,7 @@ impl RttClient {
         self.target.is_some()
     }
 
-    pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
+    pub async fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
         if self.is_attached() {
             return Ok(true);
         }
@@ -97,7 +97,7 @@ impl RttClient {
         Ok(self.target.is_some())
     }
 
-    pub fn poll_channel(&mut self, core: &mut Core, channel: u32) -> Result<&[u8], Error> {
+    pub async fn poll_channel(&mut self, core: &mut Core, channel: u32) -> Result<&[u8], Error> {
         self.try_attach(core)?;
 
         if let Some(ref mut target) = self.target {
@@ -130,24 +130,24 @@ impl RttClient {
         Ok(&[])
     }
 
-    pub(crate) fn write_down_channel(
+    pub(crate) async fn write_down_channel(
         &mut self,
         core: &mut Core,
         channel: u32,
         input: impl AsRef<[u8]>,
     ) -> Result<(), Error> {
-        self.try_attach(core)?;
+        self.try_attach(core).await?;
 
         let Some(target) = self.target.as_mut() else {
             return Ok(());
         };
 
-        target.write_down_channel(core, channel, input)
+        target.write_down_channel(core, channel, input).await
     }
 
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub async fn clean_up(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
         if let Some(target) = self.target.as_mut() {
-            target.clean_up(core)?;
+            target.clean_up(core).await?;
         }
 
         Ok(())

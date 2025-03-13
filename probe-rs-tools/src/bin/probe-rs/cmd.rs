@@ -5,12 +5,14 @@ pub mod cargo_flash;
 pub mod chip;
 pub mod complete;
 pub mod dap_server;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod debug;
 pub mod download;
 pub mod erase;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod gdb_server;
 pub mod info;
-pub mod itm;
+// pub mod itm;
 pub mod list;
 pub mod mi;
 pub mod profile;

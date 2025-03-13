@@ -85,38 +85,39 @@ impl MockMemory {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl MemoryInterface for MockMemory {
-    fn supports_native_64bit_access(&mut self) -> bool {
+    async fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
 
-    fn read_word_64(&mut self, _address: u64) -> Result<u64, crate::Error> {
+    async fn read_word_64(&mut self, _address: u64) -> Result<u64, crate::Error> {
         todo!()
     }
 
-    fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
+    async fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
         let mut bytes = [0u8; 4];
-        self.read_8(address, &mut bytes)?;
+        self.read_8(address, &mut bytes).await?;
 
         Ok(u32::from_le_bytes(bytes))
     }
 
-    fn read_word_8(&mut self, _address: u64) -> Result<u8, crate::Error> {
+    async fn read_word_8(&mut self, _address: u64) -> Result<u8, crate::Error> {
         todo!()
     }
 
-    fn read_word_16(&mut self, _address: u64) -> Result<u16, crate::Error> {
+    async fn read_word_16(&mut self, _address: u64) -> Result<u16, crate::Error> {
         todo!()
     }
 
-    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), crate::Error> {
+    async fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
+    async fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
         let mut buff = vec![0u8; data.len() * 4];
 
-        self.read_8(address, &mut buff)?;
+        self.read_8(address, &mut buff).await?;
 
         for (i, chunk) in buff.chunks_exact(4).enumerate() {
             data[i] = u32::from_le_bytes(chunk.try_into().unwrap());
@@ -125,11 +126,11 @@ impl MemoryInterface for MockMemory {
         Ok(())
     }
 
-    fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), crate::Error> {
+    async fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
+    async fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
         let stored_data = match self
             .values
             .binary_search_by_key(&address, |(addr, _data)| *addr)
@@ -169,66 +170,75 @@ impl MemoryInterface for MockMemory {
                 address + stored_data.len() as u64,
                 &mut data[stored_data.len()..],
             )
+            .await
         }
     }
 
-    fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
+    async fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
         Ok(true)
     }
 
-    fn write_word_64(&mut self, _address: u64, _data: u64) -> Result<(), crate::Error> {
+    async fn write_word_64(&mut self, _address: u64, _data: u64) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_word_32(&mut self, _address: u64, _data: u32) -> Result<(), crate::Error> {
+    async fn write_word_32(&mut self, _address: u64, _data: u32) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_word_16(&mut self, _address: u64, _data: u16) -> Result<(), crate::Error> {
+    async fn write_word_16(&mut self, _address: u64, _data: u16) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_word_8(&mut self, _address: u64, _data: u8) -> Result<(), crate::Error> {
+    async fn write_word_8(&mut self, _address: u64, _data: u8) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), crate::Error> {
+    async fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), crate::Error> {
+    async fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), crate::Error> {
+    async fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), crate::Error> {
+    async fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn flush(&mut self) -> Result<(), crate::Error> {
+    async fn flush(&mut self) -> Result<(), crate::Error> {
         todo!()
     }
 }
 
-#[test]
-fn mock_memory_read() {
-    let mut mock_memory = MockMemory::new();
+#[cfg(test)]
+mod tests {
+    use crate::MemoryInterface;
 
-    let values = [
-        0x00000001, 0x2001ffcf, 0x20000044, 0x20000044, 0x00000000, 0x0000017f, 0x00000180,
-        0x21000000, 0x2001fff8, 0x00000161, 0x00000000, 0x0000013d,
-    ];
+    use super::MockMemory;
 
-    mock_memory.add_word_range(0x2001_ffd0, &values);
+    #[pollster::test]
+    async fn mock_memory_read() {
+        let mut mock_memory = MockMemory::new();
 
-    for (offset, expected) in values.iter().enumerate() {
-        let actual = mock_memory
-            .read_word_32(0x2001_ffd0 + (offset * 4) as u64)
-            .unwrap();
+        let values = [
+            0x00000001, 0x2001ffcf, 0x20000044, 0x20000044, 0x00000000, 0x0000017f, 0x00000180,
+            0x21000000, 0x2001fff8, 0x00000161, 0x00000000, 0x0000013d,
+        ];
 
-        assert_eq!(actual, *expected);
+        mock_memory.add_word_range(0x2001_ffd0, &values);
+
+        for (offset, expected) in values.iter().enumerate() {
+            let actual = mock_memory
+                .read_word_32(0x2001_ffd0 + (offset * 4) as u64)
+                .await
+                .unwrap();
+
+            assert_eq!(actual, *expected);
+        }
     }
 }

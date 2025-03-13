@@ -2,8 +2,9 @@
 
 use std::{
     sync::Arc,
-    time::{Duration, Instant},
+    time::{Duration},
 };
+use web_time::Instant;
 
 use super::esp::EspFlashSizeDetector;
 use crate::{
@@ -59,24 +60,24 @@ impl ESP32S2 {
         })
     }
 
-    fn set_peri_reg_mask(
+    async fn set_peri_reg_mask(
         &self,
-        core: &mut XtensaCommunicationInterface,
+        core: &mut XtensaCommunicationInterface<'_>,
         addr: u64,
         mask: u32,
         value: u32,
     ) -> Result<(), crate::Error> {
-        let mut reg = core.read_word_32(addr)?;
+        let mut reg = core.read_word_32(addr).await?;
         reg &= !mask;
         reg |= value;
-        core.write_word_32(addr, reg)?;
+        core.write_word_32(addr, reg).await?;
         Ok(())
     }
 
-    fn set_stall(
+    async fn set_stall(
         &self,
         stall: bool,
-        core: &mut XtensaCommunicationInterface,
+        core: &mut XtensaCommunicationInterface<'_>,
     ) -> Result<(), crate::Error> {
         const STALL_PROCPU_C1_M: u32 = 0x3F << 26;
         const STALL_PROCPU_C1: u32 = 0x21 << 26;
@@ -89,64 +90,77 @@ impl ESP32S2 {
             Self::SW_CPU_STALL,
             STALL_PROCPU_C1_M,
             if stall { STALL_PROCPU_C1 } else { 0 },
-        )?;
+        )
+        .await?;
         self.set_peri_reg_mask(
             core,
             Self::OPTIONS0,
             STALL_PROCPU_C0_M,
             if stall { STALL_PROCPU_C0 } else { 0 },
-        )?;
+        )
+        .await?;
         Ok(())
     }
 
-    pub(crate) fn stall(
+    pub(crate) async fn stall(
         &self,
-        core: &mut XtensaCommunicationInterface,
+        core: &mut XtensaCommunicationInterface<'_>,
     ) -> Result<(), crate::Error> {
-        self.set_stall(true, core)
+        self.set_stall(true, core).await
     }
 
-    pub(crate) fn unstall(
+    pub(crate) async fn unstall(
         &self,
-        core: &mut XtensaCommunicationInterface,
+        core: &mut XtensaCommunicationInterface<'_>,
     ) -> Result<(), crate::Error> {
-        self.set_stall(false, core)
+        self.set_stall(false, core).await
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl XtensaDebugSequence for ESP32S2 {
-    fn on_connect(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+    async fn on_connect(
+        &self,
+        core: &mut XtensaCommunicationInterface,
+    ) -> Result<(), crate::Error> {
         tracing::info!("Disabling ESP32-S2 watchdogs...");
 
         // disable super wdt
-        core.write_word_32(Self::SWD_WRITE_PROT, Self::SWD_WRITE_PROT_KEY)?; // write protection off
-        let current = core.read_word_32(Self::SWD_CONF)?;
-        core.write_word_32(Self::SWD_CONF, current | Self::SWD_AUTO_FEED_EN)?;
-        core.write_word_32(Self::SWD_WRITE_PROT, 0x0)?; // write protection on
+        core.write_word_32(Self::SWD_WRITE_PROT, Self::SWD_WRITE_PROT_KEY)
+            .await?; // write protection off
+        let current = core.read_word_32(Self::SWD_CONF).await?;
+        core.write_word_32(Self::SWD_CONF, current | Self::SWD_AUTO_FEED_EN)
+            .await?;
+        core.write_word_32(Self::SWD_WRITE_PROT, 0x0).await?; // write protection on
 
         // tg0 wdg
-        core.write_word_32(Self::TIMG0_WRITE_PROT, 0x50D83AA1)?; // write protection off
-        core.write_word_32(Self::TIMG0_WDTCONFIG0, 0x0)?;
-        core.write_word_32(Self::TIMG0_WRITE_PROT, 0x0)?; // write protection on
+        core.write_word_32(Self::TIMG0_WRITE_PROT, 0x50D83AA1)
+            .await?; // write protection off
+        core.write_word_32(Self::TIMG0_WDTCONFIG0, 0x0).await?;
+        core.write_word_32(Self::TIMG0_WRITE_PROT, 0x0).await?; // write protection on
 
         // tg1 wdg
-        core.write_word_32(Self::TIMG1_WRITE_PROT, 0x50D83AA1)?; // write protection off
-        core.write_word_32(Self::TIMG1_WDTCONFIG0, 0x0)?;
-        core.write_word_32(Self::TIMG1_WRITE_PROT, 0x0)?; // write protection on
+        core.write_word_32(Self::TIMG1_WRITE_PROT, 0x50D83AA1)
+            .await?; // write protection off
+        core.write_word_32(Self::TIMG1_WDTCONFIG0, 0x0).await?;
+        core.write_word_32(Self::TIMG1_WRITE_PROT, 0x0).await?; // write protection on
 
         // rtc wdg
-        core.write_word_32(Self::RTC_WRITE_PROT, 0x50D83AA1)?; // write protection off
-        core.write_word_32(Self::RTC_WDTCONFIG0, 0x0)?;
-        core.write_word_32(Self::RTC_WRITE_PROT, 0x0)?; // write protection on
+        core.write_word_32(Self::RTC_WRITE_PROT, 0x50D83AA1).await?; // write protection off
+        core.write_word_32(Self::RTC_WDTCONFIG0, 0x0).await?;
+        core.write_word_32(Self::RTC_WRITE_PROT, 0x0).await?; // write protection on
 
         Ok(())
     }
 
-    fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(session)
+    async fn detect_flash_size(
+        &self,
+        session: &mut Session,
+    ) -> Result<Option<usize>, crate::Error> {
+        self.inner.detect_flash_size(session).await
     }
 
-    fn reset_system_and_halt(
+    async fn reset_system_and_halt(
         &self,
         core: &mut XtensaCommunicationInterface,
         timeout: Duration,
@@ -155,31 +169,34 @@ impl XtensaDebugSequence for ESP32S2 {
 
         const SYS_RESET: u32 = 1 << 31;
 
-        core.reset_and_halt(timeout)?;
+        core.reset_and_halt(timeout).await?;
 
         // Set some clock-related RTC registers to the default values
-        core.write_word_32(Self::STORE4, 0)?;
-        core.write_word_32(Self::STORE5, 0)?;
-        core.write_word_32(Self::RTC_CNTL_DIG_PWC_REG, 0)?;
-        core.write_word_32(Self::CLK_CONF, CLK_CONF_DEF)?;
+        core.write_word_32(Self::STORE4, 0).await?;
+        core.write_word_32(Self::STORE5, 0).await?;
+        core.write_word_32(Self::RTC_CNTL_DIG_PWC_REG, 0).await?;
+        core.write_word_32(Self::CLK_CONF, CLK_CONF_DEF).await?;
 
-        self.stall(core)?;
+        self.stall(core).await?;
 
-        core.xdm.debug_control({
-            let mut control = DebugControlBits(0);
+        core.xdm
+            .debug_control({
+                let mut control = DebugControlBits(0);
 
-            control.set_enable_ocd(true);
-            control.set_run_stall_in_en(true);
+                control.set_enable_ocd(true);
+                control.set_run_stall_in_en(true);
 
-            control
-        })?;
+                control
+            })
+            .await?;
 
         // Reset CPU
-        self.set_peri_reg_mask(core, Self::OPTIONS0, SYS_RESET, SYS_RESET)?;
+        self.set_peri_reg_mask(core, Self::OPTIONS0, SYS_RESET, SYS_RESET)
+            .await?;
 
         // Need to manually execute here, because a yet-to-be-flushed write will start the
         // reset process.
-        match core.xdm.execute() {
+        match core.xdm.execute().await {
             err @ Err(XtensaError::XdmError(
                 xdm::Error::ExecOverrun
                 | xdm::Error::InstructionIgnored
@@ -197,24 +214,26 @@ impl XtensaDebugSequence for ESP32S2 {
         // Wait for reset to happen
         let start = Instant::now();
         std::thread::sleep(Duration::from_millis(100));
-        while !core.xdm.read_power_status()?.core_was_reset() {
+        while !core.xdm.read_power_status().await?.core_was_reset() {
             if start.elapsed() > timeout {
                 return Err(crate::Error::Timeout);
             }
             std::thread::sleep(Duration::from_millis(10));
         }
 
-        core.reset_and_halt(timeout)?;
+        core.reset_and_halt(timeout).await?;
 
-        self.unstall(core)?;
+        self.unstall(core).await?;
 
-        core.xdm.debug_control({
-            let mut control = DebugControlBits(0);
+        core.xdm
+            .debug_control({
+                let mut control = DebugControlBits(0);
 
-            control.set_enable_ocd(true);
+                control.set_enable_ocd(true);
 
-            control
-        })?;
+                control
+            })
+            .await?;
 
         Ok(())
     }

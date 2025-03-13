@@ -1,3 +1,5 @@
+#![feature(async_closure)]
+
 mod cmd;
 mod report;
 mod rpc;
@@ -158,8 +160,10 @@ enum Subcommand {
     Info(cmd::info::Cmd),
     /// Resets the target attached to the selected debug probe
     Reset(cmd::reset::Cmd),
+    #[cfg(not(target_arch = "wasm32"))]
     /// Run a GDB server
     Gdb(cmd::gdb_server::Cmd),
+    #[cfg(not(target_arch = "wasm32"))]
     /// Basic command line debugger
     Debug(cmd::debug::Cmd),
     /// Download memory to attached target
@@ -412,7 +416,7 @@ fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<&'list 
     None
 }
 
-#[tokio::main]
+#[pollster::main]
 async fn main() -> Result<()> {
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.

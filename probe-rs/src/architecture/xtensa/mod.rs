@@ -86,7 +86,7 @@ impl<'probe> Xtensa<'probe> {
         [SpecialRegister::IBreakA0, SpecialRegister::IBreakA1];
 
     /// Create a new Xtensa interface for a particular core.
-    pub fn new(
+    pub async fn new(
         interface: XtensaCommunicationInterface<'probe>,
         state: &'probe mut XtensaCoreState,
         sequence: Arc<dyn XtensaDebugSequence>,
@@ -97,21 +97,25 @@ impl<'probe> Xtensa<'probe> {
             sequence,
         };
 
-        this.on_attach()?;
+        this.on_attach().await?;
 
         Ok(this)
     }
 
-    fn on_attach(&mut self) -> Result<(), Error> {
+    async fn on_attach(&mut self) -> Result<(), Error> {
         // If the core was reset, force a reconnection.
         let core_reset;
         if self.state.enabled {
-            let status = self.interface.xdm.power_status({
-                let mut clear_value = PowerStatus(0);
-                clear_value.set_core_was_reset(true);
-                clear_value.set_debug_was_reset(true);
-                clear_value
-            })?;
+            let status = self
+                .interface
+                .xdm
+                .power_status({
+                    let mut clear_value = PowerStatus(0);
+                    clear_value.set_core_was_reset(true);
+                    clear_value.set_debug_was_reset(true);
+                    clear_value
+                })
+                .await?;
             core_reset = status.core_was_reset() || !status.core_domain_on();
             let debug_reset = status.debug_was_reset() || !status.debug_domain_on();
 
@@ -130,19 +134,20 @@ impl<'probe> Xtensa<'probe> {
         // (Re)enter debug mode if necessary. This also checks if the core is enabled.
         if !self.state.enabled {
             // Enable debug module.
-            self.interface.enter_debug_mode()?;
+            self.interface.enter_debug_mode().await?;
             self.state.enabled = true;
 
             if core_reset {
                 // Run the connection sequence while halted.
                 let was_running = self
                     .interface
-                    .halt_with_previous(Duration::from_millis(500))?;
+                    .halt_with_previous(Duration::from_millis(500))
+                    .await?;
 
-                self.sequence.on_connect(&mut self.interface)?;
+                self.sequence.on_connect(&mut self.interface).await?;
 
                 if was_running {
-                    self.run()?;
+                    self.run().await?;
                 }
             }
         }
@@ -150,16 +155,16 @@ impl<'probe> Xtensa<'probe> {
         Ok(())
     }
 
-    fn core_info(&mut self) -> Result<CoreInformation, Error> {
-        let pc = self.read_core_reg(self.program_counter().id)?;
+    async fn core_info(&mut self) -> Result<CoreInformation, Error> {
+        let pc = self.read_core_reg(self.program_counter().id).await?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
-    fn skip_breakpoint_instruction(&mut self) -> Result<(), Error> {
+    async fn skip_breakpoint_instruction(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
         if !self.state.pc_written {
-            let debug_cause = self.interface.read_register::<DebugCause>()?;
+            let debug_cause = self.interface.read_register::<DebugCause>().await?;
 
             let pc_increment = if debug_cause.break_instruction() {
                 3
@@ -172,9 +177,9 @@ impl<'probe> Xtensa<'probe> {
             if pc_increment > 0 {
                 // Step through the breakpoint
                 let pc = self.program_counter().id;
-                let mut pc_value = self.read_core_reg(pc)?;
+                let mut pc_value = self.read_core_reg(pc).await?;
                 pc_value.increment_address(pc_increment)?;
-                self.write_core_reg(pc, pc_value)?;
+                self.write_core_reg(pc, pc_value).await?;
             }
         }
 
@@ -183,7 +188,7 @@ impl<'probe> Xtensa<'probe> {
 
     /// Check if the current breakpoint is a semihosting call
     // OpenOCD implementation: https://github.com/espressif/openocd-esp32/blob/93dd01511fd13d4a9fb322cd9b600c337becef9e/src/target/espressif/esp_xtensa_semihosting.c#L42-L103
-    fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
+    async fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
         const SEMI_BREAK: u32 = const {
             let InstructionEncoding::Narrow(bytes) = Instruction::Break(1, 14).encode();
             bytes
@@ -194,10 +199,13 @@ impl<'probe> Xtensa<'probe> {
             return Ok(Some(command));
         }
 
-        let pc: u64 = self.read_core_reg(self.program_counter().id)?.try_into()?;
+        let pc: u64 = self
+            .read_core_reg(self.program_counter().id)
+            .await?
+            .try_into()?;
 
         let mut actual_instruction = [0u8; 3];
-        self.read_8(pc, &mut actual_instruction)?;
+        self.read_8(pc, &mut actual_instruction).await?;
         let actual_instruction = u32::from_le_bytes([
             actual_instruction[0],
             actual_instruction[1],
@@ -208,7 +216,7 @@ impl<'probe> Xtensa<'probe> {
         tracing::debug!("Semihosting check pc={pc:#x} instruction={actual_instruction:#010x}");
 
         let command = if actual_instruction == SEMI_BREAK {
-            Some(decode_semihosting_syscall(self)?)
+            Some(decode_semihosting_syscall(self).await?)
         } else {
             None
         };
@@ -217,13 +225,13 @@ impl<'probe> Xtensa<'probe> {
         Ok(command)
     }
 
-    fn on_halted(&mut self) -> Result<(), Error> {
+    async fn on_halted(&mut self) -> Result<(), Error> {
         self.state.pc_written = false;
 
         // Poll core status. For now we don't do anything with it, but in the future we
         // may check expected status, and record the status to prevent decoding semihosting
         // multiple times (possibly incorrectly after answering).
-        let status = self.status()?;
+        let status = self.status().await?;
         tracing::debug!("Core halted: {:#?}", status);
 
         Ok(())
@@ -242,28 +250,29 @@ impl CoreMemoryInterface for Xtensa<'_> {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl CoreInterface for Xtensa<'_> {
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
-        self.interface.wait_for_core_halted(timeout)?;
-        self.on_halted()?;
+    async fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
+        self.interface.wait_for_core_halted(timeout).await?;
+        self.on_halted().await?;
 
         Ok(())
     }
 
-    fn core_halted(&mut self) -> Result<bool, Error> {
-        Ok(self.interface.core_halted()?)
+    async fn core_halted(&mut self) -> Result<bool, Error> {
+        Ok(self.interface.core_halted().await?)
     }
 
-    fn status(&mut self) -> Result<CoreStatus, Error> {
-        let status = if self.core_halted()? {
-            let debug_cause = self.interface.read_register::<DebugCause>()?;
+    async fn status(&mut self) -> Result<CoreStatus, Error> {
+        let status = if self.core_halted().await? {
+            let debug_cause = self.interface.read_register::<DebugCause>().await?;
 
             let mut reason = debug_cause.halt_reason();
             if reason == HaltReason::Breakpoint(BreakpointCause::Software) {
                 // The chip initiated this halt, therefore we need to update pc_written state
                 self.state.pc_written = false;
                 // Check if the breakpoint is a semihosting call
-                if let Some(cmd) = self.check_for_semihosting()? {
+                if let Some(cmd) = self.check_for_semihosting().await? {
                     reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd));
                 }
             }
@@ -276,55 +285,60 @@ impl CoreInterface for Xtensa<'_> {
         Ok(status)
     }
 
-    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.interface.halt(timeout)?;
-        self.on_halted()?;
+    async fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.interface.halt(timeout).await?;
+        self.on_halted().await?;
 
-        self.core_info()
+        self.core_info().await
     }
 
-    fn run(&mut self) -> Result<(), Error> {
-        self.skip_breakpoint_instruction()?;
+    async fn run(&mut self) -> Result<(), Error> {
+        self.skip_breakpoint_instruction().await?;
         if self.state.pc_written {
             self.interface.clear_register_cache();
         }
-        Ok(self.interface.resume_core()?)
+        Ok(self.interface.resume_core().await?)
     }
 
-    fn reset(&mut self) -> Result<(), Error> {
-        self.reset_and_halt(Duration::from_millis(500))?;
+    async fn reset(&mut self) -> Result<(), Error> {
+        self.reset_and_halt(Duration::from_millis(500)).await?;
 
-        self.run()
+        self.run().await
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+    async fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.state.semihosting_command = None;
         self.sequence
-            .reset_system_and_halt(&mut self.interface, timeout)?;
-        self.on_halted()?;
+            .reset_system_and_halt(&mut self.interface, timeout)
+            .await?;
+        self.on_halted().await?;
 
         // TODO: this may return that the core has gone away, which is fine but currently unexpected
-        self.on_attach()?;
+        self.on_attach().await?;
 
-        self.core_info()
+        self.core_info().await
     }
 
-    fn step(&mut self) -> Result<CoreInformation, Error> {
-        self.skip_breakpoint_instruction()?;
-        self.interface.step()?;
-        self.on_halted()?;
+    async fn step(&mut self) -> Result<CoreInformation, Error> {
+        self.skip_breakpoint_instruction().await?;
+        self.interface.step().await?;
+        self.on_halted().await?;
 
-        self.core_info()
+        self.core_info().await
     }
 
-    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
+    async fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
         let register = Register::try_from(address)?;
-        let value = self.interface.read_register_untyped(register)?;
+        let value = self.interface.read_register_untyped(register).await?;
 
         Ok(RegisterValue::U32(value))
     }
 
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
+    async fn write_core_reg(
+        &mut self,
+        address: RegisterId,
+        value: RegisterValue,
+    ) -> Result<(), Error> {
         let value: u32 = value.try_into()?;
 
         if address == self.program_counter().id {
@@ -332,26 +346,29 @@ impl CoreInterface for Xtensa<'_> {
         }
 
         let register = Register::try_from(address)?;
-        self.interface.write_register_untyped(register, value)?;
+        self.interface
+            .write_register_untyped(register, value)
+            .await?;
 
         Ok(())
     }
 
-    fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
+    async fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
         Ok(self.interface.available_breakpoint_units())
     }
 
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        let mut breakpoints = Vec::with_capacity(self.available_breakpoint_units()? as usize);
+    async fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        let mut breakpoints = Vec::with_capacity(self.available_breakpoint_units().await? as usize);
 
-        let enabled_breakpoints = self.interface.read_register::<IBreakEn>()?;
+        let enabled_breakpoints = self.interface.read_register::<IBreakEn>().await?;
 
-        for i in 0..self.available_breakpoint_units()? as usize {
+        for i in 0..self.available_breakpoint_units().await? as usize {
             let is_enabled = enabled_breakpoints.0 & (1 << i) != 0;
             let breakpoint = if is_enabled {
                 let address = self
                     .interface
-                    .read_register_untyped(Self::IBREAKA_REGS[i])?;
+                    .read_register_untyped(Self::IBREAKA_REGS[i])
+                    .await?;
 
                 Some(address as u64)
             } else {
@@ -364,7 +381,7 @@ impl CoreInterface for Xtensa<'_> {
         Ok(breakpoints)
     }
 
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
+    async fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
         self.state.breakpoints_enabled = state;
         let mask = if state {
             self.state.breakpoint_mask()
@@ -372,30 +389,31 @@ impl CoreInterface for Xtensa<'_> {
             0
         };
 
-        self.interface.write_register(IBreakEn(mask))?;
+        self.interface.write_register(IBreakEn(mask)).await?;
 
         Ok(())
     }
 
-    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+    async fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
         self.state.breakpoint_set[unit_index] = true;
         self.interface
-            .write_register_untyped(Self::IBREAKA_REGS[unit_index], addr as u32)?;
+            .write_register_untyped(Self::IBREAKA_REGS[unit_index], addr as u32)
+            .await?;
 
         if self.state.breakpoints_enabled {
             let mask = self.state.breakpoint_mask();
-            self.interface.write_register(IBreakEn(mask))?;
+            self.interface.write_register(IBreakEn(mask)).await?;
         }
 
         Ok(())
     }
 
-    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
+    async fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
         self.state.breakpoint_set[unit_index] = false;
 
         if self.state.breakpoints_enabled {
             let mask = self.state.breakpoint_mask();
-            self.interface.write_register(IBreakEn(mask))?;
+            self.interface.write_register(IBreakEn(mask)).await?;
         }
 
         Ok(())
@@ -433,12 +451,12 @@ impl CoreInterface for Xtensa<'_> {
         CoreType::Xtensa
     }
 
-    fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+    async fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
         // TODO: NX exists, too
         Ok(InstructionSet::Xtensa)
     }
 
-    fn fpu_support(&mut self) -> Result<bool, Error> {
+    async fn fpu_support(&mut self) -> Result<bool, Error> {
         // TODO: ESP32 and ESP32-S3 have FPU
         Ok(false)
     }
@@ -448,16 +466,16 @@ impl CoreInterface for Xtensa<'_> {
         Ok(0)
     }
 
-    fn reset_catch_set(&mut self) -> Result<(), Error> {
+    async fn reset_catch_set(&mut self) -> Result<(), Error> {
         Err(Error::NotImplemented("reset_catch_set"))
     }
 
-    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+    async fn reset_catch_clear(&mut self) -> Result<(), Error> {
         Err(Error::NotImplemented("reset_catch_clear"))
     }
 
-    fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.interface.leave_debug_mode()?;
+    async fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.interface.leave_debug_mode().await?;
         Ok(())
     }
 }

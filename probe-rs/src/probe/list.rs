@@ -4,7 +4,7 @@ use crate::probe::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError, ProbeFactory,
 };
 
-use super::{blackmagic, cmsisdap, espusbjtag, ftdi, jlink, sifliuart, stlink, wlink};
+use super::{blackmagic, cmsisdap, espusbjtag, jlink, sifliuart, stlink, wlink};
 
 /// Struct to list all attached debug probes
 #[derive(Debug)]
@@ -26,13 +26,16 @@ impl Lister {
     }
 
     /// Try to open a probe using the given selector
-    pub fn open(&self, selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
-        self.lister.open(&selector.into())
+    pub async fn open(
+        &self,
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Probe, DebugProbeError> {
+        self.lister.open(selector.into()).await
     }
 
     /// List all available debug probes
-    pub fn list_all(&self) -> Vec<DebugProbeInfo> {
-        self.lister.list_all()
+    pub async fn list_all(&self) -> Vec<DebugProbeInfo> {
+        self.lister.list_all().await
     }
 }
 
@@ -45,25 +48,27 @@ impl Default for Lister {
 /// Trait for a probe lister implementation.
 ///
 /// This trait can be used to implement custom probe listers.
+#[async_trait::async_trait(?Send)]
 pub trait ProbeLister: std::fmt::Debug {
     /// Try to open a probe using the given selector
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError>;
+    async fn open(&self, selector: DebugProbeSelector) -> Result<Probe, DebugProbeError>;
 
     /// List all probes found by the lister.
-    fn list_all(&self) -> Vec<DebugProbeInfo>;
+    async fn list_all(&self) -> Vec<DebugProbeInfo>;
 }
 
 /// Default lister implementation that includes all built-in probe drivers.
 #[derive(Debug, PartialEq, Eq)]
 pub struct AllProbesLister;
 
+#[async_trait::async_trait(?Send)]
 impl ProbeLister for AllProbesLister {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
-        Self::open(selector)
+    async fn open(&self, selector: DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+        Self::open(selector).await
     }
 
-    fn list_all(&self) -> Vec<DebugProbeInfo> {
-        Self::list_all()
+    async fn list_all(&self) -> Vec<DebugProbeInfo> {
+        Self::list_all().await
     }
 }
 
@@ -77,7 +82,8 @@ impl AllProbesLister {
     const DRIVERS: &'static [&'static dyn ProbeFactory] = &[
         &blackmagic::BlackMagicProbeFactory,
         &cmsisdap::CmsisDapFactory,
-        &ftdi::FtdiProbeFactory,
+        // TODO:
+        // &ftdi::FtdiProbeFactory,
         &stlink::StLinkFactory,
         &jlink::JLinkFactory,
         &espusbjtag::EspUsbJtagFactory,
@@ -90,11 +96,11 @@ impl AllProbesLister {
         Self
     }
 
-    fn open(selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
+    async fn open(selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
         let selector = selector.into();
 
         for probe_ctor in Self::DRIVERS {
-            match probe_ctor.open(&selector) {
+            match probe_ctor.open(selector.clone()).await {
                 Ok(link) => return Ok(Probe::from_specific_probe(link)),
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
                 Err(e) => return Err(e),
@@ -106,13 +112,18 @@ impl AllProbesLister {
         ))
     }
 
-    fn list_all() -> Vec<DebugProbeInfo> {
+    async fn list_all() -> Vec<DebugProbeInfo> {
         let mut list = vec![];
 
         for driver in Self::DRIVERS {
-            list.extend(driver.list_probes());
+            list.extend(driver.list_probes().await);
         }
 
         list
     }
+}
+
+/// Lists all USB devices that are plugged in and found by the system.
+pub async fn list_devices() -> Result<impl Iterator<Item = nusb::DeviceInfo>, nusb::Error> {
+    nusb::list_devices().await
 }

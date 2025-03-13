@@ -2,8 +2,9 @@
 
 use std::{
     sync::Arc,
-    time::{Duration, Instant},
+    time::{Duration},
 };
+use web_time::Instant;
 
 use super::esp::EspFlashSizeDetector;
 use crate::{
@@ -42,51 +43,60 @@ impl ESP32S3 {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl XtensaDebugSequence for ESP32S3 {
-    fn on_connect(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+    async fn on_connect(
+        &self,
+        core: &mut XtensaCommunicationInterface,
+    ) -> Result<(), crate::Error> {
         // External memory bus
         core.add_slow_memory_access_range(0x3C00_0000..0x3E00_0000);
 
         tracing::info!("Disabling ESP32-S3 watchdogs...");
 
         // disable super wdt
-        core.write_word_32(Self::SWD_WRITE_PROT, Self::SWD_WRITE_PROT_KEY)?; // write protection off
-        let current = core.read_word_32(Self::SWD_CONF)?;
-        core.write_word_32(Self::SWD_CONF, current | Self::SWD_AUTO_FEED_EN)?;
-        core.write_word_32(Self::SWD_WRITE_PROT, 0x0)?; // write protection on
+        core.write_word_32(Self::SWD_WRITE_PROT, Self::SWD_WRITE_PROT_KEY)
+            .await?; // write protection off
+        let current = core.read_word_32(Self::SWD_CONF).await?;
+        core.write_word_32(Self::SWD_CONF, current | Self::SWD_AUTO_FEED_EN)
+            .await?;
+        core.write_word_32(Self::SWD_WRITE_PROT, 0x0).await?; // write protection on
 
         // tg0 wdg
         const TIMG0_BASE: u64 = 0x6001f000;
         const TIMG0_WRITE_PROT: u64 = TIMG0_BASE | 0x64;
         const TIMG0_WDTCONFIG0: u64 = TIMG0_BASE | 0x48;
-        core.write_word_32(TIMG0_WRITE_PROT, 0x50D83AA1)?; // write protection off
-        core.write_word_32(TIMG0_WDTCONFIG0, 0x0)?;
-        core.write_word_32(TIMG0_WRITE_PROT, 0x0)?; // write protection on
+        core.write_word_32(TIMG0_WRITE_PROT, 0x50D83AA1).await?; // write protection off
+        core.write_word_32(TIMG0_WDTCONFIG0, 0x0).await?;
+        core.write_word_32(TIMG0_WRITE_PROT, 0x0).await?; // write protection on
 
         // tg1 wdg
         const TIMG1_BASE: u64 = 0x60020000;
         const TIMG1_WRITE_PROT: u64 = TIMG1_BASE | 0x64;
         const TIMG1_WDTCONFIG0: u64 = TIMG1_BASE | 0x48;
-        core.write_word_32(TIMG1_WRITE_PROT, 0x50D83AA1)?; // write protection off
-        core.write_word_32(TIMG1_WDTCONFIG0, 0x0)?;
-        core.write_word_32(TIMG1_WRITE_PROT, 0x0)?; // write protection on
+        core.write_word_32(TIMG1_WRITE_PROT, 0x50D83AA1).await?; // write protection off
+        core.write_word_32(TIMG1_WDTCONFIG0, 0x0).await?;
+        core.write_word_32(TIMG1_WRITE_PROT, 0x0).await?; // write protection on
 
         // rtc wdg
         const RTC_CNTL_BASE: u64 = 0x60008000;
         const RTC_WRITE_PROT: u64 = RTC_CNTL_BASE | 0xb0;
         const RTC_WDTCONFIG0: u64 = RTC_CNTL_BASE | 0x98;
-        core.write_word_32(RTC_WRITE_PROT, 0x50D83AA1)?; // write protection off
-        core.write_word_32(RTC_WDTCONFIG0, 0x0)?;
-        core.write_word_32(RTC_WRITE_PROT, 0x0)?; // write protection on
+        core.write_word_32(RTC_WRITE_PROT, 0x50D83AA1).await?; // write protection off
+        core.write_word_32(RTC_WDTCONFIG0, 0x0).await?;
+        core.write_word_32(RTC_WRITE_PROT, 0x0).await?; // write protection on
 
         Ok(())
     }
 
-    fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(session)
+    async fn detect_flash_size(
+        &self,
+        session: &mut Session,
+    ) -> Result<Option<usize>, crate::Error> {
+        self.inner.detect_flash_size(session).await
     }
 
-    fn reset_system_and_halt(
+    async fn reset_system_and_halt(
         &self,
         core: &mut XtensaCommunicationInterface,
         timeout: Duration,
@@ -98,8 +108,8 @@ impl XtensaDebugSequence for ESP32S3 {
 
         {
             let _span = tracing::debug_span!("Halting core").entered();
-            if !core.core_halted()? {
-                core.halt(timeout)?;
+            if !core.core_halted().await? {
+                core.halt(timeout).await?;
             }
         }
 
@@ -132,24 +142,25 @@ impl XtensaDebugSequence for ESP32S3 {
 
         {
             let _span = tracing::debug_span!("Backing up RTC_SLOW").entered();
-            core.read(0x5000_0000, &mut ram_value)?;
+            core.read(0x5000_0000, &mut ram_value).await?;
         }
 
         {
             let _span = tracing::debug_span!("Downloading code").entered();
-            core.write(0x5000_0000, &instructions)?;
-            core.write_register(ProgramCounter(0x5000_0004))?;
+            core.write(0x5000_0000, &instructions).await?;
+            core.write_register(ProgramCounter(0x5000_0004)).await?;
         }
 
         {
             let _span =
                 tracing::debug_span!("Make sure the ready value is not what we expect").entered();
-            let reset_state = core.read_word_32(RTC_CNTL_RESET_STATE_REG)?;
+            let reset_state = core.read_word_32(RTC_CNTL_RESET_STATE_REG).await?;
             let new_state = reset_state & !RTC_CNTL_RESET_STATE_DEF;
-            core.write_word_32(RTC_CNTL_RESET_STATE_REG, new_state)?;
+            core.write_word_32(RTC_CNTL_RESET_STATE_REG, new_state)
+                .await?;
         }
 
-        match core.resume_core() {
+        match core.resume_core().await {
             err @ Err(XtensaError::XdmError(
                 xdm::Error::ExecOverrun | xdm::Error::InstructionIgnored,
             )) => {
@@ -166,7 +177,7 @@ impl XtensaDebugSequence for ESP32S3 {
         loop {
             // RTC_CNTL_RESET_STATE_REG is the last one to be set,
             // so if it's set, the program has completed.
-            let reset_state = core.read_word_32(RTC_CNTL_RESET_STATE_REG)?;
+            let reset_state = core.read_word_32(RTC_CNTL_RESET_STATE_REG).await?;
             tracing::debug!("Reset status register: {:#010x}", reset_state);
             if reset_state & RTC_CNTL_RESET_STATE_DEF == RTC_CNTL_RESET_STATE_DEF {
                 break;
@@ -177,11 +188,11 @@ impl XtensaDebugSequence for ESP32S3 {
             }
         }
 
-        core.reset_and_halt(timeout)?;
+        core.reset_and_halt(timeout).await?;
 
         {
             let _span = tracing::debug_span!("Restore RAM contents").entered();
-            core.write(0x5000_0000, &ram_value)?;
+            core.write(0x5000_0000, &ram_value).await?;
         }
 
         tracing::info!("Reset complete");

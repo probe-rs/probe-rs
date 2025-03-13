@@ -17,19 +17,20 @@ mod root_memory_interface;
 use root_memory_interface::RootMemoryInterface;
 
 /// Deeply scans the debug port and returns a list of the addresses the memory access points discovered.
-pub fn enumerate_access_ports<API: ArmProbeInterface>(
+pub async fn enumerate_access_ports<API: ArmProbeInterface>(
     probe: &mut API,
     dp: DpAddress,
 ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
     let mut root_interface = RootMemoryInterface::new(probe, dp)?;
-    let base_addr = root_interface.base_address()?;
+    let base_addr = root_interface.base_address().await?;
 
     let root_component = Component::try_parse(
         &mut root_interface as &mut dyn ArmMemoryInterface,
         base_addr,
-    )?;
+    )
+    .await?;
 
-    let result = process_root_component(&mut root_interface, &root_component)?;
+    let result = process_root_component(&mut root_interface, &root_component).await?;
 
     Ok(result
         .into_iter()
@@ -37,8 +38,8 @@ pub fn enumerate_access_ports<API: ArmProbeInterface>(
         .collect())
 }
 
-fn process_root_component<API: ArmProbeInterface>(
-    iface: &mut RootMemoryInterface<API>,
+async fn process_root_component<API: ArmProbeInterface>(
+    iface: &mut RootMemoryInterface<'_, API>,
     component: &Component,
 ) -> Result<BTreeSet<ApV2Address>, ArmError> {
     let mut result = BTreeSet::new();
@@ -47,7 +48,7 @@ fn process_root_component<API: ArmProbeInterface>(
         Component::CoresightComponent(c)
             if c.peripheral_id().arch_id() == CORESIGHT_ROM_TABLE_ARCHID =>
         {
-            let rom_table = RomTable::try_parse(iface, c.component_address())?;
+            let rom_table = RomTable::try_parse(iface, c.component_address()).await?;
             for e in rom_table.entries() {
                 if let Component::CoresightComponent(comp) = e.component() {
                     if comp.peripheral_id().is_of_type(PeripheralType::MemAp) {
@@ -86,7 +87,7 @@ fn process_root_component<API: ArmProbeInterface>(
 
 /// Returns a Memory Interface accessing the Memory AP at the given `address` through the `iface`
 /// Arm Communication Interface.
-pub fn new_memory_interface<'i>(
+pub async fn new_memory_interface<'i>(
     iface: &'i mut ArmCommunicationInterface<Initialized>,
     address: &FullyQualifiedApAddress,
 ) -> Result<Box<dyn ArmMemoryInterface + 'i>, ArmError> {
@@ -97,6 +98,6 @@ pub fn new_memory_interface<'i>(
     if ap_address.0.is_none() {
         Ok(Box::new(RootMemoryInterface::new(iface, address.dp())?))
     } else {
-        Ok(Box::new(ADIMemoryInterface::new(iface, address)?))
+        Ok(Box::new(ADIMemoryInterface::new(iface, address).await?))
     }
 }

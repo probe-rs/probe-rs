@@ -27,6 +27,7 @@ remote = [
 
 [dependencies]
 anyhow = { workspace = true }
+async-trait = { workspace = true }
 base64 = "0.22"
 docsplay = { workspace = true }
 jep106 = "0.2"
@@ -36,7 +37,10 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 thiserror = { workspace = true }
 tracing = "0.1"
-typed-path = "0.10"
+typed-path = "0.9"
+web-time = { workspace = true }
+
+# path
 probe-rs-mi = { workspace = true }
 
 itertools = "0.14"
@@ -44,7 +48,7 @@ itertools = "0.14"
 # CLI-only
 addr2line = "0.24"
 bytesize = "2"
-capstone = "0.13"
+# capstone = "0.13"
 cargo_metadata = "0.19"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "3"
@@ -65,13 +69,12 @@ parse_int = "0.6"
 libtest-mimic = "0.8.0"
 fastrand = "2.1"
 rustyline = { version = "15", default-features = false, features = [
-    "with-dirs",
-    "with-file-history",
+    # "with-dirs",
+    # "with-file-history",
 ] }
 sanitize-filename = "0.6"
 schemafy = "0.6"
 serde_json = "1.0.116"
-signal-hook = { version = "0.3", default-features = false }
 # Version 0.14.6 fails to compile
 svd-parser = { version = "=0.14.8", features = ["expand"] }
 termtree = "0.5"
@@ -109,8 +112,13 @@ svg = "0.18"
 tokio = { version = "1.0", features = ["full"] }
 tokio-util = "0.7"
 futures-util = { version = "0.3" }
-rustls = { version = "0.23", default-features = false, features = ["std", "ring"], optional = true }
-tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"], optional = true }
+rustls = { version = "0.23", default-features = false, features = [
+    "std",
+    "ring",
+], optional = true }
+tokio-tungstenite = { version = "0.26", features = [
+    "rustls-tls-webpki-roots",
+], optional = true }
 axum = { version = "0.8", features = ["ws"], optional = true }
 axum-extra = { version = "0.10", features = ["typed-header"], optional = true }
 tempfile = { version = "3.0", optional = true }
@@ -121,6 +129,12 @@ sha2 = "0.10"
 
 # gdb server
 gdbstub = "0.7"
+
+pollster = "0.4"
+futures-lite = "2"
+
+[target.'cfg(not(target_arch="wasm32"))'.dependencies]
+signal-hook = { version = "0.3", default-features = false }
 
 [build-dependencies]
 git-version = "0.3"

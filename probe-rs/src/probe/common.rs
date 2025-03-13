@@ -420,6 +420,7 @@ impl Default for JtagDriverState {
 }
 
 /// A trait for implementing low-level JTAG interface operations.
+#[async_trait::async_trait(?Send)]
 pub(crate) trait RawJtagIo {
     /// Returns a mutable reference to the current state.
     fn state_mut(&mut self) -> &mut JtagDriverState;
@@ -428,14 +429,14 @@ pub(crate) trait RawJtagIo {
     fn state(&self) -> &JtagDriverState;
 
     /// Shifts a number of bits through the TAP.
-    fn shift_bits(
+    async fn shift_bits(
         &mut self,
         tms: impl IntoIterator<Item = bool>,
         tdi: impl IntoIterator<Item = bool>,
         cap: impl IntoIterator<Item = bool>,
     ) -> Result<(), DebugProbeError> {
         for ((tms, tdi), cap) in tms.into_iter().zip(tdi.into_iter()).zip(cap.into_iter()) {
-            self.shift_bit(tms, tdi, cap)?;
+            self.shift_bit(tms, tdi, cap).await?;
         }
 
         Ok(())
@@ -445,21 +446,26 @@ pub(crate) trait RawJtagIo {
     ///
     /// Drivers may choose, and are encouraged, to buffer bits and flush them
     /// in batches for performance reasons.
-    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError>;
+    async fn shift_bit(
+        &mut self,
+        tms: bool,
+        tdi: bool,
+        capture: bool,
+    ) -> Result<(), DebugProbeError>;
 
     /// Returns the bits captured from TDO and clears the capture buffer.
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError>;
+    async fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError>;
 
     /// Resets the JTAG state machine by shifting out a number of high TMS bits.
-    fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
+    async fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
 
         // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
         let tms = [true, true, true, true, true, false];
         let tdi = iter::repeat(true);
 
-        self.shift_bits(tms, tdi, iter::repeat(false))?;
-        let response = self.read_captured_bits()?;
+        self.shift_bits(tms, tdi, iter::repeat(false)).await?;
+        let response = self.read_captured_bits().await?;
 
         tracing::debug!("Response to reset: {response}");
 
@@ -488,7 +494,7 @@ pub(crate) trait RawJtagIo {
     }
 }
 
-fn jtag_move_to_state(
+async fn jtag_move_to_state(
     protocol: &mut impl RawJtagIo,
     target: JtagState,
 ) -> Result<(), DebugProbeError> {
@@ -499,14 +505,14 @@ fn jtag_move_to_state(
     );
 
     while let Some(tms) = protocol.state().state.step_toward(target) {
-        protocol.shift_bit(tms, false, false)?;
+        protocol.shift_bit(tms, false, false).await?;
     }
 
     tracing::trace!("In state: {:?}", protocol.state_mut().state);
     Ok(())
 }
 
-fn shift_ir(
+async fn shift_ir(
     protocol: &mut impl RawJtagIo,
     data: &[u8],
     len: usize,
@@ -533,7 +539,7 @@ fn shift_ir(
     let tms_data = std::iter::repeat_n(false, len - 1);
 
     // Enter IR shift
-    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Shift))?;
+    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Shift)).await?;
 
     let tms = std::iter::repeat_n(false, pre_bits)
         .chain(tms_data)
@@ -551,13 +557,13 @@ fn shift_ir(
     tracing::trace!("tms: {:?}", tms.clone());
     tracing::trace!("tdi: {:?}", tdi.clone());
 
-    protocol.shift_bits(tms, tdi, capture)?;
-    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Update))?;
+    protocol.shift_bits(tms, tdi, capture).await?;
+    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Update)).await?;
 
     Ok(())
 }
 
-fn shift_dr(
+async fn shift_dr(
     protocol: &mut impl RawJtagIo,
     data: &[u8],
     register_bits: usize,
@@ -578,7 +584,7 @@ fn shift_dr(
     let tms_shift_out_value = std::iter::repeat_n(false, register_bits - 1);
 
     // Enter DR shift
-    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Shift))?;
+    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Shift)).await?;
 
     // dummy bits to account for bypasses
     let pre_bits = protocol.state().chain_params.drpre;
@@ -597,19 +603,19 @@ fn shift_dr(
         .chain(std::iter::repeat_n(capture_data, register_bits))
         .chain(iter::repeat(false));
 
-    protocol.shift_bits(tms, tdi, capture)?;
+    protocol.shift_bits(tms, tdi, capture).await?;
 
-    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Update))?;
+    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Update)).await?;
 
     let idle_cycles = protocol.state().jtag_idle_cycles;
     if idle_cycles > 0 {
-        jtag_move_to_state(protocol, JtagState::Idle)?;
+        jtag_move_to_state(protocol, JtagState::Idle).await?;
 
         // We need to stay in the idle cycle a bit
         let tms = std::iter::repeat_n(false, idle_cycles);
         let tdi = std::iter::repeat_n(false, idle_cycles);
 
-        protocol.shift_bits(tms, tdi, iter::repeat(false))?;
+        protocol.shift_bits(tms, tdi, iter::repeat(false)).await?;
     }
 
     if capture_data {
@@ -619,7 +625,7 @@ fn shift_dr(
     }
 }
 
-fn prepare_write_register(
+async fn prepare_write_register(
     protocol: &mut impl RawJtagIo,
     address: u32,
     data: &[u8],
@@ -634,24 +640,25 @@ fn prepare_write_register(
     }
 
     let ir_len = protocol.state().chain_params.irlen;
-    shift_ir(protocol, &address.to_le_bytes(), ir_len, false)?;
+    shift_ir(protocol, &address.to_le_bytes(), ir_len, false).await?;
 
     // read DR register by transfering len bits to the chain
-    shift_dr(protocol, data, len as usize, capture)
+    shift_dr(protocol, data, len as usize, capture).await
 }
 
+#[async_trait::async_trait(?Send)]
 impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
-    fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
+    async fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
         const MAX_CHAIN: usize = 8;
 
-        self.reset_jtag_state_machine()?;
+        self.reset_jtag_state_machine().await?;
 
         self.state_mut().chain_params = ChainParams::default();
 
         let input = vec![0xFF; 4 * MAX_CHAIN];
 
-        shift_dr(self, &input, input.len() * 8, true)?;
-        let response = self.read_captured_bits()?;
+        shift_dr(self, &input, input.len() * 8, true).await?;
+        let response = self.read_captured_bits().await?;
 
         tracing::debug!("DR: {:?}", response);
 
@@ -667,19 +674,19 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
 
         // First shift out all ones
         let input = vec![0xff; idcodes.len()];
-        shift_ir(self, &input, input.len() * 8, true)?;
-        let response = self.read_captured_bits()?;
+        shift_ir(self, &input, input.len() * 8, true).await?;
+        let response = self.read_captured_bits().await?;
 
         tracing::debug!("IR scan: {}", response);
 
-        self.reset_jtag_state_machine()?;
+        self.reset_jtag_state_machine().await?;
 
         // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
         let input = std::iter::repeat_n(0, idcodes.len())
             .chain(input.iter().copied())
             .collect::<Vec<_>>();
-        shift_ir(self, &input, input.len() * 8, true)?;
-        let response_zeros = self.read_captured_bits()?;
+        shift_ir(self, &input, input.len() * 8, true).await?;
+        let response_zeros = self.read_captured_bits().await?;
 
         tracing::debug!("IR scan: {}", response_zeros);
 
@@ -718,8 +725,8 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         Ok(())
     }
 
-    fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
-        self.reset_jtag_state_machine()
+    async fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_jtag_state_machine().await
     }
 
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
@@ -730,21 +737,21 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         self.state().jtag_idle_cycles as u8
     }
 
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
+    async fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         let data = vec![0u8; len.div_ceil(8) as usize];
 
-        self.write_register(address, &data, len)
+        self.write_register(address, &data, len).await
     }
 
-    fn write_register(
+    async fn write_register(
         &mut self,
         address: u32,
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError> {
-        prepare_write_register(self, address, data, len, true)?;
+        prepare_write_register(self, address, data, len, true).await?;
 
-        let mut response = self.read_captured_bits()?;
+        let mut response = self.read_captured_bits().await?;
 
         // Implementations don't need to align to keep the code simple
         response.force_align();
@@ -754,10 +761,10 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         Ok(result)
     }
 
-    fn write_dr(&mut self, data: &[u8], len: u32) -> Result<Vec<u8>, DebugProbeError> {
-        shift_dr(self, data, len as usize, true)?;
+    async fn write_dr(&mut self, data: &[u8], len: u32) -> Result<Vec<u8>, DebugProbeError> {
+        shift_dr(self, data, len as usize, true).await?;
 
-        let mut response = self.read_captured_bits()?;
+        let mut response = self.read_captured_bits().await?;
 
         // Implementations don't need to align to keep the code simple
         response.force_align();
@@ -768,25 +775,28 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
     }
 
     #[tracing::instrument(skip(self, writes))]
-    fn write_register_batch(
+    async fn write_register_batch(
         &mut self,
         writes: &JtagCommandQueue,
     ) -> Result<DeferredResultSet, BatchExecutionError> {
         let mut bits = Vec::with_capacity(writes.len());
-        let t1 = std::time::Instant::now();
+        let t1 = web_time::Instant::now();
         tracing::debug!("Preparing {} writes...", writes.len());
         for (idx, command) in writes.iter() {
             let result = match command {
-                JtagCommand::WriteRegister(write) => prepare_write_register(
-                    self,
-                    write.address,
-                    &write.data,
-                    write.len,
-                    idx.should_capture(),
-                ),
+                JtagCommand::WriteRegister(write) => {
+                    prepare_write_register(
+                        self,
+                        write.address,
+                        &write.data,
+                        write.len,
+                        idx.should_capture(),
+                    )
+                    .await
+                }
 
                 JtagCommand::ShiftDr(write) => {
-                    shift_dr(self, &write.data, write.len as usize, idx.should_capture())
+                    shift_dr(self, &write.data, write.len as usize, idx.should_capture()).await
                 }
             };
 
@@ -801,6 +811,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         // If an error happens during the final flush, also retry whole operation
         let bitstream = self
             .read_captured_bits()
+            .await
             .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
 
         tracing::debug!("Got responses! Took {:?}! Processing...", t1.elapsed());
