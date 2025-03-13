@@ -37,9 +37,10 @@
 //!
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::{Session, Permissions, MemoryInterface};
+//! use probe_rs::{Session, SessionConfig, MemoryInterface};
 //!
-//! let mut session = Session::auto_attach("nrf52", Permissions::default(), None)?;
+//! let session_config = SessionConfig::default();
+//! let mut session = Session::auto_attach("nrf52", session_config)?;
 //! let mut core = session.core(0)?;
 //!
 //! // Read a block of 50 32 bit words.

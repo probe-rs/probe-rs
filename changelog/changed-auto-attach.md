@@ -1,1 +1,1 @@
-Changed `auto_attach` to optionally set speed and protocol.
+Changed `auto_attach` to optionally set speed, protocol, and permissions via SessionConfig.
