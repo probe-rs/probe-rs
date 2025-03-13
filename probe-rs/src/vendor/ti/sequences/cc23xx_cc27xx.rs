@@ -17,17 +17,13 @@ use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_core_start}
 use crate::architecture::arm::{ArmError, FullyQualifiedApAddress};
 use probe_rs_target::CoreType;
 
-static BOOT_LOOP: AtomicBool = AtomicBool::new(false);
-
-fn is_in_boot_loop() -> bool {
-    BOOT_LOOP.load(Ordering::SeqCst)
-}
-
 /// Marker struct indicating initialization sequencing for cc23xx_cc27xx family parts.
 #[derive(Debug)]
 pub struct CC23xxCC27xx {
-    // Chip name
+    /// Chip name - this will be used when more targets are added
     _name: String,
+    /// Flag to indicate if the ROM is in the boot loop
+    boot_loop: AtomicBool,
 }
 
 /// Enum representing the Access Port Select register values
@@ -122,7 +118,18 @@ impl From<ApSel> for FullyQualifiedApAddress {
 impl CC23xxCC27xx {
     /// Create the sequencer for the cc23xx_cc27xx family of parts.
     pub fn create(name: String) -> Arc<Self> {
-        Arc::new(Self { _name: name })
+        Arc::new(Self {
+            _name: name,
+            boot_loop: AtomicBool::new(false),
+        })
+    }
+
+    /// Check if the ROM is in the boot loop
+    ///
+    /// The boot loop is a state where the ROM is waiting for a debugger to attach and write to R3 to exit the loop.
+    /// This needs to be tracked across multiple debug sequence states so it is stored on the host.
+    fn is_in_boot_loop(&self) -> bool {
+        self.boot_loop.load(Ordering::SeqCst)
     }
 
     /// Polls the TX_CTRL register until it is ready or a timeout occurs.
@@ -323,7 +330,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
                 | BOOT_STATUS_BLDR_WAITLOOP_DBGPROBE
                 | BOOT_STATUS_APP_WAITLOOP_DBGPROBE => {
                     tracing::info!("BOOT_WAITLOOP_DBGPROBE");
-                    BOOT_LOOP.store(true, Ordering::SeqCst);
+                    self.boot_loop.store(true, Ordering::SeqCst);
                 }
                 _ => tracing::warn!("Expected device to be waiting on debugger, but it is not"),
             }
@@ -340,7 +347,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
         _debug_base: Option<u64>,
         _cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        if is_in_boot_loop() {
+        if self.is_in_boot_loop() {
             // Step 1: Halt the CPU
             let mut dhcsr = Dhcsr(0);
             dhcsr.set_c_halt(true);
@@ -360,7 +367,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
             cortex_m::write_core_reg(memory.deref_mut(), crate::RegisterId(3), 0x00000000)?;
 
             // Step 3: Clear the BOOT_LOOP flag
-            BOOT_LOOP.store(false, Ordering::SeqCst);
+            self.boot_loop.store(false, Ordering::SeqCst);
         }
 
         // Step 4: Start the core like normal
