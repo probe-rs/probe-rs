@@ -1,0 +1,1 @@
+Fixed an issue where RTT channels show up as unnamed in the debugger.
