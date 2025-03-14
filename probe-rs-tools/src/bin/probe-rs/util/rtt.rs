@@ -227,25 +227,14 @@ pub struct RttConnection {
 
 impl RttConnection {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
-    pub fn new(core: &mut Core, rtt: Rtt, rtt_config: &RttConfig) -> Result<Self, Error> {
+    pub fn new(rtt: Rtt) -> Result<Self, Error> {
         let control_block_addr = rtt.ptr();
-        let mut active_up_channels = Vec::with_capacity(rtt.up_channels.len());
 
-        // For each channel configured in the RTT Control Block (`Rtt`), check if there are
-        // additional user configuration in a `RttChannelConfig`. If not, apply defaults.
-        for channel in rtt.up_channels.into_iter() {
-            let channel_config = rtt_config
-                .channel_config(channel.number() as u32)
-                .cloned()
-                .unwrap_or_default();
-
-            let mut up_channel = RttActiveUpChannel::new(channel);
-            if let Some(mode) = channel_config.mode {
-                up_channel.change_mode(core, mode)?;
-            }
-
-            active_up_channels.push(up_channel);
-        }
+        let active_up_channels = rtt
+            .up_channels
+            .into_iter()
+            .map(RttActiveUpChannel::new)
+            .collect::<Vec<_>>();
 
         let active_down_channels = rtt
             .down_channels

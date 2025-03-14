@@ -201,10 +201,10 @@ impl CoreHandle<'_> {
         let defmt_data = DefmtState::try_from_bytes(&elf)?;
 
         for up_channel in client.up_channels() {
-            let number = up_channel.number();
+            let number = up_channel.up_channel.number();
 
             let mut channel_config = rtt_config
-                .channel_config(number)
+                .channel_config(number as u32)
                 .cloned()
                 .unwrap_or_default();
 
