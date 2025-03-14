@@ -163,7 +163,7 @@ impl CloseRequest {
 
 /// A request to write to the console
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub struct WriteConsoleRequest(ZeroTerminatedString);
+pub struct WriteConsoleRequest(pub(crate) ZeroTerminatedString);
 impl WriteConsoleRequest {
     /// Reads the string from the target
     pub fn read(&self, core: &mut crate::Core<'_>) -> Result<String, Error> {
@@ -264,9 +264,9 @@ impl Buffer {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-struct ZeroTerminatedString {
-    address: u32,
-    length: Option<u32>,
+pub(crate) struct ZeroTerminatedString {
+    pub address: u32,
+    pub length: Option<u32>,
 }
 
 impl ZeroTerminatedString {

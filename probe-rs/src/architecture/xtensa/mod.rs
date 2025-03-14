@@ -210,15 +210,9 @@ impl<'probe> Xtensa<'probe> {
         let command = if actual_instruction == SEMI_BREAK {
             let syscall = decode_semihosting_syscall(self)?;
             if let SemihostingCommand::Unknown(details) = syscall {
-                if self
-                    .sequence
+                self.sequence
                     .clone()
                     .on_unknown_semihosting_command(self, details)?
-                {
-                    None
-                } else {
-                    Some(syscall)
-                }
             } else {
                 Some(syscall)
             }
