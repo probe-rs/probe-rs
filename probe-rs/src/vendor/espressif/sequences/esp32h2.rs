@@ -10,7 +10,7 @@ use crate::{
         communication_interface::{RiscvCommunicationInterface, Sbaddress0, Sbcs, Sbdata0},
         sequences::RiscvDebugSequence,
     },
-    semihosting::UnknownCommandDetails,
+    semihosting::{SemihostingCommand, UnknownCommandDetails},
     vendor::espressif::sequences::esp::EspBreakpointHandler,
 };
 
@@ -124,7 +124,7 @@ impl RiscvDebugSequence for ESP32H2 {
         &self,
         interface: &mut Riscv32,
         details: UnknownCommandDetails,
-    ) -> Result<bool, crate::Error> {
-        EspBreakpointHandler::handle_idf_semihosting(interface, details)
+    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+        EspBreakpointHandler::handle_riscv_idf_semihosting(interface, details)
     }
 }

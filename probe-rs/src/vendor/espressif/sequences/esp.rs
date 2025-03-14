@@ -3,8 +3,11 @@ use std::time::Duration;
 use probe_rs_target::Architecture;
 
 use crate::{
-    Core, CoreInterface, MemoryInterface, Session, architecture::riscv::Riscv32,
-    semihosting::UnknownCommandDetails,
+    Core, CoreInterface, MemoryInterface, Session,
+    architecture::{riscv::Riscv32, xtensa::Xtensa},
+    semihosting::{
+        SemihostingCommand, UnknownCommandDetails, WriteConsoleRequest, ZeroTerminatedString,
+    },
 };
 
 #[derive(Debug)]
@@ -303,10 +306,10 @@ fn decode_flash_size(value: u32) -> Option<usize> {
 pub(super) struct EspBreakpointHandler {}
 
 impl EspBreakpointHandler {
-    pub fn handle_idf_semihosting(
+    pub fn handle_riscv_idf_semihosting(
         arch: &mut Riscv32,
         details: UnknownCommandDetails,
-    ) -> Result<bool, crate::Error> {
+    ) -> Result<Option<SemihostingCommand>, crate::Error> {
         match details.operation {
             0x103 => {
                 // ESP_SEMIHOSTING_SYS_BREAKPOINT_SET. Can be either set or clear breakpoint, and
@@ -321,9 +324,37 @@ impl EspBreakpointHandler {
                     let breakpoint_number = arch.read_word_32(details.parameter as u64 + 4)?;
                     arch.clear_hw_breakpoint(breakpoint_number as usize)?;
                 }
-                Ok(true)
+                Ok(None)
             }
-            _ => Ok(false),
+            0x116 => Self::read_panic_reason(arch, details.parameter),
+            _ => Ok(Some(SemihostingCommand::Unknown(details))),
         }
+    }
+    pub fn handle_xtensa_idf_semihosting(
+        arch: &mut Xtensa,
+        details: UnknownCommandDetails,
+    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+        match details.operation {
+            0x116 => Self::read_panic_reason(arch, details.parameter),
+            _ => Ok(Some(SemihostingCommand::Unknown(details))),
+        }
+    }
+
+    /// Handles ESP_SEMIHOSTING_SYS_PANIC_REASON by turning it into a `WriteConsoleRequest` command.
+    fn read_panic_reason(
+        arch: &mut dyn CoreInterface,
+        parameter: u32,
+    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+        let mut buffer = [0; 2];
+        arch.read_32(parameter as u64, &mut buffer)?;
+
+        let [address, length] = buffer;
+
+        Ok(Some(SemihostingCommand::WriteConsole(WriteConsoleRequest(
+            ZeroTerminatedString {
+                address,
+                length: Some(length),
+            },
+        ))))
     }
 }

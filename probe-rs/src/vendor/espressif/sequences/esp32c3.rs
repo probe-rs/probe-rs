@@ -9,7 +9,7 @@ use crate::{
         Dmcontrol, Dmstatus, Riscv32, communication_interface::RiscvCommunicationInterface,
         sequences::RiscvDebugSequence,
     },
-    semihosting::UnknownCommandDetails,
+    semihosting::{SemihostingCommand, UnknownCommandDetails},
     vendor::espressif::sequences::esp::EspBreakpointHandler,
 };
 
@@ -121,7 +121,7 @@ impl RiscvDebugSequence for ESP32C3 {
         &self,
         interface: &mut Riscv32,
         details: UnknownCommandDetails,
-    ) -> Result<bool, crate::Error> {
-        EspBreakpointHandler::handle_idf_semihosting(interface, details)
+    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+        EspBreakpointHandler::handle_riscv_idf_semihosting(interface, details)
     }
 }

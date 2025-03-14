@@ -3,7 +3,7 @@
 use crate::Session;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::riscv::{Dmcontrol, Riscv32};
-use crate::semihosting::UnknownCommandDetails;
+use crate::semihosting::{SemihostingCommand, UnknownCommandDetails};
 
 use super::communication_interface::RiscvCommunicationInterface;
 use std::fmt::Debug;
@@ -80,13 +80,14 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
 
     /// Attempts to handle target-dependent semihosting commands.
     ///
-    /// Returns `Ok(true)` if the command was handled, `Ok(false)` if the command was not handled.
+    /// Returns `Ok(Some(command))` if the command was not fully handled, `Ok(None)`
+    /// if the command was fully handled.
     fn on_unknown_semihosting_command(
         &self,
         _interface: &mut Riscv32,
-        _details: UnknownCommandDetails,
-    ) -> Result<bool, crate::Error> {
-        Ok(false)
+        details: UnknownCommandDetails,
+    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+        Ok(Some(SemihostingCommand::Unknown(details)))
     }
 }
 
