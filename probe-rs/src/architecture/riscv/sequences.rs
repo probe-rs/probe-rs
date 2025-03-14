@@ -1,8 +1,9 @@
 //! Debug sequences to operate special requirements RISC-V targets.
 
 use crate::Session;
-use crate::architecture::riscv::Dmcontrol;
 use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::architecture::riscv::{Dmcontrol, Riscv32};
+use crate::semihosting::UnknownCommandDetails;
 
 use super::communication_interface::RiscvCommunicationInterface;
 use std::fmt::Debug;
@@ -75,6 +76,17 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
     ) -> Result<(), crate::Error> {
         interface.reset_hart_and_halt(timeout)?;
         Ok(())
+    }
+
+    /// Attempts to handle target-dependent semihosting commands.
+    ///
+    /// Returns `Ok(true)` if the command was handled, `Ok(false)` if the command was not handled.
+    fn on_unknown_semihosting_command(
+        &self,
+        _interface: &mut Riscv32,
+        _details: UnknownCommandDetails,
+    ) -> Result<bool, crate::Error> {
+        Ok(false)
     }
 }
 
