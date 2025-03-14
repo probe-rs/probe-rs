@@ -220,11 +220,12 @@ impl<'probe> Xtensa<'probe> {
     fn on_halted(&mut self) -> Result<(), Error> {
         self.state.pc_written = false;
 
-        // Poll core status. For now we don't do anything with it, but in the future we
-        // may check expected status, and record the status to prevent decoding semihosting
-        // multiple times (possibly incorrectly after answering).
         let status = self.status()?;
         tracing::debug!("Core halted: {:#?}", status);
+
+        if status.is_halted() {
+            self.sequence.on_halt(&mut self.interface)?;
+        }
 
         Ok(())
     }

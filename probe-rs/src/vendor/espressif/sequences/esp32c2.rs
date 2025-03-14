@@ -30,11 +30,12 @@ impl ESP32C2 {
             },
         })
     }
-}
 
-impl RiscvDebugSequence for ESP32C2 {
-    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
-        tracing::info!("Disabling esp32c2 watchdogs...");
+    fn disable_wdts(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        tracing::info!("Disabling ESP32-C2 watchdogs...");
 
         // FIXME: this is a terrible hack because we should not need to halt to read memory.
         interface.sysbus_requires_halting(true);
@@ -56,6 +57,16 @@ impl RiscvDebugSequence for ESP32C2 {
         interface.write_word_32(0x6000809c, 0x0)?; // write protection on
 
         Ok(())
+    }
+}
+
+impl RiscvDebugSequence for ESP32C2 {
+    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        self.disable_wdts(interface)
+    }
+
+    fn on_halt(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        self.disable_wdts(interface)
     }
 
     fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
