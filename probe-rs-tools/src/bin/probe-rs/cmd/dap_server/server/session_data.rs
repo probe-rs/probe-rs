@@ -3,6 +3,7 @@ use super::{
     core_data::{CoreData, CoreHandle},
 };
 use crate::{
+    FormatKind,
     cmd::dap_server::{
         DebuggerError,
         debug_adapter::{
@@ -10,13 +11,14 @@ use crate::{
             protocol::ProtocolAdapter,
         },
     },
-    util::common_options::OperationError,
+    util::{common_options::OperationError, rtt},
 };
 use anyhow::{Result, anyhow};
 use probe_rs::{
     CoreStatus, Session,
     config::{Registry, TargetSelector},
     probe::list::Lister,
+    rtt::ScanRegion,
 };
 use probe_rs_debug::{
     DebugRegisters, SourceLocation, debug_info::DebugInfo, exception_handler_for_core,
@@ -145,16 +147,69 @@ impl SessionData {
                 core_peripherals: None,
                 stack_frames: vec![],
                 breakpoints: vec![],
+                rtt_scan_ranges: ScanRegion::Ranges(vec![]),
                 rtt_connection: None,
                 rtt_client: None,
+                clear_rtt_header: false,
+                rtt_header_cleared: false,
             })
         }
 
-        Ok(SessionData {
+        let mut this = SessionData {
             session: target_session,
             core_data: core_data_vec,
             timestamp_offset,
-        })
+        };
+
+        this.load_rtt_location(config)?;
+
+        Ok(this)
+    }
+
+    pub(crate) fn load_rtt_location(
+        &mut self,
+        config: &configuration::SessionConfig,
+    ) -> Result<(), DebuggerError> {
+        // Filter `CoreConfig` entries based on those that match an actual core on the target probe.
+        let valid_core_configs = config.core_configs.iter().filter(|&core_config| {
+            self.session
+                .list_cores()
+                .iter()
+                .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
+        });
+
+        let image_format = config
+            .flashing_config
+            .format_options
+            .to_format_kind(self.session.target());
+
+        for core_configuration in valid_core_configs {
+            let Some(core_data) = self
+                .core_data
+                .iter_mut()
+                .find(|core_data| core_data.core_index == core_configuration.core_index)
+            else {
+                continue;
+            };
+
+            core_data.rtt_scan_ranges = match core_configuration.program_binary.as_ref() {
+                Some(program_binary)
+                    if matches!(image_format, FormatKind::Elf | FormatKind::Idf) =>
+                {
+                    let elf = std::fs::read(program_binary)
+                        .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
+
+                    match rtt::get_rtt_symbol_from_bytes(&elf) {
+                        Ok(address) => ScanRegion::Exact(address),
+                        // Do not scan the memory for the control block.
+                        _ => ScanRegion::Ranges(vec![]),
+                    }
+                }
+                _ => ScanRegion::Ranges(vec![]),
+            };
+        }
+
+        Ok(())
     }
 
     /// Reload the a specific core's debug info from the binary file.

@@ -254,14 +254,12 @@ impl Debugger {
                     && self.config.flashing_config.flashing_enabled
                 {
                     debug_adapter.show_message(
-                                MessageSeverity::Information,
-                                "Re-flashing the target during on-session `restart` is not currently supported for RISC-V. Flashing will be disabled for the remainder of this session.",
-                            );
+                        MessageSeverity::Information,
+                        "Re-flashing the target during on-session `restart` is not currently supported for RISC-V. Flashing will be disabled for the remainder of this session.",
+                    );
                     self.config.flashing_config.flashing_enabled = false;
                 }
 
-                // Reset RTT so that the link can be re-established
-                target_core.core_data.rtt_connection = None;
                 let result = target_core
                     .core
                     .halt(Duration::from_millis(500))
@@ -530,7 +528,13 @@ impl Debugger {
                 session_data.load_debug_info_for_core(target_core_config)?;
                 session_data
                     .attach_core(target_core_config.core_index)
-                    .map(|mut target_core| target_core.recompute_breakpoints())??;
+                    .map(|mut target_core| {
+                        // Reset RTT so that the link can be re-established
+                        target_core.core_data.rtt_connection = None;
+                        target_core.recompute_breakpoints()
+                    })??;
+
+                session_data.load_rtt_location(&self.config)?;
 
                 Self::flash(
                     &self.config,
@@ -770,6 +774,15 @@ impl Debugger {
                 } else {
                     true
                 };
+
+                // If the RTT header was initialized by the loader (i.e. in some cases where we run
+                // from RAM), do not clear the RTT header as nothing will reinitialize it.
+                // The actual clearing will be done during attaching.
+                for core_data in session_data.core_data.iter_mut() {
+                    if let probe_rs::rtt::ScanRegion::Exact(address) = core_data.rtt_scan_ranges {
+                        core_data.clear_rtt_header = !loader.has_data_for_address(address);
+                    }
+                }
 
                 if do_flashing {
                     loader

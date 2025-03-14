@@ -46,8 +46,11 @@ pub struct CoreData {
     pub core_peripherals: Option<SvdCache>,
     pub stack_frames: Vec<probe_rs_debug::stack_frame::StackFrame>,
     pub breakpoints: Vec<session_data::ActiveBreakpoint>,
+    pub rtt_scan_ranges: ScanRegion,
     pub rtt_connection: Option<debug_rtt::RttConnection>,
     pub rtt_client: Option<RttClient>,
+    pub clear_rtt_header: bool,
+    pub rtt_header_cleared: bool,
 }
 
 /// [CoreHandle] provides handles to various data structures required to debug a single instance of a core. The actual state is stored in [session_data::SessionData].
@@ -169,6 +172,10 @@ impl CoreHandle<'_> {
         rtt_config: &rtt::RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
+        // We're done already, don't process everything again for no good reason.
+        if self.core_data.rtt_connection.is_some() {
+            return Ok(());
+        }
         // Create the RTT client using the RTT control block address from the ELF file.
         let elf = std::fs::read(program_binary)
             .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
@@ -176,18 +183,21 @@ impl CoreHandle<'_> {
         let client = if let Some(client) = self.core_data.rtt_client.as_mut() {
             client
         } else {
-            let scan = match rtt::get_rtt_symbol_from_bytes(&elf) {
-                Ok(address) => ScanRegion::Exact(address),
-                // Do not scan the memory for the control block.
-                _ => ScanRegion::Ranges(vec![]),
-            };
-
-            self.core_data
-                .rtt_client
-                .insert(RttClient::new(rtt_config.clone(), scan))
+            self.core_data.rtt_header_cleared = false;
+            self.core_data.rtt_client.insert(RttClient::new(
+                rtt_config.clone(),
+                self.core_data.rtt_scan_ranges.clone(),
+            ))
         };
 
         if !client.try_attach(&mut self.core)? {
+            return Ok(());
+        }
+
+        if self.core_data.clear_rtt_header && !self.core_data.rtt_header_cleared {
+            client.clear_control_block(&mut self.core)?;
+            self.core_data.rtt_header_cleared = true;
+            // Trigger a reattach
             return Ok(());
         }
 
