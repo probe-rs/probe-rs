@@ -112,10 +112,8 @@ impl ESP32S2 {
     ) -> Result<(), crate::Error> {
         self.set_stall(false, core)
     }
-}
 
-impl XtensaDebugSequence for ESP32S2 {
-    fn on_connect(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+    fn disable_wdts(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
         tracing::info!("Disabling ESP32-S2 watchdogs...");
 
         // disable super wdt
@@ -140,6 +138,16 @@ impl XtensaDebugSequence for ESP32S2 {
         core.write_word_32(Self::RTC_WRITE_PROT, 0x0)?; // write protection on
 
         Ok(())
+    }
+}
+
+impl XtensaDebugSequence for ESP32S2 {
+    fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+        self.disable_wdts(interface)
+    }
+
+    fn on_halt(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+        self.disable_wdts(interface)
     }
 
     fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {

@@ -18,6 +18,11 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
+    /// Executed when the target is halted.
+    fn on_halt(&self, _interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        Ok(())
+    }
+
     /// Detects the flash size of the target.
     fn detect_flash_size(&self, _session: &mut Session) -> Result<Option<usize>, crate::Error> {
         Ok(None)

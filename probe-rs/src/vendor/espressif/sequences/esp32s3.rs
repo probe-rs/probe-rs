@@ -40,13 +40,8 @@ impl ESP32S3 {
             },
         })
     }
-}
 
-impl XtensaDebugSequence for ESP32S3 {
-    fn on_connect(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
-        // External memory bus
-        core.add_slow_memory_access_range(0x3C00_0000..0x3E00_0000);
-
+    fn disable_wdts(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
         tracing::info!("Disabling ESP32-S3 watchdogs...");
 
         // disable super wdt
@@ -80,6 +75,19 @@ impl XtensaDebugSequence for ESP32S3 {
         core.write_word_32(RTC_WRITE_PROT, 0x0)?; // write protection on
 
         Ok(())
+    }
+}
+
+impl XtensaDebugSequence for ESP32S3 {
+    fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+        // External memory bus
+        interface.add_slow_memory_access_range(0x3C00_0000..0x3E00_0000);
+
+        self.disable_wdts(interface)
+    }
+
+    fn on_halt(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+        self.disable_wdts(interface)
     }
 
     fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {

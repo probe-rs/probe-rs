@@ -186,11 +186,23 @@ impl<'state> Riscv32<'state> {
 
         Ok(tselect_index)
     }
+
+    fn on_halted(&mut self) -> Result<(), Error> {
+        let status = self.status()?;
+        tracing::debug!("Core halted: {:#?}", status);
+
+        if status.is_halted() {
+            self.sequence.on_halt(&mut self.interface)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl CoreInterface for Riscv32<'_> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), crate::Error> {
         self.interface.wait_for_core_halted(timeout)?;
+        self.on_halted()?;
         self.state.pc_written = false;
         Ok(())
     }
@@ -245,6 +257,7 @@ impl CoreInterface for Riscv32<'_> {
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.interface.halt(timeout)?;
+        self.on_halted()?;
         Ok(self.interface.core_info()?)
     }
 
@@ -271,6 +284,7 @@ impl CoreInterface for Riscv32<'_> {
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
 
+        self.on_halted()?;
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
@@ -344,6 +358,7 @@ impl CoreInterface for Riscv32<'_> {
             self.enable_breakpoints(true)?;
         }
 
+        self.on_halted()?;
         self.state.pc_written = false;
         Ok(CoreInformation { pc: pc.try_into()? })
     }
