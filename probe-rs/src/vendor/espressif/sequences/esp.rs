@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use probe_rs_target::Architecture;
 
-use crate::{Core, CoreInterface, MemoryInterface, Session, semihosting::UnknownCommandDetails};
+use crate::{
+    Core, CoreInterface, MemoryInterface, Session, architecture::riscv::Riscv32,
+    semihosting::UnknownCommandDetails,
+};
 
 #[derive(Debug)]
 pub(super) struct EspFlashSizeDetector {
@@ -301,7 +304,7 @@ pub(super) struct EspBreakpointHandler {}
 
 impl EspBreakpointHandler {
     pub fn handle_idf_semihosting(
-        arch: &mut dyn CoreInterface,
+        arch: &mut Riscv32,
         details: UnknownCommandDetails,
     ) -> Result<bool, crate::Error> {
         match details.operation {
