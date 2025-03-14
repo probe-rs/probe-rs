@@ -25,7 +25,7 @@ use crate::{
 };
 use anyhow::{Context, anyhow};
 use probe_rs::{
-    Architecture, CoreStatus,
+    CoreStatus,
     config::Registry,
     flashing::{
         DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent,
@@ -250,16 +250,6 @@ impl Debugger {
             "configurationDone" => debug_adapter.configuration_done(&mut target_core, &request),
             "threads" => debug_adapter.threads(&mut target_core, &request),
             "restart" => {
-                if target_core.core.architecture() == Architecture::Riscv
-                    && self.config.flashing_config.flashing_enabled
-                {
-                    debug_adapter.show_message(
-                        MessageSeverity::Information,
-                        "Re-flashing the target during on-session `restart` is not currently supported for RISC-V. Flashing will be disabled for the remainder of this session.",
-                    );
-                    self.config.flashing_config.flashing_enabled = false;
-                }
-
                 let result = target_core
                     .core
                     .halt(Duration::from_millis(500))
