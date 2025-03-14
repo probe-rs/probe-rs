@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use probe_rs_target::Architecture;
 
-use crate::{Core, MemoryInterface, Session};
+use crate::{Core, CoreInterface, MemoryInterface, Session, semihosting::UnknownCommandDetails};
 
 #[derive(Debug)]
 pub(super) struct EspFlashSizeDetector {
@@ -293,6 +293,34 @@ fn decode_flash_size(value: u32) -> Option<usize> {
         _ => {
             tracing::warn!("Unknown flash capacity byte: {:x}", capacity);
             None
+        }
+    }
+}
+
+pub(super) struct EspBreakpointHandler {}
+
+impl EspBreakpointHandler {
+    pub fn handle_idf_semihosting(
+        arch: &mut dyn CoreInterface,
+        details: UnknownCommandDetails,
+    ) -> Result<bool, crate::Error> {
+        match details.operation {
+            0x103 => {
+                // ESP_SEMIHOSTING_SYS_BREAKPOINT_SET. Can be either set or clear breakpoint, and
+                // depending on the operation the parameter pointer points to 2 or 3 words.
+                let set_breakpoint = arch.read_word_32(details.parameter as u64)?;
+                if set_breakpoint != 0 {
+                    let mut breakpoint_data = [0; 2];
+                    arch.read_32(details.parameter as u64 + 4, &mut breakpoint_data)?;
+                    let [breakpoint_number, address] = breakpoint_data;
+                    arch.set_hw_breakpoint(breakpoint_number as usize, address as u64)?;
+                } else {
+                    let breakpoint_number = arch.read_word_32(details.parameter as u64 + 4)?;
+                    arch.clear_hw_breakpoint(breakpoint_number as usize)?;
+                }
+                Ok(true)
+            }
+            _ => Ok(false),
         }
     }
 }
