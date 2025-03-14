@@ -1,0 +1,1 @@
+ESP-IDF panics no longer print an infinite list of warnings.
