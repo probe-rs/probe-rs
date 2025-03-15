@@ -109,7 +109,14 @@ impl<'state> Riscv32<'state> {
         );
 
         let command = if TRAP_INSTRUCTIONS == actual_instructions {
-            Some(decode_semihosting_syscall(self)?)
+            let syscall = decode_semihosting_syscall(self)?;
+            if let SemihostingCommand::Unknown(details) = syscall {
+                self.sequence
+                    .clone()
+                    .on_unknown_semihosting_command(self, details)?
+            } else {
+                Some(syscall)
+            }
         } else {
             None
         };

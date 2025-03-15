@@ -208,7 +208,14 @@ impl<'probe> Xtensa<'probe> {
         tracing::debug!("Semihosting check pc={pc:#x} instruction={actual_instruction:#010x}");
 
         let command = if actual_instruction == SEMI_BREAK {
-            Some(decode_semihosting_syscall(self)?)
+            let syscall = decode_semihosting_syscall(self)?;
+            if let SemihostingCommand::Unknown(details) = syscall {
+                self.sequence
+                    .clone()
+                    .on_unknown_semihosting_command(self, details)?
+            } else {
+                Some(syscall)
+            }
         } else {
             None
         };
