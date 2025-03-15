@@ -19,8 +19,8 @@ use crate::{
     config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector, registry::Registry},
     core::{Architecture, CombinedCoreState},
     probe::{
-        AttachMethod, DebugProbeError, Probe, ProbeCreationError, fake_probe::FakeProbe,
-        list::Lister,
+        AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
+        fake_probe::FakeProbe, list::Lister,
     },
 };
 use std::ops::DerefMut;
@@ -50,6 +50,23 @@ pub struct Session {
     interfaces: ArchitectureInterface,
     cores: Vec<CombinedCoreState>,
     configured_trace_sink: Option<TraceSink>,
+}
+
+/// The `SessionConfig` struct is used to configure a new `Session` during auto-attach.
+///
+/// ## Configuring auto attach
+/// The SessionConfig can be used to control the behavior of the auto-attach function.
+/// It should be used in the [Session::auto_attach()] method.
+/// This includes setting the speed of the probe and the protocol to use, as well as the permissions.
+///
+#[derive(Default, Debug)]
+pub struct SessionConfig {
+    /// Debug permissions
+    pub permissions: Permissions,
+    /// Speed of the WireProtocol in kHz
+    pub speed: Option<u32>,
+    /// WireProtocol to use
+    pub protocol: Option<WireProtocol>,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -410,7 +427,7 @@ impl Session {
     #[tracing::instrument(skip(target))]
     pub fn auto_attach(
         target: impl Into<TargetSelector>,
-        permissions: Permissions,
+        session_config: SessionConfig,
     ) -> Result<Session, Error> {
         // Get a list of all available debug probes.
         let lister = Lister::new();
@@ -418,15 +435,24 @@ impl Session {
         let probes = lister.list_all();
 
         // Use the first probe found.
-        let probe = probes
+        let mut probe = probes
             .first()
             .ok_or(Error::Probe(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             )))?
             .open()?;
 
+        // If the caller has specified speed or protocol in SessionConfig, set them
+        if let Some(speed) = session_config.speed {
+            probe.set_speed(speed)?;
+        }
+
+        if let Some(protocol) = session_config.protocol {
+            probe.select_protocol(protocol)?;
+        }
+
         // Attach to a chip.
-        probe.attach(target, permissions)
+        probe.attach(target, session_config.permissions)
     }
 
     /// Lists the available cores with their number and their type.

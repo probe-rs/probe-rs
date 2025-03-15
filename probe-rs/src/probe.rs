@@ -43,13 +43,14 @@ const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
 /// The protocol that is to be used by the probe when communicating with the target.
 ///
 /// For ARM select `Swd` or `Jtag`, for RISC-V select `Jtag`.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub enum WireProtocol {
     /// Serial Wire Debug is ARMs proprietary standard for communicating with ARM cores.
     /// You can find specifics in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
     Swd,
     /// JTAG is a standard which is supported by many chips independent of architecture.
     /// See [`Wikipedia`](https://en.wikipedia.org/wiki/JTAG) for more info.
+    #[default]
     Jtag,
 }
 
