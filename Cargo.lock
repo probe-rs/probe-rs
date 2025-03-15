@@ -633,16 +633,16 @@ dependencies = [
 
 [[package]]
 name = "cmsis-pack"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "314f9ade9068e9491e92db7565582a77f3f810283683cf95ecd0dd3a8c2e9cd0"
+checksum = "57a821a9b18a53d1e81202cbd3b26469de251524b5f9ad0b2527cbe57bd854c2"
 dependencies = [
  "anyhow",
  "bytes",
  "futures",
  "log",
- "minidom",
  "reqwest",
+ "roxmltree",
  "serde",
  "serde_json",
  "tokio",
@@ -2419,15 +2419,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
 
 [[package]]
-name = "minidom"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe549115a674f5ec64c754d85e37d6f42664bd0ef4ffb62b619489ad99c6cb1a"
-dependencies = [
- "quick-xml",
-]
-
-[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3028,15 +3019,6 @@ dependencies = [
  "syn 2.0.100",
  "version_check",
  "yansi",
-]
-
-[[package]]
-name = "quick-xml"
-version = "0.17.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe1e430bdcf30c9fdc25053b9c459bb1a4672af4617b6c783d7d91dc17c6bbb0"
-dependencies = [
- "memchr",
 ]
 
 [[package]]
