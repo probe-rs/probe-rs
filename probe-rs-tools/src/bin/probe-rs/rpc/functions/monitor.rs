@@ -94,15 +94,8 @@ fn monitor_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let monitor_mode = if session.core(core_id)?.core_halted()? {
-        request.mode
-    } else {
-        // Core is running so we can ignore BootInfo
-        MonitorMode::AttachToRunning
-    };
-
     let mut clear_control_block = true;
-    match monitor_mode {
+    match request.mode {
         MonitorMode::Run(BootInfo::FromRam {
             vector_table_addr, ..
         }) => {
