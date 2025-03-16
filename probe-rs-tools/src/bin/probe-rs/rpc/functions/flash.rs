@@ -306,20 +306,21 @@ fn flash_impl(
     // build loader
     let loader = ctx.object_mut_blocking(request.loader);
 
-    // When using RTT with a program in flash, the RTT header will be moved to RAM on
-    // startup, so clearing it before startup is ok. However, if we're downloading to the
-    // header's final address in RAM, then it's not relocated on startup and we should not
-    // clear it. This impacts static RTT headers, like used in defmt_rtt.
-    let should_clear_rtt_header = if let Some(rtt_client) = rtt_client.as_ref() {
+    if let Some(rtt_client) = rtt_client.as_mut() {
+        // When using RTT with a program in flash, the RTT header will be moved to RAM on
+        // startup, so clearing it before startup is ok. However, if we're downloading to the
+        // header's final address in RAM, then it's not relocated on startup and we should not
+        // clear it. This impacts static RTT headers, like used in defmt_rtt.
+
         if let ScanRegion::Exact(address) = rtt_client.scan_region {
-            tracing::debug!("RTT ScanRegion::Exact address is within region to be flashed");
-            !loader.has_data_for_address(address)
-        } else {
-            true
+            if loader.has_data_for_address(address) {
+                tracing::debug!(
+                    "RTT control block is initialized by flash loader. Disabling clearing."
+                );
+                rtt_client.disallow_clearing_rtt_header()
+            }
         }
-    } else {
-        false
-    };
+    }
 
     let mut options = probe_rs::flashing::DownloadOptions::default();
 
@@ -338,16 +339,6 @@ fn flash_impl(
     loader
         .commit(&mut session, options)
         .map_err(FileDownloadError::Flash)?;
-
-    if let Some(rtt_client) = rtt_client.as_mut() {
-        if should_clear_rtt_header {
-            // We ended up resetting the MCU, throw away old RTT data and prevent
-            // printing warnings when it initialises.
-            let mut core = session.core(rtt_client.core_id())?;
-            rtt_client.clear_control_block(&mut core)?;
-            tracing::debug!("Cleared RTT header");
-        }
-    }
 
     Ok(())
 }

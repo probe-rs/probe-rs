@@ -156,10 +156,12 @@ fn list_tests_impl(
             session
                 .core(core_id)?
                 .reset_and_halt(Duration::from_millis(100))?;
-            if let Some(rtt_client) = rtt_client.as_mut() {
-                rtt_client.clear_control_block(&mut session.core(core_id)?)?;
-            }
         }
+    }
+
+    let mut core = session.core(0)?;
+    if let Some(rtt_client) = rtt_client.as_mut() {
+        rtt_client.clear_control_block(&mut core)?;
     }
 
     let mut run_loop = RunLoop {
@@ -172,7 +174,6 @@ fn list_tests_impl(
         sender: sender.clone(),
     });
 
-    let mut core = session.core(0)?;
     match run_loop.run_until(
         &mut core,
         true,

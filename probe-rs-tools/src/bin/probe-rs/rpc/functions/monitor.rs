@@ -94,11 +94,6 @@ fn monitor_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
-        rtt_client: client,
-        sender: sender.clone(),
-    });
-
     let monitor_mode = if session.core(core_id)?.core_halted()? {
         request.mode
     } else {
@@ -106,6 +101,7 @@ fn monitor_impl(
         MonitorMode::AttachToRunning
     };
 
+    let mut clear_control_block = true;
     match monitor_mode {
         MonitorMode::Run(BootInfo::FromRam {
             vector_table_addr, ..
@@ -121,10 +117,22 @@ fn monitor_impl(
         }
         MonitorMode::AttachToRunning => {
             // do nothing
+            clear_control_block = false;
         }
     }
 
     let mut core = session.core(run_loop.core_id)?;
+    if clear_control_block {
+        if let Some(rtt_client) = rtt_client.as_mut() {
+            rtt_client.clear_control_block(&mut core)?;
+        }
+    }
+
+    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
+        rtt_client: client,
+        sender: sender.clone(),
+    });
+
     run_loop.run_until(
         &mut core,
         request.options.catch_hardfault,
