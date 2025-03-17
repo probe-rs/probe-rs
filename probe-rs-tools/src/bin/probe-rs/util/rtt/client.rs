@@ -14,6 +14,10 @@ pub struct RttClient {
     target: Option<RttConnection>,
     last_control_block_address: Option<u64>,
 
+    /// If the control block is initialized by the flasher, this flag is used to prevent
+    /// clearing the control block when the target is reset.
+    disallow_clearing_rtt_header: bool,
+
     /// If false, don't try to attach to the target.
     try_attaching: bool,
 
@@ -32,10 +36,15 @@ impl RttClient {
             config,
             target: None,
             last_control_block_address: None,
+            disallow_clearing_rtt_header: true,
             try_attaching: true,
             polled_data: false,
             core_id: 0,
         }
+    }
+
+    pub fn disallow_clearing_rtt_header(&mut self) {
+        self.disallow_clearing_rtt_header = true;
     }
 
     pub fn is_attached(&self) -> bool {
@@ -157,8 +166,14 @@ impl RttClient {
     /// supposed to be valid. This is useful when probe-rs has reset the MCU before attaching,
     /// or during/after flashing, when the MCU has not yet been started.
     pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
+        if self.disallow_clearing_rtt_header {
+            tracing::debug!("Not clearing RTT control block");
+            return Ok(());
+        }
+
         self.try_attach(core)?;
 
+        tracing::debug!("Clearing RTT control block");
         if let Some(mut target) = self.target.take() {
             target.clear_control_block(core)?;
         } else {
