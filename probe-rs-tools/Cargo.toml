@@ -73,7 +73,7 @@ schemafy = "0.6"
 serde_json = "1.0.116"
 signal-hook = { version = "0.3", default-features = false }
 # Version 0.14.6 fails to compile
-svd-parser = { version = "=0.14.8", features = ["expand"] }
+svd-parser = { version = "=0.14.9", features = ["expand"] }
 termtree = "0.5"
 textwrap = { version = "0.16", default-features = false, features = [
     "unicode-linebreak",
