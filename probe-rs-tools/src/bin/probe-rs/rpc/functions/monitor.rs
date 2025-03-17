@@ -144,15 +144,7 @@ pub struct RttPoller<'c> {
 }
 
 impl RunLoopPoller for RttPoller<'_> {
-    fn start(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
-        if !self.rtt_client.is_attached() {
-            // Config will be applied on attach
-            return Ok(());
-        }
-
-        // We may have arrived here after a poller exit, reapply config
-        self.rtt_client.configure(core)?;
-
+    fn start(&mut self, _core: &mut Core<'_>) -> anyhow::Result<()> {
         Ok(())
     }
 

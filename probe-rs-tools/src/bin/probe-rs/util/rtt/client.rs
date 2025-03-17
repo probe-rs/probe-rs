@@ -8,7 +8,8 @@ use probe_rs::{
 
 pub struct RttClient {
     pub scan_region: ScanRegion,
-    pub config: RttConfig,
+    channel_modes: Vec<Option<ChannelMode>>,
+    need_configure: bool,
 
     /// The internal RTT handle, if we have successfully attached to the target.
     target: Option<RttConnection>,
@@ -33,7 +34,9 @@ impl RttClient {
     pub fn new(config: RttConfig, scan_region: ScanRegion) -> Self {
         Self {
             scan_region,
-            config,
+            channel_modes: config.channels.iter().map(|c| c.mode).collect(),
+            need_configure: true,
+
             target: None,
             last_control_block_address: None,
             disallow_clearing_rtt_header: true,
@@ -51,7 +54,7 @@ impl RttClient {
         self.target.is_some()
     }
 
-    pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
+    fn try_attach_impl(&mut self, core: &mut Core) -> Result<bool, Error> {
         if self.is_attached() {
             return Ok(true);
         }
@@ -95,7 +98,7 @@ impl RttClient {
             Err(error) => return Err(error),
         };
 
-        match RttConnection::new(core, rtt, &self.config) {
+        match RttConnection::new(rtt) {
             Ok(rtt) => self.target = Some(rtt),
             Err(Error::ControlBlockCorrupted(error)) => {
                 tracing::debug!("Failed to attach - control block corrupted: {}", error);
@@ -104,6 +107,17 @@ impl RttClient {
         };
 
         Ok(self.target.is_some())
+    }
+
+    pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
+        self.try_attach_impl(core)?;
+
+        if self.need_configure {
+            self.configure(core)?;
+            self.need_configure = false;
+        }
+
+        Ok(self.is_attached())
     }
 
     pub fn poll_channel(&mut self, core: &mut Core, channel: u32) -> Result<&[u8], Error> {
@@ -155,6 +169,8 @@ impl RttClient {
     }
 
     pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+        self.need_configure = true;
+
         if let Some(target) = self.target.as_mut() {
             target.clean_up(core)?;
         }
@@ -185,15 +201,12 @@ impl RttClient {
                     // If we know the exact location where a control block should be, we can clear
                     // the whole block.
                     if location == scan_location {
-                        const SIZE_32B: usize = 16 + 2 * 4;
-                        const SIZE_64B: usize = 16 + 2 * 8;
-
-                        let zeros = [0; SIZE_64B];
-
                         if core.is_64_bit() {
-                            core.write_8(location, &zeros[..SIZE_64B])?;
+                            const SIZE_64B: usize = 16 + 2 * 8;
+                            core.write_8(location, &[0; SIZE_64B])?;
                         } else {
-                            core.write_8(location, &zeros[..SIZE_32B])?;
+                            const SIZE_32B: usize = 16 + 2 * 4;
+                            core.write_8(location, &[0; SIZE_32B])?;
                         }
                     }
                 } else {
@@ -216,13 +229,15 @@ impl RttClient {
     pub(crate) fn up_channels(&self) -> &[RttActiveUpChannel] {
         self.target
             .as_ref()
-            .map_or(&[], |t| t.active_up_channels.as_slice())
+            .map(|t| t.active_up_channels.as_slice())
+            .unwrap_or_default()
     }
 
     pub(crate) fn down_channels(&self) -> &[RttActiveDownChannel] {
         self.target
             .as_ref()
-            .map_or(&[], |t| t.active_down_channels.as_slice())
+            .map(|t| t.active_down_channels.as_slice())
+            .unwrap_or_default()
     }
 
     pub(crate) fn core_id(&self) -> usize {
@@ -234,17 +249,19 @@ impl RttClient {
             return Ok(());
         };
 
-        let up_channels = target.active_up_channels.as_mut_slice();
-
-        for (idx, channel) in up_channels.iter_mut().enumerate() {
-            let channel_mode = if let Some(config) = self.config.channel_config(idx as u32) {
-                config.mode
-            } else if channel.channel_name() == "defmt" {
-                // defmt channel is always blocking
-                Some(ChannelMode::BlockIfFull)
-            } else {
-                None
-            };
+        for channel in target.active_up_channels.as_mut_slice() {
+            let channel_mode = self
+                .channel_modes
+                .get(channel.up_channel.number())
+                .copied()
+                .unwrap_or_else(|| {
+                    if channel.channel_name() == "defmt" {
+                        // defmt channel is always blocking
+                        Some(ChannelMode::BlockIfFull)
+                    } else {
+                        None
+                    }
+                });
 
             if let Some(mode) = channel_mode {
                 channel.change_mode(core, mode)?;
