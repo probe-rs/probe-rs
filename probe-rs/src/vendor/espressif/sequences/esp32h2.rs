@@ -31,11 +31,12 @@ impl ESP32H2 {
             },
         })
     }
-}
 
-impl RiscvDebugSequence for ESP32H2 {
-    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
-        tracing::info!("Disabling esp32h2 watchdogs...");
+    fn disable_wdts(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        tracing::info!("Disabling ESP32-H2 watchdogs...");
 
         // disable super wdt
         interface.write_word_32(0x600B1C24, 0x50D83AA1)?; // write protection off
@@ -59,6 +60,16 @@ impl RiscvDebugSequence for ESP32H2 {
         interface.write_word_32(0x600B_1C1C, 0x0)?; // write protection on
 
         Ok(())
+    }
+}
+
+impl RiscvDebugSequence for ESP32H2 {
+    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        self.disable_wdts(interface)
+    }
+
+    fn on_halt(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        self.disable_wdts(interface)
     }
 
     fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
