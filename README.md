@@ -91,11 +91,20 @@ fn main() -> Result<(), probe_rs::Error> {
 ### Reading from RAM
 
 ```rust,no_run
-use probe_rs::{MemoryInterface, Permissions, Session};
+use probe_rs::{MemoryInterface, Permissions, Session, SessionConfig};
+use probe_rs::probe::WireProtocol;
 
 fn main() -> Result<(), probe_rs::Error> {
     // Attach to a chip.
-    let mut session = Session::auto_attach("nRF52840_xxAA", Permissions::default())?;
+    let speed = Some(5500);
+    let protocol = Some(WireProtocol::Swd);
+    let session_config = SessionConfig {
+      speed,
+      protocol,
+      ..Default::default()
+    };
+
+    let mut session = Session::auto_attach("nRF52840_xxAA", session_config)?;
 
     // Select a core.
     let mut core = session.core(0)?;

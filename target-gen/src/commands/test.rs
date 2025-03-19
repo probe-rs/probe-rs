@@ -6,18 +6,20 @@ use std::time::Instant;
 use anyhow::{Context, Result, anyhow};
 use colored::Colorize;
 use probe_rs::{
-    MemoryInterface, Permissions, Session,
+    MemoryInterface, Permissions, Session, SessionConfig,
     config::Registry,
     flashing::{
         DownloadOptions, FlashLoader, FlashProgress, ProgressEvent, ProgressOperation, erase_all,
         erase_sectors,
     },
+    probe::WireProtocol,
 };
 use probe_rs_target::RawFlashAlgorithm;
 use xshell::{Shell, cmd};
 
 use crate::commands::elf::cmd_elf;
 
+#[allow(clippy::too_many_arguments)]
 pub fn cmd_test(
     target_artifact: &Path,
     template_path: &Path,
@@ -25,6 +27,8 @@ pub fn cmd_test(
     test_start_sector_address: Option<u64>,
     chip: Option<String>,
     name: Option<String>,
+    speed: Option<u32>,
+    protocol: Option<WireProtocol>,
 ) -> Result<()> {
     ensure_is_file(target_artifact)?;
     ensure_is_file(template_path)?;
@@ -85,9 +89,16 @@ pub fn cmd_test(
         }
     };
 
+    // Create SessionConfig to steer auto attach
+    let permissions = Permissions::new().allow_erase_all();
+    let session_config = SessionConfig {
+        permissions,
+        speed,
+        protocol,
+    };
+
     // We need to get the chip name so that special startup procedure can be used. (matched on name)
-    let mut session =
-        probe_rs::Session::auto_attach(target_name, Permissions::new().allow_erase_all())?;
+    let mut session = probe_rs::Session::auto_attach(target_name, session_config)?;
 
     // Register callback to update the progress.
     let t = Rc::new(RefCell::new(Instant::now()));

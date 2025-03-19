@@ -7,6 +7,7 @@ use miette::IntoDiagnostic;
 use miette::Result;
 use miette::WrapErr;
 use probe_rs::config::Registry;
+use probe_rs::probe::WireProtocol;
 use probe_rs::{
     Target,
     probe::{DebugProbeSelector, Probe, list::Lister},
@@ -24,6 +25,7 @@ struct RawDutDefinition {
     /// See [probe_rs::probe::DebugProbeSelector].
     probe_selector: String,
     probe_speed: Option<u32>,
+    protocol: Option<WireProtocol>,
 
     flash_test_binary: Option<String>,
 
@@ -64,6 +66,11 @@ pub struct DutDefinition {
     /// If not set, the default speed of the probe will be used.
     pub probe_speed: Option<u32>,
 
+    /// Protocol
+    ///
+    /// If not set, the default wire protocol will be used.
+    pub protocol: Option<WireProtocol>,
+
     /// Path to a binary which can be used to test
     /// flashing for the DUT.
     pub flash_test_binary: Option<PathBuf>,
@@ -86,6 +93,7 @@ impl DutDefinition {
             chip: target,
             probe_selector: Some(selector),
             probe_speed: None,
+            protocol: None,
             flash_test_binary: None,
             source: DefinitionSource::Cli,
             reset_connected: false,
@@ -99,6 +107,7 @@ impl DutDefinition {
             chip: target,
             probe_selector: None,
             probe_speed: None,
+            protocol: None,
             flash_test_binary: None,
             source: DefinitionSource::Cli,
             reset_connected: false,
@@ -179,6 +188,10 @@ impl DutDefinition {
             probe.set_speed(probe_speed).into_diagnostic()?;
         }
 
+        if let Some(protocol) = self.protocol {
+            probe.select_protocol(protocol).into_diagnostic()?;
+        }
+
         Ok(probe)
     }
 
@@ -204,6 +217,7 @@ impl DutDefinition {
         Ok(Self {
             chip: target,
             probe_speed: raw_definition.probe_speed,
+            protocol: raw_definition.protocol,
             probe_selector,
             flash_test_binary,
             source: DefinitionSource::File(source_file.to_owned()),
