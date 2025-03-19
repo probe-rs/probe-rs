@@ -39,7 +39,7 @@ impl RttClient {
 
             target: None,
             last_control_block_address: None,
-            disallow_clearing_rtt_header: true,
+            disallow_clearing_rtt_header: false,
             try_attaching: true,
             polled_data: false,
             core_id: 0,
