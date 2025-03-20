@@ -280,15 +280,12 @@ pub async fn monitor(
         print_monitor_event(&mut rtt_client.as_mut(), msg)
     });
 
-    let mut cancelled = false;
-
     let result = with_ctrl_c(monitor, async {
-        cancelled = true;
         session.client().publish::<CancelTopic>(&()).await.unwrap();
     })
     .await;
 
-    if cancelled && print_stack_trace {
+    if print_stack_trace {
         display_stack_trace(session, path).await?;
     }
 
