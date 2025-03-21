@@ -24,6 +24,7 @@ use probe_rs_debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_fra
 use rustyline::{DefaultEditor, error::ReadlineError};
 
 use crate::util::ArgumentParseError;
+use crate::util::repl::dumped_ranges_to_string;
 use crate::util::repl::parse_ranges;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
 
@@ -861,12 +862,16 @@ impl DebugCli {
                 );
 
                 let ranges = parse_ranges(&args).map_err(CliError::ArgumentParseError)?;
+                let range_string = dumped_ranges_to_string(&ranges);
 
                 println!("Dumping core");
 
                 CoreDump::dump_core(&mut cli_data.core, ranges)?.store(location)?;
 
-                println!("Done.");
+                println!(
+                    "Core dump {range_string} successfully stored at {}.",
+                    location.display(),
+                );
 
                 Ok(CliState::Continue)
             },

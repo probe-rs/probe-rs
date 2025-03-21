@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     cmd::dap_server::{DebuggerError, server::core_data::CoreHandle},
-    util::repl::parse_ranges,
+    util::repl::{dumped_ranges_to_string, parse_ranges},
 };
 use itertools::Itertools;
 use probe_rs::{CoreDump, CoreStatus, HaltReason};
@@ -436,23 +436,15 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             } else {
                 parse_ranges(&args).map_err(DebuggerError::ArgumentParseError)?
             };
-            let mut range_string = String::new();
-            for memory_range in &ranges {
-                range_string.push_str(&format!("{memory_range:#X?}, "));
-            }
-            if range_string.is_empty() {
-                range_string = "(No memory ranges specified)".to_string();
-            } else {
-                range_string = range_string.trim_end_matches(", ").to_string();
-                range_string = format!("(Includes memory ranges: {range_string})");
-            }
+            let range_string = dumped_ranges_to_string(&ranges);
             CoreDump::dump_core(&mut target_core.core, ranges)?.store(location)?;
 
             Ok(Response {
                 command: "dump".to_string(),
                 success: true,
                 message: Some(format!(
-                    "Core dump {range_string} successfully stored at {location:?}.",
+                    "Core dump {range_string} successfully stored at {}.",
+                    location.display(),
                 )),
                 type_: "response".to_string(),
                 request_seq: 0,

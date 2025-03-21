@@ -35,3 +35,22 @@ pub fn parse_ranges(args: &[&str]) -> Result<Vec<Range<u64>>, ArgumentParseError
     })
     .collect::<Result<Vec<Range<u64>>, _>>()
 }
+
+pub fn dumped_ranges_to_string(ranges: &[Range<u64>]) -> String {
+    let mut range_string = String::new();
+    let mut first = true;
+    for memory_range in ranges {
+        if !first {
+            range_string.push_str(", ");
+        }
+        first = false;
+        range_string.push_str(&format!("{memory_range:#X?}"));
+    }
+    if range_string.is_empty() {
+        range_string = "(No memory ranges specified)".to_string();
+    } else {
+        range_string = format!("(Includes memory ranges: {range_string})");
+    }
+
+    range_string
+}
