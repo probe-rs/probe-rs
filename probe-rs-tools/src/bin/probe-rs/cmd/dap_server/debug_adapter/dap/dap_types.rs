@@ -1,8 +1,7 @@
 // use crate::dap_types2 as debugserver_types;
-use crate::cmd::dap_server::DebuggerError;
 use crate::util::rtt;
+use crate::{cmd::dap_server::DebuggerError, util::ArgumentParseError};
 use num_traits::Num;
-use parse_int::parse;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
@@ -183,17 +182,19 @@ where
                 });
             }
             if let Some(index_str) = arguments[index].as_str() {
-                parse::<T>(index_str).map_err(|e| DebuggerError::ArgumentParseError {
-                    argument_index: index,
-                    argument: argument_name.to_string(),
-                    source: e.into(),
+                parse_int::parse::<T>(index_str).map_err(|e| {
+                    DebuggerError::ArgumentParseError(ArgumentParseError {
+                        argument_index: index,
+                        argument: argument_name.to_string(),
+                        source: e.into(),
+                    })
                 })
             } else {
-                Err(DebuggerError::ArgumentParseError {
+                Err(DebuggerError::ArgumentParseError(ArgumentParseError {
                     argument_index: index,
                     argument: argument_name.to_string(),
                     source: anyhow::anyhow!("Could not parse str at index: {}", index),
-                })
+                }))
             }
         }
         _ => Err(DebuggerError::MissingArgument {
@@ -218,11 +219,11 @@ fn get_string_argument(
             if let Some(index_str) = arguments[index].as_str() {
                 Ok(index_str.to_string())
             } else {
-                Err(DebuggerError::ArgumentParseError {
+                Err(DebuggerError::ArgumentParseError(ArgumentParseError {
                     argument_index: index,
                     argument: argument_name.to_string(),
                     source: anyhow::anyhow!("Could not parse str at index: {}", index),
-                })
+                }))
             }
         }
         _ => Err(DebuggerError::MissingArgument {

@@ -23,6 +23,7 @@ use probe_rs_debug::stack_frame::StackFrameInfo;
 use probe_rs_debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame};
 use rustyline::{DefaultEditor, error::ReadlineError};
 
+use crate::util::ArgumentParseError;
 use crate::util::parse_u64;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
 
@@ -95,12 +96,8 @@ enum CliError {
     FileDownload(#[from] FileDownloadError),
     #[error("Command expected more arguments.")]
     MissingArgument,
-    #[error("Failed to parse argument '{argument}'.")]
-    ArgumentParseError {
-        argument_index: usize,
-        argument: String,
-        source: anyhow::Error,
-    },
+    #[error(transparent)]
+    ArgumentParseError(#[from] ArgumentParseError),
     #[error(transparent)]
     ProbeRs(#[from] probe_rs::Error),
     /// Errors related to the handling of core dumps.
@@ -121,10 +118,12 @@ where
 {
     let arg_str = args.get(index).ok_or(CliError::MissingArgument)?;
 
-    parse::<T>(arg_str).map_err(|e| CliError::ArgumentParseError {
-        argument_index: index,
-        argument: arg_str.to_string(),
-        source: e.into(),
+    parse::<T>(arg_str).map_err(|e| {
+        CliError::ArgumentParseError(ArgumentParseError {
+            argument_index: index,
+            argument: arg_str.to_string(),
+            source: e.into(),
+        })
     })
 }
 
@@ -867,11 +866,11 @@ impl DebugCli {
                     .map(|(i, c)| {
                         let start = if let Some(start) = c.first() {
                             parse_u64(start).map_err(|e| {
-                                CliError::ArgumentParseError {
+                                CliError::ArgumentParseError(ArgumentParseError {
                                     argument_index: i,
                                     argument: start.to_string(),
                                     source: e.into(),
-                                }
+                                })
                             })?
                         } else {
                             unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
@@ -879,11 +878,11 @@ impl DebugCli {
 
                         let size = if let Some(size) = c.get(1) {
                             parse_u64(size).map_err(|e| {
-                                CliError::ArgumentParseError {
+                                CliError::ArgumentParseError(ArgumentParseError {
                                     argument_index: i,
                                     argument: size.to_string(),
                                     source: e.into(),
-                                }
+                                })
                             })?
                         } else {
                             unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
@@ -957,9 +956,9 @@ impl DebugCli {
                 println!("Error: Missing argument\n\n{}", command.help_text);
                 Ok(CliState::Continue)
             }
-            Err(CliError::ArgumentParseError {
+            Err(CliError::ArgumentParseError(ArgumentParseError {
                 argument, source, ..
-            }) => {
+            })) => {
                 println!(
                     "Error parsing argument '{}': {}\n\n{}",
                     argument, source, command.help_text

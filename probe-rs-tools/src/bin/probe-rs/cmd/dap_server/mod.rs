@@ -22,18 +22,14 @@ use std::{
 };
 use time::UtcOffset;
 
-use crate::util::common_options::OperationError;
+use crate::util::{ArgumentParseError, common_options::OperationError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
     #[error(transparent)]
     AccessPort(#[from] AccessPortError),
-    #[error("Failed to parse argument '{argument}'.")]
-    ArgumentParseError {
-        argument_index: usize,
-        argument: String,
-        source: anyhow::Error,
-    },
+    #[error(transparent)]
+    ArgumentParseError(#[from] ArgumentParseError),
     #[error(transparent)]
     DebugProbe(#[from] DebugProbeError),
     #[error(transparent)]
