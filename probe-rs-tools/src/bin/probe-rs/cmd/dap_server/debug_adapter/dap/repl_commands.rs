@@ -9,12 +9,12 @@ use super::{
 };
 use crate::{
     cmd::dap_server::{DebuggerError, server::core_data::CoreHandle},
-    util::parse_u64,
+    util::repl::parse_ranges,
 };
 use itertools::Itertools;
 use probe_rs::{CoreDump, CoreStatus, HaltReason};
 use probe_rs_debug::{ObjectRef, VariableName};
-use std::{fmt::Display, ops::Range, path::Path, str::FromStr, time::Duration};
+use std::{fmt::Display, path::Path, str::FromStr, time::Duration};
 
 /// The handler is a function that takes a reference to the target core, and a reference to the response body.
 /// The response body is used to populate the response to the client.
@@ -434,26 +434,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 // in the current scope.
                 target_core.get_memory_ranges()
             } else {
-                args
-                .chunks(2)
-                .map(|c| {
-                    let start = if let Some(start) = c.first() {
-                        parse_u64(start)
-                            .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
-                    } else {
-                        unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
-                    };
-
-                    let size = if let Some(size) = c.get(1) {
-                        parse_u64(size)
-                            .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
-                    } else {
-                        unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
-                    };
-
-                    Ok::<_, DebuggerError>(start.. start + size)
-                })
-                .collect::<Result<Vec<Range<u64>>, _>>()?
+                parse_ranges(&args).map_err(DebuggerError::ArgumentParseError)?
             };
             let mut range_string = String::new();
             for memory_range in &ranges {

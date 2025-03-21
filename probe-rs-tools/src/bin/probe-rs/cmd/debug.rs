@@ -24,7 +24,7 @@ use probe_rs_debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_fra
 use rustyline::{DefaultEditor, error::ReadlineError};
 
 use crate::util::ArgumentParseError;
-use crate::util::parse_u64;
+use crate::util::repl::parse_ranges;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
 
 #[derive(clap::Parser)]
@@ -860,37 +860,7 @@ impl DebugCli {
                     .unwrap_or("./coredump"),
                 );
 
-                let ranges = args
-                    .chunks(2)
-                    .enumerate()
-                    .map(|(i, c)| {
-                        let start = if let Some(start) = c.first() {
-                            parse_u64(start).map_err(|e| {
-                                CliError::ArgumentParseError(ArgumentParseError {
-                                    argument_index: i,
-                                    argument: start.to_string(),
-                                    source: e.into(),
-                                })
-                            })?
-                        } else {
-                            unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
-                        };
-
-                        let size = if let Some(size) = c.get(1) {
-                            parse_u64(size).map_err(|e| {
-                                CliError::ArgumentParseError(ArgumentParseError {
-                                    argument_index: i,
-                                    argument: size.to_string(),
-                                    source: e.into(),
-                                })
-                            })?
-                        } else {
-                            unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
-                        };
-
-                        Ok::<_, CliError>(start..start + size)
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
+                let ranges = parse_ranges(&args).map_err(CliError::ArgumentParseError)?;
 
                 println!("Dumping core");
 
