@@ -23,6 +23,7 @@ use probe_rs_debug::stack_frame::StackFrameInfo;
 use probe_rs_debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame};
 use rustyline::{DefaultEditor, error::ReadlineError};
 
+use crate::util::parse_u64;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
 
 #[derive(clap::Parser)]
@@ -865,7 +866,7 @@ impl DebugCli {
                     .enumerate()
                     .map(|(i, c)| {
                         let start = if let Some(start) = c.first() {
-                            parse_int::parse::<u64>(start).map_err(|e| {
+                            parse_u64(start).map_err(|e| {
                                 CliError::ArgumentParseError {
                                     argument_index: i,
                                     argument: start.to_string(),
@@ -877,7 +878,7 @@ impl DebugCli {
                         };
 
                         let size = if let Some(size) = c.get(1) {
-                            parse_int::parse::<u64>(size).map_err(|e| {
+                            parse_u64(size).map_err(|e| {
                                 CliError::ArgumentParseError {
                                     argument_index: i,
                                     argument: size.to_string(),

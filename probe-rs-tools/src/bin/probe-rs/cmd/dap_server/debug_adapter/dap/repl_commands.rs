@@ -7,7 +7,10 @@ use super::{
     repl_types::*,
     request_helpers::set_instruction_breakpoint,
 };
-use crate::cmd::dap_server::{DebuggerError, server::core_data::CoreHandle};
+use crate::{
+    cmd::dap_server::{DebuggerError, server::core_data::CoreHandle},
+    util::parse_u64,
+};
 use itertools::Itertools;
 use probe_rs::{CoreDump, CoreStatus, HaltReason};
 use probe_rs_debug::{ObjectRef, VariableName};
@@ -435,20 +438,20 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 .chunks(2)
                 .map(|c| {
                     let start = if let Some(start) = c.first() {
-                        parse_int::parse::<u64>(start)
+                        parse_u64(start)
                             .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
                     } else {
                         unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
                     };
 
                     let size = if let Some(size) = c.get(1) {
-                        parse_int::parse::<u64>(size)
+                        parse_u64(size)
                             .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
                     } else {
                         unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
                     };
 
-                    Ok::<_, DebuggerError>(Range {start,end: start + size})
+                    Ok::<_, DebuggerError>(start.. start + size)
                 })
                 .collect::<Result<Vec<Range<u64>>, _>>()?
             };
