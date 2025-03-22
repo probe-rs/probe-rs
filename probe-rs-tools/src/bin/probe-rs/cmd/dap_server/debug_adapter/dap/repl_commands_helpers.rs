@@ -82,7 +82,7 @@ pub(crate) fn get_local_variable(
     response_body.result = "".to_string();
     for variable in variable_list {
         if gdb_nuf.format_specifier == GdbFormat::DapReference {
-            response_body.memory_reference = Some(format!("{}", variable.memory_location));
+            response_body.memory_reference = Some(variable.memory_location.to_string());
             response_body.result = format!(
                 "{} : {} ",
                 variable.name,
