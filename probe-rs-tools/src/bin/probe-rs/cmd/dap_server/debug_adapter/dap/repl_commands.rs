@@ -71,7 +71,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         args: None,
         handler: |_, _, _| {
             let mut help_text =
-                "Usage:\t-Use <Ctrl+Space> to get a list of available commands.".to_string();
+                "Usage:\t- Use <Ctrl+Space> to get a list of available commands.".to_string();
             help_text.push_str("\n\t- Use <Up/DownArrows> to navigate through the command list.");
             help_text.push_str("\n\t- Use <Hab> to insert the currently selected command.");
             help_text.push_str("\n\t- Note: This implementation is a subset of gdb commands, and is intended to behave similarly.");

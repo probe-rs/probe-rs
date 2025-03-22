@@ -503,9 +503,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if !target_core.core.core_halted()?
             && !arguments.expression.starts_with("break")
             && !arguments.expression.starts_with("quit")
+            && !arguments.expression.starts_with("help")
         {
             return Err(DebuggerError::UserMessage(
-                "The target is running. Only the 'break' or 'quit' commands are allowed."
+                "The target is running. Only the 'break', 'help' or 'quit' commands are allowed."
                     .to_string(),
             ));
         }
