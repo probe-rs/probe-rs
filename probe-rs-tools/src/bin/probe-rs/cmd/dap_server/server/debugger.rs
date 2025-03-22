@@ -319,9 +319,8 @@ impl Debugger {
         if self.handle_initialize(&mut debug_adapter).is_err() {
             // The request handler has already reported this error to the user.
             return Ok(());
-        } else {
-            self.debug_logger.flush_to_dap(&mut debug_adapter)?;
         }
+        self.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
         let launch_attach_request = loop {
             if let Some(request) = debug_adapter.listen_for_request()? {
@@ -833,15 +832,11 @@ impl Debugger {
         if !(initialize_arguments.columns_start_at_1.unwrap_or(true)
             && initialize_arguments.lines_start_at_1.unwrap_or(true))
         {
-            debug_adapter.send_response::<()>(
-                &initialize_request,
-                Err(&DebuggerError::Other(anyhow!(
-                    "Unsupported Capability: Client requested column and row numbers start at 0."
-                ))),
-            )?;
-            return Err(DebuggerError::Other(anyhow!(
+            let error = DebuggerError::Other(anyhow!(
                 "Unsupported Capability: Client requested column and row numbers start at 0."
-            )));
+            ));
+            debug_adapter.send_response::<()>(&initialize_request, Err(&error))?;
+            return Err(error);
         }
 
         if let Some(progress_support) = initialize_arguments.supports_progress_reporting {
@@ -895,26 +890,20 @@ fn expect_request<P: ProtocolAdapter>(
     let next_request = loop {
         if let Some(current_request) = debug_adapter.listen_for_request()? {
             break current_request;
-        };
+        }
     };
 
     if next_request.command == expected_command {
         Ok(next_request)
     } else {
-        debug_adapter.send_response::<()>(
-            &next_request,
-            Err(&DebuggerError::Other(anyhow!(
-                "Initial command was '{}', expected '{}'",
-                next_request.command,
-                expected_command
-            ))),
-        )?;
-
-        Err(DebuggerError::Other(anyhow!(
+        let error = DebuggerError::Other(anyhow!(
             "Initial command was '{}', expected '{}'",
             next_request.command,
             expected_command
-        )))
+        ));
+        debug_adapter.send_response::<()>(&next_request, Err(&error))?;
+
+        Err(error)
     }
 }
 
