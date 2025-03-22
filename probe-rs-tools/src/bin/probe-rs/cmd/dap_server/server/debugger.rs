@@ -47,7 +47,8 @@ use time::UtcOffset;
 /// DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to respond to unrecoverable errors
 /// during a debug session interacting with a target session.
 pub(crate) enum DebugSessionStatus {
-    Continue,
+    /// Continue handling requests after a specified delay.
+    Continue(Duration),
     Terminate,
     Restart(Request),
 }
@@ -112,12 +113,14 @@ impl Debugger {
         self.debug_logger.flush_to_dap(debug_adapter)?;
         let Some(request) = debug_adapter.listen_for_request()? else {
             let _poll_span = tracing::trace_span!("Polling for core status").entered();
+            let mut delay = Duration::ZERO;
             if debug_adapter.all_cores_halted {
                 // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
                 tracing::trace!(
                     "Sleeping (all cores are halted) for 100ms to reduce polling overheaads."
                 );
-                thread::sleep(Duration::from_millis(100)); // Medium delay to reduce fast looping costs.
+                // Medium delay to reduce fast looping costs.
+                delay = Duration::from_millis(100);
             } else {
                 // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
                 let (_, suggest_delay_required) =
@@ -127,7 +130,8 @@ impl Debugger {
                     tracing::trace!(
                         "Sleeping (core is running) for 50ms to reduce polling overheads."
                     );
-                    thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
+                    // Small delay to reduce fast looping costs.
+                    delay = Duration::from_millis(50);
                 } else {
                     tracing::trace!(
                         "Retrieving data from the core, no delay required between iterations of polling the core."
@@ -135,7 +139,7 @@ impl Debugger {
                 };
             }
 
-            return Ok(DebugSessionStatus::Continue);
+            return Ok(DebugSessionStatus::Continue(delay));
         };
 
         let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
@@ -153,7 +157,7 @@ impl Debugger {
             }
 
             // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
-            return Ok(DebugSessionStatus::Continue);
+            return Ok(DebugSessionStatus::Continue(Duration::ZERO));
         }
 
         // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand to a multi-core implementation that understands which MS DAP requests are core specific.
@@ -205,7 +209,7 @@ impl Debugger {
             _ => {}
         }
 
-        let mut debug_session = DebugSessionStatus::Continue;
+        let mut debug_session = DebugSessionStatus::Continue(Duration::ZERO);
 
         // Now we are ready to execute supported commands, or return an error if it isn't supported.
         let result = match request.command.as_ref() {
@@ -315,8 +319,6 @@ impl Debugger {
         if self.handle_initialize(&mut debug_adapter).is_err() {
             // The request handler has already reported this error to the user.
             return Ok(());
-        } else {
-            self.debug_logger.flush_to_dap(&mut debug_adapter)?;
         }
 
         let launch_attach_request = loop {
@@ -339,7 +341,6 @@ impl Debugger {
                 return Ok(());
             }
         };
-        self.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
         if debug_adapter
             .send_event::<Event>("initialized", None)
@@ -362,8 +363,11 @@ impl Debugger {
                 };
 
             match debug_session_status {
-                DebugSessionStatus::Continue => {
+                DebugSessionStatus::Continue(delay) => {
                     // All is good. We can process the next request.
+                    if !delay.is_zero() {
+                        thread::sleep(delay);
+                    }
                 }
                 DebugSessionStatus::Restart(request) => {
                     if let Err(error) =
@@ -396,7 +400,7 @@ impl Debugger {
 
     /// Process launch or attach request
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
-    fn handle_launch_attach<P: ProtocolAdapter + 'static>(
+    pub(crate) fn handle_launch_attach<P: ProtocolAdapter + 'static>(
         &mut self,
         registry: &mut Registry,
         launch_attach_request: &Request,
@@ -488,6 +492,7 @@ impl Debugger {
         drop(target_core);
 
         debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
+        self.debug_logger.flush_to_dap(debug_adapter)?;
 
         Ok(session_data)
     }
@@ -804,7 +809,7 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all, name = "Handling initialize request")]
-    fn handle_initialize<P: ProtocolAdapter>(
+    pub(crate) fn handle_initialize<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<(), DebuggerError> {
@@ -826,15 +831,11 @@ impl Debugger {
         if !(initialize_arguments.columns_start_at_1.unwrap_or(true)
             && initialize_arguments.lines_start_at_1.unwrap_or(true))
         {
-            debug_adapter.send_response::<()>(
-                &initialize_request,
-                Err(&DebuggerError::Other(anyhow!(
-                    "Unsupported Capability: Client requested column and row numbers start at 0."
-                ))),
-            )?;
-            return Err(DebuggerError::Other(anyhow!(
+            let error = DebuggerError::Other(anyhow!(
                 "Unsupported Capability: Client requested column and row numbers start at 0."
-            )));
+            ));
+            debug_adapter.send_response::<()>(&initialize_request, Err(&error))?;
+            return Err(error);
         }
 
         if let Some(progress_support) = initialize_arguments.supports_progress_reporting {
@@ -873,6 +874,8 @@ impl Debugger {
         };
         debug_adapter.send_response(&initialize_request, Ok(Some(capabilities)))?;
 
+        self.debug_logger.flush_to_dap(debug_adapter)?;
+
         Ok(())
     }
 }
@@ -888,26 +891,20 @@ fn expect_request<P: ProtocolAdapter>(
     let next_request = loop {
         if let Some(current_request) = debug_adapter.listen_for_request()? {
             break current_request;
-        };
+        }
     };
 
     if next_request.command == expected_command {
         Ok(next_request)
     } else {
-        debug_adapter.send_response::<()>(
-            &next_request,
-            Err(&DebuggerError::Other(anyhow!(
-                "Initial command was '{}', expected '{}'",
-                next_request.command,
-                expected_command
-            ))),
-        )?;
-
-        Err(DebuggerError::Other(anyhow!(
+        let error = DebuggerError::Other(anyhow!(
             "Initial command was '{}', expected '{}'",
             next_request.command,
             expected_command
-        )))
+        ));
+        debug_adapter.send_response::<()>(&next_request, Err(&error))?;
+
+        Err(error)
     }
 }
 

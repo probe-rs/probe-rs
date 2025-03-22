@@ -47,7 +47,14 @@ impl DapStatus for CoreStatus {
                 ),
                 HaltReason::Request => (
                     "pause",
-                    "Core halted due to a user (debugger client) request".to_string(),
+                    format!(
+                        "Core halted due to a user (debugger client) request @{}.",
+                        if let Some(program_counter) = program_counter {
+                            format!("{program_counter:#010x}")
+                        } else {
+                            "(unspecified location)".to_string()
+                        }
+                    ),
                 ),
                 HaltReason::External => (
                     "external",
