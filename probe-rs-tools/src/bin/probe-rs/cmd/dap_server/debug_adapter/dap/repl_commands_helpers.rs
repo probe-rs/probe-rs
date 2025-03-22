@@ -79,7 +79,6 @@ pub(crate) fn get_local_variable(
         type_: None,
         presentation_hint: None,
     };
-    response_body.result = "".to_string();
     for variable in variable_list {
         if gdb_nuf.format_specifier == GdbFormat::DapReference {
             response_body.memory_reference = Some(variable.memory_location.to_string());
