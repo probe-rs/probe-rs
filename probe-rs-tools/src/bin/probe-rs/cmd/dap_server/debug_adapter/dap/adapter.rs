@@ -320,94 +320,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             if context == "clipboard" {
                 response_body.result = arguments.expression;
             } else if context == "repl" {
-                // While the target is running, we only allow a 'break' command.
-                // Override clippy, because the recommendation would change the logic.
-                if !target_core.core.core_halted()?
-                    && !arguments.expression.starts_with("break")
-                    && !arguments.expression.starts_with("quit")
-                {
-                    response_body.result =
-                        "The target is running. Only the 'break' or 'quit' commands are allowed."
-                            .to_string();
-                } else {
-                    // The target is halted, so we can allow any repl command.
-                    //TODO: Do we need to look for '/' in the expression, before we split it?
-                    // Now we can make sure we have a valid expression and evaluate it.
-                    let (command_root, repl_commands) =
-                        build_expanded_commands(arguments.expression.trim());
-                    if let Some(repl_command) = repl_commands.first() {
-                        // We have a valid repl command, so we can evaluate it.
-                        // First, let's extract the remainder of the arguments, so that we can pass them to the handler.
-                        let argument_string = arguments
-                            .expression
-                            .trim_start_matches(&command_root)
-                            .trim_start()
-                            .trim_start_matches(repl_command.command)
-                            .trim_start();
-                        match (repl_command.handler)(target_core, argument_string, &arguments) {
-                            Ok(repl_response) => {
-                                // Perform any special post-processing of the response.
-                                match repl_response.command.as_str() {
-                                    "terminate" => {
-                                        // This is a special case, where a repl command has requested that the debug session be terminated.
-                                        response_body.result = repl_response
-                                            .message
-                                            .unwrap_or_else(|| "Success.".to_string());
-                                        self.send_event(
-                                            "terminated",
-                                            Some(TerminatedEventBody { restart: None }),
-                                        )?;
-                                    }
-                                    "variables" => {
-                                        // This is a special case, where a repl command has requested that the variables be displayed.
-                                        if let Some(repl_response_body) = repl_response.body {
-                                            if let Ok(evaluate_response) =
-                                                serde_json::from_value(repl_response_body.clone())
-                                            {
-                                                response_body = evaluate_response;
-                                            } else {
-                                                response_body.result = format!(
-                                                    "Error: Could not parse response body: {repl_response_body:?}"
-                                                );
-                                            };
-                                        } else {
-                                            response_body.result = repl_response
-                                                .message
-                                                .unwrap_or_else(|| "Success.".to_string());
-                                        };
-                                    }
-                                    "setBreakpoints" => {
-                                        response_body.result = repl_response
-                                            .message
-                                            // This should always have a value, but just in case someone was lazy ...
-                                            .unwrap_or_else(|| "Success.".to_string()); // This is a special case, where we've added a breakpoint, and need to synch the DAP client UI.
-                                        self.send_event("breakpoint", repl_response.body)?;
-                                    }
-                                    _other_commands => {
-                                        // In all other cases, the response would have been updated by the repl command handler.
-                                        if repl_response.success {
-                                            response_body.result = repl_response
-                                                .message
-                                                // This should always have a value, but just in case someone was lazy ...
-                                                .unwrap_or_else(|| "Success.".to_string());
-                                        } else {
-                                            response_body.result = format!(
-                                                "Error: {:?} {:?}",
-                                                repl_response.command, repl_response.message
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                            Err(error) => match &error {
-                                DebuggerError::UserMessage(repl_message) => {
-                                    repl_message.clone_into(&mut response_body.result)
-                                }
-                                other_error => response_body.result = format!("{other_error:?}",),
-                            },
-                        }
-                    }
-                }
+                self.handle_repl(target_core, &arguments, &mut response_body)?;
             } else {
                 // Handle other contexts: 'watch', 'hover', etc.
                 // The Variables request sometimes returns the variable name, and other times the variable id, so this expression will be tested to determine if it is an id or not.
@@ -529,6 +442,92 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
         self.send_response(request, Ok(Some(response_body)))
+    }
+
+    fn handle_repl(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+        arguments: &EvaluateArguments,
+        response_body: &mut EvaluateResponseBody,
+    ) -> Result<(), anyhow::Error> {
+        if !target_core.core.core_halted()?
+            && !arguments.expression.starts_with("break")
+            && !arguments.expression.starts_with("quit")
+        {
+            response_body.result =
+                "The target is running. Only the 'break' or 'quit' commands are allowed."
+                    .to_string();
+        } else {
+            // The target is halted, so we can allow any repl command.
+            //TODO: Do we need to look for '/' in the expression, before we split it?
+            // Now we can make sure we have a valid expression and evaluate it.
+            let (command_root, repl_commands) =
+                build_expanded_commands(arguments.expression.trim());
+            if let Some(repl_command) = repl_commands.first() {
+                // We have a valid repl command, so we can evaluate it.
+                // First, let's extract the remainder of the arguments, so that we can pass them to the handler.
+                let argument_string = arguments
+                    .expression
+                    .trim_start_matches(&command_root)
+                    .trim_start()
+                    .trim_start_matches(repl_command.command)
+                    .trim_start();
+                match (repl_command.handler)(target_core, argument_string, arguments) {
+                    Ok(repl_response) => {
+                        // In all other cases, the response would have been updated by the repl command handler.
+                        response_body.result = if repl_response.success {
+                            repl_response
+                                .message
+                                // This should always have a value, but just in case someone was lazy ...
+                                .unwrap_or_else(|| "Success.".to_string())
+                        } else {
+                            format!(
+                                "Error: {:?} {:?}",
+                                repl_response.command, repl_response.message
+                            )
+                        };
+
+                        // Perform any special post-processing of the response.
+                        match repl_response.command.as_str() {
+                            "terminate" => {
+                                // This is a special case, where a repl command has requested that the debug session be terminated.
+                                self.send_event(
+                                    "terminated",
+                                    Some(TerminatedEventBody { restart: None }),
+                                )?;
+                            }
+                            "variables" => {
+                                // This is a special case, where a repl command has requested that the variables be displayed.
+                                if let Some(repl_response_body) = repl_response.body {
+                                    if let Ok(evaluate_response) =
+                                        serde_json::from_value(repl_response_body.clone())
+                                    {
+                                        *response_body = evaluate_response;
+                                    } else {
+                                        response_body.result = format!(
+                                            "Error: Could not parse response body: {repl_response_body:?}"
+                                        );
+                                    }
+                                }
+                            }
+                            "setBreakpoints" => {
+                                // This is a special case, where we've added a breakpoint, and need to synch the DAP client UI.
+                                self.send_event("breakpoint", repl_response.body)?;
+                            }
+                            _other_commands => {}
+                        }
+                    }
+                    Err(error) => {
+                        response_body.result = match error {
+                            DebuggerError::UserMessage(repl_message) => repl_message,
+                            other_error => format!("{other_error:?}"),
+                        };
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Works in tandem with the `evaluate` request, to provide possible completions in the Debug Console REPL window.
