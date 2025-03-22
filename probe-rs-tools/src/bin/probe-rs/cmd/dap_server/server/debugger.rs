@@ -320,7 +320,6 @@ impl Debugger {
             // The request handler has already reported this error to the user.
             return Ok(());
         }
-        self.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
         let launch_attach_request = loop {
             if let Some(request) = debug_adapter.listen_for_request()? {
@@ -342,7 +341,6 @@ impl Debugger {
                 return Ok(());
             }
         };
-        self.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
         if debug_adapter
             .send_event::<Event>("initialized", None)
@@ -494,6 +492,7 @@ impl Debugger {
         drop(target_core);
 
         debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
+        self.debug_logger.flush_to_dap(debug_adapter)?;
 
         Ok(session_data)
     }
@@ -874,6 +873,8 @@ impl Debugger {
             ..Default::default()
         };
         debug_adapter.send_response(&initialize_request, Ok(Some(capabilities)))?;
+
+        self.debug_logger.flush_to_dap(debug_adapter)?;
 
         Ok(())
     }
