@@ -189,27 +189,25 @@ pub(crate) fn build_expanded_commands(
         let matches = find_commands(&repl_commands, command_piece);
 
         // If there is only one match, and it has sub-commands, then we can continue iterating (implicit recursion with new sub-command).
-        if matches.len() == 1 {
-            if let Some(parent_command) = matches.first() {
-                if !parent_command.sub_commands.is_empty() {
-                    // Build up the full command as we iterate ...
-                    if !command_root.is_empty() {
-                        command_root.push(' ');
-                    }
-                    command_root.push_str(parent_command.command);
-                    repl_commands = parent_command.sub_commands.iter().collect();
-                    continue;
-                }
-            }
-        }
+        let Some(parent_command) = matches.first() else {
+            // If there are no matches, then we can keep the matches from the previous
+            // iteration (if there were any) but we can't continue;
+            break;
+        };
 
-        if matches.is_empty() {
-            // If there are no matches, then we can keep the matches from the previous iteration (if there were any).
+        if matches.len() == 1 && !parent_command.sub_commands.is_empty() {
+            // Build up the full command as we iterate ...
+            if !command_root.is_empty() {
+                command_root.push(' ');
+            }
+            command_root.push_str(parent_command.command);
+            repl_commands = parent_command.sub_commands.iter().collect();
         } else {
-            // If there are multiple matches, or there is only one match with no sub-commands, then we can use the matches.
+            // If there are multiple matches, or there is only one match with no
+            // sub-commands, then we can use the matches.
             repl_commands = matches;
+            break;
         }
-        break;
     }
     (command_root, repl_commands)
 }
