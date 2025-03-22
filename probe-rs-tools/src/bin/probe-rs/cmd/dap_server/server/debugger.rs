@@ -403,7 +403,7 @@ impl Debugger {
 
     /// Process launch or attach request
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
-    fn handle_launch_attach<P: ProtocolAdapter + 'static>(
+    pub(crate) fn handle_launch_attach<P: ProtocolAdapter + 'static>(
         &mut self,
         registry: &mut Registry,
         launch_attach_request: &Request,
@@ -811,7 +811,7 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all, name = "Handling initialize request")]
-    fn handle_initialize<P: ProtocolAdapter>(
+    pub(crate) fn handle_initialize<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<(), DebuggerError> {
