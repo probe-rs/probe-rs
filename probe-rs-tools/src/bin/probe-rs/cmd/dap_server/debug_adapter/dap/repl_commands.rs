@@ -198,7 +198,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         args: Some(&[ReplCommandArgs::Optional(
             "path (e.g. my_dir/backtrace.yaml)",
         )]),
-        handler: |target_core, command_arguments, _request_arguments| {
+        handler: |target_core, command_arguments, _| {
             let args = command_arguments.split_whitespace().collect_vec();
 
             let write_to_file = args.first().map(Path::new);
@@ -411,7 +411,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             ReplCommandArgs::Optional("memory size in bytes"),
             ReplCommandArgs::Optional("path (default: ./coredump)"),
         ]),
-        handler: |target_core, command_arguments, _request_arguments| {
+        handler: |target_core, command_arguments, _| {
             let mut args = command_arguments.split_whitespace().collect_vec();
 
             // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks
