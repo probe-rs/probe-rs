@@ -322,10 +322,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             } else if context == "repl" {
                 // While the target is running, we only allow a 'break' command.
                 // Override clippy, because the recommendation would change the logic.
-                #[allow(clippy::nonminimal_bool)]
                 if !target_core.core.core_halted()?
-                    && !(arguments.expression.starts_with("break")
-                        || arguments.expression.starts_with("quit"))
+                    && !arguments.expression.starts_with("break")
+                    && !arguments.expression.starts_with("quit")
                 {
                     response_body.result =
                         "The target is running. Only the 'break' or 'quit' commands are allowed."
