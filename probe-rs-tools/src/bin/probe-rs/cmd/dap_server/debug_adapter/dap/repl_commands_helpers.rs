@@ -192,13 +192,13 @@ pub(crate) fn build_expanded_commands(
         // If there is only one match, and it has sub-commands, then we can continue iterating (implicit recursion with new sub-command).
         if matches.len() == 1 {
             if let Some(parent_command) = matches.first() {
-                if let Some(sub_commands) = parent_command.sub_commands {
+                if !parent_command.sub_commands.is_empty() {
                     // Build up the full command as we iterate ...
                     if !command_root.is_empty() {
                         command_root.push(' ');
                     }
                     command_root.push_str(parent_command.command);
-                    repl_commands = sub_commands.iter().collect();
+                    repl_commands = parent_command.sub_commands.iter().collect();
                     continue;
                 }
             }

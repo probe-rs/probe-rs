@@ -36,7 +36,7 @@ pub(crate) struct ReplCommand<H: 'static> {
     /// - This is case sensitive.
     pub(crate) command: &'static str,
     pub(crate) help_text: &'static str,
-    pub(crate) sub_commands: Option<&'static [ReplCommand<H>]>,
+    pub(crate) sub_commands: &'static [ReplCommand<H>],
     pub(crate) args: Option<&'static [ReplCommandArgs]>,
     pub(crate) handler: H,
 }
@@ -44,7 +44,7 @@ pub(crate) struct ReplCommand<H: 'static> {
 impl<H> Display for ReplCommand<H> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ", self.command)?;
-        if self.sub_commands.is_some() {
+        if !self.sub_commands.is_empty() {
             write!(f, "<subcommand> ")?;
         }
         if let Some(args) = self.args {
@@ -53,9 +53,9 @@ impl<H> Display for ReplCommand<H> {
             }
         }
         write!(f, ": {} ", self.help_text)?;
-        if let Some(sub_commands) = self.sub_commands {
+        if !self.sub_commands.is_empty() {
             write!(f, "\n  Subcommands:")?;
-            for sub_command in sub_commands {
+            for sub_command in self.sub_commands {
                 write!(f, "\n  - {sub_command}")?;
             }
         }
@@ -67,7 +67,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
     ReplCommand {
         command: "help",
         help_text: "Information about available commands and how to use them.",
-        sub_commands: None,
+        sub_commands: &[],
         args: None,
         handler: |_, _, _| {
             let mut help_text =
@@ -93,7 +93,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
     ReplCommand {
         command: "quit",
         help_text: "Disconnect (and suspend) the target.",
-        sub_commands: None,
+        sub_commands: &[],
         args: None,
         handler: |target_core, _, _| {
             target_core.core.halt(Duration::from_millis(500))?;
@@ -111,7 +111,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
     ReplCommand {
         command: "c",
         help_text: "Continue running the program on the target.",
-        sub_commands: None,
+        sub_commands: &[],
         args: None,
         handler: |target_core, _, _| {
             target_core.core.run()?;
@@ -132,7 +132,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         command: "break",
         // Stricly speaking, gdb refers to this as an expression, but we only support variables.
         help_text: "Sets a breakpoint specified location, or next instruction if unspecified.",
-        sub_commands: None,
+        sub_commands: &[],
         args: Some(&[ReplCommandArgs::Optional("*address")]),
         handler: |target_core, command_arguments, _| {
             if command_arguments.is_empty() {
@@ -193,7 +193,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
     },
     ReplCommand {
         command: "backtrace",
-        sub_commands: None,
+        sub_commands: &[],
         help_text: "Print the backtrace of the current thread to a local file.",
         args: Some(&[ReplCommandArgs::Optional(
             "path (e.g. my_dir/backtrace.yaml)",
@@ -236,11 +236,11 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
     ReplCommand {
         command: "info",
         help_text: "Information of specified program data.",
-        sub_commands: Some(&[
+        sub_commands: &[
             ReplCommand {
                 command: "frame",
                 help_text: "Describe the current frame, or the frame at the specified (hex) address.",
-                sub_commands: None,
+                sub_commands: &[],
                 args: Some(&[ReplCommandArgs::Optional("address")]),
                 // TODO: This is easy to implement ... just requires deciding how to format the output.
                 handler: |_, _, _| Err(DebuggerError::Unimplemented),
@@ -248,7 +248,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             ReplCommand {
                 command: "locals",
                 help_text: "List local variables of the selected frame.",
-                sub_commands: None,
+                sub_commands: &[],
                 args: None,
                 handler: |target_core, _, evaluate_arguments| {
                     let gdb_nuf = GdbNuf {
@@ -262,7 +262,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             ReplCommand {
                 command: "all-reg",
                 help_text: "List all registers of the selected frame.",
-                sub_commands: None,
+                sub_commands: &[],
                 args: None,
                 // TODO: This is easy to implement ... just requires deciding how to format the output.
                 handler: |_, _, _| Err(DebuggerError::Unimplemented),
@@ -270,12 +270,12 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             ReplCommand {
                 command: "var",
                 help_text: "List all static variables.",
-                sub_commands: None,
+                sub_commands: &[],
                 args: None,
                 // TODO: This is easy to implement ... just requires deciding how to format the output.
                 handler: |_, _, _| Err(DebuggerError::Unimplemented),
             },
-        ]),
+        ],
         args: None,
         handler: |_, _, _| {
             Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
@@ -285,7 +285,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         command: "p",
         // Stricly speaking, gdb refers to this as an expression, but we only support variables.
         help_text: "Print known information about variable.",
-        sub_commands: None,
+        sub_commands: &[],
         args: Some(&[
             ReplCommandArgs::Optional("/f (f=format[n|v])"),
             ReplCommandArgs::Required("<local variable name>"),
@@ -330,7 +330,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
     ReplCommand {
         command: "x",
         help_text: "Examine Memory, using format specifications, at the specified address.",
-        sub_commands: None,
+        sub_commands: &[],
         args: Some(&[
             ReplCommandArgs::Optional("/Nuf (N=count, u=unit[b|h|w|g], f=format[t|x|i])"),
             ReplCommandArgs::Optional("address (hex)"),
@@ -405,7 +405,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
     ReplCommand {
         command: "dump",
         help_text: "Create a core dump at a target location. Specify memory ranges to dump, or leave blank to dump in-scope memory regions.",
-        sub_commands: None,
+        sub_commands: &[],
         args: Some(&[
             ReplCommandArgs::Optional("memory start address"),
             ReplCommandArgs::Optional("memory size in bytes"),
