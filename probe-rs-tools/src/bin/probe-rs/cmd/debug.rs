@@ -8,6 +8,7 @@ use rustyline::{DefaultEditor, error::ReadlineError};
 use time::UtcOffset;
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::ErrorResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateArguments;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::InitializeRequestArguments;
@@ -78,22 +79,23 @@ impl ProtocolAdapter for CliAdapter {
     }
 
     fn send_raw_response(&mut self, response: &Response) -> anyhow::Result<()> {
-        if response.success {
-            match response.command.as_str() {
-                "evaluate" => {
-                    let Some(body) = &response.body else {
-                        unreachable!();
-                    };
-                    let body = serde_json::from_value::<EvaluateResponseBody>(body.clone())?;
+        if !response.success {
+            print_error(response)?;
+            return Ok(());
+        }
 
-                    println!("{}", body.result);
-                }
-                "initialize" => {}
-                "attach" => {}
-                _ => println!("{response:?}"),
+        match response.command.as_str() {
+            "evaluate" => {
+                let Some(body) = &response.body else {
+                    unreachable!();
+                };
+                let body = serde_json::from_value::<EvaluateResponseBody>(body.clone())?;
+
+                println!("{}", body.result);
             }
-        } else {
-            todo!("{response:?}");
+            "initialize" => {}
+            "attach" => {}
+            _ => println!("{response:?}"),
         }
 
         Ok(())
@@ -116,6 +118,41 @@ impl ProtocolAdapter for CliAdapter {
     fn console_log_level(&self) -> ConsoleLog {
         self.console_log_level
     }
+}
+
+fn print_error(response: &Response) -> anyhow::Result<()> {
+    if response.message.as_deref() != Some("cancelled") {
+        // `ProtocolHelper::send_response` sets `cancelled` as the message.
+        println!(
+            "Error while processing {} - unexpected response: {:?}",
+            response.command, response.message
+        );
+        return Ok(());
+    }
+
+    let Some(body) = response.body.clone() else {
+        // `ProtocolHelper::send_response` sets an error body.
+        println!(
+            "Unspecified error while processing {} - response has no body",
+            response.command
+        );
+        return Ok(());
+    };
+
+    let response_body = serde_json::from_value::<ErrorResponseBody>(body)?;
+
+    let Some(error) = response_body.error else {
+        // `ProtocolHelper::send_response` returns some error to us.
+        println!(
+            "Unspecified error while processing {} - response body has no error.",
+            response.command
+        );
+        return Ok(());
+    };
+
+    println!("Error while processing {}: {}", response.command, error);
+
+    Ok(())
 }
 
 #[derive(clap::Parser)]
