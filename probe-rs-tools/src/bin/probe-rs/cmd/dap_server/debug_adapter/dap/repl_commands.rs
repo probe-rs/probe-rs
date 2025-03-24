@@ -10,7 +10,7 @@ use super::{
 use crate::cmd::dap_server::{DebuggerError, server::core_data::CoreHandle};
 use itertools::Itertools;
 use probe_rs::{CoreDump, CoreStatus, HaltReason};
-use probe_rs_debug::{ObjectRef, VariableName};
+use probe_rs_debug::{ColumnType, ObjectRef, StackFrame, VariableName};
 use std::{fmt::Display, ops::Range, path::Path, str::FromStr, time::Duration};
 
 /// The handler is a function that takes a reference to the target core, and a reference to the response body.
@@ -185,6 +185,33 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             Err(DebuggerError::UserMessage(format!(
                 "Invalid parameters {command_arguments:?}. See the `help` command for more information."
             )))
+        },
+    },
+    ReplCommand {
+        command: "backtrace",
+        sub_commands: &[],
+        help_text: "Print the backtrace of the current thread.",
+        args: &[],
+        handler: |target_core, _, _| {
+            let mut response_message = String::new();
+
+            for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
+                response_message.push_str(&format!(
+                    "Frame #{}: {}\n",
+                    i + 1,
+                    ReplStackFrame(frame)
+                ));
+            }
+
+            Ok(Response {
+                command: "backtrace".to_string(),
+                success: true,
+                message: Some(response_message),
+                type_: "response".to_string(),
+                request_seq: 0,
+                seq: 0,
+                body: None,
+            })
         },
     },
     ReplCommand {
@@ -474,3 +501,22 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         },
     },
 ];
+struct ReplStackFrame<'a>(&'a StackFrame);
+
+impl Display for ReplStackFrame<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Header info for the StackFrame
+        write!(f, "{}", self.0.function_name)?;
+        if let Some(si) = &self.0.source_location {
+            write!(f, "\n\t{}", si.path.to_path().display())?;
+
+            if let (Some(column), Some(line)) = (si.column, si.line) {
+                match column {
+                    ColumnType::Column(c) => write!(f, ":{line}:{c}")?,
+                    ColumnType::LeftEdge => write!(f, ":{line}")?,
+                }
+            }
+        }
+        Ok(())
+    }
+}
