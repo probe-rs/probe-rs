@@ -188,7 +188,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         },
     },
     ReplCommand {
-        command: "backtrace",
+        command: "backtrace-yaml",
         sub_commands: &[],
         help_text: "Print the backtrace of the current thread to a local file.",
         args: &[ReplCommandArgs::Optional(
