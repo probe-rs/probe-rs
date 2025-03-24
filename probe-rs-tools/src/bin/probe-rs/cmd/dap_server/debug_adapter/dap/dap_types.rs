@@ -237,7 +237,7 @@ impl Display for Message {
 
         if let Some(args) = &self.variables {
             for (key, value) in args {
-                formatted = formatted.replace(&format!("{{{}}}", key), value);
+                formatted = formatted.replace(&format!("{{{key}}}"), value);
             }
         }
 
