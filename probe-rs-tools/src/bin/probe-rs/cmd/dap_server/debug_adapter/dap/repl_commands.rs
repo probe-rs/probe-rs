@@ -13,7 +13,13 @@ use crate::cmd::dap_server::{
 use itertools::Itertools;
 use probe_rs::{CoreDump, CoreInterface, CoreStatus, HaltReason};
 use probe_rs_debug::{ColumnType, ObjectRef, StackFrame, VariableName};
-use std::{fmt::Display, ops::Range, path::Path, str::FromStr, time::Duration};
+use std::{
+    fmt::{Display, Write as _},
+    ops::Range,
+    path::Path,
+    str::FromStr,
+    time::Duration,
+};
 
 /// The handler is a function that takes a reference to the target core, and a reference to the response body.
 /// The response body is used to populate the response to the client.
@@ -148,45 +154,45 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                     seq: 0,
                     body: None,
                 });
-            } else {
-                let mut input_arguments = command_arguments.split_whitespace();
-                if let Some(input_argument) = input_arguments.next() {
-                    if let Some(address_str) = &input_argument.strip_prefix('*') {
-                        let result = set_instruction_breakpoint(
-                            InstructionBreakpoint {
-                                instruction_reference: address_str.to_string(),
-                                condition: None,
-                                hit_condition: None,
-                                offset: None,
-                            },
-                            target_core,
-                        );
-                        let mut response = Response {
-                            command: "setBreakpoints".to_string(),
-                            success: true,
-                            message: Some(result.message.clone().unwrap_or_else(|| {
-                                format!("Unexpected error creating breakpoint at {input_argument}.")
-                            })),
-                            type_: "response".to_string(),
-                            request_seq: 0,
-                            seq: 0,
-                            body: None,
-                        };
-                        if result.verified {
-                            // The caller will catch this event body and use it to synch the UI breakpoint list.
-                            response.body = serde_json::to_value(BreakpointEventBody {
-                                breakpoint: result,
-                                reason: "new".to_string(),
-                            })
-                            .ok();
-                        }
-                        return Ok(response);
-                    }
-                }
             }
-            Err(DebuggerError::UserMessage(format!(
-                "Invalid parameters {command_arguments:?}. See the `help` command for more information."
-            )))
+
+            let mut input_arguments = command_arguments.split_whitespace();
+            let Some(address_str) = input_arguments.next().and_then(|arg| arg.strip_prefix('*'))
+            else {
+                return Err(DebuggerError::UserMessage(format!(
+                    "Invalid parameters {command_arguments:?}. See the `help` command for more information."
+                )));
+            };
+
+            let result = set_instruction_breakpoint(
+                InstructionBreakpoint {
+                    instruction_reference: address_str.to_string(),
+                    condition: None,
+                    hit_condition: None,
+                    offset: None,
+                },
+                target_core,
+            );
+            let mut response = Response {
+                command: "setBreakpoints".to_string(),
+                success: true,
+                message: Some(result.message.clone().unwrap_or_else(|| {
+                    format!("Unexpected error creating breakpoint at {address_str}.")
+                })),
+                type_: "response".to_string(),
+                request_seq: 0,
+                seq: 0,
+                body: None,
+            };
+            if result.verified {
+                // The caller will catch this event body and use it to synch the UI breakpoint list.
+                response.body = serde_json::to_value(BreakpointEventBody {
+                    breakpoint: result,
+                    reason: "new".to_string(),
+                })
+                .ok();
+            }
+            Ok(response)
         },
     },
     ReplCommand {
@@ -326,24 +332,23 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
 
             for input_argument in input_arguments {
                 if input_argument.starts_with('/') {
-                    if let Some(gdb_nuf_string) = input_argument.strip_prefix('/') {
-                        gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
-                        gdb_nuf
-                            .check_supported_formats(&[
-                                GdbFormat::Native,
-                                GdbFormat::DapReference,
-                            ])
-                            .map_err(|error| {
-                                DebuggerError::UserMessage(format!(
-                                    "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
-                                ))
-                            })?;
-                    } else {
+                    let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
                         return Err(DebuggerError::UserMessage(
                             "The '/' specifier must be followed by a valid gdb 'f' format specifier."
                                 .to_string(),
                         ));
-                    }
+                    };
+                    gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
+                    gdb_nuf
+                        .check_supported_formats(&[
+                            GdbFormat::Native,
+                            GdbFormat::DapReference,
+                        ])
+                        .map_err(|error| {
+                            DebuggerError::UserMessage(format!(
+                                "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
+                            ))
+                        })?;
                 } else {
                     variable_name = VariableName::Named(input_argument.to_string());
                 }
@@ -375,25 +380,25 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 if input_argument.starts_with("0x") || input_argument.starts_with("0X") {
                     MemoryAddress(input_address) = input_argument.try_into()?;
                 } else if input_argument.starts_with('/') {
-                    if let Some(gdb_nuf_string) = input_argument.strip_prefix('/') {
-                        gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
-                        gdb_nuf
-                            .check_supported_formats(&[
-                                GdbFormat::Binary,
-                                GdbFormat::Hex,
-                                GdbFormat::Instruction,
-                            ])
-                            .map_err(|error| {
-                                DebuggerError::UserMessage(format!(
-                                    "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
-                                ))
-                            })?;
-                    } else {
+                    let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
                         return Err(DebuggerError::UserMessage(
                             "The '/' specifier must be followed by a valid gdb 'Nuf' format specifier."
                                 .to_string(),
                         ));
-                    }
+                    };
+
+                    gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
+                    gdb_nuf
+                        .check_supported_formats(&[
+                            GdbFormat::Binary,
+                            GdbFormat::Hex,
+                            GdbFormat::Instruction,
+                        ])
+                        .map_err(|error| {
+                            DebuggerError::UserMessage(format!(
+                                "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
+                            ))
+                        })?;
                 } else {
                     return Err(DebuggerError::UserMessage(
                         "Invalid parameters. See the `help` command for more information."
@@ -479,14 +484,16 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             };
             let mut range_string = String::new();
             for memory_range in &ranges {
-                range_string.push_str(&format!("{memory_range:#X?}, "));
+                if !range_string.is_empty() {
+                    write!(&mut range_string, ", ").unwrap();
+                }
+                write!(&mut range_string, "{memory_range:#X?}").unwrap();
             }
-            if range_string.is_empty() {
-                range_string = "(No memory ranges specified)".to_string();
+            range_string = if range_string.is_empty() {
+                "(No memory ranges specified)".to_string()
             } else {
-                range_string = range_string.trim_end_matches(", ").to_string();
-                range_string = format!("(Includes memory ranges: {range_string})");
-            }
+                format!("(Includes memory ranges: {range_string})")
+            };
             CoreDump::dump_core(&mut target_core.core, ranges)?.store(location)?;
 
             Ok(Response {
@@ -520,7 +527,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 response_message.push_str("No breakpoints set.");
             } else {
                 for (idx, bpt) in breakpoint_addrs {
-                    response_message.push_str(&format!("Breakpoint #{idx} @ {bpt:#010X}\n"));
+                    writeln!(&mut response_message, "Breakpoint #{idx} @ {bpt:#010X}\n").unwrap();
                 }
             }
 

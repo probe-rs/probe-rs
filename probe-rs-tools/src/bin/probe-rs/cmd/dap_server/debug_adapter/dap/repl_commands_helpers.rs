@@ -131,13 +131,12 @@ pub(crate) fn memory_read(
             return Err(DebuggerError::UserMessage(format!(
                 "Cannot disassemble memory at address {address:#010x}"
             )));
-        } else {
-            let mut formatted_output = "".to_string();
-            for assembly_line in &assembly_lines {
-                formatted_output.push_str(&assembly_line.to_string());
-            }
-            response.message = Some(formatted_output);
         }
+        let mut formatted_output = "".to_string();
+        for assembly_line in &assembly_lines {
+            formatted_output.push_str(&assembly_line.to_string());
+        }
+        response.message = Some(formatted_output);
     } else {
         let mut memory_result = vec![0u8; gdb_nuf.get_size()];
         match target_core.core.read_8(address, &mut memory_result) {
