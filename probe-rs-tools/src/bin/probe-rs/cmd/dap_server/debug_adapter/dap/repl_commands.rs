@@ -113,8 +113,6 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         args: &[],
         handler: |target_core, _, _| {
             target_core.core.run()?;
-            // Changing the status below will result in the debugger automaticlly synching the client status.
-            target_core.core_data.last_known_status = CoreStatus::Running;
             Ok(Response {
                 command: "continue".to_string(),
                 success: true,
