@@ -1,0 +1,1 @@
+The `probe-rs debug` command now uses the DAP server internally. The commands have been replaced by those available in the DAP server.

@@ -230,3 +230,17 @@ fn get_string_argument(
         }),
     }
 }
+
+impl Display for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut formatted = self.format.clone();
+
+        if let Some(args) = &self.variables {
+            for (key, value) in args {
+                formatted = formatted.replace(&format!("{{{key}}}"), value);
+            }
+        }
+
+        f.write_str(&formatted)
+    }
+}

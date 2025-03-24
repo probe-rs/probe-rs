@@ -1,8 +1,8 @@
 // Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
-mod debug_adapter;
+pub(crate) mod debug_adapter;
 mod peripherals;
-mod server;
+pub(crate) mod server;
 
 #[cfg(test)]
 mod test;
