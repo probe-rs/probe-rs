@@ -7,9 +7,11 @@ use super::{
     repl_types::*,
     request_helpers::set_instruction_breakpoint,
 };
-use crate::cmd::dap_server::{DebuggerError, server::core_data::CoreHandle};
+use crate::cmd::dap_server::{
+    DebuggerError, debug_adapter::dap::dap_types::Breakpoint, server::core_data::CoreHandle,
+};
 use itertools::Itertools;
-use probe_rs::{CoreDump, CoreStatus, HaltReason};
+use probe_rs::{CoreDump, CoreInterface, CoreStatus, HaltReason};
 use probe_rs_debug::{ColumnType, ObjectRef, StackFrame, VariableName};
 use std::{fmt::Display, ops::Range, path::Path, str::FromStr, time::Duration};
 
@@ -500,7 +502,93 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             })
         },
     },
+    ReplCommand {
+        command: "list_break",
+        help_text: "List all set breakpoints",
+        sub_commands: &[],
+        args: &[],
+        handler: |target_core, _, _| {
+            let breakpoint_addrs = target_core
+                .core
+                .hw_breakpoints()?
+                .into_iter()
+                .enumerate()
+                .filter_map(|(idx, bpt)| bpt.map(|bpt| (idx, bpt)));
+
+            let mut response_message = String::new();
+            if breakpoint_addrs.clone().count() == 0 {
+                response_message.push_str("No breakpoints set.");
+            } else {
+                for (idx, bpt) in breakpoint_addrs {
+                    response_message.push_str(&format!("Breakpoint #{idx} @ {bpt:#010X}\n"));
+                }
+            }
+
+            Ok(Response {
+                command: "breakpoints".to_string(),
+                success: true,
+                message: Some(response_message),
+                type_: "response".to_string(),
+                request_seq: 0,
+                seq: 0,
+                body: None,
+            })
+        },
+    },
+    ReplCommand {
+        command: "clear_break",
+        help_text: "Clear a breakpoint",
+        sub_commands: &[],
+        args: &[ReplCommandArgs::Required("*address")],
+        handler: |target_core, args, _| {
+            let mut input_arguments = args.split_whitespace();
+            let Some(input_argument) = input_arguments.next() else {
+                return Err(DebuggerError::UserMessage(
+                    "Missing breakpoint address to clear. See the `help` command for more information.".to_string()
+                ));
+            };
+
+            let Some(address_str) = input_argument.strip_prefix('*') else {
+                return Err(DebuggerError::UserMessage(format!(
+                    "Invalid input argument {input_argument}. See the `help` command for more information."
+                )));
+            };
+            let Ok(MemoryAddress(address)) = address_str.try_into() else {
+                return Err(DebuggerError::UserMessage(format!(
+                    "Invalid memory address {address_str}. See the `help` command for more information."
+                )));
+            };
+            target_core.clear_breakpoint(address)?;
+
+            let response = Response {
+                command: "setBreakpoints".to_string(),
+                success: true,
+                message: Some("Breakpoint cleared".to_string()),
+                type_: "response".to_string(),
+                request_seq: 0,
+                seq: 0,
+                body: serde_json::to_value(BreakpointEventBody {
+                    breakpoint: Breakpoint {
+                        id: Some(address as i64),
+                        column: None,
+                        end_column: None,
+                        end_line: None,
+                        instruction_reference: None,
+                        line: None,
+                        message: None,
+                        offset: None,
+                        source: None,
+                        verified: false,
+                    },
+                    reason: "removed".to_string(),
+                })
+                .ok(),
+            };
+            Ok(response)
+        },
+    },
 ];
+
 struct ReplStackFrame<'a>(&'a StackFrame);
 
 impl Display for ReplStackFrame<'_> {

@@ -599,6 +599,7 @@ pub(crate) fn set_instruction_breakpoint(
                     .get_source_location(memory_reference)
                 {
                     Some(source_location) => {
+                        breakpoint_response.id = Some(memory_reference as i64);
                         breakpoint_response.source = get_dap_source(&source_location);
                         breakpoint_response.line = source_location.line.map(|line| line as i64);
                         breakpoint_response.column = source_location.column.map(|col| match col {
