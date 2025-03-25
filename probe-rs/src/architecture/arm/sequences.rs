@@ -603,23 +603,35 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         interface: &mut dyn DapAccess,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
-        // Clear all errors.
-        // CMSIS says this is only necessary to do inside the `if powered_down`, but
-        // without it here, nRF52840 faults in the next access.
-        let mut abort = Abort(0);
-        abort.set_dapabort(true);
-        abort.set_orunerrclr(true);
-        abort.set_wderrclr(true);
-        abort.set_stkerrclr(true);
-        abort.set_stkcmpclr(true);
-        interface.write_dp_register(dp, abort)?;
-
         interface.write_dp_register(dp, SelectV1(0))?;
         let dpidr: DPIDR = interface.read_dp_register(dp)?;
 
+        // Clear all errors and see if we need to power up the target
         let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
+        let powered_down = if dpidr.version() == 0 || dpidr.designer() == 0 {
+            // Abort the current transaction. This is the only bit present in `Abort` in `DPv0`.
+            let mut abort = Abort(0);
+            abort.set_dapabort(true);
+            interface.write_dp_register(dp, abort)?;
 
-        let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
+            // To clear errors on DPv0, we need to set W1C values for STICKYORUN, STICKYCMP, and STICKYERR
+            interface.write_dp_register::<Ctrl>(dp, Ctrl(0x32))?;
+
+            // DPv0 always needs to be powered up
+            true
+        } else {
+            // CMSIS says this is only necessary to do inside the `if powered_down`, but
+            // without it here, nRF52840 faults in the next access.
+            let mut abort = Abort(0);
+            abort.set_dapabort(true);
+            abort.set_orunerrclr(true);
+            abort.set_wderrclr(true);
+            abort.set_stkerrclr(true);
+            abort.set_stkcmpclr(true);
+            interface.write_dp_register(dp, abort)?;
+
+            !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack())
+        };
 
         if powered_down {
             tracing::info!("Debug port {dp:x?} is powered down, powering up");
