@@ -229,6 +229,23 @@ impl<'probe> Xtensa<'probe> {
 
         Ok(())
     }
+
+    fn halted_access<F, T>(&mut self, op: F) -> Result<T, Error>
+    where
+        F: FnOnce(&mut Self) -> Result<T, Error>,
+    {
+        let was_running = self
+            .interface
+            .halt_with_previous(Duration::from_millis(100))?;
+
+        let result = op(self);
+
+        if was_running {
+            self.interface.resume_core()?;
+        }
+
+        result
+    }
 }
 
 impl CoreMemoryInterface for Xtensa<'_> {
@@ -319,23 +336,27 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
-        let register = Register::try_from(address)?;
-        let value = self.interface.read_register_untyped(register)?;
+        self.halted_access(|this| {
+            let register = Register::try_from(address)?;
+            let value = this.interface.read_register_untyped(register)?;
 
-        Ok(RegisterValue::U32(value))
+            Ok(RegisterValue::U32(value))
+        })
     }
 
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
-        let value: u32 = value.try_into()?;
+        self.halted_access(|this| {
+            let value: u32 = value.try_into()?;
 
-        if address == self.program_counter().id {
-            self.state.pc_written = true;
-        }
+            if address == this.program_counter().id {
+                this.state.pc_written = true;
+            }
 
-        let register = Register::try_from(address)?;
-        self.interface.write_register_untyped(register, value)?;
+            let register = Register::try_from(address)?;
+            this.interface.write_register_untyped(register, value)?;
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
@@ -343,63 +364,71 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        let mut breakpoints = Vec::with_capacity(self.available_breakpoint_units()? as usize);
+        self.halted_access(|this| {
+            let mut breakpoints = Vec::with_capacity(this.available_breakpoint_units()? as usize);
 
-        let enabled_breakpoints = self.interface.read_register::<IBreakEn>()?;
+            let enabled_breakpoints = this.interface.read_register::<IBreakEn>()?;
 
-        for i in 0..self.available_breakpoint_units()? as usize {
-            let is_enabled = enabled_breakpoints.0 & (1 << i) != 0;
-            let breakpoint = if is_enabled {
-                let address = self
-                    .interface
-                    .read_register_untyped(Self::IBREAKA_REGS[i])?;
+            for i in 0..this.available_breakpoint_units()? as usize {
+                let is_enabled = enabled_breakpoints.0 & (1 << i) != 0;
+                let breakpoint = if is_enabled {
+                    let address = this
+                        .interface
+                        .read_register_untyped(Self::IBREAKA_REGS[i])?;
 
-                Some(address as u64)
-            } else {
-                None
-            };
+                    Some(address as u64)
+                } else {
+                    None
+                };
 
-            breakpoints.push(breakpoint);
-        }
+                breakpoints.push(breakpoint);
+            }
 
-        Ok(breakpoints)
+            Ok(breakpoints)
+        })
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
-        self.state.breakpoints_enabled = state;
-        let mask = if state {
-            self.state.breakpoint_mask()
-        } else {
-            0
-        };
+        self.halted_access(|this| {
+            this.state.breakpoints_enabled = state;
+            let mask = if state {
+                this.state.breakpoint_mask()
+            } else {
+                0
+            };
 
-        self.interface.write_register(IBreakEn(mask))?;
+            this.interface.write_register(IBreakEn(mask))?;
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
-        self.state.breakpoint_set[unit_index] = true;
-        self.interface
-            .write_register_untyped(Self::IBREAKA_REGS[unit_index], addr as u32)?;
+        self.halted_access(|this| {
+            this.state.breakpoint_set[unit_index] = true;
+            this.interface
+                .write_register_untyped(Self::IBREAKA_REGS[unit_index], addr as u32)?;
 
-        if self.state.breakpoints_enabled {
-            let mask = self.state.breakpoint_mask();
-            self.interface.write_register(IBreakEn(mask))?;
-        }
+            if this.state.breakpoints_enabled {
+                let mask = this.state.breakpoint_mask();
+                this.interface.write_register(IBreakEn(mask))?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
-        self.state.breakpoint_set[unit_index] = false;
+        self.halted_access(|this| {
+            this.state.breakpoint_set[unit_index] = false;
 
-        if self.state.breakpoints_enabled {
-            let mask = self.state.breakpoint_mask();
-            self.interface.write_register(IBreakEn(mask))?;
-        }
+            if this.state.breakpoints_enabled {
+                let mask = this.state.breakpoint_mask();
+                this.interface.write_register(IBreakEn(mask))?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn registers(&self) -> &'static CoreRegisters {
