@@ -17,7 +17,7 @@ use crate::cmd::dap_server::{
     },
 };
 use crate::util::rtt;
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use base64::{Engine as _, engine::general_purpose as base64_engine};
 use dap_types::*;
 use parse_int::parse;
@@ -1665,22 +1665,20 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .step(&mut target_core.core, &target_core.core_data.debug_info)
         {
             Ok((new_status, program_counter)) => (new_status, program_counter),
-            Err(error) => match &error {
-                probe_rs_debug::DebugError::WarnAndContinue { message } => {
-                    let pc_at_error = target_core
-                        .core
-                        .read_core_reg(target_core.core.program_counter())?;
-                    self.show_message(
-                        MessageSeverity::Information,
-                        format!("Step error @{pc_at_error:#010X}: {message}"),
-                    );
-                    (target_core.core.status()?, pc_at_error)
-                }
-                other_error => {
-                    target_core.core.halt(Duration::from_millis(100)).ok();
-                    return Err(anyhow!("Unexpected error during stepping :{}", other_error));
-                }
-            },
+            Err(probe_rs_debug::DebugError::WarnAndContinue { message }) => {
+                let pc_at_error = target_core
+                    .core
+                    .read_core_reg(target_core.core.program_counter())?;
+                self.show_message(
+                    MessageSeverity::Information,
+                    format!("Step error @{pc_at_error:#010X}: {message}"),
+                );
+                (target_core.core.status()?, pc_at_error)
+            }
+            Err(other_error) => {
+                target_core.core.halt(Duration::from_millis(100)).ok();
+                return Err(other_error).context("Unexpected error during stepping");
+            }
         };
 
         self.send_response::<()>(request, Ok(None))?;
