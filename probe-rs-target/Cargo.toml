@@ -1,7 +1,7 @@
 [package]
 name = "probe-rs-target"
 version.workspace = true
-edition.workspace = true
+edition = "2024"
 description = "Target description schema for probe-rs."
 documentation.workspace = true
 homepage.workspace = true
