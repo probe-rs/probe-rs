@@ -109,8 +109,13 @@ svg = "0.18"
 tokio = { version = "1.0", features = ["full"] }
 tokio-util = "0.7"
 futures-util = { version = "0.3" }
-rustls = { version = "0.23", default-features = false, features = ["std", "ring"], optional = true }
-tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"], optional = true }
+rustls = { version = "0.23", default-features = false, features = [
+    "std",
+    "ring",
+], optional = true }
+tokio-tungstenite = { version = "0.26", features = [
+    "rustls-tls-webpki-roots",
+], optional = true }
 axum = { version = "0.8", features = ["ws"], optional = true }
 axum-extra = { version = "0.10", features = ["typed-header"], optional = true }
 tempfile = { version = "3.0", optional = true }

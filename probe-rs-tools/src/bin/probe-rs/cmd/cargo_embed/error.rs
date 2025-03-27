@@ -12,9 +12,9 @@ pub enum DownloadError {
 impl Error for DownloadError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            Self::DebugProbe(ref e) => Some(e),
-            Self::AccessPort(ref e) => Some(e),
-            Self::StdIO(ref e) => Some(e),
+            Self::DebugProbe(e) => Some(e),
+            Self::AccessPort(e) => Some(e),
+            Self::StdIO(e) => Some(e),
         }
     }
 }
@@ -22,9 +22,9 @@ impl Error for DownloadError {
 impl fmt::Display for DownloadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::DebugProbe(ref e) => e.fmt(f),
-            Self::AccessPort(ref e) => e.fmt(f),
-            Self::StdIO(ref e) => e.fmt(f),
+            Self::DebugProbe(e) => e.fmt(f),
+            Self::AccessPort(e) => e.fmt(f),
+            Self::StdIO(e) => e.fmt(f),
         }
     }
 }

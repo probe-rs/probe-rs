@@ -155,14 +155,14 @@ impl RpcSpawnContext {
         self.state.dry_run(sessid)
     }
 
-    fn session_blocking(&self, sessid: Key<Session>) -> impl DerefMut<Target = Session> {
+    fn session_blocking(&self, sessid: Key<Session>) -> impl DerefMut<Target = Session> + use<> {
         self.state.session_blocking(sessid)
     }
 
     pub fn object_mut_blocking<T: Any + Send>(
         &self,
         key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send {
+    ) -> impl DerefMut<Target = T> + Send + use<T> {
         self.state.object_mut_blocking(key)
     }
 
@@ -325,7 +325,10 @@ impl RpcContext {
             .map_err(|e| anyhow!("{:?}", e))
     }
 
-    pub async fn object_mut<T: Any + Send>(&self, key: Key<T>) -> impl DerefMut<Target = T> + Send {
+    pub async fn object_mut<T: Any + Send>(
+        &self,
+        key: Key<T>,
+    ) -> impl DerefMut<Target = T> + Send + use<T> {
         self.state.object_mut(key).await
     }
 
@@ -337,7 +340,10 @@ impl RpcContext {
         self.state.set_session(session, dry_run).await
     }
 
-    pub async fn session(&self, sid: Key<Session>) -> impl DerefMut<Target = Session> + Send {
+    pub async fn session(
+        &self,
+        sid: Key<Session>,
+    ) -> impl DerefMut<Target = Session> + Send + use<> {
         self.object_mut(sid).await
     }
 
@@ -345,7 +351,7 @@ impl RpcContext {
         Lister::with_lister(Box::new(LimitedLister::new(self.probe_access.clone())))
     }
 
-    pub async fn registry(&self) -> impl DerefMut<Target = Registry> + Send {
+    pub async fn registry(&self) -> impl DerefMut<Target = Registry> + Send + use<> {
         self.state.registry.clone().lock_owned().await
     }
 

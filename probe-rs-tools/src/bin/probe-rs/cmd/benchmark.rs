@@ -228,19 +228,19 @@ impl DataType {
     pub fn fill_data(&mut self, data_size_words: usize) {
         let mut rng = fastrand::Rng::new();
         match self {
-            DataType::U8(ref mut test_data, ref mut read_data) => {
+            DataType::U8(test_data, read_data) => {
                 *test_data = vec![0u8; data_size_words];
                 *read_data = vec![0u8; data_size_words];
                 rng.fill(&mut test_data[..]);
             }
-            DataType::U32(ref mut test_data, ref mut read_data) => {
+            DataType::U32(test_data, read_data) => {
                 *test_data = vec![0u32; data_size_words];
                 *read_data = vec![0u32; data_size_words];
                 for out in test_data.iter_mut() {
                     *out = rng.u32(..);
                 }
             }
-            DataType::U64(ref mut test_data, ref mut read_data) => {
+            DataType::U64(test_data, read_data) => {
                 *test_data = vec![0u64; data_size_words];
                 *read_data = vec![0u64; data_size_words];
                 for out in test_data.iter_mut() {
@@ -309,13 +309,13 @@ impl TestData {
     fn block_read(&mut self, core: &mut probe_rs::Core) -> Result<f64, anyhow::Error> {
         let read_start = Instant::now();
         match &mut self.data_type {
-            DataType::U8(_, ref mut readback_data) => core
+            DataType::U8(_, readback_data) => core
                 .read_8(self.address, readback_data)
                 .expect("Reading the sample data failed"),
-            DataType::U32(_, ref mut readback_data) => core
+            DataType::U32(_, readback_data) => core
                 .read_32(self.address, readback_data)
                 .expect("Reading the sample data failed"),
-            DataType::U64(_, ref mut readback_data) => core
+            DataType::U64(_, readback_data) => core
                 .read_64(self.address, readback_data)
                 .expect("Reading the sample data failed"),
         }
@@ -330,10 +330,10 @@ impl TestData {
     fn block_write(&mut self, core: &mut probe_rs::Core) -> Result<f64, anyhow::Error> {
         let write_start = Instant::now();
         match &self.data_type {
-            DataType::U8(ref test_data, _) => core
+            DataType::U8(test_data, _) => core
                 .write_8(self.address, test_data)
                 .context("Writing the sample data failed")?,
-            DataType::U32(ref test_data, _) => core
+            DataType::U32(test_data, _) => core
                 .write_32(self.address, test_data)
                 .context("Writing the sample data failed")?,
             DataType::U64(test_data, _) => core
