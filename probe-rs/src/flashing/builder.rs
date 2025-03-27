@@ -227,7 +227,10 @@ impl FlashBuilder {
     /// If a staged chunk is not fully contained in the range, only the contained part is
     /// returned. ie for each returned item (addr, data), it's guaranteed that the condition
     /// `start <= addr && addr + data.len() <= end` upholds.
-    pub(crate) fn data_in_range(&self, range: &Range<u64>) -> impl Iterator<Item = (u64, &[u8])> {
+    pub(crate) fn data_in_range<'s>(
+        &'s self,
+        range: &Range<u64>,
+    ) -> impl Iterator<Item = (u64, &'s [u8])> + use<'s> {
         let range = range.clone();
 
         let mut adjusted_start = range.start;

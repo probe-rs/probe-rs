@@ -259,13 +259,13 @@ impl CmsisDapDevice {
         tracing::debug!("Configuring probe to use packet size {}", packet_size);
         match self {
             CmsisDapDevice::V1 {
-                ref mut report_size,
+                report_size,
                 ..
             } => {
                 *report_size = packet_size;
             }
             CmsisDapDevice::V2 {
-                ref mut max_packet_size,
+                max_packet_size,
                 ..
             } => {
                 *max_packet_size = packet_size;
