@@ -2,7 +2,7 @@
 name = "xtask"
 version.workspace = true
 authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
-edition = "2021"
+edition.workspace = true
 publish = false
 
 [dependencies]

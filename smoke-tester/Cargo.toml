@@ -2,7 +2,7 @@
 name = "smoke_tester"
 version.workspace = true
 authors = ["Dominik Boehi <dominik.boehi@gmail.com>"]
-edition = "2021"
+edition.workspace = true
 publish = false
 
 

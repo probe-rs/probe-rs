@@ -325,7 +325,10 @@ impl RpcContext {
             .map_err(|e| anyhow!("{:?}", e))
     }
 
-    pub async fn object_mut<T: Any + Send>(&self, key: Key<T>) -> impl DerefMut<Target = T> + Send + use<T> {
+    pub async fn object_mut<T: Any + Send>(
+        &self,
+        key: Key<T>,
+    ) -> impl DerefMut<Target = T> + Send + use<T> {
         self.state.object_mut(key).await
     }
 
@@ -337,7 +340,10 @@ impl RpcContext {
         self.state.set_session(session, dry_run).await
     }
 
-    pub async fn session(&self, sid: Key<Session>) -> impl DerefMut<Target = Session> + Send + use<> {
+    pub async fn session(
+        &self,
+        sid: Key<Session>,
+    ) -> impl DerefMut<Target = Session> + Send + use<> {
         self.object_mut(sid).await
     }
 

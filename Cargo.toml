@@ -1,6 +1,6 @@
 [workspace.package]
 version = "0.27.0"
-edition = "2021"
+edition = "2024"
 
 documentation = "https://docs.rs/probe-rs/"
 homepage = "https://github.com/probe-rs/probe-rs"
