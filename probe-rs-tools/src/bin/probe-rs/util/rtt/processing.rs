@@ -76,7 +76,7 @@ impl RttDecoder {
             RttDecoder::BinaryLE => collector.on_binary_data(buffer),
             RttDecoder::String {
                 timestamp_offset,
-                ref mut last_line_done,
+                last_line_done,
             } => {
                 let string = Self::process_string(buffer, *timestamp_offset, last_line_done)?;
                 collector.on_string_data(string)
