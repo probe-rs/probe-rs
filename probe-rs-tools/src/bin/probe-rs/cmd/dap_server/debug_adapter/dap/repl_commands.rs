@@ -196,7 +196,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         },
     },
     ReplCommand {
-        command: "backtrace",
+        command: "bt",
         sub_commands: &[ReplCommand {
             command: "yaml",
             help_text: "Print all information about the backtrace of the current thread to a local file in YAML format.",
@@ -304,6 +304,40 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 args: &[],
                 // TODO: This is easy to implement ... just requires deciding how to format the output.
                 handler: |_, _, _| Err(DebuggerError::Unimplemented),
+            },
+            ReplCommand {
+                command: "break",
+                help_text: "List all breakpoints.",
+                sub_commands: &[],
+                args: &[],
+                handler: |target_core, _, _| {
+                    let breakpoint_addrs = target_core
+                        .core
+                        .hw_breakpoints()?
+                        .into_iter()
+                        .enumerate()
+                        .filter_map(|(idx, bpt)| bpt.map(|bpt| (idx, bpt)));
+
+                    let mut response_message = String::new();
+                    if breakpoint_addrs.clone().count() == 0 {
+                        response_message.push_str("No breakpoints set.");
+                    } else {
+                        for (idx, bpt) in breakpoint_addrs {
+                            writeln!(&mut response_message, "Breakpoint #{idx} @ {bpt:#010X}\n")
+                                .unwrap();
+                        }
+                    }
+
+                    Ok(Response {
+                        command: "breakpoints".to_string(),
+                        success: true,
+                        message: Some(response_message),
+                        type_: "response".to_string(),
+                        request_seq: 0,
+                        seq: 0,
+                        body: None,
+                    })
+                },
             },
         ],
         args: &[],
@@ -509,40 +543,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         },
     },
     ReplCommand {
-        command: "list_break",
-        help_text: "List all set breakpoints",
-        sub_commands: &[],
-        args: &[],
-        handler: |target_core, _, _| {
-            let breakpoint_addrs = target_core
-                .core
-                .hw_breakpoints()?
-                .into_iter()
-                .enumerate()
-                .filter_map(|(idx, bpt)| bpt.map(|bpt| (idx, bpt)));
-
-            let mut response_message = String::new();
-            if breakpoint_addrs.clone().count() == 0 {
-                response_message.push_str("No breakpoints set.");
-            } else {
-                for (idx, bpt) in breakpoint_addrs {
-                    writeln!(&mut response_message, "Breakpoint #{idx} @ {bpt:#010X}\n").unwrap();
-                }
-            }
-
-            Ok(Response {
-                command: "breakpoints".to_string(),
-                success: true,
-                message: Some(response_message),
-                type_: "response".to_string(),
-                request_seq: 0,
-                seq: 0,
-                body: None,
-            })
-        },
-    },
-    ReplCommand {
-        command: "clear_break",
+        command: "clear",
         help_text: "Clear a breakpoint",
         sub_commands: &[],
         args: &[ReplCommandArgs::Required("*address")],
