@@ -2,7 +2,7 @@
 name = "rtthost"
 description = "RTT (Real-Time Transfer) client"
 version.workspace = true
-edition.workspace = true
+edition = "2024"
 license = "MIT"
 authors = ["Matti Virkkunen <mvirkkunen@gmail.com>"]
 repository.workspace = true
