@@ -183,7 +183,8 @@ pub(crate) fn build_expanded_commands(
     let mut repl_commands: Vec<&ReplCommand<ReplHandler>> = REPL_COMMANDS.iter().collect();
 
     let mut command_root = "".to_string();
-    for command_piece in command_pieces {
+    let piece_count = command_pieces.clone().count();
+    for (piece_idx, command_piece) in command_pieces.enumerate() {
         // Find the matching commands.
         let matches = find_commands(&repl_commands, command_piece);
 
@@ -194,7 +195,10 @@ pub(crate) fn build_expanded_commands(
             break;
         };
 
-        if matches.len() == 1 && !parent_command.sub_commands.is_empty() {
+        if matches.len() == 1
+            && !parent_command.sub_commands.is_empty()
+            && piece_idx != piece_count - 1
+        {
             // Build up the full command as we iterate ...
             if !command_root.is_empty() {
                 command_root.push(' ');

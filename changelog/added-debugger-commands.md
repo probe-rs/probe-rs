@@ -1,1 +1,1 @@
-Implemented the following debugger console commands: `list_break`, `clear_break`, `backtrace-yaml`.
+Implemented the following debugger console commands: `list_break`, `clear_break`, added `yaml` subcommand to `backtrace`.
