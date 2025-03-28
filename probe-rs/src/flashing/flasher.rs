@@ -424,6 +424,25 @@ impl Flasher {
         result
     }
 
+    /// Verifies all the to-be-written bytes of this flasher prior to flashing.
+    pub(super) fn preverify(
+        &mut self,
+        session: &mut Session,
+        progress: &FlashProgress,
+        ignore_filled: bool,
+    ) -> Result<bool, FlashError> {
+        progress.started_verifying();
+
+        let result = self.do_verify(session, progress, ignore_filled);
+
+        match result.is_ok() {
+            true => progress.finished_preverifying(),
+            false => progress.failed_preverifying(),
+        }
+
+        result
+    }
+
     /// Verifies all the to-be-written bytes of this flasher.
     pub(super) fn verify(
         &mut self,

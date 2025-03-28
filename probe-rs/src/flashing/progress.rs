@@ -115,6 +115,16 @@ impl<'a> FlashProgress<'a> {
         self.emit(ProgressEvent::Finished(ProgressOperation::Program));
     }
 
+    /// Signal that the preverifying procedure failed.
+    pub(super) fn failed_preverifying(&self) {
+        self.emit(ProgressEvent::Failed(ProgressOperation::Preverify));
+    }
+
+    /// Signal that the preverifying procedure completed successfully.
+    pub(super) fn finished_preverifying(&self) {
+        self.emit(ProgressEvent::Finished(ProgressOperation::Preverify));
+    }
+
     /// Signal that the erasing procedure failed.
     pub(super) fn failed_erasing(&self) {
         self.emit(ProgressEvent::Failed(ProgressOperation::Erase));
@@ -153,6 +163,9 @@ impl<'a> FlashProgress<'a> {
 /// The operation that is currently in progress.
 #[derive(Clone, Copy, Debug)]
 pub enum ProgressOperation {
+    /// Checking flash contents prior to writing.
+    Preverify,
+
     /// Reading back flash contents to restore erased regions that should be kept unchanged.
     Fill,
 

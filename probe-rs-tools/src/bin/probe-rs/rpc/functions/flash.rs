@@ -34,6 +34,8 @@ pub struct DownloadOptions {
     /// If the chip was pre-erased with external erasers, this flag can set to true to skip erasing
     /// It may be useful for mass production.
     pub skip_erase: bool,
+    /// Before flashing, read back all the flashed data to skip flashing if the device is up to date.
+    pub preverify: bool,
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     pub verify: bool,
     /// Disable double buffering when loading flash.
@@ -84,7 +86,7 @@ impl FlashRequest {
         options.keep_unwritten_bytes = self.options.keep_unwritten_bytes;
         options.do_chip_erase = self.options.do_chip_erase;
         options.skip_erase = self.options.skip_erase;
-        options.preverify = false;
+        options.preverify = self.options.preverify;
         options.verify = self.options.verify;
         options.disable_double_buffering = self.options.disable_double_buffering;
 
@@ -180,6 +182,9 @@ pub struct FlashDataBlockSpan {
 
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Schema)]
 pub enum Operation {
+    /// Checking flash contents prior to writing.
+    Preverify,
+
     /// Reading back flash contents to restore erased regions that should be kept unchanged.
     Fill,
 
@@ -196,6 +201,7 @@ pub enum Operation {
 impl From<flashing::ProgressOperation> for Operation {
     fn from(operation: flashing::ProgressOperation) -> Self {
         match operation {
+            flashing::ProgressOperation::Preverify => Operation::Preverify,
             flashing::ProgressOperation::Fill => Operation::Fill,
             flashing::ProgressOperation::Erase => Operation::Erase,
             flashing::ProgressOperation::Program => Operation::Program,

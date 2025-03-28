@@ -585,10 +585,12 @@ impl Debugger {
             total_page_size: u64,
             total_sector_size: u64,
             total_fill_size: u64,
+            total_preverify_size: u64,
             total_verify_size: u64,
             page_size_done: u64,
             sector_size_done: u64,
             fill_size_done: u64,
+            preverify_size_done: u64,
             verify_size_done: u64,
         }
 
@@ -596,11 +598,13 @@ impl Debugger {
             total_page_size: 0,
             total_sector_size: 0,
             total_fill_size: 0,
+            total_preverify_size: 0,
             total_verify_size: 0,
             page_size_done: 0,
-            verify_size_done: 0,
             sector_size_done: 0,
             fill_size_done: 0,
+            preverify_size_done: 0,
+            verify_size_done: 0,
         });
 
         download_options.progress = progress_id.map(|id| {
@@ -612,6 +616,10 @@ impl Debugger {
                         operation,
                         total: Some(total),
                     } => match operation {
+                        ProgressOperation::Preverify => {
+                            flash_progress.total_preverify_size += total;
+                            flash_progress.preverify_size_done = 0;
+                        }
                         ProgressOperation::Fill => {
                             flash_progress.total_fill_size += total;
                             flash_progress.fill_size_done = 0;
@@ -629,6 +637,38 @@ impl Debugger {
                             flash_progress.verify_size_done = 0;
                         }
                     },
+                    ProgressEvent::AddProgressBar {
+                        operation: _,
+                        total: None,
+                    } => {}
+                    ProgressEvent::Started(ProgressOperation::Preverify) => {
+                        debug_adapter
+                            .update_progress(None, Some("Preverifying"), id)
+                            .ok();
+                    }
+                    ProgressEvent::Progress {
+                        operation: ProgressOperation::Preverify,
+                        size,
+                        ..
+                    } => {
+                        flash_progress.preverify_size_done += size;
+                        let progress = flash_progress.preverify_size_done as f64
+                            / flash_progress.total_preverify_size as f64;
+
+                        debug_adapter
+                            .update_progress(Some(progress), Some("Preverifying"), id)
+                            .ok();
+                    }
+                    ProgressEvent::Failed(ProgressOperation::Preverify) => {
+                        debug_adapter
+                            .update_progress(Some(1.0), Some("Preverifying Failed!"), id)
+                            .ok();
+                    }
+                    ProgressEvent::Finished(ProgressOperation::Preverify) => {
+                        debug_adapter
+                            .update_progress(Some(1.0), Some("Preverifying Complete!"), id)
+                            .ok();
+                    }
                     ProgressEvent::Started(ProgressOperation::Fill) => {
                         debug_adapter
                             .update_progress(None, Some("Reading Old Pages"), id)
@@ -739,7 +779,8 @@ impl Debugger {
                             .update_progress(Some(1.0), Some("Verifying Complete!"), id)
                             .ok();
                     }
-                    _ => {}
+                    ProgressEvent::FlashLayoutReady { .. } => {}
+                    ProgressEvent::DiagnosticMessage { .. } => {}
                 }
             })
         });

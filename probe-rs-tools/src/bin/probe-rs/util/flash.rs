@@ -121,6 +121,7 @@ pub fn build_loader(
 }
 
 pub struct ProgressBars {
+    pub preverify: ProgressBarGroup,
     pub erase: ProgressBarGroup,
     pub fill: ProgressBarGroup,
     pub program: ProgressBarGroup,
@@ -241,6 +242,7 @@ impl CliProgressBars {
         logging::set_progress_bar(multi_progress.clone());
 
         let progress_bars = Mutex::new(ProgressBars {
+            preverify: ProgressBarGroup::new(" Preverifying"),
             erase: ProgressBarGroup::new("      Erasing"),
             fill: ProgressBarGroup::new("Reading flash"),
             program: ProgressBarGroup::new("  Programming"),
@@ -268,6 +270,7 @@ impl CliProgressBars {
                     ProgressBar::no_length()
                 });
                 match operation {
+                    Operation::Preverify => progress_bars.preverify.add(bar),
                     Operation::Fill => progress_bars.fill.add(bar),
                     Operation::Erase => progress_bars.erase.add(bar),
                     Operation::Program => progress_bars.program.add(bar),
@@ -276,6 +279,7 @@ impl CliProgressBars {
             }
 
             ProgressEvent::Started(operation) => match operation {
+                Operation::Preverify => progress_bars.preverify.mark_start_now(),
                 Operation::Fill => progress_bars.fill.mark_start_now(),
                 Operation::Erase => progress_bars.erase.mark_start_now(),
                 Operation::Program => progress_bars.program.mark_start_now(),
@@ -283,6 +287,7 @@ impl CliProgressBars {
             },
 
             ProgressEvent::Progress { operation, size } => match operation {
+                Operation::Preverify => progress_bars.preverify.inc(size),
                 Operation::Fill => progress_bars.fill.inc(size),
                 Operation::Erase => progress_bars.erase.inc(size),
                 Operation::Program => progress_bars.program.inc(size),
@@ -290,6 +295,7 @@ impl CliProgressBars {
             },
 
             ProgressEvent::Failed(operation) => match operation {
+                Operation::Preverify => progress_bars.preverify.abandon(),
                 Operation::Fill => progress_bars.fill.abandon(),
                 Operation::Erase => progress_bars.erase.abandon(),
                 Operation::Program => progress_bars.program.abandon(),
@@ -297,6 +303,7 @@ impl CliProgressBars {
             },
 
             ProgressEvent::Finished(operation) => match operation {
+                Operation::Preverify => progress_bars.preverify.finish(),
                 Operation::Fill => progress_bars.fill.finish(),
                 Operation::Erase => progress_bars.erase.finish(),
                 Operation::Program => progress_bars.program.finish(),

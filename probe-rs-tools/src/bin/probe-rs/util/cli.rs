@@ -16,7 +16,7 @@ use crate::{
         client::{RpcClient, SessionInterface},
         functions::{
             CancelTopic,
-            flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
+            flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent},
             monitor::{MonitorEvent, MonitorMode, MonitorOptions},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
@@ -185,6 +185,7 @@ pub async fn flash(
         keep_unwritten_bytes: download_options.restore_unwritten,
         do_chip_erase: chip_erase,
         skip_erase: false,
+        preverify: download_options.preverify,
         verify: download_options.verify,
         disable_double_buffering: download_options.disable_double_buffering,
     };
@@ -195,14 +196,17 @@ pub async fn flash(
 
     let mut flash_layout = None;
 
-    let run_flash = if download_options.preverify {
-        let pb = if download_options.disable_progressbars {
-            None
-        } else {
-            Some(CliProgressBars::new())
-        };
-        let result = session
-            .verify(loader.loader, async |event| {
+    let pb = if download_options.disable_progressbars {
+        None
+    } else {
+        Some(CliProgressBars::new())
+    };
+    session
+        .flash(
+            options,
+            loader.loader,
+            rtt_client.as_ref().map(|c| c.handle),
+            async |event| {
                 if let ProgressEvent::FlashLayoutReady {
                     flash_layout: layout,
                 } = &event
@@ -212,39 +216,9 @@ pub async fn flash(
                 if let Some(ref pb) = pb {
                     pb.handle(event);
                 }
-            })
-            .await?;
-
-        result == VerifyResult::Mismatch
-    } else {
-        true
-    };
-
-    if run_flash {
-        let pb = if download_options.disable_progressbars {
-            None
-        } else {
-            Some(CliProgressBars::new())
-        };
-        session
-            .flash(
-                options,
-                loader.loader,
-                rtt_client.as_ref().map(|c| c.handle),
-                async |event| {
-                    if let ProgressEvent::FlashLayoutReady {
-                        flash_layout: layout,
-                    } = &event
-                    {
-                        flash_layout = Some(layout.clone());
-                    }
-                    if let Some(ref pb) = pb {
-                        pb.handle(event);
-                    }
-                },
-            )
-            .await?;
-    }
+            },
+        )
+        .await?;
 
     // Visualise flash layout to file if requested.
     if let Some(visualizer_output) = download_options.flash_layout_output_path {

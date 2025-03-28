@@ -502,37 +502,57 @@ impl FlashLoader {
 
         self.initialize(&mut algos, session, &progress, &mut options)?;
 
-        let mut do_chip_erase = options.do_chip_erase;
-        let mut did_chip_erase = false;
+        let run_flash = if options.preverify {
+            let mut mismatch = false;
+            for flasher in &mut algos {
+                tracing::debug!("Preverifying for algo: {}", flasher.flash_algorithm.name);
 
-        // Iterate all flash algorithms we need to use and do the flashing.
-        for mut flasher in algos {
-            tracing::debug!("Flashing ranges for algo: {}", flasher.flash_algorithm.name);
-
-            if do_chip_erase {
-                tracing::debug!("    Doing chip erase...");
-                flasher.run_erase_all(session, &progress)?;
-                do_chip_erase = false;
-                did_chip_erase = true;
+                if flasher.preverify(session, &progress, !options.keep_unwritten_bytes)? {
+                    continue;
+                } else {
+                    tracing::debug!("    Mismatch");
+                    mismatch = true;
+                    break;
+                }
             }
+            mismatch
+        } else {
+            true
+        };
 
-            let mut do_use_double_buffering = flasher.double_buffering_supported();
-            if do_use_double_buffering && options.disable_double_buffering {
-                tracing::info!(
-                    "Disabled double-buffering support for loader via passed option, though target supports it."
-                );
-                do_use_double_buffering = false;
+        if run_flash {
+            let mut do_chip_erase = options.do_chip_erase;
+            let mut did_chip_erase = false;
+
+            // Iterate all flash algorithms we need to use and do the flashing.
+            for mut flasher in algos {
+                tracing::debug!("Flashing ranges for algo: {}", flasher.flash_algorithm.name);
+
+                if do_chip_erase {
+                    tracing::debug!("    Doing chip erase...");
+                    flasher.run_erase_all(session, &progress)?;
+                    do_chip_erase = false;
+                    did_chip_erase = true;
+                }
+
+                let mut do_use_double_buffering = flasher.double_buffering_supported();
+                if do_use_double_buffering && options.disable_double_buffering {
+                    tracing::info!(
+                        "Disabled double-buffering support for loader via passed option, though target supports it."
+                    );
+                    do_use_double_buffering = false;
+                }
+
+                // Program the data.
+                flasher.program(
+                    session,
+                    &progress,
+                    options.keep_unwritten_bytes,
+                    do_use_double_buffering,
+                    options.skip_erase || did_chip_erase,
+                    options.verify,
+                )?;
             }
-
-            // Program the data.
-            flasher.program(
-                session,
-                &progress,
-                options.keep_unwritten_bytes,
-                do_use_double_buffering,
-                options.skip_erase || did_chip_erase,
-                options.verify,
-            )?;
         }
 
         tracing::debug!("Committing RAM!");
@@ -760,6 +780,9 @@ impl FlashLoader {
                     .program_size();
             }
 
+            if options.preverify {
+                progress.add_progress_bar(ProgressOperation::Preverify, Some(program_size));
+            }
             if options.keep_unwritten_bytes {
                 progress.add_progress_bar(ProgressOperation::Fill, Some(fill_size));
             }
