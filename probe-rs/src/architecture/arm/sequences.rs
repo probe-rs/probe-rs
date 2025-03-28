@@ -13,7 +13,7 @@ use probe_rs_target::CoreType;
 use crate::{
     MemoryInterface, MemoryMappedRegister, Session,
     architecture::arm::{
-        ArmProbeInterface, RegisterAddress,
+        ArmProbeInterface, DapError, RegisterAddress,
         core::registers::cortex_m::{PC, SP},
         dp::{Ctrl, DLPIDR, DebugPortError, DpRegister, TARGETID},
     },
@@ -390,17 +390,30 @@ pub(crate) fn cortex_m_wait_for_reset(
 
     let start = Instant::now();
 
-    while start.elapsed() < Duration::from_millis(500) {
+    // PSOC 6 documentation states 600ms is the maximum possible time
+    // before the debug port becomes available again after reset
+    while start.elapsed() < Duration::from_millis(600) {
         let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
-            Ok(val) => Dhcsr(val),
             // Some combinations of debug probe and target (in
             // particular, hs-probe and ATSAMD21) result in
             // register read errors while the target is
             // resetting.
+            Ok(val) => Dhcsr(val),
             Err(ArmError::AccessPort {
-                source: AccessPortError::RegisterRead { .. },
+                source: AccessPortError::RegisterRead { source, .. },
                 ..
-            }) => continue,
+            }) => {
+                if let Some(ArmError::Dap(DapError::NoAcknowledge)) =
+                    source.downcast_ref::<ArmError>()
+                {
+                    // On PSOC 6, a system reset resets the SWD interface as well,
+                    // so we have to reinitialize.
+                    if let Ok(probe) = interface.get_arm_probe_interface() {
+                        probe.reinitialize()?;
+                    }
+                }
+                continue;
+            }
             Err(err) => return Err(err),
         };
         if !dhcsr.s_reset_st() {
@@ -645,7 +658,28 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 // Setting this on MINDP is unpredictable.
                 ctrl.set_mask_lane(0b1111);
             }
-            interface.write_dp_register(dp, ctrl.clone())?;
+
+            match interface
+                .write_dp_register(dp, ctrl.clone())
+                .and_then(|_| interface.flush())
+            {
+                Ok(()) => {}
+                Err(e @ ArmError::Dap(DapError::NoAcknowledge)) => {
+                    // If we get a NACK from the power-up request, ignore the error & perform a line reset.
+                    // (CMSIS-DAP transports read DP.RDBUFF right after a write to DP.CTRL_STAT.
+                    //  This fails in some cases on PSOC 6, for example if the device is waking from DeepSleep.
+                    //  If something really went wrong, we'll hit an error or timeout in the polling loop below.)
+                    let Some(probe) = interface.try_dap_probe_mut() else {
+                        tracing::warn!(
+                            "Power-up request returned NACK, but we don't have a DapProbe, so we can't reconnect"
+                        );
+                        return Err(e);
+                    };
+                    tracing::info!("Power-up request returned NACK, reconnecting");
+                    self.debug_port_connect(probe, dp)?;
+                }
+                Err(e) => return Err(e),
+            }
 
             let start = Instant::now();
             loop {

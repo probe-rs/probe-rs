@@ -424,4 +424,7 @@ pub trait DapAccess {
 
     /// Gain access to the Probe that implements this trait
     fn try_dap_probe(&self) -> Option<&dyn DapProbe>;
+
+    /// Gain mutable access to the Probe that implements this trait
+    fn try_dap_probe_mut(&mut self) -> Option<&mut dyn DapProbe>;
 }
