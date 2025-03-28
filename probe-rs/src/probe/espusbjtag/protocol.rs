@@ -230,26 +230,17 @@ impl ProtocolHandler {
         // We need to flush the device's response buffer, but we don't always succeed in doing so.
         // This nonsense if supposed to help us recover from some errors.
         // Not bulletproof, but significantly reduces error rate.
-        let flush_ep = |this: &mut Self| {
-            let mut incoming = [0; IN_EP_BUFFER_SIZE];
-            this.device_handle
-                .read_bulk(this.ep_in, &mut incoming, Duration::from_millis(100))
-                .is_ok()
-        };
-
-        if flush_ep(&mut this) {
-            while flush_ep(&mut this) {}
-        } else {
+        loop {
             // Just returning here would end us up with Invalid IDCODE.
             for _ in 0..16 {
-                this.shift_bit(true, true, false).unwrap();
+                this.shift_bit(true, true, true).unwrap();
             }
 
             this.flush().unwrap();
+            let response_len = this.response.len();
             this.response.clear();
-
-            if flush_ep(&mut this) {
-                while flush_ep(&mut this) {}
+            if response_len == 16 {
+                break;
             }
         }
 
