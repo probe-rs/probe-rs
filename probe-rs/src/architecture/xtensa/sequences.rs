@@ -1,7 +1,9 @@
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use crate::Session;
+use crate::architecture::xtensa::Xtensa;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
+use crate::semihosting::{SemihostingCommand, UnknownCommandDetails};
 
 /// A interface to operate debug sequences for Xtensa targets.
 ///
@@ -34,6 +36,18 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         interface.reset_and_halt(timeout)?;
 
         Ok(())
+    }
+
+    /// Attempts to handle target-dependent semihosting commands.
+    ///
+    /// Returns `Ok(Some(command))` if the command was not fully handled, `Ok(None)`
+    /// if the command was fully handled.
+    fn on_unknown_semihosting_command(
+        &self,
+        _interface: &mut Xtensa,
+        details: UnknownCommandDetails,
+    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+        Ok(Some(SemihostingCommand::Unknown(details)))
     }
 }
 

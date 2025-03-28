@@ -6,9 +6,11 @@ use super::esp::EspFlashSizeDetector;
 use crate::{
     MemoryInterface, Session,
     architecture::riscv::{
-        Dmcontrol, Dmstatus, communication_interface::RiscvCommunicationInterface,
+        Dmcontrol, Dmstatus, Riscv32, communication_interface::RiscvCommunicationInterface,
         sequences::RiscvDebugSequence,
     },
+    semihosting::{SemihostingCommand, UnknownCommandDetails},
+    vendor::espressif::sequences::esp::EspBreakpointHandler,
 };
 
 /// The debug sequence implementation for the ESP32C3.
@@ -113,5 +115,13 @@ impl RiscvDebugSequence for ESP32C3 {
         self.on_connect(interface)?;
 
         Ok(())
+    }
+
+    fn on_unknown_semihosting_command(
+        &self,
+        interface: &mut Riscv32,
+        details: UnknownCommandDetails,
+    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+        EspBreakpointHandler::handle_riscv_idf_semihosting(interface, details)
     }
 }
