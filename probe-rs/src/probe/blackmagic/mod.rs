@@ -2,6 +2,7 @@
 use std::{
     char,
     io::{BufReader, BufWriter, Read, Write},
+    net::SocketAddr,
     time::Duration,
 };
 
@@ -16,7 +17,7 @@ use crate::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    probe::{DebugProbe, DebugProbeInfo, JTAGAccess, ProbeFactory},
+    probe::{DebugProbe, DebugProbeInfo, DebugProbeSelector, JTAGAccess, ProbeFactory},
 };
 use bitvec::{order::Lsb0, vec::BitVec};
 use probe_rs_target::ScanChainElement;
@@ -30,6 +31,7 @@ use super::{
 
 const BLACK_MAGIC_PROBE_VID: u16 = 0x1d50;
 const BLACK_MAGIC_PROBE_PID: u16 = 0x6018;
+const BLACK_MAGIC_PROBE: (u16, u16) = (BLACK_MAGIC_PROBE_VID, BLACK_MAGIC_PROBE_PID);
 const BLACK_MAGIC_PROTOCOL_RESPONSE_START: u8 = b'&';
 const BLACK_MAGIC_PROTOCOL_RESPONSE_END: u8 = b'#';
 pub(crate) const BLACK_MAGIC_REMOTE_SIZE_MAX: usize = 1024;
@@ -1586,5 +1588,52 @@ impl ProbeFactory for BlackMagicProbeFactory {
             probes.push(info);
         }
         probes
+    }
+
+    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+        // No selector - list probes as usual
+        let Some(selector) = selector else {
+            return self.list_probes();
+        };
+
+        let vid_pid = (selector.vendor_id, selector.product_id);
+
+        let Some(serial) = selector.serial_number.as_deref() else {
+            if vid_pid != BLACK_MAGIC_PROBE {
+                // Filter is not for black magic probes, skip listing.
+                return vec![];
+            }
+            // Since there is no serial specified, we can list all probes.
+            return self.list_probes();
+        };
+
+        // If the selector refers to an IP:port pair, return that as the list of probes.
+        let Ok(ip_port) = serial.parse::<SocketAddr>() else {
+            if vid_pid != BLACK_MAGIC_PROBE {
+                // Filter is not for black magic probes, skip listing.
+                return vec![];
+            }
+            // The selector is not an IP:port pair, so we can list all probes, applying the requested filter.
+            return self
+                .list_probes()
+                .into_iter()
+                .filter(|probe| selector.matches_probe(probe))
+                .collect();
+        };
+
+        if vid_pid != BLACK_MAGIC_PROBE && vid_pid != (0, 0) {
+            // Filter is not for black magic probes, skip listing.
+            return vec![];
+        }
+
+        // Filter is a valid probe, and VID:PID is either a BMP or the "not specified" convention.
+        vec![DebugProbeInfo {
+            identifier: format!("{}:{}", ip_port.ip(), ip_port.port()),
+            vendor_id: BLACK_MAGIC_PROBE_VID,
+            product_id: BLACK_MAGIC_PROBE_PID,
+            serial_number: Some(ip_port.to_string()),
+            probe_factory: &BlackMagicProbeFactory,
+            hid_interface: None,
+        }]
     }
 }

@@ -649,6 +649,18 @@ pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sy
 
     /// Returns a list of all available debug probes of the current type.
     fn list_probes(&self) -> Vec<DebugProbeInfo>;
+
+    /// Returns a list of probes that match the optional selector.
+    ///
+    /// If the selector is `None`, all available probes are returned.
+    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+        // The default implementation falls back to listing all probes so that drivers don't need
+        // to deal with the common filtering logic.
+        self.list_probes()
+            .into_iter()
+            .filter(|probe| selector.as_ref().is_none_or(|s| s.matches_probe(probe)))
+            .collect()
+    }
 }
 
 /// An abstraction over general debug probe.
@@ -959,6 +971,15 @@ pub struct DebugProbeSelector {
 impl DebugProbeSelector {
     pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
         self.match_probe_selector(info.vendor_id(), info.product_id(), info.serial_number())
+    }
+
+    /// Check if the given probe info matches this selector.
+    pub fn matches_probe(&self, info: &DebugProbeInfo) -> bool {
+        self.match_probe_selector(
+            info.vendor_id,
+            info.product_id,
+            info.serial_number.as_deref(),
+        )
     }
 
     fn match_probe_selector(

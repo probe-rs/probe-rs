@@ -112,11 +112,7 @@ pub async fn select_probe(
     request: SelectProbeRequest,
 ) -> SelectProbeResponse {
     let lister = ctx.lister();
-    let mut list = lister.list_all();
-
-    if let Some(selector) = request.probe {
-        list.retain(|info| selector.matches(info));
-    }
+    let mut list = lister.list(request.probe.map(|sel| sel.into()).as_ref());
 
     match list.len() {
         0 => Err(OperationError::NoProbesFound.into()),
@@ -170,26 +166,6 @@ pub struct DebugProbeSelector {
     pub product_id: u16,
     /// The the serial number of the debug probe to be used.
     pub serial_number: Option<String>,
-}
-
-impl DebugProbeSelector {
-    pub fn matches(&self, probe: &DebugProbeInfo) -> bool {
-        probe.vendor_id == self.vendor_id
-            && probe.product_id == self.product_id
-            && self
-                .serial_number
-                .as_ref()
-                .map(|s| {
-                    if let Some(ref serial_number) = probe.serial_number {
-                        serial_number == s
-                    } else {
-                        // Match probes without serial number when the
-                        // selector has a third, empty part ("VID:PID:")
-                        s.is_empty()
-                    }
-                })
-                .unwrap_or(true)
-    }
 }
 
 impl From<probe_rs::probe::DebugProbeSelector> for DebugProbeSelector {
