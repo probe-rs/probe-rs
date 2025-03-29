@@ -258,9 +258,9 @@ impl ProbeLister for LimitedLister {
         self.all_probes.open(selector)
     }
 
-    fn list_all(&self) -> Vec<DebugProbeInfo> {
+    fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
         self.all_probes
-            .list_all()
+            .list(selector)
             .into_iter()
             .filter(|info| self.is_allowed(&DebugProbeSelector::from(info)))
             .collect()

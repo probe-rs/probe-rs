@@ -34,6 +34,11 @@ impl Lister {
     pub fn list_all(&self) -> Vec<DebugProbeInfo> {
         self.lister.list_all()
     }
+
+    /// List all available debug probes
+    pub fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+        self.lister.list(selector)
+    }
 }
 
 impl Default for Lister {
@@ -50,7 +55,12 @@ pub trait ProbeLister: std::fmt::Debug {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError>;
 
     /// List all probes found by the lister.
-    fn list_all(&self) -> Vec<DebugProbeInfo>;
+    fn list_all(&self) -> Vec<DebugProbeInfo> {
+        self.list(None)
+    }
+
+    /// List probes found by the lister, with optional filtering.
+    fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo>;
 }
 
 /// Default lister implementation that includes all built-in probe drivers.
@@ -59,11 +69,29 @@ pub struct AllProbesLister;
 
 impl ProbeLister for AllProbesLister {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
-        Self::open(selector)
+        let selector = selector.into();
+
+        for probe_ctor in Self::DRIVERS {
+            match probe_ctor.open(&selector) {
+                Ok(link) => return Ok(Probe::from_specific_probe(link)),
+                Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
+                Err(e) => return Err(e),
+            };
+        }
+
+        Err(DebugProbeError::ProbeCouldNotBeCreated(
+            ProbeCreationError::NotFound,
+        ))
     }
 
-    fn list_all(&self) -> Vec<DebugProbeInfo> {
-        Self::list_all()
+    fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+        let mut list = vec![];
+
+        for driver in Self::DRIVERS {
+            list.extend(driver.list_probes_filtered(selector));
+        }
+
+        list
     }
 }
 
@@ -88,31 +116,5 @@ impl AllProbesLister {
     /// Create a new lister with all built-in probe drivers.
     pub const fn new() -> Self {
         Self
-    }
-
-    fn open(selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
-        let selector = selector.into();
-
-        for probe_ctor in Self::DRIVERS {
-            match probe_ctor.open(&selector) {
-                Ok(link) => return Ok(Probe::from_specific_probe(link)),
-                Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-                Err(e) => return Err(e),
-            };
-        }
-
-        Err(DebugProbeError::ProbeCouldNotBeCreated(
-            ProbeCreationError::NotFound,
-        ))
-    }
-
-    fn list_all() -> Vec<DebugProbeInfo> {
-        let mut list = vec![];
-
-        for driver in Self::DRIVERS {
-            list.extend(driver.list_probes());
-        }
-
-        list
     }
 }
