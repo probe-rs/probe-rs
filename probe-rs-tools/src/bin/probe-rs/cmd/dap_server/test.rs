@@ -37,11 +37,20 @@ impl ProbeLister for TestLister {
         }
     }
 
-    fn list_all(&self) -> Vec<DebugProbeInfo> {
+    fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
         self.probes
             .borrow()
             .iter()
-            .map(|(info, _)| info.clone())
+            .filter_map(|(info, _)| {
+                if selector
+                    .as_ref()
+                    .is_none_or(|selector| selector.matches_probe(info))
+                {
+                    Some(info.clone())
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 }
