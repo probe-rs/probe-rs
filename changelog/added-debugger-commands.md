@@ -1,0 +1,2 @@
+- Renamed `backtrace` to `bt`. The base command now prints a short backtrace only.
+- Implemented the following debugger console commands: `info break`, `clear`, `bt yaml`.

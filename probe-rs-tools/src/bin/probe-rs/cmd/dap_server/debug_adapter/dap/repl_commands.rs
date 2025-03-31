@@ -7,11 +7,19 @@ use super::{
     repl_types::*,
     request_helpers::set_instruction_breakpoint,
 };
-use crate::cmd::dap_server::{DebuggerError, server::core_data::CoreHandle};
+use crate::cmd::dap_server::{
+    DebuggerError, debug_adapter::dap::dap_types::Breakpoint, server::core_data::CoreHandle,
+};
 use itertools::Itertools;
-use probe_rs::{CoreDump, CoreStatus, HaltReason};
-use probe_rs_debug::{ObjectRef, VariableName};
-use std::{fmt::Display, ops::Range, path::Path, str::FromStr, time::Duration};
+use probe_rs::{CoreDump, CoreInterface, CoreStatus, HaltReason};
+use probe_rs_debug::{ColumnType, ObjectRef, StackFrame, VariableName};
+use std::{
+    fmt::{Display, Write as _},
+    ops::Range,
+    path::Path,
+    str::FromStr,
+    time::Duration,
+};
 
 /// The handler is a function that takes a reference to the target core, and a reference to the response body.
 /// The response body is used to populate the response to the client.
@@ -146,78 +154,104 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                     seq: 0,
                     body: None,
                 });
-            } else {
-                let mut input_arguments = command_arguments.split_whitespace();
-                if let Some(input_argument) = input_arguments.next() {
-                    if let Some(address_str) = &input_argument.strip_prefix('*') {
-                        let result = set_instruction_breakpoint(
-                            InstructionBreakpoint {
-                                instruction_reference: address_str.to_string(),
-                                condition: None,
-                                hit_condition: None,
-                                offset: None,
-                            },
-                            target_core,
-                        );
-                        let mut response = Response {
-                            command: "setBreakpoints".to_string(),
-                            success: true,
-                            message: Some(result.message.clone().unwrap_or_else(|| {
-                                format!("Unexpected error creating breakpoint at {input_argument}.")
-                            })),
-                            type_: "response".to_string(),
-                            request_seq: 0,
-                            seq: 0,
-                            body: None,
-                        };
-                        if result.verified {
-                            // The caller will catch this event body and use it to synch the UI breakpoint list.
-                            response.body = serde_json::to_value(BreakpointEventBody {
-                                breakpoint: result,
-                                reason: "new".to_string(),
-                            })
-                            .ok();
-                        }
-                        return Ok(response);
-                    }
-                }
             }
-            Err(DebuggerError::UserMessage(format!(
-                "Invalid parameters {command_arguments:?}. See the `help` command for more information."
-            )))
+
+            let mut input_arguments = command_arguments.split_whitespace();
+            let Some(address_str) = input_arguments.next().and_then(|arg| arg.strip_prefix('*'))
+            else {
+                return Err(DebuggerError::UserMessage(format!(
+                    "Invalid parameters {command_arguments:?}. See the `help` command for more information."
+                )));
+            };
+
+            let result = set_instruction_breakpoint(
+                InstructionBreakpoint {
+                    instruction_reference: address_str.to_string(),
+                    condition: None,
+                    hit_condition: None,
+                    offset: None,
+                },
+                target_core,
+            );
+            let mut response = Response {
+                command: "setBreakpoints".to_string(),
+                success: true,
+                message: Some(result.message.clone().unwrap_or_else(|| {
+                    format!("Unexpected error creating breakpoint at {address_str}.")
+                })),
+                type_: "response".to_string(),
+                request_seq: 0,
+                seq: 0,
+                body: None,
+            };
+            if result.verified {
+                // The caller will catch this event body and use it to synch the UI breakpoint list.
+                response.body = serde_json::to_value(BreakpointEventBody {
+                    breakpoint: result,
+                    reason: "new".to_string(),
+                })
+                .ok();
+            }
+            Ok(response)
         },
     },
     ReplCommand {
-        command: "backtrace",
-        sub_commands: &[],
-        help_text: "Print the backtrace of the current thread to a local file.",
-        args: &[ReplCommandArgs::Optional(
-            "path (e.g. my_dir/backtrace.yaml)",
-        )],
-        handler: |target_core, command_arguments, _| {
-            let args = command_arguments.split_whitespace().collect_vec();
+        command: "bt",
+        sub_commands: &[ReplCommand {
+            command: "yaml",
+            help_text: "Print all information about the backtrace of the current thread to a local file in YAML format.",
+            sub_commands: &[],
+            args: &[ReplCommandArgs::Required(
+                "path (e.g. my_dir/backtrace.yaml)",
+            )],
+            handler: |target_core, command_arguments, _| {
+                let args = command_arguments.split_whitespace().collect_vec();
 
-            let write_to_file = args.first().map(Path::new);
+                let write_to_file = args.first().map(Path::new);
 
-            // Using the `insta` crate to serialize, because they add a couple of transformations to the yaml output,
-            // presumeably to make it easier to read.
-            // In our case, we want this backtrace format to be comparable to the unwind tests
-            // in `probe-rs::debug::debuginfo`.
-            // The reason for this is that these 'live' backtraces are used to create the 'master' snapshots,
-            // which is used to compare against backtraces generated from coredumps.
-            use insta::_macro_support as insta_yaml;
-            let yaml_data = insta_yaml::serialize_value(
-                &target_core.core_data.stack_frames,
-                insta_yaml::SerializationFormat::Yaml,
-            );
+                // Using the `insta` crate to serialize, because they add a couple of transformations to the yaml output,
+                // presumeably to make it easier to read.
+                // In our case, we want this backtrace format to be comparable to the unwind tests
+                // in `probe-rs::debug::debuginfo`.
+                // The reason for this is that these 'live' backtraces are used to create the 'master' snapshots,
+                // which is used to compare against backtraces generated from coredumps.
+                use insta::_macro_support as insta_yaml;
+                let yaml_data = insta_yaml::serialize_value(
+                    &target_core.core_data.stack_frames,
+                    insta_yaml::SerializationFormat::Yaml,
+                );
 
-            let response_message = if let Some(location) = write_to_file {
-                std::fs::write(location, yaml_data)
-                    .map_err(|e| DebuggerError::UserMessage(format!("{e:?}")))?;
-                format!("Stacktrace successfully stored at {location:?}.")
-            } else {
-                yaml_data
-            };
+                let response_message = if let Some(location) = write_to_file {
+                    std::fs::write(location, yaml_data)
+                        .map_err(|e| DebuggerError::UserMessage(format!("{e:?}")))?;
+                    format!("Stacktrace successfully stored at {location:?}.")
+                } else {
+                    yaml_data
+                };
+                Ok(Response {
+                    command: "backtrace".to_string(),
+                    success: true,
+                    message: Some(response_message),
+                    type_: "response".to_string(),
+                    request_seq: 0,
+                    seq: 0,
+                    body: None,
+                })
+            },
+        }],
+        help_text: "Print the backtrace of the current thread.",
+        args: &[],
+        handler: |target_core, _, _| {
+            let mut response_message = String::new();
+
+            for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
+                response_message.push_str(&format!(
+                    "Frame #{}: {}\n",
+                    i + 1,
+                    ReplStackFrame(frame)
+                ));
+            }
+
             Ok(Response {
                 command: "backtrace".to_string(),
                 success: true,
@@ -271,6 +305,40 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 // TODO: This is easy to implement ... just requires deciding how to format the output.
                 handler: |_, _, _| Err(DebuggerError::Unimplemented),
             },
+            ReplCommand {
+                command: "break",
+                help_text: "List all breakpoints.",
+                sub_commands: &[],
+                args: &[],
+                handler: |target_core, _, _| {
+                    let breakpoint_addrs = target_core
+                        .core
+                        .hw_breakpoints()?
+                        .into_iter()
+                        .enumerate()
+                        .filter_map(|(idx, bpt)| bpt.map(|bpt| (idx, bpt)));
+
+                    let mut response_message = String::new();
+                    if breakpoint_addrs.clone().count() == 0 {
+                        response_message.push_str("No breakpoints set.");
+                    } else {
+                        for (idx, bpt) in breakpoint_addrs {
+                            writeln!(&mut response_message, "Breakpoint #{idx} @ {bpt:#010X}\n")
+                                .unwrap();
+                        }
+                    }
+
+                    Ok(Response {
+                        command: "breakpoints".to_string(),
+                        success: true,
+                        message: Some(response_message),
+                        type_: "response".to_string(),
+                        request_seq: 0,
+                        seq: 0,
+                        body: None,
+                    })
+                },
+            },
         ],
         args: &[],
         handler: |_, _, _| {
@@ -297,24 +365,23 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
 
             for input_argument in input_arguments {
                 if input_argument.starts_with('/') {
-                    if let Some(gdb_nuf_string) = input_argument.strip_prefix('/') {
-                        gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
-                        gdb_nuf
-                            .check_supported_formats(&[
-                                GdbFormat::Native,
-                                GdbFormat::DapReference,
-                            ])
-                            .map_err(|error| {
-                                DebuggerError::UserMessage(format!(
-                                    "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
-                                ))
-                            })?;
-                    } else {
+                    let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
                         return Err(DebuggerError::UserMessage(
                             "The '/' specifier must be followed by a valid gdb 'f' format specifier."
                                 .to_string(),
                         ));
-                    }
+                    };
+                    gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
+                    gdb_nuf
+                        .check_supported_formats(&[
+                            GdbFormat::Native,
+                            GdbFormat::DapReference,
+                        ])
+                        .map_err(|error| {
+                            DebuggerError::UserMessage(format!(
+                                "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
+                            ))
+                        })?;
                 } else {
                     variable_name = VariableName::Named(input_argument.to_string());
                 }
@@ -346,25 +413,25 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 if input_argument.starts_with("0x") || input_argument.starts_with("0X") {
                     MemoryAddress(input_address) = input_argument.try_into()?;
                 } else if input_argument.starts_with('/') {
-                    if let Some(gdb_nuf_string) = input_argument.strip_prefix('/') {
-                        gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
-                        gdb_nuf
-                            .check_supported_formats(&[
-                                GdbFormat::Binary,
-                                GdbFormat::Hex,
-                                GdbFormat::Instruction,
-                            ])
-                            .map_err(|error| {
-                                DebuggerError::UserMessage(format!(
-                                    "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
-                                ))
-                            })?;
-                    } else {
+                    let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
                         return Err(DebuggerError::UserMessage(
                             "The '/' specifier must be followed by a valid gdb 'Nuf' format specifier."
                                 .to_string(),
                         ));
-                    }
+                    };
+
+                    gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
+                    gdb_nuf
+                        .check_supported_formats(&[
+                            GdbFormat::Binary,
+                            GdbFormat::Hex,
+                            GdbFormat::Instruction,
+                        ])
+                        .map_err(|error| {
+                            DebuggerError::UserMessage(format!(
+                                "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
+                            ))
+                        })?;
                 } else {
                     return Err(DebuggerError::UserMessage(
                         "Invalid parameters. See the `help` command for more information."
@@ -450,14 +517,16 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             };
             let mut range_string = String::new();
             for memory_range in &ranges {
-                range_string.push_str(&format!("{memory_range:#X?}, "));
+                if !range_string.is_empty() {
+                    write!(&mut range_string, ", ").unwrap();
+                }
+                write!(&mut range_string, "{memory_range:#X?}").unwrap();
             }
-            if range_string.is_empty() {
-                range_string = "(No memory ranges specified)".to_string();
+            range_string = if range_string.is_empty() {
+                "(No memory ranges specified)".to_string()
             } else {
-                range_string = range_string.trim_end_matches(", ").to_string();
-                range_string = format!("(Includes memory ranges: {range_string})");
-            }
+                format!("(Includes memory ranges: {range_string})")
+            };
             CoreDump::dump_core(&mut target_core.core, ranges)?.store(location)?;
 
             Ok(Response {
@@ -473,4 +542,76 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             })
         },
     },
+    ReplCommand {
+        command: "clear",
+        help_text: "Clear a breakpoint",
+        sub_commands: &[],
+        args: &[ReplCommandArgs::Required("*address")],
+        handler: |target_core, args, _| {
+            let mut input_arguments = args.split_whitespace();
+            let Some(input_argument) = input_arguments.next() else {
+                return Err(DebuggerError::UserMessage(
+                    "Missing breakpoint address to clear. See the `help` command for more information.".to_string()
+                ));
+            };
+
+            let Some(address_str) = input_argument.strip_prefix('*') else {
+                return Err(DebuggerError::UserMessage(format!(
+                    "Invalid input argument {input_argument}. See the `help` command for more information."
+                )));
+            };
+            let Ok(MemoryAddress(address)) = address_str.try_into() else {
+                return Err(DebuggerError::UserMessage(format!(
+                    "Invalid memory address {address_str}. See the `help` command for more information."
+                )));
+            };
+            target_core.clear_breakpoint(address)?;
+
+            let response = Response {
+                command: "setBreakpoints".to_string(),
+                success: true,
+                message: Some("Breakpoint cleared".to_string()),
+                type_: "response".to_string(),
+                request_seq: 0,
+                seq: 0,
+                body: serde_json::to_value(BreakpointEventBody {
+                    breakpoint: Breakpoint {
+                        id: Some(address as i64),
+                        column: None,
+                        end_column: None,
+                        end_line: None,
+                        instruction_reference: None,
+                        line: None,
+                        message: None,
+                        offset: None,
+                        source: None,
+                        verified: false,
+                    },
+                    reason: "removed".to_string(),
+                })
+                .ok(),
+            };
+            Ok(response)
+        },
+    },
 ];
+
+struct ReplStackFrame<'a>(&'a StackFrame);
+
+impl Display for ReplStackFrame<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Header info for the StackFrame
+        write!(f, "{}", self.0.function_name)?;
+        if let Some(si) = &self.0.source_location {
+            write!(f, "\n\t{}", si.path.to_path().display())?;
+
+            if let (Some(column), Some(line)) = (si.column, si.line) {
+                match column {
+                    ColumnType::Column(c) => write!(f, ":{line}:{c}")?,
+                    ColumnType::LeftEdge => write!(f, ":{line}")?,
+                }
+            }
+        }
+        Ok(())
+    }
+}

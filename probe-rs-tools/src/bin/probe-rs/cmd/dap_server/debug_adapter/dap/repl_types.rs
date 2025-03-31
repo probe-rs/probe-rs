@@ -221,22 +221,94 @@ pub(crate) struct GdbNufMemoryResult<'a> {
 
 impl Display for GdbNufMemoryResult<'_> {
     // TODO: Consider wrapping lines at 80 characters.
+    // TODO: take target endianness into account
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.nuf.format_specifier {
-            GdbFormat::Binary => {
-                let width = 10_usize;
-                for byte in self.memory {
-                    write!(f, "{byte:#0width$b} ")?;
-                }
+        let byte_width = match self.nuf.format_specifier {
+            GdbFormat::Binary => 8,
+            GdbFormat::Hex => 2,
+            _ => return write!(f, "<cannot print>"),
+        };
+
+        let byte_per_unit = self.nuf.unit_specifier.get_size();
+        let width = 2 + byte_width * byte_per_unit;
+        let total_bytes = byte_per_unit * self.nuf.unit_count;
+
+        for bytes in self.memory[..total_bytes].chunks_exact(byte_per_unit) {
+            match self.nuf.format_specifier {
+                GdbFormat::Binary => match self.nuf.unit_specifier {
+                    GdbUnit::Byte => {
+                        let byte = bytes[0];
+                        write!(f, "{byte:#0width$b} ")?
+                    }
+                    GdbUnit::HalfWord => {
+                        let halfword = u16::from_le_bytes([bytes[0], bytes[1]]);
+                        write!(f, "{halfword:#0width$b} ")?;
+                    }
+                    GdbUnit::Word => {
+                        let word = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+                        write!(f, "{word:#0width$b} ")?;
+                    }
+                    GdbUnit::Giant => {
+                        let giant = u64::from_le_bytes([
+                            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6],
+                            bytes[7],
+                        ]);
+                        write!(f, "{giant:#0width$b} ")?;
+                    }
+                },
+                GdbFormat::Hex => match self.nuf.unit_specifier {
+                    GdbUnit::Byte => {
+                        let byte = bytes[0];
+                        write!(f, "{byte:#0width$x} ")?
+                    }
+                    GdbUnit::HalfWord => {
+                        let halfword = u16::from_le_bytes([bytes[0], bytes[1]]);
+                        write!(f, "{halfword:#0width$x} ")?;
+                    }
+                    GdbUnit::Word => {
+                        let word = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+                        write!(f, "{word:#0width$x} ")?;
+                    }
+                    GdbUnit::Giant => {
+                        let giant = u64::from_le_bytes([
+                            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6],
+                            bytes[7],
+                        ]);
+                        write!(f, "{giant:#0width$x} ")?;
+                    }
+                },
+                _ => unreachable!(),
             }
-            GdbFormat::Hex => {
-                let width = 4_usize;
-                for byte in self.memory {
-                    write!(f, "{byte:#0width$x} ")?;
-                }
-            }
-            _ => write!(f, "<cannot print>")?,
         }
+
         Ok(())
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod test {
+    use super::*;
+    use test_case::test_case;
+
+    static MEMORY: &[u8] = b"Hello, World!";
+
+    #[test_case("1xb", "0x48 "; "reading u8 hex (1)")]
+    #[test_case("10xb", "0x48 0x65 0x6c 0x6c 0x6f 0x2c 0x20 0x57 0x6f 0x72 "; "reading u8 hex (10)")]
+    #[test_case("1xh", "0x6548 "; "reading u16 hex")]
+    #[test_case("1xw", "0x6c6c6548 "; "reading u32 hex")]
+    #[test_case("1xg", "0x57202c6f6c6c6548 "; "reading u64 hex")]
+    #[test_case("1tb", "0b01001000 "; "reading u8 binary (1)")]
+    #[test_case("10tb", "0b01001000 0b01100101 0b01101100 0b01101100 0b01101111 0b00101100 0b00100000 0b01010111 0b01101111 0b01110010 "; "reading u8 binary (10)")]
+    #[test_case("1th", "0b0110010101001000 "; "reading u16 binary")]
+    #[test_case("1tw", "0b01101100011011000110010101001000 "; "reading u32 binary")]
+    #[test_case("1tg", "0b0101011100100000001011000110111101101100011011000110010101001000 "; "reading u64 binary")]
+    fn print_using_nuf(nuf: &str, expected: &str) {
+        let nuf = nuf.parse::<GdbNuf>().unwrap();
+        let result = GdbNufMemoryResult {
+            nuf: &nuf,
+            memory: MEMORY,
+        };
+        assert_eq!(result.to_string(), expected);
     }
 }
