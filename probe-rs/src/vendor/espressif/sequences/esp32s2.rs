@@ -9,10 +9,13 @@ use super::esp::EspFlashSizeDetector;
 use crate::{
     MemoryInterface, Session,
     architecture::xtensa::{
+        Xtensa,
         communication_interface::{XtensaCommunicationInterface, XtensaError},
         sequences::XtensaDebugSequence,
         xdm::{self, DebugControlBits, DebugRegisterError},
     },
+    semihosting::{SemihostingCommand, UnknownCommandDetails},
+    vendor::espressif::sequences::esp::EspBreakpointHandler,
 };
 
 /// The debug sequence implementation for the ESP32-S2.
@@ -225,5 +228,13 @@ impl XtensaDebugSequence for ESP32S2 {
         })?;
 
         Ok(())
+    }
+
+    fn on_unknown_semihosting_command(
+        &self,
+        interface: &mut Xtensa,
+        details: UnknownCommandDetails,
+    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+        EspBreakpointHandler::handle_xtensa_idf_semihosting(interface, details)
     }
 }
