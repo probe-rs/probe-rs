@@ -610,14 +610,12 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
         let mut memory_access = self.memory_access_for(address, dst.len());
 
-        let result = self.fast_halted_access(|this| {
+        memory_access.halted_access(self, &mut |this, memory_access| {
             memory_access.save_scratch_registers(this)?;
-            let result = this.read_memory_impl(memory_access.as_mut(), address, dst);
+            let result = this.read_memory_impl(memory_access, address, dst);
             memory_access.restore_scratch_registers(this)?;
             result
-        });
-
-        result
+        })
     }
 
     fn read_memory_impl(
@@ -697,14 +695,12 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
         let mut memory_access = self.memory_access_for(address, data.len());
 
-        let result = self.fast_halted_access(|this| {
+        memory_access.halted_access(self, &mut |this, memory_access| {
             memory_access.save_scratch_registers(this)?;
-            let result = this.write_memory_impl(memory_access.as_mut(), address, data);
+            let result = this.write_memory_impl(memory_access, address, data);
             memory_access.restore_scratch_registers(this)?;
             result
-        });
-
-        result
+        })
     }
 
     fn write_memory_unaligned8(
@@ -1094,6 +1090,15 @@ pub struct ProgramCounter(pub u32);
 u32_register!(ProgramCounter, Register::CurrentPc);
 
 trait MemoryAccess {
+    fn halted_access(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+        op: &mut dyn FnMut(
+            &mut XtensaCommunicationInterface,
+            &mut dyn MemoryAccess,
+        ) -> Result<(), XtensaError>,
+    ) -> Result<(), XtensaError>;
+
     fn save_scratch_registers(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
@@ -1142,6 +1147,17 @@ impl FastMemoryAccess {
     }
 }
 impl MemoryAccess for FastMemoryAccess {
+    fn halted_access(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+        op: &mut dyn FnMut(
+            &mut XtensaCommunicationInterface,
+            &mut dyn MemoryAccess,
+        ) -> Result<(), XtensaError>,
+    ) -> Result<(), XtensaError> {
+        interface.fast_halted_access(|this| op(this, self))
+    }
+
     fn save_scratch_registers(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
@@ -1227,6 +1243,17 @@ impl SlowMemoryAccess {
 }
 
 impl MemoryAccess for SlowMemoryAccess {
+    fn halted_access(
+        &mut self,
+        interface: &mut XtensaCommunicationInterface,
+        op: &mut dyn FnMut(
+            &mut XtensaCommunicationInterface,
+            &mut dyn MemoryAccess,
+        ) -> Result<(), XtensaError>,
+    ) -> Result<(), XtensaError> {
+        interface.halted_access(|this| op(this, self))
+    }
+
     fn save_scratch_registers(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
