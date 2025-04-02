@@ -363,7 +363,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
                 GdbInstanceConfiguration::from_session(&session, Some(gdb_connection_string))
             };
 
-            if let Err(e) = crate::cmd::gdb_server::run(&session, instances.iter()) {
+            if let Err(e) = crate::cmd::gdb_server::run(&session, instances.iter(), None) {
                 logging::eprintln("During the execution of GDB an error was encountered:");
                 logging::eprintln(format!("{e:?}"));
             }
