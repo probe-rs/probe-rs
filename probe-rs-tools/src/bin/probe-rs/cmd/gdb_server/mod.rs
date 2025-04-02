@@ -6,6 +6,8 @@ mod target;
 
 pub(crate) use stub::{GdbInstanceConfiguration, run};
 
+use std::path::PathBuf;
+use std::process::Command;
 use std::time::Duration;
 
 use parking_lot::FairMutex;
@@ -27,6 +29,18 @@ pub struct Cmd {
         help = "Use this flag to reset and halt (instead of just a halt) the attached core after attaching to the target."
     )]
     reset_halt: bool,
+
+    #[clap(long, help = "Spawn gdb after starting the gdbserver.")]
+    gdb: Option<String>,
+
+    /// The path to the ELF file to debug.
+    ///
+    /// This only needs to be specified when using `--gdb`.
+    #[clap(index = 1)]
+    path: Option<PathBuf>,
+
+    #[clap(name = "GDB ARGS", index = 2, help = "Arguments to pass to gdb.")]
+    gdb_args: Vec<String>,
 
     #[clap(flatten)]
     common: ProbeOptions,
@@ -58,9 +72,25 @@ impl Cmd {
             );
         }
 
+        let gdb = if let Some(gdb) = self.gdb {
+            let mut cmd = Command::new(gdb);
+            cmd.args([
+                "-ex",
+                &format!("target remote {}", instances[0].socket_addrs[0]),
+            ]);
+            if let Some(path) = self.path {
+                cmd.arg("--symbols").arg(path);
+            }
+            cmd.args(self.gdb_args);
+            eprintln!("Spawning {cmd:?}");
+            Some(cmd.spawn()?)
+        } else {
+            None
+        };
+
         let session = FairMutex::new(session);
 
-        if let Err(e) = run(&session, instances.iter()) {
+        if let Err(e) = run(&session, instances.iter(), gdb) {
             eprintln!("During the execution of GDB an error was encountered:");
             eprintln!("{e:?}");
         }
