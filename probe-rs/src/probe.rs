@@ -31,7 +31,7 @@ use crate::{Error, Permissions, Session};
 use common::ScanChainError;
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -958,7 +958,7 @@ pub enum DebugProbeSelectorParseError {
 /// assert_eq!(selector.vendor_id, 0x1942);
 /// assert_eq!(selector.product_id, 0x1337);
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash)]
 pub struct DebugProbeSelector {
     /// The the USB vendor id of the debug probe to be used.
     pub vendor_id: u16,
@@ -1079,6 +1079,16 @@ impl fmt::Display for DebugProbeSelector {
 impl From<DebugProbeSelector> for String {
     fn from(value: DebugProbeSelector) -> String {
         value.to_string()
+    }
+}
+
+impl<'a> Deserialize<'a> for DebugProbeSelector {
+    fn deserialize<D>(deserializer: D) -> Result<DebugProbeSelector, D::Error>
+    where
+        D: Deserializer<'a>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(serde::de::Error::custom)
     }
 }
 
