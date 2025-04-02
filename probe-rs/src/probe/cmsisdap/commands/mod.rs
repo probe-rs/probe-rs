@@ -27,7 +27,7 @@ pub enum CmsisDapError {
     },
 
     /// CMSIS-DAP responded with an error.
-    ErrorResponse(RequestError),
+    ErrorResponse(#[source] RequestError),
 
     /// Too much data provided for SWJ Sequence command.
     TooMuchData,
