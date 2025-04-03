@@ -33,7 +33,7 @@ pub struct CoreInformation {
 }
 
 /// A generic interface to control a MCU core.
-pub trait CoreInterface: MemoryInterface + CoreMemoryInterfaceShim {
+pub trait CoreInterface: MemoryInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) error will be returned.
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error>;
@@ -178,32 +178,6 @@ pub trait CoreInterface: MemoryInterface + CoreMemoryInterfaceShim {
     }
 }
 
-/// Implementation detail to allow trait upcasting-like behaviour.
-//
-// TODO: replace with trait upcasting once stable
-pub trait CoreMemoryInterfaceShim: MemoryInterface {
-    /// Returns a reference to the underlying `MemoryInterface`.
-    // TODO: replace with trait upcasting once stable
-    fn as_memory_interface(&self) -> &dyn MemoryInterface;
-
-    /// Returns a mutable reference to the underlying `MemoryInterface`.
-    // TODO: replace with trait upcasting once stable
-    fn as_memory_interface_mut(&mut self) -> &mut dyn MemoryInterface;
-}
-
-impl<T> CoreMemoryInterfaceShim for T
-where
-    T: CoreInterface,
-{
-    fn as_memory_interface(&self) -> &dyn MemoryInterface {
-        self
-    }
-
-    fn as_memory_interface_mut(&mut self) -> &mut dyn MemoryInterface {
-        self
-    }
-}
-
 /// Generic core handle representing a physical core on an MCU.
 ///
 /// This should be considered as a temporary view of the core which locks the debug probe driver to as single consumer by borrowing it.
@@ -222,11 +196,11 @@ impl CoreMemoryInterface for Core<'_> {
     type ErrorType = Error;
 
     fn memory(&self) -> &dyn MemoryInterface<Self::ErrorType> {
-        self.inner.as_memory_interface()
+        self.inner.as_ref()
     }
 
     fn memory_mut(&mut self) -> &mut dyn MemoryInterface<Self::ErrorType> {
-        self.inner.as_memory_interface_mut()
+        self.inner.as_mut()
     }
 }
 

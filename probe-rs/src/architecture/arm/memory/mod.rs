@@ -14,7 +14,7 @@ use super::{
 pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, RomTable};
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
-pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
+pub trait ArmMemoryInterface: MemoryInterface<ArmError> {
     /// The underlying MemoryAp address.
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress;
 
@@ -39,30 +39,4 @@ pub trait ArmMemoryInterface: ArmMemoryInterfaceShim {
     // NOTE: this function should be infallible as it is usually only
     // a visual indication.
     fn update_core_status(&mut self, _state: CoreStatus) {}
-}
-
-/// Implementation detail to allow trait upcasting-like behaviour.
-//
-// TODO: replace with trait upcasting once stable
-pub trait ArmMemoryInterfaceShim: MemoryInterface<ArmError> {
-    /// Returns a reference to the underlying `MemoryInterface`.
-    // TODO: replace with trait upcasting once stable
-    fn as_memory_interface(&self) -> &dyn MemoryInterface<ArmError>;
-
-    /// Returns a mutable reference to the underlying `MemoryInterface`.
-    // TODO: replace with trait upcasting once stable
-    fn as_memory_interface_mut(&mut self) -> &mut dyn MemoryInterface<ArmError>;
-}
-
-impl<T> ArmMemoryInterfaceShim for T
-where
-    T: ArmMemoryInterface,
-{
-    fn as_memory_interface(&self) -> &dyn MemoryInterface<ArmError> {
-        self
-    }
-
-    fn as_memory_interface_mut(&mut self) -> &mut dyn MemoryInterface<ArmError> {
-        self
-    }
 }

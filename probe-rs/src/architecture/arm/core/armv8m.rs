@@ -565,10 +565,10 @@ impl CoreMemoryInterface for Armv8m<'_> {
     type ErrorType = ArmError;
 
     fn memory(&self) -> &dyn MemoryInterface<Self::ErrorType> {
-        self.memory.as_memory_interface()
+        self.memory.as_ref()
     }
     fn memory_mut(&mut self) -> &mut dyn MemoryInterface<Self::ErrorType> {
-        self.memory.as_memory_interface_mut()
+        self.memory.as_mut()
     }
 }
 
