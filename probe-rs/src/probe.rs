@@ -103,31 +103,11 @@ impl fmt::Display for BatchCommand {
 }
 
 /// Marker trait for all probe errors.
-pub trait ProbeError: std::error::Error + Send + Sync + AnyShim {}
+pub trait ProbeError: std::error::Error + Send + Sync + std::any::Any {}
 
 impl std::error::Error for Box<dyn ProbeError> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.as_ref().source()
-    }
-}
-
-/// Implementation detail to allow downcasting of probe errors.
-#[doc(hidden)]
-pub trait AnyShim: std::any::Any {
-    fn as_any(&self) -> &dyn std::any::Any;
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
-}
-
-impl<T> AnyShim for T
-where
-    T: ProbeError,
-{
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
     }
 }
 
@@ -137,19 +117,24 @@ where
 pub struct BoxedProbeError(#[from] Box<dyn ProbeError>);
 
 impl BoxedProbeError {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self.0.as_ref()
+    }
+
     /// Returns true if the underlying error is of type `T`.
     pub fn is<T: ProbeError>(&self) -> bool {
-        self.0.as_ref().as_any().is::<T>()
+        self.as_any().is::<T>()
     }
 
     /// Attempts to downcast the error to a specific error type.
     pub fn downcast_ref<T: ProbeError>(&self) -> Option<&T> {
-        self.0.as_ref().as_any().downcast_ref()
+        self.as_any().downcast_ref()
     }
 
     /// Attempts to downcast the error to a specific error type.
     pub fn downcast_mut<T: ProbeError>(&mut self) -> Option<&mut T> {
-        self.0.as_mut().as_any_mut().downcast_mut()
+        let any: &mut dyn std::any::Any = self.0.as_mut();
+        any.downcast_mut()
     }
 }
 
