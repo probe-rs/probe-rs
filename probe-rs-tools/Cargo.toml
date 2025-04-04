@@ -48,7 +48,7 @@ capstone = "0.13"
 cargo_metadata = "0.19"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "3"
-defmt-decoder = "0.4"
+defmt-decoder = "1.0"
 directories = "6"
 dunce = "1"
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
