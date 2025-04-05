@@ -176,8 +176,12 @@ pub struct InfineonXmcScuDetection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InfineonPsocSiidDetection {
+    /// Chip family ID
+    #[serde(serialize_with = "hex_u_int")]
+    pub family_id: u16,
+
     /// Silicon ID => Target name.
     #[serde(serialize_with = "hex_keys_indexmap")]
     #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
-    pub ids: IndexMap<u16, String>,
+    pub silicon_ids: IndexMap<u16, String>,
 }

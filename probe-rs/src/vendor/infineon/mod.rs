@@ -40,10 +40,10 @@ impl Vendor for Infineon {
         interface: &mut dyn ArmProbeInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
-        match chip_info.manufacturer {
-            INFINEON => try_detect_xmc4xxx(registry, interface, &chip_info),
-            CYPRESS => try_detect_psoc(registry, interface, &chip_info),
-            _ => Ok(None),
+        if let Some(psoc) = try_detect_psoc(registry, interface, &chip_info)? {
+            Ok(Some(psoc))
+        } else {
+            try_detect_xmc4xxx(registry, interface, &chip_info)
         }
     }
 }
@@ -53,6 +53,10 @@ fn try_detect_xmc4xxx(
     interface: &mut dyn ArmProbeInterface,
     chip_info: &ArmChipInfo,
 ) -> Result<Option<String>, Error> {
+    if chip_info.manufacturer != INFINEON {
+        return Ok(None);
+    }
+
     const KNOWN_PARTS: &[u16] = &[0x1dd, 0x1df, 0x1dc, 0x1db];
     if !KNOWN_PARTS.contains(&chip_info.part) {
         return Ok(None);
@@ -150,17 +154,29 @@ fn probe_xmc4xxx_flash_size(start_addr: u32, memory: &mut dyn ArmMemoryInterface
 fn try_detect_psoc(
     registry: &Registry,
     interface: &mut dyn ArmProbeInterface,
-    _chip_info: &ArmChipInfo,
+    chip_info: &ArmChipInfo,
 ) -> Result<Option<String>, Error> {
+    if chip_info.manufacturer != INFINEON && chip_info.manufacturer != CYPRESS {
+        return Ok(None);
+    }
+
+    let mut families = registry
+        .families()
+        .iter()
+        .filter(|f| f.manufacturer == Some(chip_info.manufacturer))
+        .flat_map(|f| f.chip_detection.iter())
+        .flat_map(ChipDetectionMethod::as_infineon_psoc_siid)
+        .filter(|f| f.family_id == chip_info.part)
+        .peekable();
+
+    if families.peek().is_none() {
+        return Ok(None);
+    }
+
     let tid = TARGETID(
         interface.read_raw_dp_register(interface.current_debug_port(), TARGETID::ADDRESS)?,
     );
     let siid = tid.tpartno();
 
-    Ok(registry
-        .families()
-        .iter()
-        .flat_map(|f| f.chip_detection.iter())
-        .flat_map(ChipDetectionMethod::as_infineon_psoc_siid)
-        .find_map(|detect| detect.ids.get(&siid).cloned()))
+    Ok(families.find_map(|family| family.silicon_ids.get(&siid).cloned()))
 }
