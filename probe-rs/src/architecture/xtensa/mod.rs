@@ -11,7 +11,9 @@ use crate::{
             Register, SpecialRegister,
             instruction::{Instruction, InstructionEncoding},
         },
-        communication_interface::{DebugCause, IBreakEn, XtensaCommunicationInterface},
+        communication_interface::{
+DebugCause, IBreakEn, ProgramStatus, XtensaCommunicationInterface,
+},
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
         sequences::XtensaDebugSequence,
         xdm::PowerStatus,
@@ -51,6 +53,9 @@ pub struct XtensaCoreState {
 
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
+
+    /// The current interrupt level.
+    current_ps: ProgramStatus,
 }
 
 impl XtensaCoreState {
@@ -62,6 +67,7 @@ impl XtensaCoreState {
             breakpoint_set: [false; 2],
             pc_written: false,
             semihosting_command: None,
+            current_ps: ProgramStatus(0),
         }
     }
 
@@ -231,6 +237,10 @@ impl<'probe> Xtensa<'probe> {
         tracing::debug!("Core halted: {:#?}", status);
 
         if status.is_halted() {
+            // Reading ProgramStatus using `read_register` would return the value
+            // after the debug interrupt has been taken.
+            let raw_ps = self.interface.read_register_untyped(Register::CurrentPs)?;
+            self.state.current_ps = ProgramStatus(raw_ps);
             self.sequence.on_halt(&mut self.interface)?;
         }
 
@@ -336,7 +346,7 @@ impl CoreInterface for Xtensa<'_> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         self.skip_breakpoint_instruction()?;
-        self.interface.step()?;
+        self.interface.step(1, self.state.current_ps.intlevel())?;
         self.on_halted()?;
 
         self.core_info()
