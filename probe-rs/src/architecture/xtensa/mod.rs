@@ -255,7 +255,7 @@ impl<'probe> Xtensa<'probe> {
             if self.current_ps()?.woe() {
                 // We should only spill registers if PS.WOE is set. According to the debug guide, we
                 // also should not spill if INTLEVEL != 0 but I don't see why.
-                register_file.spill(self);
+                register_file.spill(self)?;
             }
 
             self.sequence.on_halt(&mut self.interface)?;
@@ -569,14 +569,6 @@ impl XtensaCore {
         self.num_aregs / self.window_regs
     }
 
-    fn window_mask_bits(&self) -> u8 {
-        self.window_regs / self.rotw_rotates
-    }
-
-    fn window_start_window_mask(&self) -> u32 {
-        (1 << self.window_mask_bits()) - 1
-    }
-
     fn windowbase_size(&self) -> u8 {
         self.num_aregs / self.rotw_rotates
     }
@@ -658,9 +650,14 @@ impl RegisterFile {
         })
     }
 
-    fn spill(&self, xtensa: &mut Xtensa) {
+    fn spill(&self, xtensa: &mut Xtensa<'_>) -> Result<(), Error> {
         if !self.core.windowed() {
-            return;
+            return Ok(());
+        }
+
+        if self.window_start == 0 {
+            // There are no stack frames to spill.
+            return Ok(());
         }
 
         // Quoting the debug guide:
@@ -680,50 +677,131 @@ impl RegisterFile {
         // Process registers. We need to roll the windows back by the window increment, and copy
         // register values to the stack, if the relevant WindowStart bit is set. The window
         // increment of the current window is saved in the top 2 bits of A0 (the return address).
-        let mut processed_registers = 0;
-        let mut a0 = arch::CpuRegister::A0 as u8;
-        let mut current_windowbase = self.window_base as u8;
 
-        loop {
-            // register_values start at the windowbase
-            let raw_window_increment = (self.registers[a0 as usize] >> 30) as u8;
-            let window_increment = raw_window_increment * self.core.rotw_rotates; // 4, 8 or 12
-            let previous_a0 = (a0 + self.core.num_aregs - window_increment) % self.core.num_aregs;
-            let previous_windowbase = (current_windowbase + self.core.windowbase_size()
-                - raw_window_increment)
-                % self.core.windowbase_size();
+        // Find oldest window.
+        let mut window_base = self.next_window_base(self.window_base as u8);
 
-            let a0_canonical = self.wb_offset_to_canonical(current_windowbase);
-            let windowstart = if a0_canonical + self.core.window_regs >= self.core.num_aregs {
-                // there is some wraparound
-                let high_bit_count = 0;
-                let low_bits = (self.window_start >> (a0_canonical / self.core.rotw_rotates))
-                    & self.core.window_start_window_mask();
-                let high_bits = self.window_start & ((1 << high_bit_count) - 1);
-                (high_bits << (self.core.window_regs - high_bit_count)) | low_bits
-            } else {
-                (self.window_start >> (a0_canonical / self.core.rotw_rotates))
-                    & self.core.window_start_window_mask()
-            };
+        while let Some(window) = RegisterWindow::at_windowbase(self, window_base) {
+            window.spill(xtensa)?;
+            window_base = self.next_window_base(window_base);
 
-            if windowstart != 0 {
-                // There are registers to spill.
-                if windowstart & 1 == 0 {
-                    // Stack pointer has already been spilled - it may have been overwritten by
-                    // the topmost stack frame, so we need to read it back from memory.
-                }
-            }
+            if window_base == self.window_base as u8 {
+                // We are back to the original window, so we can stop.
 
-            if windowstart == 0 {
-                // Done
+                // We are not spilling the first window. We don't have a destination for it, and we don't
+                // need to unwind it from the stack.
                 break;
             }
         }
 
-        // TODO: clear spilled windowstart bits
+        Ok(())
+    }
+
+    fn is_window_start(&self, windowbase: u8) -> bool {
+        self.window_start & 1 << (windowbase % self.core.windowbase_size()) != 0
+    }
+
+    fn next_window_base(&self, window_base: u8) -> u8 {
+        let mut wb = (window_base + 1) % self.core.windowbase_size();
+        while wb != window_base {
+            if self.is_window_start(wb) {
+                break;
+            }
+            wb = (wb + 1) % self.core.windowbase_size();
+        }
+
+        wb
+    }
+}
+
+struct RegisterWindow<'a> {
+    window_base: u8,
+
+    /// In units of window_base bits.
+    window_size: u8,
+
+    file: &'a RegisterFile,
+}
+
+impl<'a> RegisterWindow<'a> {
+    fn at_windowbase(file: &'a RegisterFile, window_base: u8) -> Option<Self> {
+        if !file.is_window_start(window_base) {
+            return None;
+        }
+
+        let next_window_base = file.next_window_base(window_base);
+        let window_size = (next_window_base + file.core.windowbase_size() - window_base)
+            % file.core.windowbase_size();
+
+        Some(Self {
+            window_base,
+            file,
+            window_size: window_size.min(3),
+        })
+    }
+
+    /// Register spilling needs access to other frames' stack pointers.
+    fn read_register(&self, reg: CpuRegister) -> u32 {
+        let index = self.wb_offset_to_canonical(reg as u8);
+        self.file.registers[index as usize]
     }
 
     fn wb_offset_to_canonical(&self, idx: u8) -> u8 {
-        (idx + self.window_base as u8 * self.core.rotw_rotates) & (self.core.num_aregs - 1)
+        (idx + self.window_base as u8 * self.file.core.rotw_rotates) % self.file.core.num_aregs
+    }
+
+    fn spill(&self, interface: &mut Xtensa<'_>) -> Result<(), Error> {
+        // a0-a3 goes into our stack, the rest into the stack of the caller.
+        let a0_a3 = [
+            self.read_register(CpuRegister::A0),
+            self.read_register(CpuRegister::A1),
+            self.read_register(CpuRegister::A2),
+            self.read_register(CpuRegister::A3),
+        ];
+
+        match self.window_size {
+            0 => {} // Nowhere to spill to
+
+            1 => interface.write_32(self.read_register(CpuRegister::A5) as u64 - 16, &a0_a3)?,
+
+            // Spill a4-a7
+            2 => {
+                let sp = interface.read_word_32(self.read_register(CpuRegister::A1) as u64 - 12)?;
+
+                interface.write_32(self.read_register(CpuRegister::A9) as u64 - 16, &a0_a3)?;
+
+                let regs = [
+                    self.read_register(CpuRegister::A4),
+                    self.read_register(CpuRegister::A5),
+                    self.read_register(CpuRegister::A6),
+                    self.read_register(CpuRegister::A7),
+                ];
+                interface.write_32(sp as u64 - 32, &regs)?;
+            }
+
+            // Spill a4-a11
+            3 => {
+                let sp = interface.read_word_32(self.read_register(CpuRegister::A1) as u64 - 12)?;
+                interface.write_32(self.read_register(CpuRegister::A13) as u64 - 16, &a0_a3)?;
+
+                let regs = [
+                    self.read_register(CpuRegister::A4),
+                    self.read_register(CpuRegister::A5),
+                    self.read_register(CpuRegister::A6),
+                    self.read_register(CpuRegister::A7),
+                    self.read_register(CpuRegister::A8),
+                    self.read_register(CpuRegister::A9),
+                    self.read_register(CpuRegister::A10),
+                    self.read_register(CpuRegister::A11),
+                ];
+                interface.write_32(sp as u64 - 48, &regs)?;
+            }
+
+            // There is no such thing as spilling a12-a15 - there can be only 12 active registers in
+            // a stack frame that is not the topmost, as there is no CALL16 instruction.
+            _ => unreachable!(),
+        }
+
+        Ok(())
     }
 }
