@@ -271,11 +271,15 @@ impl<'probe> Xtensa<'probe> {
         let was_running = self
             .interface
             .halt_with_previous(Duration::from_millis(100))?;
+        if was_running {
+            self.state.register_cache = RegisterCache::default();
+        }
 
         let result = op(self);
 
         if was_running {
             self.interface.resume_core()?;
+            self.state.register_cache = RegisterCache::default();
         }
 
         result
@@ -362,6 +366,7 @@ impl CoreInterface for Xtensa<'_> {
         if self.state.pc_written {
             self.interface.clear_register_cache();
         }
+        self.state.register_cache = RegisterCache::default();
         Ok(self.interface.resume_core()?)
     }
 
