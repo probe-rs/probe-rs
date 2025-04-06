@@ -302,7 +302,7 @@ impl<F: FnMut(MonitorEvent)> ListEventHandler<F> {
         core: &mut Core<'_>,
     ) -> anyhow::Result<Option<Tests>> {
         let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
-            anyhow::bail!("CPU halted unexpectedly.");
+            anyhow::bail!("CPU halted unexpectedly. Halt reason: {halt_reason:?}");
         };
 
         // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "list"

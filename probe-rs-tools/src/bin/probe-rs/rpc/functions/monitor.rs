@@ -216,7 +216,7 @@ impl<F: FnMut(MonitorEvent)> MonitorEventHandler<F> {
         core: &mut Core<'_>,
     ) -> anyhow::Result<Option<()>> {
         let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
-            anyhow::bail!("CPU halted unexpectedly.");
+            anyhow::bail!("CPU halted unexpectedly. Halt reason: {halt_reason:?}");
         };
 
         match cmd {
