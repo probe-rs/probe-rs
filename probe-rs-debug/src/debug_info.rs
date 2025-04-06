@@ -1054,7 +1054,7 @@ pub fn determine_cfa<R: gimli::ReaderOffset>(
 /// Unwind the program counter for the caller frame, using the LR value from the callee frame.
 pub fn unwind_pc_without_debuginfo(
     unwind_registers: &mut DebugRegisters,
-    frame_pc: u64,
+    _frame_pc: u64,
     instruction_set: Option<probe_rs::InstructionSet>,
 ) -> ControlFlow<Option<DebugError>> {
     // For non exception frames, we cannot do stack unwinding if we do not have debug info.
@@ -1083,7 +1083,7 @@ pub fn unwind_pc_without_debuginfo(
         };
         // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
         // If both the LR and PC registers have undefined rules, this will prevent the unwind from continuing.
-        unwound_return_address.and_then(|return_address| {
+        calling_pc.value = unwound_return_address.and_then(|return_address| {
             unwind_program_counter_register(
                 return_address,
                 current_pc,
@@ -1091,17 +1091,6 @@ pub fn unwind_pc_without_debuginfo(
                 &mut register_rule_string,
             )
         });
-
-        if calling_pc
-            .value
-            .map(|calling_pc_value| calling_pc_value == RegisterValue::from(frame_pc))
-            .unwrap_or(false)
-        {
-            // Typically if we have to infer the PC value, it might happen that we are in
-            // a function that has no debug info, and the code is in a tight loop (typical of exception handlers).
-            // In such cases, we will not be able to unwind the stack beyond this frame.
-            return ControlFlow::Break(None);
-        }
     }
 
     ControlFlow::Continue(())
