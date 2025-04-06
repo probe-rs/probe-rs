@@ -1333,7 +1333,6 @@ fn unwind_program_counter_register(
                     Some(RegisterValue::U32(return_address - 4))
                 }
                 Some(InstructionSet::Xtensa) => {
-                    // TODO: detect CALL0
                     let upper_bits = (current_pc as u32) & 0xC000_0000;
                     *register_rule_string = "PC=(unwound x0 - 3) (dwarf Undefined)".to_string();
                     Some(RegisterValue::U32(
