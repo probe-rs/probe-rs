@@ -747,7 +747,7 @@ impl<'a> RegisterWindow<'a> {
     }
 
     fn wb_offset_to_canonical(&self, idx: u8) -> u8 {
-        (idx + self.window_base as u8 * self.file.core.rotw_rotates) % self.file.core.num_aregs
+        (idx + self.window_base * self.file.core.rotw_rotates) % self.file.core.num_aregs
     }
 
     fn spill(&self, interface: &mut Xtensa<'_>) -> Result<(), Error> {
