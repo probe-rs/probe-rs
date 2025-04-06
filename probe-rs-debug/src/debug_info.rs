@@ -620,6 +620,10 @@ impl DebugInfo {
             // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
             tracing::trace!("UNWIND - Preparing to unwind the registers for the previous frame.");
 
+            // Because we will be updating the `unwind_registers` with previous frame unwind info,
+            // we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
+            let callee_frame_registers = unwind_registers.clone();
+
             // PART 2-a: get the `gimli::FrameDescriptorEntry` for the program counter
             // and then the unwind info associated with this row.
             let unwind_info = match unwind_info {
@@ -648,13 +652,14 @@ impl DebugInfo {
                         }
                         break 'unwind;
                     }
+
+                    if callee_frame_registers == unwind_registers {
+                        tracing::debug!("No change, preventing infinite loop");
+                        break;
+                    }
                     continue 'unwind;
                 }
             };
-
-            // Because we will be updating the `unwind_registers` with previous frame unwind info,
-            // we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
-            let callee_frame_registers = unwind_registers.clone();
 
             // PART 2-b: Unwind registers for the "previous/calling" frame.
             for debug_register in unwind_registers.0.iter_mut() {
@@ -1420,8 +1425,9 @@ mod test {
     /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
     fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
         let path = get_path_for_test_files(elf_file);
-        DebugInfo::from_file(&path)
-            .unwrap_or_else(|err| panic!("Failed to open file {}: {:?}", path.display(), err))
+        DebugInfo::from_file(&path).unwrap_or_else(|err: crate::DebugError| {
+            panic!("Failed to open file {}: {:?}", path.display(), err)
+        })
     }
 
     #[test]
