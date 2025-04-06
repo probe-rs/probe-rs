@@ -8,7 +8,7 @@ use crate::{
     CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
     architecture::xtensa::{
         arch::{
-            Register, SpecialRegister,
+            CpuRegister, Register, SpecialRegister,
             instruction::{Instruction, InstructionEncoding},
         },
         communication_interface::{
@@ -246,6 +246,18 @@ impl<'probe> Xtensa<'probe> {
         tracing::debug!("Core halted: {:#?}", status);
 
         if status.is_halted() {
+            // TODO: lazy-load registers, only spill before reading memory
+
+            // TODO: use the registers read here to prime the register cache
+
+            let register_file = RegisterFile::read(XtensaCore::lx(), self)?;
+
+            if self.current_ps()?.woe() {
+                // We should only spill registers if PS.WOE is set. According to the debug guide, we
+                // also should not spill if INTLEVEL != 0 but I don't see why.
+                register_file.spill(self);
+            }
+
             self.sequence.on_halt(&mut self.interface)?;
         }
 
@@ -534,5 +546,184 @@ impl CoreInterface for Xtensa<'_> {
     fn debug_core_stop(&mut self) -> Result<(), Error> {
         self.interface.leave_debug_mode()?;
         Ok(())
+    }
+}
+
+struct XtensaCore {
+    // TODO: core properties:
+    window_regs: u8,
+    num_aregs: u8,
+    rotw_rotates: u8,
+}
+
+impl XtensaCore {
+    fn lx() -> Self {
+        Self {
+            window_regs: 16,
+            num_aregs: 64,
+            rotw_rotates: 4,
+        }
+    }
+
+    fn num_windows(&self) -> u8 {
+        self.num_aregs / self.window_regs
+    }
+
+    fn window_mask_bits(&self) -> u8 {
+        self.window_regs / self.rotw_rotates
+    }
+
+    fn window_start_window_mask(&self) -> u32 {
+        (1 << self.window_mask_bits()) - 1
+    }
+
+    fn windowbase_size(&self) -> u8 {
+        self.num_aregs / self.rotw_rotates
+    }
+
+    fn windowed(&self) -> bool {
+        true
+    }
+}
+
+struct RegisterFile {
+    core: XtensaCore,
+    registers: Vec<u32>,
+    window_base: u32,
+    window_start: u32,
+}
+
+impl RegisterFile {
+    fn read(xtensa: XtensaCore, interface: &mut Xtensa) -> Result<Self, Error> {
+        let window_base_result = interface
+            .interface
+            .schedule_read_register_untyped(SpecialRegister::Windowbase)?;
+        let window_start_result = interface
+            .interface
+            .schedule_read_register_untyped(SpecialRegister::Windowstart)?;
+
+        let mut register_results = Vec::with_capacity(xtensa.num_aregs as usize);
+
+        let ar0 = arch::CpuRegister::A0 as u8;
+        for _ in 0..xtensa.num_windows() {
+            // Read registers visible in the current window
+            for ar in ar0..ar0 + xtensa.window_regs {
+                let reg = CpuRegister::try_from(ar)?;
+                let result = interface.interface.schedule_read_register_untyped(reg)?;
+
+                register_results.push(result);
+            }
+
+            // Rotate window to see the next `window_regs` registers
+            let rotw_arg = xtensa.window_regs / xtensa.rotw_rotates;
+            interface
+                .interface
+                .xdm
+                .schedule_execute_instruction(Instruction::Rotw(rotw_arg));
+        }
+
+        // Now do the actual read.
+        interface.interface.xdm.execute().expect("Failed to execute read. This probably shouldn't happen, unless we raise an exception (Window Over/Underflow), maybe?");
+        let register_values = register_results
+            .into_iter()
+            .map(|result| {
+                interface
+                    .interface
+                    .xdm
+                    .read_deferred_result(result)
+                    .map(|r| r.into_u32())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let window_base = interface
+            .interface
+            .xdm
+            .read_deferred_result(window_base_result)
+            .map(|r| r.into_u32())?;
+
+        // The WindowStart Special Register, which is also added by the option and consists of
+        // NAREG/4 bits, indicates which four register units are currently cached in the physical
+        // register file instead of residing in their stack locations.
+        let window_start = interface
+            .interface
+            .xdm
+            .read_deferred_result(window_start_result)
+            .map(|r| r.into_u32())?;
+
+        Ok(Self {
+            core: xtensa,
+            registers: register_values,
+            window_base,
+            window_start,
+        })
+    }
+
+    fn spill(&self, xtensa: &mut Xtensa) {
+        if !self.core.windowed() {
+            return;
+        }
+
+        // Quoting the debug guide:
+        // The proper thing for the debugger to do when doing a call traceback or whenever looking
+        // at a calling function's address registers, is to examine the WINDOWSTART register bits
+        // (in combination with WINDOWBASE) to determine whether to look in the register file or on
+        // the stack for the relevant address register values.
+        // Quote ends here
+        // The above describes what we should do for minimally intrusive debugging, but I don't
+        // think we have the option to do this. Instead we spill everything that needs to be
+        // spilled, and then we can use the stack to unwind the registers. While forcefully
+        // spilling is not faithful to the true code execution, it is relatively simple to do.
+        // The debug guide states this can be noticeably slow, for example if "step to next line" is
+        // implemented by stepping one instruction at a time until the line number changes.
+        // FIXME: we can improve the above issue by only spilling before reading memory.
+
+        // Process registers. We need to roll the windows back by the window increment, and copy
+        // register values to the stack, if the relevant WindowStart bit is set. The window
+        // increment of the current window is saved in the top 2 bits of A0 (the return address).
+        let mut processed_registers = 0;
+        let mut a0 = arch::CpuRegister::A0 as u8;
+        let mut current_windowbase = self.window_base as u8;
+
+        loop {
+            // register_values start at the windowbase
+            let raw_window_increment = (self.registers[a0 as usize] >> 30) as u8;
+            let window_increment = raw_window_increment * self.core.rotw_rotates; // 4, 8 or 12
+            let previous_a0 = (a0 + self.core.num_aregs - window_increment) % self.core.num_aregs;
+            let previous_windowbase = (current_windowbase + self.core.windowbase_size()
+                - raw_window_increment)
+                % self.core.windowbase_size();
+
+            let a0_canonical = self.wb_offset_to_canonical(current_windowbase);
+            let windowstart = if a0_canonical + self.core.window_regs >= self.core.num_aregs {
+                // there is some wraparound
+                let high_bit_count = 0;
+                let low_bits = (self.window_start >> (a0_canonical / self.core.rotw_rotates))
+                    & self.core.window_start_window_mask();
+                let high_bits = self.window_start & ((1 << high_bit_count) - 1);
+                (high_bits << (self.core.window_regs - high_bit_count)) | low_bits
+            } else {
+                (self.window_start >> (a0_canonical / self.core.rotw_rotates))
+                    & self.core.window_start_window_mask()
+            };
+
+            if windowstart != 0 {
+                // There are registers to spill.
+                if windowstart & 1 == 0 {
+                    // Stack pointer has already been spilled - it may have been overwritten by
+                    // the topmost stack frame, so we need to read it back from memory.
+                }
+            }
+
+            if windowstart == 0 {
+                // Done
+                break;
+            }
+        }
+
+        // TODO: clear spilled windowstart bits
+    }
+
+    fn wb_offset_to_canonical(&self, idx: u8) -> u8 {
+        (idx + self.window_base as u8 * self.core.rotw_rotates) & (self.core.num_aregs - 1)
     }
 }

@@ -33,6 +33,9 @@ pub enum Instruction {
 
     /// Generates a debug exception
     Break(u8, u8),
+
+    /// Rotate register window by n*4
+    Rotw(u8),
 }
 
 /// The architecture supports multi-word instructions. This enum represents the different encodings
@@ -58,6 +61,10 @@ impl Instruction {
             }
             Instruction::CallX8(s) => format::callx(2, s as u8),
             Instruction::Rfdo(_) => 0xF1E000,
+            Instruction::Rotw(count) => {
+                // 0100 0000 1000 0000 t 0000
+                format::rrr(0x400000, 8, 0, count)
+            }
         };
 
         (3, word)
