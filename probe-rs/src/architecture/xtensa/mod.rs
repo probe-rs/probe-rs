@@ -12,8 +12,8 @@ use crate::{
             instruction::{Instruction, InstructionEncoding},
         },
         communication_interface::{
-DebugCause, IBreakEn, ProgramStatus, XtensaCommunicationInterface,
-},
+            DebugCause, IBreakEn, ProgramStatus, XtensaCommunicationInterface,
+        },
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
         sequences::XtensaDebugSequence,
         xdm::PowerStatus,
@@ -32,6 +32,15 @@ pub(crate) mod xdm;
 pub mod communication_interface;
 pub mod registers;
 pub(crate) mod sequences;
+
+#[derive(Default, Debug)]
+struct RegisterCache {
+    /// The current interrupt level.
+    current_ps: Option<ProgramStatus>,
+
+    /// The cause of the last debug interrupt.
+    debug_cause: Option<DebugCause>,
+}
 
 #[derive(Debug)]
 /// Xtensa core state.
@@ -54,8 +63,7 @@ pub struct XtensaCoreState {
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
 
-    /// The current interrupt level.
-    current_ps: ProgramStatus,
+    register_cache: RegisterCache,
 }
 
 impl XtensaCoreState {
@@ -67,7 +75,7 @@ impl XtensaCoreState {
             breakpoint_set: [false; 2],
             pc_written: false,
             semihosting_command: None,
-            current_ps: ProgramStatus(0),
+            register_cache: RegisterCache::default(),
         }
     }
 
@@ -165,7 +173,7 @@ impl<'probe> Xtensa<'probe> {
     fn skip_breakpoint_instruction(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
         if !self.state.pc_written {
-            let debug_cause = self.interface.read_register::<DebugCause>()?;
+            let debug_cause = self.debug_cause()?;
 
             let pc_increment = if debug_cause.break_instruction() {
                 3
@@ -232,15 +240,12 @@ impl<'probe> Xtensa<'probe> {
 
     fn on_halted(&mut self) -> Result<(), Error> {
         self.state.pc_written = false;
+        self.state.register_cache = RegisterCache::default();
 
         let status = self.status()?;
         tracing::debug!("Core halted: {:#?}", status);
 
         if status.is_halted() {
-            // Reading ProgramStatus using `read_register` would return the value
-            // after the debug interrupt has been taken.
-            let raw_ps = self.interface.read_register_untyped(Register::CurrentPs)?;
-            self.state.current_ps = ProgramStatus(raw_ps);
             self.sequence.on_halt(&mut self.interface)?;
         }
 
@@ -262,6 +267,28 @@ impl<'probe> Xtensa<'probe> {
         }
 
         result
+    }
+
+    fn current_ps(&mut self) -> Result<ProgramStatus, Error> {
+        if let Some(ps) = self.state.register_cache.current_ps {
+            Ok(ps)
+        } else {
+            // Reading ProgramStatus using `read_register` would return the value
+            // after the debug interrupt has been taken.
+            let ps = ProgramStatus(self.interface.read_register_untyped(Register::CurrentPs)?);
+            self.state.register_cache.current_ps = Some(ps);
+            Ok(ps)
+        }
+    }
+
+    fn debug_cause(&mut self) -> Result<DebugCause, Error> {
+        if let Some(cause) = self.state.register_cache.debug_cause {
+            Ok(cause)
+        } else {
+            let cause = self.interface.read_register::<DebugCause>()?;
+            self.state.register_cache.debug_cause = Some(cause);
+            Ok(cause)
+        }
     }
 }
 
@@ -291,7 +318,7 @@ impl CoreInterface for Xtensa<'_> {
 
     fn status(&mut self) -> Result<CoreStatus, Error> {
         let status = if self.core_halted()? {
-            let debug_cause = self.interface.read_register::<DebugCause>()?;
+            let debug_cause = self.debug_cause()?;
 
             let mut reason = debug_cause.halt_reason();
             if reason == HaltReason::Breakpoint(BreakpointCause::Software) {
@@ -346,7 +373,8 @@ impl CoreInterface for Xtensa<'_> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         self.skip_breakpoint_instruction()?;
-        self.interface.step(1, self.state.current_ps.intlevel())?;
+        let ps = self.current_ps()?;
+        self.interface.step(1, ps.intlevel())?;
         self.on_halted()?;
 
         self.core_info()
