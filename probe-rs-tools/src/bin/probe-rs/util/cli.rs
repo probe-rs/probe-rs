@@ -1,6 +1,6 @@
 //! CLI-specific building blocks.
 
-use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
+use std::{future::Future, path::Path, time::Instant};
 
 use anyhow::Context;
 use colored::Colorize;
@@ -272,12 +272,12 @@ pub async fn monitor(
     session: &SessionInterface,
     mode: MonitorMode,
     path: &Path,
-    mut rtt_client: Option<CliRttClient>,
+    mut rtt_client: CliRttClient,
     options: MonitorOptions,
     print_stack_trace: bool,
 ) -> anyhow::Result<()> {
     let monitor = session.monitor(mode, options, |msg| {
-        print_monitor_event(&mut rtt_client.as_mut(), msg)
+        print_monitor_event(&mut rtt_client, msg)
     });
 
     let result = with_ctrl_c(monitor, async {
@@ -298,14 +298,14 @@ pub async fn test(
     libtest_args: libtest_mimic::Arguments,
     print_stack_trace: bool,
     path: &Path,
-    mut rtt_client: Option<CliRttClient>,
+    mut rtt_client: CliRttClient,
 ) -> anyhow::Result<()> {
     tracing::info!("libtest args {:?}", libtest_args);
     let token = CancellationToken::new();
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<MonitorEvent>();
 
-    let rtt_handle = rtt_client.as_ref().map(|rtt| rtt.handle);
+    let rtt_handle = rtt_client.handle;
     let test = async {
         let tests = session
             .list_tests(boot_info, rtt_handle, |msg| sender.send(msg).unwrap())
@@ -333,7 +333,7 @@ pub async fn test(
 
     let log = async {
         while let Some(event) = receiver.recv().await {
-            print_monitor_event(&mut rtt_client.as_mut(), event);
+            print_monitor_event(&mut rtt_client, event);
         }
         futures_util::future::pending().await
     };
@@ -361,7 +361,7 @@ pub async fn test(
 fn create_trial(
     session: &SessionInterface,
     path: &Path,
-    rtt_client: Option<Key<RttClient>>,
+    rtt_client: Key<RttClient>,
     sender: UnboundedSender<MonitorEvent>,
     token: &CancellationToken,
     test: Test,
@@ -502,24 +502,13 @@ impl CliRttClient {
     }
 }
 
-fn print_monitor_event(
-    rtt_client: &mut Option<impl DerefMut<Target = CliRttClient>>,
-    event: MonitorEvent,
-) {
+fn print_monitor_event(rtt_client: &mut CliRttClient, event: MonitorEvent) {
     match event {
         MonitorEvent::RttDiscovered { up_channels, .. } => {
-            let Some(client) = rtt_client else {
-                return;
-            };
-
-            client.on_channels_discovered(&up_channels);
+            rtt_client.on_channels_discovered(&up_channels);
         }
         MonitorEvent::RttOutput { channel, bytes } => {
-            let Some(client) = rtt_client else {
-                return;
-            };
-
-            let Some(processor) = client.channel_processors.get_mut(channel as usize) else {
+            let Some(processor) = rtt_client.channel_processors.get_mut(channel as usize) else {
                 return;
             };
 

@@ -213,7 +213,7 @@ impl Cmd {
                 },
                 self.shared_options.always_print_stacktrace,
                 &self.shared_options.path,
-                Some(rtt_client),
+                rtt_client,
             )
             .await
         } else {
@@ -221,7 +221,7 @@ impl Cmd {
                 &session,
                 MonitorMode::Run(boot_info),
                 &self.shared_options.path,
-                Some(rtt_client),
+                rtt_client,
                 MonitorOptions {
                     catch_reset: self.run_options.catch_reset,
                     catch_hardfault: self.run_options.catch_hardfault,

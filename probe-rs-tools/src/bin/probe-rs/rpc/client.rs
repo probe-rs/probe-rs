@@ -515,7 +515,7 @@ impl SessionInterface {
     pub async fn list_tests(
         &self,
         boot_info: BootInfo,
-        rtt_client: Option<Key<RttClient>>,
+        rtt_client: Key<RttClient>,
         on_msg: impl FnMut(MonitorEvent),
     ) -> anyhow::Result<Tests> {
         self.client
@@ -533,7 +533,7 @@ impl SessionInterface {
     pub async fn run_test(
         &self,
         test: Test,
-        rtt_client: Option<Key<RttClient>>,
+        rtt_client: Key<RttClient>,
         on_msg: impl FnMut(MonitorEvent),
     ) -> anyhow::Result<TestResult> {
         self.client

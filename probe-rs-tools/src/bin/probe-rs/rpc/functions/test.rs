@@ -107,8 +107,7 @@ pub enum TestEvent {
 pub struct ListTestsRequest {
     pub sessid: Key<Session>,
     pub boot_info: BootInfo,
-    /// RTT client if used.
-    pub rtt_client: Option<Key<RttClient>>,
+    pub rtt_client: Key<RttClient>,
 }
 
 pub type ListTestsResponse = RpcResult<Tests>;
@@ -138,11 +137,9 @@ fn list_tests_impl(
     let mut session = ctx.session_blocking(request.sessid);
     let mut list_handler = ListEventHandler::new(|event| sender.blocking_send(event).unwrap());
 
-    let mut rtt_client = request
-        .rtt_client
-        .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
+    let mut rtt_client = ctx.object_mut_blocking(request.rtt_client);
 
-    let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
+    let core_id = rtt_client.core_id();
 
     match request.boot_info {
         BootInfo::FromRam {
@@ -160,19 +157,17 @@ fn list_tests_impl(
     }
 
     let mut core = session.core(0)?;
-    if let Some(rtt_client) = rtt_client.as_mut() {
-        rtt_client.clear_control_block(&mut core)?;
-    }
+    rtt_client.clear_control_block(&mut core)?;
 
     let mut run_loop = RunLoop {
         core_id,
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
-        rtt_client: client,
+    let poller = RttPoller {
+        rtt_client: &mut rtt_client,
         sender: sender.clone(),
-    });
+    };
 
     match run_loop.run_until(
         &mut core,
@@ -197,8 +192,7 @@ fn list_tests_impl(
 pub struct RunTestRequest {
     pub sessid: Key<Session>,
     pub test: Test,
-    /// RTT client if used.
-    pub rtt_client: Option<Key<RttClient>>,
+    pub rtt_client: Key<RttClient>,
 }
 
 pub type RunTestResponse = RpcResult<TestResult>;
@@ -232,17 +226,13 @@ fn run_test_impl(
 
     let mut session = ctx.session_blocking(request.sessid);
 
-    let mut rtt_client = request
-        .rtt_client
-        .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
+    let mut rtt_client = ctx.object_mut_blocking(request.rtt_client);
 
-    let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
+    let core_id = rtt_client.core_id();
     let mut core = session.core(core_id)?;
     core.reset_and_halt(Duration::from_millis(100))?;
 
-    if let Some(rtt_client) = rtt_client.as_mut() {
-        rtt_client.clear_control_block(&mut core)?;
-    }
+    rtt_client.clear_control_block(&mut core)?;
 
     let expected_outcome = request.test.expected_outcome;
     let mut run_handler =
@@ -253,10 +243,10 @@ fn run_test_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
-        rtt_client: client,
+    let poller = RttPoller {
+        rtt_client: &mut rtt_client,
         sender: sender.clone(),
-    });
+    };
 
     match run_loop.run_until(
         &mut core,
