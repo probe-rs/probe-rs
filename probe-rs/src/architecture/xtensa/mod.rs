@@ -632,6 +632,8 @@ impl RegisterFile {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
+        // WindowBase points to the first register of the current window in the register file.
+        // In essence, it selects which 16 registers are visible out of the 64 physical registers.
         let window_base = interface
             .interface
             .xdm
@@ -639,8 +641,20 @@ impl RegisterFile {
             .map(|r| r.into_u32())?;
 
         // The WindowStart Special Register, which is also added by the option and consists of
-        // NAREG/4 bits, indicates which four register units are currently cached in the physical
-        // register file instead of residing in their stack locations.
+        // NAREG/4 bits. Each call frame, which has not been spilled, is represented by a bit in the
+        // WindowStart register. The call frame's bit is set in the position given by the current
+        // WindowBase register value.
+        // Each register window has a single bit in the WindowStart register. The window size
+        // can be calculated by the difference of bit positions in the WindowStart register.
+        // For example, if WindowBase is 6, and WindowStart is 0b0000000001011001:
+        // - The first window uses a0-a11, and executed a CALL12 or CALLX12 instruction.
+        // - The second window uses a0-a3, and executed a CALL14 instruction.
+        // - The third window uses a0-a7, and executed a CALL8 instruction.
+        // - The fourth window is free to use all 16 registers at this point.
+        // There are no more active windows.
+        // This value is used by the hardware to determine if WindowOverflow or WindowUnderflow
+        // exceptions should be raised. The exception handlers then spill or reload registers
+        // from the stack and set/clear the corresponding bit in the WindowStart register.
         let window_start = interface
             .interface
             .xdm
