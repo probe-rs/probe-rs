@@ -187,7 +187,6 @@ impl SifliUart {
         writer
             .write_all(&header)
             .map_err(CommandError::ProbeError)?;
-        // tracing::info!("Send data: {:?}", send_data);
         writer
             .write_all(&send_data)
             .map_err(CommandError::ProbeError)?;
@@ -407,7 +406,7 @@ impl SifliUartFactory {
                     .as_ref()
                     .unwrap()
                     .to_lowercase()
-                    .contains("Sifli"))
+                    .contains("sifli"))
         {
             return None;
         }
@@ -429,12 +428,19 @@ impl SifliUartFactory {
     }
 
     fn open_port(&self, port_name: &str) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let port = serialport::new(port_name, DEFUALT_UART_BAUD)
+        let mut port = serialport::new(port_name, DEFUALT_UART_BAUD)
+            .dtr_on_open(false)
             .timeout(Duration::from_secs(3))
             .open()
             .map_err(|_| {
                 DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
             })?;
+        port.write_data_terminal_ready(false).map_err(|_| {;
+            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+        })?;
+        port.write_request_to_send(false).map_err(|_| {
+            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+        })?;
 
         let reader = port.try_clone().map_err(|_| {
             DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
