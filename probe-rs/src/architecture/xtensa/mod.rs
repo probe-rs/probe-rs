@@ -12,7 +12,7 @@ use crate::{
             instruction::{Instruction, InstructionEncoding},
         },
         communication_interface::{
-            DebugCause, IBreakEn, ProgramStatus, XtensaCommunicationInterface,
+            DebugCause, IBreakEn, ProgramStatus, WindowProperties, XtensaCommunicationInterface,
         },
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
         sequences::XtensaDebugSequence,
@@ -42,8 +42,8 @@ struct RegisterCache {
     debug_cause: Option<DebugCause>,
 }
 
-#[derive(Debug)]
 /// Xtensa core state.
+#[derive(Debug)]
 pub struct XtensaCoreState {
     /// Whether the core is enabled.
     enabled: bool,
@@ -314,7 +314,10 @@ impl<'probe> Xtensa<'probe> {
         self.state.spilled = true;
 
         // TODO: use the registers read here to prime the register cache
-        let register_file = RegisterFile::read(XtensaCore::lx(), &mut self.interface)?;
+        let register_file = RegisterFile::read(
+            self.interface.core_properties().window_option_properties,
+            &mut self.interface,
+        )?;
 
         if self.current_ps()?.woe() {
             // We should only spill registers if PS.WOE is set. According to the debug guide, we
@@ -572,37 +575,8 @@ impl CoreInterface for Xtensa<'_> {
     }
 }
 
-struct XtensaCore {
-    // TODO: core properties:
-    window_regs: u8,
-    num_aregs: u8,
-    rotw_rotates: u8,
-}
-
-impl XtensaCore {
-    fn lx() -> Self {
-        Self {
-            window_regs: 16,
-            num_aregs: 64,
-            rotw_rotates: 4,
-        }
-    }
-
-    fn num_windows(&self) -> u8 {
-        self.num_aregs / self.window_regs
-    }
-
-    fn windowbase_size(&self) -> u8 {
-        self.num_aregs / self.rotw_rotates
-    }
-
-    fn windowed(&self) -> bool {
-        true
-    }
-}
-
 struct RegisterFile {
-    core: XtensaCore,
+    core: WindowProperties,
     registers: Vec<u32>,
     window_base: u32,
     window_start: u32,
@@ -610,7 +584,7 @@ struct RegisterFile {
 
 impl RegisterFile {
     fn read(
-        xtensa: XtensaCore,
+        xtensa: WindowProperties,
         interface: &mut XtensaCommunicationInterface<'_>,
     ) -> Result<Self, Error> {
         let window_base_result =
@@ -621,7 +595,7 @@ impl RegisterFile {
         let mut register_results = Vec::with_capacity(xtensa.num_aregs as usize);
 
         let ar0 = arch::CpuRegister::A0 as u8;
-        for _ in 0..xtensa.num_windows() {
+        for _ in 0..xtensa.num_aregs / xtensa.window_regs {
             // Read registers visible in the current window
             for ar in ar0..ar0 + xtensa.window_regs {
                 let reg = CpuRegister::try_from(ar)?;
@@ -685,7 +659,7 @@ impl RegisterFile {
     }
 
     fn spill(&self, xtensa: &mut XtensaCommunicationInterface<'_>) -> Result<(), Error> {
-        if !self.core.windowed() {
+        if !self.core.has_windowed_registers {
             return Ok(());
         }
 

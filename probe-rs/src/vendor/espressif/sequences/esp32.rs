@@ -78,7 +78,10 @@ impl ESP32 {
 impl XtensaDebugSequence for ESP32 {
     fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
         // Peripheral address range
-        interface.add_slow_memory_access_range(0x3FF0_0000..0x3FF8_0000);
+        interface
+            .core_properties()
+            .slow_memory_access_ranges
+            .push(0x3FF0_0000..0x3FF8_0000);
 
         self.disable_wdts(interface)
     }
