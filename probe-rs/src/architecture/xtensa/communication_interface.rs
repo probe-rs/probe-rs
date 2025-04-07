@@ -98,7 +98,7 @@ impl DebugLevel {
 }
 
 /// Xtensa interface state.
-// FIXME: This struct is a weird mix between core state, debug module state and core configuration.
+#[derive(Default)]
 pub(super) struct XtensaInterfaceState {
     /// Pairs of (register, read handle). The value is optional where None means "being restored"
     saved_registers: HashMap<Register, Option<DeferredResultIndex>>,
@@ -106,15 +106,6 @@ pub(super) struct XtensaInterfaceState {
     /// Whether the core is halted.
     // This roughly relates to Core Debug States (true = Running, false = [Stopped, Stepping])
     is_halted: bool,
-}
-
-impl Default for XtensaInterfaceState {
-    fn default() -> Self {
-        Self {
-            saved_registers: Default::default(),
-            is_halted: false,
-        }
-    }
 }
 
 /// Properties of an Xtensa CPU core.
@@ -210,7 +201,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Self {
             xdm,
             state: interface_state,
-            core_properties: core_properties,
+            core_properties,
         }
     }
 
