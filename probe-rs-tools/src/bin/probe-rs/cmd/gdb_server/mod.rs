@@ -8,7 +8,8 @@ pub(crate) use stub::{GdbInstanceConfiguration, run};
 
 use std::path::PathBuf;
 use std::process::Command;
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use parking_lot::FairMutex;
 use probe_rs::{config::Registry, probe::list::Lister};
@@ -83,7 +84,27 @@ impl Cmd {
             }
             cmd.args(self.gdb_args);
             eprintln!("Spawning {cmd:?}");
-            Some(cmd.spawn()?)
+            let gdb = Arc::new(Mutex::new(cmd.spawn()?));
+
+            let gdb2 = gdb.clone();
+            tokio::spawn(async move {
+                let mut last_ctrl_c = Instant::now() - Duration::new(100, 0);
+                loop {
+                    // Don't exit on ctrl-c as you need to use this key combination
+                    // to ask gdb to interrupt execution of the tracee.
+                    tokio::signal::ctrl_c().await.unwrap();
+                    if last_ctrl_c.elapsed() < Duration::new(0, 500_000_000) {
+                        // Kill gdb if using ctrl-c twice within half a second.
+                        gdb2.lock().unwrap().kill().unwrap();
+                        println!();
+                        // Immediately exit to suppress error about gdb getting killer.
+                        std::process::exit(0);
+                    }
+                    last_ctrl_c = Instant::now();
+                }
+            });
+
+            Some(gdb)
         } else {
             None
         };

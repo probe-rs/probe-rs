@@ -4,6 +4,7 @@ use probe_rs::{CoreType, Session};
 
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::process::Child;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use itertools::Itertools;
@@ -85,7 +86,7 @@ impl GdbInstanceConfiguration {
 pub fn run<'a>(
     session: &FairMutex<Session>,
     instances: impl Iterator<Item = &'a GdbInstanceConfiguration>,
-    mut gdb_process: Option<Child>,
+    mut gdb_process: Option<Arc<Mutex<Child>>>,
 ) -> anyhow::Result<()> {
     // Turn our group list into GDB targets
     let mut targets = instances
@@ -103,9 +104,9 @@ pub fn run<'a>(
     loop {
         // Check if the gdb we spawned has exited and if so exit outself.
         if let Some(gdb_process) = &mut gdb_process {
-            if let Some(exit_status) = gdb_process.try_wait()? {
+            if let Some(exit_status) = gdb_process.lock().unwrap().try_wait()? {
                 if !exit_status.success() {
-                    bail!("Gdb failed with {exit_status:?}");
+                    bail!("Gdb failed with {exit_status}");
                 }
                 return Ok(());
             }
