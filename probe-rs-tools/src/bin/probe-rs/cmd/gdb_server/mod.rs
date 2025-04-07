@@ -97,7 +97,7 @@ impl Cmd {
                         // Kill gdb if using ctrl-c twice within half a second.
                         gdb2.lock().unwrap().kill().unwrap();
                         println!();
-                        // Immediately exit to suppress error about gdb getting killer.
+                        // Immediately exit to suppress error about gdb getting killed.
                         std::process::exit(0);
                     }
                     last_ctrl_c = Instant::now();
