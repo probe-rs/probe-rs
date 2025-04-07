@@ -105,7 +105,7 @@ pub fn run<'a>(
         if let Some(gdb_process) = &mut gdb_process {
             if let Some(exit_status) = gdb_process.try_wait()? {
                 if !exit_status.success() {
-                    bail!("Gdb failed with {exit_status:?}");
+                    bail!("Gdb failed with {exit_status}");
                 }
                 return Ok(());
             }

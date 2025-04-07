@@ -73,6 +73,14 @@ impl Cmd {
         }
 
         let gdb = if let Some(gdb) = self.gdb {
+            tokio::spawn(async move {
+                loop {
+                    // Don't exit on ctrl-c as you need to use this key combination
+                    // to ask gdb to interrupt execution of the tracee.
+                    tokio::signal::ctrl_c().await.unwrap();
+                }
+            });
+
             let mut cmd = Command::new(gdb);
             cmd.args([
                 "-ex",
