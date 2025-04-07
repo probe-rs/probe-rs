@@ -88,12 +88,12 @@ impl Cmd {
 
             let gdb2 = gdb.clone();
             tokio::spawn(async move {
-                let mut last_ctrl_c = Instant::now() - Duration::new(100, 0);
+                let mut last_ctrl_c = Instant::now() - Duration::from_secs(100);
                 loop {
                     // Don't exit on ctrl-c as you need to use this key combination
                     // to ask gdb to interrupt execution of the tracee.
                     tokio::signal::ctrl_c().await.unwrap();
-                    if last_ctrl_c.elapsed() < Duration::new(0, 500_000_000) {
+                    if last_ctrl_c.elapsed() < Duration::from_millis(500) {
                         // Kill gdb if using ctrl-c twice within half a second.
                         gdb2.lock().unwrap().kill().unwrap();
                         println!();
