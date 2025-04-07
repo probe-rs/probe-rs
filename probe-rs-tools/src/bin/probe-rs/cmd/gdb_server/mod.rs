@@ -8,6 +8,7 @@ pub(crate) use stub::{GdbInstanceConfiguration, run};
 
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -73,6 +74,8 @@ impl Cmd {
             );
         }
 
+        let suppress_errors = Arc::new(AtomicBool::new(false));
+
         let gdb = if let Some(gdb) = self.gdb {
             let mut cmd = Command::new(gdb);
             cmd.args([
@@ -86,6 +89,7 @@ impl Cmd {
             eprintln!("Spawning {cmd:?}");
             let gdb = Arc::new(Mutex::new(cmd.spawn()?));
 
+            let suppress_errors2 = suppress_errors.clone();
             let gdb2 = gdb.clone();
             tokio::spawn(async move {
                 let mut last_ctrl_c = Instant::now() - Duration::from_secs(100);
@@ -94,11 +98,11 @@ impl Cmd {
                     // to ask gdb to interrupt execution of the tracee.
                     tokio::signal::ctrl_c().await.unwrap();
                     if last_ctrl_c.elapsed() < Duration::from_millis(500) {
+                        suppress_errors2.store(true, Ordering::SeqCst);
+
                         // Kill gdb if using ctrl-c twice within half a second.
                         gdb2.lock().unwrap().kill().unwrap();
                         println!();
-                        // Immediately exit to suppress error about gdb getting killed.
-                        std::process::exit(0);
                     }
                     last_ctrl_c = Instant::now();
                 }
@@ -112,8 +116,10 @@ impl Cmd {
         let session = FairMutex::new(session);
 
         if let Err(e) = run(&session, instances.iter(), gdb) {
-            eprintln!("During the execution of GDB an error was encountered:");
-            eprintln!("{e:?}");
+            if !suppress_errors.load(Ordering::SeqCst) {
+                eprintln!("During the execution of GDB an error was encountered:");
+                eprintln!("{e:?}");
+            }
         }
 
         Ok(())
