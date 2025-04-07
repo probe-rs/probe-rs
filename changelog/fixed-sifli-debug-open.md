@@ -1,0 +1,1 @@
+Fixed that the serial port dtr and rts of sifli debug devices may not be in the expected state when they are open
