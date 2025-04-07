@@ -44,7 +44,7 @@ pub struct MonitorOptions {
     /// Enable hardfault vector catch if its supported on the target.
     pub catch_hardfault: bool,
     /// RTT client if used.
-    pub rtt_client: Option<Key<RttClient>>,
+    pub rtt_client: Key<RttClient>,
 }
 
 /// Monitor in normal run mode.
@@ -82,12 +82,9 @@ fn monitor_impl(
     let mut semihosting_sink =
         MonitorEventHandler::new(|event| sender.blocking_send(event).unwrap());
 
-    let mut rtt_client = request
-        .options
-        .rtt_client
-        .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
+    let mut rtt_client = ctx.object_mut_blocking(request.options.rtt_client);
 
-    let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
+    let core_id = rtt_client.core_id();
 
     let mut run_loop = RunLoop {
         core_id,
@@ -116,15 +113,13 @@ fn monitor_impl(
 
     let mut core = session.core(run_loop.core_id)?;
     if clear_control_block {
-        if let Some(rtt_client) = rtt_client.as_mut() {
-            rtt_client.clear_control_block(&mut core)?;
-        }
+        rtt_client.clear_control_block(&mut core)?;
     }
 
-    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
-        rtt_client: client,
+    let poller = RttPoller {
+        rtt_client: &mut rtt_client,
         sender: sender.clone(),
-    });
+    };
 
     run_loop.run_until(
         &mut core,

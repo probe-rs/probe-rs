@@ -225,7 +225,7 @@ impl Cmd {
                 MonitorOptions {
                     catch_reset: self.run_options.catch_reset,
                     catch_hardfault: self.run_options.catch_hardfault,
-                    rtt_client: Some(client_handle),
+                    rtt_client: client_handle,
                 },
                 self.shared_options.always_print_stacktrace,
             )
