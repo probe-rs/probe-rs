@@ -64,6 +64,9 @@ pub struct XtensaCoreState {
     semihosting_command: Option<SemihostingCommand>,
 
     register_cache: RegisterCache,
+
+    /// Whether the registers have been spilled to the stack.
+    spilled: bool,
 }
 
 impl XtensaCoreState {
@@ -76,6 +79,7 @@ impl XtensaCoreState {
             pc_written: false,
             semihosting_command: None,
             register_cache: RegisterCache::default(),
+            spilled: false,
         }
     }
 
@@ -85,6 +89,11 @@ impl XtensaCoreState {
             .iter()
             .enumerate()
             .fold(0, |acc, (i, &set)| if set { acc | (1 << i) } else { acc })
+    }
+
+    fn clear_cache(&mut self) {
+        self.register_cache = RegisterCache::default();
+        self.spilled = false;
     }
 }
 
@@ -240,23 +249,13 @@ impl<'probe> Xtensa<'probe> {
 
     fn on_halted(&mut self) -> Result<(), Error> {
         self.state.pc_written = false;
-        self.state.register_cache = RegisterCache::default();
+        self.state.clear_cache();
 
         let status = self.status()?;
         tracing::debug!("Core halted: {:#?}", status);
 
         if status.is_halted() {
-            // TODO: lazy-load registers, only spill before reading memory
-
-            // TODO: use the registers read here to prime the register cache
-
-            let register_file = RegisterFile::read(XtensaCore::lx(), self)?;
-
-            if self.current_ps()?.woe() {
-                // We should only spill registers if PS.WOE is set. According to the debug guide, we
-                // also should not spill if INTLEVEL != 0 but I don't see why.
-                register_file.spill(self)?;
-            }
+            self.spill_registers()?;
 
             self.sequence.on_halt(&mut self.interface)?;
         }
@@ -272,14 +271,14 @@ impl<'probe> Xtensa<'probe> {
             .interface
             .halt_with_previous(Duration::from_millis(100))?;
         if was_running {
-            self.state.register_cache = RegisterCache::default();
+            self.state.clear_cache();
         }
 
         let result = op(self);
 
         if was_running {
             self.interface.resume_core()?;
-            self.state.register_cache = RegisterCache::default();
+            self.state.clear_cache();
         }
 
         result
@@ -305,6 +304,25 @@ impl<'probe> Xtensa<'probe> {
             self.state.register_cache.debug_cause = Some(cause);
             Ok(cause)
         }
+    }
+
+    fn spill_registers(&mut self) -> Result<(), Error> {
+        // TODO: lazy-load registers, only spill before reading memory
+        if self.state.spilled {
+            return Ok(());
+        }
+        self.state.spilled = true;
+
+        // TODO: use the registers read here to prime the register cache
+        let register_file = RegisterFile::read(XtensaCore::lx(), &mut self.interface)?;
+
+        if self.current_ps()?.woe() {
+            // We should only spill registers if PS.WOE is set. According to the debug guide, we
+            // also should not spill if INTLEVEL != 0 but I don't see why.
+            register_file.spill(&mut self.interface)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -366,7 +384,7 @@ impl CoreInterface for Xtensa<'_> {
         if self.state.pc_written {
             self.interface.clear_register_cache();
         }
-        self.state.register_cache = RegisterCache::default();
+        self.state.clear_cache();
         Ok(self.interface.resume_core()?)
     }
 
@@ -591,13 +609,14 @@ struct RegisterFile {
 }
 
 impl RegisterFile {
-    fn read(xtensa: XtensaCore, interface: &mut Xtensa) -> Result<Self, Error> {
-        let window_base_result = interface
-            .interface
-            .schedule_read_register_untyped(SpecialRegister::Windowbase)?;
-        let window_start_result = interface
-            .interface
-            .schedule_read_register_untyped(SpecialRegister::Windowstart)?;
+    fn read(
+        xtensa: XtensaCore,
+        interface: &mut XtensaCommunicationInterface<'_>,
+    ) -> Result<Self, Error> {
+        let window_base_result =
+            interface.schedule_read_register_untyped(SpecialRegister::Windowbase)?;
+        let window_start_result =
+            interface.schedule_read_register_untyped(SpecialRegister::Windowstart)?;
 
         let mut register_results = Vec::with_capacity(xtensa.num_aregs as usize);
 
@@ -606,7 +625,7 @@ impl RegisterFile {
             // Read registers visible in the current window
             for ar in ar0..ar0 + xtensa.window_regs {
                 let reg = CpuRegister::try_from(ar)?;
-                let result = interface.interface.schedule_read_register_untyped(reg)?;
+                let result = interface.schedule_read_register_untyped(reg)?;
 
                 register_results.push(result);
             }
@@ -614,18 +633,16 @@ impl RegisterFile {
             // Rotate window to see the next `window_regs` registers
             let rotw_arg = xtensa.window_regs / xtensa.rotw_rotates;
             interface
-                .interface
                 .xdm
                 .schedule_execute_instruction(Instruction::Rotw(rotw_arg));
         }
 
         // Now do the actual read.
-        interface.interface.xdm.execute().expect("Failed to execute read. This probably shouldn't happen, unless we raise an exception (Window Over/Underflow), maybe?");
+        interface.xdm.execute().expect("Failed to execute read. This probably shouldn't happen, unless we raise an exception (Window Over/Underflow), maybe?");
         let register_values = register_results
             .into_iter()
             .map(|result| {
                 interface
-                    .interface
                     .xdm
                     .read_deferred_result(result)
                     .map(|r| r.into_u32())
@@ -635,7 +652,6 @@ impl RegisterFile {
         // WindowBase points to the first register of the current window in the register file.
         // In essence, it selects which 16 registers are visible out of the 64 physical registers.
         let window_base = interface
-            .interface
             .xdm
             .read_deferred_result(window_base_result)
             .map(|r| r.into_u32())?;
@@ -656,7 +672,6 @@ impl RegisterFile {
         // exceptions should be raised. The exception handlers then spill or reload registers
         // from the stack and set/clear the corresponding bit in the WindowStart register.
         let window_start = interface
-            .interface
             .xdm
             .read_deferred_result(window_start_result)
             .map(|r| r.into_u32())?;
@@ -669,7 +684,7 @@ impl RegisterFile {
         })
     }
 
-    fn spill(&self, xtensa: &mut Xtensa<'_>) -> Result<(), Error> {
+    fn spill(&self, xtensa: &mut XtensaCommunicationInterface<'_>) -> Result<(), Error> {
         if !self.core.windowed() {
             return Ok(());
         }
@@ -769,7 +784,7 @@ impl<'a> RegisterWindow<'a> {
         (idx + self.window_base * self.file.core.rotw_rotates) % self.file.core.num_aregs
     }
 
-    fn spill(&self, interface: &mut Xtensa<'_>) -> Result<(), Error> {
+    fn spill(&self, interface: &mut XtensaCommunicationInterface<'_>) -> Result<(), Error> {
         // a0-a3 goes into our stack, the rest into the stack of the caller.
         let a0_a3 = [
             self.read_register(CpuRegister::A0),
