@@ -435,7 +435,7 @@ impl SifliUartFactory {
             .map_err(|_| {
                 DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
             })?;
-        port.write_data_terminal_ready(false).map_err(|_| {;
+        port.write_data_terminal_ready(false).map_err(|_| {
             DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
         })?;
         port.write_request_to_send(false).map_err(|_| {
