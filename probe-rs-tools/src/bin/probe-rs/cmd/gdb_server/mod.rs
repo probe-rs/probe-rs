@@ -8,9 +8,7 @@ pub(crate) use stub::{GdbInstanceConfiguration, run};
 
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use parking_lot::FairMutex;
 use probe_rs::{config::Registry, probe::list::Lister};
@@ -74,9 +72,15 @@ impl Cmd {
             );
         }
 
-        let suppress_errors = Arc::new(AtomicBool::new(false));
-
         let gdb = if let Some(gdb) = self.gdb {
+            tokio::spawn(async move {
+                loop {
+                    // Don't exit on ctrl-c as you need to use this key combination
+                    // to ask gdb to interrupt execution of the tracee.
+                    tokio::signal::ctrl_c().await.unwrap();
+                }
+            });
+
             let mut cmd = Command::new(gdb);
             cmd.args([
                 "-ex",
@@ -87,28 +91,7 @@ impl Cmd {
             }
             cmd.args(self.gdb_args);
             eprintln!("Spawning {cmd:?}");
-            let gdb = Arc::new(Mutex::new(cmd.spawn()?));
-
-            let suppress_errors2 = suppress_errors.clone();
-            let gdb2 = gdb.clone();
-            tokio::spawn(async move {
-                let mut last_ctrl_c = Instant::now() - Duration::from_secs(100);
-                loop {
-                    // Don't exit on ctrl-c as you need to use this key combination
-                    // to ask gdb to interrupt execution of the tracee.
-                    tokio::signal::ctrl_c().await.unwrap();
-                    if last_ctrl_c.elapsed() < Duration::from_millis(500) {
-                        suppress_errors2.store(true, Ordering::SeqCst);
-
-                        // Kill gdb if using ctrl-c twice within half a second.
-                        gdb2.lock().unwrap().kill().unwrap();
-                        println!();
-                    }
-                    last_ctrl_c = Instant::now();
-                }
-            });
-
-            Some(gdb)
+            Some(cmd.spawn()?)
         } else {
             None
         };
@@ -116,10 +99,8 @@ impl Cmd {
         let session = FairMutex::new(session);
 
         if let Err(e) = run(&session, instances.iter(), gdb) {
-            if !suppress_errors.load(Ordering::SeqCst) {
-                eprintln!("During the execution of GDB an error was encountered:");
-                eprintln!("{e:?}");
-            }
+            eprintln!("During the execution of GDB an error was encountered:");
+            eprintln!("{e:?}");
         }
 
         Ok(())
