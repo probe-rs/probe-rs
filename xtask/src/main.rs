@@ -338,6 +338,8 @@ impl PrInfo {
 fn check_changelog(pr_number: Option<u64>, comment_error: bool) -> Result<()> {
     let mut fragment_list = FragmentList::new();
 
+    eprintln!("I'm running in a branch!");
+
     if let Some(pr_number) = pr_number {
         println!("Checking changelog fragments of PR {pr_number}");
 
