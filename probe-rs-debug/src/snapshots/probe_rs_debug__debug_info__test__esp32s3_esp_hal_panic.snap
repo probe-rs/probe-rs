@@ -431,7 +431,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070449652
     - core_register:
         id: 2
         roles:
@@ -453,7 +453,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 395296
     - core_register:
         id: 4
         roles:
@@ -485,7 +485,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 1070186500
     - core_register:
         id: 8
         roles:
@@ -743,7 +743,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070110752
     - core_register:
         id: 2
         roles:
@@ -754,7 +754,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 1070449632
     - core_register:
         id: 3
         roles:
@@ -765,7 +765,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1070449665
     - core_register:
         id: 4
         roles:
@@ -787,7 +787,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1
     - core_register:
         id: 6
         roles:
@@ -797,7 +797,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 1070186500
     - core_register:
         id: 8
         roles:
@@ -1005,7 +1005,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070186500
     - core_register:
         id: 2
         roles:
@@ -1016,7 +1016,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 1070449684
     - core_register:
         id: 3
         roles:
@@ -1027,7 +1027,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1006700188
     - core_register:
         id: 4
         roles:
@@ -1049,7 +1049,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1
     - core_register:
         id: 6
         roles:
@@ -1059,7 +1059,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 0
     - core_register:
         id: 8
         roles:
@@ -1541,7 +1541,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070186500
     - core_register:
         id: 2
         roles:
@@ -1552,7 +1552,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 0
     - core_register:
         id: 3
         roles:
@@ -1563,7 +1563,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 2
     - core_register:
         id: 4
         roles:
@@ -1585,7 +1585,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1
     - core_register:
         id: 6
         roles:
@@ -1595,7 +1595,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 0
     - core_register:
         id: 8
         roles:
@@ -1738,7 +1738,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070186500
     - core_register:
         id: 2
         roles:
@@ -1749,7 +1749,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 1
     - core_register:
         id: 3
         roles:
@@ -1760,7 +1760,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 2
     - core_register:
         id: 4
         roles:
@@ -1782,7 +1782,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1
     - core_register:
         id: 6
         roles:
@@ -1792,7 +1792,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 0
     - core_register:
         id: 8
         roles:
@@ -1935,7 +1935,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070186500
     - core_register:
         id: 2
         roles:
@@ -1946,7 +1946,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 2
     - core_register:
         id: 3
         roles:
@@ -1957,7 +1957,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 2
     - core_register:
         id: 4
         roles:
@@ -1979,7 +1979,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1
     - core_register:
         id: 6
         roles:
@@ -1989,7 +1989,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 0
     - core_register:
         id: 8
         roles:
@@ -2132,7 +2132,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070186500
     - core_register:
         id: 2
         roles:
@@ -2143,7 +2143,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 3
     - core_register:
         id: 3
         roles:
@@ -2154,7 +2154,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 2
     - core_register:
         id: 4
         roles:
@@ -2165,7 +2165,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 2181046200
     - core_register:
         id: 5
         roles:
@@ -2176,7 +2176,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1070120720
     - core_register:
         id: 6
         roles:
@@ -2186,7 +2186,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 0
     - core_register:
         id: 8
         roles:
@@ -2329,7 +2329,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 395040
     - core_register:
         id: 2
         roles:
@@ -2340,7 +2340,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 4
     - core_register:
         id: 3
         roles:
@@ -2351,7 +2351,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1070450008
     - core_register:
         id: 4
         roles:
@@ -2362,7 +2362,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 1107309272
     - core_register:
         id: 5
         roles:
@@ -2383,7 +2383,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 1070186496
     - core_register:
         id: 8
         roles:
@@ -2526,7 +2526,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070450008
     - core_register:
         id: 2
         roles:
@@ -2537,7 +2537,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 5
     - core_register:
         id: 3
         roles:
@@ -2559,7 +2559,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 73728
     - core_register:
         id: 5
         roles:
@@ -2570,7 +2570,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1107332716
     - core_register:
         id: 6
         roles:
@@ -2580,7 +2580,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 1070449984
     - core_register:
         id: 8
         roles:
@@ -2723,7 +2723,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070186680
     - core_register:
         id: 2
         roles:
@@ -2734,7 +2734,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 1070111484
     - core_register:
         id: 3
         roles:
@@ -2745,7 +2745,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1070111460
     - core_register:
         id: 4
         roles:
@@ -2756,7 +2756,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 1070450160
     - core_register:
         id: 5
         roles:
@@ -2777,7 +2777,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 1070186712
     - core_register:
         id: 8
         roles:
@@ -3175,7 +3175,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070186680
     - core_register:
         id: 2
         roles:
@@ -3186,7 +3186,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 1070111484
     - core_register:
         id: 3
         roles:
@@ -3197,7 +3197,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1070111460
     - core_register:
         id: 4
         roles:
@@ -3208,7 +3208,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 1070450160
     - core_register:
         id: 5
         roles:
@@ -3229,7 +3229,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 1070186712
     - core_register:
         id: 8
         roles:
@@ -3310,7 +3310,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tp: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tthis: *const embassy_executor::raw::TaskStorage<s3::____embassy_main_task::{async_fn_env#0}> = *const embassy_executor::raw::TaskStorage<s3::____embassy_main_task::{async_fn_env#0}> @ 0x00000000,\n\tfuture: Pin<&mut s3::____embassy_main_task::{async_fn_env#0}> = Pin<&mut s3::____embassy_main_task::{async_fn_env#0}> @ 0x00000001,\n\twaker: Waker = Waker @ 0x420011CF,\n\tcx: Context = Context @ 0x420011D7}"
+      value: "<unknown> {\n\tp: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tthis: *const embassy_executor::raw::TaskStorage<s3::____embassy_main_task::{async_fn_env#0}> = *const embassy_executor::raw::TaskStorage<s3::____embassy_main_task::{async_fn_env#0}> @ 0x00000000,\n\tfuture: Pin<&mut s3::____embassy_main_task::{async_fn_env#0}> = Pin<&mut s3::____embassy_main_task::{async_fn_env#0}> @ 0x3FCDC5F0,\n\twaker: Waker = Waker @ 0x420011CF,\n\tcx: Context = Context @ 0x420011D7}"
       children:
         - name:
             Named: p
@@ -3350,7 +3350,7 @@ expression: stack_frames
             Named: future
           type_name:
             Struct: "Pin<&mut s3::____embassy_main_task::{async_fn_env#0}>"
-          value: "Pin<&mut s3::____embassy_main_task::{async_fn_env#0}> @ 0x00000001"
+          value: "Pin<&mut s3::____embassy_main_task::{async_fn_env#0}> @ 0x3FCDC5F0"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
             line: 211
@@ -3361,13 +3361,13 @@ expression: stack_frames
                 Named: __pointer
               type_name:
                 Pointer: "&mut s3::____embassy_main_task::{async_fn_env#0}"
-              value: "&mut s3::____embassy_main_task::{async_fn_env#0} @ 0x00000001"
+              value: "&mut s3::____embassy_main_task::{async_fn_env#0} @ 0x3FCDC5F0"
               children:
                 - name:
                     Named: "*__pointer"
                   type_name:
                     Struct: "{async_fn_env#0}"
-                  value: "{async_fn_env#0}"
+                  value: "{async_fn_env#0} @ 0x00000005"
         - name:
             Named: waker
           type_name:
@@ -3676,7 +3676,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 4294967293
     - core_register:
         id: 2
         roles:
@@ -3687,7 +3687,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 1070450352
     - core_register:
         id: 3
         roles:
@@ -3698,7 +3698,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1070186680
     - core_register:
         id: 4
         roles:
@@ -3709,7 +3709,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 1610670080
     - core_register:
         id: 5
         roles:
@@ -3720,7 +3720,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1792
     - core_register:
         id: 6
         roles:
@@ -3730,7 +3730,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 0
     - core_register:
         id: 8
         roles:
@@ -4367,7 +4367,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 4294967293
     - core_register:
         id: 2
         roles:
@@ -4378,7 +4378,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 1070450352
     - core_register:
         id: 3
         roles:
@@ -4389,7 +4389,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1070186680
     - core_register:
         id: 4
         roles:
@@ -4400,7 +4400,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 1610670080
     - core_register:
         id: 5
         roles:
@@ -4411,7 +4411,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1792
     - core_register:
         id: 6
         roles:
@@ -4421,7 +4421,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 0
     - core_register:
         id: 8
         roles:
@@ -4502,7 +4502,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &embassy_executor::raw::run_queue::RunQueue = &embassy_executor::raw::run_queue::RunQueue @ 0x3FCDC640,\n\tptr: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tnext: Option<embassy_executor::raw::TaskRef> = Option<embassy_executor::raw::TaskRef> @ 0x00000001,\n\ttask: TaskRef = TaskRef @ 0x3FCDC300}"
+      value: "<unknown> {\n\tself: &embassy_executor::raw::run_queue::RunQueue = &embassy_executor::raw::run_queue::RunQueue @ 0x3FCDC640,\n\tptr: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tnext: Option<embassy_executor::raw::TaskRef> = Option<embassy_executor::raw::TaskRef> @ 0x6000E000,\n\ttask: TaskRef = TaskRef @ 0x3FCDC300}"
       children:
         - name:
             Named: self
@@ -4578,7 +4578,7 @@ expression: stack_frames
             Named: next
           type_name:
             Struct: "Option<embassy_executor::raw::TaskRef>"
-          value: "Option<embassy_executor::raw::TaskRef> @ 0x00000001"
+          value: "Option<embassy_executor::raw::TaskRef> @ 0x6000E000"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
             line: 75
@@ -4589,52 +4589,52 @@ expression: stack_frames
                 Named: Some
               type_name:
                 Struct: Some
-              value: Some @ 0x00000001
+              value: Some @ 0x6000E000
               children:
                 - name:
                     Named: __0
                   type_name:
                     Struct: TaskRef
-                  value: TaskRef @ 0x00000001
+                  value: TaskRef @ 0x6000E000
                   children:
                     - name:
                         Named: ptr
                       type_name:
                         Struct: "NonNull<embassy_executor::raw::TaskHeader>"
-                      value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x00000001"
+                      value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x6000E000"
                       children:
                         - name:
                             Named: pointer
                           type_name:
                             Pointer: "*const embassy_executor::raw::TaskHeader"
-                          value: "*const embassy_executor::raw::TaskHeader @ 0x00000001"
+                          value: "*const embassy_executor::raw::TaskHeader @ 0x6000E000"
                           children:
                             - name:
                                 Named: "*pointer"
                               type_name:
                                 Struct: TaskHeader
-                              value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000001 : The coredump does not include the memory for address 0x1 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000001 : The coredump does not include the memory for address 0x1 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000001 : The coredump does not include the memory for address 0x1 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000001 : The coredump does not include the memory for address 0x1 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000001 : The coredump does not include the memory for address 0x1 of size 0x4. >}"
+                              value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x6000E000 : The coredump does not include the memory for address 0x6000e000 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x6000E000 : The coredump does not include the memory for address 0x6000e000 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x6000E000 : The coredump does not include the memory for address 0x6000e000 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x6000E000 : The coredump does not include the memory for address 0x6000e000 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x6000E000 : The coredump does not include the memory for address 0x6000e000 of size 0x4. >}"
                               children:
                                 - name:
                                     Named: state
                                   type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000001 : The coredump does not include the memory for address 0x1 of size 0x4. >"
+                                  value: "< Failed to read referenced variable address from memory location 0x6000E000 : The coredump does not include the memory for address 0x6000e000 of size 0x4. >"
                                 - name:
                                     Named: run_queue_item
                                   type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000001 : The coredump does not include the memory for address 0x1 of size 0x4. >"
+                                  value: "< Failed to read referenced variable address from memory location 0x6000E000 : The coredump does not include the memory for address 0x6000e000 of size 0x4. >"
                                 - name:
                                     Named: executor
                                   type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000001 : The coredump does not include the memory for address 0x1 of size 0x4. >"
+                                  value: "< Failed to read referenced variable address from memory location 0x6000E000 : The coredump does not include the memory for address 0x6000e000 of size 0x4. >"
                                 - name:
                                     Named: poll_fn
                                   type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000001 : The coredump does not include the memory for address 0x1 of size 0x4. >"
+                                  value: "< Failed to read referenced variable address from memory location 0x6000E000 : The coredump does not include the memory for address 0x6000e000 of size 0x4. >"
                                 - name:
                                     Named: timer_queue_item
                                   type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000001 : The coredump does not include the memory for address 0x1 of size 0x4. >"
+                                  value: "< Failed to read referenced variable address from memory location 0x6000E000 : The coredump does not include the memory for address 0x6000e000 of size 0x4. >"
         - name:
             Named: task
           type_name:
@@ -4925,7 +4925,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 4294967293
     - core_register:
         id: 2
         roles:
@@ -4936,7 +4936,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 1070450352
     - core_register:
         id: 3
         roles:
@@ -4947,7 +4947,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1070186680
     - core_register:
         id: 4
         roles:
@@ -4958,7 +4958,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 1610670080
     - core_register:
         id: 5
         roles:
@@ -4969,7 +4969,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1792
     - core_register:
         id: 6
         roles:
@@ -4979,7 +4979,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 0
     - core_register:
         id: 8
         roles:
@@ -5190,7 +5190,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 4294967293
     - core_register:
         id: 2
         roles:
@@ -5201,7 +5201,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 1070450352
     - core_register:
         id: 3
         roles:
@@ -5212,7 +5212,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1070186680
     - core_register:
         id: 4
         roles:
@@ -5223,7 +5223,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 1610670080
     - core_register:
         id: 5
         roles:
@@ -5234,7 +5234,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1792
     - core_register:
         id: 6
         roles:
@@ -5244,7 +5244,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 0
     - core_register:
         id: 8
         roles:
@@ -5461,7 +5461,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 0
     - core_register:
         id: 2
         roles:
@@ -5472,7 +5472,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 1070450352
     - core_register:
         id: 3
         roles:
@@ -5483,7 +5483,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 2
     - core_register:
         id: 4
         roles:
@@ -5494,7 +5494,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 1792
     - core_register:
         id: 5
         roles:
@@ -5505,7 +5505,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 1107309368
     - core_register:
         id: 6
         roles:
@@ -5515,7 +5515,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 1107323384
     - core_register:
         id: 8
         roles:
@@ -5596,7 +5596,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC660,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = < Probe(Other(\"The coredump does not include the memory for address 0x0 of size 0x4\")) >}"
+      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC660,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 2415935798}"
       children:
         - name:
             Named: self
@@ -5643,7 +5643,7 @@ expression: stack_frames
             Named: cpu
           type_name:
             Base: usize
-          value: "< Probe(Other(\"The coredump does not include the memory for address 0x0 of size 0x4\")) >"
+          value: "2415935798"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
             line: 108
@@ -5699,7 +5699,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070450352
     - core_register:
         id: 2
         roles:
@@ -5710,7 +5710,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 0
     - core_register:
         id: 3
         roles:
@@ -5721,7 +5721,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1070207165
     - core_register:
         id: 4
         roles:
@@ -5732,7 +5732,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 1006707344
     - core_register:
         id: 5
         roles:
@@ -5743,7 +5743,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 254
     - core_register:
         id: 6
         roles:
@@ -5753,7 +5753,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 255
     - core_register:
         id: 8
         roles:
@@ -6056,7 +6056,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1070450352
     - core_register:
         id: 2
         roles:
@@ -6067,7 +6067,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 0
     - core_register:
         id: 3
         roles:
@@ -6078,7 +6078,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1070207165
     - core_register:
         id: 4
         roles:
@@ -6089,7 +6089,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 1006707344
     - core_register:
         id: 5
         roles:
@@ -6100,7 +6100,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 254
     - core_register:
         id: 6
         roles:
@@ -6110,7 +6110,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 255
     - core_register:
         id: 8
         roles:
@@ -6242,7 +6242,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1611407360
     - core_register:
         id: 2
         roles:
@@ -6253,7 +6253,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 1342177280
     - core_register:
         id: 3
         roles:
@@ -6264,7 +6264,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1342177280
     - core_register:
         id: 4
         roles:
@@ -6275,7 +6275,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 0
     - core_register:
         id: 5
         roles:
@@ -6286,7 +6286,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 3
     - core_register:
         id: 6
         roles:
@@ -6296,7 +6296,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 0
     - core_register:
         id: 8
         roles:
@@ -6428,7 +6428,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 3
       value:
-        U32: 66
+        U32: 1107322048
     - core_register:
         id: 2
         roles:
@@ -6439,7 +6439,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 4
       value:
-        U32: 1070449584
+        U32: 2
     - core_register:
         id: 3
         roles:
@@ -6450,7 +6450,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 5
       value:
-        U32: 0
+        U32: 1070479372
     - core_register:
         id: 4
         roles:
@@ -6461,7 +6461,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 6
       value:
-        U32: 1
+        U32: 1107332987
     - core_register:
         id: 5
         roles:
@@ -6472,7 +6472,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 7
       value:
-        U32: 0
+        U32: 3
     - core_register:
         id: 6
         roles:
@@ -6482,7 +6482,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 8
       value:
-        U32: 1070111484
+        U32: 1
     - core_register:
         id: 8
         roles:
