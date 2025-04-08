@@ -53,9 +53,7 @@ pub static XTENSA_CORE_REGISTERS: LazyLock<CoreRegisters> =
 
 static XTENSA_REGISTERS_SET: &[CoreRegister] = &[
     RA,
-    PC,
     SP,
-    FP,
     CoreRegister {
         roles: &[
             RegisterRole::Core("a2"),
@@ -102,6 +100,7 @@ static XTENSA_REGISTERS_SET: &[CoreRegister] = &[
         data_type: RegisterDataType::UnsignedInteger(32),
         unwind_rule: UnwindRule::Clear,
     },
+    FP,
     CoreRegister {
         roles: &[RegisterRole::Core("a8")],
         id: crate::RegisterId(0x0008),
@@ -150,4 +149,5 @@ static XTENSA_REGISTERS_SET: &[CoreRegister] = &[
         data_type: RegisterDataType::UnsignedInteger(32),
         unwind_rule: UnwindRule::Clear,
     },
+    PC,
 ];
