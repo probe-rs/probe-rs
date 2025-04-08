@@ -144,30 +144,17 @@ fn list_tests_impl(
 
     let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
 
-    match request.boot_info {
-        BootInfo::FromRam {
-            vector_table_addr, ..
-        } => {
-            // core should be already reset and halt by this point.
-            session.prepare_running_on_ram(vector_table_addr)?;
-        }
-        BootInfo::Other => {
-            // reset the core to leave it in a consistent state after flashing
-            session
-                .core(core_id)?
-                .reset_and_halt(Duration::from_millis(100))?;
-        }
-    }
+    let mut run_loop = RunLoop {
+        core_id,
+        cancellation_token: ctx.cancellation_token(),
+    };
+
+    request.boot_info.prepare(&mut session, run_loop.core_id)?;
 
     let mut core = session.core(0)?;
     if let Some(rtt_client) = rtt_client.as_mut() {
         rtt_client.clear_control_block(&mut core)?;
     }
-
-    let mut run_loop = RunLoop {
-        core_id,
-        cancellation_token: ctx.cancellation_token(),
-    };
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
@@ -317,12 +304,7 @@ impl<F: FnMut(MonitorEvent)> ListEventHandler<F> {
             SemihostingCommand::Unknown(details)
                 if details.operation == Self::SEMIHOSTING_USER_LIST && self.cmdline_requested =>
             {
-                let buf = details.get_buffer(core)?;
-                let buf = buf.read(core)?;
-                let list = serde_json::from_slice::<TestDefinitions>(&buf[..])?;
-
-                // Signal status=success back to the target
-                details.write_status(core, 0)?;
+                let list = read_test_list(details, core)?;
 
                 tracing::debug!("got list of tests from target: {list:?}");
                 if list.version != 1 {
@@ -331,10 +313,7 @@ impl<F: FnMut(MonitorEvent)> ListEventHandler<F> {
 
                 Ok(Some(list.into()))
             }
-            other @ (SemihostingCommand::Open(_)
-            | SemihostingCommand::Close(_)
-            | SemihostingCommand::WriteConsole(_)
-            | SemihostingCommand::Write(_)) => {
+            other if SemihostingReader::is_io(other) => {
                 if let Some(output) = self.semihosting_reader.handle(other, core)? {
                     (self.sender)(MonitorEvent::SemihostingOutput(output));
                 }
@@ -348,6 +327,20 @@ impl<F: FnMut(MonitorEvent)> ListEventHandler<F> {
             ),
         }
     }
+}
+
+fn read_test_list(
+    details: probe_rs::semihosting::UnknownCommandDetails,
+    core: &mut Core<'_>,
+) -> anyhow::Result<TestDefinitions> {
+    let buf = details.get_buffer(core)?;
+    let buf = buf.read(core)?;
+    let list = serde_json::from_slice::<TestDefinitions>(&buf[..])?;
+
+    // Signal status=success back to the target
+    details.write_status(core, 0)?;
+
+    Ok(list)
 }
 
 struct RunEventHandler<F: FnMut(MonitorEvent)> {
@@ -395,10 +388,7 @@ impl<F: FnMut(MonitorEvent)> RunEventHandler<F> {
             SemihostingCommand::ExitError(_) if self.cmdline_requested => {
                 Ok(Some(TestOutcome::Panic))
             }
-            other @ (SemihostingCommand::Open(_)
-            | SemihostingCommand::Close(_)
-            | SemihostingCommand::WriteConsole(_)
-            | SemihostingCommand::Write(_)) => {
+            other if SemihostingReader::is_io(other) => {
                 if let Some(output) = self.semihosting_reader.handle(other, core)? {
                     (self.sender)(MonitorEvent::SemihostingOutput(output));
                 }

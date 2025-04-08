@@ -232,6 +232,9 @@ pub async fn attach(
     };
 
     let mut session = common_options.attach_session(probe, target)?;
+
+    // attach_session halts the target, let's give the user the option
+    // to resume it without a roundtrip
     if request.resume_target {
         session.resume_all_cores()?;
     }

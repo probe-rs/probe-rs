@@ -3,6 +3,7 @@ use crate::util::rtt::{
 };
 use probe_rs::{
     Core, MemoryInterface,
+    flashing::FlashLoader,
     rtt::{Error, Rtt, ScanRegion},
 };
 
@@ -48,6 +49,22 @@ impl RttClient {
 
     pub fn disallow_clearing_rtt_header(&mut self) {
         self.disallow_clearing_rtt_header = true;
+    }
+
+    pub fn configure_from_loader(&mut self, loader: &FlashLoader) {
+        // When using RTT with a program in flash, the RTT header will be moved to RAM on
+        // startup, so clearing it before startup is ok. However, if we're downloading to the
+        // header's final address in RAM, then it's not relocated on startup and we should not
+        // clear it. This impacts static RTT headers, like used in defmt_rtt.
+
+        if let ScanRegion::Exact(address) = self.scan_region {
+            if loader.has_data_for_address(address) {
+                tracing::debug!(
+                    "RTT control block is initialized by flash loader. Disabling clearing."
+                );
+                self.disallow_clearing_rtt_header()
+            }
+        }
     }
 
     pub fn is_attached(&self) -> bool {
