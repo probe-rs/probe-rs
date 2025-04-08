@@ -60,40 +60,43 @@ impl ExceptionInterface for XtensaExceptionHandler {
 
         // We can try and use FP to unwind SP and RA that allows us to continue unwinding.
 
-        // Current register values
-        let Ok(fp) = unwind_registers.get_register_value_by_role(&RegisterRole::FramePointer)
-        else {
-            // We can't unwind without FP.
-            return ControlFlow::Break(None);
-        };
-
+        // Current register values.
         let sp = unwind_registers
             .get_register_value_by_role(&RegisterRole::StackPointer)
             .unwrap();
 
-        if sp.abs_diff(fp) >= 1024 * 1024 {
-            // Heuristic: the stack frame is probably smaller than 1MB.
-            return ControlFlow::Continue(());
+        if sp < 16 {
+            // Stack pointer is too low.
+            return ControlFlow::Break(None);
         }
 
         // Read PC and FP from previous stack frame's Register-Spill Area.
         let mut stack_frame = [0; 2];
-        if let Err(e) = memory.read_32(fp - 16, &mut stack_frame) {
+        if let Err(e) = memory.read_32(sp - 16, &mut stack_frame) {
             // FP points at something we can't read.
             return ControlFlow::Break(Some(e.into()));
         }
 
         let [caller_ra, caller_sp] = stack_frame;
 
-        let unwound_fp = unwind_registers
-            .get_register_mut_by_role(&RegisterRole::FramePointer)
+        if (caller_sp as u64).saturating_sub(sp) > 0x1000_0000 {
+            // Stack pointer is too far away from the current stack pointer.
+            return ControlFlow::Break(None);
+        }
+
+        let unwound_sp = unwind_registers
+            .get_register_mut_by_role(&RegisterRole::StackPointer)
             .unwrap();
-        unwound_fp.value = Some(RegisterValue::from(caller_sp));
+        unwound_sp.value = Some(RegisterValue::from(caller_sp));
 
         let unwound_ra = unwind_registers
             .get_register_mut_by_role(&RegisterRole::ReturnAddress)
             .unwrap();
         unwound_ra.value = Some(RegisterValue::from(caller_ra));
+
+        if sp == caller_sp as u64 {
+            return ControlFlow::Break(None);
+        }
 
         ControlFlow::Continue(())
     }

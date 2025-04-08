@@ -8,10 +8,12 @@ use crate::{
     CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
     architecture::xtensa::{
         arch::{
-            Register, SpecialRegister,
+            CpuRegister, Register, SpecialRegister,
             instruction::{Instruction, InstructionEncoding},
         },
-        communication_interface::{DebugCause, IBreakEn, XtensaCommunicationInterface},
+        communication_interface::{
+            DebugCause, IBreakEn, ProgramStatus, WindowProperties, XtensaCommunicationInterface,
+        },
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
         sequences::XtensaDebugSequence,
         xdm::PowerStatus,
@@ -31,8 +33,17 @@ pub mod communication_interface;
 pub mod registers;
 pub(crate) mod sequences;
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
+struct RegisterCache {
+    /// The current interrupt level.
+    current_ps: Option<ProgramStatus>,
+
+    /// The cause of the last debug interrupt.
+    debug_cause: Option<DebugCause>,
+}
+
 /// Xtensa core state.
+#[derive(Debug)]
 pub struct XtensaCoreState {
     /// Whether the core is enabled.
     enabled: bool,
@@ -51,6 +62,11 @@ pub struct XtensaCoreState {
 
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
+
+    register_cache: RegisterCache,
+
+    /// Whether the registers have been spilled to the stack.
+    spilled: bool,
 }
 
 impl XtensaCoreState {
@@ -62,6 +78,8 @@ impl XtensaCoreState {
             breakpoint_set: [false; 2],
             pc_written: false,
             semihosting_command: None,
+            register_cache: RegisterCache::default(),
+            spilled: false,
         }
     }
 
@@ -71,6 +89,11 @@ impl XtensaCoreState {
             .iter()
             .enumerate()
             .fold(0, |acc, (i, &set)| if set { acc | (1 << i) } else { acc })
+    }
+
+    fn clear_cache(&mut self) {
+        self.register_cache = RegisterCache::default();
+        self.spilled = false;
     }
 }
 
@@ -159,7 +182,7 @@ impl<'probe> Xtensa<'probe> {
     fn skip_breakpoint_instruction(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
         if !self.state.pc_written {
-            let debug_cause = self.interface.read_register::<DebugCause>()?;
+            let debug_cause = self.debug_cause()?;
 
             let pc_increment = if debug_cause.break_instruction() {
                 3
@@ -226,11 +249,14 @@ impl<'probe> Xtensa<'probe> {
 
     fn on_halted(&mut self) -> Result<(), Error> {
         self.state.pc_written = false;
+        self.state.clear_cache();
 
         let status = self.status()?;
         tracing::debug!("Core halted: {:#?}", status);
 
         if status.is_halted() {
+            self.spill_registers()?;
+
             self.sequence.on_halt(&mut self.interface)?;
         }
 
@@ -244,14 +270,62 @@ impl<'probe> Xtensa<'probe> {
         let was_running = self
             .interface
             .halt_with_previous(Duration::from_millis(100))?;
+        if was_running {
+            self.state.clear_cache();
+        }
 
         let result = op(self);
 
         if was_running {
             self.interface.resume_core()?;
+            self.state.clear_cache();
         }
 
         result
+    }
+
+    fn current_ps(&mut self) -> Result<ProgramStatus, Error> {
+        if let Some(ps) = self.state.register_cache.current_ps {
+            Ok(ps)
+        } else {
+            // Reading ProgramStatus using `read_register` would return the value
+            // after the debug interrupt has been taken.
+            let ps = ProgramStatus(self.interface.read_register_untyped(Register::CurrentPs)?);
+            self.state.register_cache.current_ps = Some(ps);
+            Ok(ps)
+        }
+    }
+
+    fn debug_cause(&mut self) -> Result<DebugCause, Error> {
+        if let Some(cause) = self.state.register_cache.debug_cause {
+            Ok(cause)
+        } else {
+            let cause = self.interface.read_register::<DebugCause>()?;
+            self.state.register_cache.debug_cause = Some(cause);
+            Ok(cause)
+        }
+    }
+
+    fn spill_registers(&mut self) -> Result<(), Error> {
+        // TODO: lazy-load registers, only spill before reading memory
+        if self.state.spilled {
+            return Ok(());
+        }
+        self.state.spilled = true;
+
+        // TODO: use the registers read here to prime the register cache
+        let register_file = RegisterFile::read(
+            self.interface.core_properties().window_option_properties,
+            &mut self.interface,
+        )?;
+
+        if self.current_ps()?.woe() {
+            // We should only spill registers if PS.WOE is set. According to the debug guide, we
+            // also should not spill if INTLEVEL != 0 but I don't see why.
+            register_file.spill(&mut self.interface)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -281,7 +355,7 @@ impl CoreInterface for Xtensa<'_> {
 
     fn status(&mut self) -> Result<CoreStatus, Error> {
         let status = if self.core_halted()? {
-            let debug_cause = self.interface.read_register::<DebugCause>()?;
+            let debug_cause = self.debug_cause()?;
 
             let mut reason = debug_cause.halt_reason();
             if reason == HaltReason::Breakpoint(BreakpointCause::Software) {
@@ -313,6 +387,7 @@ impl CoreInterface for Xtensa<'_> {
         if self.state.pc_written {
             self.interface.clear_register_cache();
         }
+        self.state.clear_cache();
         Ok(self.interface.resume_core()?)
     }
 
@@ -336,7 +411,8 @@ impl CoreInterface for Xtensa<'_> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         self.skip_breakpoint_instruction()?;
-        self.interface.step()?;
+        let ps = self.current_ps()?;
+        self.interface.step(1, ps.intlevel())?;
         self.on_halted()?;
 
         self.core_info()
@@ -495,6 +571,245 @@ impl CoreInterface for Xtensa<'_> {
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
         self.interface.leave_debug_mode()?;
+        Ok(())
+    }
+}
+
+struct RegisterFile {
+    core: WindowProperties,
+    registers: Vec<u32>,
+    window_base: u32,
+    window_start: u32,
+}
+
+impl RegisterFile {
+    fn read(
+        xtensa: WindowProperties,
+        interface: &mut XtensaCommunicationInterface<'_>,
+    ) -> Result<Self, Error> {
+        let window_base_result =
+            interface.schedule_read_register_untyped(SpecialRegister::Windowbase)?;
+        let window_start_result =
+            interface.schedule_read_register_untyped(SpecialRegister::Windowstart)?;
+
+        let mut register_results = Vec::with_capacity(xtensa.num_aregs as usize);
+
+        let ar0 = arch::CpuRegister::A0 as u8;
+        for _ in 0..xtensa.num_aregs / xtensa.window_regs {
+            // Read registers visible in the current window
+            for ar in ar0..ar0 + xtensa.window_regs {
+                let reg = CpuRegister::try_from(ar)?;
+                let result = interface.schedule_read_register_untyped(reg)?;
+
+                register_results.push(result);
+            }
+
+            // Rotate window to see the next `window_regs` registers
+            let rotw_arg = xtensa.window_regs / xtensa.rotw_rotates;
+            interface
+                .xdm
+                .schedule_execute_instruction(Instruction::Rotw(rotw_arg));
+        }
+
+        // Now do the actual read.
+        interface.xdm.execute().expect("Failed to execute read. This probably shouldn't happen, unless we raise an exception (Window Over/Underflow), maybe?");
+        let register_values = register_results
+            .into_iter()
+            .map(|result| {
+                interface
+                    .xdm
+                    .read_deferred_result(result)
+                    .map(|r| r.into_u32())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // WindowBase points to the first register of the current window in the register file.
+        // In essence, it selects which 16 registers are visible out of the 64 physical registers.
+        let window_base = interface
+            .xdm
+            .read_deferred_result(window_base_result)
+            .map(|r| r.into_u32())?;
+
+        // The WindowStart Special Register, which is also added by the option and consists of
+        // NAREG/4 bits. Each call frame, which has not been spilled, is represented by a bit in the
+        // WindowStart register. The call frame's bit is set in the position given by the current
+        // WindowBase register value.
+        // Each register window has a single bit in the WindowStart register. The window size
+        // can be calculated by the difference of bit positions in the WindowStart register.
+        // For example, if WindowBase is 6, and WindowStart is 0b0000000001011001:
+        // - The first window uses a0-a11, and executed a CALL12 or CALLX12 instruction.
+        // - The second window uses a0-a3, and executed a CALL14 instruction.
+        // - The third window uses a0-a7, and executed a CALL8 instruction.
+        // - The fourth window is free to use all 16 registers at this point.
+        // There are no more active windows.
+        // This value is used by the hardware to determine if WindowOverflow or WindowUnderflow
+        // exceptions should be raised. The exception handlers then spill or reload registers
+        // from the stack and set/clear the corresponding bit in the WindowStart register.
+        let window_start = interface
+            .xdm
+            .read_deferred_result(window_start_result)
+            .map(|r| r.into_u32())?;
+
+        Ok(Self {
+            core: xtensa,
+            registers: register_values,
+            window_base,
+            window_start,
+        })
+    }
+
+    fn spill(&self, xtensa: &mut XtensaCommunicationInterface<'_>) -> Result<(), Error> {
+        if !self.core.has_windowed_registers {
+            return Ok(());
+        }
+
+        if self.window_start == 0 {
+            // There are no stack frames to spill.
+            return Ok(());
+        }
+
+        // Quoting the debug guide:
+        // The proper thing for the debugger to do when doing a call traceback or whenever looking
+        // at a calling function's address registers, is to examine the WINDOWSTART register bits
+        // (in combination with WINDOWBASE) to determine whether to look in the register file or on
+        // the stack for the relevant address register values.
+        // Quote ends here
+        // The above describes what we should do for minimally intrusive debugging, but I don't
+        // think we have the option to do this. Instead we spill everything that needs to be
+        // spilled, and then we can use the stack to unwind the registers. While forcefully
+        // spilling is not faithful to the true code execution, it is relatively simple to do.
+        // The debug guide states this can be noticeably slow, for example if "step to next line" is
+        // implemented by stepping one instruction at a time until the line number changes.
+        // FIXME: we can improve the above issue by only spilling before reading memory.
+
+        // Process registers. We need to roll the windows back by the window increment, and copy
+        // register values to the stack, if the relevant WindowStart bit is set. The window
+        // increment of the current window is saved in the top 2 bits of A0 (the return address).
+
+        // Find oldest window.
+        let mut window_base = self.next_window_base(self.window_base as u8);
+
+        while let Some(window) = RegisterWindow::at_windowbase(self, window_base) {
+            window.spill(xtensa)?;
+            window_base = self.next_window_base(window_base);
+
+            if window_base == self.window_base as u8 {
+                // We are back to the original window, so we can stop.
+
+                // We are not spilling the first window. We don't have a destination for it, and we don't
+                // need to unwind it from the stack.
+                break;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn is_window_start(&self, windowbase: u8) -> bool {
+        self.window_start & 1 << (windowbase % self.core.windowbase_size()) != 0
+    }
+
+    fn next_window_base(&self, window_base: u8) -> u8 {
+        let mut wb = (window_base + 1) % self.core.windowbase_size();
+        while wb != window_base {
+            if self.is_window_start(wb) {
+                break;
+            }
+            wb = (wb + 1) % self.core.windowbase_size();
+        }
+
+        wb
+    }
+}
+
+struct RegisterWindow<'a> {
+    window_base: u8,
+
+    /// In units of window_base bits.
+    window_size: u8,
+
+    file: &'a RegisterFile,
+}
+
+impl<'a> RegisterWindow<'a> {
+    fn at_windowbase(file: &'a RegisterFile, window_base: u8) -> Option<Self> {
+        if !file.is_window_start(window_base) {
+            return None;
+        }
+
+        let next_window_base = file.next_window_base(window_base);
+        let window_size = (next_window_base + file.core.windowbase_size() - window_base)
+            % file.core.windowbase_size();
+
+        Some(Self {
+            window_base,
+            file,
+            window_size: window_size.min(3),
+        })
+    }
+
+    /// Register spilling needs access to other frames' stack pointers.
+    fn read_register(&self, reg: CpuRegister) -> u32 {
+        let index = self.wb_offset_to_canonical(reg as u8);
+        self.file.registers[index as usize]
+    }
+
+    fn wb_offset_to_canonical(&self, idx: u8) -> u8 {
+        (idx + self.window_base * self.file.core.rotw_rotates) % self.file.core.num_aregs
+    }
+
+    fn spill(&self, interface: &mut XtensaCommunicationInterface<'_>) -> Result<(), Error> {
+        // a0-a3 goes into our stack, the rest into the stack of the caller.
+        let a0_a3 = [
+            self.read_register(CpuRegister::A0),
+            self.read_register(CpuRegister::A1),
+            self.read_register(CpuRegister::A2),
+            self.read_register(CpuRegister::A3),
+        ];
+
+        match self.window_size {
+            0 => {} // Nowhere to spill to
+
+            1 => interface.write_32(self.read_register(CpuRegister::A5) as u64 - 16, &a0_a3)?,
+
+            // Spill a4-a7
+            2 => {
+                let sp = interface.read_word_32(self.read_register(CpuRegister::A1) as u64 - 12)?;
+
+                interface.write_32(self.read_register(CpuRegister::A9) as u64 - 16, &a0_a3)?;
+
+                let regs = [
+                    self.read_register(CpuRegister::A4),
+                    self.read_register(CpuRegister::A5),
+                    self.read_register(CpuRegister::A6),
+                    self.read_register(CpuRegister::A7),
+                ];
+                interface.write_32(sp as u64 - 32, &regs)?;
+            }
+
+            // Spill a4-a11
+            3 => {
+                let sp = interface.read_word_32(self.read_register(CpuRegister::A1) as u64 - 12)?;
+                interface.write_32(self.read_register(CpuRegister::A13) as u64 - 16, &a0_a3)?;
+
+                let regs = [
+                    self.read_register(CpuRegister::A4),
+                    self.read_register(CpuRegister::A5),
+                    self.read_register(CpuRegister::A6),
+                    self.read_register(CpuRegister::A7),
+                    self.read_register(CpuRegister::A8),
+                    self.read_register(CpuRegister::A9),
+                    self.read_register(CpuRegister::A10),
+                    self.read_register(CpuRegister::A11),
+                ];
+                interface.write_32(sp as u64 - 48, &regs)?;
+            }
+
+            // There is no such thing as spilling a12-a15 - there can be only 12 active registers in
+            // a stack frame that is not the topmost, as there is no CALL16 instruction.
+            _ => unreachable!(),
+        }
+
         Ok(())
     }
 }

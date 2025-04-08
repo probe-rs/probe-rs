@@ -54,18 +54,25 @@ impl From<XtensaError> for ProbeRsError {
     }
 }
 
+/// Debug interrupt level values.
 #[derive(Clone, Copy)]
-#[allow(unused)]
-enum DebugLevel {
+pub enum DebugLevel {
+    /// The CPU was configured to take Debug interrupts at level 2.
     L2 = 2,
+    /// The CPU was configured to take Debug interrupts at level 3.
     L3 = 3,
+    /// The CPU was configured to take Debug interrupts at level 4.
     L4 = 4,
+    /// The CPU was configured to take Debug interrupts at level 5.
     L5 = 5,
+    /// The CPU was configured to take Debug interrupts at level 6.
     L6 = 6,
+    /// The CPU was configured to take Debug interrupts at level 7.
     L7 = 7,
 }
 
 impl DebugLevel {
+    /// The register that contains the current program counter value.
     pub fn pc(self) -> SpecialRegister {
         match self {
             DebugLevel::L2 => SpecialRegister::Epc2,
@@ -77,6 +84,7 @@ impl DebugLevel {
         }
     }
 
+    /// The register that contains the current program status value.
     pub fn ps(self) -> SpecialRegister {
         match self {
             DebugLevel::L2 => SpecialRegister::Eps2,
@@ -90,7 +98,7 @@ impl DebugLevel {
 }
 
 /// Xtensa interface state.
-// FIXME: This struct is a weird mix between core state, debug module state and core configuration.
+#[derive(Default)]
 pub(super) struct XtensaInterfaceState {
     /// Pairs of (register, read handle). The value is optional where None means "being restored"
     saved_registers: HashMap<Register, Option<DeferredResultIndex>>,
@@ -98,28 +106,64 @@ pub(super) struct XtensaInterfaceState {
     /// Whether the core is halted.
     // This roughly relates to Core Debug States (true = Running, false = [Stopped, Stepping])
     is_halted: bool,
-
-    /// The number of hardware breakpoints the target supports. CPU-specific configuration value.
-    hw_breakpoint_num: u32,
-
-    /// The interrupt level at which debug exceptions are generated. CPU-specific configuration value.
-    debug_level: DebugLevel,
-
-    /// The address range for which we should not use LDDR32.P/SDDR32.P instructions.
-    slow_memory_access_ranges: Vec<Range<u64>>,
 }
 
-impl Default for XtensaInterfaceState {
+/// Properties of an Xtensa CPU core.
+pub struct XtensaCoreProperties {
+    /// The number of hardware breakpoints the target supports. CPU-specific configuration value.
+    pub hw_breakpoint_num: u32,
+
+    /// The interrupt level at which debug exceptions are generated. CPU-specific configuration value.
+    pub debug_level: DebugLevel,
+
+    /// The address range for which we should not use LDDR32.P/SDDR32.P instructions.
+    pub slow_memory_access_ranges: Vec<Range<u64>>,
+
+    /// Configurable options in the Windowed Register Option
+    pub window_option_properties: WindowProperties,
+}
+
+impl Default for XtensaCoreProperties {
     fn default() -> Self {
         Self {
-            saved_registers: Default::default(),
-            is_halted: false,
-
-            // FIXME: these are per-chip configuration parameters
             hw_breakpoint_num: 2,
             debug_level: DebugLevel::L6,
             slow_memory_access_ranges: vec![],
+            window_option_properties: WindowProperties::lx(64),
         }
+    }
+}
+
+/// Properties of the windowed register file.
+#[derive(Clone, Copy)]
+pub struct WindowProperties {
+    /// Whether the CPU has windowed registers.
+    pub has_windowed_registers: bool,
+
+    /// The total number of AR registers in the register file.
+    pub num_aregs: u8,
+
+    /// The number of registers in a single window.
+    pub window_regs: u8,
+
+    /// The number of registers rotated by an LSB of the ROTW instruction.
+    pub rotw_rotates: u8,
+}
+
+impl WindowProperties {
+    /// Create a new WindowProperties instance with the given number of AR registers.
+    pub fn lx(num_aregs: u8) -> Self {
+        Self {
+            has_windowed_registers: true,
+            num_aregs,
+            window_regs: 16,
+            rotw_rotates: 4,
+        }
+    }
+
+    /// Returns the number of different valid WindowBase values.
+    pub fn windowbase_size(&self) -> u8 {
+        self.num_aregs / self.rotw_rotates
     }
 }
 
@@ -127,6 +171,7 @@ impl Default for XtensaInterfaceState {
 #[derive(Default)]
 pub struct XtensaDebugInterfaceState {
     interface_state: XtensaInterfaceState,
+    core_properties: XtensaCoreProperties,
     xdm_state: XdmState,
 }
 
@@ -137,6 +182,7 @@ pub struct XtensaCommunicationInterface<'probe> {
     /// The Xtensa debug module
     pub(crate) xdm: Xdm<'probe>,
     state: &'probe mut XtensaInterfaceState,
+    core_properties: &'probe mut XtensaCoreProperties,
 }
 
 impl<'probe> XtensaCommunicationInterface<'probe> {
@@ -147,6 +193,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     ) -> Self {
         let XtensaDebugInterfaceState {
             interface_state,
+            core_properties,
             xdm_state,
         } = state;
         let xdm = Xdm::new(probe, xdm_state);
@@ -154,12 +201,13 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Self {
             xdm,
             state: interface_state,
+            core_properties,
         }
     }
 
-    /// Set the range of addresses for which we should not use LDDR32.P/SDDR32.P instructions.
-    pub fn add_slow_memory_access_range(&mut self, range: Range<u64>) {
-        self.state.slow_memory_access_ranges.push(range);
+    /// Access the properties of the CPU core.
+    pub fn core_properties(&mut self) -> &mut XtensaCoreProperties {
+        self.core_properties
     }
 
     /// Read the targets IDCODE.
@@ -192,7 +240,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     ///
     /// On the Xtensa architecture this is the `NIBREAK` configuration parameter.
     pub fn available_breakpoint_units(&self) -> u32 {
-        self.state.hw_breakpoint_num
+        self.core_properties.hw_breakpoint_num
     }
 
     /// Returns whether the core is halted.
@@ -304,17 +352,18 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Steps the core by one instruction.
-    pub fn step(&mut self) -> Result<(), XtensaError> {
-        self.schedule_write_register(ICountLevel(self.state.debug_level as u32))?;
+    pub fn step(&mut self, by: u32, intlevel: u32) -> Result<(), XtensaError> {
+        // Instructions executed below icountlevel increment the ICOUNT register.
+        self.schedule_write_register(ICountLevel(intlevel + 1))?;
 
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
-        self.schedule_write_register(ICount(-2_i32 as u32))?;
+        self.schedule_write_register(ICount(-((1 + by) as i32) as u32))?;
 
         self.resume_core()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // Avoid stopping again
-        self.schedule_write_register(ICountLevel(self.state.debug_level as u32 + 1))?;
+        self.schedule_write_register(ICountLevel(self.core_properties.debug_level as u32 + 1))?;
 
         Ok(())
     }
@@ -425,8 +474,12 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         match register.into() {
             Register::Cpu(register) => Ok(self.schedule_read_cpu_register(register)),
             Register::Special(register) => self.schedule_read_special_register(register),
-            Register::CurrentPc => self.schedule_read_special_register(self.state.debug_level.pc()),
-            Register::CurrentPs => self.schedule_read_special_register(self.state.debug_level.ps()),
+            Register::CurrentPc => {
+                self.schedule_read_special_register(self.core_properties.debug_level.pc())
+            }
+            Register::CurrentPs => {
+                self.schedule_read_special_register(self.core_properties.debug_level.ps())
+            }
         }
     }
 
@@ -449,10 +502,10 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             Register::Cpu(register) => self.schedule_write_cpu_register(register, value),
             Register::Special(register) => self.schedule_write_special_register(register, value),
             Register::CurrentPc => {
-                self.schedule_write_special_register(self.state.debug_level.pc(), value)
+                self.schedule_write_special_register(self.core_properties.debug_level.pc(), value)
             }
             Register::CurrentPs => {
-                self.schedule_write_special_register(self.state.debug_level.ps(), value)
+                self.schedule_write_special_register(self.core_properties.debug_level.ps(), value)
             }
         }
     }
@@ -590,7 +643,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
     fn memory_access_for(&self, address: u64, len: usize) -> Box<dyn MemoryAccess> {
         let use_slow_access = self
-            .state
+            .core_properties
             .slow_memory_access_ranges
             .iter()
             .any(|r| r.intersects_range(&(address..address + len as u64)));

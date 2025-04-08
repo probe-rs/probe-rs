@@ -620,6 +620,10 @@ impl DebugInfo {
             // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
             tracing::trace!("UNWIND - Preparing to unwind the registers for the previous frame.");
 
+            // Because we will be updating the `unwind_registers` with previous frame unwind info,
+            // we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
+            let callee_frame_registers = unwind_registers.clone();
+
             // PART 2-a: get the `gimli::FrameDescriptorEntry` for the program counter
             // and then the unwind info associated with this row.
             let unwind_info = match unwind_info {
@@ -648,13 +652,14 @@ impl DebugInfo {
                         }
                         break 'unwind;
                     }
+
+                    if callee_frame_registers == unwind_registers {
+                        tracing::debug!("No change, preventing infinite loop");
+                        break;
+                    }
                     continue 'unwind;
                 }
             };
-
-            // Because we will be updating the `unwind_registers` with previous frame unwind info,
-            // we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
-            let callee_frame_registers = unwind_registers.clone();
 
             // PART 2-b: Unwind registers for the "previous/calling" frame.
             for debug_register in unwind_registers.0.iter_mut() {
@@ -1054,7 +1059,7 @@ pub fn determine_cfa<R: gimli::ReaderOffset>(
 /// Unwind the program counter for the caller frame, using the LR value from the callee frame.
 pub fn unwind_pc_without_debuginfo(
     unwind_registers: &mut DebugRegisters,
-    frame_pc: u64,
+    _frame_pc: u64,
     instruction_set: Option<probe_rs::InstructionSet>,
 ) -> ControlFlow<Option<DebugError>> {
     // For non exception frames, we cannot do stack unwinding if we do not have debug info.
@@ -1083,7 +1088,7 @@ pub fn unwind_pc_without_debuginfo(
         };
         // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
         // If both the LR and PC registers have undefined rules, this will prevent the unwind from continuing.
-        unwound_return_address.and_then(|return_address| {
+        calling_pc.value = unwound_return_address.and_then(|return_address| {
             unwind_program_counter_register(
                 return_address,
                 current_pc,
@@ -1091,17 +1096,6 @@ pub fn unwind_pc_without_debuginfo(
                 &mut register_rule_string,
             )
         });
-
-        if calling_pc
-            .value
-            .map(|calling_pc_value| calling_pc_value == RegisterValue::from(frame_pc))
-            .unwrap_or(false)
-        {
-            // Typically if we have to infer the PC value, it might happen that we are in
-            // a function that has no debug info, and the code is in a tight loop (typical of exception handlers).
-            // In such cases, we will not be able to unwind the stack beyond this frame.
-            return ControlFlow::Break(None);
-        }
     }
 
     ControlFlow::Continue(())
@@ -1344,7 +1338,6 @@ fn unwind_program_counter_register(
                     Some(RegisterValue::U32(return_address - 4))
                 }
                 Some(InstructionSet::Xtensa) => {
-                    // TODO: detect CALL0
                     let upper_bits = (current_pc as u32) & 0xC000_0000;
                     *register_rule_string = "PC=(unwound x0 - 3) (dwarf Undefined)".to_string();
                     Some(RegisterValue::U32(
@@ -1432,8 +1425,9 @@ mod test {
     /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
     fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
         let path = get_path_for_test_files(elf_file);
-        DebugInfo::from_file(&path)
-            .unwrap_or_else(|err| panic!("Failed to open file {}: {:?}", path.display(), err))
+        DebugInfo::from_file(&path).unwrap_or_else(|err: crate::DebugError| {
+            panic!("Failed to open file {}: {:?}", path.display(), err)
+        })
     }
 
     #[test]
@@ -1952,6 +1946,7 @@ mod test {
     #[test_case("nRF52833_xxAA_hardfault_in_systick"; "hardfault_in_systick Armv7-m using nRF52833_xxAA")]
     #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
     #[test_case("esp32c3_full_unwind"; "full_unwind RISC-V32E using esp32c3")]
+    #[test_case("esp32s3_esp_hal_panic"; "Xtensa unwinding on an esp32s3 in a panic handler")]
     fn full_unwind(test_name: &str) {
         // TODO: Add RISC-V tests.
 
