@@ -181,11 +181,7 @@ impl Value for CChar {
     where
         Self: Sized,
     {
-        let mut buff = 0u8;
-        memory.read(
-            variable.memory_location.memory_address()?,
-            std::slice::from_mut(&mut buff),
-        )?;
+        let buff = u8::get_value(variable, memory, _variable_cache)?;
 
         Ok(Self(buff))
     }
@@ -237,13 +233,22 @@ impl UnsignedInt {
     where
         Self: Sized,
     {
-        // Read the bits
+        // Read the bits. The actual count is encoded in the variable type.
         let mut buff = [0u8; 16];
         let bytes = variable.byte_size.unwrap_or(1).min(16) as usize;
-        memory.read(
-            variable.memory_location.memory_address()?,
-            &mut buff[..bytes],
-        )?;
+        if let VariableLocation::RegisterValue(value) = variable.memory_location {
+            // The value is in a register, we just need to extract the bytes.
+            let reg_bytes = TryInto::<u128>::try_into(value)?.to_le_bytes();
+
+            buff[..bytes].copy_from_slice(&reg_bytes[..bytes]);
+        } else {
+            // We only have an address, we need to read the value from memory.
+            memory.read(
+                variable.memory_location.memory_address()?,
+                &mut buff[..bytes],
+            )?;
+        }
+
         let value = u128::from_le_bytes(buff);
 
         // Extract bitfield bits

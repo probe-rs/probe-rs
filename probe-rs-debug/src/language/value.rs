@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::{
     DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableValue,
-    language::parsing::ParseToBytes,
+    language::parsing::ValueExt,
 };
 
 use probe_rs::MemoryInterface;
@@ -200,14 +200,7 @@ impl Value for i8 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(TryInto::<u32>::try_into(value)? as u8 as i8);
-        }
-
-        let mut buff = [0u8; 1];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = i8::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
@@ -235,14 +228,7 @@ impl Value for i16 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(TryInto::<u32>::try_into(value)? as u16 as i16);
-        }
-
-        let mut buff = [0u8; 2];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = i16::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
@@ -270,14 +256,7 @@ impl Value for i32 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(TryInto::<u32>::try_into(value)? as i32);
-        }
-
-        let mut buff = [0u8; 4];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = i32::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
@@ -305,14 +284,7 @@ impl Value for i64 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(TryInto::<u64>::try_into(value)? as i64);
-        }
-
-        let mut buff = [0u8; 8];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = i64::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
@@ -340,14 +312,7 @@ impl Value for i128 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(TryInto::<u128>::try_into(value)? as i128);
-        }
-
-        let mut buff = [0u8; 16];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = i128::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
@@ -375,14 +340,7 @@ impl Value for u8 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(TryInto::<u32>::try_into(value)? as u8);
-        }
-
-        let mut buff = [0u8; 1];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = u8::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
@@ -410,14 +368,7 @@ impl Value for u16 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(TryInto::<u32>::try_into(value)? as u16);
-        }
-
-        let mut buff = [0u8; 2];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = u16::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
@@ -445,14 +396,7 @@ impl Value for u32 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(value.try_into()?);
-        }
-
-        let mut buff = [0u8; 4];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = u32::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
@@ -480,14 +424,7 @@ impl Value for u64 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(value.try_into()?);
-        }
-
-        let mut buff = [0u8; 8];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = u64::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
@@ -515,14 +452,7 @@ impl Value for u128 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(value.try_into()?);
-        }
-
-        let mut buff = [0u8; 16];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = u128::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
@@ -550,14 +480,7 @@ impl Value for f32 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(f32::from_bits(value.try_into()?));
-        }
-
-        let mut buff = [0u8; 4];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = f32::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
@@ -585,14 +508,7 @@ impl Value for f64 {
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        if let VariableLocation::RegisterValue(value) = variable.memory_location {
-            return Ok(f64::from_bits(value.try_into()?));
-        }
-
-        let mut buff = [0u8; 8];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = f64::from_le_bytes(buff);
-        Ok(ret_value)
+        Self::read_from_location(variable, memory)
     }
 
     fn update_value(
