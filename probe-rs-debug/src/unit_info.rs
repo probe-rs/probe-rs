@@ -1625,17 +1625,14 @@ impl UnitInfo {
                     child_variable.memory_location = VariableLocation::Value;
                     child_variable.set_value(value_from_expression);
                 }
-
                 ExpressionResult::Value(value_from_expression) => {
                     child_variable.set_value(value_from_expression);
                 }
-
                 ExpressionResult::Location(VariableLocation::Unavailable) => {
                     child_variable.set_value(VariableValue::Error(
                         "<value optimized away by compiler, out of scope, or dropped>".to_string(),
                     ));
                 }
-
                 ExpressionResult::Location(
                     ref location @ VariableLocation::Error(ref error_message)
                     | ref location @ VariableLocation::Unsupported(ref error_message),
@@ -1643,7 +1640,6 @@ impl UnitInfo {
                     child_variable.set_value(VariableValue::Error(error_message.clone()));
                     child_variable.memory_location = location.clone();
                 }
-
                 ExpressionResult::Location(location_from_expression) => {
                     child_variable.memory_location = location_from_expression;
                 }
@@ -1891,17 +1887,12 @@ impl UnitInfo {
                 ExpressionResult::Value(VariableValue::Valid(value))
             }
             Location::Register { register } => {
-                if let Some(address) = frame_info
+                if let Some(value) = frame_info
                     .registers
                     .get_register_by_dwarf_id(register.0)
                     .and_then(|register| register.value)
                 {
-                    match address.try_into() {
-                        Ok(address) => evaluate_address(address, memory),
-                        Err(error) => ExpressionResult::Location(VariableLocation::Error(format!(
-                            "Error: Cannot convert register value to location address: {error:?}"
-                        ))),
-                    }
+                    ExpressionResult::Location(VariableLocation::RegisterValue(value))
                 } else {
                     ExpressionResult::Location(VariableLocation::Error(format!(
                         "Error: Cannot resolve register: {register:?}"
@@ -1993,9 +1984,10 @@ impl UnitInfo {
             // Non-array members can inherit their memory location from their parent, but only if the parent has a valid memory location.
             if self.is_pointer(child_variable, parent_variable, unit_ref) {
                 match &parent_variable.memory_location {
-                    VariableLocation::Address(address) => {
+                    address @ (VariableLocation::Address(_)
+                    | VariableLocation::RegisterValue(_)) => {
                         // Now, retrieve the location by reading the adddress pointed to by the parent variable.
-                        match memory.read_word_32(*address) {
+                        match memory.read_word_32(address.memory_address().unwrap()) {
                             Ok(memory_location) => {
                                 VariableLocation::Address(memory_location as u64)
                             }

@@ -3,6 +3,7 @@ use crate::{language::ProgrammingLanguage, unit_info::UnitInfo};
 use super::*;
 use gimli::{DebugInfoOffset, DwLang, UnitOffset};
 use itertools::Itertools;
+use probe_rs::RegisterValue;
 use std::ops::Range;
 
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant
@@ -403,7 +404,7 @@ impl VariableType {
 }
 
 /// Location of a variable
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum VariableLocation {
     /// Location of the variable is not known. This means that it has not been evaluated yet.
     #[default]
@@ -414,6 +415,8 @@ pub enum VariableLocation {
     Address(u64),
     /// The value of the variable is directly available.
     Value,
+    /// The variable is stored in a register, and the value is read from there.
+    RegisterValue(RegisterValue),
     /// There was an error evaluating the variable location.
     Error(String),
     /// Support for handling the location of this variable is not (yet) implemented.
@@ -425,6 +428,12 @@ impl VariableLocation {
     pub fn memory_address(&self) -> Result<u64, DebugError> {
         match self {
             VariableLocation::Address(address) => Ok(*address),
+            VariableLocation::RegisterValue(address) => match TryInto::<u64>::try_into(*address) {
+                Ok(address) => Ok(address),
+                Err(_) => Err(DebugError::WarnAndContinue {
+                    message: "Register value is not a valid address".to_string(),
+                }),
+            },
             other => Err(DebugError::WarnAndContinue {
                 message: format!("Variable does not have a memory location: location={other:?}"),
             }),
@@ -434,9 +443,10 @@ impl VariableLocation {
     /// Check if the location is valid, ie. not an error, unsupported, or unavailable.
     pub fn valid(&self) -> bool {
         match self {
-            VariableLocation::Address(_) | VariableLocation::Value | VariableLocation::Unknown => {
-                true
-            }
+            VariableLocation::Address(_)
+            | VariableLocation::RegisterValue(_)
+            | VariableLocation::Value
+            | VariableLocation::Unknown => true,
             _other => false,
         }
     }
@@ -447,7 +457,14 @@ impl std::fmt::Display for VariableLocation {
         match self {
             VariableLocation::Unknown => "<unknown value>".fmt(f),
             VariableLocation::Unavailable => "<value not available>".fmt(f),
-            VariableLocation::Address(address) => write!(f, "{address:#010X}"),
+            VariableLocation::Address(address) => {
+                write!(f, "{address:#010X}")
+            }
+            VariableLocation::RegisterValue(address) => match address {
+                RegisterValue::U32(value) => write!(f, "{value:#010X}"),
+                RegisterValue::U64(value) => write!(f, "{value:#018X}"),
+                RegisterValue::U128(value) => write!(f, "{value:#034X}"),
+            },
             VariableLocation::Value => "<not applicable - statically stored value>".fmt(f),
             VariableLocation::Error(error) => error.fmt(f),
             VariableLocation::Unsupported(reason) => reason.fmt(f),
@@ -459,7 +476,7 @@ impl std::fmt::Display for VariableLocation {
 ///
 /// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
 /// unless it is updated through one of the available methods on `VariableCache`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it.
     /// The value will be zero until it is stored in VariableCache, at which time its value will be
