@@ -146,6 +146,14 @@ impl ESP32S2 {
 
 impl XtensaDebugSequence for ESP32S2 {
     fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+        interface
+            .core_properties()
+            .fast_memory_access_ranges
+            .extend_from_slice(&[
+                0x3FF9_E000..0x4000_0000, // Data
+                0x4000_0000..0x4007_2000, // Instruction
+            ]);
+
         self.disable_wdts(interface)
     }
 
