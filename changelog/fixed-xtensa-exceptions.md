@@ -1,0 +1,1 @@
+Xtensa exceptions should no longer cause the debugger to crash.

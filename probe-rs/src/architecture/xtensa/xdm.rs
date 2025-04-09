@@ -333,6 +333,15 @@ impl<'probe> Xdm<'probe> {
                             // The instruction is still executing. Retry the Debug Status read.
                             to_consume -= 1;
                         }
+                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecExeception)) => {
+                            // Clear exception to allow executing further instructions.
+                            self.clear_exception_state()?;
+                            // TODO: in the future, we might want to bubble up the exception cause.
+                            // We might also want to store this error for each result that has not
+                            // yet been read.
+                            return Err(XtensaError::XdmError(Error::ExecExeception));
+                        }
+
                         ProbeRsError::Probe(error) => return Err(error.into()),
                         ProbeRsError::Xtensa(error) => return Err(error),
                         other => panic!("Unexpected error: {other}"),
@@ -668,6 +677,18 @@ impl<'probe> Xdm<'probe> {
         })?;
 
         Ok(())
+    }
+
+    fn clear_exception_state(&mut self) -> Result<(), XtensaError> {
+        self.write_nexus_register({
+            let mut status = DebugStatus(0);
+
+            status.set_exec_exception(true);
+            status.set_exec_done(true);
+            status.set_exec_overrun(true);
+
+            status
+        })
     }
 }
 
