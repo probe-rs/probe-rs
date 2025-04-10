@@ -5103,55 +5103,10 @@ expression: stack_frames
             address: ~
           children:
             - name:
-                Named: Some
+                Named: None
               type_name:
-                Struct: Some
-              value: Some @ 0x00000000
-              children:
-                - name:
-                    Named: __0
-                  type_name:
-                    Struct: TaskRef
-                  value: TaskRef @ 0x00000000
-                  children:
-                    - name:
-                        Named: ptr
-                      type_name:
-                        Struct: "NonNull<embassy_executor::raw::TaskHeader>"
-                      value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x00000000"
-                      children:
-                        - name:
-                            Named: pointer
-                          type_name:
-                            Pointer: "*const embassy_executor::raw::TaskHeader"
-                          value: "*const embassy_executor::raw::TaskHeader @ 0x00000000"
-                          children:
-                            - name:
-                                Named: "*pointer"
-                              type_name:
-                                Struct: TaskHeader
-                              value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
-                              children:
-                                - name:
-                                    Named: state
-                                  type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                - name:
-                                    Named: run_queue_item
-                                  type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                - name:
-                                    Named: executor
-                                  type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                - name:
-                                    Named: poll_fn
-                                  type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                - name:
-                                    Named: timer_queue_item
-                                  type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                Struct: None
+              value: None @ 0x00000000
         - name:
             Named: task
           type_name:
@@ -6127,7 +6082,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = < Probe(Other(\"The coredump does not include the memory for address 0x0 of size 0x4\")) >}"
+      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 0}"
       children:
         - name:
             Named: self
@@ -6174,7 +6129,7 @@ expression: stack_frames
             Named: cpu
           type_name:
             Base: usize
-          value: "< Probe(Other(\"The coredump does not include the memory for address 0x0 of size 0x4\")) >"
+          value: "0"
           source_location:
             path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
             line: 108

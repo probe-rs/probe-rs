@@ -234,6 +234,9 @@ impl<'a> FunctionDie<'a> {
             frame_info,
         )? {
             ExpressionResult::Location(VariableLocation::Address(address)) => Ok(Some(address)),
+            ExpressionResult::Location(VariableLocation::RegisterValue(value)) => {
+                Ok(value.try_into().ok())
+            }
             _ => Ok(None),
         }
     }
