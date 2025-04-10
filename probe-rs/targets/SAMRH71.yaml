@@ -1,0 +1,34 @@
+name: SAMRH71
+generated_from_pack: true
+pack_file_release: 2.6.253
+variants:
+- name: ATSAMRH71F20B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+- name: ATSAMRH71F20C
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x10000000
+      end: 0x10020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x21000000
+      end: 0x210c0000
+    cores:
+    - main
