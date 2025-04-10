@@ -291,18 +291,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         let format_options = FormatOptions::default();
         let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
 
-        // When using RTT with a program in flash, the RTT header will be moved to RAM on
-        // startup, so clearing it before startup is ok. However, if we're downloading to the
-        // header's final address in RAM, then it's not relocated on startup and we should not
-        // clear it. This impacts static RTT headers, like used in defmt_rtt.
-        if let ScanRegion::Exact(address) = rtt_client.scan_region {
-            if loader.has_data_for_address(address) {
-                tracing::debug!(
-                    "RTT control block is initialized by flash loader. Disabling clearing."
-                );
-                rtt_client.disallow_clearing_rtt_header();
-            }
-        }
+        rtt_client.configure_from_loader(&loader);
 
         let boot_info = loader.boot_info();
 

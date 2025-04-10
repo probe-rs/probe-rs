@@ -24,6 +24,23 @@ pub enum MonitorMode {
     Run(BootInfo),
 }
 
+impl MonitorMode {
+    pub fn should_clear_rtt_header(&self) -> bool {
+        match self {
+            MonitorMode::Run(BootInfo::FromRam { .. }) => true,
+            MonitorMode::Run(BootInfo::Other) => true,
+            MonitorMode::AttachToRunning => false,
+        }
+    }
+
+    pub fn prepare(&self, session: &mut Session, core_id: usize) -> anyhow::Result<()> {
+        match self {
+            MonitorMode::Run(boot_info) => boot_info.prepare(session, core_id),
+            MonitorMode::AttachToRunning => Ok(()),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Schema)]
 pub enum MonitorEvent {
     RttDiscovered {
@@ -94,28 +111,10 @@ fn monitor_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let mut clear_control_block = true;
-    match request.mode {
-        MonitorMode::Run(BootInfo::FromRam {
-            vector_table_addr, ..
-        }) => {
-            // core should be already reset and halt by this point.
-            session.prepare_running_on_ram(vector_table_addr)?;
-        }
-        MonitorMode::Run(BootInfo::Other) => {
-            // reset the core to leave it in a consistent state after flashing
-            session
-                .core(core_id)?
-                .reset_and_halt(Duration::from_millis(100))?;
-        }
-        MonitorMode::AttachToRunning => {
-            // do nothing
-            clear_control_block = false;
-        }
-    }
+    request.mode.prepare(&mut session, run_loop.core_id)?;
 
     let mut core = session.core(run_loop.core_id)?;
-    if clear_control_block {
+    if request.mode.should_clear_rtt_header() {
         if let Some(rtt_client) = rtt_client.as_mut() {
             rtt_client.clear_control_block(&mut core)?;
         }
@@ -240,15 +239,13 @@ impl<F: FnMut(MonitorEvent)> MonitorEventHandler<F> {
                 Ok(None) // Continue running
             }
             SemihostingCommand::Errno(_) => Ok(None),
-            other @ (SemihostingCommand::Open(_)
-            | SemihostingCommand::Close(_)
-            | SemihostingCommand::WriteConsole(_)
-            | SemihostingCommand::Write(_)) => {
+            other if SemihostingReader::is_io(other) => {
                 if let Some(output) = self.semihosting_reader.handle(other, core)? {
                     (self.sender)(MonitorEvent::SemihostingOutput(output));
                 }
                 Ok(None)
             }
+            other => anyhow::bail!("Unexpected semihosting command {:?}", other),
         }
     }
 }
@@ -273,6 +270,16 @@ impl SemihostingReader {
             stdout_open: false,
             stderr_open: false,
         }
+    }
+
+    pub fn is_io(other: SemihostingCommand) -> bool {
+        matches!(
+            other,
+            SemihostingCommand::Open(_)
+                | SemihostingCommand::Close(_)
+                | SemihostingCommand::WriteConsole(_)
+                | SemihostingCommand::Write(_)
+        )
     }
 
     pub fn handle(

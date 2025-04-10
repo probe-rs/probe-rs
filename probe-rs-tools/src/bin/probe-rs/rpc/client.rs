@@ -104,9 +104,6 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
     )
     .await
     .context("Failed to connect")?;
-    let (tx, rx) = ws_stream.split();
-
-    let tx = WebsocketTx::new(tx);
 
     // Respond to the challenge
     let challenge = resp
@@ -119,9 +116,12 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
     let mut hasher = Sha512::new();
     hasher.update(challenge.as_bytes());
     hasher.update(token.unwrap_or_default().as_bytes());
-    let result = hasher.finalize().to_vec();
+    let challenge_response = hasher.finalize().to_vec();
 
-    tx.send(result)
+    let (tx, rx) = ws_stream.split();
+
+    let tx = WebsocketTx::new(tx);
+    tx.send(challenge_response)
         .await
         .map_err(|err| anyhow::anyhow!("Failed to send challenge response: {:?}", err))?;
 

@@ -1,9 +1,10 @@
+use std::time::Duration;
+
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::{
     Session,
     flashing::{self, FileDownloadError, FlashLoader, FlashProgress},
-    rtt::ScanRegion,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
@@ -75,6 +76,20 @@ pub struct FlashRequest {
     pub loader: Key<FlashLoader>,
     pub options: DownloadOptions,
     pub rtt_client: Option<Key<RttClient>>,
+}
+impl FlashRequest {
+    fn download_options<'a>(&self) -> flashing::DownloadOptions<'a> {
+        let mut options = probe_rs::flashing::DownloadOptions::default();
+
+        options.keep_unwritten_bytes = self.options.keep_unwritten_bytes;
+        options.do_chip_erase = self.options.do_chip_erase;
+        options.skip_erase = self.options.skip_erase;
+        options.preverify = false;
+        options.verify = self.options.verify;
+        options.disable_double_buffering = self.options.disable_double_buffering;
+
+        options
+    }
 }
 
 #[derive(Default, Clone, Serialize, Deserialize, Schema)]
@@ -163,7 +178,7 @@ pub struct FlashDataBlockSpan {
     pub size: u64,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Schema)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Schema)]
 pub enum Operation {
     /// Reading back flash contents to restore erased regions that should be kept unchanged.
     Fill,
@@ -255,6 +270,18 @@ impl ProgressEvent {
 
         cb(event);
     }
+
+    pub fn is_operation(&self, operation: Operation) -> bool {
+        matches!(
+            self,
+            ProgressEvent::Started(op)
+            | ProgressEvent::Progress { operation: op, .. }
+            | ProgressEvent::Failed(op)
+            | ProgressEvent::Finished(op)
+            | ProgressEvent::AddProgressBar { operation: op, .. }
+            if *op == operation
+        )
+    }
 }
 
 /// Current boot information
@@ -269,6 +296,27 @@ pub enum BootInfo {
     },
     /// Executable is either not loaded yet or will be booted conventionally (from flash etc.)
     Other,
+}
+
+impl BootInfo {
+    pub fn prepare(&self, session: &mut Session, core_id: usize) -> anyhow::Result<()> {
+        match self {
+            BootInfo::FromRam {
+                vector_table_addr, ..
+            } => {
+                // core should be already reset and halt by this point.
+                session.prepare_running_on_ram(*vector_table_addr)?;
+            }
+            BootInfo::Other => {
+                // reset the core to leave it in a consistent state after flashing
+                session
+                    .core(core_id)?
+                    .reset_and_halt(Duration::from_millis(100))?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl From<probe_rs::flashing::BootInfo> for BootInfo {
@@ -307,30 +355,11 @@ fn flash_impl(
     let loader = ctx.object_mut_blocking(request.loader);
 
     if let Some(rtt_client) = rtt_client.as_mut() {
-        // When using RTT with a program in flash, the RTT header will be moved to RAM on
-        // startup, so clearing it before startup is ok. However, if we're downloading to the
-        // header's final address in RAM, then it's not relocated on startup and we should not
-        // clear it. This impacts static RTT headers, like used in defmt_rtt.
-
-        if let ScanRegion::Exact(address) = rtt_client.scan_region {
-            if loader.has_data_for_address(address) {
-                tracing::debug!(
-                    "RTT control block is initialized by flash loader. Disabling clearing."
-                );
-                rtt_client.disallow_clearing_rtt_header()
-            }
-        }
+        rtt_client.configure_from_loader(&loader);
     }
 
-    let mut options = probe_rs::flashing::DownloadOptions::default();
-
-    options.keep_unwritten_bytes = request.options.keep_unwritten_bytes;
+    let mut options = request.download_options();
     options.dry_run = dry_run;
-    options.do_chip_erase = request.options.do_chip_erase;
-    options.skip_erase = request.options.skip_erase;
-    options.preverify = false;
-    options.verify = request.options.verify;
-    options.disable_double_buffering = request.options.disable_double_buffering;
     options.progress = Some(FlashProgress::new(move |event| {
         ProgressEvent::from_library_event(event, |event| sender.blocking_send(event).unwrap());
     }));
@@ -369,18 +398,7 @@ fn erase_impl(
     let progress = FlashProgress::new(move |event| {
         ProgressEvent::from_library_event(event, |event| {
             // Only emit Erase-related events.
-            if let ProgressEvent::AddProgressBar {
-                operation: Operation::Erase,
-                ..
-            }
-            | ProgressEvent::Started(Operation::Erase)
-            | ProgressEvent::Progress {
-                operation: Operation::Erase,
-                ..
-            }
-            | ProgressEvent::Failed(Operation::Erase)
-            | ProgressEvent::Finished(Operation::Erase) = event
-            {
+            if event.is_operation(Operation::Erase) {
                 sender.blocking_send(event).unwrap()
             }
         });
@@ -426,19 +444,8 @@ fn verify_impl(
 
     let progress = FlashProgress::new(move |event| {
         ProgressEvent::from_library_event(event, |event| {
-            // Only emit Erase-related events.
-            if let ProgressEvent::AddProgressBar {
-                operation: Operation::Verify,
-                ..
-            }
-            | ProgressEvent::Started(Operation::Verify)
-            | ProgressEvent::Progress {
-                operation: Operation::Verify,
-                ..
-            }
-            | ProgressEvent::Failed(Operation::Verify)
-            | ProgressEvent::Finished(Operation::Verify) = event
-            {
+            // Only emit Verify-related events.
+            if event.is_operation(Operation::Verify) {
                 sender.blocking_send(event).unwrap()
             }
         });

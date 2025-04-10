@@ -109,9 +109,7 @@ where
             return Err(WireTxErrorKind::Other);
         }
 
-        let mut bytes = BytesMut::with_capacity(4 + msg.len());
-        bytes.put_u32_le(msg.len() as u32);
-        bytes.put_slice(&msg);
+        let bytes = prefix_with_length(&msg);
 
         self.writer
             .lock()
@@ -144,9 +142,7 @@ where
     }
 
     fn start_send(mut self: Pin<&mut Self>, msg: Vec<u8>) -> Result<(), Self::Error> {
-        let mut bytes = BytesMut::with_capacity(4 + msg.len());
-        bytes.put_u32_le(msg.len() as u32);
-        bytes.put_slice(&msg);
+        let bytes = prefix_with_length(&msg);
 
         self.writer
             .start_send_unpin(ws::Message::Binary(bytes.freeze()))
@@ -159,4 +155,11 @@ where
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.writer.poll_close_unpin(cx)
     }
+}
+
+fn prefix_with_length(msg: &[u8]) -> BytesMut {
+    let mut bytes = BytesMut::with_capacity(4 + msg.len());
+    bytes.put_u32_le(msg.len() as u32);
+    bytes.put_slice(msg);
+    bytes
 }
