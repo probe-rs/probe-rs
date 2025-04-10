@@ -116,8 +116,8 @@ pub struct XtensaCoreProperties {
     /// The interrupt level at which debug exceptions are generated. CPU-specific configuration value.
     pub debug_level: DebugLevel,
 
-    /// The address range for which we should not use LDDR32.P/SDDR32.P instructions.
-    pub slow_memory_access_ranges: Vec<Range<u64>>,
+    /// The address ranges for which we can use LDDR32.P/SDDR32.P instructions.
+    pub fast_memory_access_ranges: Vec<Range<u64>>,
 
     /// Configurable options in the Windowed Register Option
     pub window_option_properties: WindowProperties,
@@ -128,7 +128,7 @@ impl Default for XtensaCoreProperties {
         Self {
             hw_breakpoint_num: 2,
             debug_level: DebugLevel::L6,
-            slow_memory_access_ranges: vec![],
+            fast_memory_access_ranges: vec![],
             window_option_properties: WindowProperties::lx(64),
         }
     }
@@ -642,16 +642,16 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     fn memory_access_for(&self, address: u64, len: usize) -> Box<dyn MemoryAccess> {
-        let use_slow_access = self
+        let use_fast_access = self
             .core_properties
-            .slow_memory_access_ranges
+            .fast_memory_access_ranges
             .iter()
             .any(|r| r.intersects_range(&(address..address + len as u64)));
 
-        if use_slow_access {
-            Box::new(SlowMemoryAccess::new())
-        } else {
+        if use_fast_access {
             Box::new(FastMemoryAccess::new())
+        } else {
+            Box::new(SlowMemoryAccess::new())
         }
     }
 
