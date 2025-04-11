@@ -18,17 +18,13 @@ impl Request for SequenceRequest {
 
         // calculate transfer len in bytes
         // A bit_count of zero means that we want to transmit 256 bits
-        let mut transfer_len_bytes: usize = if self.bit_count == 0 {
+        let transfer_len_bytes = if self.bit_count == 0 {
             256 / 8
         } else {
-            usize::from(self.bit_count / 8)
+            self.bit_count.div_ceil(8) as usize
         };
 
-        if self.bit_count % 8 != 0 {
-            transfer_len_bytes += 1;
-        }
-
-        buffer[1..(1 + transfer_len_bytes)].copy_from_slice(&self.data[..transfer_len_bytes]);
+        buffer[1..][..transfer_len_bytes].copy_from_slice(&self.data[..transfer_len_bytes]);
 
         // bit_count + data
         Ok(1 + transfer_len_bytes)
