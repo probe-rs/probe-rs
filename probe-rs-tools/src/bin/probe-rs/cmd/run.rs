@@ -16,12 +16,18 @@ use time::UtcOffset;
 /// Options only used in normal run mode
 #[derive(Debug, clap::Parser, Clone)]
 pub struct NormalRunOptions {
-    /// Enable reset vector catch if its supported on the target.
+    /// Deprecated(catch_reset is enabled by default) - Use no_reset_catch to disable this
     #[clap(long, help_heading = "RUN OPTIONS")]
     pub catch_reset: bool,
-    /// Enable hardfault vector catch if its supported on the target.
+    /// Deprecated(catch_hardfault is enabled by default) - Use no_catch_hardfault to disable this
     #[clap(long, help_heading = "RUN OPTIONS")]
     pub catch_hardfault: bool,
+    /// Disable reset vector catch if its supported on the target.
+    #[clap(long, help_heading = "RUN OPTIONS")]
+    pub no_catch_reset: bool,
+    /// Disable hardfault vector catch if its supported on the target.
+    #[clap(long, help_heading = "RUN OPTIONS")]
+    pub no_catch_hardfault: bool,
 }
 
 /// Options only used when in test run mode
@@ -223,8 +229,8 @@ impl Cmd {
                 &self.shared_options.path,
                 Some(rtt_client),
                 MonitorOptions {
-                    catch_reset: self.run_options.catch_reset,
-                    catch_hardfault: self.run_options.catch_hardfault,
+                    catch_reset: !self.run_options.no_catch_reset,
+                    catch_hardfault: !self.run_options.no_catch_hardfault,
                     rtt_client: Some(client_handle),
                 },
                 self.shared_options.always_print_stacktrace,
