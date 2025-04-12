@@ -37,8 +37,8 @@ impl Cmd {
             &self.run.shared_options.path,
             Some(rtt_client),
             MonitorOptions {
-                catch_reset: self.run.run_options.catch_reset,
-                catch_hardfault: self.run.run_options.catch_hardfault,
+                catch_reset: !self.run.run_options.no_catch_reset,
+                catch_hardfault: !self.run.run_options.no_catch_hardfault,
                 rtt_client: Some(client_handle),
             },
             self.run.shared_options.always_print_stacktrace,
