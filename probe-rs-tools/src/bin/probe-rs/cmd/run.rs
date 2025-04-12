@@ -19,7 +19,7 @@ pub struct NormalRunOptions {
     /// Deprecated(catch_reset is enabled by default) - Use no_reset_catch to disable this
     #[clap(long, help_heading = "RUN OPTIONS")]
     pub catch_reset: bool,
-    /// Deprecated(catch_hardfault is enabled by default) - Use no_catchhardfault to disable this
+    /// Deprecated(catch_hardfault is enabled by default) - Use no_catch_hardfault to disable this
     #[clap(long, help_heading = "RUN OPTIONS")]
     pub catch_hardfault: bool,
     /// Disable reset vector catch if its supported on the target.
