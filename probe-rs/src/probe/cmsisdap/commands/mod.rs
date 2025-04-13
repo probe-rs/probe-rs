@@ -73,7 +73,7 @@ pub enum SendError {
     /// Connecting to target failed, received: {0:x}
     ConnectResponseError(u8),
 
-    /// Command ID in response (:#02x) does not match sent command ID
+    /// Command ID in response ({0:#02x}) does not match sent command ID
     CommandIdMismatch(u8),
 
     /// String in response is not valid UTF-8.
