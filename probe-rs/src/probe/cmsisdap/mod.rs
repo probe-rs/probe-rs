@@ -524,9 +524,9 @@ impl CmsisDap {
 
             if response.last_transfer_response.protocol_error {
                 if count > 0 {
-                    tracing::debug!("Protocol error in response to command {}", batch[count - 1]);
+                    tracing::warn!("Protocol error in response to command {}", batch[count - 1]);
                 } else {
-                    tracing::debug!("Protocol error in response to unknown command");
+                    tracing::warn!("Protocol error in response to unknown command");
                 }
 
                 return Err(DapError::SwdProtocol.into());

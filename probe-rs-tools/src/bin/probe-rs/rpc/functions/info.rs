@@ -308,8 +308,8 @@ async fn try_show_info(
             vec![
                 dp::DpAddress::Default,
                 // RP2040
-                dp::DpAddress::Multidrop(0x01002927),
-                dp::DpAddress::Multidrop(0x11002927),
+                //  dp::DpAddress::Multidrop(0x01002927),
+                //  dp::DpAddress::Multidrop(0x11002927),
             ]
         };
 
