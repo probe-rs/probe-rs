@@ -3,12 +3,14 @@ use crate::{
     architecture::arm::{
         ApAddress, ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
         SwoAccess, SwoConfig, ap,
-        dp::{Ctrl, DPIDR, DebugPortId, DebugPortVersion, DpAccess},
-        dp::{DpAddress, DpRegisterAddress, Select1, SelectV1, SelectV3},
+        dp::{
+            Ctrl, DPIDR, DebugPortId, DebugPortVersion, DpAccess, DpAddress, DpRegisterAddress,
+            Select1, SelectV1, SelectV3,
+        },
         memory::{ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::{ArmDebugSequence, DefaultArmSequence},
     },
-    probe::{DebugProbe, DebugProbeError, Probe},
+    probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
 };
 use jep106::JEP106Code;
 
@@ -23,9 +25,9 @@ use std::{
 /// debug port.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq, Copy)]
 pub enum DapError {
-    /// An error occurred during SWD communication.
-    #[error("An error occurred in the SWD communication between probe and device.")]
-    SwdProtocol,
+    /// A protocol error occurred during communication.
+    #[error("A protocol error occurred in the {0} communication between probe and device.")]
+    Protocol(WireProtocol),
     /// The target device did not respond to the request.
     #[error("Target device did not respond to request.")]
     NoAcknowledge,
