@@ -364,8 +364,6 @@ impl Session {
                 ))));
             }
 
-            probe.select_jtag_tap(iface_idx)?;
-
             interfaces[iface_idx] = match core_arch {
                 Architecture::Riscv => {
                     let factory = probe.try_get_riscv_interface_builder()?;
@@ -377,7 +375,12 @@ impl Session {
 
                     JtagInterface::Riscv(state)
                 }
-                Architecture::Xtensa => JtagInterface::Xtensa(XtensaDebugInterfaceState::default()),
+                Architecture::Xtensa => {
+                    // Workaround for CMSIS-DAP probe not scanning in `attach_to_unspecified`.
+                    let mut state = XtensaDebugInterfaceState::default();
+                    probe.try_get_xtensa_interface(&mut state)?;
+                    JtagInterface::Xtensa(state)
+                }
                 _ => {
                     return Err(Error::Probe(DebugProbeError::Other(format!(
                         "Unsupported core architecture {core_arch:?}",

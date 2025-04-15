@@ -722,8 +722,9 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         self.reset_jtag_state_machine()
     }
 
-    fn set_idle_cycles(&mut self, idle_cycles: u8) {
+    fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError> {
         self.state_mut().jtag_idle_cycles = idle_cycles as usize;
+        Ok(())
     }
 
     fn idle_cycles(&self) -> u8 {

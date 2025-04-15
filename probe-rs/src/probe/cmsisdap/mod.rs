@@ -4,20 +4,27 @@ mod tools;
 
 use crate::{
     CoreStatus,
-    architecture::arm::{
-        ArmCommunicationInterface, ArmError, DapError, Pins, RawDapAccess, RegisterAddress,
-        SwoAccess, SwoConfig, SwoMode,
-        communication_interface::{DapProbe, UninitializedArmProbe},
-        dp::{Abort, Ctrl, DpRegister},
-        swo::poll_interval_from_buf_size,
+    architecture::{
+        arm::{
+            ArmCommunicationInterface, ArmError, DapError, Pins, RawDapAccess, RegisterAddress,
+            SwoAccess, SwoConfig, SwoMode,
+            communication_interface::{DapProbe, UninitializedArmProbe},
+            dp::{Abort, Ctrl, DpRegister},
+            swo::poll_interval_from_buf_size,
+        },
+        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
+        xtensa::communication_interface::{
+            XtensaCommunicationInterface, XtensaDebugInterfaceState,
+        },
     },
     probe::{
-        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
         JtagChainItem, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
         },
+        common::{JtagDriverState, RawJtagIo},
     },
 };
 
@@ -31,6 +38,7 @@ use commands::{
         reset::{ResetRequest, ResetResponse},
     },
     jtag::{
+        JtagBuffer,
         configure::ConfigureRequest as JtagConfigureRequest,
         sequence::{
             Sequence as JtagSequence, SequenceRequest as JtagSequenceRequest,
@@ -96,9 +104,11 @@ pub struct CmsisDap {
 
     /// Speed in kHz
     speed_khz: u32,
-    scan_chain: Option<Vec<ScanChainElement>>,
 
     batch: Vec<BatchCommand>,
+
+    jtag_state: JtagDriverState,
+    jtag_buffer: JtagBuffer,
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -150,8 +160,9 @@ impl CmsisDap {
             swo_streaming: false,
             connected: false,
             speed_khz: 1_000,
-            scan_chain: None,
             batch: Vec::new(),
+            jtag_state: JtagDriverState::default(),
+            jtag_buffer: JtagBuffer::new(packet_size - 1),
         })
     }
 
@@ -278,34 +289,34 @@ impl CmsisDap {
         const REQUESTS: usize = MAX_LENGTH.div_ceil(BYTES_PER_REQUEST * 8);
 
         // Completely fill xR with 0s, capture result.
-        let mut tdo_bytes: Vec<u8> = Vec::with_capacity(REQUESTS * BYTES_PER_REQUEST);
+        let mut tdo_bytes: BitVec<u8, Lsb0> =
+            BitVec::with_capacity(REQUESTS * BYTES_PER_REQUEST * 8);
         for _ in 0..REQUESTS {
             let sequences = vec![
                 JtagSequence::capture(false, &bitvec![u8, Lsb0; 0; 64])?,
                 JtagSequence::capture(false, &bitvec![u8, Lsb0; 0; 64])?,
             ];
 
-            tdo_bytes.extend(
-                self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?
-                    .iter(),
+            tdo_bytes.extend_from_bitslice(
+                &self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?,
             );
         }
-        let d0 = tdo_bytes.view_bits::<Lsb0>();
+        let d0 = tdo_bytes;
 
         // Completely fill xR with 1s, capture result.
-        let mut tdo_bytes: Vec<u8> = Vec::with_capacity(REQUESTS * BYTES_PER_REQUEST);
+        let mut tdo_bytes: BitVec<u8, Lsb0> =
+            BitVec::with_capacity(REQUESTS * BYTES_PER_REQUEST * 8);
         for _ in 0..REQUESTS {
             let sequences = vec![
                 JtagSequence::capture(false, &bitvec![u8, Lsb0; 1; 64])?,
                 JtagSequence::capture(false, &bitvec![u8, Lsb0; 1; 64])?,
             ];
 
-            tdo_bytes.extend(
-                self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?
-                    .iter(),
+            tdo_bytes.extend_from_bitslice(
+                &self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?,
             );
         }
-        let d1 = tdo_bytes.view_bits::<Lsb0>();
+        let d1 = tdo_bytes;
 
         // Find first 1 in d1, which indicates length of register.
         let n = match d1.first_one() {
@@ -391,7 +402,7 @@ impl CmsisDap {
     fn send_jtag_sequences(
         &mut self,
         request: JtagSequenceRequest,
-    ) -> Result<Vec<u8>, CmsisDapError> {
+    ) -> Result<BitVec<u8, Lsb0>, CmsisDapError> {
         commands::send_command(&mut self.device, &request).and_then(|v| match v {
             JtagSequenceResponse(Status::DapOk, tdo) => Ok(tdo),
             JtagSequenceResponse(Status::DapError, _) => {
@@ -787,7 +798,7 @@ impl DebugProbe for CmsisDap {
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
         tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.scan_chain = Some(scan_chain);
+        self.jtag_state.expected_scan_chain = Some(scan_chain);
         Ok(())
     }
 
@@ -795,7 +806,7 @@ impl DebugProbe for CmsisDap {
     fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
         match self.active_protocol() {
             Some(WireProtocol::Jtag) => {
-                if let Some(ref chain) = self.scan_chain {
+                if let Some(ref chain) = self.jtag_state.expected_scan_chain {
                     Ok(chain.as_slice())
                 } else {
                     Ok(&[])
@@ -805,6 +816,10 @@ impl DebugProbe for CmsisDap {
                 interface_name: "JTAG",
             }),
         }
+    }
+
+    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
+        self.select_target(index)
     }
 
     /// Enters debug mode.
@@ -936,6 +951,38 @@ impl DebugProbe for CmsisDap {
     fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
         Some(self)
     }
+
+    fn has_riscv_interface(&self) -> bool {
+        // This probe is intended for RISC-V.
+        true
+    }
+
+    fn try_get_riscv_interface_builder<'probe>(
+        &'probe mut self,
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+        // We need to scan as soon as we know this isn't an ARM interface.
+        if self.jtag_state.scan_chain.is_empty() {
+            self.scan_chain()?;
+            RawJtagIo::select_target(self, 0)?;
+        }
+        Ok(Box::new(JtagDtmBuilder::new(self)))
+    }
+
+    fn try_get_xtensa_interface<'probe>(
+        &'probe mut self,
+        state: &'probe mut XtensaDebugInterfaceState,
+    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+        // We need to scan as soon as we know this isn't an ARM interface.
+        if self.jtag_state.scan_chain.is_empty() {
+            self.scan_chain()?;
+            RawJtagIo::select_target(self, 0)?;
+        }
+        Ok(XtensaCommunicationInterface::new(self, state))
+    }
+
+    fn has_xtensa_interface(&self) -> bool {
+        true
+    }
 }
 
 impl RawDapAccess for CmsisDap {
@@ -1061,13 +1108,15 @@ impl RawDapAccess for CmsisDap {
 
     fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), DebugProbeError> {
         let ir_lengths = if skip_scan {
-            self.scan_chain
+            self.jtag_state
+                .expected_scan_chain
                 .as_ref()
                 .map(|chain| chain.iter().filter_map(|s| s.ir_len).collect::<Vec<u8>>())
                 .unwrap_or_default()
         } else {
             let chain = self.jtag_scan(
-                self.scan_chain
+                self.jtag_state
+                    .expected_scan_chain
                     .as_ref()
                     .map(|chain| {
                         chain

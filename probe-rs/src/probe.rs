@@ -1106,7 +1106,7 @@ pub trait JTAGAccess: DebugProbe {
     /// the idle state for several cycles between consecutive accesses to the DR register.
     ///
     /// This function configures the number of idle cycles which are inserted after each access.
-    fn set_idle_cycles(&mut self, idle_cycles: u8);
+    fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError>;
 
     /// Return the currently configured idle cycles.
     fn idle_cycles(&self) -> u8;

@@ -186,13 +186,13 @@ fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
     let data = payload.to_le_bytes();
 
     let idle_cycles = probe.idle_cycles();
-    probe.set_idle_cycles(transfer.idle_cycles_after.min(255) as u8);
+    probe.set_idle_cycles(transfer.idle_cycles_after.min(255) as u8)?;
 
     // This is a bit confusing, but a read from any port is still
     // a JTAG write as we have to transmit the address
     let result = probe.write_register(address, &data[..], JTAG_DR_BIT_LENGTH);
 
-    probe.set_idle_cycles(idle_cycles);
+    probe.set_idle_cycles(idle_cycles)?;
 
     let result = result?;
 
@@ -260,7 +260,7 @@ fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
         .max()
         .unwrap_or(0);
     let idle_cycles = probe.idle_cycles();
-    probe.set_idle_cycles(max_idle_cycles.min(255) as u8);
+    probe.set_idle_cycles(max_idle_cycles.min(255) as u8)?;
 
     // Execute as much of the queue as we can. We'll handle the rest in a following iteration
     // if we can.
@@ -290,7 +290,7 @@ fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
         }
     }
 
-    probe.set_idle_cycles(idle_cycles);
+    probe.set_idle_cycles(idle_cycles)?;
 
     // Process the results. At this point we should only have OK/FAULT responses.
     for (i, transfer) in transfers.iter_mut().enumerate() {
@@ -1519,8 +1519,9 @@ mod test {
             todo!()
         }
 
-        fn set_idle_cycles(&mut self, idle_cycles: u8) {
+        fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError> {
             self.idle_cycles = idle_cycles;
+            Ok(())
         }
 
         fn idle_cycles(&self) -> u8 {
