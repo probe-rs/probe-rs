@@ -245,10 +245,22 @@ pub struct CoreConfig {
 
     #[serde(flatten)]
     pub(crate) rtt_config: rtt::RttConfig,
+
+    /// Enable reset vector catch if its supported on the target.
+    #[serde(default = "default_true")]
+    pub(crate) catch_reset: bool,
+
+    /// Enable hardfault vector catch if its supported on the target.
+    #[serde(default = "default_true")]
+    pub(crate) catch_hardfault: bool,
 }
 
 fn default_console_log() -> Option<ConsoleLog> {
     Some(ConsoleLog::Console)
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// The level of information to be logged to the debugger console.

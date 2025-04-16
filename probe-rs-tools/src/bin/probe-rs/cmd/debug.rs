@@ -166,6 +166,14 @@ pub struct Cmd {
     #[clap(long, value_parser)]
     /// Binary to debug
     exe: Option<PathBuf>,
+
+    /// Disable reset vector catch if its supported on the target.
+    #[clap(long)]
+    pub no_catch_reset: bool,
+
+    /// Disable hardfault vector catch if its supported on the target.
+    #[clap(long)]
+    pub no_catch_hardfault: bool,
 }
 
 impl Cmd {
@@ -232,6 +240,8 @@ impl Cmd {
                         enabled: false,
                         channels: vec![],
                     },
+                    catch_hardfault: !self.no_catch_hardfault,
+                    catch_reset: !self.no_catch_reset,
                 }],
             })
             .ok(),

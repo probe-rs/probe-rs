@@ -15,7 +15,7 @@ use crate::{
 };
 use anyhow::{Result, anyhow};
 use probe_rs::{
-    CoreStatus, Session,
+    CoreStatus, Session, VectorCatchCondition,
     config::{Registry, TargetSelector},
     probe::list::Lister,
     rtt::ScanRegion,
@@ -23,7 +23,7 @@ use probe_rs::{
 use probe_rs_debug::{
     DebugRegisters, SourceLocation, debug_info::DebugInfo, exception_handler_for_core,
 };
-use std::env::set_current_dir;
+use std::{env::set_current_dir, time::Duration};
 use time::UtcOffset;
 
 /// The supported breakpoint types
@@ -79,7 +79,7 @@ impl SessionData {
 
         let options = config.probe_options().load(registry)?;
         let target_probe = options.attach_probe(lister)?;
-        let target_session = options
+        let mut target_session = options
             .attach_session(target_probe, target_selector)
             .map_err(|operation_error| {
                 match operation_error {
@@ -124,16 +124,46 @@ impl SessionData {
         }
 
         // Filter `CoreConfig` entries based on those that match an actual core on the target probe.
-        let valid_core_configs = config.core_configs.iter().filter(|&core_config| {
-            target_session
-                .list_cores()
-                .iter()
-                .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
-        });
+        let valid_core_configs = config
+            .core_configs
+            .iter()
+            .filter(|&core_config| {
+                target_session
+                    .list_cores()
+                    .iter()
+                    .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
+            })
+            .collect::<Vec<_>>();
 
         let mut core_data_vec = vec![];
 
         for core_configuration in valid_core_configs {
+            if core_configuration.catch_hardfault || core_configuration.catch_reset {
+                let mut core = target_session.core(core_configuration.core_index)?;
+                let was_halted = core.core_halted()?;
+
+                if !was_halted {
+                    core.halt(Duration::from_millis(100))?;
+                }
+
+                if core_configuration.catch_hardfault {
+                    match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+                if core_configuration.catch_reset {
+                    match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+
+                if was_halted {
+                    core.run()?;
+                }
+            }
+
             core_data_vec.push(CoreData {
                 core_index: core_configuration.core_index,
                 last_known_status: CoreStatus::Unknown,
