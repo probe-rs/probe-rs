@@ -19,7 +19,7 @@ use crate::{
     },
     probe::{
         BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
-        JtagChainItem, ProbeFactory, WireProtocol,
+        ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
@@ -233,7 +233,7 @@ impl CmsisDap {
     fn jtag_scan(
         &mut self,
         ir_lengths: Option<&[usize]>,
-    ) -> Result<Vec<JtagChainItem>, CmsisDapError> {
+    ) -> Result<Vec<ScanChainElement>, CmsisDapError> {
         let (ir, dr) = self.jtag_reset_scan()?;
         let idcodes = extract_idcodes(&dr)?;
         let ir_lens = extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
@@ -241,7 +241,10 @@ impl CmsisDap {
         Ok(idcodes
             .into_iter()
             .zip(ir_lens)
-            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
+            .map(|(idcode, irlen)| ScanChainElement {
+                ir_len: Some(irlen as u8),
+                name: idcode.map(|i| i.to_string()),
+            })
             .collect())
     }
 
@@ -798,20 +801,15 @@ impl DebugProbe for CmsisDap {
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
         tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.jtag_state.expected_scan_chain = Some(scan_chain);
+        self.jtag_state.expected_scan_chain = Some(scan_chain.clone());
+        self.jtag_state.scan_chain = scan_chain;
         Ok(())
     }
 
     /// Returns the JTAG scan chain
     fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
         match self.active_protocol() {
-            Some(WireProtocol::Jtag) => {
-                if let Some(ref chain) = self.jtag_state.expected_scan_chain {
-                    Ok(chain.as_slice())
-                } else {
-                    Ok(&[])
-                }
-            }
+            Some(WireProtocol::Jtag) => Ok(self.jtag_state.scan_chain.as_slice()),
             _ => Err(DebugProbeError::InterfaceNotAvailable {
                 interface_name: "JTAG",
             }),
@@ -1127,7 +1125,7 @@ impl RawDapAccess for CmsisDap {
                     })
                     .as_deref(),
             )?;
-            chain.iter().map(|item| item.irlen as u8).collect()
+            chain.iter().map(|item| item.ir_len()).collect()
         };
         tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;

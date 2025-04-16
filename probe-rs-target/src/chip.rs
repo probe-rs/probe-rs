@@ -13,6 +13,13 @@ pub struct ScanChainElement {
     pub ir_len: Option<u8>,
 }
 
+impl ScanChainElement {
+    /// Returns the IR length, or 4 if not specified.
+    pub fn ir_len(&self) -> u8 {
+        self.ir_len.unwrap_or(4)
+    }
+}
+
 /// Configuration for JTAG tunneling.
 ///
 /// This JTAG tunnel wraps JTAG IR and DR accesses as DR access to a specific instruction. For

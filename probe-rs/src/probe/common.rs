@@ -8,7 +8,7 @@ use probe_rs_target::ScanChainElement;
 
 use crate::probe::{
     BatchExecutionError, ChainParams, CommandResult, DebugProbe, DebugProbeError,
-    DeferredResultSet, JTAGAccess, JtagChainItem, JtagCommand, JtagCommandQueue,
+    DeferredResultSet, JTAGAccess, JtagCommand, JtagCommandQueue,
 };
 
 pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
@@ -399,7 +399,7 @@ pub(crate) struct JtagDriverState {
     // The maximum IR address
     pub max_ir_address: u32,
     pub expected_scan_chain: Option<Vec<ScanChainElement>>,
-    pub scan_chain: Vec<JtagChainItem>,
+    pub scan_chain: Vec<ScanChainElement>,
     pub chain_params: ChainParams,
     /// Idle cycles necessary between consecutive
     /// accesses to the DMI register
@@ -710,7 +710,10 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         let chain = idcodes
             .into_iter()
             .zip(ir_lens)
-            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
+            .map(|(idcode, irlen)| ScanChainElement {
+                ir_len: Some(irlen as u8),
+                name: idcode.map(|i| i.to_string()),
+            })
             .collect::<Vec<_>>();
 
         self.state_mut().scan_chain = chain;
