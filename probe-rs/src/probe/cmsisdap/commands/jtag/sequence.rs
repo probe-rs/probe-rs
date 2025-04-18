@@ -54,24 +54,8 @@ impl Sequence {
     ///
     /// * `tms` - Whether TMS should be held high or low
     /// * `tdi` - The TDI bits to clock out
-    pub(crate) fn capture(tms: bool, tdi: &BitVec<u8>) -> Result<Self, CmsisDapError> {
-        let tck_cycles = tdi.len();
-        assert!(
-            tck_cycles > 0 && tck_cycles <= 64,
-            "tdi.len() = {}, but expected [1,64]",
-            tck_cycles
-        );
-
-        let num_bytes = tdi.len().div_ceil(8);
-        let mut data: [u8; 8] = [0; 8];
-        data[0..num_bytes].copy_from_slice(&tdi.as_raw_slice()[0..num_bytes]);
-
-        Ok(Self {
-            tck_cycles: tck_cycles as u8,
-            tdo_capture: true,
-            tms,
-            data,
-        })
+    pub(crate) fn capture(tms: bool, tdi: &BitSlice) -> Result<Self, CmsisDapError> {
+        Self::new_from_bitslice(tms, tdi, true)
     }
 
     /// Create a JTAG sequence, *without* capturing TDO.
@@ -81,24 +65,23 @@ impl Sequence {
     ///
     /// * `tms` - Whether TMS should be held high or low
     /// * `tdi` - The TDI bits to clock out
-    pub(crate) fn no_capture(tms: bool, tdi: &BitVec<u8>) -> Result<Self, CmsisDapError> {
+    pub(crate) fn no_capture(tms: bool, tdi: &BitSlice) -> Result<Self, CmsisDapError> {
+        Self::new_from_bitslice(tms, tdi, false)
+    }
+
+    fn new_from_bitslice(
+        tms: bool,
+        tdi: &BitSlice,
+        tdo_capture: bool,
+    ) -> Result<Self, CmsisDapError> {
         let tck_cycles = tdi.len();
-        assert!(
-            tck_cycles > 0 && tck_cycles <= 64,
-            "tdi.len() = {}, but expected [1,64]",
-            tck_cycles
-        );
 
-        let num_bytes = tdi.len().div_ceil(8);
-        let mut data: [u8; 8] = [0; 8];
-        data[0..num_bytes].copy_from_slice(&tdi.as_raw_slice()[0..num_bytes]);
-
-        Ok(Self {
-            tck_cycles: tck_cycles as u8,
-            tdo_capture: false,
+        Self::new(
+            tck_cycles as u8,
+            tdo_capture,
             tms,
-            data,
-        })
+            tdi.load_le::<u64>().to_le_bytes(),
+        )
     }
 }
 
@@ -156,7 +139,7 @@ impl Request for SequenceRequest {
         let mut received_len_bytes = 1;
         let status = Status::from_byte(buffer[0])?;
 
-        let mut bits = BitVec::<u8, Lsb0>::new();
+        let mut bits = BitVec::<u8>::new();
         self.sequences
             .iter()
             .filter(|sequence| sequence.tdo_capture)
@@ -166,7 +149,7 @@ impl Request for SequenceRequest {
                 let byte_count = tck_cycles.div_ceil(8) as usize;
                 let bytes = &buffer[received_len_bytes..][..byte_count];
                 bits.extend_from_bitslice(
-                    &BitSlice::<u8, Lsb0>::from_slice(bytes)[..tck_cycles as usize],
+                    &BitSlice::<u8>::from_slice(bytes)[..tck_cycles as usize],
                 );
                 received_len_bytes += byte_count;
             });
@@ -176,4 +159,4 @@ impl Request for SequenceRequest {
 }
 
 #[derive(Debug)]
-pub struct SequenceResponse(pub(crate) Status, pub(crate) BitVec<u8, Lsb0>);
+pub struct SequenceResponse(pub(crate) Status, pub(crate) BitVec<u8>);

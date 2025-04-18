@@ -385,7 +385,7 @@ pub struct JLink {
     jtag_tms_bits: Vec<bool>,
     jtag_tdi_bits: Vec<bool>,
     jtag_capture_tdo: Vec<bool>,
-    jtag_response: BitVec<u8, Lsb0>,
+    jtag_response: BitVec<u8>,
     jtag_state: JtagDriverState,
 
     /// max number of bits in a transfer chunk, when using JTAG
@@ -781,7 +781,7 @@ impl JLink {
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError> {
         self.flush_jtag()?;
 
         Ok(std::mem::take(&mut self.jtag_response))
@@ -1271,7 +1271,7 @@ impl RawJtagIo for JLink {
         self.shift_jtag_bit(tms, tdi, capture)
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError> {
         self.read_captured_bits()
     }
 }

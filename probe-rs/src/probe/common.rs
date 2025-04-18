@@ -448,7 +448,7 @@ pub(crate) trait RawJtagIo {
     fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError>;
 
     /// Returns the bits captured from TDO and clears the capture buffer.
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError>;
+    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError>;
 
     /// Resets the JTAG state machine by shifting out a number of high TMS bits.
     fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {

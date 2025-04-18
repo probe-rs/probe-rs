@@ -1,4 +1,4 @@
-use bitvec::{order::Lsb0, vec::BitVec};
+use bitvec::{bitvec, vec::BitVec};
 
 use crate::probe::{
     DebugProbeError,
@@ -29,7 +29,7 @@ impl RawJtagIo for CmsisDap {
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError> {
         self.flush_jtag()?;
         Ok(std::mem::take(&mut self.jtag_buffer.response))
     }
@@ -54,7 +54,13 @@ impl CmsisDap {
             .jtag_buffer
             .complete_sequences
             .drain(..)
-            .map(|s| Sequence::new(s.tck_cycles, s.tdo_capture, s.tms, to_bytes(&s.data)))
+            .map(|s| {
+                if s.tdo_capture {
+                    Sequence::capture(s.tms, &s.data)
+                } else {
+                    Sequence::no_capture(s.tms, &s.data)
+                }
+            })
             .collect::<Result<Vec<_>, _>>()?;
 
         let command = SequenceRequest::new(sequences)?;
@@ -66,20 +72,7 @@ impl CmsisDap {
     }
 }
 
-fn to_bytes(data: &[bool]) -> [u8; 8] {
-    let mut bytes = [0; 8];
-    for (i, &bit) in data.iter().enumerate() {
-        if bit {
-            bytes[i / 8] |= 1 << (i % 8);
-        }
-    }
-    bytes
-}
-
 struct JtagSequence {
-    /// Number of TCK cycles: 1..64 (64 encoded as 0)
-    tck_cycles: u8,
-
     /// TDO capture
     tdo_capture: bool,
 
@@ -87,7 +80,7 @@ struct JtagSequence {
     tms: bool,
 
     /// Data to generate on TDI
-    data: Vec<bool>,
+    data: BitVec,
 }
 
 impl JtagSequence {
@@ -98,18 +91,16 @@ impl JtagSequence {
     }
 
     fn append(&mut self, tdi: bool, tms: bool, tdo_capture: bool) -> Option<JtagSequence> {
-        if tms == self.tms && tdo_capture == self.tdo_capture && self.tck_cycles < 64 {
+        if tms == self.tms && tdo_capture == self.tdo_capture && self.data.len() < 64 {
             self.data.push(tdi);
-            self.tck_cycles += 1;
             None
         } else {
             let seq = std::mem::replace(
                 self,
                 JtagSequence {
-                    tck_cycles: 1,
                     tdo_capture,
                     tms,
-                    data: vec![tdi],
+                    data: bitvec![tdi as usize; 1],
                 },
             );
             Some(seq)
@@ -121,7 +112,7 @@ pub(crate) struct JtagBuffer {
     packet_size: usize,
     current_sequence: Option<JtagSequence>,
     complete_sequences: Vec<JtagSequence>,
-    response: BitVec<u8, Lsb0>,
+    response: BitVec<u8>,
 }
 impl JtagBuffer {
     pub(crate) fn new(packet_size: u16) -> Self {
@@ -146,15 +137,14 @@ impl JtagBuffer {
     }
 
     /// Returns `true` if the buffered sequences need to be flushed.
-    fn shift_bit(&mut self, tms: bool, tdi: bool, capture_tdo: bool) -> bool {
+    fn shift_bit(&mut self, tms: bool, tdi: bool, tdo_capture: bool) -> bool {
         let seq = self.current_sequence.get_or_insert_with(|| JtagSequence {
-            tck_cycles: 0,
-            tdo_capture: capture_tdo,
+            tdo_capture,
             tms,
-            data: Vec::with_capacity(64),
+            data: BitVec::with_capacity(64),
         });
 
-        if let Some(complete_sequence) = seq.append(tdi, tms, capture_tdo) {
+        if let Some(complete_sequence) = seq.append(tdi, tms, tdo_capture) {
             self.complete_sequences.push(complete_sequence);
         }
 

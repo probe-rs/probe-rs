@@ -202,7 +202,7 @@ impl CmsisDap {
 
     /// Reset JTAG state machine to Test-Logic-Reset.
     fn jtag_ensure_test_logic_reset(&mut self) -> Result<(), CmsisDapError> {
-        let sequence = JtagSequence::no_capture(true, &bitvec![u8, Lsb0; 0; 6])?;
+        let sequence = JtagSequence::no_capture(true, &bitvec![0; 6])?;
         let sequences = vec![sequence];
 
         self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
@@ -218,7 +218,7 @@ impl CmsisDap {
         self.jtag_ensure_test_logic_reset()?;
 
         // Then transition to Run-Test-Idle
-        let sequence = JtagSequence::no_capture(false, &bitvec![u8, Lsb0; 0; 1])?;
+        let sequence = JtagSequence::no_capture(false, &bitvec![0; 1])?;
         let sequences = vec![sequence];
         self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
 
@@ -292,12 +292,11 @@ impl CmsisDap {
         const REQUESTS: usize = MAX_LENGTH.div_ceil(BYTES_PER_REQUEST * 8);
 
         // Completely fill xR with 0s, capture result.
-        let mut tdo_bytes: BitVec<u8, Lsb0> =
-            BitVec::with_capacity(REQUESTS * BYTES_PER_REQUEST * 8);
+        let mut tdo_bytes: BitVec<u8> = BitVec::with_capacity(REQUESTS * BYTES_PER_REQUEST * 8);
         for _ in 0..REQUESTS {
             let sequences = vec![
-                JtagSequence::capture(false, &bitvec![u8, Lsb0; 0; 64])?,
-                JtagSequence::capture(false, &bitvec![u8, Lsb0; 0; 64])?,
+                JtagSequence::capture(false, &bitvec![0; 64])?,
+                JtagSequence::capture(false, &bitvec![0; 64])?,
             ];
 
             tdo_bytes.extend_from_bitslice(
@@ -307,12 +306,11 @@ impl CmsisDap {
         let d0 = tdo_bytes;
 
         // Completely fill xR with 1s, capture result.
-        let mut tdo_bytes: BitVec<u8, Lsb0> =
-            BitVec::with_capacity(REQUESTS * BYTES_PER_REQUEST * 8);
+        let mut tdo_bytes: BitVec<u8> = BitVec::with_capacity(REQUESTS * BYTES_PER_REQUEST * 8);
         for _ in 0..REQUESTS {
             let sequences = vec![
-                JtagSequence::capture(false, &bitvec![u8, Lsb0; 1; 64])?,
-                JtagSequence::capture(false, &bitvec![u8, Lsb0; 1; 64])?,
+                JtagSequence::capture(false, &bitvec![1; 64])?,
+                JtagSequence::capture(false, &bitvec![1; 64])?,
             ];
 
             tdo_bytes.extend_from_bitslice(
@@ -369,9 +367,9 @@ impl CmsisDap {
 
         // Transition to Shift-DR
         let sequences = vec![
-            JtagSequence::no_capture(false, &bitvec![u8, Lsb0; 0; 1])?,
-            JtagSequence::no_capture(true, &bitvec![u8, Lsb0; 0; 1])?,
-            JtagSequence::no_capture(false, &bitvec![u8, Lsb0; 0; 2])?,
+            JtagSequence::no_capture(false, &bitvec![0; 1])?,
+            JtagSequence::no_capture(true, &bitvec![0; 1])?,
+            JtagSequence::no_capture(false, &bitvec![0; 2])?,
         ];
         self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
 
@@ -384,9 +382,9 @@ impl CmsisDap {
 
         // Transition to Shift-IR
         let sequences = vec![
-            JtagSequence::no_capture(false, &bitvec![u8, Lsb0; 0; 1])?,
-            JtagSequence::no_capture(true, &bitvec![u8, Lsb0; 0; 2])?,
-            JtagSequence::no_capture(false, &bitvec![u8, Lsb0; 0; 2])?,
+            JtagSequence::no_capture(false, &bitvec![0; 1])?,
+            JtagSequence::no_capture(true, &bitvec![0; 2])?,
+            JtagSequence::no_capture(false, &bitvec![0; 2])?,
         ];
         self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
 
@@ -405,7 +403,7 @@ impl CmsisDap {
     fn send_jtag_sequences(
         &mut self,
         request: JtagSequenceRequest,
-    ) -> Result<BitVec<u8, Lsb0>, CmsisDapError> {
+    ) -> Result<BitVec<u8>, CmsisDapError> {
         commands::send_command(&mut self.device, &request).and_then(|v| match v {
             JtagSequenceResponse(Status::DapOk, tdo) => Ok(tdo),
             JtagSequenceResponse(Status::DapError, _) => {
