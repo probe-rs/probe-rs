@@ -126,8 +126,8 @@ impl ParseFromResponse for u32 {
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Capabilities {
-    pub(crate) _swd_implemented: bool,
-    pub(crate) _jtag_implemented: bool,
+    pub(crate) swd_implemented: bool,
+    pub(crate) jtag_implemented: bool,
     pub(crate) swo_uart_implemented: bool,
     pub(crate) swo_manchester_implemented: bool,
     pub(crate) _atomic_commands_implemented: bool,
@@ -143,8 +143,8 @@ impl ParseFromResponse for Capabilities {
         // In the docs only the first byte is described, so for now we always will only parse that specific byte.
         if buffer[0] > 0 {
             let mut capabilites = Capabilities {
-                _swd_implemented: buffer[1] & 0x01 > 0,
-                _jtag_implemented: buffer[1] & 0x02 > 0,
+                swd_implemented: buffer[1] & 0x01 > 0,
+                jtag_implemented: buffer[1] & 0x02 > 0,
                 swo_uart_implemented: buffer[1] & 0x04 > 0,
                 swo_manchester_implemented: buffer[1] & 0x08 > 0,
                 _atomic_commands_implemented: buffer[1] & 0x10 > 0,
