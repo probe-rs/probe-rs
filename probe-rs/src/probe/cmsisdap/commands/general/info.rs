@@ -126,37 +126,37 @@ impl ParseFromResponse for u32 {
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Capabilities {
-    pub(crate) _swd_implemented: bool,
-    pub(crate) _jtag_implemented: bool,
+    pub(crate) swd_implemented: bool,
+    pub(crate) jtag_implemented: bool,
     pub(crate) swo_uart_implemented: bool,
     pub(crate) swo_manchester_implemented: bool,
     pub(crate) _atomic_commands_implemented: bool,
     pub(crate) _test_domain_timer_implemented: bool,
     pub(crate) swo_streaming_trace_implemented: bool,
     pub(crate) _uart_communication_port_implemented: bool,
-    pub(crate) uart_com_port_implemented: bool,
+    pub(crate) _usb_com_port_implemented: bool,
 }
 
 impl ParseFromResponse for Capabilities {
     fn from_response(buffer: &[u8]) -> Result<Self, SendError> {
         // This response can contain two info bytes.
-        // In the docs only the first byte is described, so for now we always will only parse that specific byte.
+        // As described by https://arm-software.github.io/CMSIS-DAP/latest/group__DAP__Info.html
         if buffer[0] > 0 {
-            let mut capabilites = Capabilities {
-                _swd_implemented: buffer[1] & 0x01 > 0,
-                _jtag_implemented: buffer[1] & 0x02 > 0,
+            let capabilites = Capabilities {
+                swd_implemented: buffer[1] & 0x01 > 0,
+                jtag_implemented: buffer[1] & 0x02 > 0,
                 swo_uart_implemented: buffer[1] & 0x04 > 0,
                 swo_manchester_implemented: buffer[1] & 0x08 > 0,
                 _atomic_commands_implemented: buffer[1] & 0x10 > 0,
                 _test_domain_timer_implemented: buffer[1] & 0x20 > 0,
                 swo_streaming_trace_implemented: buffer[1] & 0x40 > 0,
                 _uart_communication_port_implemented: buffer[1] & 0x80 > 0,
-                uart_com_port_implemented: false,
+                _usb_com_port_implemented: if buffer[0] >= 2 {
+                    buffer[2] & (1 << 0) != 0
+                } else {
+                    false
+                },
             };
-
-            if buffer[0] >= 2 {
-                capabilites.uart_com_port_implemented = buffer[2] & (1 << 0) != 0
-            }
 
             Ok(capabilites)
         } else {
