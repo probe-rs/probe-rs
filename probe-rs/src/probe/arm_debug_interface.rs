@@ -1027,7 +1027,7 @@ fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32
                 "Unexpected response from target, does not conform to SWD specfication (ack={:?})",
                 resp
             );
-            Err(DapError::SwdProtocol)
+            Err(DapError::Protocol(WireProtocol::Swd))
         }
     }
 }

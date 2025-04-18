@@ -435,7 +435,11 @@ impl CmsisDap {
         if response.last_transfer_response.protocol_error {
             // TODO: What does this protocol error mean exactly?
             //       Should be verified in CMSIS-DAP spec
-            Err(DapError::SwdProtocol.into())
+            Err(DapError::Protocol(
+                self.protocol
+                    .expect("A wire protocol should have been selected by now"),
+            )
+            .into())
         } else {
             if response.last_transfer_response.ack != Ack::Ok {
                 tracing::debug!(
@@ -470,7 +474,11 @@ impl CmsisDap {
         if response.last_transfer_response.protocol_error {
             // TODO: What does this protocol error mean exactly?
             //       Should be verified in CMSIS-DAP spec
-            Err(DapError::SwdProtocol.into())
+            Err(DapError::Protocol(
+                self.protocol
+                    .expect("A wire protocol should have been selected by now"),
+            )
+            .into())
         } else {
             match response.last_transfer_response.ack {
                 Ack::Ok => Ok(()),
@@ -523,13 +531,16 @@ impl CmsisDap {
             tracing::debug!("{} of batch of {} items executed", count, batch.len());
 
             if response.last_transfer_response.protocol_error {
-                if count > 0 {
-                    tracing::debug!("Protocol error in response to command {}", batch[count - 1]);
-                } else {
-                    tracing::debug!("Protocol error in response to unknown command");
-                }
+                tracing::warn!(
+                    "Protocol error in response to command {}",
+                    batch[count.saturating_sub(1)]
+                );
 
-                return Err(DapError::SwdProtocol.into());
+                return Err(DapError::Protocol(
+                    self.protocol
+                        .expect("A wire protocol should have been selected by now"),
+                )
+                .into());
             }
 
             match response.last_transfer_response.ack {
