@@ -156,19 +156,24 @@ impl Request for SequenceRequest {
         let mut received_len_bytes = 1;
         let status = Status::from_byte(buffer[0])?;
 
-        self.sequences.iter().for_each(|&sequence| {
-            if sequence.tdo_capture {
+        let mut bits = BitVec::<u8, Lsb0>::new();
+        self.sequences
+            .iter()
+            .filter(|sequence| sequence.tdo_capture)
+            .for_each(|&sequence| {
                 let tck_cycles = sequence.tck_cycles & 0x3F;
                 let tck_cycles = if tck_cycles == 0 { 64 } else { tck_cycles };
                 let byte_count = tck_cycles.div_ceil(8) as usize;
+                let bytes = &buffer[received_len_bytes..][..byte_count];
+                bits.extend_from_bitslice(
+                    &BitSlice::<u8, Lsb0>::from_slice(bytes)[..tck_cycles as usize],
+                );
                 received_len_bytes += byte_count;
-            }
-        });
+            });
 
-        let response = buffer[1..received_len_bytes].to_vec();
-        Ok(SequenceResponse(status, response))
+        Ok(SequenceResponse(status, bits))
     }
 }
 
 #[derive(Debug)]
-pub struct SequenceResponse(pub(crate) Status, pub(crate) Vec<u8>);
+pub struct SequenceResponse(pub(crate) Status, pub(crate) BitVec<u8, Lsb0>);

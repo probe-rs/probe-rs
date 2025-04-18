@@ -157,7 +157,7 @@ impl<'probe> JtagDtm<'probe> {
                     // Operation still in progress, reset dmi status and try again.
                     self.clear_error_state()?;
                     self.probe
-                        .set_idle_cycles(self.probe.idle_cycles().saturating_add(1));
+                        .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                 }
                 Err(e) => return Err(e.map_as_err().unwrap_err()),
             };
@@ -194,7 +194,7 @@ impl DtmAccess for JtagDtm<'_> {
         }
 
         // Setup the number of idle cycles between JTAG accesses
-        self.probe.set_idle_cycles(idle_cycles as u8);
+        self.probe.set_idle_cycles(idle_cycles as u8)?;
         self.state.abits = abits;
 
         Ok(())
@@ -258,7 +258,7 @@ impl DtmAccess for JtagDtm<'_> {
                         self.state.jtag_results.merge_from(e.results);
 
                         self.probe
-                            .set_idle_cycles(self.probe.idle_cycles().saturating_add(1));
+                            .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                     }
                     Error::Riscv(error) => return Err(error),
                     Error::Probe(error) => return Err(error.into()),
@@ -424,7 +424,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
                     // Operation still in progress, reset dmi status and try again.
                     self.clear_error_state()?;
                     self.probe
-                        .set_idle_cycles(self.probe.idle_cycles().saturating_add(1));
+                        .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                 }
                 Err(e) => return Err(e.map_as_err().unwrap_err()),
             };
@@ -459,7 +459,7 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         }
 
         // Setup the number of idle cycles between JTAG accesses
-        self.probe.set_idle_cycles(idle_cycles as u8);
+        self.probe.set_idle_cycles(idle_cycles as u8)?;
         self.state.abits = abits;
 
         Ok(())
@@ -520,7 +520,7 @@ impl DtmAccess for TunneledJtagDtm<'_> {
                         self.state.jtag_results.merge_from(e.results);
 
                         self.probe
-                            .set_idle_cycles(self.probe.idle_cycles().saturating_add(1));
+                            .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                     }
                     Error::Riscv(error) => return Err(error),
                     Error::Probe(error) => return Err(error.into()),

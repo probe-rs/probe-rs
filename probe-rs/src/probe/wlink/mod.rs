@@ -415,8 +415,9 @@ impl JTAGAccess for WchLink {
         }
     }
 
-    fn set_idle_cycles(&mut self, idle_cycles: u8) {
+    fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError> {
         self.idle_cycles = idle_cycles;
+        Ok(())
     }
 
     fn idle_cycles(&self) -> u8 {

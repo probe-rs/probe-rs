@@ -26,7 +26,6 @@ use crate::architecture::xtensa::communication_interface::{
 };
 use crate::config::TargetSelector;
 use crate::config::registry::Registry;
-use crate::probe::common::IdCode;
 use crate::{Error, Permissions, Session};
 use common::ScanChainError;
 use nusb::DeviceInfo;
@@ -1106,7 +1105,7 @@ pub trait JTAGAccess: DebugProbe {
     /// the idle state for several cycles between consecutive accesses to the DR register.
     ///
     /// This function configures the number of idle cycles which are inserted after each access.
-    fn set_idle_cycles(&mut self, idle_cycles: u8);
+    fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError>;
 
     /// Return the currently configured idle cycles.
     fn idle_cycles(&self) -> u8;
@@ -1218,16 +1217,6 @@ impl From<ShiftDrCommand> for JtagCommand {
     }
 }
 
-/// Represents a Jtag Tap within the chain.
-#[derive(Debug)]
-pub struct JtagChainItem {
-    /// The IDCODE of the device.
-    pub idcode: Option<IdCode>,
-
-    /// The length of the instruction register.
-    pub irlen: usize,
-}
-
 /// Chain parameters to select a target tap within the chain.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct ChainParams {
@@ -1239,19 +1228,20 @@ pub(crate) struct ChainParams {
 }
 
 impl ChainParams {
-    fn from_jtag_chain(chain: &[JtagChainItem], selected: usize) -> Option<Self> {
+    fn from_jtag_chain(chain: &[ScanChainElement], selected: usize) -> Option<Self> {
         let mut params = Self::default();
 
         let mut found = false;
         for (index, tap) in chain.iter().enumerate() {
+            let ir_len = tap.ir_len() as usize;
             if index == selected {
-                params.irlen = tap.irlen;
+                params.irlen = ir_len;
                 found = true;
             } else if found {
-                params.irpost += tap.irlen;
+                params.irpost += ir_len;
                 params.drpost += 1;
             } else {
-                params.irpre += tap.irlen;
+                params.irpre += ir_len;
                 params.drpre += 1;
             }
         }
