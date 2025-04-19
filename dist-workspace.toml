@@ -32,6 +32,7 @@ github-attestations = true
 
 # Select custom runner for ARM Linux
 [dist.github-custom-runners]
+global = "ubuntu-22.04"
 aarch64-unknown-linux-gnu = "buildjet-2vcpu-ubuntu-2204-arm"
 aarch64-unknown-linux-musl = "buildjet-2vcpu-ubuntu-2204-arm"
 

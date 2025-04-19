@@ -43,7 +43,7 @@ jobs:
           sudo apt update
           sudo apt install -y libudev-dev
         # Only install on Ubuntu
-        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
+        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-22.04')
 
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.7.8
