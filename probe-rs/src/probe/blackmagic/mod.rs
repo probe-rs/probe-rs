@@ -1071,7 +1071,6 @@ impl DebugProbe for BlackMagicProbe {
 
         match self.protocol {
             Some(WireProtocol::Jtag) => {
-                self.scan_chain()?;
                 self.select_target(0)?;
 
                 if let ProtocolVersion::V1

@@ -347,8 +347,6 @@ impl DebugProbe for FtdiProbe {
         tracing::debug!("Attaching...");
 
         self.adapter.attach()?;
-
-        self.scan_chain()?;
         self.select_target(0)
     }
 
