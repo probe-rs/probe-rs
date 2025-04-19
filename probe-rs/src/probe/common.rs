@@ -622,6 +622,10 @@ fn prepare_write_register(
 impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
     /// Configures the probe to address the given target.
     fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError> {
+        if self.state().scan_chain.is_empty() {
+            self.scan_chain()?;
+        }
+
         let state = self.state_mut();
 
         let Some(params) = ChainParams::from_jtag_chain(&state.scan_chain, target) else {
