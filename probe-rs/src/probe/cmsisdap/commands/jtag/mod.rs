@@ -29,7 +29,7 @@ impl RawJtagIo for CmsisDap {
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError> {
+    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
         self.flush_jtag()?;
         Ok(std::mem::take(&mut self.jtag_buffer.response))
     }
@@ -112,7 +112,7 @@ pub(crate) struct JtagBuffer {
     packet_size: usize,
     current_sequence: Option<JtagSequence>,
     complete_sequences: Vec<JtagSequence>,
-    response: BitVec<u8>,
+    response: BitVec,
 }
 impl JtagBuffer {
     pub(crate) fn new(packet_size: u16) -> Self {

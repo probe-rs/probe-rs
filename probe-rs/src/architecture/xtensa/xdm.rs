@@ -3,6 +3,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use bitvec::{field::BitField, slice::BitSlice};
+
 use crate::{
     Error as ProbeRsError,
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
@@ -52,19 +54,6 @@ impl TapInstruction {
             TapInstruction::PowerControl => 8,
             TapInstruction::PowerStatus => 8,
             TapInstruction::Idcode => 32,
-        }
-    }
-
-    fn capture_to_u8(self, capture: &[u8]) -> u8 {
-        capture[0]
-    }
-
-    fn capture_to_u32(self, capture: &[u8]) -> u32 {
-        match self {
-            TapInstruction::Ndr | TapInstruction::Idcode => {
-                u32::from_le_bytes(capture.try_into().unwrap())
-            }
-            _ => capture[0] as u32,
         }
     }
 }
@@ -380,7 +369,7 @@ impl<'probe> Xdm<'probe> {
             data: nar.to_le_bytes().to_vec(),
             len: TapInstruction::Nar.bits(),
             transform: |write, capture| {
-                let capture = TapInstruction::Nar.capture_to_u8(&capture);
+                let capture = capture.load_le::<u8>();
                 let nar = write.data[0] >> 1;
                 let write = write.data[0] & 1 == 1;
 
@@ -438,8 +427,7 @@ impl<'probe> Xdm<'probe> {
             .probe
             .write_register(instr.code(), &[value], instr.bits())?;
 
-        let res = instr.capture_to_u8(&capture);
-
+        let res = capture.load_le::<u8>();
         tracing::trace!("pwr_write response: {:?}", res);
 
         Ok(res)
@@ -452,7 +440,7 @@ impl<'probe> Xdm<'probe> {
             .probe
             .write_register(instr.code(), &[0, 0, 0, 0], instr.bits())?;
 
-        let res = instr.capture_to_u32(&capture);
+        let res = capture.load_le::<u32>();
 
         tracing::debug!("idcode response: {:x?}", res);
 
@@ -692,29 +680,27 @@ impl<'probe> Xdm<'probe> {
     }
 }
 
-type TransformFn = fn(&ShiftDrCommand, Vec<u8>) -> Result<CommandResult, ProbeRsError>;
+type TransformFn = fn(&ShiftDrCommand, &BitSlice) -> Result<CommandResult, ProbeRsError>;
 
 fn transform_u32(
     _command: &ShiftDrCommand,
-    capture: Vec<u8>,
+    capture: &BitSlice,
 ) -> Result<CommandResult, ProbeRsError> {
-    Ok(CommandResult::U32(
-        TapInstruction::Ndr.capture_to_u32(&capture),
-    ))
+    Ok(CommandResult::U32(capture.load_le::<u32>()))
 }
 
 fn transform_noop(
     _command: &ShiftDrCommand,
-    _capture: Vec<u8>,
+    _capture: &BitSlice,
 ) -> Result<CommandResult, ProbeRsError> {
     Ok(CommandResult::None)
 }
 
 fn transform_instruction_status(
     _command: &ShiftDrCommand,
-    capture: Vec<u8>,
+    capture: &BitSlice,
 ) -> Result<CommandResult, ProbeRsError> {
-    let status = DebugStatus(TapInstruction::Ndr.capture_to_u32(&capture));
+    let status = DebugStatus(capture.load_le::<u32>());
 
     if status.exec_overrun() {
         return Err(ProbeRsError::Xtensa(XtensaError::XdmError(

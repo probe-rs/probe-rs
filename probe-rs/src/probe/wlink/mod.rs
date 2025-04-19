@@ -6,6 +6,7 @@
 use std::fmt;
 use std::time::Duration;
 
+use bitvec::{bitvec, order::Lsb0, vec::BitVec, view::BitView};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 
@@ -395,7 +396,7 @@ impl JTAGAccess for WchLink {
         Ok(())
     }
 
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
+    fn read_register(&mut self, address: u32, len: u32) -> Result<BitVec, DebugProbeError> {
         tracing::debug!("read register 0x{:08x}", address);
         assert_eq!(len, 32);
 
@@ -403,14 +404,14 @@ impl JTAGAccess for WchLink {
             REG_IDCODE_ADDRESS => {
                 // using hard coded idcode 0x00000001, the same as WCH's openocd fork
                 tracing::debug!("using hard coded idcode 0x00000001");
-                Ok(0x1_u32.to_le_bytes().to_vec())
+                Ok(0x1_usize.view_bits().to_bitvec())
             }
             REG_DTMCS_ADDRESS => {
                 // See: RISC-V Debug Specification, 6.1.4
                 // 0x71: abits=7, version=1(1.0)
-                Ok(0x71_u32.to_le_bytes().to_vec())
+                Ok(0x71_usize.view_bits().to_bitvec())
             }
-            REG_BYPASS_ADDRESS => Ok(vec![0; 4]),
+            REG_BYPASS_ADDRESS => Ok(bitvec![0; 4]),
             _ => panic!("unknown read register address {address:08x}"),
         }
     }
@@ -429,7 +430,7 @@ impl JTAGAccess for WchLink {
         address: u32,
         data: &[u8],
         len: u32,
-    ) -> Result<Vec<u8>, DebugProbeError> {
+    ) -> Result<BitVec, DebugProbeError> {
         match address as u8 {
             REG_DTMCS_ADDRESS => {
                 let val = u32::from_le_bytes(data.try_into().unwrap());
@@ -442,7 +443,7 @@ impl JTAGAccess for WchLink {
                     return Err(WchLinkError::UnsupportedOperation.into());
                 }
 
-                Ok(0x71_u32.to_le_bytes().to_vec())
+                Ok(0x71_usize.view_bits().to_bitvec())
             }
             REG_DMI_ADDRESS => {
                 assert_eq!(
@@ -462,15 +463,12 @@ impl JTAGAccess for WchLink {
                     dmi_value,
                 );
 
-                match dmi_op {
+                let (addr, data, op) = match dmi_op {
                     DMI_OP_READ => {
                         let (addr, data, op) = self.dmi_op_read(dmi_addr)?;
-                        let ret = ((addr as u128) << DMI_ADDRESS_BIT_OFFSET)
-                            | ((data as u128) << DMI_VALUE_BIT_OFFSET)
-                            | (op as u128);
                         tracing::trace!("dmi read 0x{:02x} 0x{:08x} op={}", addr, data, op);
                         self.last_dmi_read = Some((addr, data, op));
-                        Ok(ret.to_le_bytes().to_vec())
+                        (addr, data, op)
                     }
                     DMI_OP_NOP => {
                         // No idea why NOP with zero addr should return the last read value.
@@ -480,33 +478,38 @@ impl JTAGAccess for WchLink {
                         } else {
                             self.dmi_op_nop()?
                         };
-
-                        let ret = ((addr as u128) << DMI_ADDRESS_BIT_OFFSET)
-                            | ((data as u128) << DMI_VALUE_BIT_OFFSET)
-                            | (op as u128);
                         tracing::trace!("dmi nop 0x{:02x} 0x{:08x} op={}", addr, data, op);
-                        Ok(ret.to_le_bytes().to_vec())
+                        (addr, data, op)
                     }
                     DMI_OP_WRITE => {
                         let (addr, data, op) = self.dmi_op_write(dmi_addr, dmi_value)?;
-                        let ret = ((addr as u128) << DMI_ADDRESS_BIT_OFFSET)
-                            | ((data as u128) << DMI_VALUE_BIT_OFFSET)
-                            | (op as u128);
                         tracing::trace!("dmi write 0x{:02x} 0x{:08x} op={}", addr, data, op);
                         if dmi_addr == 0x10 && dmi_value == 0x40000001 {
                             // needs additional sleep for a resume operation
                             std::thread::sleep(Duration::from_millis(10));
                         }
-                        Ok(ret.to_le_bytes().to_vec())
+                        (addr, data, op)
                     }
                     _ => unreachable!("unknown dmi_op {dmi_op}"),
+                };
+
+                let ret = ((addr as u128) << DMI_ADDRESS_BIT_OFFSET)
+                    | ((data as u128) << DMI_VALUE_BIT_OFFSET)
+                    | (op as u128);
+
+                let ret_bytes = ret.to_le_bytes();
+                let mut ret = bitvec![0;32];
+                for byte in ret_bytes.iter() {
+                    ret.extend_from_bitslice(byte.view_bits::<Lsb0>());
                 }
+
+                Ok(ret)
             }
             _ => unreachable!("unknown register address 0x{:08x}", address),
         }
     }
 
-    fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<Vec<u8>, DebugProbeError> {
+    fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "write_dr",
         })

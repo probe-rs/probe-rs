@@ -39,7 +39,7 @@ struct JtagAdapter {
     command: Command,
     commands: Vec<u8>,
     in_bit_counts: Vec<usize>,
-    in_bits: BitVec<u8>,
+    in_bits: BitVec,
     ftdi: FtdiProperties,
 }
 
@@ -249,7 +249,7 @@ impl JtagAdapter {
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError> {
+    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
         self.flush()?;
 
         Ok(std::mem::take(&mut self.in_bits))
@@ -499,7 +499,7 @@ impl RawJtagIo for FtdiProbe {
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError> {
+    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
         self.adapter.read_captured_bits()
     }
 
