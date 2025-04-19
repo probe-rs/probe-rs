@@ -128,7 +128,7 @@ impl Request for SequenceRequest {
             transfer_len_bytes += 1;
 
             let byte_count = tck_cycles.div_ceil(8) as usize;
-            buffer[transfer_len_bytes..(transfer_len_bytes + byte_count)]
+            buffer[transfer_len_bytes..][..byte_count]
                 .copy_from_slice(&sequence.data[..byte_count]);
             transfer_len_bytes += byte_count;
         });
@@ -139,18 +139,16 @@ impl Request for SequenceRequest {
         let mut received_len_bytes = 1;
         let status = Status::from_byte(buffer[0])?;
 
-        let mut bits = BitVec::<u8>::new();
+        let mut bits = BitVec::new();
         self.sequences
             .iter()
             .filter(|sequence| sequence.tdo_capture)
             .for_each(|&sequence| {
-                let tck_cycles = sequence.tck_cycles & 0x3F;
+                let tck_cycles = sequence.tck_cycles as usize & 0x3F;
                 let tck_cycles = if tck_cycles == 0 { 64 } else { tck_cycles };
-                let byte_count = tck_cycles.div_ceil(8) as usize;
+                let byte_count = tck_cycles.div_ceil(8);
                 let bytes = &buffer[received_len_bytes..][..byte_count];
-                bits.extend_from_bitslice(
-                    &BitSlice::<u8>::from_slice(bytes)[..tck_cycles as usize],
-                );
+                bits.extend_from_bitslice(&bytes.view_bits::<Lsb0>()[..tck_cycles]);
                 received_len_bytes += byte_count;
             });
 
@@ -159,4 +157,4 @@ impl Request for SequenceRequest {
 }
 
 #[derive(Debug)]
-pub struct SequenceResponse(pub(crate) Status, pub(crate) BitVec<u8>);
+pub struct SequenceResponse(pub(crate) Status, pub(crate) BitVec);

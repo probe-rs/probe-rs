@@ -492,8 +492,8 @@ impl ProtocolHandler {
         tracing::trace!("Read: {:?}, length = {}", incoming, bits_in_buffer);
         self.pending_in_bits = self.pending_in_bits.saturating_sub(bits_in_buffer);
 
-        let bs: &BitSlice<_, Lsb0> = BitSlice::from_slice(incoming);
-        self.response.extend_from_bitslice(&bs[..bits_in_buffer]);
+        self.response
+            .extend_from_bitslice(&incoming.view_bits::<Lsb0>()[..bits_in_buffer]);
 
         Ok(())
     }

@@ -251,7 +251,7 @@ impl CmsisDap {
     /// Capture the power-up scan chain values, including all IDCODEs.
     ///
     /// Returns the IR and DR results as (IR, DR).
-    fn jtag_reset_scan(&mut self) -> Result<(BitVec<u8>, BitVec<u8>), CmsisDapError> {
+    fn jtag_reset_scan(&mut self) -> Result<(BitVec, BitVec), CmsisDapError> {
         let dr = self.jtag_scan_dr()?;
         let ir = self.jtag_scan_ir()?;
 
@@ -265,7 +265,7 @@ impl CmsisDap {
     ///
     /// Replaces the current contents with all 1s (BYPASS) and enters
     /// the Run-Test/Idle state.
-    fn jtag_scan_ir(&mut self) -> Result<BitVec<u8>, CmsisDapError> {
+    fn jtag_scan_ir(&mut self) -> Result<BitVec, CmsisDapError> {
         self.jtag_ensure_shift_ir()?;
         let data = self.jtag_scan_inner("IR")?;
         Ok(data)
@@ -275,7 +275,7 @@ impl CmsisDap {
     ///
     /// Replaces the current contents with all 1s and enters
     /// the Run-Test/Idle state.
-    fn jtag_scan_dr(&mut self) -> Result<BitVec<u8>, CmsisDapError> {
+    fn jtag_scan_dr(&mut self) -> Result<BitVec, CmsisDapError> {
         self.jtag_ensure_shift_dr()?;
         let data = self.jtag_scan_inner("DR")?;
         Ok(data)
@@ -283,7 +283,7 @@ impl CmsisDap {
 
     /// Detect current chain length and return its contents.
     /// Must already be in either Shift-IR or Shift-DR state.
-    fn jtag_scan_inner(&mut self, name: &'static str) -> Result<BitVec<u8>, CmsisDapError> {
+    fn jtag_scan_inner(&mut self, name: &'static str) -> Result<BitVec, CmsisDapError> {
         // Max scan chain length (in bits) to attempt to detect.
         const MAX_LENGTH: usize = 128;
         // How many bytes to write out / read in per request.
@@ -292,7 +292,7 @@ impl CmsisDap {
         const REQUESTS: usize = MAX_LENGTH.div_ceil(BYTES_PER_REQUEST * 8);
 
         // Completely fill xR with 0s, capture result.
-        let mut tdo_bytes: BitVec<u8> = BitVec::with_capacity(REQUESTS * BYTES_PER_REQUEST * 8);
+        let mut tdo_bytes: BitVec = BitVec::with_capacity(REQUESTS * BYTES_PER_REQUEST * 8);
         for _ in 0..REQUESTS {
             let sequences = vec![
                 JtagSequence::capture(false, &bitvec![0; 64])?,
@@ -403,7 +403,7 @@ impl CmsisDap {
     fn send_jtag_sequences(
         &mut self,
         request: JtagSequenceRequest,
-    ) -> Result<BitVec<u8>, CmsisDapError> {
+    ) -> Result<BitVec, CmsisDapError> {
         commands::send_command(&mut self.device, &request).and_then(|v| match v {
             JtagSequenceResponse(Status::DapOk, tdo) => Ok(tdo),
             JtagSequenceResponse(Status::DapError, _) => {

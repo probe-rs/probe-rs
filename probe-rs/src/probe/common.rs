@@ -106,8 +106,8 @@ fn starts_to_lengths(starts: &[usize], total: usize) -> Vec<usize> {
 /// a 32-bit IDCODE of all 1s, which comes after the last TAP in the chain.
 ///
 /// Returns `Vec<Option<IdCode>>`, with None for TAPs in BYPASS.
-pub(crate) fn extract_idcodes(
-    mut dr: &BitSlice<u8>,
+pub(crate) fn extract_idcodes<T: BitStore>(
+    mut dr: &BitSlice<T>,
 ) -> Result<Vec<Option<IdCode>>, ScanChainError> {
     let mut idcodes = Vec::new();
 
@@ -896,7 +896,7 @@ mod tests {
 
     #[test]
     fn extract_id_codes_one_tap() {
-        let mut dr = bitvec![u8, Lsb0; 0; 32];
+        let mut dr = bitvec![0; 32];
         dr[0..32].store_le(ARM_TAP.0);
 
         let idcodes = extract_idcodes(&dr).unwrap();
@@ -906,7 +906,7 @@ mod tests {
 
     #[test]
     fn extract_id_codes_two_taps() {
-        let mut dr = bitvec![u8, Lsb0; 0; 64];
+        let mut dr = bitvec![0; 64];
         dr[0..32].store_le(ARM_TAP.0);
         dr[32..64].store_le(STM_BS_TAP.0);
 
@@ -917,7 +917,7 @@ mod tests {
 
     #[test]
     fn extract_id_codes_tap_bypass_tap() {
-        let mut dr = bitvec![u8, Lsb0; 0; 65];
+        let mut dr = bitvec![0; 65];
         dr[0..32].store_le(ARM_TAP.0);
         dr.set(32, false);
         dr[33..65].store_le(STM_BS_TAP.0);
