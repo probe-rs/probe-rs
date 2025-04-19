@@ -167,8 +167,8 @@ pub(crate) fn common_sequence<'a, S: BitStore>(
 /// <https://github.com/GlasgowEmbedded/glasgow/blob/30dc11b2/software/glasgow/applet/interface/jtag_probe/__init__.py#L712>
 ///
 /// Returns `Vec<usize>`, with an entry for each TAP.
-pub(crate) fn extract_ir_lengths(
-    ir: &BitSlice<u8>,
+pub(crate) fn extract_ir_lengths<T: BitStore>(
+    ir: &BitSlice<T>,
     n_taps: usize,
     expected: Option<&[usize]>,
 ) -> Result<Vec<usize>, ScanChainError> {
@@ -858,7 +858,7 @@ mod tests {
 
     #[test]
     fn extract_ir_lengths_with_one_tap() {
-        let ir = &bitvec![u8, Lsb0; 1,0,0,0];
+        let ir = &bitvec![1, 0, 0, 0];
         let n_taps = 1;
         let expected = None;
 
@@ -872,7 +872,7 @@ mod tests {
         // The STM32F1xx and STM32F4xx are examples of MCUs that two serially connected JTAG TAPs,
         // the boundary scan TAP (IR is 5-bit wide) and the Cortex® -M4 with FPU TAP (IR is 4-bit wide).
         // This test ensures our scan chain interrogation handles this scenario.
-        let ir = &bitvec![u8, Lsb0; 1,0,0,0,1,0,0,0,0];
+        let ir = &bitvec![1, 0, 0, 0, 1, 0, 0, 0, 0];
         let n_taps = 2;
         let expected = None;
 
@@ -885,7 +885,7 @@ mod tests {
     fn extract_ir_lengths_with_two_taps_101() {
         // Slightly contrived example where the IR scan starts with 101xx. In known real devices
         // the 101 TAP is 5 bits long, but this is an edge case that the algorithm should handle.
-        let ir = &bitvec![u8, Lsb0; 1,0,1,0,1,0,0,0,0];
+        let ir = &bitvec![1, 0, 1, 0, 1, 0, 0, 0, 0];
         let n_taps = 2;
         let expected = None;
 
