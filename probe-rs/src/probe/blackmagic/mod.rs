@@ -19,7 +19,7 @@ use crate::{
     },
     probe::{DebugProbe, DebugProbeInfo, DebugProbeSelector, JTAGAccess, ProbeFactory},
 };
-use bitvec::{order::Lsb0, vec::BitVec};
+use bitvec::vec::BitVec;
 use probe_rs_target::ScanChainElement;
 use serialport::{SerialPortType, available_ports};
 
@@ -610,7 +610,7 @@ pub struct BlackMagicProbe {
     jtag_state: JtagDriverState,
     probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
-    in_bits: BitVec<u8, Lsb0>,
+    in_bits: BitVec<u8>,
     swd_direction: SwdDirection,
 }
 
@@ -1374,7 +1374,7 @@ impl RawJtagIo for BlackMagicProbe {
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError> {
         tracing::trace!("reading captured bits");
         Ok(std::mem::take(&mut self.in_bits))
     }

@@ -106,8 +106,8 @@ fn starts_to_lengths(starts: &[usize], total: usize) -> Vec<usize> {
 /// a 32-bit IDCODE of all 1s, which comes after the last TAP in the chain.
 ///
 /// Returns `Vec<Option<IdCode>>`, with None for TAPs in BYPASS.
-pub(crate) fn extract_idcodes(
-    mut dr: &BitSlice<u8>,
+pub(crate) fn extract_idcodes<T: BitStore>(
+    mut dr: &BitSlice<T>,
 ) -> Result<Vec<Option<IdCode>>, ScanChainError> {
     let mut idcodes = Vec::new();
 
@@ -167,8 +167,8 @@ pub(crate) fn common_sequence<'a, S: BitStore>(
 /// <https://github.com/GlasgowEmbedded/glasgow/blob/30dc11b2/software/glasgow/applet/interface/jtag_probe/__init__.py#L712>
 ///
 /// Returns `Vec<usize>`, with an entry for each TAP.
-pub(crate) fn extract_ir_lengths(
-    ir: &BitSlice<u8>,
+pub(crate) fn extract_ir_lengths<T: BitStore>(
+    ir: &BitSlice<T>,
     n_taps: usize,
     expected: Option<&[usize]>,
 ) -> Result<Vec<usize>, ScanChainError> {
@@ -448,7 +448,7 @@ pub(crate) trait RawJtagIo {
     fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError>;
 
     /// Returns the bits captured from TDO and clears the capture buffer.
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError>;
+    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError>;
 
     /// Resets the JTAG state machine by shifting out a number of high TMS bits.
     fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
@@ -648,7 +648,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
 
         self.state_mut().chain_params = ChainParams::default();
 
-        let input = vec![0xFF; 4 * MAX_CHAIN];
+        let input = [0xFF; 4 * MAX_CHAIN];
 
         shift_dr(self, &input, input.len() * 8, true)?;
         let response = self.read_captured_bits()?;
@@ -858,7 +858,7 @@ mod tests {
 
     #[test]
     fn extract_ir_lengths_with_one_tap() {
-        let ir = &bitvec![u8, Lsb0; 1,0,0,0];
+        let ir = bits![1, 0, 0, 0];
         let n_taps = 1;
         let expected = None;
 
@@ -872,7 +872,7 @@ mod tests {
         // The STM32F1xx and STM32F4xx are examples of MCUs that two serially connected JTAG TAPs,
         // the boundary scan TAP (IR is 5-bit wide) and the Cortex® -M4 with FPU TAP (IR is 4-bit wide).
         // This test ensures our scan chain interrogation handles this scenario.
-        let ir = &bitvec![u8, Lsb0; 1,0,0,0,1,0,0,0,0];
+        let ir = bits![1, 0, 0, 0, 1, 0, 0, 0, 0];
         let n_taps = 2;
         let expected = None;
 
@@ -885,7 +885,7 @@ mod tests {
     fn extract_ir_lengths_with_two_taps_101() {
         // Slightly contrived example where the IR scan starts with 101xx. In known real devices
         // the 101 TAP is 5 bits long, but this is an edge case that the algorithm should handle.
-        let ir = &bitvec![u8, Lsb0; 1,0,1,0,1,0,0,0,0];
+        let ir = bits![1, 0, 1, 0, 1, 0, 0, 0, 0];
         let n_taps = 2;
         let expected = None;
 
@@ -896,33 +896,33 @@ mod tests {
 
     #[test]
     fn extract_id_codes_one_tap() {
-        let mut dr = bitvec![u8, Lsb0; 0; 32];
+        let dr = bits![mut 0; 32];
         dr[0..32].store_le(ARM_TAP.0);
 
-        let idcodes = extract_idcodes(&dr).unwrap();
+        let idcodes = extract_idcodes(dr).unwrap();
 
         assert_eq!(idcodes, vec![Some(ARM_TAP)]);
     }
 
     #[test]
     fn extract_id_codes_two_taps() {
-        let mut dr = bitvec![u8, Lsb0; 0; 64];
+        let dr = bits![mut 0; 64];
         dr[0..32].store_le(ARM_TAP.0);
         dr[32..64].store_le(STM_BS_TAP.0);
 
-        let idcodes = extract_idcodes(&dr).unwrap();
+        let idcodes = extract_idcodes(dr).unwrap();
 
         assert_eq!(idcodes, vec![Some(ARM_TAP), Some(STM_BS_TAP)]);
     }
 
     #[test]
     fn extract_id_codes_tap_bypass_tap() {
-        let mut dr = bitvec![u8, Lsb0; 0; 65];
+        let dr = bits![mut 0; 65];
         dr[0..32].store_le(ARM_TAP.0);
         dr.set(32, false);
         dr[33..65].store_le(STM_BS_TAP.0);
 
-        let idcodes = extract_idcodes(&dr).unwrap();
+        let idcodes = extract_idcodes(dr).unwrap();
 
         assert_eq!(idcodes, vec![Some(ARM_TAP), None, Some(STM_BS_TAP)]);
     }

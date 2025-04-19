@@ -58,7 +58,7 @@ pub(super) struct ProtocolHandler {
     half_byte_used: bool,
     /// A store for all the read bits (from the target) such that the BitIter the methods return
     /// can borrow and iterate over it.
-    response: BitVec<u8, Lsb0>,
+    response: BitVec<u8>,
     pending_in_bits: usize,
 
     ep_out: u8,
@@ -341,7 +341,7 @@ impl ProtocolHandler {
     ///
     /// This method returns the response buffer and clears it. The returned buffer will contain
     /// all bits captured since the last call to `read_captured_bits`.
-    pub(super) fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+    pub(super) fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError> {
         self.flush()?;
 
         Ok(std::mem::take(&mut self.response))
@@ -492,8 +492,8 @@ impl ProtocolHandler {
         tracing::trace!("Read: {:?}, length = {}", incoming, bits_in_buffer);
         self.pending_in_bits = self.pending_in_bits.saturating_sub(bits_in_buffer);
 
-        let bs: &BitSlice<_, Lsb0> = BitSlice::from_slice(incoming);
-        self.response.extend_from_bitslice(&bs[..bits_in_buffer]);
+        self.response
+            .extend_from_bitslice(&incoming.view_bits::<Lsb0>()[..bits_in_buffer]);
 
         Ok(())
     }
