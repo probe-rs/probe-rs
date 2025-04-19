@@ -4,6 +4,8 @@
 //! Currently, only JTAG is supported.
 
 use bitfield::bitfield;
+use bitvec::field::BitField;
+use bitvec::slice::BitSlice;
 use std::time::{Duration, Instant};
 
 use crate::architecture::riscv::communication_interface::{
@@ -90,8 +92,8 @@ impl<'probe> JtagDtm<'probe> {
         Self { probe, state }
     }
 
-    fn transform_dmi_result(response_bytes: Vec<u8>) -> Result<u32, DmiOperationStatus> {
-        let response_value = u128_from_data(&response_bytes);
+    fn transform_dmi_result(response_bits: &BitSlice) -> Result<u32, DmiOperationStatus> {
+        let response_value = response_bits.load_le::<u128>();
 
         // Verify that the transfer was ok
         let op = (response_value & DMI_OP_MASK) as u8;
@@ -118,7 +120,7 @@ impl<'probe> JtagDtm<'probe> {
 
         self.probe
             .write_register(DMI_ADDRESS, &bytes, bit_size)
-            .map(Self::transform_dmi_result)
+            .map(|bits| Self::transform_dmi_result(&bits))
     }
 
     fn schedule_dmi_register_access(
@@ -174,7 +176,7 @@ impl DtmAccess for JtagDtm<'_> {
         self.probe.tap_reset()?;
         let dtmcs_raw = self.probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
 
-        let raw_dtmcs = u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap());
+        let raw_dtmcs = dtmcs_raw.load_le::<u32>();
 
         if raw_dtmcs == 0 {
             return Err(RiscvError::NoRiscvTarget);
@@ -307,7 +309,7 @@ impl DtmAccess for JtagDtm<'_> {
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
         let value = self.probe.read_register(0x1, 32)?;
 
-        Ok(Some(u32::from_le_bytes((&value[..]).try_into().unwrap())))
+        Ok(Some(value.load_le::<u32>()))
     }
 }
 
@@ -355,7 +357,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
         let result = self
             .probe
             .write_dr(&cmd.data, cmd.len)
-            .map(|r| (cmd.transform)(&cmd, r))?;
+            .map(|r| (cmd.transform)(&cmd, &r))?;
         match result {
             Ok(CommandResult::U32(d)) => Ok(d),
             Err(crate::Error::Probe(e)) => Err(e.into()),
@@ -363,10 +365,8 @@ impl<'probe> TunneledJtagDtm<'probe> {
         }
     }
 
-    fn transform_tunneled_dr_result(response_bytes: Vec<u8>) -> Vec<u8> {
-        let raw_response = u128_from_data(&response_bytes);
-        let response = raw_response >> 4;
-        response.to_le_bytes().into()
+    fn transform_tunneled_dr_result(response_bits: &BitSlice) -> &BitSlice {
+        &response_bits[4..]
     }
 
     fn dmi_register_access(
@@ -381,10 +381,9 @@ impl<'probe> TunneledJtagDtm<'probe> {
 
         let dmi_bits = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
         let (bit_size, bytes) = op.to_tunneled_byte_batch(dmi_bits);
-        self.probe
-            .write_dr(&bytes, bit_size)
-            .map(Self::transform_tunneled_dr_result)
-            .map(JtagDtm::transform_dmi_result)
+        let result = self.probe.write_dr(&bytes, bit_size)?;
+        let tunneled_result = Self::transform_tunneled_dr_result(&result);
+        Ok(JtagDtm::transform_dmi_result(tunneled_result))
     }
 
     fn schedule_dmi_register_access(
@@ -568,7 +567,7 @@ impl DtmAccess for TunneledJtagDtm<'_> {
 
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
         let value = self.probe.read_register(0x1, 32)?;
-        Ok(Some(u32::from_le_bytes((&value[..]).try_into().unwrap())))
+        Ok(Some(value.load_le::<u32>()))
     }
 }
 
@@ -596,8 +595,7 @@ fn tunnel_dtmcs_command(data: u32) -> ShiftDrCommand {
         data: tunneled_dr.to_le_bytes().into(),
         len: (msb_offset as u32) + 1,
         transform: |_, result| {
-            let raw_response = u128_from_data(&result);
-            let response = (raw_response >> 4) as u32;
+            let response = result[4..].load_le::<u32>();
             Ok(CommandResult::U32(response))
         },
     }
@@ -677,13 +675,6 @@ impl DmiOperationStatus {
 
         Some(status)
     }
-}
-
-fn u128_from_data(data: &[u8]) -> u128 {
-    data.iter().enumerate().fold(0, |acc, elem| {
-        let (byte_offset, value) = elem;
-        acc + ((*value as u128) << (8 * byte_offset))
-    })
 }
 
 /// Address of the `dtmcs` JTAG register.

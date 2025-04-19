@@ -448,7 +448,7 @@ pub(crate) trait RawJtagIo {
     fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError>;
 
     /// Returns the bits captured from TDO and clears the capture buffer.
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError>;
+    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError>;
 
     /// Resets the JTAG state machine by shifting out a number of high TMS bits.
     fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
@@ -734,7 +734,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         self.state().jtag_idle_cycles as u8
     }
 
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
+    fn read_register(&mut self, address: u32, len: u32) -> Result<BitVec, DebugProbeError> {
         let data = vec![0u8; len.div_ceil(8) as usize];
 
         self.write_register(address, &data, len)
@@ -745,30 +745,22 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         address: u32,
         data: &[u8],
         len: u32,
-    ) -> Result<Vec<u8>, DebugProbeError> {
+    ) -> Result<BitVec, DebugProbeError> {
         prepare_write_register(self, address, data, len, true)?;
 
-        let mut response = self.read_captured_bits()?;
+        let response = self.read_captured_bits()?;
 
-        // Implementations don't need to align to keep the code simple
-        response.force_align();
-        let result = response.into_vec();
-
-        tracing::trace!("recieve_write_dr result: {:?}", result);
-        Ok(result)
+        tracing::trace!("recieve_write_dr result: {:?}", response);
+        Ok(response)
     }
 
-    fn write_dr(&mut self, data: &[u8], len: u32) -> Result<Vec<u8>, DebugProbeError> {
+    fn write_dr(&mut self, data: &[u8], len: u32) -> Result<BitVec, DebugProbeError> {
         shift_dr(self, data, len as usize, true)?;
 
-        let mut response = self.read_captured_bits()?;
+        let response = self.read_captured_bits()?;
 
-        // Implementations don't need to align to keep the code simple
-        response.force_align();
-        let result = response.into_vec();
-
-        tracing::trace!("recieve_write_dr result: {:?}", result);
-        Ok(result)
+        tracing::trace!("recieve_write_dr result: {:?}", response);
+        Ok(response)
     }
 
     #[tracing::instrument(skip(self, writes))]
@@ -813,10 +805,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         let mut bitstream = bitstream.as_bitslice();
         for (idx, command, bits) in bits.into_iter() {
             if idx.should_capture() {
-                // TODO: this back-and-forth between BitVec and Vec is probably unnecessary
-                let mut reg_bits = bitstream[..bits].to_bitvec();
-                reg_bits.force_align();
-                let response = reg_bits.into_vec();
+                let response = &bitstream[..bits];
 
                 let result = match command {
                     JtagCommand::WriteRegister(command) => (command.transform)(command, response),

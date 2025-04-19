@@ -27,6 +27,8 @@ use crate::architecture::xtensa::communication_interface::{
 use crate::config::TargetSelector;
 use crate::config::registry::Registry;
 use crate::{Error, Permissions, Session};
+use bitvec::slice::BitSlice;
+use bitvec::vec::BitVec;
 use common::ScanChainError;
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
@@ -1095,7 +1097,7 @@ pub trait JTAGAccess: DebugProbe {
     /// Read a JTAG register.
     ///
     /// This function emulates a read by performing a write with all zeros to the DR.
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
+    fn read_register(&mut self, address: u32, len: u32) -> Result<BitVec, DebugProbeError> {
         let data = vec![0u8; len.div_ceil(8) as usize];
 
         self.write_register(address, &data, len)
@@ -1120,12 +1122,12 @@ pub trait JTAGAccess: DebugProbe {
         address: u32,
         data: &[u8],
         len: u32,
-    ) -> Result<Vec<u8>, DebugProbeError>;
+    ) -> Result<BitVec, DebugProbeError>;
 
     /// Shift a value into the DR JTAG register
     ///
     /// The data shifted out of the DR register will be returned.
-    fn write_dr(&mut self, data: &[u8], len: u32) -> Result<Vec<u8>, DebugProbeError>;
+    fn write_dr(&mut self, data: &[u8], len: u32) -> Result<BitVec, DebugProbeError>;
 
     /// Executes a sequence of JTAG commands.
     fn write_register_batch(
@@ -1143,7 +1145,7 @@ pub trait JTAGAccess: DebugProbe {
                     match self
                         .write_register(write.address, &write.data, write.len)
                         .map_err(crate::Error::Probe)
-                        .and_then(|response| (write.transform)(write, response))
+                        .and_then(|response| (write.transform)(write, &response))
                     {
                         Ok(res) => results.push(idx, res),
                         Err(e) => return Err(BatchExecutionError::new(e, results)),
@@ -1154,7 +1156,7 @@ pub trait JTAGAccess: DebugProbe {
                     match self
                         .write_dr(&write.data, write.len)
                         .map_err(crate::Error::Probe)
-                        .and_then(|response| (write.transform)(write, response))
+                        .and_then(|response| (write.transform)(write, &response))
                     {
                         Ok(res) => results.push(idx, res),
                         Err(e) => return Err(BatchExecutionError::new(e, results)),
@@ -1180,7 +1182,7 @@ pub struct JtagWriteCommand {
     pub len: u32,
 
     /// A function to transform the raw response into a [`CommandResult`]
-    pub transform: fn(&JtagWriteCommand, Vec<u8>) -> Result<CommandResult, crate::Error>,
+    pub transform: fn(&JtagWriteCommand, &BitSlice) -> Result<CommandResult, crate::Error>,
 }
 
 /// A low-level JTAG register write command.
@@ -1193,7 +1195,7 @@ pub struct ShiftDrCommand {
     pub len: u32,
 
     /// A function to transform the raw response into a [`CommandResult`]
-    pub transform: fn(&ShiftDrCommand, Vec<u8>) -> Result<CommandResult, crate::Error>,
+    pub transform: fn(&ShiftDrCommand, &BitSlice) -> Result<CommandResult, crate::Error>,
 }
 
 /// A low-level JTAG command.

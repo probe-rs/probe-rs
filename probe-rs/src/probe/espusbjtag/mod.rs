@@ -70,7 +70,7 @@ impl RawJtagIo for EspUsbJtag {
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError> {
+    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
         self.protocol.read_captured_bits()
     }
 

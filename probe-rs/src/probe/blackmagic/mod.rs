@@ -610,7 +610,7 @@ pub struct BlackMagicProbe {
     jtag_state: JtagDriverState,
     probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
-    in_bits: BitVec<u8>,
+    in_bits: BitVec,
     swd_direction: SwdDirection,
 }
 
@@ -1374,7 +1374,7 @@ impl RawJtagIo for BlackMagicProbe {
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec<u8>, DebugProbeError> {
+    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
         tracing::trace!("reading captured bits");
         Ok(std::mem::take(&mut self.in_bits))
     }

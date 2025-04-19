@@ -4,6 +4,8 @@
 //!
 //! See <https://developer.arm.com/documentation/ihi0031/f/?lang=en> for the ADIv5 specification.
 
+use bitvec::{field::BitField, slice::BitSlice};
+
 use crate::{
     Error,
     architecture::arm::{
@@ -164,14 +166,8 @@ fn build_jtag_payload_and_address(transfer: &DapTransfer) -> (u64, u32) {
     }
 }
 
-fn parse_jtag_response(data: &[u8]) -> u64 {
-    let mut received = 0u64;
-    for v in data.iter() {
-        received >>= 8;
-        received |= (*v as u64) << 32;
-    }
-
-    received
+fn parse_jtag_response(data: &BitSlice) -> u64 {
+    data.load_le::<u64>()
 }
 
 /// Perform a single JTAG transfer and parse the results
@@ -738,7 +734,7 @@ impl DapTransfer {
                     return Ok(CommandResult::None);
                 }
 
-                let received = parse_jtag_response(&response);
+                let received = parse_jtag_response(response);
 
                 // Received value is bits [35:3]
                 let received_value = (received >> 3) as u32;
@@ -1306,7 +1302,7 @@ mod test {
     use super::{
         JTAG_ABORT_IR_VALUE, JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE,
         JTAG_DR_BIT_LENGTH, JTAG_STATUS_OK, JTAG_STATUS_WAIT, ProbeStatistics, RawProtocolIo,
-        SwdSettings, parse_jtag_response,
+        SwdSettings,
     };
 
     use bitvec::prelude::*;
@@ -1515,7 +1511,7 @@ mod test {
             todo!()
         }
 
-        fn read_register(&mut self, _address: u32, _len: u32) -> Result<Vec<u8>, DebugProbeError> {
+        fn read_register(&mut self, _address: u32, _len: u32) -> Result<BitVec, DebugProbeError> {
             todo!()
         }
 
@@ -1533,8 +1529,8 @@ mod test {
             address: u32,
             data: &[u8],
             len: u32,
-        ) -> Result<Vec<u8>, DebugProbeError> {
-            let jtag_value = parse_jtag_response(&data[..5]);
+        ) -> Result<BitVec, DebugProbeError> {
+            let jtag_value = data[..5].view_bits::<Lsb0>().load_le::<u64>();
 
             // Always 35 bit transfers
             assert_eq!(len, JTAG_DR_BIT_LENGTH);
@@ -1562,10 +1558,13 @@ mod test {
 
             let ret = jtag_transaction.result;
 
-            Ok(ret.to_le_bytes()[..5].to_vec())
+            let mut ret_vec = BitVec::new();
+            ret_vec.extend_from_bitslice(ret.to_le_bytes()[..5].view_bits::<Lsb0>());
+
+            Ok(ret_vec)
         }
 
-        fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<Vec<u8>, DebugProbeError> {
+        fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
             unimplemented!()
         }
     }

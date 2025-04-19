@@ -117,8 +117,8 @@ impl Request for SequenceRequest {
         transfer_len_bytes += 1;
 
         self.sequences.iter().for_each(|&sequence| {
-            let tck_cycles = sequence.tck_cycles & 0x3F;
-            let tck_cycles = if tck_cycles == 0 { 64 } else { tck_cycles };
+            // Clock pulse count has been checked by Sequence::new
+            let tck_cycles = sequence.tck_cycles;
 
             let mut sequence_info = 0;
             sequence_info |= if tck_cycles == 64 { 0 } else { tck_cycles };
@@ -144,8 +144,9 @@ impl Request for SequenceRequest {
             .iter()
             .filter(|sequence| sequence.tdo_capture)
             .for_each(|&sequence| {
-                let tck_cycles = sequence.tck_cycles as usize & 0x3F;
-                let tck_cycles = if tck_cycles == 0 { 64 } else { tck_cycles };
+                // Clock pulse count has been checked by Sequence::new
+                let tck_cycles = sequence.tck_cycles as usize;
+
                 let byte_count = tck_cycles.div_ceil(8);
                 let bytes = &buffer[received_len_bytes..][..byte_count];
                 bits.extend_from_bitslice(&bytes.view_bits::<Lsb0>()[..tck_cycles]);
