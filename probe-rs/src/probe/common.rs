@@ -858,7 +858,7 @@ mod tests {
 
     #[test]
     fn extract_ir_lengths_with_one_tap() {
-        let ir = &bitvec![1, 0, 0, 0];
+        let ir = &bitarr![1, 0, 0, 0];
         let n_taps = 1;
         let expected = None;
 
@@ -872,7 +872,7 @@ mod tests {
         // The STM32F1xx and STM32F4xx are examples of MCUs that two serially connected JTAG TAPs,
         // the boundary scan TAP (IR is 5-bit wide) and the Cortex® -M4 with FPU TAP (IR is 4-bit wide).
         // This test ensures our scan chain interrogation handles this scenario.
-        let ir = &bitvec![1, 0, 0, 0, 1, 0, 0, 0, 0];
+        let ir = &bitarr![1, 0, 0, 0, 1, 0, 0, 0, 0];
         let n_taps = 2;
         let expected = None;
 
@@ -885,7 +885,7 @@ mod tests {
     fn extract_ir_lengths_with_two_taps_101() {
         // Slightly contrived example where the IR scan starts with 101xx. In known real devices
         // the 101 TAP is 5 bits long, but this is an edge case that the algorithm should handle.
-        let ir = &bitvec![1, 0, 1, 0, 1, 0, 0, 0, 0];
+        let ir = &bitarr![1, 0, 1, 0, 1, 0, 0, 0, 0];
         let n_taps = 2;
         let expected = None;
 
@@ -896,7 +896,7 @@ mod tests {
 
     #[test]
     fn extract_id_codes_one_tap() {
-        let mut dr = bitvec![0; 32];
+        let mut dr = bitarr![0; 32];
         dr[0..32].store_le(ARM_TAP.0);
 
         let idcodes = extract_idcodes(&dr).unwrap();
@@ -906,7 +906,7 @@ mod tests {
 
     #[test]
     fn extract_id_codes_two_taps() {
-        let mut dr = bitvec![0; 64];
+        let mut dr = bitarr![0; 64];
         dr[0..32].store_le(ARM_TAP.0);
         dr[32..64].store_le(STM_BS_TAP.0);
 
@@ -917,7 +917,7 @@ mod tests {
 
     #[test]
     fn extract_id_codes_tap_bypass_tap() {
-        let mut dr = bitvec![0; 65];
+        let mut dr = bitarr![0; 65];
         dr[0..32].store_le(ARM_TAP.0);
         dr.set(32, false);
         dr[33..65].store_le(STM_BS_TAP.0);
