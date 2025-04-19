@@ -24,7 +24,7 @@ use crate::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
         },
-        common::{JtagDriverState, RawJtagIo},
+        common::JtagDriverState,
     },
 };
 

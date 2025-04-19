@@ -1094,6 +1094,17 @@ pub trait JTAGAccess: DebugProbe {
     /// Executes a TAP reset.
     fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
 
+    /// Selects the JTAG TAP to be used for communication.
+    fn select_target(&mut self, index: usize) -> Result<(), DebugProbeError> {
+        if index != 0 {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "select_jtag_tap",
+            });
+        }
+
+        Ok(())
+    }
+
     /// Read a JTAG register.
     ///
     /// This function emulates a read by performing a write with all zeros to the DR.
