@@ -132,7 +132,6 @@ impl DebugProbe for EspUsbJtag {
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching to ESP USB JTAG");
 
-        self.scan_chain()?;
         self.select_target(0)
     }
 
