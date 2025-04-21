@@ -135,7 +135,7 @@ impl Default for XtensaCoreProperties {
 }
 
 /// Properties of the windowed register file.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct WindowProperties {
     /// Whether the CPU has windowed registers.
     pub has_windowed_registers: bool,

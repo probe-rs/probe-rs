@@ -613,7 +613,8 @@ impl RegisterFile {
 
         // Now do the actual read.
         interface.xdm.execute().expect("Failed to execute read. This probably shouldn't happen, unless we raise an exception (Window Over/Underflow), maybe?");
-        let register_values = register_results
+
+        let mut register_values = register_results
             .into_iter()
             .map(|result| {
                 interface
@@ -649,6 +650,10 @@ impl RegisterFile {
             .xdm
             .read_deferred_result(window_start_result)
             .map(|r| r.into_u32())?;
+
+        // We have read registers relative to the current windowbase. Let's
+        // rotate the registers back so that AR0 is at index 0.
+        register_values.rotate_right((window_base * xtensa.rotw_rotates as u32) as usize);
 
         Ok(Self {
             core: xtensa,
