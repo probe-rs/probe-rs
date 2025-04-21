@@ -30,6 +30,7 @@ pub(crate) mod arch;
 pub(crate) mod xdm;
 
 pub mod communication_interface;
+pub(crate) mod register_cache;
 pub mod registers;
 pub(crate) mod sequences;
 
@@ -309,13 +310,12 @@ impl<'probe> Xtensa<'probe> {
     }
 
     fn spill_registers(&mut self) -> Result<(), Error> {
-        // TODO: lazy-load registers, only spill before reading memory
+        // TODO: lazy-load registers
         if self.state.spilled {
             return Ok(());
         }
         self.state.spilled = true;
 
-        // TODO: use the registers read here to prime the register cache
         let register_file = RegisterFile::read(
             self.interface.core_properties().window_option_properties,
             &mut self.interface,
@@ -484,10 +484,6 @@ impl CoreInterface for Xtensa<'_> {
 
     fn run(&mut self) -> Result<(), Error> {
         self.skip_breakpoint_instruction()?;
-        if self.state.pc_written {
-            self.interface.clear_register_cache();
-        }
-        self.state.clear_cache();
         Ok(self.interface.resume_core()?)
     }
 
@@ -678,7 +674,7 @@ impl CoreInterface for Xtensa<'_> {
 struct RegisterFile {
     core: WindowProperties,
     registers: Vec<u32>,
-    window_base: u32,
+    window_base: u8,
     window_start: u32,
 }
 
@@ -693,6 +689,10 @@ impl RegisterFile {
             interface.schedule_read_register_untyped(SpecialRegister::Windowstart)?;
 
         let mut register_results = Vec::with_capacity(xtensa.num_aregs as usize);
+
+        // Restore registers before reading them, as reading a special
+        // register overwrote scratch registers.
+        interface.restore_registers()?;
 
         let ar0 = arch::CpuRegister::A0 as u8;
         for _ in 0..xtensa.num_aregs / xtensa.window_regs {
@@ -758,7 +758,7 @@ impl RegisterFile {
         Ok(Self {
             core: xtensa,
             registers: register_values,
-            window_base,
+            window_base: window_base as u8,
             window_start,
         })
     }
@@ -792,13 +792,13 @@ impl RegisterFile {
         // increment of the current window is saved in the top 2 bits of A0 (the return address).
 
         // Find oldest window.
-        let mut window_base = self.next_window_base(self.window_base as u8);
+        let mut window_base = self.next_window_base(self.window_base);
 
         while let Some(window) = RegisterWindow::at_windowbase(self, window_base) {
             window.spill(xtensa)?;
             window_base = self.next_window_base(window_base);
 
-            if window_base == self.window_base as u8 {
+            if window_base == self.window_base {
                 // We are back to the original window, so we can stop.
 
                 // We are not spilling the first window. We don't have a destination for it, and we don't

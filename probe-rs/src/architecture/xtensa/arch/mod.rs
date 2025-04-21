@@ -14,6 +14,12 @@ pub enum Register {
     CurrentPs,
 }
 
+impl Register {
+    pub(crate) fn is_cpu_register(self) -> bool {
+        matches!(self, Register::Cpu(_))
+    }
+}
+
 impl TryFrom<RegisterId> for Register {
     type Error = XtensaError;
 
