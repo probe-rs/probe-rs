@@ -393,17 +393,13 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         &mut self,
         register: SpecialRegister,
     ) -> Result<DeferredResultIndex, XtensaError> {
-        let save_key = self.save_register(CpuRegister::A3)?;
+        self.ensure_register_saved(CpuRegister::A3)?;
 
         // Read special register into the scratch register
         self.xdm
             .schedule_execute_instruction(Instruction::Rsr(register, CpuRegister::A3));
 
-        let reader = self.schedule_read_cpu_register(CpuRegister::A3);
-
-        self.restore_register(save_key)?;
-
-        Ok(reader)
+        Ok(self.schedule_read_cpu_register(CpuRegister::A3))
     }
 
     fn schedule_write_special_register(
@@ -412,7 +408,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         value: u32,
     ) -> Result<(), XtensaError> {
         tracing::debug!("Writing special register: {:?}", register);
-        let save_key = self.save_register(CpuRegister::A3)?;
+        self.ensure_register_saved(CpuRegister::A3)?;
 
         self.xdm.schedule_write_ddr(value);
 
@@ -423,8 +419,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         // scratch -> target special register
         self.xdm
             .schedule_execute_instruction(Instruction::Wsr(register, CpuRegister::A3));
-
-        self.restore_register(save_key)?;
 
         Ok(())
     }
@@ -547,36 +541,13 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         self.xdm.execute()
     }
 
+    /// Ensures that a scratch register is saved in the register cache before overwriting it.
     #[tracing::instrument(skip(self, register), fields(register))]
-    fn save_register(
-        &mut self,
-        register: impl Into<Register>,
-    ) -> Result<Option<Register>, XtensaError> {
+    fn ensure_register_saved(&mut self, register: impl Into<Register>) -> Result<(), XtensaError> {
         let register = register.into();
 
         tracing::debug!("Saving register: {:?}", register);
         self.read_register_untyped(register)?;
-
-        Ok(Some(register))
-    }
-
-    #[tracing::instrument(skip(self))]
-    fn restore_register(&mut self, key: Option<Register>) -> Result<(), XtensaError> {
-        let Some(register) = key else {
-            return Ok(());
-        };
-
-        tracing::debug!("Restoring register: {:?}", register);
-
-        // Remove the result early, so an error here will not cause a panic in `restore_registers`.
-        if let Some(entry) = self.state.register_cache.get_mut(register) {
-            if entry.is_dirty() {
-                entry.restore();
-                let value = entry.current_value();
-
-                self.schedule_write_register_untyped_inner(register, value)?;
-            }
-        }
 
         Ok(())
     }
@@ -644,9 +615,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
         memory_access.halted_access(self, &mut |this, memory_access| {
             memory_access.save_scratch_registers(this)?;
-            let result = this.read_memory_impl(memory_access, address, dst);
-            memory_access.restore_scratch_registers(this)?;
-            result
+            this.read_memory_impl(memory_access, address, dst)
         })
     }
 
@@ -690,8 +659,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             aligned_reads.push(memory_access.read_one(self)?);
         };
 
-        memory_access.restore_scratch_registers(self)?;
-
         if let Some((read, offset, bytes_to_copy)) = first_read {
             let word = self
                 .xdm
@@ -729,9 +696,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
         memory_access.halted_access(self, &mut |this, memory_access| {
             memory_access.save_scratch_registers(this)?;
-            let result = this.write_memory_impl(memory_access, address, data);
-            memory_access.restore_scratch_registers(this)?;
-            result
+            this.write_memory_impl(memory_access, address, data)
         })
     }
 
@@ -1136,11 +1101,6 @@ trait MemoryAccess {
         interface: &mut XtensaCommunicationInterface,
     ) -> Result<(), XtensaError>;
 
-    fn restore_scratch_registers(
-        &mut self,
-        interface: &mut XtensaCommunicationInterface,
-    ) -> Result<(), XtensaError>;
-
     fn load_initial_address_for_read(
         &mut self,
         interface: &mut XtensaCommunicationInterface,
@@ -1170,12 +1130,10 @@ trait MemoryAccess {
 }
 
 /// Memory access using LDDR32.P and SDDR32.P instructions.
-struct FastMemoryAccess {
-    a3: Option<Register>,
-}
+struct FastMemoryAccess;
 impl FastMemoryAccess {
     fn new() -> Self {
-        Self { a3: None }
+        Self
     }
 }
 impl MemoryAccess for FastMemoryAccess {
@@ -1194,15 +1152,8 @@ impl MemoryAccess for FastMemoryAccess {
         &mut self,
         interface: &mut XtensaCommunicationInterface,
     ) -> Result<(), XtensaError> {
-        self.a3 = interface.save_register(CpuRegister::A3)?;
+        interface.ensure_register_saved(CpuRegister::A3)?;
         Ok(())
-    }
-
-    fn restore_scratch_registers(
-        &mut self,
-        interface: &mut XtensaCommunicationInterface,
-    ) -> Result<(), XtensaError> {
-        interface.restore_register(self.a3.take())
     }
 
     fn load_initial_address_for_read(
@@ -1260,17 +1211,11 @@ impl MemoryAccess for FastMemoryAccess {
 
 /// Memory access without LDDR32.P and SDDR32.P instructions.
 struct SlowMemoryAccess {
-    a3: Option<Register>,
-    a4: Option<Register>,
     current_address: u32,
 }
 impl SlowMemoryAccess {
     fn new() -> Self {
-        Self {
-            a3: None,
-            a4: None,
-            current_address: 0,
-        }
+        Self { current_address: 0 }
     }
 }
 
@@ -1290,17 +1235,8 @@ impl MemoryAccess for SlowMemoryAccess {
         &mut self,
         interface: &mut XtensaCommunicationInterface,
     ) -> Result<(), XtensaError> {
-        self.a3 = interface.save_register(CpuRegister::A3)?;
-        self.a4 = interface.save_register(CpuRegister::A4)?;
-        Ok(())
-    }
-
-    fn restore_scratch_registers(
-        &mut self,
-        interface: &mut XtensaCommunicationInterface,
-    ) -> Result<(), XtensaError> {
-        interface.restore_register(self.a4.take())?;
-        interface.restore_register(self.a3.take())?;
+        interface.ensure_register_saved(CpuRegister::A3)?;
+        interface.ensure_register_saved(CpuRegister::A4)?;
         Ok(())
     }
 

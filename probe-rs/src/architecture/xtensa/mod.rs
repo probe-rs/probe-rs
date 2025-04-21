@@ -34,15 +34,6 @@ pub(crate) mod register_cache;
 pub mod registers;
 pub(crate) mod sequences;
 
-#[derive(Default, Debug)]
-struct RegisterCache {
-    /// The current interrupt level.
-    current_ps: Option<ProgramStatus>,
-
-    /// The cause of the last debug interrupt.
-    debug_cause: Option<DebugCause>,
-}
-
 /// Xtensa core state.
 #[derive(Debug)]
 pub struct XtensaCoreState {
@@ -64,8 +55,6 @@ pub struct XtensaCoreState {
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
 
-    register_cache: RegisterCache,
-
     /// Whether the registers have been spilled to the stack.
     spilled: bool,
 }
@@ -79,7 +68,6 @@ impl XtensaCoreState {
             breakpoint_set: [false; 2],
             pc_written: false,
             semihosting_command: None,
-            register_cache: RegisterCache::default(),
             spilled: false,
         }
     }
@@ -90,11 +78,6 @@ impl XtensaCoreState {
             .iter()
             .enumerate()
             .fold(0, |acc, (i, &set)| if set { acc | (1 << i) } else { acc })
-    }
-
-    fn clear_cache(&mut self) {
-        self.register_cache = RegisterCache::default();
-        self.spilled = false;
     }
 }
 
@@ -124,6 +107,11 @@ impl<'probe> Xtensa<'probe> {
         this.on_attach()?;
 
         Ok(this)
+    }
+
+    fn clear_cache(&mut self) {
+        self.state.spilled = false;
+        self.interface.clear_register_cache();
     }
 
     fn on_attach(&mut self) -> Result<(), Error> {
@@ -250,7 +238,7 @@ impl<'probe> Xtensa<'probe> {
 
     fn on_halted(&mut self) -> Result<(), Error> {
         self.state.pc_written = false;
-        self.state.clear_cache();
+        self.clear_cache();
 
         let status = self.status()?;
         tracing::debug!("Core halted: {:#?}", status);
@@ -280,33 +268,23 @@ impl<'probe> Xtensa<'probe> {
         let result = op(self);
 
         if was_running {
-            self.interface.resume_core()?;
-            self.state.clear_cache();
+            self.run()?;
         }
 
         result
     }
 
     fn current_ps(&mut self) -> Result<ProgramStatus, Error> {
-        if let Some(ps) = self.state.register_cache.current_ps {
-            Ok(ps)
-        } else {
-            // Reading ProgramStatus using `read_register` would return the value
-            // after the debug interrupt has been taken.
-            let ps = ProgramStatus(self.interface.read_register_untyped(Register::CurrentPs)?);
-            self.state.register_cache.current_ps = Some(ps);
-            Ok(ps)
-        }
+        // Reading ProgramStatus using `read_register` would return the value
+        // after the debug interrupt has been taken.
+        Ok(self
+            .interface
+            .read_register_untyped(Register::CurrentPs)
+            .map(ProgramStatus)?)
     }
 
     fn debug_cause(&mut self) -> Result<DebugCause, Error> {
-        if let Some(cause) = self.state.register_cache.debug_cause {
-            Ok(cause)
-        } else {
-            let cause = self.interface.read_register::<DebugCause>()?;
-            self.state.register_cache.debug_cause = Some(cause);
-            Ok(cause)
-        }
+        Ok(self.interface.read_register::<DebugCause>()?)
     }
 
     fn spill_registers(&mut self) -> Result<(), Error> {
@@ -508,6 +486,7 @@ impl CoreInterface for Xtensa<'_> {
     fn step(&mut self) -> Result<CoreInformation, Error> {
         self.skip_breakpoint_instruction()?;
         let ps = self.current_ps()?;
+
         self.interface.step(1, ps.intlevel())?;
         self.on_halted()?;
 
