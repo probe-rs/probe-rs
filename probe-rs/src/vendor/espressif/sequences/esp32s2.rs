@@ -150,6 +150,7 @@ impl XtensaDebugSequence for ESP32S2 {
             .core_properties()
             .fast_memory_access_ranges
             .extend_from_slice(&[
+                0x3F40_0000..0x3F50_0000, // Peripherals
                 0x3FF9_E000..0x4000_0000, // Data
                 0x4000_0000..0x4007_2000, // Instruction
             ]);
