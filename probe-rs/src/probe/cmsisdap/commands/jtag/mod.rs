@@ -46,7 +46,14 @@ impl RawJtagIo for CmsisDap {
 impl CmsisDap {
     fn flush_jtag(&mut self) -> Result<(), DebugProbeError> {
         if let Some(seq) = self.jtag_buffer.current_sequence.take() {
-            self.jtag_buffer.complete_sequences.push(seq);
+            if !seq.is_empty() {
+                self.jtag_buffer.complete_sequences.push(seq);
+            }
+        }
+
+        // Flush was called but not neeed.
+        if self.jtag_buffer.complete_sequences.is_empty() {
+            return Ok(());
         }
 
         // Transform into sequence::Sequence
@@ -88,6 +95,10 @@ impl JtagSequence {
     fn size(&self) -> usize {
         // Sequence info + TDI data
         1 + self.data.len().div_ceil(8)
+    }
+
+    fn is_empty(&self) -> bool {
+        self.data.is_empty()
     }
 
     fn append(&mut self, tdi: bool, tms: bool, tdo_capture: bool) -> Option<JtagSequence> {
