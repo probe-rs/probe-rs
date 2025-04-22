@@ -8,7 +8,10 @@ use crate::{
     config::{DebugSequence, Registry},
     vendor::{
         Vendor,
-        microchip::sequences::atsam::{AtSAM, DsuDid},
+        microchip::sequences::{
+            atsam::{AtSAM, DsuDid},
+            mec17xx::Mec172x,
+        },
     },
 };
 
@@ -27,6 +30,13 @@ impl Vendor for Microchip {
             || chip.name.starts_with("ATSAME5")
         {
             DebugSequence::Arm(AtSAM::create())
+        } else if chip.name.starts_with("MEC1721")
+            || chip.name.starts_with("MEC1723")
+            || chip.name.starts_with("MEC1724")
+            || chip.name.starts_with("MEC1725")
+            || chip.name.starts_with("MEC1727")
+        {
+            DebugSequence::Arm(Mec172x::create())
         } else {
             return None;
         };

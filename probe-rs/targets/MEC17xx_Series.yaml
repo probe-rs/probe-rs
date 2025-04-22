@@ -1,0 +1,714 @@
+name: Microchip MEC17xx Series
+generated_from_pack: true
+pack_file_release: 1.4.221
+variants:
+- name: MEC1701H
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xe0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x120000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+- name: MEC1701Q
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xb0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+- name: MEC1703K
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xd0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x120000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+- name: MEC1703Q
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xb0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+- name: MEC1704Q
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xb0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+- name: MEC1705Q
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xb0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20010000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+- name: MEC1721N_B0_LJ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xc0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+- name: MEC1721N_B0_SZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xc0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+- name: MEC1723N_B0_LJ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xc0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+  flash_algorithms:
+  - mec172x_w25m512
+- name: MEC1723N_B0_SZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xc0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+  flash_algorithms:
+  - mec172x_w25m512
+- name: MEC1723N_F0_SZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xc0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+  flash_algorithms:
+  - mec172x_w25m512
+- name: MEC1723N_P0_9Y
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xc0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+  flash_algorithms:
+  - mec172x_w25m512
+- name: MEC1723N_P0_XX
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+- name: MEC1724N_B0_LJ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xc0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+  flash_algorithms:
+  - mec172x_w25m512
+- name: MEC1724N_B0_SZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xc0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+- name: MEC1725N_B0_LJ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xc0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+- name: MEC1727N_B0_SZ
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0xc0000
+      end: 0x118000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x50000000
+      end: 0x58000000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x118000
+      end: 0x128000
+    cores:
+    - main
+  - !Generic
+    name: IRAM3
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM4
+    range:
+      start: 0x40100000
+      end: 0x40106000
+    cores:
+    - main
+flash_algorithms:
+- name: mec172x_w25m512
+  description: MEC172x EVB Winbond W25M512 flash
+  default: true
+  instructions: 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
+  load_address: 0xc0020
+  pc_init: 0x1
+  pc_erase_sector: 0x55
+  pc_program_page: 0xf5
+  data_section_offset: 0xcd4
+  flash_properties:
+    address_range:
+      start: 0x50000000
+      end: 0x58000000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 300
+    sectors:
+      - size: 0x1000
+        address: 0x0

@@ -1,0 +1,1 @@
+Added support for Microchip's MEC172x series.
