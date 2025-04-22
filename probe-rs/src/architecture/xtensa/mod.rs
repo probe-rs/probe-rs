@@ -261,16 +261,20 @@ impl<'probe> Xtensa<'probe> {
         Ok(())
     }
 
+    fn halt_with_previous(&mut self, timeout: Duration) -> Result<bool, Error> {
+        let was_running = self.interface.halt_with_previous(timeout)?;
+        if was_running {
+            self.on_halted()?;
+        }
+
+        Ok(was_running)
+    }
+
     fn halted_access<F, T>(&mut self, op: F) -> Result<T, Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Error>,
     {
-        let was_running = self
-            .interface
-            .halt_with_previous(Duration::from_millis(100))?;
-        if was_running {
-            self.state.clear_cache();
-        }
+        let was_running = self.halt_with_previous(Duration::from_millis(100))?;
 
         let result = op(self);
 
@@ -473,8 +477,7 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.interface.halt(timeout)?;
-        self.on_halted()?;
+        self.halt_with_previous(timeout)?;
 
         self.core_info()
     }
