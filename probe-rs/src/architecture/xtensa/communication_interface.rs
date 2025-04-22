@@ -865,7 +865,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 ///
 /// # Safety
 /// Don't implement this trait
-unsafe trait DataType: Sized {}
+pub(super) unsafe trait DataType: Sized {}
 unsafe impl DataType for u8 {}
 unsafe impl DataType for u16 {}
 unsafe impl DataType for u32 {}
@@ -875,7 +875,7 @@ fn as_bytes<T: DataType>(data: &[T]) -> &[u8] {
     unsafe { std::slice::from_raw_parts(data.as_ptr() as *mut u8, std::mem::size_of_val(data)) }
 }
 
-fn as_bytes_mut<T: DataType>(data: &mut [T]) -> &mut [u8] {
+pub(super) fn as_bytes_mut<T: DataType>(data: &mut [T]) -> &mut [u8] {
     unsafe {
         std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u8, std::mem::size_of_val(data))
     }
