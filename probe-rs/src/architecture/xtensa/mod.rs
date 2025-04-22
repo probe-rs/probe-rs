@@ -333,7 +333,7 @@ impl<'probe> Xtensa<'probe> {
 
 // We can't use CoreMemoryInterface here, because we need to spill registers before reading.
 // This needs to be considerably cleaned up.
-impl<'probe> MemoryInterface<Error> for Xtensa<'probe> {
+impl MemoryInterface for Xtensa<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.interface.supports_native_64bit_access()
     }
