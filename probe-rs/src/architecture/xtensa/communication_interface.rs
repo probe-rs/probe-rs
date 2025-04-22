@@ -105,7 +105,7 @@ pub(super) struct XtensaInterfaceState {
 
     /// Whether the core is halted.
     // This roughly relates to Core Debug States (true = Running, false = [Stopped, Stepping])
-    is_halted: bool,
+    pub(super) is_halted: bool,
 }
 
 /// Properties of an Xtensa CPU core.
@@ -181,7 +181,7 @@ pub struct XtensaDebugInterfaceState {
 pub struct XtensaCommunicationInterface<'probe> {
     /// The Xtensa debug module
     pub(crate) xdm: Xdm<'probe>,
-    state: &'probe mut XtensaInterfaceState,
+    pub(super) state: &'probe mut XtensaInterfaceState,
     core_properties: &'probe mut XtensaCoreProperties,
 }
 

@@ -440,7 +440,14 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
-        Ok(self.interface.core_halted()?)
+        let was_halted = self.interface.state.is_halted;
+        let is_halted = self.interface.core_halted()?;
+
+        if !was_halted && is_halted {
+            self.on_halted()?;
+        }
+
+        Ok(is_halted)
     }
 
     fn status(&mut self) -> Result<CoreStatus, Error> {
