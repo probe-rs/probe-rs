@@ -23,7 +23,7 @@ impl Cmd {
         };
 
         session
-            .erase(EraseCommand::All, move |event| {
+            .erase(EraseCommand::All, async move |event| {
                 if let Some(pb) = pb.as_ref() {
                     pb.handle(event);
                 }

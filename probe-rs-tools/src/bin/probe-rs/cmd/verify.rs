@@ -36,7 +36,7 @@ impl Cmd {
             .await?;
 
         let result = session
-            .verify(loader.loader, move |event| {
+            .verify(loader.loader, async move |event| {
                 if let Some(pb) = pb.as_ref() {
                     pb.handle(event);
                 }

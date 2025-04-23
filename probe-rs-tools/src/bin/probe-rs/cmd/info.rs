@@ -77,7 +77,7 @@ impl Cmd {
             };
 
             let result = client
-                .info(req, |message| {
+                .info(req, async |message| {
                     let is_success =
                         matches!(message, InfoEvent::Idcode { .. } | InfoEvent::ArmDp(_));
 

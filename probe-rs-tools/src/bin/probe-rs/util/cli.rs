@@ -202,7 +202,7 @@ pub async fn flash(
             Some(CliProgressBars::new())
         };
         let result = session
-            .verify(loader.loader, |event| {
+            .verify(loader.loader, async |event| {
                 if let ProgressEvent::FlashLayoutReady {
                     flash_layout: layout,
                 } = &event
@@ -231,7 +231,7 @@ pub async fn flash(
                 options,
                 loader.loader,
                 rtt_client.as_ref().map(|c| c.handle),
-                |event| {
+                async |event| {
                     if let ProgressEvent::FlashLayoutReady {
                         flash_layout: layout,
                     } = &event
@@ -276,8 +276,8 @@ pub async fn monitor(
     options: MonitorOptions,
     print_stack_trace: bool,
 ) -> anyhow::Result<()> {
-    let monitor = session.monitor(mode, options, |msg| {
-        print_monitor_event(&mut rtt_client.as_mut(), msg)
+    let monitor = session.monitor(mode, options, async |msg| {
+        print_monitor_event(&mut rtt_client.as_mut(), msg).await;
     });
 
     let result = with_ctrl_c(monitor, async {
@@ -308,7 +308,7 @@ pub async fn test(
     let rtt_handle = rtt_client.as_ref().map(|rtt| rtt.handle);
     let test = async {
         let tests = session
-            .list_tests(boot_info, rtt_handle, |msg| sender.send(msg).unwrap())
+            .list_tests(boot_info, rtt_handle, async |msg| sender.send(msg).unwrap())
             .await?;
 
         if token.is_cancelled() {
@@ -333,7 +333,7 @@ pub async fn test(
 
     let log = async {
         while let Some(event) = receiver.recv().await {
-            print_monitor_event(&mut rtt_client.as_mut(), event);
+            print_monitor_event(&mut rtt_client.as_mut(), event).await;
         }
         futures_util::future::pending().await
     };
@@ -382,7 +382,7 @@ fn create_trial(
 
             let handle = tokio::spawn(async move {
                 match session
-                    .run_test(test, rtt_client, |msg| sender.send(msg).unwrap())
+                    .run_test(test, rtt_client, async move |msg| sender.send(msg).unwrap())
                     .await
                 {
                     Ok(TestResult::Success) => Ok(()),
@@ -502,7 +502,7 @@ impl CliRttClient {
     }
 }
 
-fn print_monitor_event(
+async fn print_monitor_event(
     rtt_client: &mut Option<impl DerefMut<Target = CliRttClient>>,
     event: MonitorEvent,
 ) {

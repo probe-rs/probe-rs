@@ -292,7 +292,7 @@ impl RpcClient {
     async fn send_and_read_stream<E, T, R>(
         &self,
         req: &E::Request,
-        on_msg: impl FnMut(T::Message),
+        on_msg: impl AsyncFnMut(T::Message),
     ) -> anyhow::Result<R>
     where
         E: postcard_rpc::Endpoint<Response = RpcResult<R>>,
@@ -368,7 +368,7 @@ impl RpcClient {
     pub async fn info(
         &self,
         request: TargetInfoRequest,
-        on_msg: impl FnMut(InfoEvent),
+        on_msg: impl AsyncFnMut(InfoEvent),
     ) -> anyhow::Result<()> {
         self.send_and_read_stream::<TargetInfoEndpoint, TargetInfoDataTopic, _>(&request, on_msg)
             .await
@@ -463,7 +463,7 @@ impl SessionInterface {
         options: DownloadOptions,
         loader: Key<FlashLoader>,
         rtt_client: Option<Key<RttClient>>,
-        on_msg: impl FnMut(ProgressEvent),
+        on_msg: impl AsyncFnMut(ProgressEvent),
     ) -> anyhow::Result<()> {
         self.client
             .send_and_read_stream::<FlashEndpoint, ProgressEventTopic, _>(
@@ -481,7 +481,7 @@ impl SessionInterface {
     pub async fn erase(
         &self,
         command: EraseCommand,
-        on_msg: impl FnMut(ProgressEvent),
+        on_msg: impl AsyncFnMut(ProgressEvent),
     ) -> anyhow::Result<()> {
         self.client
             .send_and_read_stream::<EraseEndpoint, ProgressEventTopic, _>(
@@ -498,7 +498,7 @@ impl SessionInterface {
         &self,
         mode: MonitorMode,
         options: MonitorOptions,
-        on_msg: impl FnMut(MonitorEvent),
+        on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<()> {
         self.client
             .send_and_read_stream::<MonitorEndpoint, MonitorTopic, _>(
@@ -516,7 +516,7 @@ impl SessionInterface {
         &self,
         boot_info: BootInfo,
         rtt_client: Option<Key<RttClient>>,
-        on_msg: impl FnMut(MonitorEvent),
+        on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<Tests> {
         self.client
             .send_and_read_stream::<ListTestsEndpoint, MonitorTopic, _>(
@@ -534,7 +534,7 @@ impl SessionInterface {
         &self,
         test: Test,
         rtt_client: Option<Key<RttClient>>,
-        on_msg: impl FnMut(MonitorEvent),
+        on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<TestResult> {
         self.client
             .send_and_read_stream::<RunTestEndpoint, MonitorTopic, _>(
@@ -576,7 +576,7 @@ impl SessionInterface {
     pub(crate) async fn verify(
         &self,
         loader: Key<FlashLoader>,
-        on_msg: impl FnMut(ProgressEvent),
+        on_msg: impl AsyncFnMut(ProgressEvent),
     ) -> anyhow::Result<VerifyResult> {
         self.client
             .send_and_read_stream::<VerifyEndpoint, ProgressEventTopic, _>(
@@ -690,12 +690,12 @@ impl CoreInterface {
     }
 }
 
-async fn read_stream<T>(stream: &mut Subscription<T>, mut on_msg: impl FnMut(T))
+async fn read_stream<T>(stream: &mut Subscription<T>, mut on_msg: impl AsyncFnMut(T))
 where
     T: DeserializeOwned,
 {
     while let Some(message) = stream.recv().await {
-        on_msg(message);
+        on_msg(message).await;
     }
 
     tracing::warn!("Failed to read topic");
