@@ -215,11 +215,11 @@ impl XtensaDebugSequence for ESP32S2 {
         }
 
         // Wait for reset to happen
-        let start = Instant::now();
         std::thread::sleep(Duration::from_millis(100));
+        let start = Instant::now();
         while !core.xdm.read_power_status()?.core_was_reset() {
             if start.elapsed() > timeout {
-                return Err(crate::Error::Timeout);
+                return Err(XtensaError::Timeout.into());
             }
             std::thread::sleep(Duration::from_millis(10));
         }
