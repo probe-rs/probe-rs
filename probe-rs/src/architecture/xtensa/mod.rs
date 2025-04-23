@@ -288,7 +288,6 @@ impl<'probe> Xtensa<'probe> {
     }
 
     fn spill_registers(&mut self) -> Result<(), Error> {
-        // TODO: lazy-load registers
         if self.state.spilled {
             return Ok(());
         }
