@@ -511,25 +511,18 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Schedules writing a register.
+    ///
+    /// This function primes the register cache with the value to be written, therefore
+    /// it is not suitable for writing scratch registers.
     pub fn schedule_write_register_untyped(
         &mut self,
         register: impl Into<Register>,
         value: u32,
     ) -> Result<(), XtensaError> {
-        // This function does not go through the register cache
         let register = register.into();
-        self.state.register_cache.remove(register);
-        self.schedule_write_register_untyped_inner(register, value)
-    }
 
-    /// Schedules writing a register.
-    pub fn schedule_write_register_untyped_inner(
-        &mut self,
-        register: impl Into<Register>,
-        value: u32,
-    ) -> Result<(), XtensaError> {
-        // This function does not go through the register cache
-        let register = register.into();
+        self.state.register_cache.store(register, value);
+
         match register {
             Register::Cpu(register) => self.schedule_write_cpu_register(register, value),
             Register::Special(register) => self.schedule_write_special_register(register, value),
@@ -593,9 +586,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
                     .get_mut(register)
                     .unwrap_or_else(|| panic!("Register {:?} is not in the cache", register));
 
-                entry.restore();
-                let value = entry.current_value();
-                self.schedule_write_register_untyped_inner(register, value)?;
+                let value = entry.original_value();
+                self.schedule_write_register_untyped(register, value)?;
             }
         }
 

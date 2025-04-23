@@ -71,14 +71,13 @@ impl CacheEntry {
         self.original_value != self.current_value || self.dirty
     }
 
-    /// Marks the register as clean by restoring its original value.
-    pub fn restore(&mut self) {
-        self.current_value = self.original_value;
-        self.dirty = false;
-    }
-
     /// Returns the current value of the register.
     pub fn current_value(&self) -> u32 {
         self.current_value
+    }
+
+    /// Returns the current value of the register.
+    pub fn original_value(&self) -> u32 {
+        self.original_value
     }
 }
