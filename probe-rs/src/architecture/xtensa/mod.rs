@@ -13,6 +13,7 @@ use crate::{
         },
         communication_interface::{
             DebugCause, IBreakEn, ProgramStatus, WindowProperties, XtensaCommunicationInterface,
+            as_bytes_mut,
         },
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
         sequences::XtensaDebugSequence,
@@ -22,7 +23,6 @@ use crate::{
         BreakpointCause,
         registers::{CoreRegisters, RegisterId, RegisterValue},
     },
-    memory::CoreMemoryInterface,
     semihosting::{SemihostingCommand, decode_semihosting_syscall},
 };
 
@@ -255,24 +255,26 @@ impl<'probe> Xtensa<'probe> {
         tracing::debug!("Core halted: {:#?}", status);
 
         if status.is_halted() {
-            self.spill_registers()?;
-
             self.sequence.on_halt(&mut self.interface)?;
         }
 
         Ok(())
     }
 
+    fn halt_with_previous(&mut self, timeout: Duration) -> Result<bool, Error> {
+        let was_running = self.interface.halt_with_previous(timeout)?;
+        if was_running {
+            self.on_halted()?;
+        }
+
+        Ok(was_running)
+    }
+
     fn halted_access<F, T>(&mut self, op: F) -> Result<T, Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Error>,
     {
-        let was_running = self
-            .interface
-            .halt_with_previous(Duration::from_millis(100))?;
-        if was_running {
-            self.state.clear_cache();
-        }
+        let was_running = self.halt_with_previous(Duration::from_millis(100))?;
 
         let result = op(self);
 
@@ -329,15 +331,107 @@ impl<'probe> Xtensa<'probe> {
     }
 }
 
-impl CoreMemoryInterface for Xtensa<'_> {
-    type ErrorType = Error;
-
-    fn memory(&self) -> &dyn MemoryInterface<Self::ErrorType> {
-        &self.interface
+// We can't use CoreMemoryInterface here, because we need to spill registers before reading.
+// This needs to be considerably cleaned up.
+impl MemoryInterface for Xtensa<'_> {
+    fn supports_native_64bit_access(&mut self) -> bool {
+        self.interface.supports_native_64bit_access()
     }
 
-    fn memory_mut(&mut self) -> &mut dyn MemoryInterface<Self::ErrorType> {
-        &mut self.interface
+    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
+        self.halted_access(|this| {
+            this.spill_registers()?;
+
+            this.interface.read_word_64(address)
+        })
+    }
+
+    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
+        self.halted_access(|this| {
+            this.spill_registers()?;
+
+            this.interface.read_word_32(address)
+        })
+    }
+
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        self.halted_access(|this| {
+            this.spill_registers()?;
+
+            this.interface.read_word_16(address)
+        })
+    }
+
+    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
+        self.halted_access(|this| {
+            this.spill_registers()?;
+
+            this.interface.read_word_8(address)
+        })
+    }
+
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
+        self.read_8(address, as_bytes_mut(data))
+    }
+
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
+        self.read_8(address, as_bytes_mut(data))
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        self.read_8(address, as_bytes_mut(data))
+    }
+
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        self.halted_access(|this| {
+            this.spill_registers()?;
+
+            this.interface.read_8(address, data)
+        })
+    }
+
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
+        self.interface.write_word_64(address, data)
+    }
+
+    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        self.interface.write_word_32(address, data)
+    }
+
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        self.interface.write_word_16(address, data)
+    }
+
+    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
+        self.interface.write_word_8(address, data)
+    }
+
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
+        self.interface.write_64(address, data)
+    }
+
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
+        self.interface.write_32(address, data)
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        self.interface.write_16(address, data)
+    }
+
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.interface.write_8(address, data)
+    }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.interface.write(address, data)
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        self.interface.supports_8bit_transfers()
+    }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        self.interface.flush()
     }
 }
 
@@ -350,7 +444,14 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
-        Ok(self.interface.core_halted()?)
+        let was_halted = self.interface.state.is_halted;
+        let is_halted = self.interface.core_halted()?;
+
+        if !was_halted && is_halted {
+            self.on_halted()?;
+        }
+
+        Ok(is_halted)
     }
 
     fn status(&mut self) -> Result<CoreStatus, Error> {
@@ -376,8 +477,7 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.interface.halt(timeout)?;
-        self.on_halted()?;
+        self.halt_with_previous(timeout)?;
 
         self.core_info()
     }
@@ -782,6 +882,21 @@ impl<'a> RegisterWindow<'a> {
                 let sp = interface.read_word_32(self.read_register(CpuRegister::A1) as u64 - 12)?;
 
                 interface.write_32(self.read_register(CpuRegister::A9) as u64 - 16, &a0_a3)?;
+
+                // Enable check at INFO level to avoid spamming the logs.
+                if tracing::enabled!(tracing::Level::INFO) {
+                    // In some cases (spilling on each halt),
+                    // this readback comes back as 0 for some reason. This assertion is temporarily
+                    // meant to help me debug this.
+                    let written =
+                        interface.read_word_32(self.read_register(CpuRegister::A9) as u64 - 12)?;
+                    assert!(
+                        written == self.read_register(CpuRegister::A1),
+                        "Failed to spill A1. Expected {:#x}, got {:#x}",
+                        self.read_register(CpuRegister::A1),
+                        written
+                    );
+                }
 
                 let regs = [
                     self.read_register(CpuRegister::A4),

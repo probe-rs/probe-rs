@@ -105,7 +105,7 @@ pub(super) struct XtensaInterfaceState {
 
     /// Whether the core is halted.
     // This roughly relates to Core Debug States (true = Running, false = [Stopped, Stepping])
-    is_halted: bool,
+    pub(super) is_halted: bool,
 }
 
 /// Properties of an Xtensa CPU core.
@@ -181,7 +181,7 @@ pub struct XtensaDebugInterfaceState {
 pub struct XtensaCommunicationInterface<'probe> {
     /// The Xtensa debug module
     pub(crate) xdm: Xdm<'probe>,
-    state: &'probe mut XtensaInterfaceState,
+    pub(super) state: &'probe mut XtensaInterfaceState,
     core_properties: &'probe mut XtensaCoreProperties,
 }
 
@@ -865,7 +865,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 ///
 /// # Safety
 /// Don't implement this trait
-unsafe trait DataType: Sized {}
+pub(super) unsafe trait DataType: Sized {}
 unsafe impl DataType for u8 {}
 unsafe impl DataType for u16 {}
 unsafe impl DataType for u32 {}
@@ -875,7 +875,7 @@ fn as_bytes<T: DataType>(data: &[T]) -> &[u8] {
     unsafe { std::slice::from_raw_parts(data.as_ptr() as *mut u8, std::mem::size_of_val(data)) }
 }
 
-fn as_bytes_mut<T: DataType>(data: &mut [T]) -> &mut [u8] {
+pub(super) fn as_bytes_mut<T: DataType>(data: &mut [T]) -> &mut [u8] {
     unsafe {
         std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u8, std::mem::size_of_val(data))
     }
