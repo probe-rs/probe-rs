@@ -299,6 +299,17 @@ impl<'probe> Xtensa<'probe> {
             &mut self.interface,
         )?;
 
+        let window_reg_count = register_file.core.window_regs;
+        for reg in 0..window_reg_count {
+            let reg =
+                CpuRegister::try_from(reg).expect("Could not convert register to CpuRegister");
+            let value = register_file.read_register(reg);
+            self.interface
+                .state
+                .register_cache
+                .store(Register::Cpu(reg), value);
+        }
+
         if self.current_ps()?.woe() {
             // We should only spill registers if PS.WOE is set. According to the debug guide, we
             // also should not spill if INTLEVEL != 0 but I don't see why.
@@ -803,6 +814,15 @@ impl RegisterFile {
         }
 
         wb
+    }
+
+    fn wb_offset_to_canonical(&self, idx: u8) -> u8 {
+        (idx + self.window_base * self.core.rotw_rotates) % self.core.num_aregs
+    }
+
+    fn read_register(&self, reg: CpuRegister) -> u32 {
+        let index = self.wb_offset_to_canonical(reg as u8);
+        self.registers[index as usize]
     }
 }
 

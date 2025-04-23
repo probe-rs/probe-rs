@@ -101,7 +101,7 @@ impl DebugLevel {
 #[derive(Default)]
 pub(super) struct XtensaInterfaceState {
     /// The register cache.
-    register_cache: RegisterCache,
+    pub(super) register_cache: RegisterCache,
 
     /// Whether the core is halted.
     // This roughly relates to Core Debug States (true = Running, false = [Stopped, Stepping])
