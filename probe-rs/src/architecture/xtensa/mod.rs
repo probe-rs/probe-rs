@@ -673,23 +673,28 @@ impl RegisterFile {
         xtensa: WindowProperties,
         interface: &mut XtensaCommunicationInterface<'_>,
     ) -> Result<Self, Error> {
-        let window_base_result =
-            interface.schedule_read_register_untyped(SpecialRegister::Windowbase)?;
-        let window_start_result =
-            interface.schedule_read_register_untyped(SpecialRegister::Windowstart)?;
+        let window_base_result = interface.schedule_read_register(SpecialRegister::Windowbase)?;
+        let window_start_result = interface.schedule_read_register(SpecialRegister::Windowstart)?;
 
         let mut register_results = Vec::with_capacity(xtensa.num_aregs as usize);
+
+        let ar0 = arch::CpuRegister::A0 as u8;
 
         // Restore registers before reading them, as reading a special
         // register overwrote scratch registers.
         interface.restore_registers()?;
+        // The window registers alias each other, so we need to make sure we don't read
+        // the cached values. We'll then use the registers we read here to prime the cache.
+        for ar in ar0..ar0 + xtensa.window_regs {
+            let reg = CpuRegister::try_from(ar)?;
+            interface.state.register_cache.remove(reg.into());
+        }
 
-        let ar0 = arch::CpuRegister::A0 as u8;
         for _ in 0..xtensa.num_aregs / xtensa.window_regs {
             // Read registers visible in the current window
             for ar in ar0..ar0 + xtensa.window_regs {
                 let reg = CpuRegister::try_from(ar)?;
-                let result = interface.schedule_read_register_untyped(reg)?;
+                let result = interface.schedule_read_register(reg)?;
 
                 register_results.push(result);
             }
@@ -702,24 +707,19 @@ impl RegisterFile {
         }
 
         // Now do the actual read.
-        interface.xdm.execute().expect("Failed to execute read. This probably shouldn't happen, unless we raise an exception (Window Over/Underflow), maybe?");
+        interface
+            .xdm
+            .execute()
+            .expect("Failed to execute read. This shouldn't happen.");
 
         let mut register_values = register_results
             .into_iter()
-            .map(|result| {
-                interface
-                    .xdm
-                    .read_deferred_result(result)
-                    .map(|r| r.into_u32())
-            })
+            .map(|result| interface.read_deferred_result(result))
             .collect::<Result<Vec<_>, _>>()?;
 
         // WindowBase points to the first register of the current window in the register file.
         // In essence, it selects which 16 registers are visible out of the 64 physical registers.
-        let window_base = interface
-            .xdm
-            .read_deferred_result(window_base_result)
-            .map(|r| r.into_u32())?;
+        let window_base = interface.read_deferred_result(window_base_result)?;
 
         // The WindowStart Special Register, which is also added by the option and consists of
         // NAREG/4 bits. Each call frame, which has not been spilled, is represented by a bit in the
@@ -736,10 +736,7 @@ impl RegisterFile {
         // This value is used by the hardware to determine if WindowOverflow or WindowUnderflow
         // exceptions should be raised. The exception handlers then spill or reload registers
         // from the stack and set/clear the corresponding bit in the WindowStart register.
-        let window_start = interface
-            .xdm
-            .read_deferred_result(window_start_result)
-            .map(|r| r.into_u32())?;
+        let window_start = interface.read_deferred_result(window_start_result)?;
 
         // We have read registers relative to the current windowbase. Let's
         // rotate the registers back so that AR0 is at index 0.

@@ -447,13 +447,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(R::from_u32(value))
     }
 
-    /// Schedules reading a register.
-    pub fn schedule_read_register<R: TypedRegister>(
-        &mut self,
-    ) -> Result<DeferredResultIndex, XtensaError> {
-        self.schedule_read_register_untyped(R::register())
-    }
-
     /// Write a register.
     pub fn write_register<R: TypedRegister>(&mut self, reg: R) -> Result<(), XtensaError> {
         self.write_register_untyped(R::register(), reg.as_u32())?;
@@ -462,27 +455,38 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Schedules writing a register.
-    pub fn schedule_write_register<R: TypedRegister>(&mut self, reg: R) -> Result<(), XtensaError> {
+    pub(crate) fn schedule_write_register<R: TypedRegister>(
+        &mut self,
+        reg: R,
+    ) -> Result<(), XtensaError> {
         self.schedule_write_register_untyped(R::register(), reg.as_u32())?;
 
         Ok(())
     }
 
     /// Schedules reading a register.
-    pub fn schedule_read_register_untyped(
+    ///
+    /// If the register is already in the cache, it will return the value from there.
+    pub(crate) fn schedule_read_register(
         &mut self,
         register: impl Into<Register>,
-    ) -> Result<DeferredResultIndex, XtensaError> {
-        match register.into() {
-            Register::Cpu(register) => Ok(self.schedule_read_cpu_register(register)),
-            Register::Special(register) => self.schedule_read_special_register(register),
+    ) -> Result<MaybeDeferredResultIndex, XtensaError> {
+        let register = register.into();
+        if let Some(entry) = self.state.register_cache.get_mut(register) {
+            return Ok(MaybeDeferredResultIndex::Value(entry.current_value()));
+        }
+
+        let reader = match register {
+            Register::Cpu(register) => self.schedule_read_cpu_register(register),
+            Register::Special(register) => self.schedule_read_special_register(register)?,
             Register::CurrentPc => {
-                self.schedule_read_special_register(self.core_properties.debug_level.pc())
+                self.schedule_read_special_register(self.core_properties.debug_level.pc())?
             }
             Register::CurrentPs => {
-                self.schedule_read_special_register(self.core_properties.debug_level.ps())
+                self.schedule_read_special_register(self.core_properties.debug_level.ps())?
             }
-        }
+        };
+        Ok(MaybeDeferredResultIndex::Deferred(reader))
     }
 
     /// Read a register.
@@ -492,12 +496,17 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     ) -> Result<u32, XtensaError> {
         let register = register.into();
         if let Some(entry) = self.state.register_cache.get_mut(register) {
-            Ok(entry.current_value())
-        } else {
-            let reader = self.schedule_read_register_untyped(register)?;
-            let value = self.xdm.read_deferred_result(reader)?.into_u32();
-            self.state.register_cache.store(register, value);
-            Ok(value)
+            return Ok(entry.current_value());
+        }
+
+        match self.schedule_read_register(register)? {
+            MaybeDeferredResultIndex::Value(value) => Ok(value),
+            MaybeDeferredResultIndex::Deferred(reader) => {
+                // We need to read the register value from the target.
+                let value = self.xdm.read_deferred_result(reader)?.into_u32();
+                self.state.register_cache.store(register, value);
+                Ok(value)
+            }
         }
     }
 
@@ -805,6 +814,19 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
     pub(crate) fn clear_register_cache(&mut self) {
         self.state.register_cache = RegisterCache::new();
+    }
+
+    pub(crate) fn read_deferred_result(
+        &mut self,
+        result: MaybeDeferredResultIndex,
+    ) -> Result<u32, XtensaError> {
+        match result {
+            MaybeDeferredResultIndex::Value(value) => Ok(value),
+            MaybeDeferredResultIndex::Deferred(deferred_result_index) => self
+                .xdm
+                .read_deferred_result(deferred_result_index)
+                .map(|r| r.into_u32()),
+        }
     }
 }
 
@@ -1329,4 +1351,12 @@ impl MemoryAccess for SlowMemoryAccess {
 
         Ok(())
     }
+}
+
+pub(crate) enum MaybeDeferredResultIndex {
+    /// The result is already available.
+    Value(u32),
+
+    /// The result is deferred.
+    Deferred(DeferredResultIndex),
 }
