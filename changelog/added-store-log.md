@@ -1,1 +1,1 @@
-- Added `--target-outptu-file` to `probe-rs run` and `attach`, allowing output to be stored in files or named pipes.
+- Added `--target-output-file` to `probe-rs run` and `attach`, allowing output to be stored in files or named pipes.

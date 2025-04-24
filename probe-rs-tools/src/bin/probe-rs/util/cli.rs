@@ -203,18 +203,15 @@ impl ChannelIdentifier {
     }
 }
 
-/// Split a text string like `0=localhost:1234,stdout=localhost:4567,[2001:db8::1]:9` by the
-/// commas, mapping the keys to a [`ChannelIdentifier`] (or
-/// [`CatchAll`][ChannelIdentifier::CatchAll] when no key present).
-///
-/// This takes an Option/AsRef for the callers' convenience -- those usually have an
-/// `Option<String>` from the CLI argument parsing.
+/// Splits argument text strings like `['channel1=file-for-c1', 'stdout=some-file', 'defaultfile']` by the
+/// `=` signs, mapping the keys to a [`ChannelIdentifier`] (or
+/// [`CatchAll`][ChannelIdentifier::CatchAll] when no key present) and opening the values as files
+/// in append mode.
 pub(crate) async fn connect_target_output_files(
-    arg: Option<impl AsRef<str>>,
+    arg: Vec<String>,
 ) -> anyhow::Result<TargetOutputFiles> {
     let mut map = TargetOutputFiles::new();
-    let arg = arg.as_ref().map(|s| s.as_ref()).unwrap_or_default();
-    for component in arg.split(",") {
+    for component in arg {
         let parts: Vec<&str> = component.splitn(2, "=").collect();
         let key;
         let value;
