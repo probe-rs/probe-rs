@@ -4,7 +4,7 @@ use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
 
 use crate::FormatOptions;
-use crate::util::cli::{self, rtt_client};
+use crate::util::cli::{self, connect_target_output_files, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 
 use libtest_mimic::{Arguments, FormatSetting};
@@ -158,6 +158,12 @@ pub struct SharedOptions {
     #[clap(long)]
     pub(crate) log_format: Option<String>,
 
+    /// File name to store formatted output at. Different channels can be assigned to different
+    /// files using comma-separated channel=file pairs (eg.
+    /// `0=out/rtt/log.txt,1=out/rtt/data.bin,stderr=out/semihosted.err,out/other-channels.log`).
+    #[clap(long)]
+    pub(crate) target_output_file: Option<String>,
+
     /// Scan the memory to find the RTT control block
     #[clap(long)]
     pub(crate) rtt_scan_memory: bool,
@@ -182,6 +188,9 @@ impl Cmd {
             Some(utc_offset),
         )
         .await?;
+
+        let mut target_output_files =
+            connect_target_output_files(self.shared_options.target_output_file).await?;
 
         let client_handle = rtt_client.handle();
 
@@ -220,6 +229,7 @@ impl Cmd {
                 self.shared_options.always_print_stacktrace,
                 &self.shared_options.path,
                 Some(rtt_client),
+                &mut target_output_files,
             )
             .await
         } else {
@@ -234,6 +244,7 @@ impl Cmd {
                     rtt_client: Some(client_handle),
                 },
                 self.shared_options.always_print_stacktrace,
+                &mut target_output_files,
             )
             .await
         }

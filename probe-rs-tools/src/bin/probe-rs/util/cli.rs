@@ -6,6 +6,7 @@ use anyhow::Context;
 use colored::Colorize;
 use libtest_mimic::{Failed, Trial};
 use time::UtcOffset;
+use tokio::io::AsyncWriteExt;
 use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
@@ -36,6 +37,8 @@ use crate::{
         },
     },
 };
+
+type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs::File>;
 
 pub async fn attach_probe(
     client: &RpcClient,
@@ -122,6 +125,121 @@ pub async fn select_probe(
             }
         }
     }
+}
+
+/// A selector for a named stream, be it an RTT or a semihosting channel.
+///
+/// When converting from text (eg. as a CLI argument), the `Unqualified` variant is only produced
+/// when there is no colon in the name; otherwise, the prefix before the colon is matched into a
+/// variant.
+///
+/// ```
+/// assert_eq!(ChannelIdentifier::Unqualified("foo".to_string()), "foo".parse().unwrap());
+/// assert_eq!(ChannelIdentifier::Rtt("defmt".to_string()), "rtt:defmt".parse().unwrap());
+/// assert_eq!(ChannelIdentifier::CatchAll, "".parse().unwrap());
+/// ```
+// Could we be smart with the Strings and implement this for any type and then do some AsRef and
+// the right tricks to access a hashmap keyed with an owned identifier with a borrowed one? Maybe.
+// But allocators are fast, this won't be a bottleneck, and it is easy to maintain with
+// always-owned channels.
+#[derive(PartialEq, Eq, Hash, Clone)]
+pub(crate) enum ChannelIdentifier {
+    /// A named channel (might match a semihosting or an RTT channel)
+    Unqualified(String),
+    /// A named RTT channel
+    Rtt(String),
+    /// A named semihosting channel
+    Semihosting(String),
+    /// Selector that matches any channel; depending on the context, this usually means "any
+    /// channel that is not explicitly handled".
+    CatchAll,
+}
+
+impl std::str::FromStr for ChannelIdentifier {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        Ok(match s.splitn(2, ':').collect::<Vec<_>>().as_slice() {
+            [] => unreachable!(),
+            [""] => ChannelIdentifier::CatchAll,
+            [unqualified] => ChannelIdentifier::Unqualified(unqualified.to_string()),
+            ["rtt", rtt] => ChannelIdentifier::Rtt(rtt.to_string()),
+            ["semihosting", semihosting] => ChannelIdentifier::Semihosting(semihosting.to_string()),
+            _ => anyhow::bail!(
+                "Channel identifiers with colons need to be qualified as `rtt:name` or `semihosting:name`."
+            ),
+        })
+    }
+}
+
+impl ChannelIdentifier {
+    /// Returns an `Unqualified(name)` for any qualified name.
+    fn unqualified(&self) -> Option<Self> {
+        match self {
+            ChannelIdentifier::Rtt(n) => Some(ChannelIdentifier::Unqualified(n.clone())),
+            ChannelIdentifier::Semihosting(n) => Some(ChannelIdentifier::Unqualified(n.clone())),
+            _ => None,
+        }
+    }
+
+    /// Picks a channel out of a map of channels, falling back to using an unqualified version of
+    /// the same value, or the map's catch-all channel.
+    fn find_in<'res, T>(
+        &self,
+        map: &'res mut std::collections::HashMap<Self, T>,
+    ) -> Option<&'res mut T> {
+        // This double/triple access (get / get_mut) is a bit weird, but the compiler will not see
+        // that the lifetimes of the get_mut are non-overlapping if we return the Ok of an initial
+        // get_mut.
+        if map.get(self).is_some() {
+            return map.get_mut(self);
+        };
+        if let Some(fallback) = self.unqualified() {
+            if map.get(&fallback).is_some() {
+                return map.get_mut(&fallback);
+            };
+        }
+        map.get_mut(&Self::CatchAll)
+    }
+}
+
+/// Split a text string like `0=localhost:1234,stdout=localhost:4567,[2001:db8::1]:9` by the
+/// commas, mapping the keys to a [`ChannelIdentifier`] (or
+/// [`CatchAll`][ChannelIdentifier::CatchAll] when no key present).
+///
+/// This takes an Option/AsRef for the callers' convenience -- those usually have an
+/// `Option<String>` from the CLI argument parsing.
+pub(crate) async fn connect_target_output_files(
+    arg: Option<impl AsRef<str>>,
+) -> anyhow::Result<TargetOutputFiles> {
+    let mut map = TargetOutputFiles::new();
+    let arg = arg.as_ref().map(|s| s.as_ref()).unwrap_or_default();
+    for component in arg.split(",") {
+        let parts: Vec<&str> = component.splitn(2, "=").collect();
+        let key;
+        let value;
+        match parts[..] {
+            // Tolerating empty entries in particular makes a trailing comma tolerated.
+            [] => continue,
+            [single] => {
+                key = ChannelIdentifier::CatchAll;
+                value = single;
+            }
+            [first, second] => {
+                key = first.parse()?;
+                value = second;
+            }
+            _ => unreachable!("splitn produces at most 2 items."),
+        }
+        let value = tokio::fs::OpenOptions::new()
+            .read(false)
+            .append(true)
+            .create(true)
+            .open(value)
+            .await?;
+        map.insert(key, value);
+    }
+    Ok(map)
 }
 
 pub async fn rtt_client(
@@ -275,9 +393,10 @@ pub async fn monitor(
     mut rtt_client: Option<CliRttClient>,
     options: MonitorOptions,
     print_stack_trace: bool,
+    target_output_files: &mut TargetOutputFiles,
 ) -> anyhow::Result<()> {
     let monitor = session.monitor(mode, options, async |msg| {
-        print_monitor_event(&mut rtt_client.as_mut(), msg).await;
+        print_monitor_event(&mut rtt_client.as_mut(), msg, target_output_files).await;
     });
 
     let result = with_ctrl_c(monitor, async {
@@ -299,6 +418,7 @@ pub async fn test(
     print_stack_trace: bool,
     path: &Path,
     mut rtt_client: Option<CliRttClient>,
+    target_output_files: &mut TargetOutputFiles,
 ) -> anyhow::Result<()> {
     tracing::info!("libtest args {:?}", libtest_args);
     let token = CancellationToken::new();
@@ -333,7 +453,7 @@ pub async fn test(
 
     let log = async {
         while let Some(event) = receiver.recv().await {
-            print_monitor_event(&mut rtt_client.as_mut(), event).await;
+            print_monitor_event(&mut rtt_client.as_mut(), event, target_output_files).await;
         }
         futures_util::future::pending().await
     };
@@ -505,6 +625,7 @@ impl CliRttClient {
 async fn print_monitor_event(
     rtt_client: &mut Option<impl DerefMut<Target = CliRttClient>>,
     event: MonitorEvent,
+    target_output_files: &mut TargetOutputFiles,
 ) {
     match event {
         MonitorEvent::RttDiscovered { up_channels, .. } => {
@@ -519,24 +640,43 @@ async fn print_monitor_event(
                 return;
             };
 
-            let Some(processor) = client.channel_processors.get_mut(channel as usize) else {
+            let channel = channel as usize;
+            let Some(processor) = client.channel_processors.get_mut(channel) else {
                 return;
             };
 
-            processor.process(&bytes).await;
+            processor
+                .process(
+                    &bytes,
+                    // See ChannelIdentifier on why we access with clones here; also, while it'd be
+                    // more efficient to resolve those lookups at channel discovery, it doesn't really
+                    // matter, and again, ease of maintenance beats theoretical performance unless
+                    // benchmarked otherwise.
+                    ChannelIdentifier::Rtt(processor.channel.clone()).find_in(target_output_files),
+                )
+                .await;
         }
-        MonitorEvent::SemihostingOutput { stream, data } => match stream.as_str() {
-            "stdout" => print!("{data}"),
-            "stderr" => eprint!("{data}"),
-            _ => {}
-        },
+        MonitorEvent::SemihostingOutput { stream, data } => {
+            match stream.as_str() {
+                "stdout" => print!("{data}"),
+                "stderr" => eprint!("{data}"),
+                _ => {}
+            };
+
+            if let Some(remote_processor) =
+                ChannelIdentifier::Semihosting(stream).find_in(target_output_files)
+            {
+                // Silently discarding output file errors
+                _ = remote_processor.write_all(data.as_bytes()).await;
+            };
+        }
     }
 }
 
 struct Channel {
     channel: String,
     decoder: RttDecoder,
-    printer: Printer,
+    printer_prefix: String,
 }
 
 impl Channel {
@@ -544,27 +684,34 @@ impl Channel {
         Self {
             channel,
             decoder,
-            printer: Printer {
-                prefix: String::new(),
-            },
+            printer_prefix: String::new(),
         }
     }
 
     fn print_channel_name(&mut self, width: usize) {
-        self.printer.prefix = format!("[{:width$}] ", self.channel, width = width);
+        self.printer_prefix = format!("[{:width$}] ", self.channel, width = width);
     }
 
-    async fn process(&mut self, bytes: &[u8]) {
-        _ = self.decoder.process(bytes, &mut self.printer).await;
+    async fn process(&mut self, bytes: &[u8], copy_to: Option<&mut tokio::fs::File>) {
+        let mut printer = Printer {
+            prefix: &self.printer_prefix,
+            copy_to,
+        };
+        let _ = self.decoder.process(bytes, &mut printer).await;
     }
 }
 
-struct Printer {
-    prefix: String,
+struct Printer<'a> {
+    prefix: &'a str,
+    copy_to: Option<&'a mut tokio::fs::File>,
 }
-impl RttDataHandler for Printer {
+impl RttDataHandler for Printer<'_> {
     async fn on_string_data(&mut self, data: String) -> Result<(), probe_rs::rtt::Error> {
         print!("{}{}", self.prefix, data);
+        if let Some(copy_to) = &mut self.copy_to {
+            // Silently discarding output file errors
+            _ = copy_to.write_all(data.as_bytes()).await;
+        }
         Ok(())
     }
 }
