@@ -191,7 +191,7 @@ impl XtensaDebugSequence for ESP32S3 {
             }
 
             if start.elapsed() >= timeout {
-                return Err(crate::Error::Timeout);
+                return Err(XtensaError::Timeout.into());
             }
         }
 
