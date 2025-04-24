@@ -750,6 +750,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         let mut addr = address as u32;
 
         // We store the unaligned head of the data separately
+        let mut address_loaded = false;
         if addr % 4 != 0 {
             let unaligned_bytes = (4 - (addr % 4) as usize).min(buffer.len());
 
@@ -757,11 +758,14 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
             buffer = &buffer[unaligned_bytes..];
             addr += unaligned_bytes as u32;
+
+            address_loaded = true;
         }
 
-        if buffer.len() > 4 {
-            memory_access.load_initial_address_for_write(self, addr)?;
-
+        if buffer.len() >= 4 {
+            if !address_loaded {
+                memory_access.load_initial_address_for_write(self, addr)?;
+            }
             let mut chunks = buffer.chunks_exact(4);
             for chunk in chunks.by_ref() {
                 let mut word = [0; 4];
