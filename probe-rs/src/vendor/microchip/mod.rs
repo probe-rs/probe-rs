@@ -30,11 +30,7 @@ impl Vendor for Microchip {
             || chip.name.starts_with("ATSAME5")
         {
             DebugSequence::Arm(AtSAM::create())
-        } else if chip.name.starts_with("MEC1721")
-            || chip.name.starts_with("MEC1723")
-            || chip.name.starts_with("MEC1724")
-            || chip.name.starts_with("MEC1725")
-            || chip.name.starts_with("MEC1727")
+        } else if chip.name.starts_with("MEC172")
         {
             DebugSequence::Arm(Mec172x::create())
         } else {
