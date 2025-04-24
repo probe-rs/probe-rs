@@ -3,6 +3,7 @@
 use std::{sync::Arc, time::Duration};
 
 use probe_rs_target::{Architecture, CoreType, InstructionSet};
+use zerocopy::IntoBytes;
 
 use crate::{
     CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
@@ -13,7 +14,6 @@ use crate::{
         },
         communication_interface::{
             DebugCause, IBreakEn, ProgramStatus, WindowProperties, XtensaCommunicationInterface,
-            as_bytes_mut,
         },
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGISTERS},
         sequences::XtensaDebugSequence,
@@ -359,15 +359,15 @@ impl MemoryInterface for Xtensa<'_> {
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        self.read_8(address, as_bytes_mut(data))
+        self.read_8(address, data.as_mut_bytes())
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        self.read_8(address, as_bytes_mut(data))
+        self.read_8(address, data.as_mut_bytes())
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        self.read_8(address, as_bytes_mut(data))
+        self.read_8(address, data.as_mut_bytes())
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {

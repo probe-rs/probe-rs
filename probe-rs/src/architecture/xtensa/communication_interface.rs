@@ -6,6 +6,7 @@ use std::{
 };
 
 use probe_rs_target::MemoryRange;
+use zerocopy::IntoBytes;
 
 use crate::{
     BreakpointCause, Error as ProbeRsError, HaltReason, MemoryInterface,
@@ -822,26 +823,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 }
 
-/// DataType
-///
-/// # Safety
-/// Don't implement this trait
-pub(super) unsafe trait DataType: Sized {}
-unsafe impl DataType for u8 {}
-unsafe impl DataType for u16 {}
-unsafe impl DataType for u32 {}
-unsafe impl DataType for u64 {}
-
-fn as_bytes<T: DataType>(data: &[T]) -> &[u8] {
-    unsafe { std::slice::from_raw_parts(data.as_ptr() as *mut u8, std::mem::size_of_val(data)) }
-}
-
-pub(super) fn as_bytes_mut<T: DataType>(data: &mut [T]) -> &mut [u8] {
-    unsafe {
-        std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u8, std::mem::size_of_val(data))
-    }
-}
-
 impl MemoryInterface for XtensaCommunicationInterface<'_> {
     fn read(&mut self, address: u64, dst: &mut [u8]) -> Result<(), crate::Error> {
         self.read_memory(address, dst)?;
@@ -881,15 +862,15 @@ impl MemoryInterface for XtensaCommunicationInterface<'_> {
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::Error> {
-        self.read_8(address, as_bytes_mut(data))
+        self.read_8(address, data.as_mut_bytes())
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
-        self.read_8(address, as_bytes_mut(data))
+        self.read_8(address, data.as_mut_bytes())
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
-        self.read_8(address, as_bytes_mut(data))
+        self.read_8(address, data.as_mut_bytes())
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
@@ -919,15 +900,15 @@ impl MemoryInterface for XtensaCommunicationInterface<'_> {
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::Error> {
-        self.write_8(address, as_bytes(data))
+        self.write_8(address, data.as_bytes())
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
-        self.write_8(address, as_bytes(data))
+        self.write_8(address, data.as_bytes())
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), crate::Error> {
-        self.write_8(address, as_bytes(data))
+        self.write_8(address, data.as_bytes())
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
