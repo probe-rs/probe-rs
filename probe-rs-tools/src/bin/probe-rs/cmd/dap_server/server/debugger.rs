@@ -37,7 +37,6 @@ use std::{
     cell::RefCell,
     fs,
     path::Path,
-    thread,
     time::{Duration, UNIX_EPOCH},
 };
 use time::UtcOffset;
@@ -368,7 +367,7 @@ impl Debugger {
                 DebugSessionStatus::Continue(delay) => {
                     // All is good. We can process the next request.
                     if !delay.is_zero() {
-                        thread::sleep(delay);
+                        tokio::time::sleep(delay).await;
                     }
                 }
                 DebugSessionStatus::Restart(request) => {
@@ -394,7 +393,7 @@ impl Debugger {
         debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
         // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
         for _loop_count in 0..10 {
-            thread::sleep(Duration::from_millis(50));
+            tokio::time::sleep(Duration::from_millis(50)).await;
         }
 
         Err(error)

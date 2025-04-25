@@ -477,7 +477,7 @@ async fn run_rttui_app(
             app.poll_rtt(&mut core).await?;
         }
 
-        thread::sleep(Duration::from_millis(10));
+        tokio::time::sleep(Duration::from_millis(10)).await;
     }
 
     let mut session_handle = session.lock();
