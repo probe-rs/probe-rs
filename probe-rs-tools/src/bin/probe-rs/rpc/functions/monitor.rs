@@ -42,6 +42,7 @@ impl MonitorMode {
 }
 
 #[derive(Serialize, Deserialize, Schema)]
+// TODO: maybe this should be an enum of RttEvent | SemihostingEvent? Communicate semihosting stream without strings, by adding open/close events?
 pub enum MonitorEvent {
     RttDiscovered {
         up_channels: Vec<String>,
@@ -51,7 +52,10 @@ pub enum MonitorEvent {
         channel: u32,
         bytes: Vec<u8>,
     },
-    SemihostingOutput(SemihostingOutput),
+    SemihostingOutput {
+        stream: String,
+        data: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -240,20 +244,14 @@ impl<F: FnMut(MonitorEvent)> MonitorEventHandler<F> {
             }
             SemihostingCommand::Errno(_) => Ok(None),
             other if SemihostingReader::is_io(other) => {
-                if let Some(output) = self.semihosting_reader.handle(other, core)? {
-                    (self.sender)(MonitorEvent::SemihostingOutput(output));
+                if let Some((stream, data)) = self.semihosting_reader.handle(other, core)? {
+                    (self.sender)(MonitorEvent::SemihostingOutput { stream, data });
                 }
                 Ok(None)
             }
             other => anyhow::bail!("Unexpected semihosting command {:?}", other),
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub enum SemihostingOutput {
-    StdOut(String),
-    StdErr(String),
 }
 
 pub struct SemihostingReader {
@@ -286,7 +284,7 @@ impl SemihostingReader {
         &mut self,
         command: SemihostingCommand,
         core: &mut Core<'_>,
-    ) -> anyhow::Result<Option<SemihostingOutput>> {
+    ) -> anyhow::Result<Option<(String, String)>> {
         let out = match command {
             SemihostingCommand::Open(request) => {
                 self.handle_open(core, request)?;
@@ -299,7 +297,7 @@ impl SemihostingReader {
             SemihostingCommand::Write(request) => self.handle_write(core, request)?,
             SemihostingCommand::WriteConsole(request) => {
                 let str = request.read(core)?;
-                Some(SemihostingOutput::StdOut(str))
+                Some((String::from("stdout"), str))
             }
 
             _ => None,
@@ -355,18 +353,18 @@ impl SemihostingReader {
         &mut self,
         core: &mut Core<'_>,
         request: WriteRequest,
-    ) -> anyhow::Result<Option<SemihostingOutput>> {
+    ) -> anyhow::Result<Option<(String, String)>> {
         match request.file_handle() {
             handle if handle == Self::STDOUT.get() => {
                 if self.stdout_open {
                     let string = read_written_string(core, request)?;
-                    return Ok(Some(SemihostingOutput::StdOut(string)));
+                    return Ok(Some((String::from("stdout"), string)));
                 }
             }
             handle if handle == Self::STDERR.get() => {
                 if self.stderr_open {
                     let string = read_written_string(core, request)?;
-                    return Ok(Some(SemihostingOutput::StdErr(string)));
+                    return Ok(Some((String::from("stderr"), string)));
                 }
             }
             other => tracing::warn!(

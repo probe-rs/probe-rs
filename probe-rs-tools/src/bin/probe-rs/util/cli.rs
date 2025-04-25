@@ -17,7 +17,7 @@ use crate::{
         functions::{
             CancelTopic,
             flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
-            monitor::{MonitorEvent, MonitorMode, MonitorOptions, SemihostingOutput},
+            monitor::{MonitorEvent, MonitorMode, MonitorOptions},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
             },
@@ -525,12 +525,11 @@ async fn print_monitor_event(
 
             processor.process(&bytes);
         }
-        MonitorEvent::SemihostingOutput(SemihostingOutput::StdOut(str)) => {
-            print!("{}", str)
-        }
-        MonitorEvent::SemihostingOutput(SemihostingOutput::StdErr(str)) => {
-            eprint!("{}", str)
-        }
+        MonitorEvent::SemihostingOutput { stream, data } => match stream.as_str() {
+            "stdout" => print!("{data}"),
+            "stderr" => eprint!("{data}"),
+            _ => {}
+        },
     }
 }
 
