@@ -20,6 +20,7 @@ pub struct RttConnection {
 impl RttConnection {
     /// Polls all the available channels for data and transmits data to the client.
     /// If at least one channel had data, then return a `true` status.
+    #[expect(clippy::needless_lifetimes, reason = "false positive on 'probe")]
     pub async fn process_rtt_data<'probe, P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
@@ -54,6 +55,7 @@ impl DebuggerRttChannel {
     /// Poll and retrieve data from the target, and send it to the client, depending on the state of `hasClientWindow`.
     /// Doing this selectively ensures that we don't pull data from target buffers until we have an output window, and also helps us drain buffers after the target has entered a `is_halted` state.
     /// Errors will be reported back to the `debug_adapter`, and the return `bool` value indicates whether there was available data that was processed.
+    #[expect(clippy::needless_lifetimes, reason = "false positive on 'probe")]
     pub(crate) async fn poll_rtt_data<'probe, P: ProtocolAdapter>(
         &mut self,
         core: &mut Core<'probe>,
