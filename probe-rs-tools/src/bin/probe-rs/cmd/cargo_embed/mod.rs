@@ -393,6 +393,10 @@ fn should_resume_core(config: &config::Config) -> bool {
     }
 }
 
+#[expect(
+    clippy::await_holding_lock,
+    reason = "session_handle is locked in accordance with main loop's alternating pattern"
+)]
 async fn run_rttui_app(
     name: &str,
     elf: Option<Vec<u8>>,
@@ -456,6 +460,9 @@ async fn run_rttui_app(
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
     let mut app = rttui::app::App::new(rtt, elf, config, timezone_offset, logname)?;
     loop {
+        // This main loop alternates between giving the GUI a chance to update (`app.render()`) and
+        // accesses to the probe (`session.lock()`, `channel.borrow_mut()` in poll_rtt).
+
         app.render();
 
         {
