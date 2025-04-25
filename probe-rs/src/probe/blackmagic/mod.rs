@@ -25,7 +25,7 @@ use serialport::{SerialPortType, available_ports};
 
 use super::{
     DebugProbeError, ProbeCreationError, ProbeError, WireProtocol,
-    arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
+    arm_debug_interface::{IoSequenceItem, ProbeStatistics, RawProtocolIo, SwdSettings},
     common::{JtagDriverState, RawJtagIo},
 };
 
@@ -599,6 +599,15 @@ impl From<bool> for SwdDirection {
     }
 }
 
+impl From<IoSequenceItem> for SwdDirection {
+    fn from(value: IoSequenceItem) -> Self {
+        match value {
+            IoSequenceItem::Input => SwdDirection::Input,
+            IoSequenceItem::Output(_) => SwdDirection::Output,
+        }
+    }
+}
+
 /// A Black Magic Probe.
 pub struct BlackMagicProbe {
     reader: BufReader<Box<dyn Read + Send>>,
@@ -908,24 +917,19 @@ impl BlackMagicProbe {
     ///
     /// The caller needs to ensure that the given iterators are not longer than the maximum transfer size
     /// allowed. It seems that the maximum transfer size is determined by [`self.max_mem_block_size`].
-    fn perform_swdio_transfer<D, S>(
-        &mut self,
-        dir: D,
-        swdio: S,
-    ) -> Result<Vec<bool>, DebugProbeError>
+    #[allow(clippy::unnecessary_fallible_conversions)] //  IoSequenceItem conversion may panic
+    fn perform_swdio_transfer<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
-        D: IntoIterator<Item = bool>,
-        S: IntoIterator<Item = bool>,
+        S: IntoIterator<Item = IoSequenceItem>,
     {
-        let dir = dir.into_iter();
-        let swdio = swdio.into_iter();
+        let swdio_sequence = swdio.into_iter();
         let mut output = vec![];
 
         let mut accumulator = 0u32;
         let mut accumulator_length = 0;
 
-        for (dir, swdio) in dir.zip(swdio) {
-            let dir = SwdDirection::from(dir);
+        for swdio in swdio_sequence {
+            let dir: SwdDirection = swdio.into();
             if dir != self.swd_direction
                 || accumulator_length >= core::mem::size_of_val(&accumulator) * 8
             {
@@ -950,7 +954,11 @@ impl BlackMagicProbe {
                 accumulator_length = 0;
             }
             self.swd_direction = dir;
-            accumulator |= if swdio { 1 << accumulator_length } else { 0 };
+            accumulator |= if swdio.try_into().unwrap_or(false) {
+                1 << accumulator_length
+            } else {
+                0
+            };
             accumulator_length += 1;
         }
 
@@ -1273,13 +1281,12 @@ impl RawProtocolIo for BlackMagicProbe {
         Ok(())
     }
 
-    fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
-        D: IntoIterator<Item = bool>,
-        S: IntoIterator<Item = bool>,
+        S: IntoIterator<Item = IoSequenceItem>,
     {
         self.probe_statistics.report_io();
-        self.perform_swdio_transfer(dir, swdio)
+        self.perform_swdio_transfer(swdio)
     }
 
     fn swj_pins(

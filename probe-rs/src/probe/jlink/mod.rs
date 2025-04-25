@@ -48,7 +48,7 @@ use crate::{
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
         WireProtocol,
-        arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
+        arm_debug_interface::{IoSequenceItem, ProbeStatistics, RawProtocolIo, SwdSettings},
     },
 };
 
@@ -791,10 +791,9 @@ impl JLink {
     ///
     /// The caller needs to ensure that the given iterators are not longer than the maximum transfer size
     /// allowed. It seems that the maximum transfer size is determined by [`JLink::max_mem_block_size`].
-    fn perform_swdio_transfer<D, S>(&self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    fn perform_swdio_transfer<S>(&self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
-        D: IntoIterator<Item = bool>,
-        S: IntoIterator<Item = bool>,
+        S: IntoIterator<Item = IoSequenceItem>,
     {
         self.require_interface_selected(Interface::Swd)?;
 
@@ -803,30 +802,42 @@ impl JLink {
         let max_bits = (self.max_mem_block_size - COMMAND_OVERHEAD) / 2 * 8;
         let max_bits = std::cmp::min(max_bits, 65535);
 
-        let dir_chunks = dir.into_iter().chunks(max_bits);
         let swdio_chunks = swdio.into_iter().chunks(max_bits);
-
-        #[allow(clippy::useless_conversion)]
-        let chunks = dir_chunks.into_iter().zip(swdio_chunks.into_iter());
 
         let mut output = Vec::new();
         let mut buf = Vec::with_capacity(self.max_mem_block_size);
         buf.resize(COMMAND_OVERHEAD, 0);
 
-        for (dir, swdio) in chunks {
+        for swdio in swdio_chunks.into_iter() {
             buf.truncate(COMMAND_OVERHEAD);
 
-            let mut dir_bit_count = 0;
-            buf.extend(dir.inspect(|_| dir_bit_count += 1).collapse_bytes());
-            let mut swdio_bit_count = 0;
-            buf.extend(swdio.inspect(|_| swdio_bit_count += 1).collapse_bytes());
+            const INPUT: bool = false;
+            const OUTPUT: bool = true;
 
-            assert_eq!(
-                dir_bit_count, swdio_bit_count,
-                "`dir` and `swdio` must have the same number of bits"
+            let swdio: Vec<_> = swdio.collect();
+
+            //  Extend using the direction bits:
+            buf.extend(
+                swdio
+                    .iter()
+                    .map(|item| match item {
+                        IoSequenceItem::Input => INPUT,
+                        IoSequenceItem::Output { .. } => OUTPUT,
+                    })
+                    .collapse_bytes(),
+            );
+            //  Extend using the value bits:
+            buf.extend(
+                swdio
+                    .iter()
+                    .map(|item| match item {
+                        IoSequenceItem::Input => false,
+                        IoSequenceItem::Output(x) => *x,
+                    })
+                    .collapse_bytes(),
             );
 
-            let num_bits = dir_bit_count as u16;
+            let num_bits = swdio.len() as u16;
 
             buf[0] = Command::HwJtag3 as u8;
             // buf[1] is dummy data for alignment
@@ -1206,13 +1217,12 @@ impl RawProtocolIo for JLink {
         Ok(())
     }
 
-    fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
-        D: IntoIterator<Item = bool>,
-        S: IntoIterator<Item = bool>,
+        S: IntoIterator<Item = IoSequenceItem>,
     {
         self.probe_statistics.report_io();
-        self.perform_swdio_transfer(dir, swdio)
+        self.perform_swdio_transfer(swdio)
     }
 
     fn swj_pins(
