@@ -1359,7 +1359,7 @@ mod test {
         (probe_info, fake_probe)
     }
 
-    fn execute_test(
+    async fn execute_test(
         protocol_adapter: MockProtocolAdapter,
         with_probe: bool,
     ) -> Result<(), DebuggerError> {
@@ -1372,19 +1372,19 @@ mod test {
         let lister = Lister::with_lister(Box::new(lister));
 
         let mut debugger = Debugger::new(UtcOffset::UTC, None)?;
-        debugger.debug_session(debug_adapter, &lister)
+        debugger.debug_session(debug_adapter, &lister).await
     }
 
-    #[test]
-    fn test_initalize_request() {
+    #[tokio::test]
+    async fn test_initalize_request() {
         let protocol_adapter = initialized_protocol_adapter();
 
         // TODO: Check proper return value
-        execute_test(protocol_adapter, false).unwrap_err();
+        execute_test(protocol_adapter, false).await.unwrap_err();
     }
 
-    #[test]
-    fn test_launch_no_probes() {
+    #[tokio::test]
+    async fn test_launch_no_probes() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
         let expected_error = "No connected probes were found.";
@@ -1396,20 +1396,20 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        execute_test(protocol_adapter, false).unwrap();
+        execute_test(protocol_adapter, false).await.unwrap();
     }
 
-    #[test]
-    fn test_launch_and_terminate() {
+    #[tokio::test]
+    async fn test_launch_and_terminate() {
         let mut protocol_adapter = launched_protocol_adapter();
 
         disconnect_protocol_adapter(&mut protocol_adapter);
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
-    #[test]
-    fn launch_with_config_error() {
+    #[tokio::test]
+    async fn launch_with_config_error() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
         let invalid_launch_args = SessionConfig {
@@ -1430,11 +1430,11 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
-    #[test]
-    fn wrong_request_after_init() {
+    #[tokio::test]
+    async fn wrong_request_after_init() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
         let expected_error = "Expected request 'launch' or 'attach', but received 'threads'";
@@ -1445,11 +1445,11 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
-    #[test]
-    fn attach_request() {
+    #[tokio::test]
+    async fn attach_request() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
         let attach_args = valid_session_config();
@@ -1462,11 +1462,11 @@ mod test {
 
         disconnect_protocol_adapter(&mut protocol_adapter);
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
-    #[test]
-    fn attach_with_flashing() {
+    #[tokio::test]
+    async fn attach_with_flashing() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
         let attach_args = SessionConfig {
@@ -1487,11 +1487,11 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
-    #[test]
-    fn launch_and_threads() {
+    #[tokio::test]
+    async fn launch_and_threads() {
         let mut protocol_adapter = launched_protocol_adapter();
 
         protocol_adapter
@@ -1510,7 +1510,7 @@ mod test {
 
         disconnect_protocol_adapter(&mut protocol_adapter);
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
     #[test_case(0; "instructions before and not including the ref address, multiple locations")]
@@ -1518,7 +1518,8 @@ mod test {
     #[test_case(2; "instructions after and not including the ref address")]
     #[test_case(3; "negative byte offset of exactly one instruction (aligned)")]
     #[test_case(4; "positive byte offset that lands in the middle of an instruction (unaligned)")]
-    fn disassemble(test_case: usize) {
+    #[tokio::test]
+    async fn disassemble(test_case: usize) {
         #[rustfmt::skip]
         mod config {
             use std::collections::HashMap;
@@ -1643,6 +1644,6 @@ mod test {
 
         disconnect_protocol_adapter(&mut protocol_adapter);
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 }
