@@ -356,11 +356,13 @@ impl Debugger {
 
         // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
         let error = loop {
-            let debug_session_status =
-                match self.process_next_request(&mut session_data, &mut debug_adapter).await {
-                    Ok(status) => status,
-                    Err(error) => break error,
-                };
+            let debug_session_status = match self
+                .process_next_request(&mut session_data, &mut debug_adapter)
+                .await
+            {
+                Ok(status) => status,
+                Err(error) => break error,
+            };
 
             match debug_session_status {
                 DebugSessionStatus::Continue(delay) => {

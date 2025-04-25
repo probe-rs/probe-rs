@@ -331,7 +331,10 @@ impl SessionData {
             if core_config.rtt_config.enabled {
                 if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
                     // We should poll the target for rtt data, and if any RTT data was processed, we clear the flag.
-                    if core_rtt.process_rtt_data(debug_adapter, &mut target_core.core).await {
+                    if core_rtt
+                        .process_rtt_data(debug_adapter, &mut target_core.core)
+                        .await
+                    {
                         suggest_delay_required = false;
                     }
                 } else if debug_adapter.configuration_is_done() {

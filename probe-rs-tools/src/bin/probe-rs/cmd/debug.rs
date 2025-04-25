@@ -261,7 +261,9 @@ impl Cmd {
             seq: 2,
             type_: "request".to_string(),
         });
-        debugger.process_next_request(&mut session_data, &mut debug_adapter).await?;
+        debugger
+            .process_next_request(&mut session_data, &mut debug_adapter)
+            .await?;
 
         let mut rl = DefaultEditor::new()?;
 
@@ -289,7 +291,9 @@ impl Cmd {
                     };
 
                     shared.borrow_mut().next_request = Some(request);
-                    debugger.process_next_request(&mut session_data, &mut debug_adapter).await?;
+                    debugger
+                        .process_next_request(&mut session_data, &mut debug_adapter)
+                        .await?;
                 }
                 // For end of file and ctrl-c, we just quit
                 Err(ReadlineError::Eof | ReadlineError::Interrupted) => return Ok(()),

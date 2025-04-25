@@ -69,11 +69,16 @@ impl UpChannel {
         }
     }
 
-    pub async fn poll_rtt(&mut self, core: &mut Core<'_>, client: &mut RttClient) -> Result<(), Error> {
+    pub async fn poll_rtt(
+        &mut self,
+        core: &mut Core<'_>,
+        client: &mut RttClient,
+    ) -> Result<(), Error> {
         let bytes = client.poll_channel(core, self.channel_number)?;
 
         self.data_format
-            .process(bytes, &mut (&mut self.tcp_stream, &mut self.data)).await?;
+            .process(bytes, &mut (&mut self.tcp_stream, &mut self.data))
+            .await?;
 
         Ok(())
     }
