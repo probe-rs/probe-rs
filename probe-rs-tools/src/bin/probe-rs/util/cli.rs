@@ -564,7 +564,7 @@ struct Printer {
     prefix: String,
 }
 impl RttDataHandler for Printer {
-    fn on_string_data(&mut self, data: String) -> Result<(), probe_rs::rtt::Error> {
+    async fn on_string_data(&mut self, data: String) -> Result<(), probe_rs::rtt::Error> {
         print!("{}{}", self.prefix, data);
         Ok(())
     }

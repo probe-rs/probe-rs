@@ -294,9 +294,9 @@ impl App {
     }
 
     /// Polls the RTT target for new data on all channels.
-    pub fn poll_rtt(&mut self, core: &mut Core) -> Result<()> {
+    pub async fn poll_rtt(&mut self, core: &mut Core<'_>) -> Result<()> {
         for channel in self.up_channels.iter_mut() {
-            channel.borrow_mut().poll_rtt(core, &mut self.client)?;
+            channel.borrow_mut().poll_rtt(core, &mut self.client).await?;
         }
 
         Ok(())

@@ -62,7 +62,7 @@ impl RttDecoder {
         matches!(self, RttDecoder::BinaryLE)
     }
 
-    pub fn process(
+    pub async fn process(
         &mut self,
         buffer: &[u8],
         collector: &mut impl RttDataHandler,
@@ -73,17 +73,17 @@ impl RttDecoder {
         }
 
         match self {
-            RttDecoder::BinaryLE => collector.on_binary_data(buffer),
+            RttDecoder::BinaryLE => collector.on_binary_data(buffer).await,
             RttDecoder::String {
                 timestamp_offset,
                 last_line_done,
             } => {
                 let string = Self::process_string(buffer, *timestamp_offset, last_line_done)?;
-                collector.on_string_data(string)
+                collector.on_string_data(string).await
             }
             RttDecoder::Defmt { processor } => {
                 let string = processor.process(buffer)?;
-                collector.on_string_data(string)
+                collector.on_string_data(string).await
             }
         }
     }
@@ -119,16 +119,16 @@ impl RttDecoder {
 }
 
 pub trait RttDataHandler {
-    fn on_binary_data(&mut self, data: &[u8]) -> Result<(), Error> {
+    async fn on_binary_data(&mut self, data: &[u8]) -> Result<(), Error> {
         let mut formatted_data = String::with_capacity(data.len() * 4);
         for element in data {
             // Width of 4 allows 0xFF to be printed.
             write!(&mut formatted_data, "{element:#04x}").expect("Writing to String cannot fail");
         }
-        self.on_string_data(formatted_data)
+        self.on_string_data(formatted_data).await
     }
 
-    fn on_string_data(&mut self, data: String) -> Result<(), Error>;
+    async fn on_string_data(&mut self, data: String) -> Result<(), Error>;
 }
 
 pub struct DefmtStateInner {

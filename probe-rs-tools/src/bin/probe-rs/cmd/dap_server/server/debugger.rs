@@ -105,7 +105,7 @@ impl Debugger {
     ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop polling the Probe until the next DAP-Client request attempts an action
     ///   - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
     ///   - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics.
-    pub(crate) fn process_next_request<P: ProtocolAdapter>(
+    pub(crate) async fn process_next_request<P: ProtocolAdapter>(
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<P>,
@@ -124,7 +124,7 @@ impl Debugger {
             } else {
                 // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
                 let (_, suggest_delay_required) =
-                    session_data.poll_cores(&self.config, debug_adapter)?;
+                    session_data.poll_cores(&self.config, debug_adapter).await?;
                 // If there are no requests from the DAP Client, and there was no RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
                 if debug_adapter.configuration_is_done() && suggest_delay_required {
                     tracing::trace!(
@@ -145,7 +145,7 @@ impl Debugger {
         let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
 
         // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-        let (core_statuses, _) = session_data.poll_cores(&self.config, debug_adapter)?;
+        let (core_statuses, _) = session_data.poll_cores(&self.config, debug_adapter).await?;
 
         // Check if we have configured cores
         if core_statuses.is_empty() {
@@ -304,7 +304,7 @@ impl Debugger {
     /// All requests are interpreted, actions taken, and responses formulated here.
     /// This function is self contained and returns only status data to control what happens after the session completes.
     /// The [`DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
-    pub(crate) fn debug_session<P: ProtocolAdapter + 'static>(
+    pub(crate) async fn debug_session<P: ProtocolAdapter + 'static>(
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
         lister: &Lister,
@@ -357,7 +357,7 @@ impl Debugger {
         // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
         let error = loop {
             let debug_session_status =
-                match self.process_next_request(&mut session_data, &mut debug_adapter) {
+                match self.process_next_request(&mut session_data, &mut debug_adapter).await {
                     Ok(status) => status,
                     Err(error) => break error,
                 };
