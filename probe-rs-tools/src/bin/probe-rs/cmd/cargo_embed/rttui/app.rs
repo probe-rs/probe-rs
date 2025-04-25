@@ -41,6 +41,9 @@ pub struct App {
 
     current_height: usize,
 
+    // The configured channels are shared with the tabs; this works with no synchronization other
+    // than RefCell because the cargo-embed main loop runs the `.render()` step and the
+    // `.poll_rtt()` step in alternation.
     up_channels: Vec<Rc<RefCell<UpChannel>>>,
 
     client: RttClient,
@@ -294,9 +297,16 @@ impl App {
     }
 
     /// Polls the RTT target for new data on all channels.
-    pub fn poll_rtt(&mut self, core: &mut Core) -> Result<()> {
+    #[expect(
+        clippy::await_holding_refcell_ref,
+        reason = "Main loop alternates between GUI and channel polling accesses"
+    )]
+    pub async fn poll_rtt(&mut self, core: &mut Core<'_>) -> Result<()> {
         for channel in self.up_channels.iter_mut() {
-            channel.borrow_mut().poll_rtt(core, &mut self.client)?;
+            channel
+                .borrow_mut()
+                .poll_rtt(core, &mut self.client)
+                .await?;
         }
 
         Ok(())

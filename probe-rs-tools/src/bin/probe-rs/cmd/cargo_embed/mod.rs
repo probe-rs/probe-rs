@@ -71,8 +71,8 @@ struct CliOptions {
     cargo_options: CargoOptions,
 }
 
-pub fn main(args: &[OsString], offset: UtcOffset) {
-    match main_try(args, offset) {
+pub async fn main(args: &[OsString], offset: UtcOffset) {
+    match main_try(args, offset).await {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling proces::exit,
@@ -107,7 +107,7 @@ pub fn main(args: &[OsString], offset: UtcOffset) {
     }
 }
 
-fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
+async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     // Parse the commandline options.
     let opt = CliOptions::parse_from(args);
 
@@ -361,7 +361,7 @@ fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     if config.rtt.enabled {
         // GDB is also using the session, so we do not lock on the outside.
-        run_rttui_app(name, elf, &session, config, offset, rtt_client)?;
+        run_rttui_app(name, elf, &session, config, offset, rtt_client).await?;
     } else if should_resume_core(&config) {
         // If we don't run the app, we have to resume the core somewhere else.
         let mut session_handle = session.lock();
@@ -393,7 +393,11 @@ fn should_resume_core(config: &config::Config) -> bool {
     }
 }
 
-fn run_rttui_app(
+#[expect(
+    clippy::await_holding_lock,
+    reason = "session_handle is locked in accordance with main loop's alternating pattern"
+)]
+async fn run_rttui_app(
     name: &str,
     elf: Option<Vec<u8>>,
     session: &FairMutex<Session>,
@@ -456,6 +460,9 @@ fn run_rttui_app(
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
     let mut app = rttui::app::App::new(rtt, elf, config, timezone_offset, logname)?;
     loop {
+        // This main loop alternates between giving the GUI a chance to update (`app.render()`) and
+        // accesses to the probe (`session.lock()`, `channel.borrow_mut()` in poll_rtt).
+
         app.render();
 
         {
@@ -467,10 +474,10 @@ fn run_rttui_app(
                 break;
             }
 
-            app.poll_rtt(&mut core)?;
+            app.poll_rtt(&mut core).await?;
         }
 
-        thread::sleep(Duration::from_millis(10));
+        tokio::time::sleep(Duration::from_millis(10)).await;
     }
 
     let mut session_handle = session.lock();

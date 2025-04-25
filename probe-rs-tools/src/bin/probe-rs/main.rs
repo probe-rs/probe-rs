@@ -111,7 +111,7 @@ impl Cli {
         match self.subcommand {
             Subcommand::DapServer(cmd) => {
                 let log_path = self.log_file.as_deref();
-                cmd::dap_server::run(cmd, &lister, utc_offset, log_path)
+                cmd::dap_server::run(cmd, &lister, utc_offset, log_path).await
             }
             #[cfg(feature = "remote")]
             Subcommand::Serve(cmd) => cmd.run(_config.server).await,
@@ -119,7 +119,10 @@ impl Cli {
             Subcommand::Info(cmd) => cmd.run(client).await,
             Subcommand::Gdb(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Reset(cmd) => cmd.run(client).await,
-            Subcommand::Debug(cmd) => cmd.run(&mut *client.registry().await, &lister, utc_offset),
+            Subcommand::Debug(cmd) => {
+                cmd.run(&mut *client.registry().await, &lister, utc_offset)
+                    .await
+            }
             Subcommand::Download(cmd) => cmd.run(client).await,
             Subcommand::Run(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Attach(cmd) => cmd.run(client, utc_offset).await,
@@ -428,7 +431,7 @@ async fn main() -> Result<()> {
         return Ok(());
     }
     if let Some(args) = multicall_check(&args, "cargo-embed") {
-        cmd::cargo_embed::main(args, utc_offset);
+        cmd::cargo_embed::main(args, utc_offset).await;
         return Ok(());
     }
 

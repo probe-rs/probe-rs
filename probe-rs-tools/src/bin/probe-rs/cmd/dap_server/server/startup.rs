@@ -31,7 +31,7 @@ impl std::str::FromStr for TargetSessionType {
     }
 }
 
-pub fn debug(
+pub async fn debug(
     lister: &Lister,
     addr: std::net::SocketAddr,
     single_session: bool,
@@ -83,7 +83,7 @@ pub fn debug(
                 // Flush any pending log messages to the debug adapter Console Log.
                 debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
-                let end_message = match debugger.debug_session(debug_adapter, lister) {
+                let end_message = match debugger.debug_session(debug_adapter, lister).await {
                     // We no longer have a reference to the `debug_adapter`, so errors need
                     // special handling to ensure they are displayed to the user.
                     Err(error) => format!("Session ended: {error}"),

@@ -91,12 +91,12 @@ pub struct Cmd {
     single_session: bool,
 }
 
-pub fn run(
+pub async fn run(
     cmd: Cmd,
     lister: &Lister,
     time_offset: UtcOffset,
     log_file: Option<&Path>,
 ) -> Result<()> {
     let addr = SocketAddr::new(cmd.ip, cmd.port);
-    debug(lister, addr, cmd.single_session, log_file, time_offset)
+    debug(lister, addr, cmd.single_session, log_file, time_offset).await
 }

@@ -37,7 +37,6 @@ use std::{
     cell::RefCell,
     fs,
     path::Path,
-    thread,
     time::{Duration, UNIX_EPOCH},
 };
 use time::UtcOffset;
@@ -105,7 +104,7 @@ impl Debugger {
     ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop polling the Probe until the next DAP-Client request attempts an action
     ///   - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
     ///   - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics.
-    pub(crate) fn process_next_request<P: ProtocolAdapter>(
+    pub(crate) async fn process_next_request<P: ProtocolAdapter>(
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<P>,
@@ -124,7 +123,7 @@ impl Debugger {
             } else {
                 // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
                 let (_, suggest_delay_required) =
-                    session_data.poll_cores(&self.config, debug_adapter)?;
+                    session_data.poll_cores(&self.config, debug_adapter).await?;
                 // If there are no requests from the DAP Client, and there was no RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
                 if debug_adapter.configuration_is_done() && suggest_delay_required {
                     tracing::trace!(
@@ -145,7 +144,7 @@ impl Debugger {
         let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
 
         // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-        let (core_statuses, _) = session_data.poll_cores(&self.config, debug_adapter)?;
+        let (core_statuses, _) = session_data.poll_cores(&self.config, debug_adapter).await?;
 
         // Check if we have configured cores
         if core_statuses.is_empty() {
@@ -304,7 +303,7 @@ impl Debugger {
     /// All requests are interpreted, actions taken, and responses formulated here.
     /// This function is self contained and returns only status data to control what happens after the session completes.
     /// The [`DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
-    pub(crate) fn debug_session<P: ProtocolAdapter + 'static>(
+    pub(crate) async fn debug_session<P: ProtocolAdapter + 'static>(
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
         lister: &Lister,
@@ -356,17 +355,19 @@ impl Debugger {
 
         // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
         let error = loop {
-            let debug_session_status =
-                match self.process_next_request(&mut session_data, &mut debug_adapter) {
-                    Ok(status) => status,
-                    Err(error) => break error,
-                };
+            let debug_session_status = match self
+                .process_next_request(&mut session_data, &mut debug_adapter)
+                .await
+            {
+                Ok(status) => status,
+                Err(error) => break error,
+            };
 
             match debug_session_status {
                 DebugSessionStatus::Continue(delay) => {
                     // All is good. We can process the next request.
                     if !delay.is_zero() {
-                        thread::sleep(delay);
+                        tokio::time::sleep(delay).await;
                     }
                 }
                 DebugSessionStatus::Restart(request) => {
@@ -392,7 +393,7 @@ impl Debugger {
         debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
         // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
         for _loop_count in 0..10 {
-            thread::sleep(Duration::from_millis(50));
+            tokio::time::sleep(Duration::from_millis(50)).await;
         }
 
         Err(error)
@@ -1359,7 +1360,7 @@ mod test {
         (probe_info, fake_probe)
     }
 
-    fn execute_test(
+    async fn execute_test(
         protocol_adapter: MockProtocolAdapter,
         with_probe: bool,
     ) -> Result<(), DebuggerError> {
@@ -1372,19 +1373,19 @@ mod test {
         let lister = Lister::with_lister(Box::new(lister));
 
         let mut debugger = Debugger::new(UtcOffset::UTC, None)?;
-        debugger.debug_session(debug_adapter, &lister)
+        debugger.debug_session(debug_adapter, &lister).await
     }
 
-    #[test]
-    fn test_initalize_request() {
+    #[tokio::test]
+    async fn test_initalize_request() {
         let protocol_adapter = initialized_protocol_adapter();
 
         // TODO: Check proper return value
-        execute_test(protocol_adapter, false).unwrap_err();
+        execute_test(protocol_adapter, false).await.unwrap_err();
     }
 
-    #[test]
-    fn test_launch_no_probes() {
+    #[tokio::test]
+    async fn test_launch_no_probes() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
         let expected_error = "No connected probes were found.";
@@ -1396,20 +1397,20 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        execute_test(protocol_adapter, false).unwrap();
+        execute_test(protocol_adapter, false).await.unwrap();
     }
 
-    #[test]
-    fn test_launch_and_terminate() {
+    #[tokio::test]
+    async fn test_launch_and_terminate() {
         let mut protocol_adapter = launched_protocol_adapter();
 
         disconnect_protocol_adapter(&mut protocol_adapter);
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
-    #[test]
-    fn launch_with_config_error() {
+    #[tokio::test]
+    async fn launch_with_config_error() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
         let invalid_launch_args = SessionConfig {
@@ -1430,11 +1431,11 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
-    #[test]
-    fn wrong_request_after_init() {
+    #[tokio::test]
+    async fn wrong_request_after_init() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
         let expected_error = "Expected request 'launch' or 'attach', but received 'threads'";
@@ -1445,11 +1446,11 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
-    #[test]
-    fn attach_request() {
+    #[tokio::test]
+    async fn attach_request() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
         let attach_args = valid_session_config();
@@ -1462,11 +1463,11 @@ mod test {
 
         disconnect_protocol_adapter(&mut protocol_adapter);
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
-    #[test]
-    fn attach_with_flashing() {
+    #[tokio::test]
+    async fn attach_with_flashing() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
         let attach_args = SessionConfig {
@@ -1487,11 +1488,11 @@ mod test {
             .and_error_response()
             .with_body(error_response_body(expected_error));
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
-    #[test]
-    fn launch_and_threads() {
+    #[tokio::test]
+    async fn launch_and_threads() {
         let mut protocol_adapter = launched_protocol_adapter();
 
         protocol_adapter
@@ -1510,7 +1511,7 @@ mod test {
 
         disconnect_protocol_adapter(&mut protocol_adapter);
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 
     #[test_case(0; "instructions before and not including the ref address, multiple locations")]
@@ -1518,7 +1519,8 @@ mod test {
     #[test_case(2; "instructions after and not including the ref address")]
     #[test_case(3; "negative byte offset of exactly one instruction (aligned)")]
     #[test_case(4; "positive byte offset that lands in the middle of an instruction (unaligned)")]
-    fn disassemble(test_case: usize) {
+    #[tokio::test]
+    async fn disassemble(test_case: usize) {
         #[rustfmt::skip]
         mod config {
             use std::collections::HashMap;
@@ -1643,6 +1645,6 @@ mod test {
 
         disconnect_protocol_adapter(&mut protocol_adapter);
 
-        execute_test(protocol_adapter, true).unwrap();
+        execute_test(protocol_adapter, true).await.unwrap();
     }
 }

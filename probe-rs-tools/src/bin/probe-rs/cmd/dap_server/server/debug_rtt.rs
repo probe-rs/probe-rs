@@ -20,15 +20,17 @@ pub struct RttConnection {
 impl RttConnection {
     /// Polls all the available channels for data and transmits data to the client.
     /// If at least one channel had data, then return a `true` status.
-    pub fn process_rtt_data<P: ProtocolAdapter>(
+    #[expect(clippy::needless_lifetimes, reason = "false positive on 'probe")]
+    pub async fn process_rtt_data<'probe, P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
-        target_core: &mut Core,
+        target_core: &mut Core<'probe>,
     ) -> bool {
         let mut at_least_one_channel_had_data = false;
         for debugger_rtt_channel in self.debugger_rtt_channels.iter_mut() {
-            at_least_one_channel_had_data |=
-                debugger_rtt_channel.poll_rtt_data(target_core, debug_adapter, &mut self.client)
+            at_least_one_channel_had_data |= debugger_rtt_channel
+                .poll_rtt_data(target_core, debug_adapter, &mut self.client)
+                .await
         }
         at_least_one_channel_had_data
     }
@@ -53,9 +55,10 @@ impl DebuggerRttChannel {
     /// Poll and retrieve data from the target, and send it to the client, depending on the state of `hasClientWindow`.
     /// Doing this selectively ensures that we don't pull data from target buffers until we have an output window, and also helps us drain buffers after the target has entered a `is_halted` state.
     /// Errors will be reported back to the `debug_adapter`, and the return `bool` value indicates whether there was available data that was processed.
-    pub(crate) fn poll_rtt_data<P: ProtocolAdapter>(
+    #[expect(clippy::needless_lifetimes, reason = "false positive on 'probe")]
+    pub(crate) async fn poll_rtt_data<'probe, P: ProtocolAdapter>(
         &mut self,
-        core: &mut Core,
+        core: &mut Core<'probe>,
         debug_adapter: &mut DebugAdapter<P>,
         client: &mut RttClient,
     ) -> bool {
@@ -66,7 +69,7 @@ impl DebuggerRttChannel {
         let mut out = StringCollector { data: None };
 
         match client.poll_channel(core, self.channel_number) {
-            Ok(bytes) => self.channel_data_format.process(bytes, &mut out).ok(),
+            Ok(bytes) => self.channel_data_format.process(bytes, &mut out).await.ok(),
             Err(e) => {
                 debug_adapter
                     .show_error_message(&DebuggerError::Other(anyhow!(e)))
@@ -87,7 +90,7 @@ struct StringCollector {
 }
 
 impl RttDataHandler for StringCollector {
-    fn on_string_data(&mut self, data: String) -> Result<(), rtt::Error> {
+    async fn on_string_data(&mut self, data: String) -> Result<(), rtt::Error> {
         self.data = Some(data);
         Ok(())
     }
