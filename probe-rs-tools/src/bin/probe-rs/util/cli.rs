@@ -523,7 +523,7 @@ async fn print_monitor_event(
                 return;
             };
 
-            processor.process(&bytes);
+            processor.process(&bytes).await;
         }
         MonitorEvent::SemihostingOutput(SemihostingOutput::StdOut(str)) => {
             print!("{}", str)
@@ -555,8 +555,8 @@ impl Channel {
         self.printer.prefix = format!("[{:width$}] ", self.channel, width = width);
     }
 
-    fn process(&mut self, bytes: &[u8]) {
-        _ = self.decoder.process(bytes, &mut self.printer);
+    async fn process(&mut self, bytes: &[u8]) {
+        _ = self.decoder.process(bytes, &mut self.printer).await;
     }
 }
 
