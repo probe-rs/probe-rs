@@ -70,6 +70,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -158,6 +168,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -246,6 +266,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -334,6 +364,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -424,6 +464,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -514,6 +564,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -604,6 +664,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -825,6 +895,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -869,6 +949,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -913,6 +1003,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -957,6 +1057,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1002,6 +1112,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1047,6 +1167,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1092,6 +1222,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff07800
+      end: 0x1ff07a10
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1137,6 +1277,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1182,6 +1332,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1227,6 +1387,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1272,6 +1442,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1316,6 +1496,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1360,6 +1550,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1404,6 +1604,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1448,6 +1658,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1493,6 +1713,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1538,6 +1768,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1582,6 +1822,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1626,6 +1876,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1671,6 +1931,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1716,6 +1986,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1761,6 +2041,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1806,6 +2096,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1850,6 +2150,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1894,6 +2204,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1938,6 +2258,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -1982,6 +2312,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2027,6 +2367,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2071,6 +2421,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2116,6 +2476,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2161,6 +2531,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x8fff000
+      end: 0x8fff800
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2205,6 +2585,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2298,6 +2688,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2391,6 +2791,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2484,6 +2894,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2577,6 +2997,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2669,6 +3099,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2762,6 +3202,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2855,6 +3305,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -2949,6 +3409,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -3042,6 +3512,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -3180,6 +3660,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -3272,6 +3762,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -3364,6 +3864,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:
@@ -3456,6 +3966,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1ff0f000
+      end: 0x1ff0f400
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: DTCM
     range:

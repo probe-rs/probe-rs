@@ -25,6 +25,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -54,6 +64,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -82,6 +102,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -110,6 +140,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -138,6 +178,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -230,6 +280,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -258,6 +318,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -287,6 +357,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -316,6 +396,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -345,6 +435,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -374,6 +474,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -403,6 +513,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -432,6 +552,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -556,6 +686,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -584,6 +724,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -612,6 +762,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -641,6 +801,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -670,6 +840,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -699,6 +879,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -728,6 +918,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -757,6 +957,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -786,6 +996,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -815,6 +1035,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -875,6 +1105,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -904,6 +1144,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:
@@ -933,6 +1183,16 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x1fff6800
+      end: 0x1fff6c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
     name: SRAM
     range:

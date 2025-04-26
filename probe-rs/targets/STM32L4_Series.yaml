@@ -5978,7 +5978,7 @@ variants:
   package_variants:
   - STM32L4R5ZITx
   - STM32L4R5ZIYx
-  - STM32L4R5ZITxPP
+  - STM32L4R5ZITxP
   cores:
   - name: main
     type: armv7em
@@ -6365,7 +6365,7 @@ variants:
   - STM32L4R9ZITx
   - STM32L4R9ZIJx
   - STM32L4R9ZIYx
-  - STM32L4R9ZIYxPP
+  - STM32L4R9ZIYxP
   cores:
   - name: main
     type: armv7em

@@ -7961,8 +7961,8 @@ variants:
   package_variants:
   - STM32H7A3IGKx
   - STM32H7A3IGTx
-  - STM32H7A3IGKxQQ
-  - STM32H7A3IGTxQQ
+  - STM32H7A3IGKxQ
+  - STM32H7A3IGTxQ
   cores:
   - name: main
     type: armv7em
@@ -8179,8 +8179,8 @@ variants:
   package_variants:
   - STM32H7A3IIKx
   - STM32H7A3IITx
-  - STM32H7A3IIKxQQ
-  - STM32H7A3IITxQQ
+  - STM32H7A3IIKxQ
+  - STM32H7A3IITxQ
   cores:
   - name: main
     type: armv7em
@@ -8904,8 +8904,8 @@ variants:
   package_variants:
   - STM32H7A3VGHx
   - STM32H7A3VGTx
-  - STM32H7A3VGHxQQ
-  - STM32H7A3VGTxQQ
+  - STM32H7A3VGHxQ
+  - STM32H7A3VGTxQ
   cores:
   - name: main
     type: armv7em
@@ -9122,8 +9122,8 @@ variants:
   package_variants:
   - STM32H7A3VIHx
   - STM32H7A3VITx
-  - STM32H7A3VIHxQQ
-  - STM32H7A3VITxQQ
+  - STM32H7A3VIHxQ
+  - STM32H7A3VITxQ
   cores:
   - name: main
     type: armv7em
@@ -9339,7 +9339,7 @@ variants:
 - name: STM32H7A3ZG
   package_variants:
   - STM32H7A3ZGTx
-  - STM32H7A3ZGTxQQ
+  - STM32H7A3ZGTxQ
   cores:
   - name: main
     type: armv7em
@@ -9484,7 +9484,7 @@ variants:
 - name: STM32H7A3ZI
   package_variants:
   - STM32H7A3ZITx
-  - STM32H7A3ZITxQQ
+  - STM32H7A3ZITxQ
   cores:
   - name: main
     type: armv7em
@@ -9753,7 +9753,7 @@ variants:
 - name: STM32H7B0IB
   package_variants:
   - STM32H7B0IBTx
-  - STM32H7B0x_DISCOKxQ
+  - STM32H7B0IBKxQ
   cores:
   - name: main
     type: armv7em
@@ -10078,8 +10078,8 @@ variants:
   package_variants:
   - STM32H7B3IIKx
   - STM32H7B3IITx
-  - STM32H7B3IIKxQQ
-  - STM32H7B3IITxQQ
+  - STM32H7B3IIKxQ
+  - STM32H7B3IITxQ
   cores:
   - name: main
     type: armv7em
@@ -10585,8 +10585,8 @@ variants:
   package_variants:
   - STM32H7B3VIHx
   - STM32H7B3VITx
-  - STM32H7B3VIHxQQ
-  - STM32H7B3VITxQQ
+  - STM32H7B3VIHxQ
+  - STM32H7B3VITxQ
   cores:
   - name: main
     type: armv7em
@@ -10802,7 +10802,7 @@ variants:
 - name: STM32H7B3ZI
   package_variants:
   - STM32H7B3ZITx
-  - STM32H7B3ZITxQQ
+  - STM32H7B3ZITxQ
   cores:
   - name: main
     type: armv7em
