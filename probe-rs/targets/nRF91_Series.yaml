@@ -5,10 +5,23 @@ manufacturer:
 chip_detection:
 - !NordicFicrInfo
   part_address: 0xff0140
-  variant_address: 0xff021c
+  variant_address: 0xff0148
   part: 0x9160
   variants:
-    0x400: nRF9160_xxAA
+    0x41434953: nRF9160_xxAA # This is the B1A variant
+- !NordicFicrInfo
+  part_address: 0xff0140
+  variant_address: 0xff0148
+  part: 0x9161
+  variants:
+    0x4143414c: nRF9161_xxAA
+- !NordicFicrInfo
+  part_address: 0xff0140
+  variant_address: 0xff0148
+  part: 0x9151
+  variants:
+    0x4143414c: nRF9151_xxAA
+pack_file_release: 8.59.0
 variants:
 - name: nRF9160_xxAA
   cores:
@@ -18,25 +31,74 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
+    name: IROM1
     range:
       start: 0x0
       end: 0x100000
     cores:
     - main
     access:
+      write: false
       boot: true
-  - !Nvm
+  - !Ram
+    name: IRAM1
     range:
-      start: 0xff8000
-      end: 0xff9000
+      start: 0x20000000
+      end: 0x2003e000
+    cores:
+    - main
+  flash_algorithms:
+  - nrf91xx
+  - nrf91xx_uicr
+- name: nRF9161_xxAA
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
     cores:
     - main
     access:
+      write: false
       boot: true
   - !Ram
+    name: IRAM1
     range:
       start: 0x20000000
-      end: 0x20040000
+      end: 0x2003e000
+    cores:
+    - main
+  flash_algorithms:
+  - nrf91xx
+  - nrf91xx_uicr
+- name: nRF9151_xxAA
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2003e000
     cores:
     - main
   flash_algorithms:
@@ -47,11 +109,13 @@ flash_algorithms:
   description: nRF91xxx
   default: true
   instructions: sLVA8gQFwPIABQAgCesFAUn4BQDB6QEAyGDQshRGAPA9+iCxCesFAcHpAgSwvQnrBQABIUFgAPAr+gAgsL0AvxC1BEYAIADwKfo4sUDyBAHA8gABSUTB6QIEEL1A8gQAwPIAAAnrAAGJaAApBL8AIBC9RPIAAcLyAAEBIgpgWfgAIEhESmBCaIpggmjKYMBoCGEAIBC9AL9A8gQAwPIAAAEhSfgAEEhEACHA6QERwWAA8Ci6sLVA8gQFBEbA8gAFAiBJ+AUACesFAAAhwOkBEcFgAPCl+bT78PEB+xBAMLEJ6wUAAyHA6QIUZSCwvQnrBQABIUFgAPCt+aBCE9gA8Kv5oEIP2QnrBQACIUFgIEYA8ML5Aygcv2cgsL0gRgDw5/kAILC9CesFAAQhwOkCFGYgsL0t6fBBQPIEBwRGwPIABxVGDkYDIAnrBwEAIqMHSfgHAMHpASLKYAbQCesHAcHpAgRlIL3o8IEJ6wcAASFBYADwb/mgQhXYAPBt+aBCEdkJ6wcAAyFBYAbrBAgA8GP5gEUP2QnrBwAEIcDpAhhmIL3o8IEJ6wcABCHA6QIUZiC96PCBCesHAAQhQWAA8Gn5MLEJ6wcAAiGBYGcgvejwgQnrBwAFIUFgIEYA8Fz5AigH0gnrBwACIcDpAhRnIL3o8IEP0f8iIEYxRgDwNvhIsQMgSfgHAAnrBwAFIUFgZyC96PCBAyBJ+AcAACCw65YPCesHAU/wBgJKYAi/vejwgU/qlggAJlT4JgABMAzRVfgmAET4JgAA8EL5ATZGRU/wAADw073o8IEJ6wcABSGiGcDpAhJoIL3o8IEt6fBBQPIEBw1GBEbA8gAHBSAWRkn4BwAJ6wcAACGqB8DpARHBYAfQCesHAAMhwOkCFWUgvejwgQnrBwACIUFgAPDS+KBCFdgA8ND4oEIR2QnrBwADIUFgBesECADwxviARQ/ZCesHAAQhwOkCGGYgvejwgQnrBwAEIcDpAhRmIL3o8IEJ6wcABCEALUFgBL8AIL3o8IEAIQfgAL8BMalCT/AAACi/vejwgWBcsEL10GAYCesHAQUiwekCIAEgvejwgQC/LenwQUDyBAUERsDyAAUEIJBGD0ZJ+AUACesFAAAhogfA6QERwWAI0AnrBQADIWUmwOkCFDBGvejwgQnrBQABIUFgAPBv+KBCEtgA8G34oEIO2QnrBQADIUFgPhkA8GT4hkIO2QnrBQAEIcDpAhYE4AnrBQAEIcDpAhRmJjBGvejwgQAhseuXDwnrBQBP8AQBQWAL0LgIACEiaFj4ITCaQgvRATGBQgTxBAT10wnrBQAFIUFgMEa96PCBCesFAAYhwOkCFCBGvejwgQAAQPIwEMDy/wABaAExHL8AaHBHQPbgcc/yAAEIeEloYfMLIHBHQPIgIMDy/wABaAExFL8AaE/0gFBwRwC/QPIkIMDy/wABaAExFL8AaE/0AHBwRwC/ACBwRwAgcEcQtf/34f8ERv/36v8A+wTwEL0AvwFEgUKcvwEgcEcD4IhCJL8BIHBHUPgEKwEyHL8AIHBH9OcAv3BHAL8AIHBHAyBwRwMohL9pIHBHgLVAsgWhUfggAEnyBFHF8gMBCGAA8Ar4ACCAvQAAAAACAAAAAQAAAAAAAABJ8gBAxfIDAAFoACn80HBHSfIMUMXyAwABIQFg8OcAv4GwAJAAmE/w/zEBYAGw5+dpIHBHsLX/96f/BEZAsQAlKEb/9+3///eD/wVEpUL30wAgsL0AAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x20000008
   pc_init: 0x1
   pc_uninit: 0x41
   pc_program_page: 0x135
   pc_erase_sector: 0xb5
   pc_erase_all: 0x99
+  pc_verify: 0x331
   data_section_offset: 0x524
   flash_properties:
     address_range:
@@ -64,17 +128,17 @@ flash_algorithms:
     sectors:
     - size: 0x1000
       address: 0x0
-  cores:
-  - main
 - name: nrf91xx_uicr
   description: nRF91xxx UICR Erase
   default: true
   instructions: cLVA8gQGwPIABgAlCesGAEn4BlDA6QFVxWDQshRGAPDj+QAoHr8J6wYBwekCBAVGKEZwvRC1BEYAIADw1flA8gQBwPIAAUlEELHB6QIEA+CJaAApCL8QvUTyAAHC8gABASIKYEDyBALA8gACWfgCMEpES2BTaItgk2jLYNJoCmEQvQC/gLVA8gQAwPIAAAEhSfgAEEhEACHA6QERwWAA8MX5ACCAvQC/ELVA8gQAwPIAAAIhSfgAEEhEACTA6QFExGAA8FP5AUZI8gAAwPL/AP8iAPAL+DCxAPC4+QRGaSgUvwAsACQgRhC9AL9wtUDyBAzA8gAMBSNJ+AwwCesMA0/wAA6EB8PpAe7D+AzgBdAJ6wwBAyLB6QIgDOAJ6wwDT/ABDowHw/gE4AjQCesMAAMiwOkCIU/wZQ5wRnC9SPb/fsDy/w4J6wwDAiRwRVxgBdkJ6wwBBCLB6QIgDeALGA7xAQUJ6wwEAyarQmZgCNkJ6wwABCHA6QITT/BmDnBGcL1RsQAjT/AADgC/xlyWQgfRATOLQvnTC+BP8AAOcEZwvRhECesMAQUiT/ABDsHpAiBwRnC9AL8t6fBBQPIEBsDyAAYVRgRGAyAJ6wYCACOPB0n4BgDC6QEz02AG0AnrBgLC6QIBZSC96PCBSPb/cMDy/wAJ6wYCAiOEQlNgB9kJ6wYABCHA6QIUZiC96PCBChkBMAnrBgMDJ4JCX2AH2QnrBgAEIcDpAhJmIL3o8IEAILDrkQ8b0E/qkQgAJwzgVfgnAET4JwAA8Oj4ATdHRU/wAAAov73o8IFU+CcAATDu0AnrBgAFIeIZwOkCEmggvejwgXC1QPIEDMDyAAwEI0n4DDAJ6wwDT/AADoQHw+kB7sP4DOAF0AnrDAEDIsHpAiAM4AnrDANP8AEOjAfD+ATgB9AJ6wwAAyLA6QIhZSMYRnC9SPb/fsDy/w4J6wwDAiRwRVxgBdkJ6wwBBCLB6QIgDeALGA7xAQUJ6wwEAyarQmZgB9kJ6wwABCHA6QITZiMYRnC9ACW165EPCesMBk/wBAV1YBTQT+qRDgAhAL8EaFL4IVCsQgXRATFxRQDxBAD10wXgCesMAQYiA0bB6QIgGEZwvQAAQPIwEMDy/wABaAExHL8AaHBHQPbgcc/yAAEIeEloYfMLIHBHQPIgIMDy/wABaAExFL8AaE/0gFBwRwC/QPIkIMDy/wABaAExFL8AaE/0AHBwRwC/ACBwRwAgcEcQtf/34f8ERv/36v8A+wTwEL0AvwFEgUKcvwEgcEcD4IhCJL8BIHBHUPgEKwEyHL8AIHBH9OcAv3BHAL8AIHBHAyBwRwMohL9pIHBHgLVAsgWhUfggAEnyBFHF8gMBCGAA8Ar4ACCAvQAAAAACAAAAAQAAAAAAAABJ8gBAxfIDAAFoACn80HBHSfIMUMXyAwABIQFg8OcAv4GwAJAAmE/w/zEBYAGw5+dpIHBHsLX/96f/BEZAsQAlKEb/9+3///eD/wVEpUL30wAgsL0AAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x20000008
   pc_init: 0x1
   pc_uninit: 0x35
   pc_program_page: 0x1b9
   pc_erase_sector: 0xa9
   pc_erase_all: 0x85
+  pc_verify: 0x275
   data_section_offset: 0x470
   flash_properties:
     address_range:
@@ -87,5 +151,3 @@ flash_algorithms:
     sectors:
     - size: 0x1000
       address: 0x0
-  cores:
-  - main
