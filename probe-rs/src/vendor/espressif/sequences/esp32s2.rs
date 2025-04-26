@@ -10,7 +10,9 @@ use crate::{
     MemoryInterface, Session,
     architecture::xtensa::{
         Xtensa,
-        communication_interface::{XtensaCommunicationInterface, XtensaError},
+        communication_interface::{
+            MemoryRegionProperties, XtensaCommunicationInterface, XtensaError,
+        },
         sequences::XtensaDebugSequence,
         xdm::{self, DebugControlBits, DebugRegisterError},
     },
@@ -146,14 +148,33 @@ impl ESP32S2 {
 
 impl XtensaDebugSequence for ESP32S2 {
     fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
-        interface
-            .core_properties()
-            .fast_memory_access_ranges
-            .extend_from_slice(&[
-                0x3F40_0000..0x3F50_0000, // Peripherals
-                0x3FF9_E000..0x4000_0000, // Data
-                0x4000_0000..0x4007_2000, // Instruction
-            ]);
+        // Peripherals
+        interface.core_properties().memory_ranges.insert(
+            0x3F40_0000..0x3F50_0000,
+            MemoryRegionProperties {
+                unaligned_store: false,
+                unaligned_load: false,
+                fast_memory_access: true,
+            },
+        );
+        // Data
+        interface.core_properties().memory_ranges.insert(
+            0x3FF9_E000..0x4000_0000,
+            MemoryRegionProperties {
+                unaligned_store: true,
+                unaligned_load: true,
+                fast_memory_access: true,
+            },
+        );
+        // Instruction
+        interface.core_properties().memory_ranges.insert(
+            0x4000_0000..0x4007_2000,
+            MemoryRegionProperties {
+                unaligned_store: false,
+                unaligned_load: false,
+                fast_memory_access: true,
+            },
+        );
 
         self.disable_wdts(interface)
     }

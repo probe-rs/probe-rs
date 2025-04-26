@@ -10,7 +10,9 @@ use crate::{
     MemoryInterface, Session,
     architecture::xtensa::{
         Xtensa,
-        communication_interface::{ProgramCounter, XtensaCommunicationInterface, XtensaError},
+        communication_interface::{
+            MemoryRegionProperties, ProgramCounter, XtensaCommunicationInterface, XtensaError,
+        },
         sequences::XtensaDebugSequence,
         xdm,
     },
@@ -77,13 +79,24 @@ impl ESP32 {
 
 impl XtensaDebugSequence for ESP32 {
     fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
-        interface
-            .core_properties()
-            .fast_memory_access_ranges
-            .extend_from_slice(&[
-                0x3FF8_0000..0x4000_0000, // Data
-                0x4000_0000..0x400C_2000, // Instruction
-            ]);
+        // Data
+        interface.core_properties().memory_ranges.insert(
+            0x3FF8_0000..0x4000_0000,
+            MemoryRegionProperties {
+                unaligned_store: true,
+                unaligned_load: true,
+                fast_memory_access: true,
+            },
+        );
+        // Instruction
+        interface.core_properties().memory_ranges.insert(
+            0x4000_0000..0x400C_2000,
+            MemoryRegionProperties {
+                unaligned_store: false,
+                unaligned_load: false,
+                fast_memory_access: true,
+            },
+        );
 
         self.disable_wdts(interface)
     }
