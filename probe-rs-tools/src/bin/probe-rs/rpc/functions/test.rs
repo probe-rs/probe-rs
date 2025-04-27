@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
 use postcard_schema::Schema;
 use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
@@ -151,7 +152,11 @@ fn list_tests_impl(
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
-        sender: sender.rtt_event_sender(),
+        sender: |message| {
+            sender
+                .send_rtt_event(message)
+                .context("Failed to send RTT event")
+        },
     });
 
     match run_loop.run_until(
@@ -236,7 +241,11 @@ fn run_test_impl(
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
-        sender: sender.rtt_event_sender(),
+        sender: |message| {
+            sender
+                .send_rtt_event(message)
+                .context("Failed to send RTT event")
+        },
     });
 
     match run_loop.run_until(

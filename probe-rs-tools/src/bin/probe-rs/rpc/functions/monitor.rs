@@ -109,8 +109,8 @@ impl MonitorSender {
         self.semihosting_output.blocking_send(event)
     }
 
-    pub(crate) fn rtt_event_sender(&self) -> mpsc::Sender<RttEvent> {
-        self.rtt.clone()
+    pub(crate) fn send_rtt_event(&self, event: RttEvent) -> Result<(), SendError<RttEvent>> {
+        self.rtt.blocking_send(event)
     }
 }
 
@@ -182,7 +182,11 @@ fn monitor_impl(
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
-        sender: sender.rtt_event_sender(),
+        sender: |message| {
+            sender
+                .send_rtt_event(message)
+                .context("Failed to send RTT event")
+        },
     });
 
     run_loop.run_until(
@@ -197,12 +201,20 @@ fn monitor_impl(
     Ok(())
 }
 
-pub struct RttPoller<'c> {
+pub struct RttPoller<'c, S>
+where
+    S: FnMut(RttEvent) -> anyhow::Result<()>,
+    S: 'c,
+{
     pub rtt_client: &'c mut RttClient,
-    pub sender: mpsc::Sender<RttEvent>,
+    pub sender: S,
 }
 
-impl RunLoopPoller for RttPoller<'_> {
+impl<'c, S> RunLoopPoller for RttPoller<'c, S>
+where
+    S: FnMut(RttEvent) -> anyhow::Result<()>,
+    S: 'c,
+{
     fn start(&mut self, _core: &mut Core<'_>) -> anyhow::Result<()> {
         Ok(())
     }
@@ -222,12 +234,11 @@ impl RunLoopPoller for RttPoller<'_> {
                 .iter()
                 .map(|c| c.channel_name())
                 .collect::<Vec<_>>();
-            self.sender
-                .blocking_send(RttEvent::Discovered {
-                    up_channels,
-                    down_channels,
-                })
-                .with_context(|| "Failed to send RTT discovery")?;
+            (self.sender)(RttEvent::Discovered {
+                up_channels,
+                down_channels,
+            })
+            .with_context(|| "Failed to send RTT discovery")?;
         }
 
         let mut next_poll = Duration::from_millis(100);
@@ -238,12 +249,11 @@ impl RunLoopPoller for RttPoller<'_> {
                 // Once we receive new data, we bump the frequency to 1kHz.
                 next_poll = Duration::from_millis(1);
 
-                self.sender
-                    .blocking_send(RttEvent::Output {
-                        channel: channel as u32,
-                        bytes: bytes.to_vec(),
-                    })
-                    .with_context(|| "Failed to send RTT output")?;
+                (self.sender)(RttEvent::Output {
+                    channel: channel as u32,
+                    bytes: bytes.to_vec(),
+                })
+                .with_context(|| "Failed to send RTT output")?;
             }
         }
 
