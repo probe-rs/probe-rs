@@ -31,11 +31,11 @@ use crate::{
             AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint,
             CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint,
             ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint,
-            MonitorTopic, ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint,
-            ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint,
-            RpcResult, RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint,
-            TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner,
-            VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
+            ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
+            ReadMemory64Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult,
+            RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic,
+            TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner, VerifyEndpoint,
+            WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
             WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
@@ -45,7 +45,7 @@ use crate::{
             },
             info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
-            monitor::{MonitorEvent, MonitorMode, MonitorOptions, MonitorRequest},
+            monitor::{MonitorMode, MonitorOptions, MonitorRequest},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
                 ListProbesRequest, SelectProbeRequest, SelectProbeResult,
@@ -58,7 +58,10 @@ use crate::{
         },
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
     },
-    util::rtt::{RttChannelConfig, client::RttClient},
+    util::{
+        cli::MonitorEvent,
+        rtt::{RttChannelConfig, client::RttClient},
+    },
 };
 
 #[cfg(feature = "remote")]
@@ -299,7 +302,6 @@ impl RpcClient {
         E::Request: Serialize + Schema,
         E::Response: DeserializeOwned + Schema,
         T: MultiTopic,
-        T::Message: DeserializeOwned,
     {
         let mut stream = match T::subscribe(&self.client, 64).await {
             Ok(stream) => stream,
@@ -519,7 +521,7 @@ impl SessionInterface {
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<Tests> {
         self.client
-            .send_and_read_stream::<ListTestsEndpoint, MonitorTopic, _>(
+            .send_and_read_stream::<ListTestsEndpoint, MonitorEvent, _>(
                 &ListTestsRequest {
                     sessid: self.sessid,
                     boot_info,
@@ -537,7 +539,7 @@ impl SessionInterface {
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<TestResult> {
         self.client
-            .send_and_read_stream::<RunTestEndpoint, MonitorTopic, _>(
+            .send_and_read_stream::<RunTestEndpoint, MonitorEvent, _>(
                 &RunTestRequest {
                     sessid: self.sessid,
                     test,
@@ -691,13 +693,13 @@ impl CoreInterface {
 }
 
 #[derive(Debug)]
-pub struct MultiSubscribeError {
+pub(crate) struct MultiSubscribeError {
     topic: &'static str,
     error: SubscribeError,
 }
 
-trait MultiTopic {
-    type Message: DeserializeOwned;
+pub(crate) trait MultiTopic {
+    type Message;
     type Subscription: MultiSubscription<Message = Self::Message>;
 
     async fn subscribe<E>(
@@ -733,27 +735,18 @@ where
     }
 }
 
-impl MultiTopic for MonitorEvent {
-    type Message = Self;
-    type Subscription = Subscription<Self>;
+pub(crate) trait MultiSubscription {
+    type Message;
 
-    async fn subscribe<E>(
-        client: &HostClient<E>,
-        depth: usize,
-    ) -> Result<Self::Subscription, SubscribeError>
-    where
-        E: DeserializeOwned + Schema,
-    {
-        // TODO: remove MonitorEvent from the RPC interface, split this subscribe into two:
-        // one for RTT, one for semihosting, then introduce a MultiSubscription impl for them
-        MonitorTopic::subscribe(client, depth)
+    async fn next(&mut self) -> Option<Self::Message>;
+    async fn stream(&mut self, mut on_msg: impl AsyncFnMut(Self::Message)) -> anyhow::Result<()> {
+        while let Some(message) = self.next().await {
+            on_msg(message).await;
+        }
+
+        tracing::warn!("Failed to read topic");
+        futures_util::future::pending().await
     }
-}
-
-trait MultiSubscription {
-    type Message: DeserializeOwned;
-
-    async fn stream(&mut self, on_msg: impl AsyncFnMut(Self::Message)) -> anyhow::Result<()>;
 }
 
 impl<T> MultiSubscription for Subscription<T>
@@ -762,12 +755,7 @@ where
 {
     type Message = T;
 
-    async fn stream(&mut self, mut on_msg: impl AsyncFnMut(Self::Message)) -> anyhow::Result<()> {
-        while let Some(message) = self.recv().await {
-            on_msg(message).await;
-        }
-
-        tracing::warn!("Failed to read topic");
-        futures_util::future::pending().await
+    async fn next(&mut self) -> Option<Self::Message> {
+        self.recv().await
     }
 }

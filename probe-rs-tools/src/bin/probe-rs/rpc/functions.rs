@@ -20,7 +20,7 @@ use crate::{
             },
             info::{InfoEvent, TargetInfoRequest, target_info},
             memory::{ReadMemoryRequest, WriteMemoryRequest, read_memory, write_memory},
-            monitor::{MonitorEvent, MonitorRequest, monitor},
+            monitor::{MonitorRequest, RttEvent, SemihostingEvent, monitor},
             probe::{
                 AttachRequest, AttachResponse, ListProbesRequest, ListProbesResponse, attach,
                 list_probes,
@@ -150,6 +150,65 @@ pub struct RpcSpawnContext {
     sender: PostcardSender<WireTxImpl>,
 }
 
+pub(crate) trait MultiTopicWriter {
+    type Sender: Send + 'static;
+    type Publisher: MultiTopicPublisher;
+
+    fn create(token: CancellationToken) -> (Self::Sender, Self::Publisher);
+}
+
+impl<T> MultiTopicWriter for T
+where
+    T: Topic,
+    T::Message: Serialize + Sized + Send + 'static,
+{
+    type Sender = Sender<T::Message>;
+    type Publisher = TopicPublisher<T>;
+
+    fn create(token: CancellationToken) -> (Self::Sender, Self::Publisher) {
+        let (tx, rx) = channel::<T::Message>(256);
+        (tx, TopicPublisher { rx, token })
+    }
+}
+
+pub(crate) trait MultiTopicPublisher {
+    async fn publish(self, sender: &PostcardSender<WireTxImpl>);
+}
+
+pub(crate) struct TopicPublisher<T>
+where
+    T: Topic,
+    T::Message: Serialize + Sized + Send + 'static,
+{
+    rx: Receiver<T::Message>,
+    token: CancellationToken,
+}
+
+impl<T> MultiTopicPublisher for TopicPublisher<T>
+where
+    T: Topic,
+    T::Message: Serialize + Sized + Send + 'static,
+{
+    async fn publish(mut self, sender: &PostcardSender<WireTxImpl>) {
+        loop {
+            tokio::select! {
+                biased;
+
+                _ = self.token.cancelled() => break,
+                Some(event) = self.rx.recv() => {
+                    sender
+                        .publish::<T>(VarSeq::Seq2(0), &event)
+                        .await
+                        .unwrap();
+                }
+            }
+        }
+        std::mem::drop(self.rx);
+
+        futures_util::future::pending().await
+    }
+}
+
 impl RpcSpawnContext {
     fn dry_run(&self, sessid: Key<Session>) -> bool {
         self.state.dry_run(sessid)
@@ -172,41 +231,20 @@ impl RpcSpawnContext {
 
     pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
     where
-        T: Topic,
-        T::Message: Serialize + Schema + Sized + Send + 'static,
-        F: FnOnce(RpcSpawnContext, REQ, Sender<T::Message>) -> RESP,
+        T: MultiTopicWriter,
+        F: FnOnce(RpcSpawnContext, REQ, T::Sender) -> RESP,
         F: Send + 'static,
         REQ: Send + 'static,
         RESP: Send + 'static,
     {
-        let (channel_sender, mut channel_receiver) = tokio::sync::mpsc::channel::<T::Message>(256);
-
-        let sender = self.sender.clone();
         let token = self.cancellation_token();
-        let sender = async move {
-            loop {
-                tokio::select! {
-                    biased;
-
-                    _ = token.cancelled() => break,
-                    Some(event) = channel_receiver.recv() => {
-                        sender
-                            .publish::<T>(VarSeq::Seq2(0), &event)
-                            .await
-                            .unwrap();
-                    }
-                }
-            }
-            std::mem::drop(channel_receiver);
-
-            futures_util::future::pending().await
-        };
+        let (sender, publisher) = T::create(token);
 
         let ctx = self.clone();
-        let blocking = tokio::task::spawn_blocking(move || task(ctx, request, channel_sender));
+        let blocking = tokio::task::spawn_blocking(move || task(ctx, request, sender));
 
         tokio::select! {
-            _ = sender => unreachable!(),
+            _ =  publisher.publish(&self.sender) => unreachable!(),
             response = blocking => {
                 response.unwrap()
             }
@@ -466,11 +504,12 @@ topics! {
 topics! {
     list = TOPICS_OUT_LIST;
     direction = TopicDirection::ToClient;
-    | TopicTy             | MessageTy     | Path              | Cfg |
-    | -------             | ---------     | ----              | --- |
-    | TargetInfoDataTopic | InfoEvent     | "info/data"       |     |
-    | ProgressEventTopic  | ProgressEvent | "flash/progress"  |     |
-    | MonitorTopic        | MonitorEvent  | "monitor"         |     |
+    | TopicTy             | MessageTy        | Path             | Cfg |
+    | -------             | ---------        | ----             | --- |
+    | TargetInfoDataTopic | InfoEvent        | "info/data"      |     |
+    | ProgressEventTopic  | ProgressEvent    | "flash/progress" |     |
+    | RttTopic            | RttEvent         | "rtt"            |     |
+    | SemihostingTopic    | SemihostingEvent | "semihosting"    |     |
 }
 
 postcard_rpc::define_dispatch! {

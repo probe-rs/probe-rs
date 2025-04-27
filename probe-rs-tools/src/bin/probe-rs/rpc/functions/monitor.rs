@@ -3,7 +3,10 @@ use std::{num::NonZeroU32, time::Duration};
 use crate::{
     rpc::{
         Key,
-        functions::{MonitorEndpoint, MonitorTopic, RpcSpawnContext, WireTxImpl, flash::BootInfo},
+        functions::{
+            MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, RpcSpawnContext, RttTopic,
+            SemihostingTopic, WireTxImpl, flash::BootInfo,
+        },
         utils::run_loop::{RunLoop, RunLoopPoller},
     },
     util::rtt::client::RttClient,
@@ -16,7 +19,8 @@ use probe_rs::{
     semihosting::{CloseRequest, OpenRequest, SemihostingCommand, WriteRequest},
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, error::SendError};
+use tokio_util::sync::CancellationToken;
 
 #[derive(Serialize, Deserialize, Schema)]
 pub enum MonitorMode {
@@ -39,23 +43,6 @@ impl MonitorMode {
             MonitorMode::AttachToRunning => Ok(()),
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-// TODO: maybe this should be an enum of RttEvent | SemihostingEvent? Communicate semihosting stream without strings, by adding open/close events?
-pub enum MonitorEvent {
-    RttDiscovered {
-        up_channels: Vec<String>,
-        down_channels: Vec<String>,
-    },
-    RttOutput {
-        channel: u32,
-        bytes: Vec<u8>,
-    },
-    SemihostingOutput {
-        stream: String,
-        data: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -83,7 +70,7 @@ pub async fn monitor(
     sender: Sender<WireTxImpl>,
 ) {
     let resp = ctx
-        .run_blocking::<MonitorTopic, _, _, _>(request, monitor_impl)
+        .run_blocking::<MonitorSender, _, _, _>(request, monitor_impl)
         .await
         .map_err(Into::into);
 
@@ -93,15 +80,84 @@ pub async fn monitor(
         .unwrap();
 }
 
+#[derive(Serialize, Deserialize, Schema)]
+pub enum RttEvent {
+    Discovered {
+        up_channels: Vec<String>,
+        down_channels: Vec<String>,
+    },
+    Output {
+        channel: u32,
+        bytes: Vec<u8>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub enum SemihostingEvent {
+    Output { stream: String, data: String },
+}
+
+pub(crate) struct MonitorSender {
+    rtt: mpsc::Sender<RttEvent>,
+    semihosting_output: mpsc::Sender<SemihostingEvent>,
+}
+impl MonitorSender {
+    pub(crate) fn send_semihosting_event(
+        &self,
+        event: SemihostingEvent,
+    ) -> Result<(), SendError<SemihostingEvent>> {
+        self.semihosting_output.blocking_send(event)
+    }
+
+    pub(crate) fn rtt_event_sender(&self) -> mpsc::Sender<RttEvent> {
+        self.rtt.clone()
+    }
+}
+
+pub(crate) struct MonitorPublisher {
+    rtt: <RttTopic as MultiTopicWriter>::Publisher,
+    semihosting_output: <SemihostingTopic as MultiTopicWriter>::Publisher,
+}
+
+impl MultiTopicWriter for MonitorSender {
+    type Sender = Self;
+    type Publisher = MonitorPublisher;
+
+    fn create(token: CancellationToken) -> (Self::Sender, Self::Publisher) {
+        let (rtt_sender, rtt_publisher) = RttTopic::create(token.clone());
+        let (semihosting_sender, semihosting_publisher) = SemihostingTopic::create(token);
+
+        (
+            Self {
+                rtt: rtt_sender,
+                semihosting_output: semihosting_sender,
+            },
+            MonitorPublisher {
+                rtt: rtt_publisher,
+                semihosting_output: semihosting_publisher,
+            },
+        )
+    }
+}
+
+impl MultiTopicPublisher for MonitorPublisher {
+    async fn publish(self, sender: &Sender<WireTxImpl>) {
+        tokio::join!(
+            self.rtt.publish(sender),
+            self.semihosting_output.publish(sender)
+        );
+    }
+}
+
 fn monitor_impl(
     ctx: RpcSpawnContext,
     request: MonitorRequest,
-    sender: mpsc::Sender<MonitorEvent>,
+    sender: MonitorSender,
 ) -> anyhow::Result<()> {
     let mut session = ctx.session_blocking(request.sessid);
 
     let mut semihosting_sink =
-        MonitorEventHandler::new(|event| sender.blocking_send(event).unwrap());
+        MonitorEventHandler::new(|event| sender.send_semihosting_event(event).unwrap());
 
     let mut rtt_client = request
         .options
@@ -126,7 +182,7 @@ fn monitor_impl(
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
-        sender: sender.clone(),
+        sender: sender.rtt_event_sender(),
     });
 
     run_loop.run_until(
@@ -143,7 +199,7 @@ fn monitor_impl(
 
 pub struct RttPoller<'c> {
     pub rtt_client: &'c mut RttClient,
-    pub sender: mpsc::Sender<MonitorEvent>,
+    pub sender: mpsc::Sender<RttEvent>,
 }
 
 impl RunLoopPoller for RttPoller<'_> {
@@ -167,7 +223,7 @@ impl RunLoopPoller for RttPoller<'_> {
                 .map(|c| c.channel_name())
                 .collect::<Vec<_>>();
             self.sender
-                .blocking_send(MonitorEvent::RttDiscovered {
+                .blocking_send(RttEvent::Discovered {
                     up_channels,
                     down_channels,
                 })
@@ -183,7 +239,7 @@ impl RunLoopPoller for RttPoller<'_> {
                 next_poll = Duration::from_millis(1);
 
                 self.sender
-                    .blocking_send(MonitorEvent::RttOutput {
+                    .blocking_send(RttEvent::Output {
                         channel: channel as u32,
                         bytes: bytes.to_vec(),
                     })
@@ -200,12 +256,12 @@ impl RunLoopPoller for RttPoller<'_> {
     }
 }
 
-struct MonitorEventHandler<F: FnMut(MonitorEvent)> {
+struct MonitorEventHandler<F: FnMut(SemihostingEvent)> {
     sender: F,
     semihosting_reader: SemihostingReader,
 }
 
-impl<F: FnMut(MonitorEvent)> MonitorEventHandler<F> {
+impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
     pub fn new(sender: F) -> Self {
         Self {
             sender,
@@ -245,7 +301,7 @@ impl<F: FnMut(MonitorEvent)> MonitorEventHandler<F> {
             SemihostingCommand::Errno(_) => Ok(None),
             other if SemihostingReader::is_io(other) => {
                 if let Some((stream, data)) = self.semihosting_reader.handle(other, core)? {
-                    (self.sender)(MonitorEvent::SemihostingOutput { stream, data });
+                    (self.sender)(SemihostingEvent::Output { stream, data });
                 }
                 Ok(None)
             }

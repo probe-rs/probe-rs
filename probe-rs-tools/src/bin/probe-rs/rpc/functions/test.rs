@@ -4,16 +4,14 @@ use postcard_rpc::{header::VarHeader, server::Sender};
 use postcard_schema::Schema;
 use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
 
 use crate::{
     rpc::{
         Key,
         functions::{
-            ListTestsEndpoint, MonitorTopic, RpcResult, RpcSpawnContext, RunTestEndpoint,
-            WireTxImpl,
+            ListTestsEndpoint, RpcResult, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
             flash::BootInfo,
-            monitor::{MonitorEvent, RttPoller, SemihostingReader},
+            monitor::{MonitorSender, RttPoller, SemihostingEvent, SemihostingReader},
         },
         utils::run_loop::{ReturnReason, RunLoop},
     },
@@ -114,7 +112,7 @@ pub async fn list_tests(
     sender: Sender<WireTxImpl>,
 ) {
     let resp = ctx
-        .run_blocking::<MonitorTopic, _, _, _>(request, list_tests_impl)
+        .run_blocking::<MonitorSender, _, _, _>(request, list_tests_impl)
         .await
         .map_err(Into::into);
 
@@ -127,10 +125,11 @@ pub async fn list_tests(
 fn list_tests_impl(
     ctx: RpcSpawnContext,
     request: ListTestsRequest,
-    sender: mpsc::Sender<MonitorEvent>,
+    sender: MonitorSender,
 ) -> anyhow::Result<Tests> {
     let mut session = ctx.session_blocking(request.sessid);
-    let mut list_handler = ListEventHandler::new(|event| sender.blocking_send(event).unwrap());
+    let mut list_handler =
+        ListEventHandler::new(|event| sender.send_semihosting_event(event).unwrap());
 
     let mut rtt_client = request
         .rtt_client
@@ -152,7 +151,7 @@ fn list_tests_impl(
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
-        sender: sender.clone(),
+        sender: sender.rtt_event_sender(),
     });
 
     match run_loop.run_until(
@@ -191,7 +190,7 @@ pub async fn run_test(
     sender: Sender<WireTxImpl>,
 ) {
     let resp = ctx
-        .run_blocking::<MonitorTopic, _, _, _>(request, run_test_impl)
+        .run_blocking::<MonitorSender, _, _, _>(request, run_test_impl)
         .await
         .map_err(Into::into);
 
@@ -204,7 +203,7 @@ pub async fn run_test(
 fn run_test_impl(
     ctx: RpcSpawnContext,
     request: RunTestRequest,
-    sender: mpsc::Sender<MonitorEvent>,
+    sender: MonitorSender,
 ) -> anyhow::Result<TestResult> {
     tracing::info!("Running test {}", request.test.name);
 
@@ -226,8 +225,9 @@ fn run_test_impl(
     }
 
     let expected_outcome = request.test.expected_outcome;
-    let mut run_handler =
-        RunEventHandler::new(request.test, |event| sender.blocking_send(event).unwrap());
+    let mut run_handler = RunEventHandler::new(request.test, |event| {
+        sender.send_semihosting_event(event).unwrap()
+    });
 
     let mut run_loop = RunLoop {
         core_id,
@@ -236,7 +236,7 @@ fn run_test_impl(
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
-        sender: sender.clone(),
+        sender: sender.rtt_event_sender(),
     });
 
     match run_loop.run_until(
@@ -260,13 +260,13 @@ fn run_test_impl(
     }
 }
 
-struct ListEventHandler<F: FnMut(MonitorEvent)> {
+struct ListEventHandler<F: FnMut(SemihostingEvent)> {
     semihosting_reader: SemihostingReader,
     cmdline_requested: bool,
     sender: F,
 }
 
-impl<F: FnMut(MonitorEvent)> ListEventHandler<F> {
+impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
     const SEMIHOSTING_USER_LIST: u32 = 0x100;
 
     fn new(sender: F) -> Self {
@@ -309,7 +309,7 @@ impl<F: FnMut(MonitorEvent)> ListEventHandler<F> {
             }
             other if SemihostingReader::is_io(other) => {
                 if let Some((stream, data)) = self.semihosting_reader.handle(other, core)? {
-                    (self.sender)(MonitorEvent::SemihostingOutput { stream, data });
+                    (self.sender)(SemihostingEvent::Output { stream, data });
                 }
                 Ok(None)
             }
@@ -337,14 +337,14 @@ fn read_test_list(
     Ok(list)
 }
 
-struct RunEventHandler<F: FnMut(MonitorEvent)> {
+struct RunEventHandler<F: FnMut(SemihostingEvent)> {
     semihosting_reader: SemihostingReader,
     cmdline_requested: bool,
     test: Test,
     sender: F,
 }
 
-impl<F: FnMut(MonitorEvent)> RunEventHandler<F> {
+impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
     fn new(test: Test, sender: F) -> Self {
         Self {
             test,
@@ -384,7 +384,7 @@ impl<F: FnMut(MonitorEvent)> RunEventHandler<F> {
             }
             other if SemihostingReader::is_io(other) => {
                 if let Some((stream, data)) = self.semihosting_reader.handle(other, core)? {
-                    (self.sender)(MonitorEvent::SemihostingOutput { stream, data });
+                    (self.sender)(SemihostingEvent::Output { stream, data });
                 }
                 Ok(None)
             }
