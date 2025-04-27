@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use colored::Colorize;
 use linkme::distributed_slice;
 use miette::IntoDiagnostic;
 use probe_rs::{
@@ -7,13 +8,13 @@ use probe_rs::{
     config::MemoryRegion, probe::DebugProbeError,
 };
 
-use crate::{CORE_TESTS, TestFailure, TestResult, TestTracker};
+use crate::{CORE_TESTS, TestFailure, TestResult, TestTracker, println_test_status};
 
 const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
 
 #[distributed_slice(CORE_TESTS)]
 fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
-    println!("Testing stepping...");
+    println_test_status!(tracker, blue, "Testing stepping on core {}...", core.id());
 
     if core.architecture() != Architecture::Arm {
         // Not implemented for RISC-V yet
@@ -70,9 +71,11 @@ fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
     assert_eq!(r0_value, 0);
 
-    println!("R0 value ok!");
+    println_test_status!(tracker, green, "R0 value ok!");
 
-    println!(
+    println_test_status!(
+        tracker,
+        blue,
         "Core halted at {:#08x}, now trying to run...",
         core_information.pc
     );
@@ -84,25 +87,25 @@ fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
     match core.wait_for_core_halted(Duration::from_millis(100)) {
         Ok(()) => {}
         Err(Error::Probe(DebugProbeError::Timeout)) => {
-            println!("Core did not halt after timeout!");
+            println_test_status!(tracker, yellow, "Core did not halt after timeout!");
             core.halt(Duration::from_millis(100)).into_diagnostic()?;
 
             let pc: u64 = core
                 .read_core_reg(core.program_counter())
                 .into_diagnostic()?;
 
-            println!("Core stopped at: {pc:#08x}");
+            println_test_status!(tracker, blue, "Core stopped at: {pc:#08x}");
 
             let r2_val: u64 = core
                 .read_core_reg(registers.core_register(2))
                 .into_diagnostic()?;
 
-            println!("$r2 = {r2_val:#08x}");
+            println_test_status!(tracker, blue, "$r2 = {r2_val:#08x}");
         }
         Err(other) => return Err(other.into()),
     }
 
-    println!("Core halted again!");
+    println_test_status!(tracker, green, "Core halted again!");
 
     let core_status = core.status().into_diagnostic()?;
 
@@ -118,13 +121,17 @@ fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
     assert_eq!(pc, break_address);
 
-    println!("Core halted at {pc:#08x}, now trying to run...");
+    println_test_status!(
+        tracker,
+        blue,
+        "Core halted at {pc:#08x}, now trying to run..."
+    );
 
     // Increase PC by 2 to skip breakpoint.
     core.write_core_reg(core.program_counter(), pc + 2)
         .into_diagnostic()?;
 
-    println!("Run core again, with pc = {:#010x}", pc + 2);
+    println_test_status!(tracker, blue, "Run core again, with pc = {:#010x}", pc + 2);
 
     // Run to the finish
     core.run().into_diagnostic()?;
@@ -136,20 +143,20 @@ fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
     match core.wait_for_core_halted(Duration::from_millis(100)) {
         Ok(()) => {}
         Err(Error::Probe(DebugProbeError::Timeout)) => {
-            println!("Core did not halt after timeout!");
+            println_test_status!(tracker, yellow, "Core did not halt after timeout!");
             core.halt(Duration::from_millis(100)).into_diagnostic()?;
 
             let pc: u64 = core
                 .read_core_reg(core.program_counter())
                 .into_diagnostic()?;
 
-            println!("Core stopped at: {pc:#08x}");
+            println_test_status!(tracker, blue, "Core stopped at: {pc:#08x}");
 
             let r2_val: u64 = core
                 .read_core_reg(registers.core_register(2))
                 .into_diagnostic()?;
 
-            println!("$r2 = {r2_val:#08x}");
+            println_test_status!(tracker, blue, "$r2 = {r2_val:#08x}");
         }
         Err(other) => return Err(other.into()),
     }
