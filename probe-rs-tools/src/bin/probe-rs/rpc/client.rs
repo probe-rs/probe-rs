@@ -9,7 +9,7 @@
 use postcard_rpc::{
     Topic,
     header::{VarSeq, VarSeqKind},
-    host_client::{HostClient, HostClientConfig, HostErr, IoClosed, Subscription},
+    host_client::{HostClient, HostClientConfig, HostErr, IoClosed, SubscribeError, Subscription},
 };
 use postcard_schema::Schema;
 use probe_rs::{Session, config::Registry, flashing::FlashLoader};
@@ -298,17 +298,17 @@ impl RpcClient {
         E: postcard_rpc::Endpoint<Response = RpcResult<R>>,
         E::Request: Serialize + Schema,
         E::Response: DeserializeOwned + Schema,
-        T: Topic,
+        T: MultiTopic,
         T::Message: DeserializeOwned,
     {
-        let mut stream = match self.client.subscribe_exclusive::<T>(64).await {
+        let mut stream = match T::subscribe(&self.client, 64).await {
             Ok(stream) => stream,
-            Err(err) => anyhow::bail!("Failed to subscribe to '{}': {err:?}", T::PATH),
+            Err(err) => anyhow::bail!("Failed to subscribe to '{}': {:?}", err.topic, err.error),
         };
 
         tokio::select! {
             biased;
-            _ = read_stream(&mut stream, on_msg) => anyhow::bail!("Topic reader returned unexpectedly"),
+            _ = stream.stream(on_msg) => anyhow::bail!("Topic reader returned unexpectedly"),
             r = self.send_resp::<E, R>(req) => r,
         }
     }
@@ -501,7 +501,7 @@ impl SessionInterface {
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<()> {
         self.client
-            .send_and_read_stream::<MonitorEndpoint, MonitorTopic, _>(
+            .send_and_read_stream::<MonitorEndpoint, MonitorEvent, _>(
                 &MonitorRequest {
                     sessid: self.sessid,
                     mode,
@@ -690,14 +690,84 @@ impl CoreInterface {
     }
 }
 
-async fn read_stream<T>(stream: &mut Subscription<T>, mut on_msg: impl AsyncFnMut(T))
+#[derive(Debug)]
+pub struct MultiSubscribeError {
+    topic: &'static str,
+    error: SubscribeError,
+}
+
+trait MultiTopic {
+    type Message: DeserializeOwned;
+    type Subscription: MultiSubscription<Message = Self::Message>;
+
+    async fn subscribe<E>(
+        client: &HostClient<E>,
+        depth: usize,
+    ) -> Result<Self::Subscription, MultiSubscribeError>
+    where
+        E: DeserializeOwned + Schema;
+}
+
+impl<T> MultiTopic for T
+where
+    T: Topic,
+    T::Message: DeserializeOwned,
+{
+    type Message = T::Message;
+    type Subscription = Subscription<T::Message>;
+
+    async fn subscribe<E>(
+        client: &HostClient<E>,
+        depth: usize,
+    ) -> Result<Self::Subscription, MultiSubscribeError>
+    where
+        E: DeserializeOwned + Schema,
+    {
+        match client.subscribe_exclusive::<Self>(depth).await {
+            Ok(subscription) => Ok(subscription),
+            Err(error) => Err(MultiSubscribeError {
+                topic: T::PATH,
+                error,
+            }),
+        }
+    }
+}
+
+impl MultiTopic for MonitorEvent {
+    type Message = Self;
+    type Subscription = Subscription<Self>;
+
+    async fn subscribe<E>(
+        client: &HostClient<E>,
+        depth: usize,
+    ) -> Result<Self::Subscription, SubscribeError>
+    where
+        E: DeserializeOwned + Schema,
+    {
+        // TODO: remove MonitorEvent from the RPC interface, split this subscribe into two:
+        // one for RTT, one for semihosting, then introduce a MultiSubscription impl for them
+        MonitorTopic::subscribe(client, depth)
+    }
+}
+
+trait MultiSubscription {
+    type Message: DeserializeOwned;
+
+    async fn stream(&mut self, on_msg: impl AsyncFnMut(Self::Message)) -> anyhow::Result<()>;
+}
+
+impl<T> MultiSubscription for Subscription<T>
 where
     T: DeserializeOwned,
 {
-    while let Some(message) = stream.recv().await {
-        on_msg(message).await;
-    }
+    type Message = T;
 
-    tracing::warn!("Failed to read topic");
-    futures_util::future::pending().await
+    async fn stream(&mut self, mut on_msg: impl AsyncFnMut(Self::Message)) -> anyhow::Result<()> {
+        while let Some(message) = self.recv().await {
+            on_msg(message).await;
+        }
+
+        tracing::warn!("Failed to read topic");
+        futures_util::future::pending().await
+    }
 }
