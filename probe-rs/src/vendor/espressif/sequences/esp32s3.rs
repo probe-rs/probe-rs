@@ -10,7 +10,9 @@ use crate::{
     MemoryInterface, Session,
     architecture::xtensa::{
         Xtensa,
-        communication_interface::{ProgramCounter, XtensaCommunicationInterface, XtensaError},
+        communication_interface::{
+            MemoryRegionProperties, ProgramCounter, XtensaCommunicationInterface, XtensaError,
+        },
         sequences::XtensaDebugSequence,
         xdm,
     },
@@ -83,15 +85,42 @@ impl ESP32S3 {
 
 impl XtensaDebugSequence for ESP32S3 {
     fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
-        interface
-            .core_properties()
-            .fast_memory_access_ranges
-            .extend_from_slice(&[
-                0x3FC8_8000..0x3FD0_0000, // Internal DRAM
-                0x3FF0_0000..0x3FF2_0000, // Internal DROM
-                0x4000_0000..0x4006_0000, // Internal IROM
-                0x4037_0000..0x403E_0000, // Internal IRAM
-            ]);
+        // Internal DRAM
+        interface.core_properties().memory_ranges.insert(
+            0x3FC8_8000..0x3FD0_0000,
+            MemoryRegionProperties {
+                unaligned_store: true,
+                unaligned_load: true,
+                fast_memory_access: true,
+            },
+        );
+        // Internal DROM
+        interface.core_properties().memory_ranges.insert(
+            0x3FF0_0000..0x3FF2_0000,
+            MemoryRegionProperties {
+                unaligned_store: false,
+                unaligned_load: true,
+                fast_memory_access: true,
+            },
+        );
+        // Internal IROM
+        interface.core_properties().memory_ranges.insert(
+            0x4000_0000..0x4006_0000,
+            MemoryRegionProperties {
+                unaligned_store: false,
+                unaligned_load: false,
+                fast_memory_access: true,
+            },
+        );
+        // Internal IRAM
+        interface.core_properties().memory_ranges.insert(
+            0x4037_0000..0x403E_0000,
+            MemoryRegionProperties {
+                unaligned_store: false,
+                unaligned_load: false,
+                fast_memory_access: true,
+            },
+        );
 
         self.disable_wdts(interface)
     }

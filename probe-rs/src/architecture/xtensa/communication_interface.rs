@@ -1,11 +1,11 @@
 //! Xtensa Debug Module Communication
 
 use std::{
+    collections::HashMap,
     ops::Range,
     time::{Duration, Instant},
 };
 
-use probe_rs_target::MemoryRange;
 use zerocopy::IntoBytes;
 
 use crate::{
@@ -109,6 +109,19 @@ pub(super) struct XtensaInterfaceState {
     pub(super) is_halted: bool,
 }
 
+/// Properties of a memory region.
+#[derive(Clone, Copy, Default)]
+pub struct MemoryRegionProperties {
+    /// Whether the CPU supports unaligned stores. (Hardware Alignment Option)
+    pub unaligned_store: bool,
+
+    /// Whether the CPU supports unaligned loads. (Hardware Alignment Option)
+    pub unaligned_load: bool,
+
+    /// Whether the CPU supports fast memory access in this region. (LDDR32.P/SDDR32.P instructions)
+    pub fast_memory_access: bool,
+}
+
 /// Properties of an Xtensa CPU core.
 pub struct XtensaCoreProperties {
     /// The number of hardware breakpoints the target supports. CPU-specific configuration value.
@@ -117,8 +130,8 @@ pub struct XtensaCoreProperties {
     /// The interrupt level at which debug exceptions are generated. CPU-specific configuration value.
     pub debug_level: DebugLevel,
 
-    /// The address ranges for which we can use LDDR32.P/SDDR32.P instructions.
-    pub fast_memory_access_ranges: Vec<Range<u64>>,
+    /// Known memory ranges with special properties.
+    pub memory_ranges: HashMap<Range<u64>, MemoryRegionProperties>,
 
     /// Configurable options in the Windowed Register Option
     pub window_option_properties: WindowProperties,
@@ -129,9 +142,57 @@ impl Default for XtensaCoreProperties {
         Self {
             hw_breakpoint_num: 2,
             debug_level: DebugLevel::L6,
-            fast_memory_access_ranges: vec![],
+            memory_ranges: HashMap::new(),
             window_option_properties: WindowProperties::lx(64),
         }
+    }
+}
+
+impl XtensaCoreProperties {
+    /// Returns the memory range for the given address.
+    pub fn memory_properties_at(&self, address: u64) -> MemoryRegionProperties {
+        self.memory_ranges
+            .iter()
+            .find(|(range, _)| range.contains(&address))
+            .map(|(_, region)| *region)
+            .unwrap_or_default()
+    }
+
+    /// Returns the conservative memory range properties for the given address range.
+    pub fn memory_range_properties(&self, range: Range<u64>) -> MemoryRegionProperties {
+        let mut start = range.start;
+        let end = range.end;
+
+        if start == end {
+            return MemoryRegionProperties::default();
+        }
+
+        let mut properties = MemoryRegionProperties {
+            unaligned_store: true,
+            unaligned_load: true,
+            fast_memory_access: true,
+        };
+        while start < end {
+            // Find region that contains the start address.
+            let containing_region = self
+                .memory_ranges
+                .iter()
+                .find(|(range, _)| range.contains(&start));
+
+            let Some((range, region_properties)) = containing_region else {
+                // no point in continuing
+                return MemoryRegionProperties::default();
+            };
+
+            properties.unaligned_store &= region_properties.unaligned_store;
+            properties.unaligned_load &= region_properties.unaligned_load;
+            properties.fast_memory_access &= region_properties.fast_memory_access;
+
+            // Move start to the end of the region.
+            start = range.end;
+        }
+
+        properties
     }
 }
 
@@ -596,13 +657,11 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     fn memory_access_for(&self, address: u64, len: usize) -> Box<dyn MemoryAccess> {
-        let use_fast_access = self
+        if self
             .core_properties
-            .fast_memory_access_ranges
-            .iter()
-            .any(|r| r.intersects_range(&(address..address + len as u64)));
-
-        if use_fast_access {
+            .memory_range_properties(address..address + len as u64)
+            .fast_memory_access
+        {
             Box::new(FastMemoryAccess::new())
         } else {
             Box::new(SlowMemoryAccess::new())
@@ -629,12 +688,17 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         address: u64,
         mut dst: &mut [u8],
     ) -> Result<(), XtensaError> {
-        memory_access.load_initial_address_for_read(self, address as u32 & !0x3)?;
-
         let mut to_read = dst.len();
 
-        // Let's assume we can just do 32b reads, so let's do some pre-massaging on unaligned reads
-        let first_read = if address % 4 != 0 {
+        // Let's assume we can just do 32b reads, so let's
+        // do some pre-massaging on unaligned reads if needed.
+        let first_read = if address % 4 != 0
+            && !self
+                .core_properties
+                .memory_range_properties(address..address + dst.len() as u64)
+                .unaligned_load
+        {
+            memory_access.load_initial_address_for_read(self, address as u32 & !0x3)?;
             let offset = address as usize % 4;
 
             // Avoid executing another read if we only have to read a single word
@@ -650,6 +714,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
             Some((first_read, offset, bytes_to_copy))
         } else {
+            // The read is either aligned or the core supports unaligned loads.
+            memory_access.load_initial_address_for_read(self, address as u32)?;
             None
         };
 
@@ -704,43 +770,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         })
     }
 
-    fn write_memory_unaligned8(
-        &mut self,
-        memory_access: &mut dyn MemoryAccess,
-        address: u32,
-        data: &[u8],
-    ) -> Result<(), XtensaError> {
-        if data.is_empty() {
-            return Ok(());
-        }
-
-        let offset = address as usize % 4;
-        let aligned_address = address & !0x3;
-
-        assert!(
-            offset + data.len() <= 4,
-            "Trying to write data crossing a word boundary"
-        );
-
-        // Avoid reading back if we have a complete word
-        let data = if offset == 0 && data.len() == 4 {
-            data.try_into().unwrap()
-        } else {
-            // Read the aligned word
-            let mut word = [0; 4];
-            self.read_memory_impl(memory_access, aligned_address as u64, &mut word)?;
-
-            // Replace the written bytes. This will also panic if the input is crossing a word boundary
-            word[offset..][..data.len()].copy_from_slice(data);
-
-            word
-        };
-
-        // Write the word back
-        memory_access.load_initial_address_for_write(self, aligned_address)?;
-        memory_access.write_one(self, u32::from_le_bytes(data))
-    }
-
     fn write_memory_impl(
         &mut self,
         memory_access: &mut dyn MemoryAccess,
@@ -749,12 +778,32 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     ) -> Result<(), XtensaError> {
         let mut addr = address as u32;
 
-        // We store the unaligned head of the data separately
+        // We store the unaligned head of the data separately. In case the core supports unaligned
+        // load/store, we can just write the data directly.
         let mut address_loaded = false;
-        if addr % 4 != 0 {
+        if addr % 4 != 0
+            && !self
+                .core_properties
+                .memory_range_properties(address..address + buffer.len() as u64)
+                .unaligned_store
+        {
+            // If the core does not support unaligned load/store, read-modify-write the first
+            // few unaligned bytes. We are calculating `unaligned_bytes` so that we are not going
+            // across a word boundary here.
             let unaligned_bytes = (4 - (addr % 4) as usize).min(buffer.len());
+            let aligned_address = address & !0x3;
+            let offset_in_word = address as usize % 4;
 
-            self.write_memory_unaligned8(memory_access, addr, &buffer[..unaligned_bytes])?;
+            // Read the aligned word
+            let mut word = [0; 4];
+            self.read_memory_impl(memory_access, aligned_address, &mut word)?;
+
+            // Replace the written bytes.
+            word[offset_in_word..][..unaligned_bytes].copy_from_slice(&buffer[..unaligned_bytes]);
+
+            // Write the word back.
+            memory_access.load_initial_address_for_write(self, aligned_address as u32)?;
+            memory_access.write_one(self, u32::from_le_bytes(word))?;
 
             buffer = &buffer[unaligned_bytes..];
             addr += unaligned_bytes as u32;
@@ -762,6 +811,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             address_loaded = true;
         }
 
+        // Store whole words. If the core needs aligned accesses, the above block will have
+        // already stored the first unaligned part.
         if buffer.len() >= 4 {
             if !address_loaded {
                 memory_access.load_initial_address_for_write(self, addr)?;
@@ -780,9 +831,22 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             buffer = chunks.remainder();
         }
 
-        // We store the narrow tail of the data separately
+        // We store the narrow tail of the data (1-3 bytes) separately.
         if !buffer.is_empty() {
-            self.write_memory_unaligned8(memory_access, addr, buffer)?;
+            // We have 1-3 bytes left to write. If the core does not support unaligned load/store,
+            // the above blocks took care of aligning `addr` so we don't have to worry about
+            // crossing a word boundary here.
+
+            // Read the aligned word
+            let mut word = [0; 4];
+            self.read_memory_impl(memory_access, addr as u64, &mut word)?;
+
+            // Replace the written bytes.
+            word[..buffer.len()].copy_from_slice(buffer);
+
+            // Write the word back. We need to set the address because the read may have changed it.
+            memory_access.load_initial_address_for_write(self, addr)?;
+            memory_access.write_one(self, u32::from_le_bytes(word))?;
         }
 
         // TODO: implement cache flushing on CPUs that need it.
