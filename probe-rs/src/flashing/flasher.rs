@@ -1,7 +1,9 @@
 use probe_rs_target::{RawFlashAlgorithm, TransferEncoding};
 use tracing::Level;
 
-use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
+use super::{
+    FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress, ProgressOperation,
+};
 use crate::config::NvmRegion;
 use crate::error::Error;
 use crate::flashing::encoder::FlashEncoder;
@@ -431,16 +433,12 @@ impl Flasher {
         progress: &FlashProgress,
         ignore_filled: bool,
     ) -> Result<bool, FlashError> {
-        progress.started_verifying();
-
-        let result = self.do_verify(session, progress, ignore_filled);
-
-        match result.is_ok() {
-            true => progress.finished_preverifying(),
-            false => progress.failed_preverifying(),
-        }
-
-        result
+        self.verify_common(
+            session,
+            progress,
+            ignore_filled,
+            ProgressOperation::Preverify,
+        )
     }
 
     /// Verifies all the to-be-written bytes of this flasher.
@@ -450,13 +448,23 @@ impl Flasher {
         progress: &FlashProgress,
         ignore_filled: bool,
     ) -> Result<bool, FlashError> {
+        self.verify_common(session, progress, ignore_filled, ProgressOperation::Verify)
+    }
+
+    fn verify_common(
+        &mut self,
+        session: &mut Session,
+        progress: &FlashProgress,
+        ignore_filled: bool,
+        operation: ProgressOperation,
+    ) -> Result<bool, FlashError> {
         progress.started_verifying();
 
         let result = self.do_verify(session, progress, ignore_filled);
 
         match result.is_ok() {
-            true => progress.finished_verifying(),
-            false => progress.failed_verifying(),
+            true => progress.finished(operation),
+            false => progress.finished(operation),
         }
 
         result

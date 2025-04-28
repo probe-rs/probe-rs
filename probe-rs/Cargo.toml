@@ -70,6 +70,7 @@ hexdump = { version = "0.1", optional = true }
 
 rmp-serde = { version = "1" }
 dunce = "1.0.5"
+enum-map = "2.7.3"
 
 [build-dependencies]
 probe-rs-target = { workspace = true, optional = true }
