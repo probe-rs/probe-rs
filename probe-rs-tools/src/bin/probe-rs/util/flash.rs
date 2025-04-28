@@ -1,4 +1,4 @@
-use crate::rpc::functions::flash::{FlashLayout, Operation, ProgressEvent};
+use crate::rpc::functions::flash::{FlashLayout, ProgressEvent};
 use crate::{FormatKind, FormatOptions};
 
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
@@ -9,10 +9,11 @@ use std::time::Duration;
 use std::{path::Path, time::Instant};
 
 use colored::Colorize;
+use enum_map::EnumMap;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use probe_rs::InstructionSet;
-use probe_rs::flashing::{BinOptions, FlashProgress, Format, IdfOptions};
+use probe_rs::flashing::{BinOptions, FlashProgress, Format, IdfOptions, ProgressOperation};
 use probe_rs::{
     Session,
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},
@@ -120,12 +121,7 @@ pub fn build_loader(
     probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
 }
 
-pub struct ProgressBars {
-    pub erase: ProgressBarGroup,
-    pub fill: ProgressBarGroup,
-    pub program: ProgressBarGroup,
-    pub verify: ProgressBarGroup,
-}
+type ProgressBars = EnumMap<ProgressOperation, ProgressBarGroup>;
 
 pub struct ProgressBarGroup {
     message: String,
@@ -134,9 +130,9 @@ pub struct ProgressBarGroup {
 }
 
 impl ProgressBarGroup {
-    pub fn new(message: &str) -> Self {
+    pub fn new(message: String) -> Self {
         Self {
-            message: message.to_string(),
+            message,
             bars: vec![],
             selected: 0,
         }
@@ -240,12 +236,15 @@ impl CliProgressBars {
         let multi_progress = MultiProgress::new();
         logging::set_progress_bar(multi_progress.clone());
 
-        let progress_bars = Mutex::new(ProgressBars {
-            erase: ProgressBarGroup::new("      Erasing"),
-            fill: ProgressBarGroup::new("Reading flash"),
-            program: ProgressBarGroup::new("  Programming"),
-            verify: ProgressBarGroup::new("    Verifying"),
-        });
+        let progress_bars = Mutex::new(ProgressBars::from_fn(|operation| {
+            let message = match operation {
+                ProgressOperation::Erase => "Erasing",
+                ProgressOperation::Fill => "Reading flash",
+                ProgressOperation::Program => "Programming",
+                ProgressOperation::Verify => "Verifying",
+            };
+            ProgressBarGroup::new(format!("{:>13}", message))
+        }));
 
         Self {
             multi_progress,
@@ -267,42 +266,20 @@ impl CliProgressBars {
                 } else {
                     ProgressBar::no_length()
                 });
-                match operation {
-                    Operation::Fill => progress_bars.fill.add(bar),
-                    Operation::Erase => progress_bars.erase.add(bar),
-                    Operation::Program => progress_bars.program.add(bar),
-                    Operation::Verify => progress_bars.verify.add(bar),
-                }
+                progress_bars[operation.into()].add(bar);
             }
-
-            ProgressEvent::Started(operation) => match operation {
-                Operation::Fill => progress_bars.fill.mark_start_now(),
-                Operation::Erase => progress_bars.erase.mark_start_now(),
-                Operation::Program => progress_bars.program.mark_start_now(),
-                Operation::Verify => progress_bars.verify.mark_start_now(),
-            },
-
-            ProgressEvent::Progress { operation, size } => match operation {
-                Operation::Fill => progress_bars.fill.inc(size),
-                Operation::Erase => progress_bars.erase.inc(size),
-                Operation::Program => progress_bars.program.inc(size),
-                Operation::Verify => progress_bars.verify.inc(size),
-            },
-
-            ProgressEvent::Failed(operation) => match operation {
-                Operation::Fill => progress_bars.fill.abandon(),
-                Operation::Erase => progress_bars.erase.abandon(),
-                Operation::Program => progress_bars.program.abandon(),
-                Operation::Verify => progress_bars.verify.abandon(),
-            },
-
-            ProgressEvent::Finished(operation) => match operation {
-                Operation::Fill => progress_bars.fill.finish(),
-                Operation::Erase => progress_bars.erase.finish(),
-                Operation::Program => progress_bars.program.finish(),
-                Operation::Verify => progress_bars.verify.finish(),
-            },
-
+            ProgressEvent::Started(operation) => {
+                progress_bars[operation.into()].mark_start_now();
+            }
+            ProgressEvent::Progress { operation, size } => {
+                progress_bars[operation.into()].inc(size);
+            }
+            ProgressEvent::Failed(operation) => {
+                progress_bars[operation.into()].abandon();
+            }
+            ProgressEvent::Finished(operation) => {
+                progress_bars[operation.into()].finish();
+            }
             ProgressEvent::DiagnosticMessage { .. } => {}
         }
     }

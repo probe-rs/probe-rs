@@ -204,6 +204,17 @@ impl From<flashing::ProgressOperation> for Operation {
     }
 }
 
+impl From<Operation> for flashing::ProgressOperation {
+    fn from(operation: Operation) -> Self {
+        match operation {
+            Operation::Fill => Self::Fill,
+            Operation::Erase => Self::Erase,
+            Operation::Program => Self::Program,
+            Operation::Verify => Self::Verify,
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, Schema)]
 pub enum ProgressEvent {
     FlashLayoutReady {
