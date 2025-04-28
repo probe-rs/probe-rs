@@ -13,7 +13,7 @@ use crate::{
             ListTestsEndpoint, MonitorTopic, RpcResult, RpcSpawnContext, RunTestEndpoint,
             WireTxImpl,
             flash::BootInfo,
-            monitor::{MonitorEvent, RttPoller, SemihostingOutput, SemihostingReader},
+            monitor::{MonitorEvent, RttPoller, SemihostingReader},
         },
         utils::run_loop::{ReturnReason, RunLoop},
     },
@@ -95,12 +95,6 @@ pub enum TestResult {
     Success,
     Failed(String),
     Cancelled,
-}
-
-#[derive(Serialize, Deserialize, Schema)]
-pub enum TestEvent {
-    RttOutput(String),
-    SemihostingOutput(SemihostingOutput),
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -314,8 +308,8 @@ impl<F: FnMut(MonitorEvent)> ListEventHandler<F> {
                 Ok(Some(list.into()))
             }
             other if SemihostingReader::is_io(other) => {
-                if let Some(output) = self.semihosting_reader.handle(other, core)? {
-                    (self.sender)(MonitorEvent::SemihostingOutput(output));
+                if let Some((stream, data)) = self.semihosting_reader.handle(other, core)? {
+                    (self.sender)(MonitorEvent::SemihostingOutput { stream, data });
                 }
                 Ok(None)
             }
@@ -389,8 +383,8 @@ impl<F: FnMut(MonitorEvent)> RunEventHandler<F> {
                 Ok(Some(TestOutcome::Panic))
             }
             other if SemihostingReader::is_io(other) => {
-                if let Some(output) = self.semihosting_reader.handle(other, core)? {
-                    (self.sender)(MonitorEvent::SemihostingOutput(output));
+                if let Some((stream, data)) = self.semihosting_reader.handle(other, core)? {
+                    (self.sender)(MonitorEvent::SemihostingOutput { stream, data });
                 }
                 Ok(None)
             }
