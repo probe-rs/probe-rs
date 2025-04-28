@@ -65,7 +65,11 @@ pub(crate) trait IteratorExt: Sized {
     fn collapse_bytes(self) -> ByteIter<Self>;
 }
 
-impl<I: Iterator<Item = bool>> IteratorExt for I {
+impl<I, T> IteratorExt for I
+where
+    I: Iterator<Item = T>,
+    T: Into<bool>,
+{
     fn collapse_bytes(self) -> ByteIter<Self> {
         ByteIter { inner: self }
     }
@@ -75,7 +79,11 @@ pub(crate) struct ByteIter<I> {
     inner: I,
 }
 
-impl<I: Iterator<Item = bool>> Iterator for ByteIter<I> {
+impl<I, T> Iterator for ByteIter<I>
+where
+    I: Iterator<Item = T>,
+    T: Into<bool>,
+{
     type Item = u8;
 
     fn next(&mut self) -> Option<u8> {
@@ -84,7 +92,7 @@ impl<I: Iterator<Item = bool>> Iterator for ByteIter<I> {
         let mut has_data = false;
         for (pos, bit) in self.inner.by_ref().take(8).enumerate() {
             has_data = true;
-            byte |= (bit as u8) << pos;
+            byte |= (bit.into() as u8) << pos;
         }
 
         has_data.then_some(byte)

@@ -13,7 +13,7 @@ use crate::{
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
         ProbeCreationError, ProbeFactory, ScanChainElement, WireProtocol,
-        arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
+        arm_debug_interface::{IoSequenceItem, ProbeStatistics, RawProtocolIo, SwdSettings},
         common::{JtagDriverState, RawJtagIo},
     },
 };
@@ -457,10 +457,9 @@ impl RawProtocolIo for FtdiProbe {
         Ok(())
     }
 
-    fn swd_io<D, S>(&mut self, _dir: D, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    fn swd_io<S>(&mut self, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
-        D: IntoIterator<Item = bool>,
-        S: IntoIterator<Item = bool>,
+        S: IntoIterator<Item = IoSequenceItem>,
     {
         Err(DebugProbeError::NotImplemented {
             function_name: "swd_io",

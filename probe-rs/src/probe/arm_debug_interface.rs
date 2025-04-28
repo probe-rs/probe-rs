@@ -365,7 +365,7 @@ fn perform_swd_transfers<P: RawProtocolIo>(
         io_sequence.extend(&transfer.io_sequence());
     }
 
-    let result = probe.swd_io(io_sequence.direction_bits(), io_sequence.io_bits())?;
+    let result = probe.swd_io(io_sequence.io_items())?;
 
     let mut result_bits = &result[..];
 
@@ -826,32 +826,47 @@ enum TransferStatus {
     Failed(DapError),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum IoSequenceItem {
+    Output(bool),
+    Input,
+}
+
+impl From<IoSequenceItem> for bool {
+    fn from(item: IoSequenceItem) -> Self {
+        match item {
+            IoSequenceItem::Output(b) => b,
+            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
+        }
+    }
+}
+
+impl From<IoSequenceItem> for u8 {
+    fn from(value: IoSequenceItem) -> Self {
+        match value {
+            IoSequenceItem::Output(b) => b as u8,
+            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
+        }
+    }
+}
+
 struct IoSequence {
-    io: Vec<bool>,
-    direction: Vec<bool>,
+    io: Vec<IoSequenceItem>,
 }
 
 impl IoSequence {
-    const INPUT: bool = false;
-    const OUTPUT: bool = true;
-
     fn new() -> Self {
-        IoSequence {
-            io: vec![],
-            direction: vec![],
-        }
+        IoSequence { io: vec![] }
     }
 
     fn with_capacity(capacity: usize) -> Self {
         IoSequence {
             io: Vec::with_capacity(capacity),
-            direction: Vec::with_capacity(capacity),
         }
     }
 
     fn reserve(&mut self, idle_cycles_after: usize) {
         self.io.reserve(idle_cycles_after);
-        self.direction.reserve(idle_cycles_after);
     }
 
     fn from_bytes(data: &[u8], mut bits: usize) -> Self {
@@ -871,13 +886,11 @@ impl IoSequence {
     }
 
     fn add_output(&mut self, bit: bool) {
-        self.io.push(bit);
-        self.direction.push(Self::OUTPUT);
+        self.io.push(IoSequenceItem::Output(bit));
     }
 
     fn add_input(&mut self) {
-        self.io.push(false);
-        self.direction.push(Self::INPUT);
+        self.io.push(IoSequenceItem::Input);
     }
 
     fn add_input_sequence(&mut self, length: usize) {
@@ -886,17 +899,12 @@ impl IoSequence {
         }
     }
 
-    fn io_bits(&self) -> impl Iterator<Item = bool> + '_ {
+    fn io_items(&self) -> impl Iterator<Item = IoSequenceItem> + '_ {
         self.io.iter().copied()
-    }
-
-    fn direction_bits(&self) -> impl Iterator<Item = bool> + '_ {
-        self.direction.iter().copied()
     }
 
     fn extend(&mut self, other: &IoSequence) {
         self.io.extend_from_slice(&other.io);
-        self.direction.extend_from_slice(&other.direction);
     }
 }
 
@@ -1037,10 +1045,9 @@ pub trait RawProtocolIo {
     where
         I: IntoIterator<Item = bool>;
 
-    fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
-        D: IntoIterator<Item = bool>,
-        S: IntoIterator<Item = bool>;
+        S: IntoIterator<Item = IoSequenceItem>;
 
     fn swj_pins(
         &mut self,
@@ -1278,10 +1285,10 @@ fn send_sequence<P: RawProtocolIo + JTAGAccess>(
         WireProtocol::Jtag => {
             // Swj sequences should be shifted out to tms, since that is the pin
             // shared between swd and jtag modes.
-            probe.jtag_shift_tms(sequence.io_bits(), false)?;
+            probe.jtag_shift_tms(sequence.io_items().map(|i| i.into()), false)?;
         }
         WireProtocol::Swd => {
-            probe.swd_io(sequence.direction_bits(), sequence.io_bits())?;
+            probe.swd_io(sequence.io_items())?;
         }
     }
 
@@ -1300,7 +1307,7 @@ mod test {
     };
 
     use super::{
-        JTAG_ABORT_IR_VALUE, JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE,
+        IoSequenceItem, JTAG_ABORT_IR_VALUE, JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE,
         JTAG_DR_BIT_LENGTH, JTAG_STATUS_OK, JTAG_STATUS_WAIT, ProbeStatistics, RawProtocolIo,
         SwdSettings,
     };
@@ -1326,8 +1333,7 @@ mod test {
 
     #[derive(Debug)]
     struct MockJaylink {
-        direction_input: Option<Vec<bool>>,
-        io_input: Option<Vec<bool>>,
+        io_input: Option<Vec<IoSequenceItem>>,
         transfer_responses: Vec<Vec<bool>>,
         jtag_transactions: Vec<ExpectedJtagTransaction>,
 
@@ -1345,7 +1351,6 @@ mod test {
     impl MockJaylink {
         fn new() -> Self {
             Self {
-                direction_input: None,
                 io_input: None,
                 transfer_responses: vec![vec![]],
                 jtag_transactions: vec![],
@@ -1584,18 +1589,11 @@ mod test {
             Ok(())
         }
 
-        fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+        fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
         where
-            D: IntoIterator<Item = bool>,
-            S: IntoIterator<Item = bool>,
+            S: IntoIterator<Item = IoSequenceItem>,
         {
-            self.direction_input = Some(dir.into_iter().collect());
             self.io_input = Some(swdio.into_iter().collect());
-
-            assert_eq!(
-                self.direction_input.as_ref().unwrap().len(),
-                self.io_input.as_ref().unwrap().len()
-            );
 
             let transfer_response = self.transfer_responses.remove(0);
 
