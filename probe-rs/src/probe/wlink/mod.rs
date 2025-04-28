@@ -227,7 +227,7 @@ impl WchLink {
         self.v_minor = probe_info.minor_version;
 
         if self.v_major != 0x02 && self.v_minor < 0x07 {
-            return Err(WchLinkError::UnsupportedFirmwareVersion.into());
+            return Err(WchLinkError::UnsupportedFirmwareVersion("2.7").into());
         }
 
         self.variant = probe_info.variant;
@@ -252,8 +252,8 @@ impl WchLink {
             version_code
         );
 
-        if self.v_major != 0x02 && self.v_minor > 7 {
-            return Err(WchLinkError::UnsupportedFirmwareVersion.into());
+        if self.v_major != 0x02 && self.v_minor < 0x7 {
+            return Err(WchLinkError::UnsupportedFirmwareVersion("2.7").into());
         }
         self.name = format!("{} v{}.{}", self.variant, self.v_major, self.v_minor);
 
@@ -555,8 +555,8 @@ fn list_wlink_devices() -> Vec<DebugProbeInfo> {
 pub(crate) enum WchLinkError {
     /// Unknown WCH-Link device.
     UnknownDevice,
-    /// Firmware version is not supported.
-    UnsupportedFirmwareVersion,
+    /// The firmware on the probe is outdated, and not supported by probe-rs. The minimum supported firmware version is {0}.
+    UnsupportedFirmwareVersion(&'static str),
     /// Not enough bytes written.
     NotEnoughBytesWritten { is: usize, should: usize },
     /// Not enough bytes read.
