@@ -245,7 +245,7 @@ fn reject_probe_by_version(
     device_version: u16,
 ) -> Result<(), ProbeCreationError> {
     let denylist = [
-        |vid, pid, version| vid == 0x2e8a && pid == 0x000c && version < 0x0220, // Old RPi debugprobe
+        |vid, pid, version| (vid == 0x2e8a && pid == 0x000c && version < 0x0220).then_some("2.2.0"), // Old RPi debugprobe
     ];
 
     tracing::debug!(
@@ -255,9 +255,9 @@ fn reject_probe_by_version(
         device_version
     );
     for deny in denylist {
-        if deny(vendor_id, product_id, device_version) {
+        if let Some(min_version) = deny(vendor_id, product_id, device_version) {
             return Err(ProbeCreationError::ProbeSpecific(BoxedProbeError::from(
-                CmsisDapError::ProbeFirmwareOutdated,
+                CmsisDapError::ProbeFirmwareOutdated(min_version),
             )));
         }
     }
