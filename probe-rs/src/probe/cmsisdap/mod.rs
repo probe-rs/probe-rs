@@ -6,8 +6,8 @@ use crate::{
     CoreStatus,
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmError, DapError, Pins, RawDapAccess, RegisterAddress,
-            SwoAccess, SwoConfig, SwoMode,
+            ArmCommunicationInterface, ArmError, DapError, IoSequenceU64, Pins, RawDapAccess,
+            RegisterAddress, SwoAccess, SwoConfig, SwoMode,
             communication_interface::{DapProbe, UninitializedArmProbe},
             dp::{Abort, Ctrl, DpRegister},
             swo::poll_interval_from_buf_size,
@@ -1142,10 +1142,12 @@ impl RawDapAccess for CmsisDap {
         Ok(())
     }
 
-    fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError> {
+    fn jtag_sequence(&mut self, tms: bool, sequence: IoSequenceU64) -> Result<(), DebugProbeError> {
         self.connect_if_needed()?;
 
-        let tdi_bytes = tdi.to_le_bytes();
+        let IoSequenceU64 { cycles, data } = sequence;
+
+        let tdi_bytes = data.to_le_bytes();
         let sequence = JtagSequence::new(cycles, false, tms, tdi_bytes)?;
         let sequences = vec![sequence];
 

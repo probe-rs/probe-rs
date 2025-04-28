@@ -7,7 +7,7 @@ use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::communication_interface::DapProbe;
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
-use crate::architecture::arm::{ArmError, dp::DpAddress};
+use crate::architecture::arm::{ArmError, IoSequenceU64, dp::DpAddress};
 use crate::probe::{DebugProbeError, WireProtocol};
 
 /// Marker struct indicating initialization sequencing for cc13xx_cc26xx family parts.
@@ -31,13 +31,6 @@ enum JtagState {
     ShiftIR = 0x04,
 }
 
-// Set the bottom n bits of a u64 to 1
-// This is lifted directly from:
-// <https://users.rust-lang.org/t/how-to-make-an-integer-with-n-bits-set-without-overflow/63078/6>
-fn set_n_bits(x: u32) -> u64 {
-    u64::checked_shl(1, x).unwrap_or(0).wrapping_sub(1)
-}
-
 impl CC13xxCC26xx {
     /// Create the sequencer for the cc13xx_cc26xx family of parts.
     pub fn create(name: String) -> Arc<Self> {
@@ -54,19 +47,20 @@ impl CC13xxCC26xx {
     /// * `interface` - Reference to interface to interact with CmsisDap
     fn zero_bit_scan(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
         // Enter DRSELECT state
-        interface.jtag_sequence(1, true, 0x01)?;
+        let one_cycle = IoSequenceU64::new(1, 0x01);
+        interface.jtag_sequence(true, one_cycle)?;
         // Enter DRCAPTURE state
-        interface.jtag_sequence(1, false, 0x01)?;
+        interface.jtag_sequence(false, one_cycle)?;
         // Enter DREXIT1 state
-        interface.jtag_sequence(1, true, 0x01)?;
+        interface.jtag_sequence(true, one_cycle)?;
         // Enter DRPAUSE state
-        interface.jtag_sequence(1, false, 0x01)?;
+        interface.jtag_sequence(false, one_cycle)?;
         // Enter DREXIT2 state
-        interface.jtag_sequence(1, true, 0x01)?;
+        interface.jtag_sequence(true, one_cycle)?;
         // Enter DRUPDATE state
-        interface.jtag_sequence(1, true, 0x01)?;
+        interface.jtag_sequence(true, one_cycle)?;
         // Enter Run/Idle state
-        interface.jtag_sequence(1, false, 0x01)?;
+        interface.jtag_sequence(false, one_cycle)?;
 
         Ok(())
     }
@@ -90,8 +84,7 @@ impl CC13xxCC26xx {
         // THis is a wrapper around shift_reg that loads the IR register
         self.shift_reg(
             interface,
-            IR_LEN_IN_BITS,
-            ir,
+            IoSequenceU64::new(IR_LEN_IN_BITS, ir),
             state,
             JtagState::ShiftIR,
             end_state,
@@ -113,12 +106,17 @@ impl CC13xxCC26xx {
     fn shift_dr(
         &self,
         interface: &mut dyn DapProbe,
-        cycles: u8,
-        reg: u64,
+        reg_sequence: IoSequenceU64,
         state: &mut JtagState,
         end_state: JtagState,
     ) -> Result<(), ArmError> {
-        self.shift_reg(interface, cycles, reg, state, JtagState::ShiftDR, end_state)?;
+        self.shift_reg(
+            interface,
+            reg_sequence,
+            state,
+            JtagState::ShiftDR,
+            end_state,
+        )?;
         Ok(())
     }
     /// Load a value into the IR or DR register
@@ -138,42 +136,43 @@ impl CC13xxCC26xx {
     fn shift_reg(
         &self,
         interface: &mut dyn DapProbe,
-        cycles: u8,
-        reg: u64,
+        reg_sequence: IoSequenceU64,
         state: &mut JtagState,
         action: JtagState,
         end_state: JtagState,
     ) -> Result<(), ArmError> {
+        let one_cycle = IoSequenceU64::new(1, 0x01);
         if *state == JtagState::RunTestIdle {
             // Enter DR-Scan state
-            interface.jtag_sequence(1, true, 0x01)?;
+            interface.jtag_sequence(true, one_cycle)?;
         }
         if action == JtagState::ShiftIR {
             // Enter IR-Scan state,
-            interface.jtag_sequence(1, true, 0x01)?;
+            interface.jtag_sequence(true, one_cycle)?;
         }
         // Enter DR or IR CAPTURE state
-        interface.jtag_sequence(1, false, 0x01)?;
+        interface.jtag_sequence(false, one_cycle)?;
         // Enter DR or IR EXIT1 state
-        interface.jtag_sequence(1, true, 0x01)?;
+        interface.jtag_sequence(true, one_cycle)?;
         // Enter DRor IR PAUSE state
-        interface.jtag_sequence(1, false, 0x01)?;
+        interface.jtag_sequence(false, one_cycle)?;
         // Enter DR or IR EXIT2 state
-        interface.jtag_sequence(1, true, 0x01)?;
+        interface.jtag_sequence(true, one_cycle)?;
         // Enter DR or IR SHIFT state
-        interface.jtag_sequence(1, false, 0x01)?;
+        interface.jtag_sequence(false, one_cycle)?;
+        let IoSequenceU64 { cycles, data } = reg_sequence;
         for i in 0..cycles {
             // On the last cycle we want to leave the shift state
             let tms = i == cycles - 1;
             // Mask the register value to get the bit we want to shift in
-            let reg_masked = (reg & (0x01 << u64::from(i))) != 0;
+            let reg_masked = (data & (0x01 << u64::from(i))) != 0;
             // Send to the probe
-            interface.jtag_sequence(1, tms, u64::from(reg_masked))?;
+            interface.jtag_sequence(tms, IoSequenceU64::new(1, u64::from(reg_masked)))?;
         }
         // Enter DR or IR UPDATE state
-        interface.jtag_sequence(1, true, 0x01)?;
+        interface.jtag_sequence(true, one_cycle)?;
         // Enter either run-test-idle or select-dr-scan depending on the end state
-        interface.jtag_sequence(1, end_state == JtagState::SelectDRScan, 0x01)?;
+        interface.jtag_sequence(end_state == JtagState::SelectDRScan, one_cycle)?;
 
         // Update the state to the desired end state
         *state = end_state;
@@ -216,7 +215,12 @@ impl CC13xxCC26xx {
         self.shift_ir(interface, IR_ROUTER, state, JtagState::SelectDRScan)?;
         // Load the data register with the register block, address, and data
         // The address and value to be written is encoded in the DR value
-        self.shift_dr(interface, 32, dr as u64, state, JtagState::SelectDRScan)?;
+        self.shift_dr(
+            interface,
+            IoSequenceU64::new(32, dr as u64),
+            state,
+            JtagState::SelectDRScan,
+        )?;
         Ok(())
     }
 
@@ -239,7 +243,12 @@ impl CC13xxCC26xx {
         // Select the Connect register
         self.shift_ir(interface, IR_CONNECT, state, JtagState::SelectDRScan)?;
         // Enable write, set the `ConnectKey` to 0b1001 (0x9) as per TRM section 6.3.3
-        self.shift_dr(interface, 8, 0x89, state, JtagState::SelectDRScan)?;
+        self.shift_dr(
+            interface,
+            IoSequenceU64::new(8, 0x89),
+            state,
+            JtagState::SelectDRScan,
+        )?;
         // Write to register 1 in the ICEPICK control block - keep JTAG powered in test logic reset
         self.icepick_router(interface, 1, 0, 1, 0x000080, state)?;
         // Write to register 0 in the Debug TAP linking block (Section 6.3.4.3)
@@ -254,7 +263,7 @@ impl CC13xxCC26xx {
         self.shift_ir(interface, IR_BYPASS, state, JtagState::RunTestIdle)?;
 
         // Remain in run-test idle for 10 cycles
-        interface.jtag_sequence(10, false, set_n_bits(10))?;
+        interface.jtag_sequence(false, IoSequenceU64::new_set_n_bits(10))?;
 
         Ok(())
     }
@@ -273,7 +282,12 @@ impl CC13xxCC26xx {
         // <https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35>
         self.zero_bit_scan(interface)?;
         self.zero_bit_scan(interface)?;
-        self.shift_dr(interface, 1, 0x01, jtag_state, JtagState::RunTestIdle)?;
+        self.shift_dr(
+            interface,
+            IoSequenceU64::new(1, 0x01),
+            jtag_state,
+            JtagState::RunTestIdle,
+        )?;
 
         // cJTAG: Switch to 4 pin
         // This is described in section 6.2.2.2 of this document:
@@ -282,15 +296,13 @@ impl CC13xxCC26xx {
         // <https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35>
         self.shift_dr(
             interface,
-            2,
-            set_n_bits(2),
+            IoSequenceU64::new_set_n_bits(2),
             jtag_state,
             JtagState::RunTestIdle,
         )?;
         self.shift_dr(
             interface,
-            9,
-            set_n_bits(9),
+            IoSequenceU64::new_set_n_bits(9),
             jtag_state,
             JtagState::RunTestIdle,
         )?;
@@ -396,7 +408,7 @@ impl ArmDebugSequence for CC13xxCC26xx {
                 // Enter Run-Test-Idle state, quit early if jtag_sequence is not supported
                 if let Err(DebugProbeError::CommandNotSupportedByProbe {
                     command_name: "jtag_sequence",
-                }) = interface.jtag_sequence(1, false, 0x00)
+                }) = interface.jtag_sequence(false, IoSequenceU64::new(1, 0x00))
                 {
                     tracing::error!(
                         "TI devices require a probe that supports the jtag_sequence command"

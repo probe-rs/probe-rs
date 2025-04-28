@@ -9,7 +9,7 @@ use bitvec::{field::BitField, slice::BitSlice};
 use crate::{
     Error,
     architecture::arm::{
-        ArmError, DapError, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
+        ArmError, DapError, FullyQualifiedApAddress, IoSequenceU64, RawDapAccess, RegisterAddress,
         ap::AccessPortError,
         dp::{Abort, Ctrl, DPIDR, DebugPortError, DpRegister, RdBuff},
     },
@@ -1256,10 +1256,8 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         self
     }
 
-    fn jtag_sequence(&mut self, bit_len: u8, tms: bool, bits: u64) -> Result<(), DebugProbeError> {
-        let bits = (0..bit_len).map(|i| (bits >> i) & 1 == 1);
-
-        self.jtag_shift_tdi(tms, bits)?;
+    fn jtag_sequence(&mut self, tms: bool, sequence: IoSequenceU64) -> Result<(), DebugProbeError> {
+        self.jtag_shift_tdi(tms, sequence.turn_into_iterator())?;
 
         Ok(())
     }
