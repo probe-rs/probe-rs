@@ -53,8 +53,8 @@ pub enum CmsisDapError {
     /// Error scanning IR lengths.
     InvalidIR,
 
-    /// The firmware on the probe is outdated, and not supported by probe-rs.
-    ProbeFirmwareOutdated,
+    /// The firmware on the probe is outdated, and not supported by probe-rs. The minimum supported firmware version is {0}.
+    ProbeFirmwareOutdated(&'static str),
 }
 
 impl ProbeError for CmsisDapError {}
