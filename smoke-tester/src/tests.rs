@@ -82,7 +82,7 @@ fn test_write_read(
     println_test_status!(
         tracker,
         blue,
-        "Testing:  write and read at address {:#010X}: {scenario}",
+        "Testing: write and read at address {:#010X}: {scenario}",
         address
     );
 
@@ -118,6 +118,14 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
     for ram in memory_regions {
         let ram_start = ram.range.start;
         let ram_size = ram.range.end - ram.range.start;
+        println_test_status!(
+            tracker,
+            blue,
+            "Testing region: {} ({:#010X} - {:#010X})",
+            ram.name.as_deref().unwrap_or("<unnamed region>"),
+            ram.range.start,
+            ram.range.end
+        );
 
         println_test_status!(tracker, blue, "Test - RAM Start 32");
         // Write first word
@@ -225,6 +233,14 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
     // For this test, we assume that code is executed from Flash / non-volatile memory, and try to set breakpoints
     // in these regions.
     for region in memory_regions {
+        println_test_status!(
+            tracker,
+            blue,
+            "Testing region: {} ({:#010X} - {:#010X})",
+            region.name.as_deref().unwrap_or("<unnamed region>"),
+            region.range.start,
+            region.range.end
+        );
         let initial_breakpoint_addr = region.range.start;
 
         let num_breakpoints = core.available_breakpoint_units().into_diagnostic()?;
