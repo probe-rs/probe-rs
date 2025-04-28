@@ -1049,7 +1049,6 @@ impl DebugProbe for JLink {
                 tracing::debug!("Resetting JTAG chain using trst");
                 self.reset_trst()?;
 
-                self.scan_chain()?;
                 self.select_target(0)?;
             }
             WireProtocol::Swd => {

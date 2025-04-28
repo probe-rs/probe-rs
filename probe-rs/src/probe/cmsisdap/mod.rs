@@ -24,7 +24,7 @@ use crate::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
         },
-        common::{JtagDriverState, RawJtagIo},
+        common::JtagDriverState,
     },
 };
 
@@ -967,11 +967,6 @@ impl DebugProbe for CmsisDap {
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
-        // We need to scan as soon as we know this isn't an ARM interface.
-        if self.jtag_state.scan_chain.is_empty() {
-            self.scan_chain()?;
-            RawJtagIo::select_target(self, 0)?;
-        }
         Ok(Box::new(JtagDtmBuilder::new(self)))
     }
 
@@ -979,11 +974,6 @@ impl DebugProbe for CmsisDap {
         &'probe mut self,
         state: &'probe mut XtensaDebugInterfaceState,
     ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
-        // We need to scan as soon as we know this isn't an ARM interface.
-        if self.jtag_state.scan_chain.is_empty() {
-            self.scan_chain()?;
-            RawJtagIo::select_target(self, 0)?;
-        }
         Ok(XtensaCommunicationInterface::new(self, state))
     }
 

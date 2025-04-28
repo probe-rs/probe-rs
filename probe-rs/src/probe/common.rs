@@ -465,27 +465,6 @@ pub(crate) trait RawJtagIo {
 
         Ok(())
     }
-
-    /// Configures the probe to address the given target.
-    fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError> {
-        let state = self.state_mut();
-
-        let Some(params) = ChainParams::from_jtag_chain(&state.scan_chain, target) else {
-            return Err(DebugProbeError::TargetNotFound);
-        };
-
-        let max_ir_address = (1 << params.irlen) - 1;
-
-        tracing::debug!("Selecting JTAG TAP: {target}");
-        tracing::debug!("Setting chain params: {params:?}");
-        tracing::debug!("Setting max_ir_address to {max_ir_address}");
-
-        let state = self.state_mut();
-        state.max_ir_address = max_ir_address;
-        state.chain_params = params;
-
-        Ok(())
-    }
 }
 
 fn jtag_move_to_state(
@@ -641,6 +620,30 @@ fn prepare_write_register(
 }
 
 impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
+    /// Configures the probe to address the given target.
+    fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError> {
+        if self.state().scan_chain.is_empty() {
+            self.scan_chain()?;
+        }
+
+        let state = self.state_mut();
+
+        let Some(params) = ChainParams::from_jtag_chain(&state.scan_chain, target) else {
+            return Err(DebugProbeError::TargetNotFound);
+        };
+
+        let max_ir_address = (1 << params.irlen) - 1;
+
+        tracing::debug!("Selecting JTAG TAP: {target}");
+        tracing::debug!("Setting chain params: {params:?}");
+        tracing::debug!("Setting max_ir_address to {max_ir_address}");
+
+        state.max_ir_address = max_ir_address;
+        state.chain_params = params;
+
+        Ok(())
+    }
+
     fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
         const MAX_CHAIN: usize = 8;
 
