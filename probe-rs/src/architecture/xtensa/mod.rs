@@ -309,6 +309,11 @@ impl<'probe> Xtensa<'probe> {
                 .store(Register::Cpu(reg), value);
         }
 
+        if self.current_ps()?.excm() {
+            // We are in an exception, possibly WindowOverflowN or WindowUnderflowN.
+            // We can't spill registers in this state.
+            return Ok(());
+        }
         if self.current_ps()?.woe() {
             // We should only spill registers if PS.WOE is set. According to the debug guide, we
             // also should not spill if INTLEVEL != 0 but I don't see why.
