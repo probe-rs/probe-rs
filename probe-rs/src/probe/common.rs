@@ -638,7 +638,6 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         tracing::debug!("Setting chain params: {params:?}");
         tracing::debug!("Setting max_ir_address to {max_ir_address}");
 
-        let state = self.state_mut();
         state.max_ir_address = max_ir_address;
         state.chain_params = params;
 
