@@ -2,7 +2,7 @@ use time::UtcOffset;
 
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
-use crate::util::cli::{self, rtt_client};
+use crate::util::cli::{self, connect_target_output_files, rtt_client};
 
 #[derive(clap::Parser)]
 #[group(skip)]
@@ -29,6 +29,9 @@ impl Cmd {
         )
         .await?;
 
+        let mut target_output_files =
+            connect_target_output_files(self.run.shared_options.target_output_file).await?;
+
         let client_handle = rtt_client.handle();
 
         cli::monitor(
@@ -42,6 +45,7 @@ impl Cmd {
                 rtt_client: Some(client_handle),
             },
             self.run.shared_options.always_print_stacktrace,
+            &mut target_output_files,
         )
         .await?;
 
