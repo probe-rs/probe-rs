@@ -581,10 +581,12 @@ impl Debugger {
         let ref_debug_adapter = RefCell::new(&mut *debug_adapter);
 
         #[derive(Default)]
-        struct ProgressState {
-            total_size: EnumMap<Operation, u64>,
-            size_done: EnumMap<Operation, u64>,
+        struct ProgressBarState {
+            total_size: u64,
+            size_done: u64,
         }
+
+        type ProgressState = EnumMap<Operation, ProgressBarState>;
 
         let progress_state = RefCell::new(ProgressState::default());
 
@@ -601,10 +603,11 @@ impl Debugger {
                 let mut debug_adapter = ref_debug_adapter.borrow_mut();
                 match event {
                     ProgressEvent::AddProgressBar { operation, total } => {
+                        let pbar_state = &mut flash_progress[operation.into()];
                         if let Some(total) = total {
-                            flash_progress.total_size[operation.into()] += total;
-                            flash_progress.size_done[operation.into()] = 0;
-                        }
+                            pbar_state.total_size += total; // should this be an assignment instead?
+                            pbar_state.size_done = 0;
+                        };
                     }
                     ProgressEvent::Started(operation) => {
                         debug_adapter
@@ -614,9 +617,9 @@ impl Debugger {
                     ProgressEvent::Progress {
                         operation, size, ..
                     } => {
-                        flash_progress.size_done[operation.into()] += size;
-                        let progress = flash_progress.size_done[operation.into()] as f64
-                            / flash_progress.total_size[operation.into()] as f64;
+                        let pbar_state = &mut flash_progress[operation.into()];
+                        pbar_state.size_done += size;
+                        let progress = pbar_state.size_done as f64 / pbar_state.total_size as f64;
 
                         debug_adapter
                             .update_progress(Some(progress), Some(messages[operation.into()]), id)
