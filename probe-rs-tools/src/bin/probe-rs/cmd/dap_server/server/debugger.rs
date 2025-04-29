@@ -25,7 +25,6 @@ use crate::{
     util::flash::build_loader,
 };
 use anyhow::{Context, anyhow};
-use enum_map::{EnumMap, enum_map};
 use probe_rs::{
     CoreStatus,
     config::Registry,
@@ -34,6 +33,7 @@ use probe_rs::{
 };
 use std::{
     cell::RefCell,
+    collections::HashMap,
     fs,
     path::Path,
     time::{Duration, UNIX_EPOCH},
@@ -586,12 +586,12 @@ impl Debugger {
             size_done: u64,
         }
 
-        type ProgressState = EnumMap<Operation, ProgressBarState>;
+        type ProgressState = HashMap<Operation, ProgressBarState>;
 
         let progress_state = RefCell::new(ProgressState::default());
 
         download_options.progress = progress_id.map(|id| {
-            let messages = enum_map! {
+            let describe_op = |operation| match Operation::from(operation) {
                 Operation::Fill => "Reading Old Pages",
                 Operation::Erase => "Erasing Sectors",
                 Operation::Program => "Programming Pages",
@@ -603,7 +603,7 @@ impl Debugger {
                 let mut debug_adapter = ref_debug_adapter.borrow_mut();
                 match event {
                     ProgressEvent::AddProgressBar { operation, total } => {
-                        let pbar_state = &mut flash_progress[operation.into()];
+                        let pbar_state = flash_progress.entry(operation.into()).or_default();
                         if let Some(total) = total {
                             pbar_state.total_size += total; // should this be an assignment instead?
                             pbar_state.size_done = 0;
@@ -611,25 +611,25 @@ impl Debugger {
                     }
                     ProgressEvent::Started(operation) => {
                         debug_adapter
-                            .update_progress(None, Some(messages[operation.into()]), id)
+                            .update_progress(None, Some(describe_op(operation)), id)
                             .ok();
                     }
                     ProgressEvent::Progress {
                         operation, size, ..
                     } => {
-                        let pbar_state = &mut flash_progress[operation.into()];
+                        let pbar_state = flash_progress.entry(operation.into()).or_default();
                         pbar_state.size_done += size;
                         let progress = pbar_state.size_done as f64 / pbar_state.total_size as f64;
 
                         debug_adapter
-                            .update_progress(Some(progress), Some(messages[operation.into()]), id)
+                            .update_progress(Some(progress), Some(describe_op(operation)), id)
                             .ok();
                     }
                     ProgressEvent::Failed(operation) => {
                         debug_adapter
                             .update_progress(
                                 Some(1.0),
-                                Some(format!("{} Failed!", messages[operation.into()])),
+                                Some(format!("{} Failed!", describe_op(operation))),
                                 id,
                             )
                             .ok();
@@ -638,7 +638,7 @@ impl Debugger {
                         debug_adapter
                             .update_progress(
                                 Some(1.0),
-                                Some(format!("{} Complete!", messages[operation.into()])),
+                                Some(format!("{} Complete!", describe_op(operation))),
                                 id,
                             )
                             .ok();

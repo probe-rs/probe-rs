@@ -4,12 +4,12 @@ use crate::{FormatKind, FormatOptions};
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
 use super::logging;
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::{path::Path, time::Instant};
 
 use colored::Colorize;
-use enum_map::EnumMap;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use probe_rs::InstructionSet;
@@ -121,7 +121,24 @@ pub fn build_loader(
     probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
 }
 
-type ProgressBars = EnumMap<Operation, ProgressBarGroup>;
+#[derive(Default)]
+pub struct ProgressBars {
+    bars: HashMap<Operation, ProgressBarGroup>,
+}
+
+impl ProgressBars {
+    pub fn get_mut(&mut self, operation: Operation) -> &mut ProgressBarGroup {
+        self.bars.entry(operation).or_insert_with(|| {
+            let message = match operation {
+                Operation::Erase => "Erasing",
+                Operation::Fill => "Reading flash",
+                Operation::Program => "Programming",
+                Operation::Verify => "Verifying",
+            };
+            ProgressBarGroup::new(format!("{:>13}", message))
+        })
+    }
+}
 
 pub struct ProgressBarGroup {
     message: String,
@@ -236,15 +253,7 @@ impl CliProgressBars {
         let multi_progress = MultiProgress::new();
         logging::set_progress_bar(multi_progress.clone());
 
-        let progress_bars = Mutex::new(ProgressBars::from_fn(|operation| {
-            let message = match operation {
-                Operation::Erase => "Erasing",
-                Operation::Fill => "Reading flash",
-                Operation::Program => "Programming",
-                Operation::Verify => "Verifying",
-            };
-            ProgressBarGroup::new(format!("{:>13}", message))
-        }));
+        let progress_bars = Mutex::new(ProgressBars::default());
 
         Self {
             multi_progress,
@@ -266,19 +275,19 @@ impl CliProgressBars {
                 } else {
                     ProgressBar::no_length()
                 });
-                progress_bars[operation].add(bar);
+                progress_bars.get_mut(operation).add(bar);
             }
             ProgressEvent::Started(operation) => {
-                progress_bars[operation].mark_start_now();
+                progress_bars.get_mut(operation).mark_start_now();
             }
             ProgressEvent::Progress { operation, size } => {
-                progress_bars[operation].inc(size);
+                progress_bars.get_mut(operation).inc(size);
             }
             ProgressEvent::Failed(operation) => {
-                progress_bars[operation].abandon();
+                progress_bars.get_mut(operation).abandon();
             }
             ProgressEvent::Finished(operation) => {
-                progress_bars[operation].finish();
+                progress_bars.get_mut(operation).finish();
             }
             ProgressEvent::DiagnosticMessage { .. } => {}
         }

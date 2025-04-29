@@ -38,7 +38,6 @@ thiserror = { workspace = true }
 tracing = "0.1"
 typed-path = "0.10"
 probe-rs-mi = { workspace = true }
-enum-map = "2.7.3"
 
 itertools = "0.14"
 
