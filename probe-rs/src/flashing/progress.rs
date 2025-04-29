@@ -39,6 +39,8 @@ impl<'a> FlashProgress<'a> {
         (self.handler)(event);
     }
 
+    // --- Methods for emitting specific kinds of events.
+
     /// Signal that the flashing algorithm was set up and is initialized.
     pub(super) fn initialized(&self, phases: Vec<FlashLayout>) {
         self.emit(ProgressEvent::FlashLayoutReady {
@@ -46,14 +48,17 @@ impl<'a> FlashProgress<'a> {
         });
     }
 
-    // -------------
+    /// Signal that a new progress bar should be created.
+    pub(super) fn add_progress_bar(&self, operation: ProgressOperation, total: Option<u64>) {
+        self.emit(ProgressEvent::AddProgressBar { operation, total });
+    }
 
     /// Signal that the procedure started.
     pub(super) fn started(&self, operation: ProgressOperation) {
         self.emit(ProgressEvent::Started(operation));
     }
 
-    /// Signal that the page programming procedure has made progress.
+    /// Signal that the procedure has made progress.
     pub(super) fn progressed(&self, operation: ProgressOperation, size: u64, time: Duration) {
         self.emit(ProgressEvent::Progress {
             operation,
@@ -72,11 +77,12 @@ impl<'a> FlashProgress<'a> {
         self.emit(ProgressEvent::Finished(operation));
     }
 
-    // -------------
-
-    pub(super) fn add_progress_bar(&self, operation: ProgressOperation, total: Option<u64>) {
-        self.emit(ProgressEvent::AddProgressBar { operation, total });
+    /// Signal that a flashing algorithm produced a diagnostic message.
+    pub(super) fn message(&self, message: String) {
+        self.emit(ProgressEvent::DiagnosticMessage { message });
     }
+
+    // --- Methods for emitting events for a specific operation.
 
     /// Signal that the erasing procedure started.
     pub(super) fn started_erasing(&self) {
@@ -93,13 +99,9 @@ impl<'a> FlashProgress<'a> {
         self.started(ProgressOperation::Program);
     }
 
+    /// Signal that the verifying procedure started.
     pub(crate) fn started_verifying(&self) {
         self.started(ProgressOperation::Verify);
-    }
-
-    /// Signal that the page programming procedure has made progress.
-    pub(super) fn page_programmed(&self, size: u64, time: Duration) {
-        self.progressed(ProgressOperation::Program, size, time);
     }
 
     /// Signal that the sector erasing procedure has made progress.
@@ -112,19 +114,14 @@ impl<'a> FlashProgress<'a> {
         self.progressed(ProgressOperation::Fill, size, time);
     }
 
+    /// Signal that the page programming procedure has made progress.
+    pub(super) fn page_programmed(&self, size: u64, time: Duration) {
+        self.progressed(ProgressOperation::Program, size, time);
+    }
+
     /// Signal that the page filling procedure has made progress.
     pub(super) fn page_verified(&self, size: u64, time: Duration) {
         self.progressed(ProgressOperation::Verify, size, time);
-    }
-
-    /// Signal that the programming procedure failed.
-    pub(super) fn failed_programming(&self) {
-        self.failed(ProgressOperation::Program);
-    }
-
-    /// Signal that the programming procedure completed successfully.
-    pub(super) fn finished_programming(&self) {
-        self.finished(ProgressOperation::Program);
     }
 
     /// Signal that the erasing procedure failed.
@@ -132,19 +129,29 @@ impl<'a> FlashProgress<'a> {
         self.failed(ProgressOperation::Erase);
     }
 
+    /// Signal that the filling procedure failed.
+    pub(super) fn failed_filling(&self) {
+        self.failed(ProgressOperation::Fill);
+    }
+
+    /// Signal that the programming procedure failed.
+    pub(super) fn failed_programming(&self) {
+        self.failed(ProgressOperation::Program);
+    }
+
     /// Signal that the verifying procedure failed.
     pub(super) fn failed_verifying(&self) {
         self.failed(ProgressOperation::Verify);
     }
 
+    /// Signal that the programming procedure completed successfully.
+    pub(super) fn finished_programming(&self) {
+        self.finished(ProgressOperation::Program);
+    }
+
     /// Signal that the erasing procedure completed successfully.
     pub(super) fn finished_erasing(&self) {
         self.finished(ProgressOperation::Erase);
-    }
-
-    /// Signal that the filling procedure failed.
-    pub(super) fn failed_filling(&self) {
-        self.failed(ProgressOperation::Fill);
     }
 
     /// Signal that the filling procedure completed successfully.
@@ -155,10 +162,6 @@ impl<'a> FlashProgress<'a> {
     /// Signal that the verifying procedure completed successfully.
     pub(super) fn finished_verifying(&self) {
         self.finished(ProgressOperation::Verify);
-    }
-
-    pub(super) fn message(&self, message: String) {
-        self.emit(ProgressEvent::DiagnosticMessage { message });
     }
 }
 
