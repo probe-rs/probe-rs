@@ -46,8 +46,15 @@ pub enum RiscvError {
     #[error("Program buffer register '{0}' is currently not supported.")]
     UnsupportedProgramBufferRegister(usize),
     /// The program buffer is too small for the supplied program.
-    #[error("Program buffer is too small for supplied program.")]
-    ProgramBufferTooSmall,
+    #[error(
+        "Program buffer is too small for supplied program. Required: {required}, Actual: {actual}"
+    )]
+    ProgramBufferTooSmall {
+        /// The required size of the program buffer.
+        required: usize,
+        /// The actual size of the program buffer.
+        actual: usize,
+    },
     /// Memory width larger than 32 bits is not supported yet.
     #[error("Memory width larger than 32 bits is not supported yet.")]
     UnsupportedBusAccessWidth(RiscvBusAccess),
@@ -928,7 +935,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
         };
 
         if required_len > self.state.progbuf_size as usize {
-            return Err(RiscvError::ProgramBufferTooSmall);
+            return Err(RiscvError::ProgramBufferTooSmall {
+                required: required_len,
+                actual: self.state.progbuf_size as usize,
+            });
         }
 
         if data == &self.state.progbuf_cache[..data.len()] {
