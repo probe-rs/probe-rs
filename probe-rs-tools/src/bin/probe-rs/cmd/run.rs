@@ -159,7 +159,7 @@ pub struct SharedOptions {
     pub(crate) log_format: Option<String>,
 
     /// File name to store formatted output at. Different channels can be assigned to different
-    /// files using channel=file argumentst to multiple occurrences (eg. `--target-output-file
+    /// files using channel=file arguments to multiple occurrences (eg. `--target-output-file
     /// defmt=out/defmt.txt --target-output-file out/default`). Channel names can be prefixed with
     /// `rtt:` or `semihosting:` (eg. `semihosting:stdout`) to disambiguate.
     #[clap(long)]

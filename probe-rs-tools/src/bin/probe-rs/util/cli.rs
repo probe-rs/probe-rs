@@ -191,11 +191,11 @@ impl ChannelIdentifier {
         // This double/triple access (get / get_mut) is a bit weird, but the compiler will not see
         // that the lifetimes of the get_mut are non-overlapping if we return the Ok of an initial
         // get_mut.
-        if map.get(self).is_some() {
+        if map.contains_key(self) {
             return map.get_mut(self);
         };
         if let Some(fallback) = self.unqualified() {
-            if map.get(&fallback).is_some() {
+            if map.contains_key(&fallback) {
                 return map.get_mut(&fallback);
             };
         }
