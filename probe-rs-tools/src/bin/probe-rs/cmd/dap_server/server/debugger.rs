@@ -21,6 +21,7 @@ use crate::{
         peripherals::svd_variables::SvdCache,
         server::configuration::SessionConfig,
     },
+    rpc::functions::flash::Operation,
     util::flash::build_loader,
 };
 use anyhow::{Context, anyhow};
@@ -28,10 +29,7 @@ use enum_map::{EnumMap, enum_map};
 use probe_rs::{
     CoreStatus,
     config::Registry,
-    flashing::{
-        DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent,
-        ProgressOperation,
-    },
+    flashing::{DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent},
     probe::list::Lister,
 };
 use std::{
@@ -584,18 +582,18 @@ impl Debugger {
 
         #[derive(Default)]
         struct ProgressState {
-            total_size: EnumMap<ProgressOperation, u64>,
-            size_done: EnumMap<ProgressOperation, u64>,
+            total_size: EnumMap<Operation, u64>,
+            size_done: EnumMap<Operation, u64>,
         }
 
         let progress_state = RefCell::new(ProgressState::default());
 
         download_options.progress = progress_id.map(|id| {
             let messages = enum_map! {
-                ProgressOperation::Fill => "Reading Old Pages",
-                ProgressOperation::Erase => "Erasing Sectors",
-                ProgressOperation::Program => "Programming Pages",
-                ProgressOperation::Verify => "Verifying",
+                Operation::Fill => "Reading Old Pages",
+                Operation::Erase => "Erasing Sectors",
+                Operation::Program => "Programming Pages",
+                Operation::Verify => "Verifying",
             };
 
             FlashProgress::new(move |event| {
@@ -604,31 +602,31 @@ impl Debugger {
                 match event {
                     ProgressEvent::AddProgressBar { operation, total } => {
                         if let Some(total) = total {
-                            flash_progress.total_size[operation] += total;
-                            flash_progress.size_done[operation] = 0;
+                            flash_progress.total_size[operation.into()] += total;
+                            flash_progress.size_done[operation.into()] = 0;
                         }
                     }
                     ProgressEvent::Started(operation) => {
                         debug_adapter
-                            .update_progress(None, Some(messages[operation]), id)
+                            .update_progress(None, Some(messages[operation.into()]), id)
                             .ok();
                     }
                     ProgressEvent::Progress {
                         operation, size, ..
                     } => {
-                        flash_progress.size_done[operation] += size;
-                        let progress = flash_progress.size_done[operation] as f64
-                            / flash_progress.total_size[operation] as f64;
+                        flash_progress.size_done[operation.into()] += size;
+                        let progress = flash_progress.size_done[operation.into()] as f64
+                            / flash_progress.total_size[operation.into()] as f64;
 
                         debug_adapter
-                            .update_progress(Some(progress), Some(messages[operation]), id)
+                            .update_progress(Some(progress), Some(messages[operation.into()]), id)
                             .ok();
                     }
                     ProgressEvent::Failed(operation) => {
                         debug_adapter
                             .update_progress(
                                 Some(1.0),
-                                Some(format!("{} Failed!", messages[operation])),
+                                Some(format!("{} Failed!", messages[operation.into()])),
                                 id,
                             )
                             .ok();
@@ -637,7 +635,7 @@ impl Debugger {
                         debug_adapter
                             .update_progress(
                                 Some(1.0),
-                                Some(format!("{} Complete!", messages[operation])),
+                                Some(format!("{} Complete!", messages[operation.into()])),
                                 id,
                             )
                             .ok();

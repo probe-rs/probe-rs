@@ -3014,7 +3014,6 @@ dependencies = [
  "clap",
  "docsplay",
  "dunce",
- "enum-map",
  "env_logger",
  "espflash",
  "fastrand",

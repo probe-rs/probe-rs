@@ -1,4 +1,4 @@
-use crate::rpc::functions::flash::{FlashLayout, ProgressEvent};
+use crate::rpc::functions::flash::{FlashLayout, Operation, ProgressEvent};
 use crate::{FormatKind, FormatOptions};
 
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
@@ -13,7 +13,7 @@ use enum_map::EnumMap;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use probe_rs::InstructionSet;
-use probe_rs::flashing::{BinOptions, FlashProgress, Format, IdfOptions, ProgressOperation};
+use probe_rs::flashing::{BinOptions, FlashProgress, Format, IdfOptions};
 use probe_rs::{
     Session,
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},
@@ -121,7 +121,7 @@ pub fn build_loader(
     probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
 }
 
-type ProgressBars = EnumMap<ProgressOperation, ProgressBarGroup>;
+type ProgressBars = EnumMap<Operation, ProgressBarGroup>;
 
 pub struct ProgressBarGroup {
     message: String,
@@ -238,10 +238,10 @@ impl CliProgressBars {
 
         let progress_bars = Mutex::new(ProgressBars::from_fn(|operation| {
             let message = match operation {
-                ProgressOperation::Erase => "Erasing",
-                ProgressOperation::Fill => "Reading flash",
-                ProgressOperation::Program => "Programming",
-                ProgressOperation::Verify => "Verifying",
+                Operation::Erase => "Erasing",
+                Operation::Fill => "Reading flash",
+                Operation::Program => "Programming",
+                Operation::Verify => "Verifying",
             };
             ProgressBarGroup::new(format!("{:>13}", message))
         }));
@@ -266,19 +266,19 @@ impl CliProgressBars {
                 } else {
                     ProgressBar::no_length()
                 });
-                progress_bars[operation.into()].add(bar);
+                progress_bars[operation].add(bar);
             }
             ProgressEvent::Started(operation) => {
-                progress_bars[operation.into()].mark_start_now();
+                progress_bars[operation].mark_start_now();
             }
             ProgressEvent::Progress { operation, size } => {
-                progress_bars[operation.into()].inc(size);
+                progress_bars[operation].inc(size);
             }
             ProgressEvent::Failed(operation) => {
-                progress_bars[operation.into()].abandon();
+                progress_bars[operation].abandon();
             }
             ProgressEvent::Finished(operation) => {
-                progress_bars[operation.into()].finish();
+                progress_bars[operation].finish();
             }
             ProgressEvent::DiagnosticMessage { .. } => {}
         }

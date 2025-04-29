@@ -163,7 +163,7 @@ impl<'a> FlashProgress<'a> {
 }
 
 /// The operation that is currently in progress.
-#[derive(Clone, Copy, Debug, enum_map::Enum)]
+#[derive(Clone, Copy, Debug)]
 pub enum ProgressOperation {
     /// Reading back flash contents to restore erased regions that should be kept unchanged.
     Fill,

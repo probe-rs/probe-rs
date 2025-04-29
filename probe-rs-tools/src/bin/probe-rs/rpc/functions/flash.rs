@@ -178,7 +178,7 @@ pub struct FlashDataBlockSpan {
     pub size: u64,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Schema)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Schema, enum_map::Enum)]
 pub enum Operation {
     /// Reading back flash contents to restore erased regions that should be kept unchanged.
     Fill,
@@ -200,17 +200,6 @@ impl From<flashing::ProgressOperation> for Operation {
             flashing::ProgressOperation::Erase => Operation::Erase,
             flashing::ProgressOperation::Program => Operation::Program,
             flashing::ProgressOperation::Verify => Operation::Verify,
-        }
-    }
-}
-
-impl From<Operation> for flashing::ProgressOperation {
-    fn from(operation: Operation) -> Self {
-        match operation {
-            Operation::Fill => Self::Fill,
-            Operation::Erase => Self::Erase,
-            Operation::Program => Self::Program,
-            Operation::Verify => Self::Verify,
         }
     }
 }
