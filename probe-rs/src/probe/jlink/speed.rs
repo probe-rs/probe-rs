@@ -29,6 +29,16 @@ impl SpeedInfo {
         // khz is guaranteed to be in the range 1..=0xFFFE, so let's skip the constructor
         SpeedConfig { raw: khz as u16 }
     }
+
+    fn from_response(buf: [u8; 6]) -> SpeedInfo {
+        let base_freq_bytes = <[u8; 4]>::try_from(&buf[0..4]).unwrap();
+        let min_div_bytes = <[u8; 2]>::try_from(&buf[4..6]).unwrap();
+
+        SpeedInfo {
+            base_freq: u32::from_le_bytes(base_freq_bytes),
+            min_div: u16::from_le_bytes(min_div_bytes),
+        }
+    }
 }
 
 /// Target communication speed setting.
@@ -83,13 +93,7 @@ impl JLink {
 
         let buf = self.read_n::<6>()?;
 
-        let base_freq_bytes = <[u8; 4]>::try_from(&buf[0..4]).unwrap();
-        let min_div_bytes = <[u8; 2]>::try_from(&buf[4..6]).unwrap();
-
-        Ok(SpeedInfo {
-            base_freq: u32::from_le_bytes(base_freq_bytes),
-            min_div: u16::from_le_bytes(min_div_bytes),
-        })
+        Ok(SpeedInfo::from_response(buf))
     }
 
     /// Sets the target communication speed.
@@ -112,5 +116,18 @@ impl JLink {
         self.write_cmd(&[Command::SetSpeed as u8, low, high])?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_speed_config() {
+        let response = [0x00, 0x6C, 0xDC, 0x02, 0x04, 0x00];
+
+        let speed_info = super::SpeedInfo::from_response(response);
+
+        assert_eq!(speed_info.base_freq, 48_000_000);
+        assert_eq!(speed_info.min_div, 4);
     }
 }
