@@ -178,7 +178,7 @@ pub struct FlashDataBlockSpan {
     pub size: u64,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Schema)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Schema, Hash)]
 pub enum Operation {
     /// Reading back flash contents to restore erased regions that should be kept unchanged.
     Fill,

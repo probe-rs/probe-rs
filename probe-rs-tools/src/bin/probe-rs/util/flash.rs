@@ -4,6 +4,7 @@ use crate::{FormatKind, FormatOptions};
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
 use super::logging;
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::{path::Path, time::Instant};
@@ -120,11 +121,23 @@ pub fn build_loader(
     probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
 }
 
+#[derive(Default)]
 pub struct ProgressBars {
-    pub erase: ProgressBarGroup,
-    pub fill: ProgressBarGroup,
-    pub program: ProgressBarGroup,
-    pub verify: ProgressBarGroup,
+    bars: HashMap<Operation, ProgressBarGroup>,
+}
+
+impl ProgressBars {
+    pub fn get_mut(&mut self, operation: Operation) -> &mut ProgressBarGroup {
+        self.bars.entry(operation).or_insert_with(|| {
+            let message = match operation {
+                Operation::Erase => "Erasing",
+                Operation::Fill => "Reading flash",
+                Operation::Program => "Programming",
+                Operation::Verify => "Verifying",
+            };
+            ProgressBarGroup::new(format!("{:>13}", message))
+        })
+    }
 }
 
 pub struct ProgressBarGroup {
@@ -134,9 +147,9 @@ pub struct ProgressBarGroup {
 }
 
 impl ProgressBarGroup {
-    pub fn new(message: &str) -> Self {
+    pub fn new(message: String) -> Self {
         Self {
-            message: message.to_string(),
+            message,
             bars: vec![],
             selected: 0,
         }
@@ -240,12 +253,7 @@ impl CliProgressBars {
         let multi_progress = MultiProgress::new();
         logging::set_progress_bar(multi_progress.clone());
 
-        let progress_bars = Mutex::new(ProgressBars {
-            erase: ProgressBarGroup::new("      Erasing"),
-            fill: ProgressBarGroup::new("Reading flash"),
-            program: ProgressBarGroup::new("  Programming"),
-            verify: ProgressBarGroup::new("    Verifying"),
-        });
+        let progress_bars = Mutex::new(ProgressBars::default());
 
         Self {
             multi_progress,
@@ -267,42 +275,20 @@ impl CliProgressBars {
                 } else {
                     ProgressBar::no_length()
                 });
-                match operation {
-                    Operation::Fill => progress_bars.fill.add(bar),
-                    Operation::Erase => progress_bars.erase.add(bar),
-                    Operation::Program => progress_bars.program.add(bar),
-                    Operation::Verify => progress_bars.verify.add(bar),
-                }
+                progress_bars.get_mut(operation).add(bar);
             }
-
-            ProgressEvent::Started(operation) => match operation {
-                Operation::Fill => progress_bars.fill.mark_start_now(),
-                Operation::Erase => progress_bars.erase.mark_start_now(),
-                Operation::Program => progress_bars.program.mark_start_now(),
-                Operation::Verify => progress_bars.verify.mark_start_now(),
-            },
-
-            ProgressEvent::Progress { operation, size } => match operation {
-                Operation::Fill => progress_bars.fill.inc(size),
-                Operation::Erase => progress_bars.erase.inc(size),
-                Operation::Program => progress_bars.program.inc(size),
-                Operation::Verify => progress_bars.verify.inc(size),
-            },
-
-            ProgressEvent::Failed(operation) => match operation {
-                Operation::Fill => progress_bars.fill.abandon(),
-                Operation::Erase => progress_bars.erase.abandon(),
-                Operation::Program => progress_bars.program.abandon(),
-                Operation::Verify => progress_bars.verify.abandon(),
-            },
-
-            ProgressEvent::Finished(operation) => match operation {
-                Operation::Fill => progress_bars.fill.finish(),
-                Operation::Erase => progress_bars.erase.finish(),
-                Operation::Program => progress_bars.program.finish(),
-                Operation::Verify => progress_bars.verify.finish(),
-            },
-
+            ProgressEvent::Started(operation) => {
+                progress_bars.get_mut(operation).mark_start_now();
+            }
+            ProgressEvent::Progress { operation, size } => {
+                progress_bars.get_mut(operation).inc(size);
+            }
+            ProgressEvent::Failed(operation) => {
+                progress_bars.get_mut(operation).abandon();
+            }
+            ProgressEvent::Finished(operation) => {
+                progress_bars.get_mut(operation).finish();
+            }
             ProgressEvent::DiagnosticMessage { .. } => {}
         }
     }

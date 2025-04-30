@@ -21,20 +21,19 @@ use crate::{
         peripherals::svd_variables::SvdCache,
         server::configuration::SessionConfig,
     },
+    rpc::functions::flash::Operation,
     util::flash::build_loader,
 };
 use anyhow::{Context, anyhow};
 use probe_rs::{
     CoreStatus,
     config::Registry,
-    flashing::{
-        DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent,
-        ProgressOperation,
-    },
+    flashing::{DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent},
     probe::list::Lister,
 };
 use std::{
     cell::RefCell,
+    collections::HashMap,
     fs,
     path::Path,
     time::{Duration, UNIX_EPOCH},
@@ -581,165 +580,71 @@ impl Debugger {
 
         let ref_debug_adapter = RefCell::new(&mut *debug_adapter);
 
-        struct ProgressState {
-            total_page_size: u64,
-            total_sector_size: u64,
-            total_fill_size: u64,
-            total_verify_size: u64,
-            page_size_done: u64,
-            sector_size_done: u64,
-            fill_size_done: u64,
-            verify_size_done: u64,
+        #[derive(Default)]
+        struct ProgressBarState {
+            total_size: u64,
+            size_done: u64,
         }
 
-        let progress_state = RefCell::new(ProgressState {
-            total_page_size: 0,
-            total_sector_size: 0,
-            total_fill_size: 0,
-            total_verify_size: 0,
-            page_size_done: 0,
-            verify_size_done: 0,
-            sector_size_done: 0,
-            fill_size_done: 0,
-        });
+        type ProgressState = HashMap<Operation, ProgressBarState>;
+
+        let progress_state = RefCell::new(ProgressState::default());
 
         download_options.progress = progress_id.map(|id| {
+            let describe_op = |operation| match Operation::from(operation) {
+                Operation::Fill => "Reading Old Pages",
+                Operation::Erase => "Erasing Sectors",
+                Operation::Program => "Programming Pages",
+                Operation::Verify => "Verifying",
+            };
+
             FlashProgress::new(move |event| {
                 let mut flash_progress = progress_state.borrow_mut();
                 let mut debug_adapter = ref_debug_adapter.borrow_mut();
                 match event {
-                    ProgressEvent::AddProgressBar {
-                        operation,
-                        total: Some(total),
-                    } => match operation {
-                        ProgressOperation::Fill => {
-                            flash_progress.total_fill_size += total;
-                            flash_progress.fill_size_done = 0;
-                        }
-                        ProgressOperation::Erase => {
-                            flash_progress.total_sector_size += total;
-                            flash_progress.sector_size_done = 0;
-                        }
-                        ProgressOperation::Program => {
-                            flash_progress.total_page_size += total;
-                            flash_progress.page_size_done = 0;
-                        }
-                        ProgressOperation::Verify => {
-                            flash_progress.total_verify_size += total;
-                            flash_progress.verify_size_done = 0;
-                        }
-                    },
-                    ProgressEvent::Started(ProgressOperation::Fill) => {
+                    ProgressEvent::AddProgressBar { operation, total } => {
+                        let pbar_state = flash_progress.entry(operation.into()).or_default();
+                        if let Some(total) = total {
+                            pbar_state.total_size += total; // should this be an assignment instead?
+                            pbar_state.size_done = 0;
+                        };
+                    }
+                    ProgressEvent::Started(operation) => {
                         debug_adapter
-                            .update_progress(None, Some("Reading Old Pages"), id)
+                            .update_progress(None, Some(describe_op(operation)), id)
                             .ok();
                     }
                     ProgressEvent::Progress {
-                        operation: ProgressOperation::Fill,
-                        size,
-                        ..
+                        operation, size, ..
                     } => {
-                        flash_progress.fill_size_done += size;
-                        let progress = flash_progress.fill_size_done as f64
-                            / flash_progress.total_fill_size as f64;
+                        let pbar_state = flash_progress.entry(operation.into()).or_default();
+                        pbar_state.size_done += size;
+                        let progress = pbar_state.size_done as f64 / pbar_state.total_size as f64;
 
                         debug_adapter
-                            .update_progress(Some(progress), Some("Reading Old Pages"), id)
+                            .update_progress(Some(progress), Some(describe_op(operation)), id)
                             .ok();
                     }
-                    ProgressEvent::Failed(ProgressOperation::Fill) => {
+                    ProgressEvent::Failed(operation) => {
                         debug_adapter
-                            .update_progress(Some(1.0), Some("Reading Old Pages Failed!"), id)
+                            .update_progress(
+                                Some(1.0),
+                                Some(format!("{} Failed!", describe_op(operation))),
+                                id,
+                            )
                             .ok();
                     }
-                    ProgressEvent::Finished(ProgressOperation::Fill) => {
+                    ProgressEvent::Finished(operation) => {
                         debug_adapter
-                            .update_progress(Some(1.0), Some("Reading Old Pages Complete!"), id)
+                            .update_progress(
+                                Some(1.0),
+                                Some(format!("{} Complete!", describe_op(operation))),
+                                id,
+                            )
                             .ok();
                     }
-                    ProgressEvent::Started(ProgressOperation::Erase) => {
-                        debug_adapter
-                            .update_progress(None, Some("Erasing Sectors"), id)
-                            .ok();
-                    }
-                    ProgressEvent::Progress {
-                        operation: ProgressOperation::Erase,
-                        size,
-                        ..
-                    } => {
-                        flash_progress.sector_size_done += size;
-                        let progress = flash_progress.sector_size_done as f64
-                            / flash_progress.total_sector_size as f64;
-                        debug_adapter
-                            .update_progress(Some(progress), Some("Erasing Sectors"), id)
-                            .ok();
-                    }
-                    ProgressEvent::Failed(ProgressOperation::Erase) => {
-                        debug_adapter
-                            .update_progress(Some(1.0), Some("Erasing Sectors Failed!"), id)
-                            .ok();
-                    }
-                    ProgressEvent::Finished(ProgressOperation::Erase) => {
-                        debug_adapter
-                            .update_progress(Some(1.0), Some("Erasing Sectors Complete!"), id)
-                            .ok();
-                    }
-                    ProgressEvent::Started(ProgressOperation::Program) => {
-                        debug_adapter
-                            .update_progress(None, Some("Programming Pages"), id)
-                            .ok();
-                    }
-                    ProgressEvent::Progress {
-                        operation: ProgressOperation::Program,
-                        size,
-                        ..
-                    } => {
-                        flash_progress.page_size_done += size;
-                        let progress = flash_progress.page_size_done as f64
-                            / flash_progress.total_page_size as f64;
-                        debug_adapter
-                            .update_progress(Some(progress), Some("Programming Pages"), id)
-                            .ok();
-                    }
-                    ProgressEvent::Failed(ProgressOperation::Program) => {
-                        debug_adapter
-                            .update_progress(Some(1.0), Some("Flashing Pages Failed!"), id)
-                            .ok();
-                    }
-                    ProgressEvent::Finished(ProgressOperation::Program) => {
-                        debug_adapter
-                            .update_progress(Some(1.0), Some("Flashing Pages Complete!"), id)
-                            .ok();
-                    }
-                    ProgressEvent::Started(ProgressOperation::Verify) => {
-                        debug_adapter
-                            .update_progress(None, Some("Verifying"), id)
-                            .ok();
-                    }
-                    ProgressEvent::Progress {
-                        operation: ProgressOperation::Verify,
-                        size,
-                        ..
-                    } => {
-                        flash_progress.verify_size_done += size;
-                        let progress = flash_progress.verify_size_done as f64
-                            / flash_progress.total_verify_size as f64;
-
-                        debug_adapter
-                            .update_progress(Some(progress), Some("Verifying"), id)
-                            .ok();
-                    }
-                    ProgressEvent::Failed(ProgressOperation::Verify) => {
-                        debug_adapter
-                            .update_progress(Some(1.0), Some("Verifying Failed!"), id)
-                            .ok();
-                    }
-                    ProgressEvent::Finished(ProgressOperation::Verify) => {
-                        debug_adapter
-                            .update_progress(Some(1.0), Some("Verifying Complete!"), id)
-                            .ok();
-                    }
-                    _ => {}
+                    ProgressEvent::FlashLayoutReady { .. } => {}
+                    ProgressEvent::DiagnosticMessage { .. } => {}
                 }
             })
         });
