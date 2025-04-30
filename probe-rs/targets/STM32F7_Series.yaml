@@ -1,3 +1,5 @@
+# MANUAL EDIT: stm32f7x_1024dual flash algorithm modified; removed 'default: true'
+---
 name: STM32F7 Series
 manufacturer:
   id: 0x20
