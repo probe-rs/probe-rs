@@ -75,6 +75,7 @@ pub trait ProgrammingLanguage {
     }
 
     // Post-process raw type representations for more user-friendly output.
+    #[allow(clippy::too_many_arguments)]
     fn process_struct(
         &self,
         _unit_info: &UnitInfo,

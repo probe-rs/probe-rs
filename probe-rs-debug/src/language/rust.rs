@@ -15,6 +15,7 @@ use probe_rs::MemoryInterface;
 pub struct Rust;
 impl Rust {
     /// Replaces *const data pointer with *const [data; len] in slices.
+    #[allow(clippy::too_many_arguments)]
     fn expand_slice(
         &self,
         unit_info: &UnitInfo,
@@ -49,7 +50,7 @@ impl Rust {
 
         std::mem::drop(children);
 
-        let mut pointee = cache.get_children(pointer_key).cloned().next().unwrap();
+        let mut pointee = cache.get_children(pointer_key).next().unwrap().clone();
 
         // Do we know the type of the data?
         let Some(type_node_offset) = pointee.type_node_offset else {
@@ -78,13 +79,14 @@ impl Rust {
             .entry(type_node_offset)
             .expect("Failed to get array member type node. This is a bug, please report it!");
 
+        let member_range = 0..length as u64;
         unit_info.expand_array_members(
             debug_info,
             &array_member_type_node,
             cache,
             &mut pointee,
             memory,
-            &[0..length as u64],
+            &[member_range],
             frame_info,
         )?;
 
