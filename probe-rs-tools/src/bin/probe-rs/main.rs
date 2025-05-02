@@ -253,6 +253,15 @@ pub struct IdfCliOptions {
 
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]
 #[serde(default)]
+pub struct ElfCliOptions {
+    /// Section name to skip flashing. This option may be specified multiple times, and is only
+    /// considered when `elf` is selected as the format.
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    skip_section: Vec<String>,
+}
+
+#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]
+#[serde(default)]
 pub struct FormatOptions {
     /// If a format is provided, use it.
     /// If a target has a preferred format, we use that.
@@ -270,6 +279,9 @@ pub struct FormatOptions {
 
     #[clap(flatten)]
     idf_options: IdfCliOptions,
+
+    #[clap(flatten)]
+    elf_options: ElfCliOptions,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
