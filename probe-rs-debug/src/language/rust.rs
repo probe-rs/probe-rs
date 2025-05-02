@@ -11,9 +11,38 @@ use crate::{
 
 use gimli::DebuggingInformationEntry;
 use probe_rs::MemoryInterface;
+
+struct Slice<'a> {
+    length: u64,
+    data_ptr: &'a Variable,
+}
+
 #[derive(Debug, Clone)]
 pub struct Rust;
 impl Rust {
+    fn try_get_slice<'a>(variable: &'a Variable, cache: &'a VariableCache) -> Option<Slice<'a>> {
+        fn is_field(var: &Variable, name: &str) -> bool {
+            matches!(var.name, VariableName::Named(ref var_name) if var_name == name)
+        }
+
+        Some(Slice {
+            // Do we have a length?
+            length: cache
+                .get_children(variable.variable_key)
+                .find(|c| is_field(c, "length"))
+                .and_then(|field| match &field.value {
+                    VariableValue::Valid(length_value) => Some(length_value),
+                    _ => None,
+                })
+                .and_then(|length_str| length_str.parse().ok())?,
+
+            // Do we have a data pointer?
+            data_ptr: cache
+                .get_children(variable.variable_key)
+                .find(|c| is_field(c, "data_ptr"))?,
+        })
+    }
+
     /// Replaces *const data pointer with *const [data; len] in slices.
     ///
     /// This function may return `Ok(())` even if it does not modify the variable.
@@ -28,31 +57,13 @@ impl Rust {
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
-        let mut children = cache.get_children(variable.variable_key);
-        fn is_field(var: &Variable, name: &str) -> bool {
-            matches!(var.name, VariableName::Named(ref var_name) if var_name == name)
-        }
-
-        // Do we have a length?
-        let Some(length) = children.clone().find(|c| is_field(c, "length")) else {
-            return Ok(());
-        };
-        let VariableValue::Valid(length_value) = &length.value else {
-            return Ok(());
-        };
-        let Ok(length) = length_value.parse() else {
-            return Ok(());
-        };
-
-        // Do we have a data pointer?
-        let Some(location) = children.find(|c| is_field(c, "data_ptr")) else {
+        let Some(slice) = Self::try_get_slice(variable, cache) else {
             return Ok(());
         };
 
         // Turn the data pointer into an array.
-        let pointer_key = location.variable_key;
-
-        std::mem::drop(children);
+        let pointer_key = slice.data_ptr.variable_key;
+        let length = slice.length;
 
         let Some(mut pointee) = cache.get_children(pointer_key).next().cloned() else {
             return Ok(());
@@ -74,7 +85,7 @@ impl Rust {
         pointee.value = VariableValue::Empty;
         pointee.type_name = VariableType::Array {
             item_type_name: { Box::new(pointee.type_name) },
-            count: length,
+            count: length as usize,
         };
         pointee.variable_node_type = VariableNodeType::RecurseToBaseType;
 
@@ -85,7 +96,7 @@ impl Rust {
             .entry(type_node_offset)
             .expect("Failed to get array member type node. This is a bug, please report it!");
 
-        let member_range = 0..length as u64;
+        let member_range = 0..length;
         unit_info.expand_array_members(
             debug_info,
             &array_member_type_node,
