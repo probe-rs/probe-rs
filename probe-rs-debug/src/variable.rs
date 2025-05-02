@@ -485,6 +485,8 @@ pub struct Variable {
     /// The value will be zero until it is stored in VariableCache, at which time its value will be
     /// set to the same as the VariableCache::variable_cache_key
     pub(super) variable_key: ObjectRef,
+    /// The offset to the variable's type information.
+    pub(crate) type_node_offset: Option<UnitOffset>,
     /// Every variable must have a unique parent assigned to it when stored in the VariableCache.
     pub parent_key: ObjectRef,
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
@@ -524,6 +526,7 @@ impl Variable {
             language: unit_info
                 .map(|info| info.get_language())
                 .unwrap_or(gimli::DW_LANG_Rust),
+            type_node_offset: None,
             variable_key: Default::default(),
             parent_key: Default::default(),
             name: Default::default(),
@@ -635,14 +638,14 @@ impl Variable {
                 self.type_name
                     .display_name(language::from_dwarf(self.language).as_ref())
             } else if let VariableLocation::Error(ref error) = self.memory_location {
-                    error.clone()
+                error.clone()
             } else {
                 // This condition should only be true for intermediate nodes
                 // from DWARF. These should not show up in the final
                 // `VariableCache`. If a user sees this error, then there is
                 // a logic problem in the stack unwind
                 "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
-                            }
+            }
         } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
             "None".to_string()
         } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {

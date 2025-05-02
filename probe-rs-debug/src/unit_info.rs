@@ -989,6 +989,7 @@ impl UnitInfo {
 
             return Ok(());
         }
+        child_variable.type_node_offset = Some(node.offset());
 
         match node.tag() {
             gimli::DW_TAG_base_type => {
@@ -1305,7 +1306,15 @@ impl UnitInfo {
             child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
         }
 
-        Ok(())
+        self.language.process_struct(
+            self,
+            debug_info,
+            node,
+            child_variable,
+            memory,
+            cache,
+            frame_info,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1494,7 +1503,7 @@ impl UnitInfo {
 
     /// Create child variable entries to represent array members and their values.
     #[allow(clippy::too_many_arguments)]
-    fn expand_array_members(
+    pub(crate) fn expand_array_members(
         &self,
         debug_info: &DebugInfo,
         array_member_type_node: &DebuggingInformationEntry<GimliReader>,
