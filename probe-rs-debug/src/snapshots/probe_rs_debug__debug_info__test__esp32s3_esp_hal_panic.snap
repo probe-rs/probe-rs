@@ -3389,16 +3389,10 @@ expression: stack_frames
                           value: AtomicU32 @ 0x00000010
                           children:
                             - name:
-                                Named: v
+                                Named: value
                               type_name:
-                                Struct: UnsafeCell<u32>
-                              value: UnsafeCell<u32> @ 0x00000010
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: u32
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x10 of size 0x4\")) >"
+                                Base: u32
+                              value: "< Probe(Other(\"The coredump does not include the memory for address 0x10 of size 0x4\")) >"
                     - name:
                         Named: run_queue_item
                       type_name:
@@ -3447,31 +3441,25 @@ expression: stack_frames
                       value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x00000018"
                       children:
                         - name:
-                            Named: p
+                            Named: value
                           type_name:
-                            Struct: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor>"
-                          value: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor> @ 0x00000018"
+                            Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                          value: "*mut embassy_executor::raw::SyncExecutor @ 0x00000018"
                           children:
                             - name:
-                                Named: value
+                                Named: "*value"
                               type_name:
-                                Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                              value: "*mut embassy_executor::raw::SyncExecutor @ 0x00000018"
+                                Struct: SyncExecutor
+                              value: "SyncExecutor {\n\trun_queue: <unknown> = < Failed to read referenced variable address from memory location 0x00000018 : The coredump does not include the memory for address 0x18 of size 0x4. >,\n\tpender: <unknown> = < Failed to read referenced variable address from memory location 0x00000018 : The coredump does not include the memory for address 0x18 of size 0x4. >}"
                               children:
                                 - name:
-                                    Named: "*value"
-                                  type_name:
-                                    Struct: SyncExecutor
-                                  value: "SyncExecutor {\n\trun_queue: <unknown> = < Failed to read referenced variable address from memory location 0x00000018 : The coredump does not include the memory for address 0x18 of size 0x4. >,\n\tpender: <unknown> = < Failed to read referenced variable address from memory location 0x00000018 : The coredump does not include the memory for address 0x18 of size 0x4. >}"
-                                  children:
-                                    - name:
-                                        Named: run_queue
-                                      type_name: Unknown
-                                      value: "< Failed to read referenced variable address from memory location 0x00000018 : The coredump does not include the memory for address 0x18 of size 0x4. >"
-                                    - name:
-                                        Named: pender
-                                      type_name: Unknown
-                                      value: "< Failed to read referenced variable address from memory location 0x00000018 : The coredump does not include the memory for address 0x18 of size 0x4. >"
+                                    Named: run_queue
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000018 : The coredump does not include the memory for address 0x18 of size 0x4. >"
+                                - name:
+                                    Named: pender
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000018 : The coredump does not include the memory for address 0x18 of size 0x4. >"
                     - name:
                         Named: poll_fn
                       type_name:
@@ -3521,32 +3509,38 @@ expression: stack_frames
                             - name:
                                 Named: value
                               type_name:
-                                Struct: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>>"
-                              value: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>> @ 0x00000008"
+                                Struct: "Option<embassy_executor::raw::TaskRef>"
+                              value: "Option<embassy_executor::raw::TaskRef> @ 0x00000008"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: Some
                                   type_name:
-                                    Struct: "Option<embassy_executor::raw::TaskRef>"
-                                  value: "Option<embassy_executor::raw::TaskRef> @ 0x00000008"
+                                    Struct: Some
+                                  value: Some @ 0x00000008
                                   children:
                                     - name:
-                                        Named: Some
+                                        Named: __0
                                       type_name:
-                                        Struct: Some
-                                      value: Some @ 0x00000008
+                                        Struct: TaskRef
+                                      value: TaskRef @ 0x00000008
                                       children:
                                         - name:
-                                            Named: __0
+                                            Named: ptr
                                           type_name:
-                                            Struct: TaskRef
-                                          value: TaskRef @ 0x00000008
+                                            Struct: "NonNull<embassy_executor::raw::TaskHeader>"
+                                          value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x00000008"
                                           children:
                                             - name:
-                                                Named: ptr
+                                                Named: pointer
                                               type_name:
-                                                Struct: "NonNull<embassy_executor::raw::TaskHeader>"
-                                              value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x00000008"
+                                                Pointer: "*const embassy_executor::raw::TaskHeader"
+                                              value: "*const embassy_executor::raw::TaskHeader @ 0x00000008"
+                                              children:
+                                                - name:
+                                                    Named: "*pointer"
+                                                  type_name:
+                                                    Struct: TaskHeader
+                                                  value: TaskHeader
                         - name:
                             Named: expires_at
                           type_name:
@@ -3556,14 +3550,8 @@ expression: stack_frames
                             - name:
                                 Named: value
                               type_name:
-                                Struct: UnsafeCell<u64>
-                              value: UnsafeCell<u64> @ 0x00000000
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: u64
-                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x0 of size 0x8\")) >"
+                                Base: u64
+                              value: "< Probe(Other(\"The coredump does not include the memory for address 0x0 of size 0x8\")) >"
                         - name:
                             Named: payload
                           type_name:
@@ -4192,16 +4180,10 @@ expression: stack_frames
                               value: AtomicU32 @ 0x3FCDC3F0
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<u32>
-                                  value: UnsafeCell<u32> @ 0x3FCDC3F0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: u32
-                                      value: "1"
+                                    Base: u32
+                                  value: "1"
                         - name:
                             Named: run_queue_item
                           type_name:
@@ -4244,45 +4226,51 @@ expression: stack_frames
                           value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x3FCDC3F8"
                           children:
                             - name:
-                                Named: p
+                                Named: value
                               type_name:
-                                Struct: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor>"
-                              value: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor> @ 0x3FCDC3F8"
+                                Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                              value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FCDC3F8"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: "*value"
                                   type_name:
-                                    Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                                  value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FCDC3F8"
+                                    Struct: SyncExecutor
+                                  value: SyncExecutor @ 0x00000000
                                   children:
                                     - name:
-                                        Named: "*value"
+                                        Named: run_queue
                                       type_name:
-                                        Struct: SyncExecutor
-                                      value: SyncExecutor @ 0x00000000
+                                        Struct: RunQueue
+                                      value: RunQueue @ 0x00000000
                                       children:
                                         - name:
-                                            Named: run_queue
+                                            Named: head
                                           type_name:
-                                            Struct: RunQueue
-                                          value: RunQueue @ 0x00000000
+                                            Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                                          value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
                                           children:
                                             - name:
-                                                Named: head
+                                                Named: value
                                               type_name:
-                                                Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
-                                              value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                                Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                              children:
+                                                - name:
+                                                    Named: "*value"
+                                                  type_name:
+                                                    Struct: TaskHeader
+                                                  value: TaskHeader
+                                    - name:
+                                        Named: pender
+                                      type_name:
+                                        Struct: Pender
+                                      value: Pender @ 0x00000004
+                                      children:
                                         - name:
-                                            Named: pender
+                                            Named: __0
                                           type_name:
-                                            Struct: Pender
-                                          value: Pender @ 0x00000004
-                                          children:
-                                            - name:
-                                                Named: __0
-                                              type_name:
-                                                Pointer: "*mut ()"
-                                              value: "*mut () @ 0x00000004"
+                                            Pointer: "*mut ()"
+                                          value: "*mut () @ 0x00000004"
                         - name:
                             Named: poll_fn
                           type_name:
@@ -4332,26 +4320,26 @@ expression: stack_frames
                                 - name:
                                     Named: value
                                   type_name:
-                                    Struct: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>>"
-                                  value: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>> @ 0x3FCDC3E8"
+                                    Struct: "Option<embassy_executor::raw::TaskRef>"
+                                  value: "Option<embassy_executor::raw::TaskRef> @ 0x3FCDC3E8"
                                   children:
                                     - name:
-                                        Named: value
+                                        Named: Some
                                       type_name:
-                                        Struct: "Option<embassy_executor::raw::TaskRef>"
-                                      value: "Option<embassy_executor::raw::TaskRef> @ 0x3FCDC3E8"
+                                        Struct: Some
+                                      value: Some @ 0x3FCDC3E8
                                       children:
                                         - name:
-                                            Named: Some
+                                            Named: __0
                                           type_name:
-                                            Struct: Some
-                                          value: Some @ 0x3FCDC3E8
+                                            Struct: TaskRef
+                                          value: TaskRef @ 0x3FCDC3E8
                                           children:
                                             - name:
-                                                Named: __0
+                                                Named: ptr
                                               type_name:
-                                                Struct: TaskRef
-                                              value: TaskRef @ 0x3FCDC3E8
+                                                Struct: "NonNull<embassy_executor::raw::TaskHeader>"
+                                              value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x3FCDC3E8"
                             - name:
                                 Named: expires_at
                               type_name:
@@ -4361,14 +4349,8 @@ expression: stack_frames
                                 - name:
                                     Named: value
                                   type_name:
-                                    Struct: UnsafeCell<u64>
-                                  value: UnsafeCell<u64> @ 0x3FCDC3E0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: u64
-                                      value: "4323744385407501332"
+                                    Base: u64
+                                  value: "4323744385407501332"
                             - name:
                                 Named: payload
                               type_name:
@@ -4434,16 +4416,10 @@ expression: stack_frames
                       value: AtomicU32 @ 0x3FCDC3F0
                       children:
                         - name:
-                            Named: v
+                            Named: value
                           type_name:
-                            Struct: UnsafeCell<u32>
-                          value: UnsafeCell<u32> @ 0x3FCDC3F0
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u32
-                              value: "1"
+                            Base: u32
+                          value: "1"
                 - name:
                     Named: run_queue_item
                   type_name:
@@ -4504,63 +4480,72 @@ expression: stack_frames
                   value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x3FCDC3F8"
                   children:
                     - name:
-                        Named: p
+                        Named: value
                       type_name:
-                        Struct: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor>"
-                      value: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor> @ 0x3FCDC3F8"
+                        Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                      value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FCDC3F8"
                       children:
                         - name:
-                            Named: value
+                            Named: "*value"
                           type_name:
-                            Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                          value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FCDC3F8"
+                            Struct: SyncExecutor
+                          value: SyncExecutor @ 0x00000000
                           children:
                             - name:
-                                Named: "*value"
+                                Named: run_queue
                               type_name:
-                                Struct: SyncExecutor
-                              value: SyncExecutor @ 0x00000000
+                                Struct: RunQueue
+                              value: RunQueue @ 0x00000000
                               children:
                                 - name:
-                                    Named: run_queue
+                                    Named: head
                                   type_name:
-                                    Struct: RunQueue
-                                  value: RunQueue @ 0x00000000
+                                    Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                                  value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
                                   children:
                                     - name:
-                                        Named: head
+                                        Named: value
                                       type_name:
-                                        Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
-                                      value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
-                                            Named: p
+                                            Named: "*value"
                                           type_name:
-                                            Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                          value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                            Struct: TaskHeader
+                                          value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
                                           children:
                                             - name:
-                                                Named: value
-                                              type_name:
-                                                Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
-                                              children:
-                                                - name:
-                                                    Named: "*value"
-                                                  type_name:
-                                                    Struct: TaskHeader
-                                                  value: TaskHeader
+                                                Named: state
+                                              type_name: Unknown
+                                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                            - name:
+                                                Named: run_queue_item
+                                              type_name: Unknown
+                                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                            - name:
+                                                Named: executor
+                                              type_name: Unknown
+                                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                            - name:
+                                                Named: poll_fn
+                                              type_name: Unknown
+                                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                            - name:
+                                                Named: timer_queue_item
+                                              type_name: Unknown
+                                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                            - name:
+                                Named: pender
+                              type_name:
+                                Struct: Pender
+                              value: Pender @ 0x00000004
+                              children:
                                 - name:
-                                    Named: pender
+                                    Named: __0
                                   type_name:
-                                    Struct: Pender
-                                  value: Pender @ 0x00000004
-                                  children:
-                                    - name:
-                                        Named: __0
-                                      type_name:
-                                        Pointer: "*mut ()"
-                                      value: "*mut () @ 0x00000004"
+                                    Pointer: "*mut ()"
+                                  value: "*mut () @ 0x00000004"
                 - name:
                     Named: poll_fn
                   type_name:
@@ -4610,44 +4595,38 @@ expression: stack_frames
                         - name:
                             Named: value
                           type_name:
-                            Struct: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>>"
-                          value: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>> @ 0x3FCDC3E8"
+                            Struct: "Option<embassy_executor::raw::TaskRef>"
+                          value: "Option<embassy_executor::raw::TaskRef> @ 0x3FCDC3E8"
                           children:
                             - name:
-                                Named: value
+                                Named: Some
                               type_name:
-                                Struct: "Option<embassy_executor::raw::TaskRef>"
-                              value: "Option<embassy_executor::raw::TaskRef> @ 0x3FCDC3E8"
+                                Struct: Some
+                              value: Some @ 0x3FCDC3E8
                               children:
                                 - name:
-                                    Named: Some
+                                    Named: __0
                                   type_name:
-                                    Struct: Some
-                                  value: Some @ 0x3FCDC3E8
+                                    Struct: TaskRef
+                                  value: TaskRef @ 0x3FCDC3E8
                                   children:
                                     - name:
-                                        Named: __0
+                                        Named: ptr
                                       type_name:
-                                        Struct: TaskRef
-                                      value: TaskRef @ 0x3FCDC3E8
+                                        Struct: "NonNull<embassy_executor::raw::TaskHeader>"
+                                      value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x3FCDC3E8"
                                       children:
                                         - name:
-                                            Named: ptr
+                                            Named: pointer
                                           type_name:
-                                            Struct: "NonNull<embassy_executor::raw::TaskHeader>"
-                                          value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x3FCDC3E8"
+                                            Pointer: "*const embassy_executor::raw::TaskHeader"
+                                          value: "*const embassy_executor::raw::TaskHeader @ 0x3FCDC3E8"
                                           children:
                                             - name:
-                                                Named: pointer
+                                                Named: "*pointer"
                                               type_name:
-                                                Pointer: "*const embassy_executor::raw::TaskHeader"
-                                              value: "*const embassy_executor::raw::TaskHeader @ 0x3FCDC3E8"
-                                              children:
-                                                - name:
-                                                    Named: "*pointer"
-                                                  type_name:
-                                                    Struct: TaskHeader
-                                                  value: TaskHeader @ 0x3FCD0001
+                                                Struct: TaskHeader
+                                              value: TaskHeader @ 0x3FCD0001
                     - name:
                         Named: expires_at
                       type_name:
@@ -4657,14 +4636,8 @@ expression: stack_frames
                         - name:
                             Named: value
                           type_name:
-                            Struct: UnsafeCell<u64>
-                          value: UnsafeCell<u64> @ 0x3FCDC3E0
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u64
-                              value: "4323744385407501332"
+                            Base: u64
+                          value: "4323744385407501332"
                     - name:
                         Named: payload
                       type_name:
@@ -4911,43 +4884,37 @@ expression: stack_frames
                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
                   children:
                     - name:
-                        Named: p
+                        Named: value
                       type_name:
-                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                       children:
                         - name:
-                            Named: value
+                            Named: "*value"
                           type_name:
-                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                            Struct: TaskHeader
+                          value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
                           children:
                             - name:
-                                Named: "*value"
-                              type_name:
-                                Struct: TaskHeader
-                              value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
-                              children:
-                                - name:
-                                    Named: state
-                                  type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                - name:
-                                    Named: run_queue_item
-                                  type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                - name:
-                                    Named: executor
-                                  type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                - name:
-                                    Named: poll_fn
-                                  type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                - name:
-                                    Named: timer_queue_item
-                                  type_name: Unknown
-                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                Named: state
+                              type_name: Unknown
+                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                            - name:
+                                Named: run_queue_item
+                              type_name: Unknown
+                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                            - name:
+                                Named: executor
+                              type_name: Unknown
+                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                            - name:
+                                Named: poll_fn
+                              type_name: Unknown
+                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                            - name:
+                                Named: timer_queue_item
+                              type_name: Unknown
+                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
         - name:
             Named: ptr
           type_name: Unknown
@@ -5015,16 +4982,10 @@ expression: stack_frames
                               value: AtomicU32 @ 0x3FCDC3F0
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<u32>
-                                  value: UnsafeCell<u32> @ 0x3FCDC3F0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: u32
-                                      value: "1"
+                                    Base: u32
+                                  value: "1"
                         - name:
                             Named: run_queue_item
                           type_name:
@@ -5067,45 +5028,51 @@ expression: stack_frames
                           value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x3FCDC3F8"
                           children:
                             - name:
-                                Named: p
+                                Named: value
                               type_name:
-                                Struct: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor>"
-                              value: "UnsafeCell<*mut embassy_executor::raw::SyncExecutor> @ 0x3FCDC3F8"
+                                Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                              value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FCDC3F8"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: "*value"
                                   type_name:
-                                    Pointer: "*mut embassy_executor::raw::SyncExecutor"
-                                  value: "*mut embassy_executor::raw::SyncExecutor @ 0x3FCDC3F8"
+                                    Struct: SyncExecutor
+                                  value: SyncExecutor @ 0x00000000
                                   children:
                                     - name:
-                                        Named: "*value"
+                                        Named: run_queue
                                       type_name:
-                                        Struct: SyncExecutor
-                                      value: SyncExecutor @ 0x00000000
+                                        Struct: RunQueue
+                                      value: RunQueue @ 0x00000000
                                       children:
                                         - name:
-                                            Named: run_queue
+                                            Named: head
                                           type_name:
-                                            Struct: RunQueue
-                                          value: RunQueue @ 0x00000000
+                                            Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                                          value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
                                           children:
                                             - name:
-                                                Named: head
+                                                Named: value
                                               type_name:
-                                                Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
-                                              value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                                Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                              children:
+                                                - name:
+                                                    Named: "*value"
+                                                  type_name:
+                                                    Struct: TaskHeader
+                                                  value: TaskHeader
+                                    - name:
+                                        Named: pender
+                                      type_name:
+                                        Struct: Pender
+                                      value: Pender @ 0x00000004
+                                      children:
                                         - name:
-                                            Named: pender
+                                            Named: __0
                                           type_name:
-                                            Struct: Pender
-                                          value: Pender @ 0x00000004
-                                          children:
-                                            - name:
-                                                Named: __0
-                                              type_name:
-                                                Pointer: "*mut ()"
-                                              value: "*mut () @ 0x00000004"
+                                            Pointer: "*mut ()"
+                                          value: "*mut () @ 0x00000004"
                         - name:
                             Named: poll_fn
                           type_name:
@@ -5155,26 +5122,26 @@ expression: stack_frames
                                 - name:
                                     Named: value
                                   type_name:
-                                    Struct: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>>"
-                                  value: "UnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>> @ 0x3FCDC3E8"
+                                    Struct: "Option<embassy_executor::raw::TaskRef>"
+                                  value: "Option<embassy_executor::raw::TaskRef> @ 0x3FCDC3E8"
                                   children:
                                     - name:
-                                        Named: value
+                                        Named: Some
                                       type_name:
-                                        Struct: "Option<embassy_executor::raw::TaskRef>"
-                                      value: "Option<embassy_executor::raw::TaskRef> @ 0x3FCDC3E8"
+                                        Struct: Some
+                                      value: Some @ 0x3FCDC3E8
                                       children:
                                         - name:
-                                            Named: Some
+                                            Named: __0
                                           type_name:
-                                            Struct: Some
-                                          value: Some @ 0x3FCDC3E8
+                                            Struct: TaskRef
+                                          value: TaskRef @ 0x3FCDC3E8
                                           children:
                                             - name:
-                                                Named: __0
+                                                Named: ptr
                                               type_name:
-                                                Struct: TaskRef
-                                              value: TaskRef @ 0x3FCDC3E8
+                                                Struct: "NonNull<embassy_executor::raw::TaskHeader>"
+                                              value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x3FCDC3E8"
                             - name:
                                 Named: expires_at
                               type_name:
@@ -5184,14 +5151,8 @@ expression: stack_frames
                                 - name:
                                     Named: value
                                   type_name:
-                                    Struct: UnsafeCell<u64>
-                                  value: UnsafeCell<u64> @ 0x3FCDC3E0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: u64
-                                      value: "4323744385407501332"
+                                    Base: u64
+                                  value: "4323744385407501332"
                             - name:
                                 Named: payload
                               type_name:
@@ -5444,43 +5405,37 @@ expression: stack_frames
                       value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
                       children:
                         - name:
-                            Named: p
+                            Named: value
                           type_name:
-                            Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                          value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                            Pointer: "*mut embassy_executor::raw::TaskHeader"
+                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                           children:
                             - name:
-                                Named: value
+                                Named: "*value"
                               type_name:
-                                Pointer: "*mut embassy_executor::raw::TaskHeader"
-                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                Struct: TaskHeader
+                              value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
                               children:
                                 - name:
-                                    Named: "*value"
-                                  type_name:
-                                    Struct: TaskHeader
-                                  value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
-                                  children:
-                                    - name:
-                                        Named: state
-                                      type_name: Unknown
-                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                    - name:
-                                        Named: run_queue_item
-                                      type_name: Unknown
-                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                    - name:
-                                        Named: executor
-                                      type_name: Unknown
-                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                    - name:
-                                        Named: poll_fn
-                                      type_name: Unknown
-                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                    - name:
-                                        Named: timer_queue_item
-                                      type_name: Unknown
-                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                    Named: state
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                - name:
+                                    Named: run_queue_item
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                - name:
+                                    Named: executor
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                - name:
+                                    Named: poll_fn
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                - name:
+                                    Named: timer_queue_item
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
                 - name:
                     Named: pender
                   type_name:
@@ -5715,43 +5670,37 @@ expression: stack_frames
                           value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
                           children:
                             - name:
-                                Named: p
+                                Named: value
                               type_name:
-                                Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                              value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                Pointer: "*mut embassy_executor::raw::TaskHeader"
+                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                               children:
                                 - name:
-                                    Named: value
+                                    Named: "*value"
                                   type_name:
-                                    Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                    Struct: TaskHeader
+                                  value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
                                   children:
                                     - name:
-                                        Named: "*value"
-                                      type_name:
-                                        Struct: TaskHeader
-                                      value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
-                                      children:
-                                        - name:
-                                            Named: state
-                                          type_name: Unknown
-                                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                        - name:
-                                            Named: run_queue_item
-                                          type_name: Unknown
-                                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                        - name:
-                                            Named: executor
-                                          type_name: Unknown
-                                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                        - name:
-                                            Named: poll_fn
-                                          type_name: Unknown
-                                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
-                                        - name:
-                                            Named: timer_queue_item
-                                          type_name: Unknown
-                                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                        Named: state
+                                      type_name: Unknown
+                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                    - name:
+                                        Named: run_queue_item
+                                      type_name: Unknown
+                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                    - name:
+                                        Named: executor
+                                      type_name: Unknown
+                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                    - name:
+                                        Named: poll_fn
+                                      type_name: Unknown
+                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                    - name:
+                                        Named: timer_queue_item
+                                      type_name: Unknown
+                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
                     - name:
                         Named: pender
                       type_name:
@@ -6274,48 +6223,118 @@ expression: stack_frames
                               value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
                               children:
                                 - name:
-                                    Named: p
+                                    Named: value
                                   type_name:
-                                    Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                  value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                    Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x3FCDC6B0"
                                   children:
                                     - name:
-                                        Named: value
+                                        Named: "*value"
                                       type_name:
-                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x3FCDC6B0"
+                                        Struct: TaskHeader
+                                      value: TaskHeader @ 0x00000000
                                       children:
                                         - name:
-                                            Named: "*value"
+                                            Named: state
                                           type_name:
-                                            Struct: TaskHeader
-                                          value: TaskHeader @ 0x00000000
+                                            Struct: State
+                                          value: State @ 0x00000010
                                           children:
                                             - name:
                                                 Named: state
                                               type_name:
-                                                Struct: State
-                                              value: State @ 0x00000010
+                                                Struct: AtomicU32
+                                              value: AtomicU32 @ 0x00000010
+                                              children:
+                                                - name:
+                                                    Named: value
+                                                  type_name:
+                                                    Base: u32
+                                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x10 of size 0x4\")) >"
+                                        - name:
+                                            Named: run_queue_item
+                                          type_name:
+                                            Struct: RunQueueItem
+                                          value: RunQueueItem @ 0x00000014
+                                          children:
                                             - name:
-                                                Named: run_queue_item
+                                                Named: next
                                               type_name:
-                                                Struct: RunQueueItem
-                                              value: RunQueueItem @ 0x00000014
+                                                Struct: "SyncUnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>>"
+                                              value: "SyncUnsafeCell<core::option::Option<embassy_executor::raw::TaskRef>> @ 0x00000014"
+                                        - name:
+                                            Named: executor
+                                          type_name:
+                                            Struct: "AtomicPtr<embassy_executor::raw::SyncExecutor>"
+                                          value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x00000018"
+                                          children:
                                             - name:
-                                                Named: executor
+                                                Named: value
                                               type_name:
-                                                Struct: "AtomicPtr<embassy_executor::raw::SyncExecutor>"
-                                              value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x00000018"
+                                                Pointer: "*mut embassy_executor::raw::SyncExecutor"
+                                              value: "*mut embassy_executor::raw::SyncExecutor @ 0x00000018"
+                                              children:
+                                                - name:
+                                                    Named: "*value"
+                                                  type_name:
+                                                    Struct: SyncExecutor
+                                                  value: SyncExecutor
+                                        - name:
+                                            Named: poll_fn
+                                          type_name:
+                                            Struct: "SyncUnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>>"
+                                          value: "SyncUnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>> @ 0x0000001C"
+                                          children:
                                             - name:
-                                                Named: poll_fn
+                                                Named: value
                                               type_name:
-                                                Struct: "SyncUnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>>"
-                                              value: "SyncUnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>> @ 0x0000001C"
+                                                Struct: "UnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>>"
+                                              value: "UnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>> @ 0x0000001C"
+                                        - name:
+                                            Named: timer_queue_item
+                                          type_name:
+                                            Struct: TimerQueueItem
+                                          value: TimerQueueItem @ 0x00000000
+                                          children:
                                             - name:
-                                                Named: timer_queue_item
+                                                Named: next
                                               type_name:
-                                                Struct: TimerQueueItem
-                                              value: TimerQueueItem @ 0x00000000
+                                                Struct: "Cell<core::option::Option<embassy_executor::raw::TaskRef>>"
+                                              value: "Cell<core::option::Option<embassy_executor::raw::TaskRef>> @ 0x00000008"
+                                              children:
+                                                - name:
+                                                    Named: value
+                                                  type_name:
+                                                    Struct: "Option<embassy_executor::raw::TaskRef>"
+                                                  value: "Option<embassy_executor::raw::TaskRef> @ 0x00000008"
+                                                  children:
+                                                    - name:
+                                                        Named: Some
+                                                      type_name:
+                                                        Struct: Some
+                                                      value: Some @ 0x00000008
+                                                      children:
+                                                        - name:
+                                                            Named: __0
+                                                          type_name:
+                                                            Struct: TaskRef
+                                                          value: TaskRef @ 0x00000008
+                                            - name:
+                                                Named: expires_at
+                                              type_name:
+                                                Struct: Cell<u64>
+                                              value: Cell<u64> @ 0x00000000
+                                              children:
+                                                - name:
+                                                    Named: value
+                                                  type_name:
+                                                    Base: u64
+                                                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x0 of size 0x8\")) >"
+                                            - name:
+                                                Named: payload
+                                              type_name:
+                                                Struct: OpaqueData
+                                              value: OpaqueData @ 0x0000000C
                         - name:
                             Named: pender
                           type_name:
@@ -6375,22 +6394,37 @@ expression: stack_frames
                                   value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
                                   children:
                                     - name:
-                                        Named: p
+                                        Named: value
                                       type_name:
-                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
-                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
                                       children:
                                         - name:
-                                            Named: value
+                                            Named: "*value"
                                           type_name:
-                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
-                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                            Struct: TaskHeader
+                                          value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
                                           children:
                                             - name:
-                                                Named: "*value"
-                                              type_name:
-                                                Struct: TaskHeader
-                                              value: TaskHeader
+                                                Named: state
+                                              type_name: Unknown
+                                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                            - name:
+                                                Named: run_queue_item
+                                              type_name: Unknown
+                                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                            - name:
+                                                Named: executor
+                                              type_name: Unknown
+                                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                            - name:
+                                                Named: poll_fn
+                                              type_name: Unknown
+                                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                            - name:
+                                                Named: timer_queue_item
+                                              type_name: Unknown
+                                              value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
                             - name:
                                 Named: pender
                               type_name:

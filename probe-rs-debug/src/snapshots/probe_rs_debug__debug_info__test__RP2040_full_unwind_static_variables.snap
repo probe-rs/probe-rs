@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 2035
 expression: static_variables
 ---
 Child Variables:
@@ -585,16 +584,10 @@ Child Variables:
                         address: ~
                       children:
                         - name:
-                            Named: v
+                            Named: value
                           type_name:
-                            Struct: UnsafeCell<u16>
-                          value: UnsafeCell<u16> @ 0x20000070
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u16
-                              value: "9937"
+                            Base: u16
+                          value: "9937"
             - name:
                 Namespace: memcpy
               type_name: Namespace
@@ -617,16 +610,10 @@ Child Variables:
                         address: ~
                       children:
                         - name:
-                            Named: v
+                            Named: value
                           type_name:
-                            Struct: UnsafeCell<u16>
-                          value: UnsafeCell<u16> @ 0x20000072
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u16
-                              value: "9793"
+                            Base: u16
+                          value: "9793"
             - name:
                 Namespace: connect_internal_flash
               type_name: Namespace
@@ -1875,16 +1862,10 @@ Child Variables:
                         address: ~
                       children:
                         - name:
-                            Named: v
+                            Named: value
                           type_name:
-                            Struct: UnsafeCell<u16>
-                          value: UnsafeCell<u16> @ 0x20000076
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u16
-                              value: "9769"
+                            Base: u16
+                          value: "9769"
             - name:
                 Namespace: wait_for_vector
               type_name: Namespace
@@ -1945,16 +1926,10 @@ Child Variables:
                         address: ~
                       children:
                         - name:
-                            Named: v
+                            Named: value
                           type_name:
-                            Struct: UnsafeCell<u16>
-                          value: UnsafeCell<u16> @ 0x20000078
-                          children:
-                            - name:
-                                Named: value
-                              type_name:
-                                Base: u16
-                              value: "0"
+                            Base: u16
+                          value: "0"
             - name:
                 Namespace: flash_flush_cache
               type_name: Namespace
@@ -2029,16 +2004,10 @@ Child Variables:
                 address: ~
               children:
                 - name:
-                    Named: v
+                    Named: value
                   type_name:
-                    Struct: UnsafeCell<u8>
-                  value: UnsafeCell<u8> @ 0x20000074
-                  children:
-                    - name:
-                        Named: value
-                      type_name:
-                        Base: u8
-                      value: "0"
+                    Base: u8
+                  value: "0"
         - name:
             Namespace: timer
           type_name: Namespace
@@ -3763,16 +3732,10 @@ Child Variables:
                                   value: AtomicUsize @ 0x200000A0
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000A0
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "363"
+                                        Base: usize
+                                      value: "363"
                                 - name:
                                     Named: read
                                   type_name:
@@ -3780,16 +3743,10 @@ Child Variables:
                                   value: AtomicUsize @ 0x200000A4
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000A4
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "363"
+                                        Base: usize
+                                      value: "363"
                                 - name:
                                     Named: flags
                                   type_name:
@@ -3797,16 +3754,10 @@ Child Variables:
                                   value: AtomicUsize @ 0x200000A8
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000A8
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "1"
+                                        Base: usize
+                                      value: "1"
                             - name:
                                 Indexed: 1
                               type_name:
@@ -3847,16 +3798,10 @@ Child Variables:
                                   value: AtomicUsize @ 0x200000B8
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000B8
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "0"
+                                        Base: usize
+                                      value: "0"
                                 - name:
                                     Named: read
                                   type_name:
@@ -3864,16 +3809,10 @@ Child Variables:
                                   value: AtomicUsize @ 0x200000BC
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000BC
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "0"
+                                        Base: usize
+                                      value: "0"
                                 - name:
                                     Named: flags
                                   type_name:
@@ -3881,16 +3820,10 @@ Child Variables:
                                   value: AtomicUsize @ 0x200000C0
                                   children:
                                     - name:
-                                        Named: v
+                                        Named: value
                                       type_name:
-                                        Struct: UnsafeCell<usize>
-                                      value: UnsafeCell<usize> @ 0x200000C0
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Base: usize
-                                          value: "1"
+                                        Base: usize
+                                      value: "1"
                         - name:
                             Named: down_channels
                           type_name:
@@ -4747,14 +4680,8 @@ Child Variables:
                             - name:
                                 Named: value
                               type_name:
-                                Struct: UnsafeCell<isize>
-                              value: UnsafeCell<isize> @ 0x200008C4
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Base: isize
-                                  value: "0"
+                                Base: isize
+                              value: "0"
                         - name:
                             Named: value
                           type_name:

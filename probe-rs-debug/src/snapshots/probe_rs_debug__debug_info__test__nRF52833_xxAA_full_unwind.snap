@@ -4357,16 +4357,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x20000098
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x20000098
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "363"
+                                    Base: usize
+                                  value: "363"
                             - name:
                                 Named: read
                               type_name:
@@ -4374,16 +4368,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x2000009C
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x2000009C
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "363"
+                                    Base: usize
+                                  value: "363"
                             - name:
                                 Named: flags
                               type_name:
@@ -4391,16 +4379,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x200000A0
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000A0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "1"
+                                    Base: usize
+                                  value: "1"
                 - name:
                     Named: __1
                   type_name:
@@ -4453,16 +4435,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x200000B0
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000B0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "0"
+                                    Base: usize
+                                  value: "0"
                             - name:
                                 Named: read
                               type_name:
@@ -4470,16 +4446,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x200000B4
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000B4
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "0"
+                                    Base: usize
+                                  value: "0"
                             - name:
                                 Named: flags
                               type_name:
@@ -4487,16 +4457,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x200000B8
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x200000B8
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "1"
+                                    Base: usize
+                                  value: "1"
   canonical_frame_address: 536887136
 - function_name: __cortex_m_rt_main
   source_location:
