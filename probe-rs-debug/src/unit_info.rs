@@ -1081,46 +1081,16 @@ impl UnitInfo {
                 }
             }
             gimli::DW_TAG_structure_type => {
-                let type_name = type_name.unwrap_or_else(|| "<unnamed struct>".to_string());
-                child_variable.type_name = VariableType::Struct(type_name.clone());
-
-                self.process_memory_location(
+                self.extract_struct(
+                    type_name,
                     debug_info,
                     node,
                     parent_variable,
                     child_variable,
                     memory,
+                    cache,
                     frame_info,
                 )?;
-
-                if child_variable.memory_location != VariableLocation::Unavailable {
-                    // The default behaviour is to defer the processing of child types.
-                    child_variable.variable_node_type =
-                        VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
-                    // In some cases, it really simplifies the UX if we can auto resolve the
-                    // children and derive a value that is visible at first glance to the user.
-                    if self.language.auto_resolve_children(&type_name) {
-                        let temp_node_type = std::mem::replace(
-                            &mut child_variable.variable_node_type,
-                            VariableNodeType::RecurseToBaseType,
-                        );
-
-                        let mut tree = self.unit.entries_tree(Some(node.offset()))?;
-
-                        self.process_tree(
-                            debug_info,
-                            tree.root()?,
-                            child_variable,
-                            memory,
-                            cache,
-                            frame_info,
-                        )?;
-                        child_variable.variable_node_type = temp_node_type;
-                    }
-                } else {
-                    // If something is already broken, then do nothing ...
-                    child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
-                }
             }
             gimli::DW_TAG_enumeration_type => {
                 self.extract_enumeration_type(
@@ -1279,6 +1249,61 @@ impl UnitInfo {
 
         child_variable.extract_value(memory, cache);
         cache.update_variable(child_variable)?;
+
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn extract_struct(
+        &self,
+        type_name: Option<String>,
+        debug_info: &DebugInfo,
+        node: &DebuggingInformationEntry<GimliReader>,
+        parent_variable: &Variable,
+        child_variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        let type_name = type_name.unwrap_or_else(|| "<unnamed struct>".to_string());
+        child_variable.type_name = VariableType::Struct(type_name.clone());
+        self.process_memory_location(
+            debug_info,
+            node,
+            parent_variable,
+            child_variable,
+            memory,
+            frame_info,
+        )?;
+
+        if child_variable.memory_location != VariableLocation::Unavailable {
+            // The default behaviour is to defer the processing of child types.
+            child_variable.variable_node_type =
+                VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
+            // In some cases, it really simplifies the UX if we can auto resolve the
+            // children and derive a value that is visible at first glance to the user.
+            if self.language.auto_resolve_children(&type_name) {
+                let temp_node_type = std::mem::replace(
+                    &mut child_variable.variable_node_type,
+                    VariableNodeType::RecurseToBaseType,
+                );
+
+                let mut tree = self.unit.entries_tree(Some(node.offset()))?;
+
+                self.process_tree(
+                    debug_info,
+                    tree.root()?,
+                    child_variable,
+                    memory,
+                    cache,
+                    frame_info,
+                )?;
+                child_variable.variable_node_type = temp_node_type;
+            }
+        } else {
+            // If something is already broken, then do nothing ...
+            child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
+        }
 
         Ok(())
     }
