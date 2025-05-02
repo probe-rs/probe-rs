@@ -15,6 +15,8 @@ use probe_rs::MemoryInterface;
 pub struct Rust;
 impl Rust {
     /// Replaces *const data pointer with *const [data; len] in slices.
+    ///
+    /// This function may return `Ok(())` even if it does not modify the variable.
     #[allow(clippy::too_many_arguments)]
     fn expand_slice(
         &self,
@@ -38,7 +40,9 @@ impl Rust {
         let VariableValue::Valid(length_value) = &length.value else {
             return Ok(());
         };
-        let length = length_value.parse().unwrap_or(0_usize);
+        let Ok(length) = length_value.parse() else {
+            return Ok(());
+        };
 
         // Do we have a data pointer?
         let Some(location) = children.find(|c| is_field(c, "data_ptr")) else {
@@ -50,7 +54,9 @@ impl Rust {
 
         std::mem::drop(children);
 
-        let mut pointee = cache.get_children(pointer_key).next().unwrap().clone();
+        let Some(mut pointee) = cache.get_children(pointer_key).next().cloned() else {
+            return Ok(());
+        };
 
         // Do we know the type of the data?
         let Some(type_node_offset) = pointee.type_node_offset else {
