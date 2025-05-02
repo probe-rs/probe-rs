@@ -5975,12 +5975,56 @@ expression: stack_frames
                   children:
                     - name:
                         Named: inner
-                      type_name: Unknown
-                      value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(5879)) >"
-                - name:
-                    Named: not_send
-                  type_name: Unknown
-                  value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(6875)) >"
+                      type_name:
+                        Struct: Executor
+                      value: Executor @ 0x00000000
+                      children:
+                        - name:
+                            Named: inner
+                          type_name:
+                            Struct: SyncExecutor
+                          value: SyncExecutor @ 0x00000000
+                          children:
+                            - name:
+                                Named: run_queue
+                              type_name:
+                                Struct: RunQueue
+                              value: RunQueue @ 0x00000000
+                              children:
+                                - name:
+                                    Named: head
+                                  type_name:
+                                    Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                                  value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                  children:
+                                    - name:
+                                        Named: p
+                                      type_name:
+                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
+                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                          children:
+                                            - name:
+                                                Named: "*value"
+                                              type_name:
+                                                Struct: TaskHeader
+                                              value: TaskHeader
+                            - name:
+                                Named: pender
+                              type_name:
+                                Struct: Pender
+                              value: Pender @ 0x00000004
+                              children:
+                                - name:
+                                    Named: __0
+                                  type_name:
+                                    Pointer: "*mut ()"
+                                  value: "*mut () @ 0x00000004"
         - name:
             Named: init
           type_name:

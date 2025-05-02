@@ -429,23 +429,21 @@ impl UnitInfo {
         frame_info: StackFrameInfo<'_>,
         cache: &mut VariableCache,
     ) -> Result<(), DebugError> {
-        match attr.value() {
-            gimli::AttributeValue::UnitRef(unit_ref) => {
-                // Reference to a type, or an entry to another type or a type modifier which will point to another type.
-                // Before we resolve that type tree, we need to resolve the current node's memory location.
-                // This is because the memory location of the type nodes and child variables often inherit this value.
-                self.process_memory_location(
-                    debug_info,
-                    attributes_entry,
-                    parent_variable,
-                    child_variable,
-                    memory,
-                    frame_info,
-                )?;
+        // Reference to a type, or an entry to another type or a type modifier which will point to another type.
+        // Before we resolve that type tree, we need to resolve the current node's memory location.
+        // This is because the memory location of the type nodes and child variables often inherit this value.
+        self.process_memory_location(
+            debug_info,
+            attributes_entry,
+            parent_variable,
+            child_variable,
+            memory,
+            frame_info,
+        )?;
 
-                // Now resolve the referenced tree node for the type.
-                let referenced_type_tree_node = self.unit.entry(unit_ref)?;
-                self.extract_type(
+        match debug_info.resolve_die_reference_with_unit(attr, self) {
+            Ok((unit_info, referenced_type_tree_node)) => {
+                unit_info.extract_type(
                     debug_info,
                     &referenced_type_tree_node,
                     parent_variable,
@@ -455,9 +453,9 @@ impl UnitInfo {
                     frame_info,
                 )?;
             }
-            other_attribute_value => {
+            Err(error) => {
                 child_variable.set_value(VariableValue::Error(format!(
-                    "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
+                    "Failed to process DW_AT_type: {error:?}"
                 )));
             }
         }
