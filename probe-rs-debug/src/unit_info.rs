@@ -2029,15 +2029,13 @@ impl UnitInfo {
         // Address Pointer Conditions (any of):
         // 1. Variable names that start with '*' (e.g '*__0), AND the variable is a variant of the parent.
         // 2. Pointer names that start with '*' (e.g. '*const u8')
-        // 3. Pointers to base types (includes &str types)
-        // 4. Pointers to variable names that start with `*`
-        // 5. Pointers to types with refrenced memory addresses (e.g. variants, generics, arrays, etc.)
+        // 3. Pointers to variable names that start with `*`
+        // 4. Pointers to types with refrenced memory addresses (e.g. variants, generics, arrays, etc.)
         (matches!(child_variable.name, VariableName::Named(ref var_name) if var_name.starts_with('*'))
                 && matches!(parent_variable.role, VariantRole::VariantPart(_)))
             || matches!(&parent_variable.type_name, VariableType::Pointer(Some(pointer_name)) if pointer_name.starts_with('*'))
             || (matches!(&parent_variable.type_name, VariableType::Pointer(_))
                 && (matches!(child_variable.type_name, VariableType::Base(_))
-                    || matches!(child_variable.type_name, VariableType::Struct(ref type_name) if type_name.starts_with("&str"))
                     || matches!(child_variable.name, VariableName::Named(ref var_name) if var_name.starts_with('*'))
                     || self.has_address_pointer(unit_ref).unwrap_or_else(|error| {
                         child_variable.set_value(VariableValue::Error(format!("Failed to determine if a struct has variant or generic type fields: {error}")));
