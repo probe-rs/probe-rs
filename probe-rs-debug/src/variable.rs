@@ -434,6 +434,9 @@ impl VariableLocation {
                     message: "Register value is not a valid address".to_string(),
                 }),
             },
+            VariableLocation::Error(error) => Err(DebugError::WarnAndContinue {
+                message: error.clone(),
+            }),
             other => Err(DebugError::WarnAndContinue {
                 message: format!("Variable does not have a memory location: location={other:?}"),
             }),
@@ -631,13 +634,15 @@ impl Variable {
                 // requested by the user, just display the type_name as the value
                 self.type_name
                     .display_name(language::from_dwarf(self.language).as_ref())
+            } else if let VariableLocation::Error(ref error) = self.memory_location {
+                    error.clone()
             } else {
                 // This condition should only be true for intermediate nodes
                 // from DWARF. These should not show up in the final
                 // `VariableCache`. If a user sees this error, then there is
                 // a logic problem in the stack unwind
                 "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
-            }
+                            }
         } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
             "None".to_string()
         } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
