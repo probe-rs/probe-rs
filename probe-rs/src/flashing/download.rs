@@ -34,6 +34,13 @@ pub struct IdfOptions {
     pub target_app_partition: Option<String>,
 }
 
+/// Extended options for flashing an ELF file.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
+pub struct ElfOptions {
+    /// Sections to skip flashing
+    pub skip_sections: Vec<String>,
+}
+
 /// A finite list of all the available binary formats probe-rs understands.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
 pub enum FormatKind {
@@ -81,7 +88,7 @@ impl FromStr for FormatKind {
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum Format {
     /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
     /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
@@ -90,8 +97,7 @@ pub enum Format {
     /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
     Hex,
     /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
-    #[default]
-    Elf,
+    Elf(ElfOptions),
     /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
     /// Use [IdfOptions] to configure flashing.
     Idf(IdfOptions),
@@ -99,12 +105,18 @@ pub enum Format {
     Uf2,
 }
 
+impl Default for Format {
+    fn default() -> Self {
+        Format::Elf(ElfOptions::default())
+    }
+}
+
 impl From<FormatKind> for Format {
     fn from(kind: FormatKind) -> Self {
         match kind {
             FormatKind::Bin => Format::Bin(BinOptions::default()),
             FormatKind::Hex => Format::Hex,
-            FormatKind::Elf => Format::Elf,
+            FormatKind::Elf => Format::Elf(ElfOptions::default()),
             FormatKind::Uf2 => Format::Uf2,
             FormatKind::Idf => Format::Idf(IdfOptions::default()),
         }
@@ -298,6 +310,7 @@ fn extract_from_elf_inner<'data, T: FileHeader>(
     elf_header: &T,
     binary: ElfFile<'_, T>,
     elf_data: &'data [u8],
+    options: &ElfOptions,
 ) -> Result<Vec<ExtractedFlashData<'data>>, FileDownloadError> {
     let endian = elf_header.endian()?;
 
@@ -335,7 +348,12 @@ fn extract_from_elf_inner<'data, T: FileHeader>(
                 };
 
                 if sector.contains_range(&(section_offset..section_offset + section_filesize)) {
-                    tracing::info!("Matching section: {:?}", section.name()?);
+                    let name = section.name()?;
+                    if options.skip_sections.iter().any(|skip| skip == name) {
+                        tracing::info!("Skipping section: {:?}", name);
+                        continue;
+                    }
+                    tracing::info!("Matching section: {:?}", name);
 
                     #[cfg(feature = "hexdump")]
                     for line in hexdump::hexdump_iter(section.data()?) {
@@ -350,7 +368,7 @@ fn extract_from_elf_inner<'data, T: FileHeader>(
                         );
                     }
 
-                    elf_section.push(section.name()?.to_owned());
+                    elf_section.push(name.to_owned());
                 }
             }
 
@@ -372,21 +390,22 @@ fn extract_from_elf_inner<'data, T: FileHeader>(
     Ok(extracted_data)
 }
 
-pub(super) fn extract_from_elf(
-    elf_data: &[u8],
-) -> Result<Vec<ExtractedFlashData<'_>>, FileDownloadError> {
+pub(super) fn extract_from_elf<'a>(
+    elf_data: &'a [u8],
+    options: &ElfOptions,
+) -> Result<Vec<ExtractedFlashData<'a>>, FileDownloadError> {
     let file_kind = object::FileKind::parse(elf_data)?;
 
     match file_kind {
         object::FileKind::Elf32 => {
             let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
             let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
-            extract_from_elf_inner(elf_header, binary, elf_data)
+            extract_from_elf_inner(elf_header, binary, elf_data, options)
         }
         object::FileKind::Elf64 => {
             let elf_header = FileHeader64::<Endianness>::parse(elf_data)?;
             let binary = object::read::elf::ElfFile::<FileHeader64<Endianness>>::parse(elf_data)?;
-            extract_from_elf_inner(elf_header, binary, elf_data)
+            extract_from_elf_inner(elf_header, binary, elf_data, options)
         }
         _ => Err(FileDownloadError::Object("Unsupported file type")),
     }

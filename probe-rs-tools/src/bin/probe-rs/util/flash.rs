@@ -13,7 +13,7 @@ use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use probe_rs::InstructionSet;
-use probe_rs::flashing::{BinOptions, FlashProgress, Format, IdfOptions};
+use probe_rs::flashing::{BinOptions, ElfOptions, FlashProgress, Format, IdfOptions};
 use probe_rs::{
     Session,
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},
@@ -106,7 +106,9 @@ pub fn build_loader(
             skip: format_options.bin_options.skip,
         }),
         FormatKind::Hex => Format::Hex,
-        FormatKind::Elf => Format::Elf,
+        FormatKind::Elf => Format::Elf(ElfOptions {
+            skip_sections: format_options.elf_options.skip_section,
+        }),
         FormatKind::Uf2 => Format::Uf2,
         FormatKind::Idf => Format::Idf(IdfOptions {
             bootloader: format_options.idf_options.idf_bootloader.map(PathBuf::from),

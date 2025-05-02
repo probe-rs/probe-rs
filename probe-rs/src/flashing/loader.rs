@@ -12,7 +12,7 @@ use std::time::Duration;
 
 use super::builder::FlashBuilder;
 use super::{
-    BinOptions, DownloadOptions, FileDownloadError, FlashError, Flasher, IdfOptions,
+    BinOptions, DownloadOptions, ElfOptions, FileDownloadError, FlashError, Flasher, IdfOptions,
     extract_from_elf,
 };
 use crate::Target;
@@ -48,7 +48,7 @@ impl ImageLoader for Format {
     ) -> Result<(), FileDownloadError> {
         match self {
             Format::Bin(options) => BinLoader(options.clone()).load(flash_loader, session, file),
-            Format::Elf => ElfLoader.load(flash_loader, session, file),
+            Format::Elf(options) => ElfLoader(options.clone()).load(flash_loader, session, file),
             Format::Hex => HexLoader.load(flash_loader, session, file),
             Format::Idf(options) => IdfLoader(options.clone()).load(flash_loader, session, file),
             Format::Uf2 => Uf2Loader.load(flash_loader, session, file),
@@ -85,7 +85,7 @@ impl ImageLoader for BinLoader {
 
 /// Prepares the data sections that have to be loaded into flash from an ELF file.
 /// This will validate the ELF file and transform all its data into sections but no flash loader commands yet.
-struct ElfLoader;
+struct ElfLoader(ElfOptions);
 
 impl ImageLoader for ElfLoader {
     fn load(
@@ -98,7 +98,7 @@ impl ImageLoader for ElfLoader {
         let mut elf_buffer = Vec::new();
         file.read_to_end(&mut elf_buffer)?;
 
-        let extracted_data = extract_from_elf(&elf_buffer)?;
+        let extracted_data = extract_from_elf(&elf_buffer, &self.0)?;
 
         if extracted_data.is_empty() {
             tracing::warn!("No loadable segments were found in the ELF file.");
