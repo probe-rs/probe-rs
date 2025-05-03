@@ -233,16 +233,24 @@ expression: stack_frames
                           value: "&[&str] @ 0x3FCDC414"
                           children:
                             - name:
-                                Named: data_ptr
+                                Named: length
                               type_name:
-                                Pointer: "&str"
-                              value: "&str @ 0x3FCDC414"
+                                Base: usize
+                              value: "1"
+                            - name:
+                                Named: "*data_ptr"
+                              type_name:
+                                Array:
+                                  item_type_name:
+                                    Struct: "&str"
+                                  count: 1
+                              value: "[&str; 1] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >]"
                               children:
                                 - name:
-                                    Named: "*data_ptr"
+                                    Indexed: 0
                                   type_name:
                                     Struct: "&str"
-                                  value: "< WarnAndContinue { message: \"Variable does not have a memory location: location=Error(\\\"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\\\")\" } >"
+                                  value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >"
                                   children:
                                     - name:
                                         Named: data_ptr
@@ -254,17 +262,12 @@ expression: stack_frames
                                             Named: "*data_ptr"
                                           type_name:
                                             Base: u8
-                                          value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                          value: "Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4."
                                     - name:
                                         Named: length
                                       type_name:
                                         Base: usize
                                       value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010688 of size 0x4\")) >"
-                            - name:
-                                Named: length
-                              type_name:
-                                Base: usize
-                              value: "1"
                         - name:
                             Named: fmt
                           type_name:
@@ -283,50 +286,18 @@ expression: stack_frames
                           value: "&[core::fmt::rt::Argument] @ 0x3FCDC41C"
                           children:
                             - name:
-                                Named: data_ptr
-                              type_name:
-                                Pointer: Argument
-                              value: "*raw Argument @ 0x3FCDC41C"
-                              children:
-                                - name:
-                                    Named: "*data_ptr"
-                                  type_name:
-                                    Struct: Argument
-                                  value: Argument @ 0x00000004
-                                  children:
-                                    - name:
-                                        Named: ty
-                                      type_name:
-                                        Struct: ArgumentType
-                                      value: ArgumentType @ 0x00000004
-                                      children:
-                                        - name:
-                                            Named: Placeholder
-                                          type_name:
-                                            Struct: Placeholder
-                                          value: Placeholder @ 0x00000004
-                                          children:
-                                            - name:
-                                                Named: value
-                                              type_name:
-                                                Struct: NonNull<()>
-                                              value: NonNull<()> @ 0x00000004
-                                            - name:
-                                                Named: formatter
-                                              type_name:
-                                                Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
-                                              value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x00000008"
-                                              children:
-                                                - name:
-                                                    Named: "*formatter"
-                                                  type_name:
-                                                    Other: "Result<(), core::fmt::Error>"
-                                                  value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
-                            - name:
                                 Named: length
                               type_name:
                                 Base: usize
                               value: "0"
+                            - name:
+                                Named: "*data_ptr"
+                              type_name:
+                                Array:
+                                  item_type_name:
+                                    Struct: Argument
+                                  count: 0
+                              value: "[Argument; 0] = []"
                 - name:
                     Named: location
                   type_name:
@@ -343,7 +314,7 @@ expression: stack_frames
                             Named: file
                           type_name:
                             Struct: "&str"
-                          value: "< WarnAndContinue { message: \"Variable does not have a memory location: location=Error(\\\"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\\\")\" } >"
+                          value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\" } >"
                           children:
                             - name:
                                 Named: data_ptr
@@ -355,7 +326,7 @@ expression: stack_frames
                                     Named: "*data_ptr"
                                   type_name:
                                     Base: u8
-                                  value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                  value: "Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4."
                             - name:
                                 Named: length
                               type_name:
@@ -616,16 +587,24 @@ expression: stack_frames
                                   value: "&[&str] @ 0x3FCDC414"
                                   children:
                                     - name:
-                                        Named: data_ptr
+                                        Named: length
                                       type_name:
-                                        Pointer: "&str"
-                                      value: "&str @ 0x3FCDC414"
+                                        Base: usize
+                                      value: "1"
+                                    - name:
+                                        Named: "*data_ptr"
+                                      type_name:
+                                        Array:
+                                          item_type_name:
+                                            Struct: "&str"
+                                          count: 1
+                                      value: "[&str; 1] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >]"
                                       children:
                                         - name:
-                                            Named: "*data_ptr"
+                                            Indexed: 0
                                           type_name:
                                             Struct: "&str"
-                                          value: "< WarnAndContinue { message: \"Variable does not have a memory location: location=Error(\\\"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\\\")\" } >"
+                                          value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >"
                                           children:
                                             - name:
                                                 Named: data_ptr
@@ -637,17 +616,12 @@ expression: stack_frames
                                                     Named: "*data_ptr"
                                                   type_name:
                                                     Base: u8
-                                                  value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                                  value: "Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4."
                                             - name:
                                                 Named: length
                                               type_name:
                                                 Base: usize
                                               value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010688 of size 0x4\")) >"
-                                    - name:
-                                        Named: length
-                                      type_name:
-                                        Base: usize
-                                      value: "1"
                                 - name:
                                     Named: fmt
                                   type_name:
@@ -666,27 +640,18 @@ expression: stack_frames
                                   value: "&[core::fmt::rt::Argument] @ 0x3FCDC41C"
                                   children:
                                     - name:
-                                        Named: data_ptr
-                                      type_name:
-                                        Pointer: Argument
-                                      value: "*raw Argument @ 0x3FCDC41C"
-                                      children:
-                                        - name:
-                                            Named: "*data_ptr"
-                                          type_name:
-                                            Struct: Argument
-                                          value: Argument @ 0x00000004
-                                          children:
-                                            - name:
-                                                Named: ty
-                                              type_name:
-                                                Struct: ArgumentType
-                                              value: ArgumentType @ 0x00000004
-                                    - name:
                                         Named: length
                                       type_name:
                                         Base: usize
                                       value: "0"
+                                    - name:
+                                        Named: "*data_ptr"
+                                      type_name:
+                                        Array:
+                                          item_type_name:
+                                            Struct: Argument
+                                          count: 0
+                                      value: "[Argument; 0] = []"
                         - name:
                             Named: location
                           type_name:
@@ -703,7 +668,7 @@ expression: stack_frames
                                     Named: file
                                   type_name:
                                     Struct: "&str"
-                                  value: "< WarnAndContinue { message: \"Variable does not have a memory location: location=Error(\\\"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\\\")\" } >"
+                                  value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\" } >"
                                   children:
                                     - name:
                                         Named: data_ptr
@@ -715,7 +680,7 @@ expression: stack_frames
                                             Named: "*data_ptr"
                                           type_name:
                                             Base: u8
-                                          value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                          value: "Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4."
                                     - name:
                                         Named: length
                                       type_name:
@@ -1002,16 +967,24 @@ expression: stack_frames
                           value: "&[&str] @ 0x3FCDC414"
                           children:
                             - name:
-                                Named: data_ptr
+                                Named: length
                               type_name:
-                                Pointer: "&str"
-                              value: "&str @ 0x3FCDC414"
+                                Base: usize
+                              value: "1"
+                            - name:
+                                Named: "*data_ptr"
+                              type_name:
+                                Array:
+                                  item_type_name:
+                                    Struct: "&str"
+                                  count: 1
+                              value: "[&str; 1] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >]"
                               children:
                                 - name:
-                                    Named: "*data_ptr"
+                                    Indexed: 0
                                   type_name:
                                     Struct: "&str"
-                                  value: "< WarnAndContinue { message: \"Variable does not have a memory location: location=Error(\\\"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\\\")\" } >"
+                                  value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >"
                                   children:
                                     - name:
                                         Named: data_ptr
@@ -1023,17 +996,12 @@ expression: stack_frames
                                             Named: "*data_ptr"
                                           type_name:
                                             Base: u8
-                                          value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                          value: "Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4."
                                     - name:
                                         Named: length
                                       type_name:
                                         Base: usize
                                       value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010688 of size 0x4\")) >"
-                            - name:
-                                Named: length
-                              type_name:
-                                Base: usize
-                              value: "1"
                         - name:
                             Named: fmt
                           type_name:
@@ -1052,50 +1020,18 @@ expression: stack_frames
                           value: "&[core::fmt::rt::Argument] @ 0x3FCDC41C"
                           children:
                             - name:
-                                Named: data_ptr
-                              type_name:
-                                Pointer: Argument
-                              value: "*raw Argument @ 0x3FCDC41C"
-                              children:
-                                - name:
-                                    Named: "*data_ptr"
-                                  type_name:
-                                    Struct: Argument
-                                  value: Argument @ 0x00000004
-                                  children:
-                                    - name:
-                                        Named: ty
-                                      type_name:
-                                        Struct: ArgumentType
-                                      value: ArgumentType @ 0x00000004
-                                      children:
-                                        - name:
-                                            Named: Placeholder
-                                          type_name:
-                                            Struct: Placeholder
-                                          value: Placeholder @ 0x00000004
-                                          children:
-                                            - name:
-                                                Named: value
-                                              type_name:
-                                                Struct: NonNull<()>
-                                              value: NonNull<()> @ 0x00000004
-                                            - name:
-                                                Named: formatter
-                                              type_name:
-                                                Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
-                                              value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x00000008"
-                                              children:
-                                                - name:
-                                                    Named: "*formatter"
-                                                  type_name:
-                                                    Other: "Result<(), core::fmt::Error>"
-                                                  value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
-                            - name:
                                 Named: length
                               type_name:
                                 Base: usize
                               value: "0"
+                            - name:
+                                Named: "*data_ptr"
+                              type_name:
+                                Array:
+                                  item_type_name:
+                                    Struct: Argument
+                                  count: 0
+                              value: "[Argument; 0] = []"
                 - name:
                     Named: location
                   type_name:
@@ -1112,7 +1048,7 @@ expression: stack_frames
                             Named: file
                           type_name:
                             Struct: "&str"
-                          value: "< WarnAndContinue { message: \"Variable does not have a memory location: location=Error(\\\"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\\\")\" } >"
+                          value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\" } >"
                           children:
                             - name:
                                 Named: data_ptr
@@ -1124,7 +1060,7 @@ expression: stack_frames
                                     Named: "*data_ptr"
                                   type_name:
                                     Base: u8
-                                  value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                  value: "Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4."
                             - name:
                                 Named: length
                               type_name:
@@ -1355,16 +1291,24 @@ expression: stack_frames
               value: "&[&str] @ 0x3FCDC414"
               children:
                 - name:
-                    Named: data_ptr
+                    Named: length
                   type_name:
-                    Pointer: "&str"
-                  value: "&str @ 0x3FCDC414"
+                    Base: usize
+                  value: "1"
+                - name:
+                    Named: "*data_ptr"
+                  type_name:
+                    Array:
+                      item_type_name:
+                        Struct: "&str"
+                      count: 1
+                  value: "[&str; 1] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >]"
                   children:
                     - name:
-                        Named: "*data_ptr"
+                        Indexed: 0
                       type_name:
                         Struct: "&str"
-                      value: "< WarnAndContinue { message: \"Variable does not have a memory location: location=Error(\\\"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\\\")\" } >"
+                      value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >"
                       children:
                         - name:
                             Named: data_ptr
@@ -1376,17 +1320,12 @@ expression: stack_frames
                                 Named: "*data_ptr"
                               type_name:
                                 Base: u8
-                              value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                              value: "Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4."
                         - name:
                             Named: length
                           type_name:
                             Base: usize
                           value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010688 of size 0x4\")) >"
-                - name:
-                    Named: length
-                  type_name:
-                    Base: usize
-                  value: "1"
             - name:
                 Named: fmt
               type_name:
@@ -1405,56 +1344,18 @@ expression: stack_frames
               value: "&[core::fmt::rt::Argument] @ 0x3FCDC41C"
               children:
                 - name:
-                    Named: data_ptr
-                  type_name:
-                    Pointer: Argument
-                  value: "*raw Argument @ 0x3FCDC41C"
-                  children:
-                    - name:
-                        Named: "*data_ptr"
-                      type_name:
-                        Struct: Argument
-                      value: Argument @ 0x00000004
-                      children:
-                        - name:
-                            Named: ty
-                          type_name:
-                            Struct: ArgumentType
-                          value: ArgumentType @ 0x00000004
-                          children:
-                            - name:
-                                Named: Placeholder
-                              type_name:
-                                Struct: Placeholder
-                              value: Placeholder @ 0x00000004
-                              children:
-                                - name:
-                                    Named: value
-                                  type_name:
-                                    Struct: NonNull<()>
-                                  value: NonNull<()> @ 0x00000004
-                                  children:
-                                    - name:
-                                        Named: pointer
-                                      type_name:
-                                        Pointer: "*const ()"
-                                      value: "*const () @ 0x00000004"
-                                - name:
-                                    Named: formatter
-                                  type_name:
-                                    Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
-                                  value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x00000008"
-                                  children:
-                                    - name:
-                                        Named: "*formatter"
-                                      type_name:
-                                        Other: "Result<(), core::fmt::Error>"
-                                      value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
-                - name:
                     Named: length
                   type_name:
                     Base: usize
                   value: "0"
+                - name:
+                    Named: "*data_ptr"
+                  type_name:
+                    Array:
+                      item_type_name:
+                        Struct: Argument
+                      count: 0
+                  value: "[Argument; 0] = []"
         - name:
             Named: pi
           type_name:
@@ -1485,16 +1386,24 @@ expression: stack_frames
                       value: "&[&str] @ 0x3FCDC414"
                       children:
                         - name:
-                            Named: data_ptr
+                            Named: length
                           type_name:
-                            Pointer: "&str"
-                          value: "&str @ 0x3FCDC414"
+                            Base: usize
+                          value: "1"
+                        - name:
+                            Named: "*data_ptr"
+                          type_name:
+                            Array:
+                              item_type_name:
+                                Struct: "&str"
+                              count: 1
+                          value: "[&str; 1] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >]"
                           children:
                             - name:
-                                Named: "*data_ptr"
+                                Indexed: 0
                               type_name:
                                 Struct: "&str"
-                              value: "< WarnAndContinue { message: \"Variable does not have a memory location: location=Error(\\\"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\\\")\" } >"
+                              value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4.\" } >"
                               children:
                                 - name:
                                     Named: data_ptr
@@ -1506,17 +1415,12 @@ expression: stack_frames
                                         Named: "*data_ptr"
                                       type_name:
                                         Base: u8
-                                      value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                      value: "Failed to read referenced variable address from memory location 0x3C010684 : The coredump does not include the memory for address 0x3c010684 of size 0x4."
                                 - name:
                                     Named: length
                                   type_name:
                                     Base: usize
                                   value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010688 of size 0x4\")) >"
-                        - name:
-                            Named: length
-                          type_name:
-                            Base: usize
-                          value: "1"
                     - name:
                         Named: fmt
                       type_name:
@@ -1535,56 +1439,18 @@ expression: stack_frames
                       value: "&[core::fmt::rt::Argument] @ 0x3FCDC41C"
                       children:
                         - name:
-                            Named: data_ptr
-                          type_name:
-                            Pointer: Argument
-                          value: "*raw Argument @ 0x3FCDC41C"
-                          children:
-                            - name:
-                                Named: "*data_ptr"
-                              type_name:
-                                Struct: Argument
-                              value: Argument @ 0x00000004
-                              children:
-                                - name:
-                                    Named: ty
-                                  type_name:
-                                    Struct: ArgumentType
-                                  value: ArgumentType @ 0x00000004
-                                  children:
-                                    - name:
-                                        Named: Placeholder
-                                      type_name:
-                                        Struct: Placeholder
-                                      value: Placeholder @ 0x00000004
-                                      children:
-                                        - name:
-                                            Named: value
-                                          type_name:
-                                            Struct: NonNull<()>
-                                          value: NonNull<()> @ 0x00000004
-                                          children:
-                                            - name:
-                                                Named: pointer
-                                              type_name:
-                                                Pointer: "*const ()"
-                                              value: "*const () @ 0x00000004"
-                                        - name:
-                                            Named: formatter
-                                          type_name:
-                                            Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
-                                          value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x00000008"
-                                          children:
-                                            - name:
-                                                Named: "*formatter"
-                                              type_name:
-                                                Other: "Result<(), core::fmt::Error>"
-                                              value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
-                        - name:
                             Named: length
                           type_name:
                             Base: usize
                           value: "0"
+                        - name:
+                            Named: "*data_ptr"
+                          type_name:
+                            Array:
+                              item_type_name:
+                                Struct: Argument
+                              count: 0
+                          value: "[Argument; 0] = []"
             - name:
                 Named: location
               type_name:
@@ -1601,7 +1467,7 @@ expression: stack_frames
                         Named: file
                       type_name:
                         Struct: "&str"
-                      value: "< WarnAndContinue { message: \"Variable does not have a memory location: location=Error(\\\"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\\\")\" } >"
+                      value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4.\" } >"
                       children:
                         - name:
                             Named: data_ptr
@@ -1613,7 +1479,7 @@ expression: stack_frames
                                 Named: "*data_ptr"
                               type_name:
                                 Base: u8
-                              value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                              value: "Failed to read referenced variable address from memory location 0x3C01069C : The coredump does not include the memory for address 0x3c01069c of size 0x4."
                         - name:
                             Named: length
                           type_name:

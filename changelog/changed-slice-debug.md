@@ -1,0 +1,1 @@
+The debugger now turns the data pointer in slices into arrays so that their data can be inspected.

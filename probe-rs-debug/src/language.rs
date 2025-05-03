@@ -1,9 +1,9 @@
-use gimli::DwLang;
+use gimli::{DebuggingInformationEntry, DwLang};
 use probe_rs::MemoryInterface;
 
 use crate::{
-    Bitfield, DebugError, Modifier, Variable, VariableCache, VariableName, VariableType,
-    VariableValue,
+    Bitfield, DebugError, DebugInfo, GimliReader, Modifier, Variable, VariableCache, VariableName,
+    VariableType, VariableValue, stack_frame::StackFrameInfo, unit_info::UnitInfo,
 };
 
 /// C, C89, C99, C11, ...
@@ -72,6 +72,21 @@ pub trait ProgrammingLanguage {
             Modifier::Atomic => format!("_Atomic {}", name),
             Modifier::Typedef(ty) => ty.to_string(),
         }
+    }
+
+    // Post-process raw type representations for more user-friendly output.
+    #[allow(clippy::too_many_arguments)]
+    fn process_struct(
+        &self,
+        _unit_info: &UnitInfo,
+        _debug_info: &DebugInfo,
+        _node: &DebuggingInformationEntry<GimliReader>,
+        _variable: &mut Variable,
+        _memory: &mut dyn MemoryInterface,
+        _cache: &mut VariableCache,
+        _frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        Ok(())
     }
 }
 

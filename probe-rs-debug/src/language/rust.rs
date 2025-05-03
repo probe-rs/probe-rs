@@ -1,15 +1,115 @@
 use crate::{
-    DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
-    VariableValue,
+    DebugError, DebugInfo, GimliReader, ObjectRef, Variable, VariableCache, VariableLocation,
+    VariableName, VariableNodeType, VariableType, VariableValue,
     language::{
         ProgrammingLanguage,
         value::{Value, format_float},
     },
+    stack_frame::StackFrameInfo,
+    unit_info::UnitInfo,
 };
 
+use gimli::DebuggingInformationEntry;
 use probe_rs::MemoryInterface;
+
+struct Slice<'a> {
+    length: u64,
+    data_ptr: &'a Variable,
+}
+
 #[derive(Debug, Clone)]
 pub struct Rust;
+impl Rust {
+    fn try_get_slice<'a>(variable: &'a Variable, cache: &'a VariableCache) -> Option<Slice<'a>> {
+        fn is_field(var: &Variable, name: &str) -> bool {
+            matches!(var.name, VariableName::Named(ref var_name) if var_name == name)
+        }
+
+        Some(Slice {
+            // Do we have a length?
+            length: cache
+                .get_children(variable.variable_key)
+                .find(|c| is_field(c, "length"))
+                .and_then(|field| match &field.value {
+                    VariableValue::Valid(length_value) => Some(length_value),
+                    _ => None,
+                })
+                .and_then(|length_str| length_str.parse().ok())?,
+
+            // Do we have a data pointer?
+            data_ptr: cache
+                .get_children(variable.variable_key)
+                .find(|c| is_field(c, "data_ptr"))?,
+        })
+    }
+
+    /// Replaces *const data pointer with *const [data; len] in slices.
+    ///
+    /// This function may return `Ok(())` even if it does not modify the variable.
+    #[allow(clippy::too_many_arguments)]
+    fn expand_slice(
+        &self,
+        unit_info: &UnitInfo,
+        debug_info: &DebugInfo,
+        _node: &DebuggingInformationEntry<GimliReader>,
+        variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        let Some(slice) = Self::try_get_slice(variable, cache) else {
+            return Ok(());
+        };
+
+        // Turn the data pointer into an array.
+        let pointer_key = slice.data_ptr.variable_key;
+        let length = slice.length;
+
+        let Some(mut pointee) = cache.get_children(pointer_key).next().cloned() else {
+            return Ok(());
+        };
+
+        // Do we know the type of the data?
+        let Some(type_node_offset) = pointee.type_node_offset else {
+            return Ok(());
+        };
+
+        // Let's just remove the pointer. While it may be interesting where the data is, the
+        // address can be read using the debugger, and is otherwise just noise on the UI.
+        cache.remove_cache_entry(pointer_key)?;
+
+        // Replace the pointee type with an array of known length. We don't have to modify the
+        // memory location, as the pointer is already pointing to the first element of the array.
+        pointee.parent_key = ObjectRef::Invalid;
+        pointee.variable_key = ObjectRef::Invalid;
+        pointee.value = VariableValue::Empty;
+        pointee.type_name = VariableType::Array {
+            item_type_name: { Box::new(pointee.type_name) },
+            count: length as usize,
+        };
+        pointee.variable_node_type = VariableNodeType::RecurseToBaseType;
+
+        cache.add_variable(variable.variable_key, &mut pointee)?;
+
+        let array_member_type_node = unit_info
+            .unit
+            .entry(type_node_offset)
+            .expect("Failed to get array member type node. This is a bug, please report it!");
+
+        let member_range = 0..length;
+        unit_info.expand_array_members(
+            debug_info,
+            &array_member_type_node,
+            cache,
+            &mut pointee,
+            memory,
+            &[member_range],
+            frame_info,
+        )?;
+
+        Ok(())
+    }
+}
 
 impl ProgrammingLanguage for Rust {
     fn read_variable_value(
@@ -119,10 +219,30 @@ impl ProgrammingLanguage for Rust {
 
     fn auto_resolve_children(&self, name: &str) -> bool {
         name.starts_with("&str")
+            || name.starts_with("&[")
             || name.starts_with("Option")
             || name.starts_with("Some")
             || name.starts_with("Result")
             || name.starts_with("Ok")
             || name.starts_with("Err")
+    }
+
+    fn process_struct(
+        &self,
+        unit_info: &UnitInfo,
+        debug_info: &DebugInfo,
+        node: &DebuggingInformationEntry<GimliReader>,
+        variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        cache: &mut VariableCache,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        if variable.type_name().starts_with("&[") {
+            self.expand_slice(
+                unit_info, debug_info, node, variable, memory, cache, frame_info,
+            )?;
+        }
+
+        Ok(())
     }
 }
