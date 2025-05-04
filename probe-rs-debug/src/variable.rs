@@ -635,8 +635,7 @@ impl Variable {
             if self.variable_node_type.is_deferred() {
                 // When we will do a lazy-load of variable children, and they have not yet been
                 // requested by the user, just display the type_name as the value
-                self.type_name
-                    .display_name(language::from_dwarf(self.language).as_ref())
+                self.type_name()
             } else if let VariableLocation::Error(ref error) = self.memory_location {
                 error.clone()
             } else {
@@ -686,12 +685,8 @@ impl Variable {
         {
             // And we have not previously assigned the value, then assign the type and address as
             // the value.
-            self.value = VariableValue::Valid(format!(
-                "{} @ {}",
-                self.type_name
-                    .display_name(language::from_dwarf(self.language).as_ref()),
-                self.memory_location
-            ));
+            self.value =
+                VariableValue::Valid(format!("{} @ {}", self.type_name(), self.memory_location));
             return;
         }
 
