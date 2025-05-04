@@ -252,30 +252,20 @@ impl DebugInfo {
         }
 
         match parent_variable.variable_node_type {
-            VariableNodeType::TypeOffset(header_offset, type_offset) => {
-                let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
-                let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
-
-                // Find the parent node
-                let mut type_tree = unit_info.unit.entries_tree(Some(type_offset))?;
-                let parent_node = type_tree.root()?;
-
-                unit_info.process_tree(
-                    self,
-                    parent_node,
-                    parent_variable,
-                    memory,
-                    cache,
-                    frame_info,
-                )?;
-            }
-            VariableNodeType::DirectLookup(header_offset, unit_offset) => {
-                let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
-                let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
+            VariableNodeType::TypeOffset(header_offset, unit_offset)
+            | VariableNodeType::DirectLookup(header_offset, unit_offset) => {
+                let Some(unit_info) = self
+                    .unit_infos
+                    .iter()
+                    .find(|unit_info| unit_info.unit.header.offset() == header_offset.into())
+                else {
+                    return Err(DebugError::Other(
+                        "Failed to find unit info for offset lookup.".to_string(),
+                    ));
+                };
 
                 // Find the parent node
                 let mut type_tree = unit_info.unit.entries_tree(Some(unit_offset))?;
-
                 let parent_node = type_tree.root()?;
 
                 unit_info.process_tree(
@@ -288,43 +278,26 @@ impl DebugInfo {
                 )?;
             }
             VariableNodeType::UnitsLookup => {
-                // Look up static variables from all units
-                let mut unit_infos = self.unit_infos.iter();
-
-                let Some(unit_info) = unit_infos.next() else {
+                if self.unit_infos.is_empty() {
                     // No unit infos
                     return Err(DebugError::Other("Missing unit infos".to_string()));
-                };
+                }
 
-                let mut entries = unit_info.unit.entries();
-
-                // Only process statics for this unit header.
-                // Navigate the current unit from the header down.
-                let (_, unit_node) = entries.next_dfs()?.unwrap();
-
-                let mut tree = unit_info.unit.entries_tree(Some(unit_node.offset()))?;
-
-                unit_info.process_tree(
-                    self,
-                    tree.root()?,
-                    parent_variable,
-                    memory,
-                    cache,
-                    frame_info,
-                )?;
-
-                for unit in unit_infos {
-                    let mut entries = unit.unit.entries();
+                // Look up static variables from all units
+                for unit_info in self.unit_infos.iter() {
+                    let mut entries = unit_info.unit.entries();
 
                     // Only process statics for this unit header.
                     // Navigate the current unit from the header down.
                     let (_, unit_node) = entries.next_dfs()?.unwrap();
+                    let unit_offset = unit_node.offset();
 
-                    let mut tree = unit.unit.entries_tree(Some(unit_node.offset()))?;
+                    let mut type_tree = unit_info.unit.entries_tree(Some(unit_offset))?;
+                    let parent_node = type_tree.root()?;
 
-                    unit.process_tree(
+                    unit_info.process_tree(
                         self,
-                        tree.root()?,
+                        parent_node,
                         parent_variable,
                         memory,
                         cache,
