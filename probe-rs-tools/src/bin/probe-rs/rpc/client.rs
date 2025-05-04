@@ -9,7 +9,7 @@
 use postcard_rpc::{
     Topic,
     header::{VarSeq, VarSeqKind},
-    host_client::{HostClient, HostClientConfig, HostErr, IoClosed, Subscription},
+    host_client::{HostClient, HostClientConfig, HostErr, IoClosed, SubscribeError, Subscription},
 };
 use postcard_schema::Schema;
 use probe_rs::{Session, config::Registry, flashing::FlashLoader};
@@ -31,11 +31,11 @@ use crate::{
             AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint,
             CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint,
             ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint,
-            MonitorTopic, ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint,
-            ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint,
-            RpcResult, RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint,
-            TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner,
-            VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
+            ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
+            ReadMemory64Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult,
+            RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic,
+            TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner, VerifyEndpoint,
+            WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
             WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
@@ -45,7 +45,7 @@ use crate::{
             },
             info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
-            monitor::{MonitorEvent, MonitorMode, MonitorOptions, MonitorRequest},
+            monitor::{MonitorMode, MonitorOptions, MonitorRequest},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
                 ListProbesRequest, SelectProbeRequest, SelectProbeResult,
@@ -58,7 +58,10 @@ use crate::{
         },
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
     },
-    util::rtt::{RttChannelConfig, client::RttClient},
+    util::{
+        cli::MonitorEvent,
+        rtt::{RttChannelConfig, client::RttClient},
+    },
 };
 
 #[cfg(feature = "remote")]
@@ -298,17 +301,16 @@ impl RpcClient {
         E: postcard_rpc::Endpoint<Response = RpcResult<R>>,
         E::Request: Serialize + Schema,
         E::Response: DeserializeOwned + Schema,
-        T: Topic,
-        T::Message: DeserializeOwned,
+        T: MultiTopic,
     {
-        let mut stream = match self.client.subscribe_exclusive::<T>(64).await {
+        let mut stream = match T::subscribe(&self.client, 64).await {
             Ok(stream) => stream,
-            Err(err) => anyhow::bail!("Failed to subscribe to '{}': {err:?}", T::PATH),
+            Err(err) => anyhow::bail!("Failed to subscribe to '{}': {:?}", err.topic, err.error),
         };
 
         tokio::select! {
             biased;
-            _ = read_stream(&mut stream, on_msg) => anyhow::bail!("Topic reader returned unexpectedly"),
+            _ = stream.stream(on_msg) => anyhow::bail!("Topic reader returned unexpectedly"),
             r = self.send_resp::<E, R>(req) => r,
         }
     }
@@ -501,7 +503,7 @@ impl SessionInterface {
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<()> {
         self.client
-            .send_and_read_stream::<MonitorEndpoint, MonitorTopic, _>(
+            .send_and_read_stream::<MonitorEndpoint, MonitorEvent, _>(
                 &MonitorRequest {
                     sessid: self.sessid,
                     mode,
@@ -519,7 +521,7 @@ impl SessionInterface {
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<Tests> {
         self.client
-            .send_and_read_stream::<ListTestsEndpoint, MonitorTopic, _>(
+            .send_and_read_stream::<ListTestsEndpoint, MonitorEvent, _>(
                 &ListTestsRequest {
                     sessid: self.sessid,
                     boot_info,
@@ -537,7 +539,7 @@ impl SessionInterface {
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<TestResult> {
         self.client
-            .send_and_read_stream::<RunTestEndpoint, MonitorTopic, _>(
+            .send_and_read_stream::<RunTestEndpoint, MonitorEvent, _>(
                 &RunTestRequest {
                     sessid: self.sessid,
                     test,
@@ -690,14 +692,70 @@ impl CoreInterface {
     }
 }
 
-async fn read_stream<T>(stream: &mut Subscription<T>, mut on_msg: impl AsyncFnMut(T))
+#[derive(Debug)]
+pub(crate) struct MultiSubscribeError {
+    topic: &'static str,
+    error: SubscribeError,
+}
+
+pub(crate) trait MultiTopic {
+    type Message;
+    type Subscription: MultiSubscription<Message = Self::Message>;
+
+    async fn subscribe<E>(
+        client: &HostClient<E>,
+        depth: usize,
+    ) -> Result<Self::Subscription, MultiSubscribeError>
+    where
+        E: DeserializeOwned + Schema;
+}
+
+impl<T> MultiTopic for T
+where
+    T: Topic,
+    T::Message: DeserializeOwned,
+{
+    type Message = T::Message;
+    type Subscription = Subscription<T::Message>;
+
+    async fn subscribe<E>(
+        client: &HostClient<E>,
+        depth: usize,
+    ) -> Result<Self::Subscription, MultiSubscribeError>
+    where
+        E: DeserializeOwned + Schema,
+    {
+        match client.subscribe_exclusive::<Self>(depth).await {
+            Ok(subscription) => Ok(subscription),
+            Err(error) => Err(MultiSubscribeError {
+                topic: T::PATH,
+                error,
+            }),
+        }
+    }
+}
+
+pub(crate) trait MultiSubscription {
+    type Message;
+
+    async fn next(&mut self) -> Option<Self::Message>;
+    async fn stream(&mut self, mut on_msg: impl AsyncFnMut(Self::Message)) -> anyhow::Result<()> {
+        while let Some(message) = self.next().await {
+            on_msg(message).await;
+        }
+
+        tracing::warn!("Failed to read topic");
+        futures_util::future::pending().await
+    }
+}
+
+impl<T> MultiSubscription for Subscription<T>
 where
     T: DeserializeOwned,
 {
-    while let Some(message) = stream.recv().await {
-        on_msg(message).await;
-    }
+    type Message = T;
 
-    tracing::warn!("Failed to read topic");
-    futures_util::future::pending().await
+    async fn next(&mut self) -> Option<Self::Message> {
+        self.recv().await
+    }
 }

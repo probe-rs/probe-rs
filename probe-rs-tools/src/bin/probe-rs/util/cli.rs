@@ -5,6 +5,9 @@ use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
 use anyhow::Context;
 use colored::Colorize;
 use libtest_mimic::{Failed, Trial};
+use postcard_rpc::host_client::HostClient;
+use postcard_schema::Schema;
+use serde::de::DeserializeOwned;
 use time::UtcOffset;
 use tokio::io::AsyncWriteExt;
 use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
@@ -14,11 +17,11 @@ use crate::{
     FormatOptions,
     rpc::{
         Key,
-        client::{RpcClient, SessionInterface},
+        client::{MultiSubscribeError, MultiSubscription, MultiTopic, RpcClient, SessionInterface},
         functions::{
-            CancelTopic,
+            CancelTopic, RttTopic, SemihostingTopic,
             flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
-            monitor::{MonitorEvent, MonitorMode, MonitorOptions},
+            monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
             },
@@ -383,6 +386,45 @@ pub async fn flash(
     Ok(loader.boot_info)
 }
 
+pub enum MonitorEvent {
+    Rtt(RttEvent),
+    Semihosting(SemihostingEvent),
+}
+
+impl MultiTopic for MonitorEvent {
+    type Message = Self;
+    type Subscription = MonitorSubscription;
+
+    async fn subscribe<E>(
+        client: &HostClient<E>,
+        depth: usize,
+    ) -> Result<Self::Subscription, MultiSubscribeError>
+    where
+        E: DeserializeOwned + Schema,
+    {
+        // TODO: remove MonitorEvent from the RPC interface, split this subscribe into two:
+        // one for RTT, one for semihosting, then introduce a MultiSubscription impl for them
+        let rtt = RttTopic::subscribe(client, depth).await?;
+        let semihosting = SemihostingTopic::subscribe(client, depth).await?;
+        Ok(MonitorSubscription { rtt, semihosting })
+    }
+}
+
+pub struct MonitorSubscription {
+    rtt: <RttTopic as MultiTopic>::Subscription,
+    semihosting: <SemihostingTopic as MultiTopic>::Subscription,
+}
+impl MultiSubscription for MonitorSubscription {
+    type Message = MonitorEvent;
+
+    async fn next(&mut self) -> Option<Self::Message> {
+        tokio::select! {
+            message = self.rtt.recv() => message.map(MonitorEvent::Rtt),
+            message = self.semihosting.recv() => message.map(MonitorEvent::Semihosting),
+        }
+    }
+}
+
 pub async fn monitor(
     session: &SessionInterface,
     mode: MonitorMode,
@@ -625,14 +667,14 @@ async fn print_monitor_event(
     target_output_files: &mut TargetOutputFiles,
 ) {
     match event {
-        MonitorEvent::RttDiscovered { up_channels, .. } => {
+        MonitorEvent::Rtt(RttEvent::Discovered { up_channels, .. }) => {
             let Some(client) = rtt_client else {
                 return;
             };
 
             client.on_channels_discovered(&up_channels);
         }
-        MonitorEvent::RttOutput { channel, bytes } => {
+        MonitorEvent::Rtt(RttEvent::Output { channel, bytes }) => {
             let Some(client) = rtt_client else {
                 return;
             };
@@ -653,7 +695,7 @@ async fn print_monitor_event(
                 )
                 .await;
         }
-        MonitorEvent::SemihostingOutput { stream, data } => {
+        MonitorEvent::Semihosting(SemihostingEvent::Output { stream, data }) => {
             match stream.as_str() {
                 "stdout" => print!("{data}"),
                 "stderr" => eprint!("{data}"),
