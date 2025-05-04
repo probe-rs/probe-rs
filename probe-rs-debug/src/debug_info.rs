@@ -10,8 +10,7 @@ use crate::{
     SourceLocation, VerifiedBreakpoint, registers, stack_frame::StackFrameInfo, unit_info::RangeExt,
 };
 use gimli::{
-    BaseAddresses, DebugFrame, DebugInfoOffset, RunTimeEndian, UnwindContext, UnwindSection,
-    UnwindTableRow,
+    BaseAddresses, DebugFrame, RunTimeEndian, UnwindContext, UnwindSection, UnwindTableRow,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs::{Error, MemoryInterface, RegisterDataType, RegisterRole, RegisterValue, UnwindRule};
@@ -917,25 +916,6 @@ impl DebugInfo {
         )))
     }
 
-    /// Get the DIE at the given offset into the debug info section.
-    pub(crate) fn get_die_at_offset(&self, offset: DebugInfoOffset) -> Result<Die, DebugError> {
-        for unit_info in &self.unit_infos {
-            if let Some(unit_offset) = offset.to_unit_offset(&unit_info.unit.header) {
-                return unit_info.unit.entry(unit_offset).map_err(|error| {
-                    DebugError::Other(format!(
-                        "Error reading DIE at debug info offset {:#x} : {}",
-                        offset.0, error
-                    ))
-                });
-            }
-        }
-
-        Err(DebugError::Other(format!(
-            "DIE at debug info offset {:#010x} not found",
-            offset.0
-        )))
-    }
-
     /// Look up the DIE reference for the given attribute, if it exists.
     pub(crate) fn resolve_die_reference<'debug_info, 'unit_info>(
         &'debug_info self,
@@ -946,26 +926,55 @@ impl DebugInfo {
     where
         'unit_info: 'debug_info,
     {
-        let value = die.attr_value(attribute).ok().flatten()?;
+        let attr = die.attr(attribute).ok().flatten()?;
 
-        match value {
-            gimli::AttributeValue::UnitRef(unit_ref) => unit_info.unit.entry(unit_ref).ok(),
-            gimli::AttributeValue::DebugInfoRef(debug_info_ref) => {
-                self.get_die_at_offset(debug_info_ref).ok()
-            }
-            other_value => {
-                tracing::warn!(
-                    "Unsupported {:?} value: {other_value:?}",
-                    attribute.static_string(),
-                );
-                None
-            }
-        }
+        self.resolve_die_reference_with_unit(&attr, unit_info)
+            .ok()
+            .map(|(_, die)| die)
     }
 
     /// The program binary's (and core's) endianness.
     pub fn endianness(&self) -> RunTimeEndian {
         self.endianness
+    }
+
+    /// Returns the UnitInfo and DIE for the given attribute.
+    pub(crate) fn resolve_die_reference_with_unit<'debug_info, 'unit_info>(
+        &'debug_info self,
+        attr: &gimli::Attribute<GimliReader>,
+        unit_info: &'unit_info UnitInfo,
+    ) -> Result<(&'debug_info UnitInfo, Die<'debug_info, 'debug_info>), DebugError>
+    where
+        'unit_info: 'debug_info,
+    {
+        match attr.value() {
+            gimli::AttributeValue::UnitRef(unit_ref) => {
+                Ok((unit_info, unit_info.unit.entry(unit_ref)?))
+            }
+            gimli::AttributeValue::DebugInfoRef(offset) => {
+                for unit_info in &self.unit_infos {
+                    let Some(unit_offset) = offset.to_unit_offset(&unit_info.unit.header) else {
+                        continue;
+                    };
+
+                    let entry = unit_info.unit.entry(unit_offset).map_err(|error| {
+                        DebugError::Other(format!(
+                            "Error reading DIE at debug info offset {:#x} : {}",
+                            offset.0, error
+                        ))
+                    })?;
+                    return Ok((unit_info, entry));
+                }
+
+                Err(DebugError::Other(format!(
+                    "Unable to find unit info for debug info offset {:#x}",
+                    offset.0
+                )))
+            }
+            other_attribute_value => Err(DebugError::Other(format!(
+                "Unimplemented attribute value {other_attribute_value:?}"
+            ))),
+        }
     }
 }
 
