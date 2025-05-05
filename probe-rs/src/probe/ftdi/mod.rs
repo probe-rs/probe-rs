@@ -12,9 +12,8 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JTAGAccess, ProbeCreationError, ProbeFactory, ProbeStatistics, RawProtocolIo, SwdSettings,
-        WireProtocol,
-        common::{JtagDriverState, RawJtagIo},
+        JTAGAccess, JtagDriverState, ProbeCreationError, ProbeFactory, ProbeStatistics, RawJtagIo,
+        RawProtocolIo, SwdSettings, WireProtocol,
     },
 };
 use bitvec::prelude::*;

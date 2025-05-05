@@ -1,12 +1,11 @@
 use bitvec::{bitvec, vec::BitVec};
 
 use crate::probe::{
-    DebugProbeError,
+    DebugProbeError, JtagDriverState, RawJtagIo,
     cmsisdap::{
         CmsisDap,
         commands::jtag::sequence::{Sequence, SequenceRequest},
     },
-    common::{JtagDriverState, RawJtagIo},
 };
 
 pub mod configure;

@@ -18,17 +18,13 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeInfo, DebugProbeSelector, IoSequenceItem, JTAGAccess, ProbeFactory,
-        ProbeStatistics, RawProtocolIo, SwdSettings,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
+        JTAGAccess, JtagDriverState, ProbeCreationError, ProbeError, ProbeFactory, ProbeStatistics,
+        RawJtagIo, RawProtocolIo, SwdSettings, WireProtocol,
     },
 };
 use bitvec::vec::BitVec;
 use serialport::{SerialPortType, available_ports};
-
-use super::{
-    DebugProbeError, ProbeCreationError, ProbeError, WireProtocol,
-    common::{JtagDriverState, RawJtagIo},
-};
 
 const BLACK_MAGIC_PROBE_VID: u16 = 0x1d50;
 const BLACK_MAGIC_PROBE_PID: u16 = 0x6018;

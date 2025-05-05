@@ -19,12 +19,11 @@ use crate::{
     },
     probe::{
         BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
-        ProbeFactory, WireProtocol,
+        JtagDriverState, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
         },
-        common::JtagDriverState,
     },
 };
 

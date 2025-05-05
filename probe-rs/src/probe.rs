@@ -25,6 +25,7 @@ use crate::architecture::xtensa::communication_interface::{
 };
 use crate::config::TargetSelector;
 use crate::config::registry::Registry;
+use crate::probe::common::JtagState;
 use crate::{Error, Permissions, Session};
 use bitvec::slice::BitSlice;
 use bitvec::vec::BitVec;
@@ -1060,6 +1061,54 @@ pub(crate) trait RawProtocolIo: DebugProbe {
     fn probe_statistics(&mut self) -> &mut ProbeStatistics;
 }
 
+/// A trait for implementing low-level JTAG interface operations.
+pub(crate) trait RawJtagIo: DebugProbe {
+    /// Returns a mutable reference to the current state.
+    fn state_mut(&mut self) -> &mut JtagDriverState;
+
+    /// Returns the current state.
+    fn state(&self) -> &JtagDriverState;
+
+    /// Shifts a number of bits through the TAP.
+    fn shift_bits(
+        &mut self,
+        tms: impl IntoIterator<Item = bool>,
+        tdi: impl IntoIterator<Item = bool>,
+        cap: impl IntoIterator<Item = bool>,
+    ) -> Result<(), DebugProbeError> {
+        for ((tms, tdi), cap) in tms.into_iter().zip(tdi.into_iter()).zip(cap.into_iter()) {
+            self.shift_bit(tms, tdi, cap)?;
+        }
+
+        Ok(())
+    }
+
+    /// Shifts a single bit through the TAP.
+    ///
+    /// Drivers may choose, and are encouraged, to buffer bits and flush them
+    /// in batches for performance reasons.
+    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError>;
+
+    /// Returns the bits captured from TDO and clears the capture buffer.
+    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError>;
+
+    /// Resets the JTAG state machine by shifting out a number of high TMS bits.
+    fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
+        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
+
+        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
+        let tms = [true, true, true, true, true, false];
+        let tdi = std::iter::repeat(true);
+
+        self.shift_bits(tms, tdi, std::iter::repeat(false))?;
+        let response = self.read_captured_bits()?;
+
+        tracing::debug!("Response to reset: {response}");
+
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum IoSequenceItem {
     Output(bool),
@@ -1132,6 +1181,32 @@ impl Default for SwdSettings {
             max_retry_idle_cycles_after_wait: 128,
             idle_cycles_before_write_verify: 8,
             idle_cycles_after_transfer: 8,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct JtagDriverState {
+    pub state: JtagState,
+    // The maximum IR address
+    pub max_ir_address: u32,
+    pub expected_scan_chain: Option<Vec<ScanChainElement>>,
+    pub scan_chain: Vec<ScanChainElement>,
+    pub chain_params: ChainParams,
+    /// Idle cycles necessary between consecutive
+    /// accesses to the DMI register
+    pub jtag_idle_cycles: usize,
+}
+
+impl Default for JtagDriverState {
+    fn default() -> Self {
+        Self {
+            state: JtagState::Reset,
+            max_ir_address: 0x0F,
+            expected_scan_chain: None,
+            scan_chain: Vec::new(),
+            chain_params: ChainParams::default(),
+            jtag_idle_cycles: 0,
         }
     }
 }
