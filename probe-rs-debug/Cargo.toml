@@ -22,7 +22,7 @@ serde = { version = "1.0.217", features = ["derive"] }
 termtree = "0.5.1"
 thiserror.workspace = true
 tracing = "0.1.41"
-typed-path = "0.10.0"
+typed-path = "0.11.0"
 
 [lints]
 workspace = true
