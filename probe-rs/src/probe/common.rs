@@ -531,7 +531,7 @@ fn prepare_write_register(
     len: u32,
     capture: bool,
 ) -> Result<usize, DebugProbeError> {
-    if address > protocol.state().max_ir_address {
+    if address > protocol.state().max_ir_address() {
         return Err(DebugProbeError::Other(format!(
             "Invalid instruction register access: {}",
             address
@@ -566,13 +566,9 @@ impl<Probe: BitbangJtagAccessMarker> JTAGAccess for Probe {
             return Err(DebugProbeError::TargetNotFound);
         };
 
-        let max_ir_address = (1 << params.irlen) - 1;
-
         tracing::debug!("Selecting JTAG TAP: {target}");
         tracing::debug!("Setting chain params: {params:?}");
-        tracing::debug!("Setting max_ir_address to {max_ir_address}");
 
-        state.max_ir_address = max_ir_address;
         state.chain_params = params;
 
         Ok(())
@@ -700,7 +696,7 @@ impl<Probe: BitbangJtagAccessMarker> JTAGAccess for Probe {
 
         let response = self.read_captured_bits()?;
 
-        tracing::trace!("recieve_write_dr result: {:?}", response);
+        tracing::trace!("write_dr result: {:?}", response);
         Ok(response)
     }
 

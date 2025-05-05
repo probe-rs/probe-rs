@@ -1054,6 +1054,8 @@ pub(crate) trait RawSwdIo: DebugProbe {
 }
 
 /// A trait for implementing low-level JTAG interface operations.
+// TODO: it should be enough for probes to implement this trait, and we should generate all JTAG
+// access operations for them. For this to work, JTAGAccess needs to be able to send a raw sequence.
 pub(crate) trait RawJtagIo: DebugProbe {
     /// Returns a mutable reference to the current state.
     fn state_mut(&mut self) -> &mut JtagDriverState;
@@ -1180,8 +1182,6 @@ impl Default for SwdSettings {
 #[derive(Debug)]
 pub(crate) struct JtagDriverState {
     pub state: JtagState,
-    // The maximum IR address
-    pub max_ir_address: u32,
     pub expected_scan_chain: Option<Vec<ScanChainElement>>,
     pub scan_chain: Vec<ScanChainElement>,
     pub chain_params: ChainParams,
@@ -1189,12 +1189,16 @@ pub(crate) struct JtagDriverState {
     /// accesses to the DMI register
     pub jtag_idle_cycles: usize,
 }
+impl JtagDriverState {
+    fn max_ir_address(&self) -> u32 {
+        (1 << self.chain_params.irlen) - 1
+    }
+}
 
 impl Default for JtagDriverState {
     fn default() -> Self {
         Self {
             state: JtagState::Reset,
-            max_ir_address: 0x0F,
             expected_scan_chain: None,
             scan_chain: Vec::new(),
             chain_params: ChainParams::default(),
@@ -1288,6 +1292,15 @@ pub trait JTAGAccess: DebugProbe {
     /// Executes a TAP reset.
     fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
 
+    /// For RISC-V, and possibly other interfaces, the JTAG interface has to remain in
+    /// the idle state for several cycles between consecutive accesses to the DR register.
+    ///
+    /// This function configures the number of idle cycles which are inserted after each access.
+    fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError>;
+
+    /// Return the currently configured idle cycles.
+    fn idle_cycles(&self) -> u8;
+
     /// Selects the JTAG TAP to be used for communication.
     fn select_target(&mut self, index: usize) -> Result<(), DebugProbeError> {
         if index != 0 {
@@ -1307,15 +1320,6 @@ pub trait JTAGAccess: DebugProbe {
 
         self.write_register(address, &data, len)
     }
-
-    /// For RISC-V, and possibly other interfaces, the JTAG interface has to remain in
-    /// the idle state for several cycles between consecutive accesses to the DR register.
-    ///
-    /// This function configures the number of idle cycles which are inserted after each access.
-    fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError>;
-
-    /// Return the currently configured idle cycles.
-    fn idle_cycles(&self) -> u8;
 
     /// Write to a JTAG register
     ///
