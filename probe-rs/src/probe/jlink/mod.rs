@@ -45,7 +45,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagDriverState, ProbeFactory, ProbeStatistics, RawJtagIo, RawProtocolIo, SwdSettings,
+        JtagDriverState, ProbeFactory, ProbeStatistics, RawSwdIo, RawJtagIo, SwdSettings,
         WireProtocol,
     },
 };
@@ -1157,7 +1157,7 @@ impl DebugProbe for JLink {
     }
 }
 
-impl RawProtocolIo for JLink {
+impl RawSwdIo for JLink {
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,

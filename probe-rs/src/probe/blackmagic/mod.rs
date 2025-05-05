@@ -20,7 +20,7 @@ use crate::{
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
         JTAGAccess, JtagDriverState, ProbeCreationError, ProbeError, ProbeFactory, ProbeStatistics,
-        RawJtagIo, RawProtocolIo, SwdSettings, WireProtocol, common::BitbangJtagAccessMarker,
+        RawJtagIo, RawSwdIo, SwdSettings, WireProtocol, common::BitbangJtagAccessMarker,
     },
 };
 use bitvec::vec::BitVec;
@@ -1189,7 +1189,7 @@ impl BitbangJtagAccessMarker for BlackMagicProbe {}
 
 impl DapProbe for BlackMagicProbe {}
 
-impl RawProtocolIo for BlackMagicProbe {
+impl RawSwdIo for BlackMagicProbe {
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,

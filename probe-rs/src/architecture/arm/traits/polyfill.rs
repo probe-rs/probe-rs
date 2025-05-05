@@ -15,7 +15,7 @@ use crate::{
     },
     probe::{
         CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JTAGAccess, JtagCommandQueue,
-        JtagWriteCommand, RawJtagIo, RawProtocolIo, WireProtocol, common::bits_to_byte,
+        JtagWriteCommand, RawJtagIo, RawSwdIo, WireProtocol, common::bits_to_byte,
     },
 };
 
@@ -68,7 +68,7 @@ fn parse_jtag_response(data: &BitSlice) -> u64 {
 /// Perform a single JTAG transfer and parse the results
 ///
 /// Return is (value, status)
-fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
+fn perform_jtag_transfer<P: JTAGAccess + RawSwdIo>(
     probe: &mut P,
     transfer: &DapTransfer,
 ) -> Result<(u32, TransferStatus), DebugProbeError> {
@@ -115,7 +115,7 @@ fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
 /// Perform a batch of JTAG transfers.
 ///
 /// Each transfer is sent one at a time using the JTAGAccess trait
-fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
+fn perform_jtag_transfers<P: JTAGAccess + RawSwdIo>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
@@ -250,7 +250,7 @@ fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
 /// created and the resulting sequences are concatenated
 /// to a single sequence, so that it can be sent to
 /// to the probe.
-fn perform_swd_transfers<P: RawProtocolIo>(
+fn perform_swd_transfers<P: RawSwdIo>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
@@ -302,7 +302,7 @@ fn perform_swd_transfers<P: RawProtocolIo>(
 ///
 /// Other errors are not handled, so the debug interface might be in an error state
 /// after this function returns.
-fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
+fn perform_transfers<P: DebugProbe + RawSwdIo + JTAGAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), ArmError> {
@@ -434,7 +434,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 ///
 /// Other than that, the transfers are sent as-is. You might want to use `perform_transfers` instead, which
 /// does correction for delayed FAULT responses and other helpful stuff.
-fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
+fn perform_raw_transfers_retry<P: DebugProbe + RawSwdIo + JTAGAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), ArmError> {
@@ -502,7 +502,7 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     Ok(())
 }
 
-fn clear_overrun_and_sticky_err<P: DebugProbe + RawProtocolIo + JTAGAccess>(
+fn clear_overrun_and_sticky_err<P: DebugProbe + RawSwdIo + JTAGAccess>(
     probe: &mut P,
 ) -> Result<(), ArmError> {
     tracing::debug!("Clearing overrun and sticky error");
@@ -515,7 +515,7 @@ fn clear_overrun_and_sticky_err<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     })
 }
 
-fn write_dp_register<P: DebugProbe + RawProtocolIo + JTAGAccess, R: DpRegister>(
+fn write_dp_register<P: DebugProbe + RawSwdIo + JTAGAccess, R: DpRegister>(
     probe: &mut P,
     register: R,
 ) -> Result<(), ArmError> {
@@ -538,7 +538,7 @@ fn write_dp_register<P: DebugProbe + RawProtocolIo + JTAGAccess, R: DpRegister>(
 ///
 /// This function will just send the transfers as-is, without handling WAIT or FAULT response.
 /// See [`perform_raw_transfers_retry`] for a version that handles WAIT responses
-fn perform_raw_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
+fn perform_raw_transfers<P: DebugProbe + RawSwdIo + JTAGAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
@@ -909,7 +909,7 @@ fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32
 
 /// RawDapAccess implementation for probes that implement RawProtocolIo.
 // TODO: JTAG shouldn't be required, but an option - maybe via trait downcasting?
-impl<Probe: DebugProbe + RawProtocolIo + RawJtagIo + JTAGAccess + 'static> RawDapAccess for Probe {
+impl<Probe: DebugProbe + RawSwdIo + RawJtagIo + JTAGAccess + 'static> RawDapAccess for Probe {
     fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
         let mut transfer = DapTransfer::read(address);
         perform_transfers(self, std::slice::from_mut(&mut transfer))?;
@@ -1097,7 +1097,7 @@ impl<Probe: DebugProbe + RawProtocolIo + RawJtagIo + JTAGAccess + 'static> RawDa
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        RawProtocolIo::swj_pins(self, pin_out, pin_select, pin_wait)
+        RawSwdIo::swj_pins(self, pin_out, pin_select, pin_wait)
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
@@ -1124,7 +1124,7 @@ impl<Probe: DebugProbe + RawProtocolIo + RawJtagIo + JTAGAccess + 'static> RawDa
     }
 }
 
-fn send_sequence<P: RawProtocolIo + RawJtagIo>(
+fn send_sequence<P: RawSwdIo + RawJtagIo>(
     probe: &mut P,
     protocol: WireProtocol,
     sequence: &IoSequence,
@@ -1157,7 +1157,7 @@ mod test {
         error::Error,
         probe::{
             DebugProbe, DebugProbeError, IoSequenceItem, JTAGAccess, ProbeStatistics, RawJtagIo,
-            RawProtocolIo, SwdSettings, WireProtocol,
+            RawSwdIo, SwdSettings, WireProtocol,
         },
     };
     use probe_rs_target::ScanChainElement;
@@ -1456,7 +1456,7 @@ mod test {
         }
     }
 
-    impl RawProtocolIo for MockJaylink {
+    impl RawSwdIo for MockJaylink {
         fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
         where
             S: IntoIterator<Item = IoSequenceItem>,

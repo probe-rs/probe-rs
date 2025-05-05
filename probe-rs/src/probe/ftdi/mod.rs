@@ -13,7 +13,7 @@ use crate::{
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
         JTAGAccess, JtagDriverState, ProbeCreationError, ProbeFactory, ProbeStatistics, RawJtagIo,
-        RawProtocolIo, SwdSettings, WireProtocol, common::BitbangJtagAccessMarker,
+        RawSwdIo, SwdSettings, WireProtocol, common::BitbangJtagAccessMarker,
     },
 };
 use bitvec::prelude::*;
@@ -418,7 +418,7 @@ impl BitbangJtagAccessMarker for FtdiProbe {}
 
 impl DapProbe for FtdiProbe {}
 
-impl RawProtocolIo for FtdiProbe {
+impl RawSwdIo for FtdiProbe {
     fn swd_io<S>(&mut self, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
