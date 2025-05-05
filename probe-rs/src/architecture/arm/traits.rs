@@ -9,6 +9,8 @@ use super::{
     dp::{DpAddress, DpRegisterAddress},
 };
 
+pub(crate) mod polyfill;
+
 /// Specifies the address of register to access in a debug or access port.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum RegisterAddress {

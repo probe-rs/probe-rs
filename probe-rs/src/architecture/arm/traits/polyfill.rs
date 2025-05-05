@@ -1,4 +1,4 @@
-//! Implementation of the ARM Debug Interface
+//! Implementation of the ARM Debug Interface for bit-banging SWD and JTAG probes.
 //!
 //! This module implements functions to work with chips implementing the ARM Debug version v5.
 //!
@@ -14,117 +14,12 @@ use crate::{
         dp::{Abort, Ctrl, DPIDR, DebugPortError, DpRegister, RdBuff},
     },
     probe::{
-        CommandResult, DebugProbe, DebugProbeError, JTAGAccess, JtagCommandQueue, JtagWriteCommand,
-        WireProtocol, common::bits_to_byte,
+        CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JTAGAccess, JtagCommandQueue,
+        JtagWriteCommand, RawProtocolIo, WireProtocol, common::bits_to_byte,
     },
 };
 
 const CTRL_PORT: RegisterAddress = RegisterAddress::DpRegister(Ctrl::ADDRESS);
-
-#[derive(Debug)]
-pub struct SwdSettings {
-    /// Initial number of idle cycles between consecutive writes.
-    ///
-    /// When a WAIT response is received, the number of idle cycles
-    /// will be increased automatically, so this number can be quite
-    /// low.
-    pub num_idle_cycles_between_writes: usize,
-
-    /// How often a SWD transfer is retried when a WAIT response
-    /// is received.
-    pub num_retries_after_wait: usize,
-
-    /// When a SWD transfer is retried due to a WAIT response, the idle
-    /// cycle amount is doubled every time as a backoff. This sets a maximum
-    /// cap to the cycle amount.
-    pub max_retry_idle_cycles_after_wait: usize,
-
-    /// Number of idle cycles inserted before the result
-    /// of a write is checked.
-    ///
-    /// When performing a write operation, the write can
-    /// be buffered, meaning that completing the transfer
-    /// does not mean that the write was performed successfully.
-    ///
-    /// To check that all writes have been executed, the
-    /// `RDBUFF` register can be read from the DP.
-    ///
-    /// If any writes are still pending, this read will result in a WAIT response.
-    /// By adding idle cycles before performing this read, the chance of a
-    /// WAIT response is smaller.
-    pub idle_cycles_before_write_verify: usize,
-
-    /// Number of idle cycles to insert after a transfer
-    ///
-    /// It is recommended that at least 8 idle cycles are
-    /// inserted.
-    pub idle_cycles_after_transfer: usize,
-}
-
-impl Default for SwdSettings {
-    fn default() -> Self {
-        Self {
-            num_idle_cycles_between_writes: 2,
-            num_retries_after_wait: 1000,
-            max_retry_idle_cycles_after_wait: 128,
-            idle_cycles_before_write_verify: 8,
-            idle_cycles_after_transfer: 8,
-        }
-    }
-}
-
-#[derive(Default, Debug)]
-pub struct ProbeStatistics {
-    /// Number of protocol transfers performed.
-    ///
-    /// This includes repeated transfers, and transfers
-    /// which are automatically added to fulfill
-    /// protocol requirements, e.g. a read from a
-    /// DP register will result in two transfers,
-    /// because the read value is returned in the
-    /// second transfer
-    num_transfers: usize,
-
-    /// Number of extra transfers added to fullfil protocol
-    /// requirements. Ideally as low as possible.
-    num_extra_transfers: usize,
-
-    /// Number of calls to the probe IO function.
-    ///
-    /// A single call can perform multiple SWD transfers,
-    /// so this number is ideally a lot lower than then
-    /// number of SWD transfers.
-    num_io_calls: usize,
-
-    /// Number of SWD wait responses encountered.
-    num_wait_resp: usize,
-
-    /// Number of SWD FAULT responses encountered.
-    num_faults: usize,
-}
-
-impl ProbeStatistics {
-    pub fn record_extra_transfer(&mut self) {
-        self.num_extra_transfers += 1;
-    }
-
-    pub fn record_transfers(&mut self, num_transfers: usize) {
-        self.num_transfers += num_transfers;
-    }
-
-    pub fn report_io(&mut self) {
-        self.num_io_calls += 1;
-    }
-
-    pub fn report_swd_response<T>(&mut self, response: &Result<T, DapError>) {
-        match response {
-            Err(DapError::FaultResponse) => self.num_faults += 1,
-            Err(DapError::WaitResponse) => self.num_wait_resp += 1,
-            // Other errors are not counted right now.
-            _ => (),
-        }
-    }
-}
 
 // Constant to be written to ABORT
 const JTAG_ABORT_VALUE: u64 = 0x8;
@@ -826,30 +721,6 @@ enum TransferStatus {
     Failed(DapError),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum IoSequenceItem {
-    Output(bool),
-    Input,
-}
-
-impl From<IoSequenceItem> for bool {
-    fn from(item: IoSequenceItem) -> Self {
-        match item {
-            IoSequenceItem::Output(b) => b,
-            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
-        }
-    }
-}
-
-impl From<IoSequenceItem> for u8 {
-    fn from(value: IoSequenceItem) -> Self {
-        match value {
-            IoSequenceItem::Output(b) => b as u8,
-            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
-        }
-    }
-}
-
 struct IoSequence {
     io: Vec<IoSequenceItem>,
 }
@@ -1036,31 +907,7 @@ fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32
     }
 }
 
-pub trait RawProtocolIo {
-    fn jtag_shift_tms<M>(&mut self, tms: M, tdi: bool) -> Result<(), DebugProbeError>
-    where
-        M: IntoIterator<Item = bool>;
-
-    fn jtag_shift_tdi<I>(&mut self, tms: bool, tdi: I) -> Result<(), DebugProbeError>
-    where
-        I: IntoIterator<Item = bool>;
-
-    fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
-    where
-        S: IntoIterator<Item = IoSequenceItem>;
-
-    fn swj_pins(
-        &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
-    ) -> Result<u32, DebugProbeError>;
-
-    fn swd_settings(&self) -> &SwdSettings;
-
-    fn probe_statistics(&mut self) -> &mut ProbeStatistics;
-}
-
+/// RawDapAccess implementation for probes that implement RawProtocolIo.
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
     fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
         let mut transfer = DapTransfer::read(address);
@@ -1303,17 +1150,19 @@ mod test {
             dp::{Ctrl, DpRegister, RdBuff},
         },
         error::Error,
-        probe::{DebugProbe, DebugProbeError, JTAGAccess, WireProtocol},
+        probe::{
+            DebugProbe, DebugProbeError, IoSequenceItem, JTAGAccess, ProbeStatistics,
+            RawProtocolIo, SwdSettings, WireProtocol,
+        },
     };
+    use probe_rs_target::ScanChainElement;
 
     use super::{
-        IoSequenceItem, JTAG_ABORT_IR_VALUE, JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE,
-        JTAG_DR_BIT_LENGTH, JTAG_STATUS_OK, JTAG_STATUS_WAIT, ProbeStatistics, RawProtocolIo,
-        SwdSettings,
+        JTAG_ABORT_IR_VALUE, JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE,
+        JTAG_DR_BIT_LENGTH, JTAG_STATUS_OK, JTAG_STATUS_WAIT,
     };
 
     use bitvec::prelude::*;
-    use probe_rs_target::ScanChainElement;
 
     #[allow(dead_code)]
     enum DapAcknowledge {

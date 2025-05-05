@@ -45,9 +45,8 @@ use crate::{
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
-        WireProtocol,
-        arm_debug_interface::{IoSequenceItem, ProbeStatistics, RawProtocolIo, SwdSettings},
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
+        ProbeFactory, ProbeStatistics, RawProtocolIo, SwdSettings, WireProtocol,
     },
 };
 

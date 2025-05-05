@@ -17,14 +17,16 @@ use crate::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    probe::{DebugProbe, DebugProbeInfo, DebugProbeSelector, JTAGAccess, ProbeFactory},
+    probe::{
+        DebugProbe, DebugProbeInfo, DebugProbeSelector, IoSequenceItem, JTAGAccess, ProbeFactory,
+        ProbeStatistics, RawProtocolIo, SwdSettings,
+    },
 };
 use bitvec::vec::BitVec;
 use serialport::{SerialPortType, available_ports};
 
 use super::{
     DebugProbeError, ProbeCreationError, ProbeError, WireProtocol,
-    arm_debug_interface::{IoSequenceItem, ProbeStatistics, RawProtocolIo, SwdSettings},
     common::{JtagDriverState, RawJtagIo},
 };
 

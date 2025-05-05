@@ -1,5 +1,4 @@
 //! Probe drivers
-pub(crate) mod arm_debug_interface;
 pub(crate) mod common;
 pub(crate) mod usb_util;
 
@@ -14,8 +13,8 @@ pub mod sifliuart;
 pub mod stlink;
 pub mod wlink;
 
-use crate::architecture::arm::ArmError;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
+use crate::architecture::arm::{ArmError, DapError};
 use crate::architecture::arm::{
     RegisterAddress, SwoAccess,
     communication_interface::{DapProbe, UninitializedArmProbe},
@@ -1024,6 +1023,169 @@ impl<'a> Deserialize<'a> for DebugProbeSelector {
     {
         let s = String::deserialize(deserializer)?;
         s.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+/// Bit-banging interface, ARM edition.
+// This trait (and JTAGAccess) should not be used by architecture impls directly. Architectures
+// should implement their own protocol interfaces, and use the probe interface to perform the
+// low-level operations AS A FALLBACK. Probes should prefer directly implementing the architecture
+// protocols, if they have the capability. Probes should be able to implement raw interface access
+// while at the same time opting out of the default bit-banging polyfill.
+//
+// TODO: this should be defined in the probe module, and split into JTAG/SWD parts. JTAGAccess
+// is somewhat redundant with this.
+pub(crate) trait RawProtocolIo {
+    fn jtag_shift_tms<M>(&mut self, tms: M, tdi: bool) -> Result<(), DebugProbeError>
+    where
+        M: IntoIterator<Item = bool>;
+
+    fn jtag_shift_tdi<I>(&mut self, tms: bool, tdi: I) -> Result<(), DebugProbeError>
+    where
+        I: IntoIterator<Item = bool>;
+
+    fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    where
+        S: IntoIterator<Item = IoSequenceItem>;
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError>;
+
+    fn swd_settings(&self) -> &SwdSettings;
+
+    fn probe_statistics(&mut self) -> &mut ProbeStatistics;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum IoSequenceItem {
+    Output(bool),
+    Input,
+}
+
+impl From<IoSequenceItem> for bool {
+    fn from(item: IoSequenceItem) -> Self {
+        match item {
+            IoSequenceItem::Output(b) => b,
+            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
+        }
+    }
+}
+
+impl From<IoSequenceItem> for u8 {
+    fn from(value: IoSequenceItem) -> Self {
+        match value {
+            IoSequenceItem::Output(b) => b as u8,
+            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct SwdSettings {
+    /// Initial number of idle cycles between consecutive writes.
+    ///
+    /// When a WAIT response is received, the number of idle cycles
+    /// will be increased automatically, so this number can be quite
+    /// low.
+    pub num_idle_cycles_between_writes: usize,
+
+    /// How often a SWD transfer is retried when a WAIT response
+    /// is received.
+    pub num_retries_after_wait: usize,
+
+    /// When a SWD transfer is retried due to a WAIT response, the idle
+    /// cycle amount is doubled every time as a backoff. This sets a maximum
+    /// cap to the cycle amount.
+    pub max_retry_idle_cycles_after_wait: usize,
+
+    /// Number of idle cycles inserted before the result
+    /// of a write is checked.
+    ///
+    /// When performing a write operation, the write can
+    /// be buffered, meaning that completing the transfer
+    /// does not mean that the write was performed successfully.
+    ///
+    /// To check that all writes have been executed, the
+    /// `RDBUFF` register can be read from the DP.
+    ///
+    /// If any writes are still pending, this read will result in a WAIT response.
+    /// By adding idle cycles before performing this read, the chance of a
+    /// WAIT response is smaller.
+    pub idle_cycles_before_write_verify: usize,
+
+    /// Number of idle cycles to insert after a transfer
+    ///
+    /// It is recommended that at least 8 idle cycles are
+    /// inserted.
+    pub idle_cycles_after_transfer: usize,
+}
+
+impl Default for SwdSettings {
+    fn default() -> Self {
+        Self {
+            num_idle_cycles_between_writes: 2,
+            num_retries_after_wait: 1000,
+            max_retry_idle_cycles_after_wait: 128,
+            idle_cycles_before_write_verify: 8,
+            idle_cycles_after_transfer: 8,
+        }
+    }
+}
+
+#[derive(Default, Debug)]
+pub(crate) struct ProbeStatistics {
+    /// Number of protocol transfers performed.
+    ///
+    /// This includes repeated transfers, and transfers
+    /// which are automatically added to fulfill
+    /// protocol requirements, e.g. a read from a
+    /// DP register will result in two transfers,
+    /// because the read value is returned in the
+    /// second transfer
+    num_transfers: usize,
+
+    /// Number of extra transfers added to fullfil protocol
+    /// requirements. Ideally as low as possible.
+    num_extra_transfers: usize,
+
+    /// Number of calls to the probe IO function.
+    ///
+    /// A single call can perform multiple SWD transfers,
+    /// so this number is ideally a lot lower than then
+    /// number of SWD transfers.
+    num_io_calls: usize,
+
+    /// Number of SWD wait responses encountered.
+    num_wait_resp: usize,
+
+    /// Number of SWD FAULT responses encountered.
+    num_faults: usize,
+}
+
+impl ProbeStatistics {
+    pub fn record_extra_transfer(&mut self) {
+        self.num_extra_transfers += 1;
+    }
+
+    pub fn record_transfers(&mut self, num_transfers: usize) {
+        self.num_transfers += num_transfers;
+    }
+
+    pub fn report_io(&mut self) {
+        self.num_io_calls += 1;
+    }
+
+    pub fn report_swd_response<T>(&mut self, response: &Result<T, DapError>) {
+        match response {
+            Err(DapError::FaultResponse) => self.num_faults += 1,
+            Err(DapError::WaitResponse) => self.num_wait_resp += 1,
+            // Other errors are not counted right now.
+            _ => (),
+        }
     }
 }
 

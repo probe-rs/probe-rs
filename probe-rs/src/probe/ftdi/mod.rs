@@ -11,9 +11,9 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
-        ProbeCreationError, ProbeFactory, WireProtocol,
-        arm_debug_interface::{IoSequenceItem, ProbeStatistics, RawProtocolIo, SwdSettings},
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
+        JTAGAccess, ProbeCreationError, ProbeFactory, ProbeStatistics, RawProtocolIo, SwdSettings,
+        WireProtocol,
         common::{JtagDriverState, RawJtagIo},
     },
 };
