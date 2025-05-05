@@ -16,9 +16,8 @@ pub(crate) mod armv6m;
 pub(crate) mod armv6m_armv7m_shared;
 // NOTE: There is also a [`CoreType::Armv7em`] variant, but it is not currently used/implemented in probe-rs.
 pub(crate) mod armv7m;
-
 pub(crate) mod armv8m;
-
+pub(crate) mod riscv;
 pub(crate) mod xtensa;
 
 /// Creates a new exception interface for the [`CoreType`] at hand.
@@ -29,9 +28,8 @@ pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInter
         CoreType::Armv7m | CoreType::Armv7em => Box::new(armv7m::ArmV7MExceptionHandler),
         CoreType::Armv8m => Box::new(armv8m::ArmV8MExceptionHandler),
         CoreType::Xtensa => Box::new(xtensa::XtensaExceptionHandler),
-        CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv => {
-            Box::new(UnimplementedExceptionHandler)
-        }
+        CoreType::Riscv => Box::new(riscv::RiscvExceptionHandler),
+        CoreType::Armv7a | CoreType::Armv8a => Box::new(UnimplementedExceptionHandler),
     }
 }
 
