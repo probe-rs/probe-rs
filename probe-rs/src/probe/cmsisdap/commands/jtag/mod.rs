@@ -1,7 +1,7 @@
 use bitvec::{bitvec, vec::BitVec};
 
 use crate::probe::{
-    DebugProbeError, JtagDriverState, RawJtagIo,
+    DebugProbeError, JtagDriverState, JtagSequence, RawJtagIo,
     cmsisdap::{
         CmsisDap,
         commands::jtag::sequence::{Sequence, SequenceRequest},
@@ -76,17 +76,6 @@ impl CmsisDap {
 
         Ok(())
     }
-}
-
-struct JtagSequence {
-    /// TDO capture
-    tdo_capture: bool,
-
-    /// TMS value
-    tms: bool,
-
-    /// Data to generate on TDI
-    data: BitVec,
 }
 
 impl JtagSequence {

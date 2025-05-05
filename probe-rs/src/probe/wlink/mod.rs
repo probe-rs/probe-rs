@@ -17,8 +17,8 @@ use crate::{
         communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeError, ProbeFactory,
-        WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagSequence, ProbeError,
+        ProbeFactory, WireProtocol,
     },
 };
 
@@ -505,6 +505,12 @@ impl JTAGAccess for WchLink {
     fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "write_dr",
+        })
+    }
+
+    fn raw_sequence(&mut self, _sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
+        Err(DebugProbeError::NotImplemented {
+            function_name: "raw_sequence",
         })
     }
 }

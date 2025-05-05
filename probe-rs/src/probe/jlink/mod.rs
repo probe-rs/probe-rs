@@ -29,7 +29,6 @@ use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState,
 };
 use crate::probe::JTAGAccess;
-use crate::probe::common::BitbangJtagAccessMarker;
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
@@ -45,7 +44,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagDriverState, ProbeFactory, ProbeStatistics, RawSwdIo, RawJtagIo, SwdSettings,
+        JtagDriverState, ProbeFactory, ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings,
         WireProtocol,
     },
 };
@@ -1227,7 +1226,6 @@ impl RawJtagIo for JLink {
     }
 }
 
-impl BitbangJtagAccessMarker for JLink {}
 impl DapProbe for JLink {}
 
 impl SwoAccess for JLink {

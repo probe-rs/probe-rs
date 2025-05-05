@@ -4,7 +4,7 @@
 //!
 //! See <https://developer.arm.com/documentation/ihi0031/f/?lang=en> for the ADIv5 specification.
 
-use bitvec::{field::BitField, slice::BitSlice};
+use bitvec::{bitvec, field::BitField, slice::BitSlice, vec::BitVec};
 
 use crate::{
     Error,
@@ -15,7 +15,7 @@ use crate::{
     },
     probe::{
         CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JTAGAccess, JtagCommandQueue,
-        JtagWriteCommand, RawJtagIo, RawSwdIo, WireProtocol, common::bits_to_byte,
+        JtagSequence, JtagWriteCommand, RawSwdIo, WireProtocol, common::bits_to_byte,
     },
 };
 
@@ -909,7 +909,7 @@ fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32
 
 /// RawDapAccess implementation for probes that implement RawProtocolIo.
 // TODO: JTAG shouldn't be required, but an option - maybe via trait downcasting?
-impl<Probe: DebugProbe + RawSwdIo + RawJtagIo + JTAGAccess + 'static> RawDapAccess for Probe {
+impl<Probe: DebugProbe + RawSwdIo + JTAGAccess + 'static> RawDapAccess for Probe {
     fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
         let mut transfer = DapTransfer::read(address);
         perform_transfers(self, std::slice::from_mut(&mut transfer))?;
@@ -1105,9 +1105,17 @@ impl<Probe: DebugProbe + RawSwdIo + RawJtagIo + JTAGAccess + 'static> RawDapAcce
     }
 
     fn jtag_sequence(&mut self, bit_len: u8, tms: bool, bits: u64) -> Result<(), DebugProbeError> {
-        let bits = (0..bit_len).map(|i| (bits >> i) & 1 == 1);
+        let mut data = BitVec::with_capacity(bit_len as usize);
 
-        self.shift_bits(std::iter::repeat(tms), bits, std::iter::repeat(false))?;
+        for i in 0..bit_len {
+            data.push((bits >> i) & 1 == 1);
+        }
+
+        self.raw_sequence(JtagSequence {
+            tms,
+            data,
+            tdo_capture: false,
+        })?;
 
         Ok(())
     }
@@ -1124,7 +1132,7 @@ impl<Probe: DebugProbe + RawSwdIo + RawJtagIo + JTAGAccess + 'static> RawDapAcce
     }
 }
 
-fn send_sequence<P: RawSwdIo + RawJtagIo>(
+fn send_sequence<P: RawSwdIo + JTAGAccess>(
     probe: &mut P,
     protocol: WireProtocol,
     sequence: &IoSequence,
@@ -1133,11 +1141,23 @@ fn send_sequence<P: RawSwdIo + RawJtagIo>(
         WireProtocol::Jtag => {
             // Swj sequences should be shifted out to tms, since that is the pin
             // shared between swd and jtag modes.
-            probe.shift_bits(
-                sequence.io_items().map(|i| i.into()),
-                std::iter::repeat(false),
-                std::iter::repeat(false),
-            )?;
+            let mut bits = sequence.io_items().peekable();
+            while let Some(first) = bits.next() {
+                let mut count = 1;
+                while let Some(next) = bits.peek() {
+                    if first != *next {
+                        break;
+                    }
+                    count += 1;
+                    bits.next();
+                }
+
+                probe.raw_sequence(JtagSequence {
+                    tms: first.into(),
+                    data: bitvec![0; count],
+                    tdo_capture: false,
+                })?;
+            }
         }
         WireProtocol::Swd => {
             probe.swd_io(sequence.io_items())?;
@@ -1156,7 +1176,7 @@ mod test {
         },
         error::Error,
         probe::{
-            DebugProbe, DebugProbeError, IoSequenceItem, JTAGAccess, ProbeStatistics, RawJtagIo,
+            DebugProbe, DebugProbeError, IoSequenceItem, JTAGAccess, JtagSequence, ProbeStatistics,
             RawSwdIo, SwdSettings, WireProtocol,
         },
     };
@@ -1363,6 +1383,10 @@ mod test {
     }
 
     impl JTAGAccess for MockJaylink {
+        fn raw_sequence(&mut self, _: JtagSequence) -> Result<BitVec, DebugProbeError> {
+            todo!()
+        }
+
         fn set_scan_chain(&mut self, _: &[ScanChainElement]) -> Result<(), DebugProbeError> {
             todo!()
         }
@@ -1429,29 +1453,6 @@ mod test {
         }
 
         fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
-            unimplemented!()
-        }
-    }
-
-    impl RawJtagIo for MockJaylink {
-        fn state_mut(&mut self) -> &mut crate::probe::JtagDriverState {
-            unimplemented!()
-        }
-
-        fn state(&self) -> &crate::probe::JtagDriverState {
-            unimplemented!()
-        }
-
-        fn shift_bit(
-            &mut self,
-            _tms: bool,
-            _tdi: bool,
-            _capture: bool,
-        ) -> Result<(), DebugProbeError> {
-            unimplemented!()
-        }
-
-        fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
             unimplemented!()
         }
     }

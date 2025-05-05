@@ -11,7 +11,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
-        JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol, common::BitbangJtagAccessMarker,
+        JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol,
     },
 };
 use bitvec::prelude::*;
@@ -50,8 +50,6 @@ pub struct EspUsbJtag {
 
     jtag_state: JtagDriverState,
 }
-
-impl BitbangJtagAccessMarker for EspUsbJtag {}
 
 impl RawJtagIo for EspUsbJtag {
     fn shift_bit(

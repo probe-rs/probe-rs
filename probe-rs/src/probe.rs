@@ -1028,14 +1028,12 @@ impl<'a> Deserialize<'a> for DebugProbeSelector {
 }
 
 /// Bit-banging interface, ARM edition.
-// This trait (and JTAGAccess) should not be used by architecture impls directly. Architectures
-// should implement their own protocol interfaces, and use the probe interface to perform the
-// low-level operations AS A FALLBACK. Probes should prefer directly implementing the architecture
-// protocols, if they have the capability. Probes should be able to implement raw interface access
-// while at the same time opting out of the default bit-banging polyfill.
-//
-// TODO: this should be defined in the probe module, and split into JTAG/SWD parts. JTAGAccess
-// is somewhat redundant with this.
+///
+/// This trait (and RawJtagIo, JTAGAccess) should not be used by architecture implementations directly.
+/// Architectures should implement their own protocol interfaces, and use the probe interface to
+/// perform the low-level operations AS A FALLBACK. Probes should prefer directly implementing the
+/// architecture protocols, if they have the capability. Probes should be able to implement raw
+/// interface access while at the same time opting out of the default bit-banging polyfill.
 pub(crate) trait RawSwdIo: DebugProbe {
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
@@ -1054,8 +1052,6 @@ pub(crate) trait RawSwdIo: DebugProbe {
 }
 
 /// A trait for implementing low-level JTAG interface operations.
-// TODO: it should be enough for probes to implement this trait, and we should generate all JTAG
-// access operations for them. For this to work, JTAGAccess needs to be able to send a raw sequence.
 pub(crate) trait RawJtagIo: DebugProbe {
     /// Returns a mutable reference to the current state.
     fn state_mut(&mut self) -> &mut JtagDriverState;
@@ -1289,6 +1285,9 @@ pub trait JTAGAccess: DebugProbe {
     /// The measured scan chain will be stored in the probe's internal state.
     fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError>;
 
+    /// Shifts a number of bits through the TAP.
+    fn raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError>;
+
     /// Executes a TAP reset.
     fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
 
@@ -1376,6 +1375,18 @@ pub trait JTAGAccess: DebugProbe {
 
         Ok(results)
     }
+}
+
+/// A raw JTAG bit sequence.
+pub struct JtagSequence {
+    /// TDO capture
+    pub(crate) tdo_capture: bool,
+
+    /// TMS value
+    pub(crate) tms: bool,
+
+    /// Data to generate on TDI
+    pub(crate) data: BitVec,
 }
 
 /// A low-level JTAG register write command.
