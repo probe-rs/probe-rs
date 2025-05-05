@@ -1035,7 +1035,7 @@ impl<'a> Deserialize<'a> for DebugProbeSelector {
 //
 // TODO: this should be defined in the probe module, and split into JTAG/SWD parts. JTAGAccess
 // is somewhat redundant with this.
-pub(crate) trait RawProtocolIo {
+pub(crate) trait RawProtocolIo: DebugProbe {
     fn jtag_shift_tms<M>(&mut self, tms: M, tdi: bool) -> Result<(), DebugProbeError>
     where
         M: IntoIterator<Item = bool>;
