@@ -24,6 +24,7 @@ use crate::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
         },
+        common::BitbangJtagAccessMarker,
     },
 };
 
@@ -973,6 +974,9 @@ impl DebugProbe for CmsisDap {
         true
     }
 }
+
+// TODO this is a lie that needs to be cleaned up. This probe can do better.
+impl BitbangJtagAccessMarker for CmsisDap {}
 
 impl RawDapAccess for CmsisDap {
     fn core_status_notification(&mut self, status: CoreStatus) -> Result<(), DebugProbeError> {

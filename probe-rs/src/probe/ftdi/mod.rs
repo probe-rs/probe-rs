@@ -13,14 +13,13 @@ use crate::{
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
         JTAGAccess, JtagDriverState, ProbeCreationError, ProbeFactory, ProbeStatistics, RawJtagIo,
-        RawProtocolIo, SwdSettings, WireProtocol,
+        RawProtocolIo, SwdSettings, WireProtocol, common::BitbangJtagAccessMarker,
     },
 };
 use bitvec::prelude::*;
 use nusb::DeviceInfo;
 use std::{
     io::{Read, Write},
-    iter,
     time::{Duration, Instant},
 };
 
@@ -415,31 +414,11 @@ impl DebugProbe for FtdiProbe {
     }
 }
 
+impl BitbangJtagAccessMarker for FtdiProbe {}
+
 impl DapProbe for FtdiProbe {}
 
 impl RawProtocolIo for FtdiProbe {
-    fn jtag_shift_tms<M>(&mut self, tms: M, tdi: bool) -> Result<(), DebugProbeError>
-    where
-        M: IntoIterator<Item = bool>,
-    {
-        self.probe_statistics.report_io();
-
-        self.shift_bits(tms, iter::repeat(tdi), iter::repeat(false))?;
-
-        Ok(())
-    }
-
-    fn jtag_shift_tdi<I>(&mut self, tms: bool, tdi: I) -> Result<(), DebugProbeError>
-    where
-        I: IntoIterator<Item = bool>,
-    {
-        self.probe_statistics.report_io();
-
-        self.shift_bits(iter::repeat(tms), tdi, iter::repeat(false))?;
-
-        Ok(())
-    }
-
     fn swd_io<S>(&mut self, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,

@@ -20,7 +20,7 @@ use crate::{
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
         JTAGAccess, JtagDriverState, ProbeCreationError, ProbeError, ProbeFactory, ProbeStatistics,
-        RawJtagIo, RawProtocolIo, SwdSettings, WireProtocol,
+        RawJtagIo, RawProtocolIo, SwdSettings, WireProtocol, common::BitbangJtagAccessMarker,
     },
 };
 use bitvec::vec::BitVec;
@@ -1185,77 +1185,11 @@ impl DebugProbe for BlackMagicProbe {
     }
 }
 
+impl BitbangJtagAccessMarker for BlackMagicProbe {}
+
 impl DapProbe for BlackMagicProbe {}
 
 impl RawProtocolIo for BlackMagicProbe {
-    fn jtag_shift_tms<M>(&mut self, tms: M, _tdi: bool) -> Result<(), DebugProbeError>
-    where
-        M: IntoIterator<Item = bool>,
-    {
-        self.probe_statistics.report_io();
-
-        let tms = tms.into_iter().collect::<Vec<bool>>();
-        let mut accumulator = 0;
-        let mut accumulator_length = 0;
-        for tms in tms.into_iter() {
-            accumulator |= if tms { 1 << accumulator_length } else { 0 };
-            accumulator_length += 1;
-
-            if accumulator_length >= core::mem::size_of_val(&accumulator) * 8 {
-                self.command(RemoteCommand::JtagTms {
-                    bits: accumulator,
-                    length: accumulator_length,
-                })?;
-                accumulator_length = 0;
-                accumulator = 0;
-            }
-        }
-
-        if accumulator_length > 0 {
-            self.command(RemoteCommand::JtagTms {
-                bits: accumulator,
-                length: accumulator_length,
-            })?;
-        }
-
-        Ok(())
-    }
-
-    fn jtag_shift_tdi<I>(&mut self, _tms: bool, tdi: I) -> Result<(), DebugProbeError>
-    where
-        I: IntoIterator<Item = bool>,
-    {
-        self.probe_statistics.report_io();
-
-        let tdi = tdi.into_iter().collect::<Vec<bool>>();
-        let mut accumulator = 0;
-        let mut accumulator_length = 0;
-        for tms in tdi.into_iter() {
-            accumulator |= if tms { 1 << accumulator_length } else { 0 };
-            accumulator_length += 1;
-
-            if accumulator_length >= core::mem::size_of_val(&accumulator) * 8 {
-                self.command(RemoteCommand::JtagTdi {
-                    bits: accumulator,
-                    length: accumulator_length,
-                    tms: false,
-                })?;
-                accumulator_length = 0;
-                accumulator = 0;
-            }
-        }
-
-        if accumulator_length > 0 {
-            self.command(RemoteCommand::JtagTdi {
-                bits: accumulator,
-                length: accumulator_length,
-                tms: false,
-            })?;
-        }
-
-        Ok(())
-    }
-
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,

@@ -15,7 +15,7 @@ use crate::{
     },
     probe::{
         CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JTAGAccess, JtagCommandQueue,
-        JtagWriteCommand, RawProtocolIo, WireProtocol, common::bits_to_byte,
+        JtagWriteCommand, RawJtagIo, RawProtocolIo, WireProtocol, common::bits_to_byte,
     },
 };
 
@@ -908,7 +908,8 @@ fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32
 }
 
 /// RawDapAccess implementation for probes that implement RawProtocolIo.
-impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
+// TODO: JTAG shouldn't be required, but an option - maybe via trait downcasting?
+impl<Probe: DebugProbe + RawProtocolIo + RawJtagIo + JTAGAccess + 'static> RawDapAccess for Probe {
     fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
         let mut transfer = DapTransfer::read(address);
         perform_transfers(self, std::slice::from_mut(&mut transfer))?;
@@ -1106,7 +1107,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     fn jtag_sequence(&mut self, bit_len: u8, tms: bool, bits: u64) -> Result<(), DebugProbeError> {
         let bits = (0..bit_len).map(|i| (bits >> i) & 1 == 1);
 
-        self.jtag_shift_tdi(tms, bits)?;
+        self.shift_bits(std::iter::repeat(tms), bits, std::iter::repeat(false))?;
 
         Ok(())
     }
@@ -1123,7 +1124,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     }
 }
 
-fn send_sequence<P: RawProtocolIo + JTAGAccess>(
+fn send_sequence<P: RawProtocolIo + RawJtagIo>(
     probe: &mut P,
     protocol: WireProtocol,
     sequence: &IoSequence,
@@ -1132,7 +1133,11 @@ fn send_sequence<P: RawProtocolIo + JTAGAccess>(
         WireProtocol::Jtag => {
             // Swj sequences should be shifted out to tms, since that is the pin
             // shared between swd and jtag modes.
-            probe.jtag_shift_tms(sequence.io_items().map(|i| i.into()), false)?;
+            probe.shift_bits(
+                sequence.io_items().map(|i| i.into()),
+                std::iter::repeat(false),
+                std::iter::repeat(false),
+            )?;
         }
         WireProtocol::Swd => {
             probe.swd_io(sequence.io_items())?;
@@ -1151,7 +1156,7 @@ mod test {
         },
         error::Error,
         probe::{
-            DebugProbe, DebugProbeError, IoSequenceItem, JTAGAccess, ProbeStatistics,
+            DebugProbe, DebugProbeError, IoSequenceItem, JTAGAccess, ProbeStatistics, RawJtagIo,
             RawProtocolIo, SwdSettings, WireProtocol,
         },
     };
@@ -1428,21 +1433,30 @@ mod test {
         }
     }
 
+    impl RawJtagIo for MockJaylink {
+        fn state_mut(&mut self) -> &mut crate::probe::JtagDriverState {
+            unimplemented!()
+        }
+
+        fn state(&self) -> &crate::probe::JtagDriverState {
+            unimplemented!()
+        }
+
+        fn shift_bit(
+            &mut self,
+            _tms: bool,
+            _tdi: bool,
+            _capture: bool,
+        ) -> Result<(), DebugProbeError> {
+            unimplemented!()
+        }
+
+        fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
+            unimplemented!()
+        }
+    }
+
     impl RawProtocolIo for MockJaylink {
-        fn jtag_shift_tms<M>(&mut self, _tms: M, _tdi: bool) -> Result<(), DebugProbeError>
-        where
-            M: IntoIterator<Item = bool>,
-        {
-            Ok(())
-        }
-
-        fn jtag_shift_tdi<I>(&mut self, _tms: bool, _tdi: I) -> Result<(), DebugProbeError>
-        where
-            I: IntoIterator<Item = bool>,
-        {
-            Ok(())
-        }
-
         fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
         where
             S: IntoIterator<Item = IoSequenceItem>,
