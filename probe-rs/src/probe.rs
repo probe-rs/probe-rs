@@ -33,6 +33,7 @@ use common::ScanChainError;
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Deserializer, Serialize};
+use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -615,9 +616,9 @@ impl Probe {
         self.inner.get_target_voltage()
     }
 
-    /// Try to get a J-Link interface from the debug probe.
-    pub fn try_into_jlink(&mut self) -> Result<&mut jlink::JLink, DebugProbeError> {
-        self.inner.try_into_jlink()
+    /// Try to convert the probe into a concrete probe type.
+    pub fn try_into<P: DebugProbe>(&mut self) -> Option<&mut P> {
+        (self.inner.as_mut() as &mut dyn Any).downcast_mut::<P>()
     }
 }
 
@@ -652,7 +653,7 @@ pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sy
 /// An abstraction over general debug probe.
 ///
 /// This trait has to be implemented by ever debug probe driver.
-pub trait DebugProbe: Send + fmt::Debug {
+pub trait DebugProbe: Any + Send + fmt::Debug {
     /// Get human readable name for the probe.
     fn get_name(&self) -> &str;
 
@@ -817,13 +818,6 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// if the probe doesn’t support reading the target voltage.
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         Ok(None)
-    }
-
-    /// Try to get a J-Link interface from the debug probe.
-    fn try_into_jlink(&mut self) -> Result<&mut jlink::JLink, DebugProbeError> {
-        Err(DebugProbeError::Other(
-            "This probe is not a J-Link.".to_string(),
-        ))
     }
 }
 
