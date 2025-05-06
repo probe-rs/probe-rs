@@ -1050,7 +1050,7 @@ pub trait JTAGAccess: DebugProbe {
 
     /// Scans `IDCODE` and `IR` length information about the devices on the JTAG chain.
     ///
-    /// If configured, this will use the data from [`DebugProbe::set_scan_chain`]. Otherwise, it
+    /// If configured, this will use the data from [`Self::set_scan_chain`]. Otherwise, it
     /// will try to measure and extract `IR` lengths by driving the JTAG interface.
     ///
     /// The measured scan chain will be stored in the probe's internal state.

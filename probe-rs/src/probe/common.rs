@@ -650,6 +650,10 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
     }
 
     fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
+        if !self.state().scan_chain.is_empty() {
+            return Ok(self.state().scan_chain.as_slice());
+        }
+
         const MAX_CHAIN: usize = 8;
 
         self.reset_jtag_state_machine()?;
