@@ -13,7 +13,7 @@ use probe_rs_target::CoreType;
 use crate::{
     MemoryInterface, MemoryMappedRegister, Session,
     architecture::arm::{
-        ArmProbeInterface, DapError, RegisterAddress,
+        ArmProbeInterface, DapError, IoSequenceU64, RegisterAddress,
         core::registers::cortex_m::{PC, SP},
         dp::{Ctrl, DLPIDR, DebugPortError, DpRegister, TARGETID},
     },
@@ -554,7 +554,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                     interface.swj_sequence(6, 0x3F)?;
 
                     // Enter Run-Test-Idle state, as required by the DAP_Transfer command when using JTAG
-                    interface.jtag_sequence(1, false, 0x01)?;
+                    interface.jtag_sequence(false, IoSequenceU64::new(1u8, 0x01u64))?;
 
                     // Configure JTAG IR lengths in probe
                     interface.configure_jtag(false)?;

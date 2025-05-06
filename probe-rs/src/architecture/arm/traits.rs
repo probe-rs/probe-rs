@@ -210,6 +210,38 @@ impl FullyQualifiedApAddress {
 ///
 /// Almost everything is the responsibility of the caller. For example, the caller must
 /// handle bank switching and AP selection.
+
+#[derive(Debug, Clone, Copy)]
+pub struct IoSequenceU64 {
+    /// The number of relevant bits in the self.data field.
+    pub cycles: u8,
+    /// The data bits to be sequenced out.
+    pub data: u64,
+}
+
+impl IoSequenceU64 {
+    /// Create a new JTAG IO sequence.
+    pub fn new(cycles: u8, data: u64) -> Self {
+        Self { cycles, data }
+    }
+
+    /// Set the bottom n bits of a u64 to 1
+    pub fn new_set_n_bits(x: u8) -> Self {
+        Self {
+            cycles: x,
+            // This is lifted directly from:
+            // <https://users.rust-lang.org/t/how-to-make-an-integer-with-n-bits-set-without-overflow/63078/6>
+            data: u64::checked_shl(1, x.into()).unwrap_or(0).wrapping_sub(1),
+        }
+    }
+
+    /// Turn into bit iterator.
+    pub fn turn_into_iterator(self) -> impl ExactSizeIterator<Item = bool> {
+        (0..self.cycles).map(move |i| (self.data >> i) & 1 == 1)
+    }
+}
+
+/// Defines Raw DAP register access methods.
 pub trait RawDapAccess {
     /// Read a DAP register.
     ///
@@ -274,7 +306,7 @@ pub trait RawDapAccess {
     ///
     /// This can only be used for output, and should be used to generate
     /// the initial reset sequence, for example.
-    fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError>;
+    fn jtag_sequence(&mut self, tms: bool, sequence: IoSequenceU64) -> Result<(), DebugProbeError>;
 
     /// Send a specific output sequence over JTAG or SWD.
     ///

@@ -2,8 +2,8 @@
 use crate::{
     Error, MemoryInterface, MemoryMappedRegister,
     architecture::arm::{
-        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess,
-        RegisterAddress, SwoAccess,
+        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, IoSequenceU64,
+        RawDapAccess, RegisterAddress, SwoAccess,
         ap::memory_ap::mock::MockMemoryAp,
         armv8m::Dhcsr,
         communication_interface::{
@@ -574,7 +574,11 @@ impl RawDapAccess for FakeProbe {
         handler(address, value)
     }
 
-    fn jtag_sequence(&mut self, _cycles: u8, _tms: bool, _tdi: u64) -> Result<(), DebugProbeError> {
+    fn jtag_sequence(
+        &mut self,
+        _tms: bool,
+        _sequence: IoSequenceU64,
+    ) -> Result<(), DebugProbeError> {
         todo!()
     }
 
