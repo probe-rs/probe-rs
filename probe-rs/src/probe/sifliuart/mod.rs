@@ -360,14 +360,6 @@ impl DebugProbe for SifliUart {
         Ok(Box::new(UninitializedSifliUartArmProbe { probe: self }))
     }
 
-    fn has_riscv_interface(&self) -> bool {
-        false
-    }
-
-    fn has_xtensa_interface(&self) -> bool {
-        false
-    }
-
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
     }

@@ -3,10 +3,7 @@ mod protocol;
 
 use crate::{
     architecture::{
-        arm::{
-            SwoAccess,
-            communication_interface::{DapProbe, UninitializedArmProbe},
-        },
+        arm::communication_interface::UninitializedArmProbe,
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
@@ -147,21 +144,6 @@ impl DebugProbe for EspUsbJtag {
         Ok(Box::new(JtagDtmBuilder::new(self)))
     }
 
-    fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
-        // This probe cannot debug ARM targets.
-        None
-    }
-
-    fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
-        // This probe cannot debug ARM targets.
-        None
-    }
-
-    fn has_arm_interface(&self) -> bool {
-        // This probe cannot debug ARM targets.
-        false
-    }
-
     fn has_riscv_interface(&self) -> bool {
         // This probe is intended for RISC-V.
         true
@@ -169,11 +151,6 @@ impl DebugProbe for EspUsbJtag {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
-    }
-
-    fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
-        // This is not a DAP capable probe.
-        None
     }
 
     fn try_get_arm_interface<'probe>(
@@ -187,11 +164,6 @@ impl DebugProbe for EspUsbJtag {
                 interface_name: "SWD/ARM",
             },
         ))
-    }
-
-    fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
-        // We cannot read the voltage on this probe, unfortunately.
-        Ok(None)
     }
 
     fn try_get_xtensa_interface<'probe>(
