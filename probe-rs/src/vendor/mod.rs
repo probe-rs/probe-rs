@@ -180,7 +180,9 @@ fn try_detect_arm_chip(
 fn try_detect_riscv_chip(registry: &Registry, probe: &mut Probe) -> Result<Option<Target>, Error> {
     let mut found_target = None;
 
-    _ = probe.select_jtag_tap(0);
+    if let Some(probe) = probe.try_as_jtag_probe() {
+        _ = probe.select_target(0);
+    }
 
     match probe.try_get_riscv_interface_builder() {
         Ok(factory) => {
@@ -228,7 +230,9 @@ fn try_detect_riscv_chip(registry: &Registry, probe: &mut Probe) -> Result<Optio
 fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Option<Target>, Error> {
     let mut found_target = None;
 
-    _ = probe.select_jtag_tap(0);
+    if let Some(probe) = probe.try_as_jtag_probe() {
+        _ = probe.select_target(0);
+    }
 
     let mut state = XtensaDebugInterfaceState::default();
     match probe.try_get_xtensa_interface(&mut state) {

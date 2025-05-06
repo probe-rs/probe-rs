@@ -18,7 +18,6 @@ use bitvec::prelude::*;
 use itertools::Itertools;
 use nusb::DeviceInfo;
 use nusb::transfer::{Direction, EndpointType};
-use probe_rs_target::ScanChainElement;
 
 use self::bits::BitIter;
 use self::capabilities::{Capabilities, Capability};
@@ -978,11 +977,6 @@ impl DebugProbe for JLink {
         self.speed_khz
     }
 
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        self.jtag_state.expected_scan_chain = Some(scan_chain);
-        Ok(())
-    }
-
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         if speed_khz == 0 || speed_khz >= 0xffff {
             return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
@@ -1071,25 +1065,6 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
-        self.select_target(index)
-    }
-
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        match self.active_protocol() {
-            Some(WireProtocol::Jtag) => {
-                if let Some(ref scan_chain) = self.jtag_state.expected_scan_chain {
-                    Ok(scan_chain)
-                } else {
-                    Ok(&[])
-                }
-            }
-            _ => Err(DebugProbeError::InterfaceNotAvailable {
-                interface_name: "JTAG",
-            }),
-        }
-    }
-
     fn detach(&mut self) -> Result<(), crate::Error> {
         Ok(())
     }
@@ -1107,6 +1082,10 @@ impl DebugProbe for JLink {
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         self.set_reset(true)?;
         Ok(())
+    }
+
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        Some(self)
     }
 
     fn try_get_riscv_interface_builder<'probe>(

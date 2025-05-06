@@ -620,6 +620,11 @@ fn prepare_write_register(
 }
 
 impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
+    fn set_scan_chain(&mut self, scan_chain: &[ScanChainElement]) -> Result<(), DebugProbeError> {
+        self.state_mut().expected_scan_chain = Some(scan_chain.to_vec());
+        Ok(())
+    }
+
     /// Configures the probe to address the given target.
     fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError> {
         if self.state().scan_chain.is_empty() {
@@ -644,7 +649,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         Ok(())
     }
 
-    fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
+    fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
         const MAX_CHAIN: usize = 8;
 
         self.reset_jtag_state_machine()?;
@@ -721,7 +726,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
 
         self.state_mut().scan_chain = chain;
 
-        Ok(())
+        Ok(self.state().scan_chain.as_slice())
     }
 
     fn tap_reset(&mut self) -> Result<(), DebugProbeError> {

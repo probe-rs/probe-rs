@@ -486,30 +486,6 @@ impl Probe {
         }
     }
 
-    /// Configure the scan chain to use for the attached target.
-    ///
-    /// See [`DebugProbe::set_scan_chain`] for more information and usage
-    pub fn set_scan_chain(
-        &mut self,
-        scan_chain: Vec<ScanChainElement>,
-    ) -> Result<(), DebugProbeError> {
-        if !self.attached {
-            self.inner.set_scan_chain(scan_chain)
-        } else {
-            Err(DebugProbeError::Attached)
-        }
-    }
-
-    /// Returns the JTAG scan chain
-    pub fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        self.inner.scan_chain()
-    }
-
-    /// Selects the JTAG TAP to be used for communication.
-    pub fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
-        self.inner.select_jtag_tap(index)
-    }
-
     /// Get the currently used maximum speed for the debug protocol in kHz.
     ///
     /// Not all probes report which speed is used, meaning this value is not
@@ -586,6 +562,11 @@ impl Probe {
         } else {
             self.inner.try_get_riscv_interface_builder()
         }
+    }
+
+    /// Returns a [`JTAGAccess`] from the debug probe, if implemented.
+    pub fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        self.inner.try_as_jtag_probe()
     }
 
     /// Gets a SWO interface from the debug probe.
@@ -677,41 +658,10 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     ///
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError>;
 
-    /// Set the JTAG scan chain information for the target under debug.
-    ///
-    /// This allows the probe to know which TAPs are in the scan chain and their
-    /// position and IR lengths.
-    ///
-    /// If the scan chain is provided, and the selected protocol is JTAG, the
-    /// probe will automatically configure the JTAG interface to match the
-    /// scan chain configuration without trying to determine the chain at
-    /// runtime.
-    ///
-    /// This is called by the `Session` when attaching to a target.
-    /// So this does not need to be called manually, unless you want to
-    /// modify the scan chain. You must be attached to a target to set the
-    /// scan_chain since the scan chain only applies to the attached target.
-    ///
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError>;
-
-    /// Returns the JTAG scan chain
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError>;
-
     /// Attach to the chip.
     ///
     /// This should run all the necessary protocol init routines.
     fn attach(&mut self) -> Result<(), DebugProbeError>;
-
-    /// Selects the JTAG TAP to be used for communication.
-    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
-        if index != 0 {
-            return Err(DebugProbeError::NotImplemented {
-                function_name: "select_jtag_tap",
-            });
-        }
-
-        Ok(())
-    }
 
     /// Detach from the chip.
     ///
@@ -740,6 +690,11 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     /// Check if the probe offers an interface to debug ARM chips.
     fn has_arm_interface(&self) -> bool {
         false
+    }
+
+    /// Returns a [`JTAGAccess`] from the debug probe, if implemented.
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        None
     }
 
     /// Get the dedicated interface to debug ARM chips. To check that the
@@ -1077,13 +1032,29 @@ impl<'a> Deserialize<'a> for DebugProbeSelector {
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. direction control over the bytes sent and received.
 pub trait JTAGAccess: DebugProbe {
+    /// Set the JTAG scan chain information for the target under debug.
+    ///
+    /// This allows the probe to know which TAPs are in the scan chain and their
+    /// position and IR lengths.
+    ///
+    /// If the scan chain is provided, and the selected protocol is JTAG, the
+    /// probe will automatically configure the JTAG interface to match the
+    /// scan chain configuration without trying to determine the chain at
+    /// runtime.
+    ///
+    /// This is called by the `Session` when attaching to a target.
+    /// So this does not need to be called manually, unless you want to
+    /// modify the scan chain. You must be attached to a target to set the
+    /// scan_chain since the scan chain only applies to the attached target.
+    fn set_scan_chain(&mut self, scan_chain: &[ScanChainElement]) -> Result<(), DebugProbeError>;
+
     /// Scans `IDCODE` and `IR` length information about the devices on the JTAG chain.
     ///
     /// If configured, this will use the data from [`DebugProbe::set_scan_chain`]. Otherwise, it
     /// will try to measure and extract `IR` lengths by driving the JTAG interface.
     ///
     /// The measured scan chain will be stored in the probe's internal state.
-    fn scan_chain(&mut self) -> Result<(), DebugProbeError>;
+    fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError>;
 
     /// Executes a TAP reset.
     fn tap_reset(&mut self) -> Result<(), DebugProbeError>;

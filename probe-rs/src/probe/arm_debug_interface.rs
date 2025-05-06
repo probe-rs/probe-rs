@@ -1303,7 +1303,7 @@ mod test {
             dp::{Ctrl, DpRegister, RdBuff},
         },
         error::Error,
-        probe::{DebugProbe, DebugProbeError, JTAGAccess, ScanChainElement, WireProtocol},
+        probe::{DebugProbe, DebugProbeError, JTAGAccess, WireProtocol},
     };
 
     use super::{
@@ -1313,6 +1313,7 @@ mod test {
     };
 
     use bitvec::prelude::*;
+    use probe_rs_target::ScanChainElement;
 
     #[allow(dead_code)]
     enum DapAcknowledge {
@@ -1508,7 +1509,11 @@ mod test {
     }
 
     impl JTAGAccess for MockJaylink {
-        fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
+        fn set_scan_chain(&mut self, _: &[ScanChainElement]) -> Result<(), DebugProbeError> {
+            todo!()
+        }
+
+        fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
             todo!()
         }
 
@@ -1645,17 +1650,6 @@ mod test {
         }
 
         fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
-            todo!()
-        }
-
-        fn set_scan_chain(
-            &mut self,
-            _scan_chain: Vec<ScanChainElement>,
-        ) -> Result<(), DebugProbeError> {
-            todo!()
-        }
-
-        fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
             todo!()
         }
 

@@ -10,7 +10,6 @@ use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     ProbeFactory, WireProtocol,
 };
-use probe_rs_target::ScanChainElement;
 use serialport::{SerialPort, SerialPortType, available_ports};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::time::{Duration, Instant};
@@ -305,14 +304,6 @@ impl DebugProbe for SifliUart {
         self.baud = speed_khz * 1000;
 
         Ok(speed_khz)
-    }
-
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
-
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        Ok(&[])
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {

@@ -12,7 +12,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
-        ProbeCreationError, ProbeFactory, ScanChainElement, WireProtocol,
+        ProbeCreationError, ProbeFactory, WireProtocol,
         arm_debug_interface::{IoSequenceItem, ProbeStatistics, RawProtocolIo, SwdSettings},
         common::{JtagDriverState, RawJtagIo},
     },
@@ -329,29 +329,11 @@ impl DebugProbe for FtdiProbe {
         Ok(self.adapter.set_speed_khz(speed_khz))
     }
 
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.jtag_state.expected_scan_chain = Some(scan_chain);
-        Ok(())
-    }
-
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        if let Some(ref scan_chain) = self.jtag_state.expected_scan_chain {
-            Ok(scan_chain)
-        } else {
-            Ok(&[])
-        }
-    }
-
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching...");
 
         self.adapter.attach()?;
         self.select_target(0)
-    }
-
-    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
-        self.select_target(index)
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
@@ -389,6 +371,10 @@ impl DebugProbe for FtdiProbe {
     fn active_protocol(&self) -> Option<WireProtocol> {
         // Only supports JTAG
         Some(WireProtocol::Jtag)
+    }
+
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        Some(self)
     }
 
     fn try_get_riscv_interface_builder<'probe>(

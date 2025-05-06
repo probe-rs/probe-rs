@@ -23,8 +23,6 @@ use self::protocol::ProtocolHandler;
 
 use super::{JTAGAccess, common::JtagDriverState};
 
-use probe_rs_target::ScanChainElement;
-
 /// Probe factory for USB JTAG interfaces built into certain ESP32 chips.
 #[derive(Debug)]
 pub struct EspUsbJtagFactory;
@@ -111,24 +109,6 @@ impl DebugProbe for EspUsbJtag {
         Ok(speed_khz)
     }
 
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.jtag_state.expected_scan_chain = Some(scan_chain);
-        Ok(())
-    }
-
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        if let Some(ref scan_chain) = self.jtag_state.expected_scan_chain {
-            Ok(scan_chain)
-        } else {
-            Ok(&[])
-        }
-    }
-
-    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
-        self.select_target(index)
-    }
-
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching to ESP USB JTAG");
 
@@ -155,6 +135,10 @@ impl DebugProbe for EspUsbJtag {
         tracing::info!("reset_deassert!");
         self.protocol.set_reset(false)?;
         Ok(())
+    }
+
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        Some(self)
     }
 
     fn try_get_riscv_interface_builder<'probe>(

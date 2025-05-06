@@ -125,7 +125,9 @@ impl ArchitectureInterface {
             ArchitectureInterface::Arm(interface) => combined_state.attach_arm(target, interface),
             ArchitectureInterface::Jtag(probe, ifaces) => {
                 let idx = combined_state.interface_idx();
-                probe.select_jtag_tap(idx)?;
+                if let Some(probe) = probe.try_as_jtag_probe() {
+                    probe.select_target(idx)?;
+                }
                 match &mut ifaces[idx] {
                     JtagInterface::Riscv(state) => {
                         let factory = probe.try_get_riscv_interface_builder()?;
@@ -222,14 +224,18 @@ impl Session {
 
         if let Some(jtag) = target.jtag.as_ref() {
             if let Some(scan_chain) = jtag.scan_chain.clone() {
-                probe.set_scan_chain(scan_chain)?;
+                if let Some(probe) = probe.try_as_jtag_probe() {
+                    probe.set_scan_chain(&scan_chain)?;
+                }
             }
         }
         probe.attach_to_unspecified()?;
-        if let Ok(chain) = probe.scan_chain() {
-            if !chain.is_empty() {
-                for core in &cores {
-                    probe.select_jtag_tap(core.interface_idx())?;
+        if let Some(probe) = probe.try_as_jtag_probe() {
+            if let Ok(chain) = probe.scan_chain() {
+                if !chain.is_empty() {
+                    for core in &cores {
+                        probe.select_target(core.interface_idx())?;
+                    }
                 }
             }
         }
@@ -328,7 +334,9 @@ impl Session {
         // handle most of the setup in the same way.
         if let Some(jtag) = target.jtag.as_ref() {
             if let Some(scan_chain) = jtag.scan_chain.clone() {
-                probe.set_scan_chain(scan_chain)?;
+                if let Some(probe) = probe.try_as_jtag_probe() {
+                    probe.set_scan_chain(&scan_chain)?;
+                }
             }
         }
 
@@ -341,9 +349,13 @@ impl Session {
         // FIXME: This is terribly JTAG-specific. Since we don't really support anything else yet,
         // it should be fine for now.
         let highest_idx = cores.iter().map(|c| c.interface_idx()).max().unwrap_or(0);
-        let tap_count = match probe.scan_chain() {
-            Ok(scan_chain) => scan_chain.len().max(highest_idx + 1),
-            Err(_) => highest_idx + 1,
+        let tap_count = if let Some(probe) = probe.try_as_jtag_probe() {
+            match probe.scan_chain() {
+                Ok(scan_chain) => scan_chain.len().max(highest_idx + 1),
+                Err(_) => highest_idx + 1,
+            }
+        } else {
+            highest_idx + 1
         };
         let mut interfaces = std::iter::repeat_with(|| JtagInterface::Unknown)
             .take(tap_count)
@@ -593,7 +605,9 @@ impl Session {
     ) -> Result<RiscvCommunicationInterface, Error> {
         let tap_idx = self.interface_idx(core_id)?;
         if let ArchitectureInterface::Jtag(probe, ifaces) = &mut self.interfaces {
-            probe.select_jtag_tap(tap_idx)?;
+            if let Some(probe) = probe.try_as_jtag_probe() {
+                probe.select_target(tap_idx)?;
+            }
             if let JtagInterface::Riscv(state) = &mut ifaces[tap_idx] {
                 let factory = probe.try_get_riscv_interface_builder()?;
                 return Ok(factory.attach_auto(&self.target, state)?);
@@ -609,7 +623,9 @@ impl Session {
     ) -> Result<XtensaCommunicationInterface, Error> {
         let tap_idx = self.interface_idx(core_id)?;
         if let ArchitectureInterface::Jtag(probe, ifaces) = &mut self.interfaces {
-            probe.select_jtag_tap(tap_idx)?;
+            if let Some(probe) = probe.try_as_jtag_probe() {
+                probe.select_target(tap_idx)?;
+            }
             if let JtagInterface::Xtensa(state) = &mut ifaces[tap_idx] {
                 return Ok(probe.try_get_xtensa_interface(state)?);
             }

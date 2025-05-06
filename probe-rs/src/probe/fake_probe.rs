@@ -20,7 +20,7 @@ use object::{
     elf::{FileHeader32, FileHeader64, PT_LOAD},
     read::elf::{ElfFile, FileHeader, ProgramHeader},
 };
-use probe_rs_target::{MemoryRange, ScanChainElement};
+use probe_rs_target::MemoryRange;
 use std::{
     cell::RefCell,
     collections::{BTreeSet, VecDeque},
@@ -34,7 +34,6 @@ use std::{
 pub struct FakeProbe {
     protocol: WireProtocol,
     speed: u32,
-    scan_chain: Option<Vec<ScanChainElement>>,
 
     dap_register_read_handler: Option<Box<dyn Fn(RegisterAddress) -> Result<u32, ArmError> + Send>>,
 
@@ -318,7 +317,6 @@ impl FakeProbe {
         FakeProbe {
             protocol: WireProtocol::Swd,
             speed: 1000,
-            scan_chain: None,
 
             dap_register_read_handler: None,
             dap_register_write_handler: None,
@@ -487,20 +485,6 @@ impl DebugProbe for FakeProbe {
 
     fn speed_khz(&self) -> u32 {
         self.speed
-    }
-
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        self.scan_chain = Some(scan_chain);
-        Ok(())
-    }
-
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        match &self.scan_chain {
-            Some(chain) => Ok(chain),
-            None => Err(DebugProbeError::Other(
-                "No scan chain set for fake probe".to_string(),
-            )),
-        }
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
