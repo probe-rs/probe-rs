@@ -1,0 +1,20 @@
+name: Dispatch workflow in repo with submodule
+on:
+  push:
+    paths:
+      - probe-rs/targets/**
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PAT }}
+          repository: probe-rs/webpage
+          event-type: update_probe_rs_dep
+          # github.event contains these: https://docs.github.com/en/webhooks/webhook-events-and-payloads#push
+          # Must have fewer than 10 top-level keys and be under some size.
+          # https://github.com/marketplace/actions/repository-dispatch#client-payload
+          client-payload: '{"event": ${{ toJson(github.event) }}}'

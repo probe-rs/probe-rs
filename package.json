@@ -1,0 +1,6 @@
+{
+  "name": "probe-rs-targets",
+  "version": "1.0.0",
+  "author": "Julian",
+  "description": "the builtin probe-rs targets"
+}
