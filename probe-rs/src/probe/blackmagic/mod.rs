@@ -20,7 +20,6 @@ use crate::{
     probe::{DebugProbe, DebugProbeInfo, DebugProbeSelector, JTAGAccess, ProbeFactory},
 };
 use bitvec::vec::BitVec;
-use probe_rs_target::ScanChainElement;
 use serialport::{SerialPortType, available_ports};
 
 use super::{
@@ -1045,27 +1044,6 @@ impl DebugProbe for BlackMagicProbe {
         Ok(self.speed_khz)
     }
 
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.jtag_state.expected_scan_chain = Some(scan_chain);
-        Ok(())
-    }
-
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        match DebugProbe::active_protocol(self) {
-            Some(WireProtocol::Jtag) => {
-                if let Some(ref chain) = self.jtag_state.expected_scan_chain {
-                    Ok(chain.as_slice())
-                } else {
-                    Ok(&[])
-                }
-            }
-            _ => Err(DebugProbeError::InterfaceNotAvailable {
-                interface_name: "JTAG",
-            }),
-        }
-    }
-
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching with protocol '{:?}'", self.protocol);
 
@@ -1104,10 +1082,6 @@ impl DebugProbe for BlackMagicProbe {
                 interface_name: "no protocol specified",
             }),
         }
-    }
-
-    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
-        self.select_target(index)
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
@@ -1150,6 +1124,10 @@ impl DebugProbe for BlackMagicProbe {
 
     fn active_protocol(&self) -> Option<WireProtocol> {
         self.protocol
+    }
+
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        Some(self)
     }
 
     fn try_get_riscv_interface_builder<'probe>(

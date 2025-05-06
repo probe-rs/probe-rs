@@ -1,0 +1,1 @@
+JTAG-specific operations have been removed from Probe and DebugProbe. Use `Probe::try_as_jtag_probe` to obtain a reference to a JTAG-capable probe.

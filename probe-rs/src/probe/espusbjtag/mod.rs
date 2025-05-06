@@ -3,10 +3,7 @@ mod protocol;
 
 use crate::{
     architecture::{
-        arm::{
-            SwoAccess,
-            communication_interface::{DapProbe, UninitializedArmProbe},
-        },
+        arm::communication_interface::UninitializedArmProbe,
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
@@ -22,8 +19,6 @@ use bitvec::prelude::*;
 use self::protocol::ProtocolHandler;
 
 use super::{JTAGAccess, common::JtagDriverState};
-
-use probe_rs_target::ScanChainElement;
 
 /// Probe factory for USB JTAG interfaces built into certain ESP32 chips.
 #[derive(Debug)]
@@ -111,24 +106,6 @@ impl DebugProbe for EspUsbJtag {
         Ok(speed_khz)
     }
 
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.jtag_state.expected_scan_chain = Some(scan_chain);
-        Ok(())
-    }
-
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        if let Some(ref scan_chain) = self.jtag_state.expected_scan_chain {
-            Ok(scan_chain)
-        } else {
-            Ok(&[])
-        }
-    }
-
-    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
-        self.select_target(index)
-    }
-
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching to ESP USB JTAG");
 
@@ -157,25 +134,14 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        Some(self)
+    }
+
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         Ok(Box::new(JtagDtmBuilder::new(self)))
-    }
-
-    fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
-        // This probe cannot debug ARM targets.
-        None
-    }
-
-    fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
-        // This probe cannot debug ARM targets.
-        None
-    }
-
-    fn has_arm_interface(&self) -> bool {
-        // This probe cannot debug ARM targets.
-        false
     }
 
     fn has_riscv_interface(&self) -> bool {
@@ -185,11 +151,6 @@ impl DebugProbe for EspUsbJtag {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
-    }
-
-    fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
-        // This is not a DAP capable probe.
-        None
     }
 
     fn try_get_arm_interface<'probe>(
@@ -203,11 +164,6 @@ impl DebugProbe for EspUsbJtag {
                 interface_name: "SWD/ARM",
             },
         ))
-    }
-
-    fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
-        // We cannot read the voltage on this probe, unfortunately.
-        Ok(None)
     }
 
     fn try_get_xtensa_interface<'probe>(

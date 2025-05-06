@@ -808,27 +808,6 @@ impl DebugProbe for CmsisDap {
         Ok(speed_khz)
     }
 
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.jtag_state.expected_scan_chain = Some(scan_chain.clone());
-        self.jtag_state.scan_chain = scan_chain;
-        Ok(())
-    }
-
-    /// Returns the JTAG scan chain
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        match self.active_protocol() {
-            Some(WireProtocol::Jtag) => Ok(self.jtag_state.scan_chain.as_slice()),
-            _ => Err(DebugProbeError::InterfaceNotAvailable {
-                interface_name: "JTAG",
-            }),
-        }
-    }
-
-    fn select_jtag_tap(&mut self, index: usize) -> Result<(), DebugProbeError> {
-        self.select_target(index)
-    }
-
     /// Enters debug mode.
     #[tracing::instrument(skip(self))]
     fn attach(&mut self) -> Result<(), DebugProbeError> {
@@ -953,6 +932,10 @@ impl DebugProbe for CmsisDap {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
+    }
+
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        Some(self)
     }
 
     fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {

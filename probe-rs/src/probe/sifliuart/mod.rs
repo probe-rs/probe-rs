@@ -10,7 +10,6 @@ use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     ProbeFactory, WireProtocol,
 };
-use probe_rs_target::ScanChainElement;
 use serialport::{SerialPort, SerialPortType, available_ports};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::time::{Duration, Instant};
@@ -307,14 +306,6 @@ impl DebugProbe for SifliUart {
         Ok(speed_khz)
     }
 
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
-
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        Ok(&[])
-    }
-
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         let ret = self.command(SifliUartCommand::Enter);
         if let Err(e) = ret {
@@ -367,14 +358,6 @@ impl DebugProbe for SifliUart {
     ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
     {
         Ok(Box::new(UninitializedSifliUartArmProbe { probe: self }))
-    }
-
-    fn has_riscv_interface(&self) -> bool {
-        false
-    }
-
-    fn has_xtensa_interface(&self) -> bool {
-        false
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {

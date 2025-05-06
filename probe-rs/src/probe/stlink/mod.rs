@@ -27,7 +27,6 @@ use crate::{
     },
 };
 
-use probe_rs_target::ScanChainElement;
 use scroll::{BE, LE, Pread, Pwrite};
 
 use std::collections::BTreeSet;
@@ -73,7 +72,6 @@ impl ProbeFactory for StLinkFactory {
             swd_speed_khz: 1_800,
             jtag_speed_khz: 1_120,
             swo_enabled: false,
-            scan_chain: None,
 
             opened_aps: vec![],
         };
@@ -99,7 +97,6 @@ pub struct StLink<D: StLinkUsb> {
     swd_speed_khz: u32,
     jtag_speed_khz: u32,
     swo_enabled: bool,
-    scan_chain: Option<Vec<ScanChainElement>>,
 
     /// List of opened APs
     opened_aps: Vec<u8>,
@@ -165,27 +162,6 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
 
                 Ok(actual_speed_khz)
             }
-        }
-    }
-
-    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.scan_chain = Some(scan_chain);
-        Ok(())
-    }
-
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        match self.active_protocol() {
-            Some(WireProtocol::Jtag) => {
-                if let Some(ref scan_chain) = self.scan_chain {
-                    Ok(scan_chain)
-                } else {
-                    Ok(&[])
-                }
-            }
-            _ => Err(DebugProbeError::InterfaceNotAvailable {
-                interface_name: "JTAG",
-            }),
         }
     }
 
@@ -1909,7 +1885,6 @@ mod test {
                 jtag_version: 0,
                 swd_speed_khz: 0,
                 jtag_speed_khz: 0,
-                scan_chain: None,
                 swo_enabled: false,
                 opened_aps: vec![],
             }

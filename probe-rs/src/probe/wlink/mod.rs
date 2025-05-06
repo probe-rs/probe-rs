@@ -373,23 +373,16 @@ impl DebugProbe for WchLink {
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         Ok(Box::new(JtagDtmBuilder::new(self)))
     }
-
-    fn set_scan_chain(
-        &mut self,
-        _scan_chain: Vec<ScanChainElement>,
-    ) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
-
-    fn scan_chain(&self) -> Result<&[ScanChainElement], DebugProbeError> {
-        Ok(&[])
-    }
 }
 
 /// Wrap WCH-Link's USB based DMI access as a fake JTAGAccess
 impl JTAGAccess for WchLink {
-    fn scan_chain(&mut self) -> Result<(), DebugProbeError> {
+    fn set_scan_chain(&mut self, _scan_chain: &[ScanChainElement]) -> Result<(), DebugProbeError> {
         Ok(())
+    }
+
+    fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
+        Ok(&[])
     }
 
     fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
