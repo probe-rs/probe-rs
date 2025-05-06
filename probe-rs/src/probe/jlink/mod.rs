@@ -1177,10 +1177,6 @@ impl DebugProbe for JLink {
     fn has_xtensa_interface(&self) -> bool {
         self.supported_protocols.contains(&WireProtocol::Jtag)
     }
-
-    fn try_into_jlink(&mut self) -> Result<&mut JLink, DebugProbeError> {
-        Ok(self)
-    }
 }
 
 impl RawProtocolIo for JLink {
