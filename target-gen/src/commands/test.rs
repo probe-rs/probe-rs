@@ -98,7 +98,8 @@ pub fn cmd_test(
     };
 
     // We need to get the chip name so that special startup procedure can be used. (matched on name)
-    let mut session = probe_rs::Session::auto_attach(target_name, session_config)?;
+    let mut session =
+        probe_rs::Session::auto_attach_with_registry(target_name, session_config, &registry)?;
 
     // Register callback to update the progress.
     let t = Rc::new(RefCell::new(Instant::now()));

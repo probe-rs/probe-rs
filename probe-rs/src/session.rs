@@ -435,12 +435,8 @@ impl Session {
         Ok(session)
     }
 
-    /// Automatically creates a session with the first connected probe found.
-    #[tracing::instrument(skip(target))]
-    pub fn auto_attach(
-        target: impl Into<TargetSelector>,
-        session_config: SessionConfig,
-    ) -> Result<Session, Error> {
+    /// Automatically open a probe with the given session config.
+    fn auto_probe(session_config: &SessionConfig) -> Result<Probe, Error> {
         // Get a list of all available debug probes.
         let lister = Lister::new();
 
@@ -462,9 +458,33 @@ impl Session {
         if let Some(protocol) = session_config.protocol {
             probe.select_protocol(protocol)?;
         }
+        Ok(probe)
+    }
 
+    /// Automatically creates a session with the first connected probe found.
+    #[tracing::instrument(skip(target))]
+    pub fn auto_attach(
+        target: impl Into<TargetSelector>,
+        session_config: SessionConfig,
+    ) -> Result<Session, Error> {
         // Attach to a chip.
-        probe.attach(target, session_config.permissions)
+        Self::auto_probe(&session_config)?.attach(target, session_config.permissions)
+    }
+
+    /// Automatically creates a session with the first connected probe found
+    /// using the registry that was provided.
+    #[tracing::instrument(skip(target, registry))]
+    pub fn auto_attach_with_registry(
+        target: impl Into<TargetSelector>,
+        session_config: SessionConfig,
+        registry: &Registry,
+    ) -> Result<Session, Error> {
+        // Attach to a chip.
+        Self::auto_probe(&session_config)?.attach_with_registry(
+            target,
+            session_config.permissions,
+            registry,
+        )
     }
 
     /// Lists the available cores with their number and their type.
