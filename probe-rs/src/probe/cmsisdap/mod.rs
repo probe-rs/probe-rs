@@ -780,6 +780,16 @@ impl CmsisDap {
         // Store the actually used protocol, to handle cases where the default protocol is used.
         tracing::info!("Using protocol {}", used_protocol);
         self.protocol = Some(used_protocol);
+
+        // If operating under JTAG, try to bring the JTAG machinery out of reset. Ignore errors
+        // since not all probes support this.
+        if matches!(self.protocol, Some(WireProtocol::Jtag)) {
+            commands::send_command(
+                &mut self.device,
+                &SWJPinsRequestBuilder::new().ntrst(true).build(),
+            )
+            .ok();
+        }
         self.connected = true;
 
         Ok(())
