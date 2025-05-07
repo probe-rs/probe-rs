@@ -42,7 +42,7 @@ impl SWJPinsRequestBuilder {
         self
     }
 
-    pub fn _ntrst(&mut self, value: bool) -> &mut Self {
+    pub fn ntrst(&mut self, value: bool) -> &mut Self {
         self.ntrst = Some(value);
         self
     }
