@@ -348,6 +348,13 @@ impl ChipFamily {
                 .map(|core| &core.name)
                 .collect::<Vec<_>>();
 
+            if variant.memory_map.is_empty() {
+                return Err(format!(
+                    "Variant {} does not contain any memory regions",
+                    variant.name
+                ));
+            }
+
             for memory in &variant.memory_map {
                 for core in memory.cores() {
                     if !core_names.contains(&core) {
