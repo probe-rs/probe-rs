@@ -82,10 +82,10 @@ impl CoreDump {
 
     /// Load the dumped core from a file.
     pub fn load(path: &Path) -> Result<Self, CoreDumpError> {
-        let file = OpenOptions::new().read(true).open(path).map_err(|e| {
+        let file_contents = std::fs::read(path).map_err(|e| {
             CoreDumpError::CoreDumpFileRead(e, dunce::canonicalize(path).unwrap_or_default())
         })?;
-        rmp_serde::from_read(&file).map_err(CoreDumpError::DecodingCoreDump)
+        Self::load_raw(&file_contents)
     }
 
     /// Load the dumped core from a file.
