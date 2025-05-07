@@ -1,5 +1,10 @@
+use crate::architecture::riscv::registers::RISCV_CORE_REGISTERS;
+use crate::architecture::xtensa::arch::{Register as XtensaRegister, SpecialRegister};
+use crate::architecture::xtensa::registers::XTENSA_CORE_REGISTERS;
 use crate::{Core, CoreType, Error, InstructionSet, MemoryInterface};
 use crate::{RegisterId, RegisterValue};
+use object::read::elf::ProgramHeader;
+use object::{Object, ObjectSegment};
 use probe_rs_target::MemoryRange;
 use scroll::Cread;
 use serde::{Deserialize, Serialize};
@@ -90,7 +95,124 @@ impl CoreDump {
 
     /// Load the dumped core from a file.
     pub fn load_raw(data: &[u8]) -> Result<Self, CoreDumpError> {
-        rmp_serde::from_slice(data).map_err(CoreDumpError::DecodingCoreDump)
+        if let Ok(elf) = object::read::elf::ElfFile32::parse(data) {
+            Self::load_elf(elf)
+        } else if let Ok(elf) = object::read::elf::ElfFile64::parse(data) {
+            Self::load_elf(elf)
+        } else {
+            rmp_serde::from_slice(data).map_err(CoreDumpError::DecodingCoreDump)
+        }
+    }
+
+    fn load_elf<Elf: object::read::elf::FileHeader<Endian = object::Endianness>>(
+        elf: object::read::elf::ElfFile<'_, Elf>,
+    ) -> Result<Self, CoreDumpError> {
+        let endianness = elf.endianness();
+        let elf_data = elf.data();
+        let instruction_set = match elf.architecture() {
+            object::Architecture::Riscv32 => InstructionSet::RV32,
+            object::Architecture::Xtensa => InstructionSet::Xtensa,
+            other => {
+                return Err(CoreDumpError::DecodingElfCoreDump(format!(
+                    "Unsupported architecture: {other:?}",
+                )));
+            }
+        };
+        let core_type = match elf.architecture() {
+            object::Architecture::Riscv32 => CoreType::Riscv,
+            object::Architecture::Xtensa => CoreType::Xtensa,
+            _ => unreachable!(),
+        };
+
+        // The memory is in a Load segment.
+        let mut data = Vec::new();
+        for segment in elf.segments() {
+            let address: u64 = segment.elf_program_header().p_vaddr(endianness).into();
+            let size: u64 = segment.elf_program_header().p_memsz(endianness).into();
+            let memory = segment.data().unwrap();
+            tracing::debug!(
+                "Adding memory segment: {:#x} - {:#x}",
+                address,
+                address + size
+            );
+            data.push((address..address + size, memory.to_vec()));
+        }
+
+        // Registers are in a Note segment.
+        let register_note = elf
+            .elf_program_headers()
+            .iter()
+            .find(|s| s.p_type(endianness) == 4)
+            .unwrap();
+
+        let mut registers = HashMap::new();
+        for note in register_note.notes(endianness, elf_data).unwrap().unwrap() {
+            let note = note.unwrap();
+            if note.name() != b"CORE" {
+                continue;
+            }
+
+            match core_type {
+                CoreType::Riscv => {
+                    let regs = &note.desc()[72..][..32 * 4];
+                    let mut raw = [0u32; 32];
+                    for (n, reg) in raw.iter_mut().enumerate() {
+                        *reg = u32::from_le_bytes(regs[n * 4..][..4].try_into().unwrap());
+                    }
+                    let core_regs = &RISCV_CORE_REGISTERS;
+
+                    registers.insert(
+                        RegisterId::from(core_regs.pc().unwrap()),
+                        RegisterValue::U32(raw[0]),
+                    );
+                    for core_reg in 1..32 {
+                        registers.insert(
+                            RegisterId::from(core_regs.core_register(core_reg)),
+                            RegisterValue::U32(raw[core_reg]),
+                        );
+                    }
+                }
+                CoreType::Xtensa => {
+                    let regs = &note.desc()[18 * 4..][..128 * 4];
+                    let mut raw = [0u32; 128];
+                    for (n, reg) in raw.iter_mut().enumerate() {
+                        *reg = u32::from_le_bytes(regs[n * 4..][..4].try_into().unwrap());
+                    }
+                    let core_regs = &XTENSA_CORE_REGISTERS;
+                    let reg_idxs = [
+                        XtensaRegister::CurrentPc,
+                        XtensaRegister::Special(SpecialRegister::Ps),
+                        XtensaRegister::Special(SpecialRegister::Lbeg),
+                        XtensaRegister::Special(SpecialRegister::Lend),
+                        XtensaRegister::Special(SpecialRegister::Lcount),
+                        XtensaRegister::Special(SpecialRegister::Sar),
+                        XtensaRegister::Special(SpecialRegister::Windowstart),
+                        XtensaRegister::Special(SpecialRegister::Windowbase),
+                    ];
+
+                    for (idx, reg) in reg_idxs.into_iter().enumerate() {
+                        registers.insert(RegisterId::from(reg), RegisterValue::U32(raw[idx]));
+                    }
+                    for core_reg in 0..16 {
+                        registers.insert(
+                            RegisterId::from(core_regs.core_register(core_reg)),
+                            RegisterValue::U32(raw[64 + core_reg]),
+                        );
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(Self {
+            registers,
+            data,
+            instruction_set,
+            supports_native_64bit_access: false,
+            core_type,
+            fpu_support: false,
+            floating_point_register_count: None,
+        })
     }
 
     /// Returns the type of the core.
@@ -245,4 +367,7 @@ pub enum CoreDumpError {
     /// Decoding the coredump MessagePack failed.
     #[error("Decoding the coredump MessagePack failed.")]
     DecodingCoreDump(rmp_serde::decode::Error),
+    /// Decoding the coredump .elf failed.
+    #[error("Decoding the coredump .elf failed.")]
+    DecodingElfCoreDump(String),
 }
