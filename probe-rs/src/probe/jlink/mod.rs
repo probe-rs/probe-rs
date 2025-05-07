@@ -28,7 +28,7 @@ use crate::architecture::arm::{ArmError, Pins};
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState,
 };
-use crate::probe::JTAGAccess;
+use crate::probe::JtagAccess;
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
@@ -1082,7 +1082,7 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
         Some(self)
     }
 

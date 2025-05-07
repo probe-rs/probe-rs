@@ -11,7 +11,7 @@ use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 
 use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
-use super::JTAGAccess;
+use super::JtagAccess;
 use crate::{
     architecture::riscv::{
         communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder,
@@ -375,8 +375,8 @@ impl DebugProbe for WchLink {
     }
 }
 
-/// Wrap WCH-Link's USB based DMI access as a fake JTAGAccess
-impl JTAGAccess for WchLink {
+/// Wrap WCH-Link's USB based DMI access as a fake JtagAccess
+impl JtagAccess for WchLink {
     fn set_scan_chain(&mut self, _scan_chain: &[ScanChainElement]) -> Result<(), DebugProbeError> {
         Ok(())
     }

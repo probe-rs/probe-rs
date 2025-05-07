@@ -12,7 +12,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JTAGAccess, JtagDriverState, ProbeCreationError, ProbeFactory, ProbeStatistics, RawJtagIo,
+        JtagAccess, JtagDriverState, ProbeCreationError, ProbeFactory, ProbeStatistics, RawJtagIo,
         RawSwdIo, SwdSettings, WireProtocol,
     },
 };
@@ -371,7 +371,7 @@ impl DebugProbe for FtdiProbe {
         Some(WireProtocol::Jtag)
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
         Some(self)
     }
 

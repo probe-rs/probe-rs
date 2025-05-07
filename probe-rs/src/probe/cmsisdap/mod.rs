@@ -18,7 +18,7 @@ use crate::{
         },
     },
     probe::{
-        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
+        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagAccess,
         JtagDriverState, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
@@ -943,7 +943,7 @@ impl DebugProbe for CmsisDap {
         self
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
         Some(self)
     }
 

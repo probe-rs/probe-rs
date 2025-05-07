@@ -19,7 +19,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JTAGAccess, JtagDriverState, ProbeCreationError, ProbeError, ProbeFactory, ProbeStatistics,
+        JtagAccess, JtagDriverState, ProbeCreationError, ProbeError, ProbeFactory, ProbeStatistics,
         RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
     },
 };
@@ -1124,7 +1124,7 @@ impl DebugProbe for BlackMagicProbe {
         self.protocol
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
         Some(self)
     }
 

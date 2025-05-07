@@ -564,8 +564,8 @@ impl Probe {
         }
     }
 
-    /// Returns a [`JTAGAccess`] from the debug probe, if implemented.
-    pub fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+    /// Returns a [`JtagAccess`] from the debug probe, if implemented.
+    pub fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
         self.inner.try_as_jtag_probe()
     }
 
@@ -692,8 +692,8 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
         false
     }
 
-    /// Returns a [`JTAGAccess`] from the debug probe, if implemented.
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+    /// Returns a [`JtagAccess`] from the debug probe, if implemented.
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
         None
     }
 
@@ -1029,7 +1029,7 @@ impl<'a> Deserialize<'a> for DebugProbeSelector {
 
 /// Bit-banging interface, ARM edition.
 ///
-/// This trait (and RawJtagIo, JTAGAccess) should not be used by architecture implementations directly.
+/// This trait (and RawJtagIo, JtagAccess) should not be used by architecture implementations directly.
 /// Architectures should implement their own protocol interfaces, and use the probe interface to
 /// perform the low-level operations AS A FALLBACK. Probes should prefer directly implementing the
 /// architecture protocols, if they have the capability. Probes should be able to implement raw
@@ -1256,11 +1256,11 @@ impl ProbeStatistics {
     }
 }
 
-/// Low-Level Access to the JTAG protocol
+/// Low-Level access to the JTAG protocol
 ///
 /// This trait should be implemented by all probes which offer low-level access to
-/// the JTAG protocol, i.e. direction control over the bytes sent and received.
-pub trait JTAGAccess: DebugProbe {
+/// the JTAG protocol, i.e. direct control over the bytes sent and received.
+pub trait JtagAccess: DebugProbe {
     /// Set the JTAG scan chain information for the target under debug.
     ///
     /// This allows the probe to know which TAPs are in the scan chain and their
@@ -1343,7 +1343,7 @@ pub trait JTAGAccess: DebugProbe {
         writes: &JtagCommandQueue,
     ) -> Result<DeferredResultSet, BatchExecutionError> {
         tracing::debug!(
-            "Using default `JTAGAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe."
+            "Using default `JtagAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe."
         );
         let mut results = DeferredResultSet::new();
 

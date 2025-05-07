@@ -10,7 +10,7 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagAccess,
         JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol,
     },
 };
@@ -132,7 +132,7 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
         Some(self)
     }
 

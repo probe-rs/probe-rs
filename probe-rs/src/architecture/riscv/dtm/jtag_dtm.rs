@@ -14,7 +14,7 @@ use crate::architecture::riscv::communication_interface::{
 use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
 use crate::error::Error;
 use crate::probe::{
-    CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
+    CommandResult, DeferredResultIndex, DeferredResultSet, JtagAccess, JtagCommandQueue,
     JtagWriteCommand,
 };
 use crate::probe::{DebugProbeError, ShiftDrCommand};
@@ -28,10 +28,10 @@ struct DtmState {
     abits: u32,
 }
 
-pub struct JtagDtmBuilder<'f>(&'f mut dyn JTAGAccess);
+pub struct JtagDtmBuilder<'f>(&'f mut dyn JtagAccess);
 
 impl<'f> JtagDtmBuilder<'f> {
-    pub fn new(probe: &'f mut dyn JTAGAccess) -> Self {
+    pub fn new(probe: &'f mut dyn JtagAccess) -> Self {
         Self(probe)
     }
 }
@@ -83,12 +83,12 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
 /// which is used to communicate with the RISC-V debug module.
 #[derive(Debug)]
 pub struct JtagDtm<'probe> {
-    pub probe: &'probe mut dyn JTAGAccess,
+    pub probe: &'probe mut dyn JtagAccess,
     state: &'probe mut DtmState,
 }
 
 impl<'probe> JtagDtm<'probe> {
-    fn new(probe: &'probe mut dyn JTAGAccess, state: &'probe mut DtmState) -> Self {
+    fn new(probe: &'probe mut dyn JtagAccess, state: &'probe mut DtmState) -> Self {
         Self { probe, state }
     }
 
@@ -326,7 +326,7 @@ impl DtmAccess for JtagDtm<'_> {
 /// 4. Set tunnel to idle: 3 zero bits
 #[derive(Debug)]
 pub struct TunneledJtagDtm<'probe> {
-    pub probe: &'probe mut dyn JTAGAccess,
+    pub probe: &'probe mut dyn JtagAccess,
     state: &'probe mut DtmState,
     select_dtmcs: JtagWriteCommand,
     select_dmi: JtagWriteCommand,
@@ -334,7 +334,7 @@ pub struct TunneledJtagDtm<'probe> {
 
 impl<'probe> TunneledJtagDtm<'probe> {
     fn new(
-        probe: &'probe mut dyn JTAGAccess,
+        probe: &'probe mut dyn JtagAccess,
         tunnel_ir_id: u32,
         tunnel_ir_width: u32,
         state: &'probe mut DtmState,
