@@ -9,7 +9,7 @@ use crate::{
     Error as ProbeRsError,
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
-        CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
+        CommandResult, DeferredResultIndex, DeferredResultSet, JtagAccess, JtagCommandQueue,
         JtagWriteCommand, ShiftDrCommand,
     },
 };
@@ -151,14 +151,14 @@ pub struct XdmState {
 #[derive(Debug)]
 pub struct Xdm<'probe> {
     /// The JTAG interface.
-    pub probe: &'probe mut dyn JTAGAccess,
+    pub probe: &'probe mut dyn JtagAccess,
 
     /// Debug module state.
     state: &'probe mut XdmState,
 }
 
 impl<'probe> Xdm<'probe> {
-    pub fn new(probe: &'probe mut dyn JTAGAccess, state: &'probe mut XdmState) -> Self {
+    pub fn new(probe: &'probe mut dyn JtagAccess, state: &'probe mut XdmState) -> Self {
         // TODO implement openocd's esp32_queue_tdi_idle() to prevent potentially damaging flash ICs
 
         Self { probe, state }

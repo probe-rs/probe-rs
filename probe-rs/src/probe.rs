@@ -1,5 +1,4 @@
 //! Probe drivers
-pub(crate) mod arm_debug_interface;
 pub(crate) mod common;
 pub(crate) mod usb_util;
 
@@ -14,8 +13,8 @@ pub mod sifliuart;
 pub mod stlink;
 pub mod wlink;
 
-use crate::architecture::arm::ArmError;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
+use crate::architecture::arm::{ArmError, DapError};
 use crate::architecture::arm::{
     RegisterAddress, SwoAccess,
     communication_interface::{DapProbe, UninitializedArmProbe},
@@ -26,6 +25,7 @@ use crate::architecture::xtensa::communication_interface::{
 };
 use crate::config::TargetSelector;
 use crate::config::registry::Registry;
+use crate::probe::common::JtagState;
 use crate::{Error, Permissions, Session};
 use bitvec::slice::BitSlice;
 use bitvec::vec::BitVec;
@@ -564,8 +564,8 @@ impl Probe {
         }
     }
 
-    /// Returns a [`JTAGAccess`] from the debug probe, if implemented.
-    pub fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+    /// Returns a [`JtagAccess`] from the debug probe, if implemented.
+    pub fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
         self.inner.try_as_jtag_probe()
     }
 
@@ -692,8 +692,8 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
         false
     }
 
-    /// Returns a [`JTAGAccess`] from the debug probe, if implemented.
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+    /// Returns a [`JtagAccess`] from the debug probe, if implemented.
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
         None
     }
 
@@ -1027,11 +1027,252 @@ impl<'a> Deserialize<'a> for DebugProbeSelector {
     }
 }
 
-/// Low-Level Access to the JTAG protocol
+/// Bit-banging interface, ARM edition.
+///
+/// This trait (and [RawJtagIo], [JtagAccess]) should not be used by architecture implementations
+/// directly. Architectures should implement their own protocol interfaces, and use the raw probe
+/// interfaces (like [RawSwdIo]) to perform the low-level operations AS A FALLBACK. Probes like
+/// [CmsisDap] should prefer directly implementing the architecture protocols, if they have the
+/// capability.
+///
+/// Currently ARM implements this idea via [crate::architecture::arm::RawDapAccess], which
+/// is then implemented by [CmsisDap] or a fallback is provided by for
+/// any [RawSwdIo + JtagAccess](crate::architecture::arm::polyfill) probes.
+///
+/// RISC-V is close with its [crate::architecture::riscv::dtm::dtm_access::DtmAccess] trait.
+///
+/// [CmsisDap]: crate::probe::cmsisdap::CmsisDap
+pub(crate) trait RawSwdIo: DebugProbe {
+    fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    where
+        S: IntoIterator<Item = IoSequenceItem>;
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError>;
+
+    fn swd_settings(&self) -> &SwdSettings;
+
+    fn probe_statistics(&mut self) -> &mut ProbeStatistics;
+}
+
+/// A trait for implementing low-level JTAG interface operations.
+pub(crate) trait RawJtagIo: DebugProbe {
+    /// Returns a mutable reference to the current state.
+    fn state_mut(&mut self) -> &mut JtagDriverState;
+
+    /// Returns the current state.
+    fn state(&self) -> &JtagDriverState;
+
+    /// Shifts a number of bits through the TAP.
+    fn shift_bits(
+        &mut self,
+        tms: impl IntoIterator<Item = bool>,
+        tdi: impl IntoIterator<Item = bool>,
+        cap: impl IntoIterator<Item = bool>,
+    ) -> Result<(), DebugProbeError> {
+        for ((tms, tdi), cap) in tms.into_iter().zip(tdi.into_iter()).zip(cap.into_iter()) {
+            self.shift_bit(tms, tdi, cap)?;
+        }
+
+        Ok(())
+    }
+
+    /// Shifts a single bit through the TAP.
+    ///
+    /// Drivers may choose, and are encouraged, to buffer bits and flush them
+    /// in batches for performance reasons.
+    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError>;
+
+    /// Returns the bits captured from TDO and clears the capture buffer.
+    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError>;
+
+    /// Resets the JTAG state machine by shifting out a number of high TMS bits.
+    fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
+        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
+
+        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
+        let tms = [true, true, true, true, true, false];
+        let tdi = std::iter::repeat(true);
+
+        self.shift_bits(tms, tdi, std::iter::repeat(false))?;
+        let response = self.read_captured_bits()?;
+
+        tracing::debug!("Response to reset: {response}");
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum IoSequenceItem {
+    Output(bool),
+    Input,
+}
+
+impl From<IoSequenceItem> for bool {
+    fn from(item: IoSequenceItem) -> Self {
+        match item {
+            IoSequenceItem::Output(b) => b,
+            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
+        }
+    }
+}
+
+impl From<IoSequenceItem> for u8 {
+    fn from(value: IoSequenceItem) -> Self {
+        match value {
+            IoSequenceItem::Output(b) => b as u8,
+            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct SwdSettings {
+    /// Initial number of idle cycles between consecutive writes.
+    ///
+    /// When a WAIT response is received, the number of idle cycles
+    /// will be increased automatically, so this number can be quite
+    /// low.
+    pub num_idle_cycles_between_writes: usize,
+
+    /// How often a SWD transfer is retried when a WAIT response
+    /// is received.
+    pub num_retries_after_wait: usize,
+
+    /// When a SWD transfer is retried due to a WAIT response, the idle
+    /// cycle amount is doubled every time as a backoff. This sets a maximum
+    /// cap to the cycle amount.
+    pub max_retry_idle_cycles_after_wait: usize,
+
+    /// Number of idle cycles inserted before the result
+    /// of a write is checked.
+    ///
+    /// When performing a write operation, the write can
+    /// be buffered, meaning that completing the transfer
+    /// does not mean that the write was performed successfully.
+    ///
+    /// To check that all writes have been executed, the
+    /// `RDBUFF` register can be read from the DP.
+    ///
+    /// If any writes are still pending, this read will result in a WAIT response.
+    /// By adding idle cycles before performing this read, the chance of a
+    /// WAIT response is smaller.
+    pub idle_cycles_before_write_verify: usize,
+
+    /// Number of idle cycles to insert after a transfer
+    ///
+    /// It is recommended that at least 8 idle cycles are
+    /// inserted.
+    pub idle_cycles_after_transfer: usize,
+}
+
+impl Default for SwdSettings {
+    fn default() -> Self {
+        Self {
+            num_idle_cycles_between_writes: 2,
+            num_retries_after_wait: 1000,
+            max_retry_idle_cycles_after_wait: 128,
+            idle_cycles_before_write_verify: 8,
+            idle_cycles_after_transfer: 8,
+        }
+    }
+}
+
+/// The state of a bitbanging JTAG driver.
+///
+/// This struct tracks the state of the JTAG state machine,  which TAP is currently selected, and
+/// contains information about the system (like scan chain).
+#[derive(Debug)]
+pub(crate) struct JtagDriverState {
+    pub state: JtagState,
+    pub expected_scan_chain: Option<Vec<ScanChainElement>>,
+    pub scan_chain: Vec<ScanChainElement>,
+    pub chain_params: ChainParams,
+    /// Idle cycles necessary between consecutive
+    /// accesses to the DMI register
+    pub jtag_idle_cycles: usize,
+}
+impl JtagDriverState {
+    fn max_ir_address(&self) -> u32 {
+        (1 << self.chain_params.irlen) - 1
+    }
+}
+
+impl Default for JtagDriverState {
+    fn default() -> Self {
+        Self {
+            state: JtagState::Reset,
+            expected_scan_chain: None,
+            scan_chain: Vec::new(),
+            chain_params: ChainParams::default(),
+            jtag_idle_cycles: 0,
+        }
+    }
+}
+
+#[derive(Default, Debug)]
+pub(crate) struct ProbeStatistics {
+    /// Number of protocol transfers performed.
+    ///
+    /// This includes repeated transfers, and transfers
+    /// which are automatically added to fulfill
+    /// protocol requirements, e.g. a read from a
+    /// DP register will result in two transfers,
+    /// because the read value is returned in the
+    /// second transfer
+    num_transfers: usize,
+
+    /// Number of extra transfers added to fullfil protocol
+    /// requirements. Ideally as low as possible.
+    num_extra_transfers: usize,
+
+    /// Number of calls to the probe IO function.
+    ///
+    /// A single call can perform multiple SWD transfers,
+    /// so this number is ideally a lot lower than then
+    /// number of SWD transfers.
+    num_io_calls: usize,
+
+    /// Number of SWD wait responses encountered.
+    num_wait_resp: usize,
+
+    /// Number of SWD FAULT responses encountered.
+    num_faults: usize,
+}
+
+impl ProbeStatistics {
+    pub fn record_extra_transfer(&mut self) {
+        self.num_extra_transfers += 1;
+    }
+
+    pub fn record_transfers(&mut self, num_transfers: usize) {
+        self.num_transfers += num_transfers;
+    }
+
+    pub fn report_io(&mut self) {
+        self.num_io_calls += 1;
+    }
+
+    pub fn report_swd_response<T>(&mut self, response: &Result<T, DapError>) {
+        match response {
+            Err(DapError::FaultResponse) => self.num_faults += 1,
+            Err(DapError::WaitResponse) => self.num_wait_resp += 1,
+            // Other errors are not counted right now.
+            _ => (),
+        }
+    }
+}
+
+/// Low-Level access to the JTAG protocol
 ///
 /// This trait should be implemented by all probes which offer low-level access to
-/// the JTAG protocol, i.e. direction control over the bytes sent and received.
-pub trait JTAGAccess: DebugProbe {
+/// the JTAG protocol, i.e. direct control over the bytes sent and received.
+pub trait JtagAccess: DebugProbe {
     /// Set the JTAG scan chain information for the target under debug.
     ///
     /// This allows the probe to know which TAPs are in the scan chain and their
@@ -1056,8 +1297,20 @@ pub trait JTAGAccess: DebugProbe {
     /// The measured scan chain will be stored in the probe's internal state.
     fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError>;
 
+    /// Shifts a number of bits through the TAP.
+    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError>;
+
     /// Executes a TAP reset.
     fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
+
+    /// For RISC-V, and possibly other interfaces, the JTAG interface has to remain in
+    /// the idle state for several cycles between consecutive accesses to the DR register.
+    ///
+    /// This function configures the number of idle cycles which are inserted after each access.
+    fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError>;
+
+    /// Return the currently configured idle cycles.
+    fn idle_cycles(&self) -> u8;
 
     /// Selects the JTAG TAP to be used for communication.
     fn select_target(&mut self, index: usize) -> Result<(), DebugProbeError> {
@@ -1078,15 +1331,6 @@ pub trait JTAGAccess: DebugProbe {
 
         self.write_register(address, &data, len)
     }
-
-    /// For RISC-V, and possibly other interfaces, the JTAG interface has to remain in
-    /// the idle state for several cycles between consecutive accesses to the DR register.
-    ///
-    /// This function configures the number of idle cycles which are inserted after each access.
-    fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError>;
-
-    /// Return the currently configured idle cycles.
-    fn idle_cycles(&self) -> u8;
 
     /// Write to a JTAG register
     ///
@@ -1111,7 +1355,7 @@ pub trait JTAGAccess: DebugProbe {
         writes: &JtagCommandQueue,
     ) -> Result<DeferredResultSet, BatchExecutionError> {
         tracing::debug!(
-            "Using default `JTAGAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe."
+            "Using default `JtagAccess::write_register_batch` hurts performance. Please implement proper batching for this probe."
         );
         let mut results = DeferredResultSet::new();
 
@@ -1143,6 +1387,18 @@ pub trait JTAGAccess: DebugProbe {
 
         Ok(results)
     }
+}
+
+/// A raw JTAG bit sequence.
+pub struct JtagSequence {
+    /// TDO capture
+    pub(crate) tdo_capture: bool,
+
+    /// TMS value
+    pub(crate) tms: bool,
+
+    /// Data to generate on TDI
+    pub(crate) data: BitVec,
 }
 
 /// A low-level JTAG register write command.

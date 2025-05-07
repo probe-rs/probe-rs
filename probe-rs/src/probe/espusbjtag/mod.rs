@@ -10,15 +10,13 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
-        WireProtocol, common::RawJtagIo,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagAccess,
+        JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol,
     },
 };
 use bitvec::prelude::*;
 
 use self::protocol::ProtocolHandler;
-
-use super::{JTAGAccess, common::JtagDriverState};
 
 /// Probe factory for USB JTAG interfaces built into certain ESP32 chips.
 #[derive(Debug)]
@@ -134,7 +132,7 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
         Some(self)
     }
 

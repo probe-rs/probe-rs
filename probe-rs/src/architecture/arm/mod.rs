@@ -11,7 +11,7 @@ pub mod dp;
 pub mod memory;
 pub mod sequences;
 pub mod swo;
-mod traits;
+pub(crate) mod traits;
 
 pub use self::core::{Dump, armv6m, armv7a, armv7m, armv8a, armv8m};
 use self::{

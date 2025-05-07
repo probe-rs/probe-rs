@@ -11,14 +11,14 @@ use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 
 use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
-use super::JTAGAccess;
+use super::JtagAccess;
 use crate::{
     architecture::riscv::{
         communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeError, ProbeFactory,
-        WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagSequence, ProbeError,
+        ProbeFactory, WireProtocol,
     },
 };
 
@@ -375,8 +375,8 @@ impl DebugProbe for WchLink {
     }
 }
 
-/// Wrap WCH-Link's USB based DMI access as a fake JTAGAccess
-impl JTAGAccess for WchLink {
+/// Wrap WCH-Link's USB based DMI access as a fake JtagAccess
+impl JtagAccess for WchLink {
     fn set_scan_chain(&mut self, _scan_chain: &[ScanChainElement]) -> Result<(), DebugProbeError> {
         Ok(())
     }
@@ -505,6 +505,12 @@ impl JTAGAccess for WchLink {
     fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "write_dr",
+        })
+    }
+
+    fn shift_raw_sequence(&mut self, _sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
+        Err(DebugProbeError::NotImplemented {
+            function_name: "shift_raw_sequence ",
         })
     }
 }

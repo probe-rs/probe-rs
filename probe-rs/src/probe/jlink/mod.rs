@@ -10,7 +10,6 @@ mod speed;
 pub mod swo;
 
 use std::fmt;
-use std::iter;
 use std::time::{Duration, Instant};
 
 use bitvec::prelude::*;
@@ -29,8 +28,7 @@ use crate::architecture::arm::{ArmError, Pins};
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState,
 };
-use crate::probe::JTAGAccess;
-use crate::probe::common::{JtagDriverState, RawJtagIo};
+use crate::probe::JtagAccess;
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
@@ -45,9 +43,9 @@ use crate::{
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
+        JtagDriverState, ProbeFactory, ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings,
         WireProtocol,
-        arm_debug_interface::{IoSequenceItem, ProbeStatistics, RawProtocolIo, SwdSettings},
     },
 };
 
@@ -1084,7 +1082,7 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+    fn try_as_jtag_probe(&mut self) -> Option<&mut dyn JtagAccess> {
         Some(self)
     }
 
@@ -1158,39 +1156,7 @@ impl DebugProbe for JLink {
     }
 }
 
-impl RawProtocolIo for JLink {
-    fn jtag_shift_tms<M>(&mut self, tms: M, tdi: bool) -> Result<(), DebugProbeError>
-    where
-        M: IntoIterator<Item = bool>,
-    {
-        assert!(
-            self.protocol != WireProtocol::Swd,
-            "Logic error, requested jtag_io when in SWD mode"
-        );
-
-        self.probe_statistics.report_io();
-
-        self.shift_bits(tms, iter::repeat(tdi), iter::repeat(false))?;
-
-        Ok(())
-    }
-
-    fn jtag_shift_tdi<I>(&mut self, tms: bool, tdi: I) -> Result<(), DebugProbeError>
-    where
-        I: IntoIterator<Item = bool>,
-    {
-        assert!(
-            self.protocol != WireProtocol::Swd,
-            "Logic error, requested jtag_io when in SWD mode"
-        );
-
-        self.probe_statistics.report_io();
-
-        self.shift_bits(iter::repeat(tms), tdi, iter::repeat(false))?;
-
-        Ok(())
-    }
-
+impl RawSwdIo for JLink {
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
