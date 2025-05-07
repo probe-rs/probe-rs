@@ -348,7 +348,7 @@ impl ChipFamily {
                 .map(|core| &core.name)
                 .collect::<Vec<_>>();
 
-            if variant.memory_map.is_empty() {
+            if variant.memory_map.is_empty() && self.source != TargetDescriptionSource::Generic {
                 return Err(format!(
                     "Variant {} does not contain any memory regions",
                     variant.name
