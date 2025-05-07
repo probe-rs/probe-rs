@@ -1029,11 +1029,19 @@ impl<'a> Deserialize<'a> for DebugProbeSelector {
 
 /// Bit-banging interface, ARM edition.
 ///
-/// This trait (and RawJtagIo, JtagAccess) should not be used by architecture implementations directly.
-/// Architectures should implement their own protocol interfaces, and use the probe interface to
-/// perform the low-level operations AS A FALLBACK. Probes should prefer directly implementing the
-/// architecture protocols, if they have the capability. Probes should be able to implement raw
-/// interface access while at the same time opting out of the default bit-banging polyfill.
+/// This trait (and [RawJtagIo], [JtagAccess]) should not be used by architecture implementations
+/// directly. Architectures should implement their own protocol interfaces, and use the raw probe
+/// interfaces (like [RawSwdIo]) to perform the low-level operations AS A FALLBACK. Probes like
+/// [CmsisDap] should prefer directly implementing the architecture protocols, if they have the
+/// capability.
+///
+/// Currently ARM implements this idea via [crate::architecture::arm::RawDapAccess], which
+/// is then implemented by [CmsisDap] or a fallback is provided by for
+/// any [RawSwdIo + JtagAccess](crate::architecture::arm::polyfill) probes.
+///
+/// RISC-V is close with its [crate::architecture::riscv::dtm::dtm_access::DtmAccess] trait.
+///
+/// [CmsisDap]: crate::probe::cmsisdap::CmsisDap
 pub(crate) trait RawSwdIo: DebugProbe {
     fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
@@ -1175,6 +1183,10 @@ impl Default for SwdSettings {
     }
 }
 
+/// The state of a bitbanging JTAG driver.
+///
+/// This struct tracks the state of the JTAG state machine,  which TAP is currently selected, and
+/// contains information about the system (like scan chain).
 #[derive(Debug)]
 pub(crate) struct JtagDriverState {
     pub state: JtagState,
@@ -1286,7 +1298,7 @@ pub trait JtagAccess: DebugProbe {
     fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError>;
 
     /// Shifts a number of bits through the TAP.
-    fn raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError>;
+    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError>;
 
     /// Executes a TAP reset.
     fn tap_reset(&mut self) -> Result<(), DebugProbeError>;
@@ -1343,7 +1355,7 @@ pub trait JtagAccess: DebugProbe {
         writes: &JtagCommandQueue,
     ) -> Result<DeferredResultSet, BatchExecutionError> {
         tracing::debug!(
-            "Using default `JtagAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe."
+            "Using default `JtagAccess::write_register_batch` hurts performance. Please implement proper batching for this probe."
         );
         let mut results = DeferredResultSet::new();
 

@@ -546,7 +546,7 @@ fn prepare_write_register(
 }
 
 impl<Probe: RawJtagIo + 'static> JtagAccess for Probe {
-    fn raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
+    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
         self.shift_bits(
             std::iter::repeat(sequence.tms),
             sequence.data.into_iter(),

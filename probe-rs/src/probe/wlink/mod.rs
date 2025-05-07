@@ -508,9 +508,9 @@ impl JtagAccess for WchLink {
         })
     }
 
-    fn raw_sequence(&mut self, _sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
+    fn shift_raw_sequence(&mut self, _sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
-            function_name: "raw_sequence",
+            function_name: "shift_raw_sequence ",
         })
     }
 }

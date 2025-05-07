@@ -1111,7 +1111,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
             data.push((bits >> i) & 1 == 1);
         }
 
-        self.raw_sequence(JtagSequence {
+        self.shift_raw_sequence(JtagSequence {
             tms,
             data,
             tdo_capture: false,
@@ -1152,7 +1152,7 @@ fn send_sequence<P: RawSwdIo + JtagAccess>(
                     bits.next();
                 }
 
-                probe.raw_sequence(JtagSequence {
+                probe.shift_raw_sequence(JtagSequence {
                     tms: first.into(),
                     data: bitvec![0; count],
                     tdo_capture: false,
@@ -1383,7 +1383,7 @@ mod test {
     }
 
     impl JtagAccess for MockJaylink {
-        fn raw_sequence(&mut self, _: JtagSequence) -> Result<BitVec, DebugProbeError> {
+        fn shift_raw_sequence(&mut self, _: JtagSequence) -> Result<BitVec, DebugProbeError> {
             todo!()
         }
 
