@@ -77,9 +77,11 @@ impl std::fmt::Display for CmsisDapFactory {
 
 impl ProbeFactory for CmsisDapFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        Ok(Box::new(CmsisDap::new_from_device(
-            tools::open_device_from_selector(selector)?,
-        )?))
+        let device = tools::open_device_from_selector(selector)?;
+        match CmsisDap::new_from_device(device) {
+            Ok(probe) => Ok(Box::new(probe)),
+            Err(e) => Err(e),
+        }
     }
 
     fn list_probes(&self) -> Vec<DebugProbeInfo> {

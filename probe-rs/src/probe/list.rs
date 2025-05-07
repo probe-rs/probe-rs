@@ -71,17 +71,21 @@ impl ProbeLister for AllProbesLister {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
         let selector = selector.into();
 
+        let mut open_error = None;
+
         for probe_ctor in Self::DRIVERS {
             match probe_ctor.open(&selector) {
                 Ok(link) => return Ok(Probe::from_specific_probe(link)),
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-                Err(e) => return Err(e),
+                Err(e) => open_error = Some(e),
             };
         }
 
-        Err(DebugProbeError::ProbeCouldNotBeCreated(
-            ProbeCreationError::NotFound,
-        ))
+        Err(
+            open_error.unwrap_or(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            )),
+        )
     }
 
     fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
