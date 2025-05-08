@@ -40,15 +40,15 @@ In addition to being a library, probe-rs also includes a suite of tools which ca
 ### Installation
 
 The recommended way to install the tools is to download a precompiled version, using one of the methods below.
-See <https://probe.rs/docs/getting-started/installation/> for a more detailed guide.
+See <https://probe.rs/docs/getting-started/installation> for a more detailed guide.
 
 ### cargo-flash
 
-The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](https://probe.rs/docs/tools/cargo-flash/) for more information.
+The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](https://probe.rs/docs/tools/cargo-flash) for more information.
 
 ### cargo-embed
 
-If you are looking for a more extended debugging experience, please have a look at [cargo-embed](https://probe.rs/docs/tools/cargo-embed/) which provides support for GDB, RTT, and config files.
+If you are looking for a more extended debugging experience, please have a look at [cargo-embed](https://probe.rs/docs/tools/cargo-embed) which provides support for GDB, RTT, and config files.
 
 ### Editors and IDEs
 
@@ -56,7 +56,7 @@ We have implemented the [Microsoft Debug Adapter Protocol (DAP)](https://microso
 
 #### VSCode
 
-The probe-rs website includes [VSCode configuration instructions](https://probe.rs/docs/tools/debugger/).
+The probe-rs website includes [VSCode configuration instructions](https://probe.rs/docs/tools/debugger).
 
 ## Usage Examples
 
@@ -134,7 +134,7 @@ fn main() -> Result<(), probe_rs::Error> {
 
 Don't hesitate to [file an issue](https://github.com/probe-rs/probe-rs/issues/new), ask questions on [Matrix](https://matrix.to/#/#probe-rs:matrix.org), or contact [@Yatekii](https://github.com/Yatekii) via e-mail.
 
-There is also a [troubleshooting section](https://probe.rs/docs/knowledge-base/troubleshooting/) on the [project page](https://probe.rs/).
+There is also a [troubleshooting section](https://probe.rs/docs/knowledge-base/troubleshooting) on the [project page](https://probe.rs/).
 
 ### How can I help?
 
