@@ -8,13 +8,13 @@ written in Rust
 The goal of this library is to provide a toolkit to interact with a variety of embedded MCUs and debug probes and provides a direct interface to the debug probe,
 which then enables other software to use its debug functionality.
 
-Additionally the project offers a variety of tools to be used directly for flashing and debugging, such as cargo extensions, a vscode extension a GDB server and a standalone CLI.
+Additionally the project offers a variety of tools to be used directly for flashing and debugging, such as cargo extensions, a VS Code extension, a GDB server and a standalone CLI.
 
 ## Functionality
 
 As of version 0.27.0 this library can:
 
-- Connect to a DAPLink, STLink, JLink, FTDI probes, ESP USB JTAG, WLink and the Blackmagic probe.
+- Connect to a DAPLink, STLink, JLink, FTDI probes, ESP32 devices with USB JTAG, WLink and the Blackmagic probe.
 - Talk to ARM, Risc-V and Xtensa cores via SWD or JTAG.
 - Read and write arbitrary memory of the target.
 - Halt, run, step and step any core, operate breakpoints, enable trace functionality and much more.
