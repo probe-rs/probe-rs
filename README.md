@@ -3,31 +3,25 @@
 a modern, embedded debugging toolkit,
 written in Rust
 
-[![crates.io](https://img.shields.io/crates/v/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://img.shields.io/github/actions/workflow/status/probe-rs/probe-rs/ci.yml?branch=master)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org)
+[![crates.io](https://img.shields.io/crates/v/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://img.shields.io/github/actions/workflow/status/probe-rs/probe-rs/ci.yml?branch=master)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org) ![GitHub Sponsors](https://img.shields.io/github/sponsors/probe-rs)
 
-The goal of this library is to provide a toolset to interact with a variety of embedded MCUs and debug probes.
-
-Similar projects like OpenOCD, PyOCD, Segger Toolset, ST Tooling, etc. exist.
-They all implement the GDB protocol and their own protocol on top of it to enable GDB to communicate with the debug probe.
-Only Segger provides a closed source DLL which you can use for talking to the JLink.
-
-This project gets rid of the GDB layer and provides a direct interface to the debug probe,
+The goal of this library is to provide a toolkit to interact with a variety of embedded MCUs and debug probes and provides a direct interface to the debug probe,
 which then enables other software to use its debug functionality.
 
-**The end goal of this project is to have a complete library toolset to enable other tools to communicate with embedded targets.**
+Additionally the project offers a variety of tools to be used directly for flashing and debugging, such as cargo extensions, a vscode extension a GDB server and a standalone CLI.
 
 ## Functionality
 
-As of version 0.10.0 this library can
+As of version 0.27.0 this library can:
 
-- connect to a DAPLink, STLink or JLink
-- talk to ARM and Risc-V cores via SWD or JTAG
-- read and write arbitrary memory of the target
-- halt, run, step, breakpoint and much more the core
-- download ELF, BIN and IHEX binaries using standard CMSIS-Pack flash algorithms to ARM cores
-- provide debug information about the target state (stacktrace, stackframe, etc.)
+- Connect to a DAPLink, STLink, JLink, FTDI probes, ESP USB JTAG, WLink and the Blackmagic probe.
+- Talk to ARM, Risc-V and Xtensa cores via SWD or JTAG.
+- Read and write arbitrary memory of the target.
+- Halt, run, step and step any core, operate breakpoints, enable trace functionality and much more.
+- Download ELF, BIN and IHEX binaries using standard CMSIS-Pack flash algorithms.
+- Debug a target via the CLI, VSCode (MS-DAP) and GDB.
 
-To see what new functionality was added have a look at the [CHANGELOG](CHANGELOG.md)
+To see what new functionality gets added every release, have a look at the [CHANGELOG](CHANGELOG.md)
 
 ## Support
 
