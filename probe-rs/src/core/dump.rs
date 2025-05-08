@@ -15,6 +15,94 @@ use std::{
     path::{Path, PathBuf},
 };
 
+trait Processor {
+    fn instruction_set(&self) -> InstructionSet;
+    fn core_type(&self) -> CoreType;
+    fn read_registers(
+        &self,
+        note_data: &[u8],
+        registers: &mut HashMap<RegisterId, RegisterValue>,
+    ) -> Result<(), CoreDumpError>;
+}
+
+struct XtensaProcessor;
+impl Processor for XtensaProcessor {
+    fn instruction_set(&self) -> InstructionSet {
+        InstructionSet::Xtensa
+    }
+    fn core_type(&self) -> CoreType {
+        CoreType::Xtensa
+    }
+    fn read_registers(
+        &self,
+        note_data: &[u8],
+        registers: &mut HashMap<RegisterId, RegisterValue>,
+    ) -> Result<(), CoreDumpError> {
+        let core_regs = &XTENSA_CORE_REGISTERS;
+        let reg_idxs = [
+            XtensaRegister::CurrentPc,
+            XtensaRegister::Special(SpecialRegister::Ps),
+            XtensaRegister::Special(SpecialRegister::Lbeg),
+            XtensaRegister::Special(SpecialRegister::Lend),
+            XtensaRegister::Special(SpecialRegister::Lcount),
+            XtensaRegister::Special(SpecialRegister::Sar),
+            XtensaRegister::Special(SpecialRegister::Windowstart),
+            XtensaRegister::Special(SpecialRegister::Windowbase),
+        ];
+
+        let reg_by_idx = |idx| {
+            RegisterValue::U32(u32::from_le_bytes(
+                note_data[idx * 4..][..4].try_into().unwrap(),
+            ))
+        };
+
+        for (idx, reg) in reg_idxs.into_iter().enumerate() {
+            registers.insert(RegisterId::from(reg), reg_by_idx(idx));
+        }
+        for core_reg in 0..16 {
+            registers.insert(
+                RegisterId::from(core_regs.core_register(core_reg)),
+                reg_by_idx(64 + core_reg),
+            );
+        }
+
+        Ok(())
+    }
+}
+
+struct RiscvProcessor;
+impl Processor for RiscvProcessor {
+    fn instruction_set(&self) -> InstructionSet {
+        InstructionSet::RV32
+    }
+    fn core_type(&self) -> CoreType {
+        CoreType::Riscv
+    }
+    fn read_registers(
+        &self,
+        note_data: &[u8],
+        registers: &mut HashMap<RegisterId, RegisterValue>,
+    ) -> Result<(), CoreDumpError> {
+        let reg_by_idx = |idx| {
+            RegisterValue::U32(u32::from_le_bytes(
+                note_data[idx * 4..][..4].try_into().unwrap(),
+            ))
+        };
+
+        let core_regs = &RISCV_CORE_REGISTERS;
+
+        registers.insert(RegisterId::from(core_regs.pc().unwrap()), reg_by_idx(0));
+        for core_reg in 1..32 {
+            registers.insert(
+                RegisterId::from(core_regs.core_register(core_reg)),
+                reg_by_idx(core_reg),
+            );
+        }
+
+        Ok(())
+    }
+}
+
 /// A snapshot representation of a core state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoreDump {
@@ -109,19 +197,15 @@ impl CoreDump {
     ) -> Result<Self, CoreDumpError> {
         let endianness = elf.endianness();
         let elf_data = elf.data();
-        let instruction_set = match elf.architecture() {
-            object::Architecture::Riscv32 => InstructionSet::RV32,
-            object::Architecture::Xtensa => InstructionSet::Xtensa,
+
+        let processor: Box<dyn Processor> = match elf.architecture() {
+            object::Architecture::Riscv32 => Box::new(RiscvProcessor),
+            object::Architecture::Xtensa => Box::new(XtensaProcessor),
             other => {
                 return Err(CoreDumpError::DecodingElfCoreDump(format!(
                     "Unsupported architecture: {other:?}",
                 )));
             }
-        };
-        let core_type = match elf.architecture() {
-            object::Architecture::Riscv32 => CoreType::Riscv,
-            object::Architecture::Xtensa => CoreType::Xtensa,
-            _ => unreachable!(),
         };
 
         // The memory is in a Load segment.
@@ -152,64 +236,16 @@ impl CoreDump {
                 continue;
             }
 
-            match core_type {
-                CoreType::Riscv => {
-                    let regs = &note.desc()[72..][..32 * 4];
-                    let mut raw = [0u32; 32];
-                    for (n, reg) in raw.iter_mut().enumerate() {
-                        *reg = u32::from_le_bytes(regs[n * 4..][..4].try_into().unwrap());
-                    }
-                    let core_regs = &RISCV_CORE_REGISTERS;
-
-                    registers.insert(
-                        RegisterId::from(core_regs.pc().unwrap()),
-                        RegisterValue::U32(raw[0]),
-                    );
-                    for core_reg in 1..32 {
-                        registers.insert(
-                            RegisterId::from(core_regs.core_register(core_reg)),
-                            RegisterValue::U32(raw[core_reg]),
-                        );
-                    }
-                }
-                CoreType::Xtensa => {
-                    let regs = &note.desc()[18 * 4..][..128 * 4];
-                    let mut raw = [0u32; 128];
-                    for (n, reg) in raw.iter_mut().enumerate() {
-                        *reg = u32::from_le_bytes(regs[n * 4..][..4].try_into().unwrap());
-                    }
-                    let core_regs = &XTENSA_CORE_REGISTERS;
-                    let reg_idxs = [
-                        XtensaRegister::CurrentPc,
-                        XtensaRegister::Special(SpecialRegister::Ps),
-                        XtensaRegister::Special(SpecialRegister::Lbeg),
-                        XtensaRegister::Special(SpecialRegister::Lend),
-                        XtensaRegister::Special(SpecialRegister::Lcount),
-                        XtensaRegister::Special(SpecialRegister::Sar),
-                        XtensaRegister::Special(SpecialRegister::Windowstart),
-                        XtensaRegister::Special(SpecialRegister::Windowbase),
-                    ];
-
-                    for (idx, reg) in reg_idxs.into_iter().enumerate() {
-                        registers.insert(RegisterId::from(reg), RegisterValue::U32(raw[idx]));
-                    }
-                    for core_reg in 0..16 {
-                        registers.insert(
-                            RegisterId::from(core_regs.core_register(core_reg)),
-                            RegisterValue::U32(raw[64 + core_reg]),
-                        );
-                    }
-                }
-                _ => unreachable!(),
-            }
+            let note_data = &note.desc()[72..];
+            processor.read_registers(note_data, &mut registers)?;
         }
 
         Ok(Self {
             registers,
             data,
-            instruction_set,
+            instruction_set: processor.instruction_set(),
             supports_native_64bit_access: false,
-            core_type,
+            core_type: processor.core_type(),
             fpu_support: false,
             floating_point_register_count: None,
         })
