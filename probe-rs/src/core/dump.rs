@@ -3,11 +3,13 @@ use crate::architecture::xtensa::arch::{Register as XtensaRegister, SpecialRegis
 use crate::architecture::xtensa::registers::XTENSA_CORE_REGISTERS;
 use crate::{Core, CoreType, Error, InstructionSet, MemoryInterface};
 use crate::{RegisterId, RegisterValue};
+use object::elf::PT_NOTE;
 use object::read::elf::ProgramHeader;
 use object::{Object, ObjectSegment};
 use probe_rs_target::MemoryRange;
 use scroll::Cread;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
 use std::{
     collections::HashMap,
     fs::OpenOptions,
@@ -18,11 +20,31 @@ use std::{
 trait Processor {
     fn instruction_set(&self) -> InstructionSet;
     fn core_type(&self) -> CoreType;
+    fn supports_native_64bit_access(&self) -> bool {
+        false
+    }
+    /// Returns the length of the register data in bytes.
+    fn register_data_len(&self) -> usize;
+    /// Returns the core registers and their positions in the register data.
+    ///
+    /// The positions are in register indexes, not byte offsets.
+    fn register_map(&self) -> &[(usize, RegisterId)];
     fn read_registers(
         &self,
         note_data: &[u8],
         registers: &mut HashMap<RegisterId, RegisterValue>,
-    ) -> Result<(), CoreDumpError>;
+    ) -> Result<(), CoreDumpError> {
+        for (offset, reg_id) in self.register_map().iter().copied() {
+            let value = self.read_register(note_data, offset)?;
+            registers.insert(reg_id, value);
+        }
+
+        Ok(())
+    }
+    fn read_register(&self, note_data: &[u8], idx: usize) -> Result<RegisterValue, CoreDumpError> {
+        let value = u32::from_le_bytes(note_data[idx * 4..][..4].try_into().unwrap());
+        Ok(RegisterValue::U32(value))
+    }
 }
 
 struct XtensaProcessor;
@@ -33,40 +55,40 @@ impl Processor for XtensaProcessor {
     fn core_type(&self) -> CoreType {
         CoreType::Xtensa
     }
-    fn read_registers(
-        &self,
-        note_data: &[u8],
-        registers: &mut HashMap<RegisterId, RegisterValue>,
-    ) -> Result<(), CoreDumpError> {
-        let core_regs = &XTENSA_CORE_REGISTERS;
-        let reg_idxs = [
-            XtensaRegister::CurrentPc,
-            XtensaRegister::Special(SpecialRegister::Ps),
-            XtensaRegister::Special(SpecialRegister::Lbeg),
-            XtensaRegister::Special(SpecialRegister::Lend),
-            XtensaRegister::Special(SpecialRegister::Lcount),
-            XtensaRegister::Special(SpecialRegister::Sar),
-            XtensaRegister::Special(SpecialRegister::Windowstart),
-            XtensaRegister::Special(SpecialRegister::Windowbase),
-        ];
+    fn register_data_len(&self) -> usize {
+        128 * 4
+    }
+    fn register_map(&self) -> &[(usize, RegisterId)] {
+        static REGS: LazyLock<[(usize, RegisterId); 24]> = LazyLock::new(|| {
+            let core_regs = &XTENSA_CORE_REGISTERS;
 
-        let reg_by_idx = |idx| {
-            RegisterValue::U32(u32::from_le_bytes(
-                note_data[idx * 4..][..4].try_into().unwrap(),
-            ))
-        };
+            let mut idx = 0;
+            [(); 24].map(|_| {
+                let regid = match idx {
+                    // First 8 registers are special registers.
+                    0 => (idx, RegisterId::from(XtensaRegister::CurrentPc)),
+                    1 => (idx, RegisterId::from(SpecialRegister::Ps)),
+                    2 => (idx, RegisterId::from(SpecialRegister::Lbeg)),
+                    3 => (idx, RegisterId::from(SpecialRegister::Lend)),
+                    4 => (idx, RegisterId::from(SpecialRegister::Lcount)),
+                    5 => (idx, RegisterId::from(SpecialRegister::Sar)),
+                    6 => (idx, RegisterId::from(SpecialRegister::Windowstart)),
+                    7 => (idx, RegisterId::from(SpecialRegister::Windowbase)),
+                    // There are 56 reserved registers before the core registers.
+                    8..24 => {
+                        // The coredump contains all 64 AR registers but we don't define them yet,
+                        // so let's just use the 16 of the visible window.
+                        let ar_idx = idx - 8;
+                        (ar_idx + 64, core_regs.core_register(ar_idx).id())
+                    }
+                    _ => unreachable!(),
+                };
+                idx += 1;
+                regid
+            })
+        });
 
-        for (idx, reg) in reg_idxs.into_iter().enumerate() {
-            registers.insert(RegisterId::from(reg), reg_by_idx(idx));
-        }
-        for core_reg in 0..16 {
-            registers.insert(
-                RegisterId::from(core_regs.core_register(core_reg)),
-                reg_by_idx(64 + core_reg),
-            );
-        }
-
-        Ok(())
+        &*REGS
     }
 }
 
@@ -78,28 +100,27 @@ impl Processor for RiscvProcessor {
     fn core_type(&self) -> CoreType {
         CoreType::Riscv
     }
-    fn read_registers(
-        &self,
-        note_data: &[u8],
-        registers: &mut HashMap<RegisterId, RegisterValue>,
-    ) -> Result<(), CoreDumpError> {
-        let reg_by_idx = |idx| {
-            RegisterValue::U32(u32::from_le_bytes(
-                note_data[idx * 4..][..4].try_into().unwrap(),
-            ))
-        };
+    fn register_data_len(&self) -> usize {
+        32 * 4
+    }
+    fn register_map(&self) -> &[(usize, RegisterId)] {
+        static REGS: LazyLock<[(usize, RegisterId); 32]> = LazyLock::new(|| {
+            let core_regs = &RISCV_CORE_REGISTERS;
 
-        let core_regs = &RISCV_CORE_REGISTERS;
-
-        registers.insert(RegisterId::from(core_regs.pc().unwrap()), reg_by_idx(0));
-        for core_reg in 1..32 {
-            registers.insert(
-                RegisterId::from(core_regs.core_register(core_reg)),
-                reg_by_idx(core_reg),
-            );
-        }
-
-        Ok(())
+            let mut idx = 0;
+            [(); 32].map(|_| {
+                // Core register 0 is the "zero" register. Coredumps place the PC there instead.
+                let regid = if idx == 0 {
+                    core_regs.pc().unwrap().id()
+                } else {
+                    core_regs.core_register(idx).id()
+                };
+                let reg_idx = idx;
+                idx += 1;
+                (reg_idx, regid)
+            })
+        });
+        &*REGS
     }
 }
 
@@ -129,12 +150,6 @@ impl CoreDump {
     /// * `core`: The core to dump.
     /// * `ranges`: Memory ranges that should be dumped.
     pub fn dump_core(core: &mut Core, ranges: Vec<Range<u64>>) -> Result<Self, Error> {
-        let instruction_set = core.instruction_set()?;
-        let core_type = core.core_type();
-        let supports_native_64bit_access = core.supports_native_64bit_access();
-        let fpu_support = core.fpu_support()?;
-        let floating_point_register_count = core.floating_point_register_count()?;
-
         let mut registers = HashMap::new();
         for register in core.registers().all_registers() {
             let value = core.read_core_reg(register.id())?;
@@ -151,11 +166,11 @@ impl CoreDump {
         Ok(CoreDump {
             registers,
             data,
-            instruction_set,
-            supports_native_64bit_access,
-            core_type,
-            fpu_support,
-            floating_point_register_count: Some(floating_point_register_count),
+            instruction_set: core.instruction_set()?,
+            supports_native_64bit_access: core.supports_native_64bit_access(),
+            core_type: core.core_type(),
+            fpu_support: core.fpu_support()?,
+            floating_point_register_count: Some(core.floating_point_register_count()?),
         })
     }
 
@@ -213,7 +228,7 @@ impl CoreDump {
         for segment in elf.segments() {
             let address: u64 = segment.elf_program_header().p_vaddr(endianness).into();
             let size: u64 = segment.elf_program_header().p_memsz(endianness).into();
-            let memory = segment.data().unwrap();
+            let memory = segment.data()?;
             tracing::debug!(
                 "Adding memory segment: {:#x} - {:#x}",
                 address,
@@ -223,20 +238,32 @@ impl CoreDump {
         }
 
         // Registers are in a Note segment.
-        let register_note = elf
+        let Some(register_note) = elf
             .elf_program_headers()
             .iter()
-            .find(|s| s.p_type(endianness) == 4)
-            .unwrap();
+            .find(|s| s.p_type(endianness) == PT_NOTE)
+        else {
+            return Err(CoreDumpError::DecodingElfCoreDump(
+                "No note segment found".to_string(),
+            ));
+        };
 
         let mut registers = HashMap::new();
-        for note in register_note.notes(endianness, elf_data).unwrap().unwrap() {
-            let note = note.unwrap();
+        for note in register_note
+            .notes(endianness, elf_data)?
+            .expect("Failed to read notes from a PT_NOTE segment. This is a bug, please report it.")
+        {
+            let note = note?;
             if note.name() != b"CORE" {
                 continue;
             }
 
-            let note_data = &note.desc()[72..];
+            // The CORE note contains some thread-specific information before/after the registers.
+            // We only care about the registers, so let's cut off the rest. If we decide to use
+            // the other information, we can do that later, most likely without
+            // architecture-specific processing code.
+            let note_length = processor.register_data_len();
+            let note_data = &note.desc()[72..][..note_length];
             processor.read_registers(note_data, &mut registers)?;
         }
 
@@ -244,7 +271,7 @@ impl CoreDump {
             registers,
             data,
             instruction_set: processor.instruction_set(),
-            supports_native_64bit_access: false,
+            supports_native_64bit_access: processor.supports_native_64bit_access(),
             core_type: processor.core_type(),
             fpu_support: false,
             floating_point_register_count: None,
@@ -406,4 +433,7 @@ pub enum CoreDumpError {
     /// Decoding the coredump .elf failed.
     #[error("Decoding the coredump .elf failed.")]
     DecodingElfCoreDump(String),
+    /// Invalid ELF file.
+    #[error("Invalid ELF file.")]
+    ElfCoreDumpFormat(#[from] object::read::Error),
 }
