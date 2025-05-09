@@ -1974,7 +1974,8 @@ mod test {
     #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
     #[test_case("esp32c3_full_unwind"; "full_unwind RISC-V32E using esp32c3")]
     #[test_case("esp32s3_esp_hal_panic"; "Xtensa unwinding on an esp32s3 in a panic handler")]
-    #[test_case("esp32c6_coredump_elf"; "Unwind using a coredump in ELF format")]
+    #[test_case("esp32c6_coredump_elf"; "Unwind using a RISC-V coredump in ELF format")]
+    #[test_case("esp32s3_coredump_elf"; "Unwind using an Xtensa coredump in ELF format")]
     fn full_unwind(test_name: &str) {
         let debug_info =
             load_test_elf_as_debug_info(format!("debug-unwind-tests/{test_name}.elf").as_str());
