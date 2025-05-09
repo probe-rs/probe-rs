@@ -10,8 +10,8 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagAccess,
-        JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol,
+        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        JtagAccess, JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol,
     },
 };
 use bitvec::prelude::*;
@@ -75,6 +75,8 @@ impl RawJtagIo for EspUsbJtag {
         &self.jtag_state
     }
 }
+
+impl AutoImplementJtagAccess for EspUsbJtag {}
 
 impl DebugProbe for EspUsbJtag {
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {

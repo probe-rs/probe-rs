@@ -1268,6 +1268,12 @@ impl ProbeStatistics {
     }
 }
 
+/// Marker trait for bitbanging JTAG probes.
+///
+/// This trait exists to control which probes implement [`JtagAccess`]. In some cases,
+/// a probe may implement [`RawJtagIo`] but does not want an auto-implemented [JtagAccess].
+pub(crate) trait AutoImplementJtagAccess: RawJtagIo + 'static {}
+
 /// Low-Level access to the JTAG protocol
 ///
 /// This trait should be implemented by all probes which offer low-level access to

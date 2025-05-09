@@ -11,9 +11,9 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagAccess, JtagDriverState, ProbeCreationError, ProbeFactory, ProbeStatistics, RawJtagIo,
-        RawSwdIo, SwdSettings, WireProtocol,
+        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeFactory,
+        ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
     },
 };
 use bitvec::prelude::*;
@@ -414,6 +414,7 @@ impl DebugProbe for FtdiProbe {
     }
 }
 
+impl AutoImplementJtagAccess for FtdiProbe {}
 impl DapProbe for FtdiProbe {}
 
 impl RawSwdIo for FtdiProbe {

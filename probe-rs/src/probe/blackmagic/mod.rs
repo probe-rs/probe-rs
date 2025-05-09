@@ -18,9 +18,9 @@ use crate::{
         },
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagAccess, JtagDriverState, ProbeCreationError, ProbeError, ProbeFactory, ProbeStatistics,
-        RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
+        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeError, ProbeFactory,
+        ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
     },
 };
 use bitvec::vec::BitVec;
@@ -1185,6 +1185,7 @@ impl DebugProbe for BlackMagicProbe {
     }
 }
 
+impl AutoImplementJtagAccess for BlackMagicProbe {}
 impl DapProbe for BlackMagicProbe {}
 
 impl RawSwdIo for BlackMagicProbe {

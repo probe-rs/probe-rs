@@ -28,11 +28,11 @@ use crate::architecture::arm::{ArmError, Pins};
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState,
 };
-use crate::probe::JtagAccess;
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
 use crate::probe::usb_util::InterfaceExt;
+use crate::probe::{AutoImplementJtagAccess, JtagAccess};
 use crate::{
     architecture::{
         arm::{
@@ -1226,6 +1226,7 @@ impl RawJtagIo for JLink {
     }
 }
 
+impl AutoImplementJtagAccess for JLink {}
 impl DapProbe for JLink {}
 
 impl SwoAccess for JLink {
