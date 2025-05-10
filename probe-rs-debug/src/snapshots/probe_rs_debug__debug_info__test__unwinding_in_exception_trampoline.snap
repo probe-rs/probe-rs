@@ -29,7 +29,7 @@ Frame:
   column: Some(Column(1))
  frame_base:      Some(2001fff8)
 Frame:
- function:        <unknown function @ 0x0000013c>
+ function:        Reset @ 0x0000013c>
  source_location:
 None
  frame_base:      None
