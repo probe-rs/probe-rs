@@ -500,9 +500,11 @@ impl CoreInterface for Xtensa<'_> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         self.skip_breakpoint_instruction()?;
-        let ps = self.current_ps()?;
 
+        // Only count instructions in the current context.
+        let ps = self.current_ps()?;
         self.interface.step(1, ps.intlevel())?;
+
         self.on_halted()?;
 
         self.core_info()
