@@ -1,0 +1,4276 @@
+---
+source: probe-rs-debug/src/debug_info.rs
+expression: stack_frames
+---
+- function_name: "panic_handler : ERROR : Error using the probe"
+  source_location:
+    path: "C:\\_Espressif\\esp-coredump\\src\\lib.rs"
+    line: 34
+    column:
+      Column: 9
+    address: 1107314147
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 1107318909
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070449856
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070449936
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 4
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 1107314016
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070449895
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107314147
+  pc:
+    U32: 1107314147
+  frame_base: 1070449856
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tinfo: &core::panic::panic_info::PanicInfo = &core::panic::panic_info::PanicInfo @ 0x3FCDC4C0}"
+      children:
+        - name:
+            Named: info
+          type_name:
+            Pointer: "&core::panic::panic_info::PanicInfo"
+          value: "&core::panic::panic_info::PanicInfo @ 0x3FCDC4C0"
+          source_location:
+            path: "C:\\_Espressif\\esp-coredump\\src\\lib.rs"
+            line: 24
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*info"
+              type_name:
+                Struct: PanicInfo
+              value: PanicInfo @ 0x3FCDC510
+              children:
+                - name:
+                    Named: message
+                  type_name:
+                    Pointer: "&core::fmt::Arguments"
+                  value: "&core::fmt::Arguments @ 0x3FCDC510"
+                  children:
+                    - name:
+                        Named: "*message"
+                      type_name:
+                        Struct: Arguments
+                      value: Arguments @ 0x3FCDC544
+                      children:
+                        - name:
+                            Named: pieces
+                          type_name:
+                            Struct: "&[&str]"
+                          value: "&[&str] @ 0x3FCDC544"
+                          children:
+                            - name:
+                                Named: length
+                              type_name:
+                                Base: usize
+                              value: "2"
+                            - name:
+                                Named: "*data_ptr"
+                              type_name:
+                                Array:
+                                  item_type_name:
+                                    Struct: "&str"
+                                  count: 2
+                              value: "[&str; 2] = [\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >,\n\t< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >]"
+                              children:
+                                - name:
+                                    Indexed: 0
+                                  type_name:
+                                    Struct: "&str"
+                                  value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4.\" } >"
+                                  children:
+                                    - name:
+                                        Named: data_ptr
+                                      type_name:
+                                        Pointer: u8
+                                      value: "*raw u8 @ 0x3C010550"
+                                      children:
+                                        - name:
+                                            Named: "*data_ptr"
+                                          type_name:
+                                            Base: u8
+                                          value: "Failed to read referenced variable address from memory location 0x3C010550 : The coredump does not include the memory for address 0x3c010550 of size 0x4."
+                                    - name:
+                                        Named: length
+                                      type_name:
+                                        Base: usize
+                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010554 of size 0x4\")) >"
+                                - name:
+                                    Indexed: 1
+                                  type_name:
+                                    Struct: "&str"
+                                  value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4.\" } >"
+                                  children:
+                                    - name:
+                                        Named: data_ptr
+                                      type_name:
+                                        Pointer: u8
+                                      value: "*raw u8 @ 0x3C010558"
+                                      children:
+                                        - name:
+                                            Named: "*data_ptr"
+                                          type_name:
+                                            Base: u8
+                                          value: "Failed to read referenced variable address from memory location 0x3C010558 : The coredump does not include the memory for address 0x3c010558 of size 0x4."
+                                    - name:
+                                        Named: length
+                                      type_name:
+                                        Base: usize
+                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c01055c of size 0x4\")) >"
+                        - name:
+                            Named: fmt
+                          type_name:
+                            Struct: "Option<&[core::fmt::rt::Placeholder]>"
+                          value: "Option<&[core::fmt::rt::Placeholder]> @ 0x3FCDC554"
+                          children:
+                            - name:
+                                Named: None
+                              type_name:
+                                Struct: None
+                              value: None @ 0x3FCDC554
+                        - name:
+                            Named: args
+                          type_name:
+                            Struct: "&[core::fmt::rt::Argument]"
+                          value: "&[core::fmt::rt::Argument] @ 0x3FCDC54C"
+                          children:
+                            - name:
+                                Named: length
+                              type_name:
+                                Base: usize
+                              value: "1"
+                            - name:
+                                Named: "*data_ptr"
+                              type_name:
+                                Array:
+                                  item_type_name:
+                                    Struct: Argument
+                                  count: 1
+                              value: "[Argument; 1] = [\n\tArgument @ 0x3FCDC55C]"
+                              children:
+                                - name:
+                                    Indexed: 0
+                                  type_name:
+                                    Struct: Argument
+                                  value: Argument @ 0x3FCDC55C
+                                  children:
+                                    - name:
+                                        Named: ty
+                                      type_name:
+                                        Struct: ArgumentType
+                                      value: ArgumentType @ 0x3FCDC55C
+                                      children:
+                                        - name:
+                                            Named: Placeholder
+                                          type_name:
+                                            Struct: Placeholder
+                                          value: Placeholder @ 0x3FCDC55C
+                                          children:
+                                            - name:
+                                                Named: value
+                                              type_name:
+                                                Struct: NonNull<()>
+                                              value: NonNull<()> @ 0x3FCDC55C
+                                            - name:
+                                                Named: formatter
+                                              type_name:
+                                                Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
+                                              value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x3FCDC560"
+                                              children:
+                                                - name:
+                                                    Named: "*formatter"
+                                                  type_name:
+                                                    Other: "Result<(), core::fmt::Error>"
+                                                  value: "Unimplemented: Get value of type Other(\"Result<(), core::fmt::Error>\") of (None bytes) at location <unknown value>"
+                - name:
+                    Named: location
+                  type_name:
+                    Pointer: "&core::panic::location::Location"
+                  value: "&core::panic::location::Location @ 0x3FCDC514"
+                  children:
+                    - name:
+                        Named: "*location"
+                      type_name:
+                        Struct: Location
+                      value: Location @ 0x3C010570
+                      children:
+                        - name:
+                            Named: file
+                          type_name:
+                            Struct: "&str"
+                          value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C010570 : The coredump does not include the memory for address 0x3c010570 of size 0x4.\" } >"
+                          children:
+                            - name:
+                                Named: data_ptr
+                              type_name:
+                                Pointer: u8
+                              value: "*raw u8 @ 0x3C010570"
+                              children:
+                                - name:
+                                    Named: "*data_ptr"
+                                  type_name:
+                                    Base: u8
+                                  value: "Failed to read referenced variable address from memory location 0x3C010570 : The coredump does not include the memory for address 0x3c010570 of size 0x4."
+                            - name:
+                                Named: length
+                              type_name:
+                                Base: usize
+                              value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010574 of size 0x4\")) >"
+                        - name:
+                            Named: line
+                          type_name:
+                            Base: u32
+                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010578 of size 0x4\")) >"
+                        - name:
+                            Named: col
+                          type_name:
+                            Base: u32
+                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c01057c of size 0x4\")) >"
+                - name:
+                    Named: can_unwind
+                  type_name:
+                    Base: bool
+                  value: "true"
+                - name:
+                    Named: force_no_backtrace
+                  type_name:
+                    Base: bool
+                  value: "false"
+  canonical_frame_address: ~
+- function_name: panic_fmt
+  source_location:
+    path: "C:\\Users\\bugad\\.rustup\\toolchains\\esp\\lib\\rustlib\\src\\rust\\library\\core\\src\\panicking.rs"
+    line: 75
+    column:
+      Column: 14
+    address: 1107318906
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181042028
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070449936
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070449988
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1006699888
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 1107314016
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070449895
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107318906
+  pc:
+    U32: 1107318906
+  frame_base: 1070449936
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tfmt: Arguments = Arguments @ 0x3FCDC544,\n\tpi: PanicInfo = PanicInfo @ 0x3FCDC510}"
+      children:
+        - name:
+            Named: fmt
+          type_name:
+            Struct: Arguments
+          value: Arguments @ 0x3FCDC544
+          source_location:
+            path: "C:\\Users\\bugad\\.rustup\\toolchains\\esp\\lib\\rustlib\\src\\rust\\library\\core\\src\\panicking.rs"
+            line: 55
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: pieces
+              type_name:
+                Struct: "&[&str]"
+              value: "&[&str] @ 0x3FCDC544"
+              children:
+                - name:
+                    Named: data_ptr
+                  type_name:
+                    Pointer: ~
+                  value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(1350655)) >"
+                - name:
+                    Named: length
+                  type_name:
+                    Base: usize
+                  value: "2"
+            - name:
+                Named: fmt
+              type_name:
+                Struct: "Option<&[core::fmt::rt::Placeholder]>"
+              value: "Option<&[core::fmt::rt::Placeholder]> @ 0x3FCDC554"
+              children:
+                - name:
+                    Named: None
+                  type_name:
+                    Struct: None
+                  value: None @ 0x3FCDC554
+            - name:
+                Named: args
+              type_name:
+                Struct: "&[core::fmt::rt::Argument]"
+              value: "&[core::fmt::rt::Argument] @ 0x3FCDC54C"
+              children:
+                - name:
+                    Named: length
+                  type_name:
+                    Base: usize
+                  value: "1"
+                - name:
+                    Named: "*data_ptr"
+                  type_name:
+                    Array:
+                      item_type_name:
+                        Struct: Argument
+                      count: 1
+                  value: "[Argument; 1] = [\n\tArgument @ 0x3FCDC55C]"
+                  children:
+                    - name:
+                        Indexed: 0
+                      type_name:
+                        Struct: Argument
+                      value: Argument @ 0x3FCDC55C
+                      children:
+                        - name:
+                            Named: ty
+                          type_name:
+                            Struct: ArgumentType
+                          value: ArgumentType @ 0x3FCDC55C
+                          children:
+                            - name:
+                                Named: Placeholder
+                              type_name:
+                                Struct: Placeholder
+                              value: Placeholder @ 0x3FCDC55C
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Struct: NonNull<()>
+                                  value: NonNull<()> @ 0x3FCDC55C
+                                  children:
+                                    - name:
+                                        Named: pointer
+                                      type_name:
+                                        Pointer: "*const ()"
+                                      value: "*const () @ 0x3FCDC55C"
+                                - name:
+                                    Named: formatter
+                                  type_name:
+                                    Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
+                                  value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x3FCDC560"
+                                  children:
+                                    - name:
+                                        Named: "*formatter"
+                                      type_name: Unknown
+                                      value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(1350019)) >"
+        - name:
+            Named: pi
+          type_name:
+            Struct: PanicInfo
+          value: PanicInfo @ 0x3FCDC510
+          source_location:
+            path: "C:\\Users\\bugad\\.rustup\\toolchains\\esp\\lib\\rustlib\\src\\rust\\library\\core\\src\\panicking.rs"
+            line: 67
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: message
+              type_name:
+                Pointer: "&core::fmt::Arguments"
+              value: "&core::fmt::Arguments @ 0x3FCDC510"
+              children:
+                - name:
+                    Named: "*message"
+                  type_name:
+                    Struct: Arguments
+                  value: Arguments @ 0x3FCDC544
+                  children:
+                    - name:
+                        Named: pieces
+                      type_name:
+                        Struct: "&[&str]"
+                      value: "&[&str] @ 0x3FCDC544"
+                      children:
+                        - name:
+                            Named: data_ptr
+                          type_name:
+                            Pointer: ~
+                          value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(1350655)) >"
+                        - name:
+                            Named: length
+                          type_name:
+                            Base: usize
+                          value: "2"
+                    - name:
+                        Named: fmt
+                      type_name:
+                        Struct: "Option<&[core::fmt::rt::Placeholder]>"
+                      value: "Option<&[core::fmt::rt::Placeholder]> @ 0x3FCDC554"
+                      children:
+                        - name:
+                            Named: None
+                          type_name:
+                            Struct: None
+                          value: None @ 0x3FCDC554
+                    - name:
+                        Named: args
+                      type_name:
+                        Struct: "&[core::fmt::rt::Argument]"
+                      value: "&[core::fmt::rt::Argument] @ 0x3FCDC54C"
+                      children:
+                        - name:
+                            Named: length
+                          type_name:
+                            Base: usize
+                          value: "1"
+                        - name:
+                            Named: "*data_ptr"
+                          type_name:
+                            Array:
+                              item_type_name:
+                                Struct: Argument
+                              count: 1
+                          value: "[Argument; 1] = [\n\tArgument @ 0x3FCDC55C]"
+                          children:
+                            - name:
+                                Indexed: 0
+                              type_name:
+                                Struct: Argument
+                              value: Argument @ 0x3FCDC55C
+                              children:
+                                - name:
+                                    Named: ty
+                                  type_name:
+                                    Struct: ArgumentType
+                                  value: ArgumentType @ 0x3FCDC55C
+                                  children:
+                                    - name:
+                                        Named: Placeholder
+                                      type_name:
+                                        Struct: Placeholder
+                                      value: Placeholder @ 0x3FCDC55C
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Struct: NonNull<()>
+                                          value: NonNull<()> @ 0x3FCDC55C
+                                          children:
+                                            - name:
+                                                Named: pointer
+                                              type_name:
+                                                Pointer: "*const ()"
+                                              value: "*const () @ 0x3FCDC55C"
+                                        - name:
+                                            Named: formatter
+                                          type_name:
+                                            Pointer: "unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error>"
+                                          value: "*raw unsafe fn(core::ptr::non_null::NonNull<()>, &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> @ 0x3FCDC560"
+                                          children:
+                                            - name:
+                                                Named: "*formatter"
+                                              type_name: Unknown
+                                              value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(1350019)) >"
+            - name:
+                Named: location
+              type_name:
+                Pointer: "&core::panic::location::Location"
+              value: "&core::panic::location::Location @ 0x3FCDC514"
+              children:
+                - name:
+                    Named: "*location"
+                  type_name:
+                    Struct: Location
+                  value: Location @ 0x3C010570
+                  children:
+                    - name:
+                        Named: file
+                      type_name:
+                        Struct: "&str"
+                      value: "Error: Failed to determine &str memory location"
+                      children:
+                        - name:
+                            Named: data_ptr
+                          type_name:
+                            Pointer: ~
+                          value: "< Unimplemented: Attribute Value for DW_AT_type DebugInfoRef(DebugInfoOffset(1345972)) >"
+                        - name:
+                            Named: length
+                          type_name:
+                            Base: usize
+                          value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010574 of size 0x4\")) >"
+                    - name:
+                        Named: line
+                      type_name:
+                        Base: u32
+                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c010578 of size 0x4\")) >"
+                    - name:
+                        Named: col
+                      type_name:
+                        Base: u32
+                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c01057c of size 0x4\")) >"
+            - name:
+                Named: can_unwind
+              type_name:
+                Base: bool
+              value: "true"
+            - name:
+                Named: force_no_backtrace
+              type_name:
+                Base: bool
+              value: "false"
+  canonical_frame_address: ~
+- function_name: do_loop
+  source_location:
+    path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+    line: 41
+    column:
+      Column: 9
+    address: 1107300201
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181041427
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070449984
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1006698956
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 3
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1610739812
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1356348065
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070450000
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107300201
+  pc:
+    U32: 1107300201
+  frame_base: 1070449984
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tmessages: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\titer: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tmessage: &&str = &&str @ 0x3FCDC540}"
+      children:
+        - name:
+            Named: messages
+          type_name: Unknown
+          value: "< <value optimized away by compiler, out of scope, or dropped> >"
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+            line: 39
+            column: ~
+            address: ~
+        - name:
+            Named: iter
+          type_name: Unknown
+          value: "< <value optimized away by compiler, out of scope, or dropped> >"
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+            line: 40
+            column: ~
+            address: ~
+        - name:
+            Named: message
+          type_name:
+            Pointer: "&&str"
+          value: "&&str @ 0x3FCDC540"
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+            line: 40
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*message"
+              type_name:
+                Struct: "&str"
+              value: "< WarnAndContinue { message: \"Failed to read referenced variable address from memory location 0x3C0101CC : The coredump does not include the memory for address 0x3c0101cc of size 0x4.\" } >"
+              children:
+                - name:
+                    Named: data_ptr
+                  type_name:
+                    Pointer: u8
+                  value: "*raw u8 @ 0x3C0101CC"
+                  children:
+                    - name:
+                        Named: "*data_ptr"
+                      type_name:
+                        Base: u8
+                      value: "Failed to read referenced variable address from memory location 0x3C0101CC : The coredump does not include the memory for address 0x3c0101cc of size 0x4."
+                - name:
+                    Named: length
+                  type_name:
+                    Base: usize
+                  value: "< Probe(Other(\"The coredump does not include the memory for address 0x3c0101d0 of size 0x4\")) >"
+  canonical_frame_address: ~
+- function_name: "{async_fn#0}"
+  source_location:
+    path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+    line: 30
+    column:
+      Column: 9
+    address: 1107299600
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181057617
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070450064
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070112512
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 3
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 1070112544
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070112512
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107299600
+  pc:
+    U32: 1107299600
+  frame_base: 1070450064
+  is_inlined: true
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\t<unknown>: &mut core::task::wake::Context = 1070450080,\n\t_task_context: &mut core::task::wake::Context = 1070450080,\n\tconfig: Config = Config @ 0x3FCDC5B0,\n\ttimer0: SystemTimer = SystemTimer @ 0x3FCDC5F2}"
+      children:
+        - name: Unknown
+          type_name:
+            Pointer: "&mut core::task::wake::Context"
+          value: "1070450080"
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+            line: 14
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "Error: Unable to generate name, parent variable does not have a name but is special variable Unknown"
+              type_name:
+                Struct: Context
+              value: Context @ <not applicable - statically stored value>
+              children:
+                - name:
+                    Named: waker
+                  type_name:
+                    Pointer: "&core::task::wake::Waker"
+                  value: "&core::task::wake::Waker @ <not applicable - statically stored value>"
+                  children:
+                    - name:
+                        Named: "*waker"
+                      type_name:
+                        Struct: Waker
+                      value: "Waker {\n\twaker: <unknown> = < Location Value not supported for referenced variables. >}"
+                      children:
+                        - name:
+                            Named: waker
+                          type_name: Unknown
+                          value: "< Location Value not supported for referenced variables. >"
+                - name:
+                    Named: local_waker
+                  type_name:
+                    Pointer: "&core::task::wake::LocalWaker"
+                  value: "&core::task::wake::LocalWaker @ <not applicable - statically stored value>"
+                  children:
+                    - name:
+                        Named: "*local_waker"
+                      type_name:
+                        Struct: LocalWaker
+                      value: "LocalWaker {\n\twaker: <unknown> = < Location Value not supported for referenced variables. >}"
+                      children:
+                        - name:
+                            Named: waker
+                          type_name: Unknown
+                          value: "< Location Value not supported for referenced variables. >"
+                - name:
+                    Named: ext
+                  type_name:
+                    Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
+                  value: "AssertUnwindSafe<core::task::wake::ExtData> @ <not applicable - statically stored value>"
+                  children:
+                    - name:
+                        Named: __0
+                      type_name:
+                        Struct: ExtData
+                      value: ExtData @ <not applicable - statically stored value>
+                      children:
+                        - name:
+                            Named: Some
+                          type_name:
+                            Struct: Some
+                          value: Some @ <not applicable - statically stored value>
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Struct: "&mut dyn core::any::Any"
+                              value: "&mut dyn core::any::Any @ <not applicable - statically stored value>"
+                              children:
+                                - name:
+                                    Named: pointer
+                                  type_name:
+                                    Pointer: "dyn core::any::Any"
+                                  value: "*raw dyn core::any::Any @ <not applicable - statically stored value>"
+                                  children:
+                                    - name:
+                                        Named: "*pointer"
+                                      type_name:
+                                        Struct: "dyn core::any::Any"
+                                      value: "dyn core::any::Any"
+                                - name:
+                                    Named: vtable
+                                  type_name:
+                                    Pointer: "&[usize; 4]"
+                                  value: "&[usize; 4] @ <not applicable - statically stored value>"
+                                  children:
+                                    - name:
+                                        Named: "*vtable"
+                                      type_name:
+                                        Array:
+                                          item_type_name:
+                                            Base: usize
+                                          count: 4
+                                      value: "[usize; 4] = [usize,usize,usize,usize]"
+                                      children:
+                                        - name:
+                                            Indexed: 0
+                                          type_name:
+                                            Base: usize
+                                          value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                        - name:
+                                            Indexed: 1
+                                          type_name:
+                                            Base: usize
+                                          value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                        - name:
+                                            Indexed: 2
+                                          type_name:
+                                            Base: usize
+                                          value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+                                        - name:
+                                            Indexed: 3
+                                          type_name:
+                                            Base: usize
+                                          value: "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location"
+        - name:
+            Named: _task_context
+          type_name:
+            Pointer: "&mut core::task::wake::Context"
+          value: "1070450080"
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+            line: 14
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*_task_context"
+              type_name:
+                Struct: Context
+              value: "Context {\n\twaker: <unknown> = < Location Value not supported for referenced variables. >,\n\tlocal_waker: <unknown> = < Location Value not supported for referenced variables. >,\n\text: <unknown> = < Location Value not supported for referenced variables. >,\n\t_marker: <unknown> = < Location Value not supported for referenced variables. >,\n\t_marker2: <unknown> = < Location Value not supported for referenced variables. >}"
+              children:
+                - name:
+                    Named: waker
+                  type_name: Unknown
+                  value: "< Location Value not supported for referenced variables. >"
+                - name:
+                    Named: local_waker
+                  type_name: Unknown
+                  value: "< Location Value not supported for referenced variables. >"
+                - name:
+                    Named: ext
+                  type_name: Unknown
+                  value: "< Location Value not supported for referenced variables. >"
+                - name:
+                    Named: _marker
+                  type_name: Unknown
+                  value: "< Location Value not supported for referenced variables. >"
+                - name:
+                    Named: _marker2
+                  type_name: Unknown
+                  value: "< Location Value not supported for referenced variables. >"
+        - name:
+            Named: config
+          type_name:
+            Struct: Config
+          value: Config @ 0x3FCDC5B0
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+            line: 18
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: cpu_clock
+              type_name:
+                Enum: CpuClock
+              value: "CpuClock::_240MHz"
+            - name:
+                Named: watchdog
+              type_name:
+                Struct: WatchdogConfig
+              value: WatchdogConfig @ 0x3FCDC5B0
+              children:
+                - name:
+                    Named: swd
+                  type_name:
+                    Base: bool
+                  value: "false"
+                - name:
+                    Named: rwdt
+                  type_name:
+                    Struct: WatchdogStatus
+                  value: WatchdogStatus @ 0x3FCDC5B0
+                  children:
+                    - name:
+                        Named: Disabled
+                      type_name:
+                        Struct: Disabled
+                      value: Disabled @ 0x3FCDC5B0
+                - name:
+                    Named: timg0
+                  type_name:
+                    Struct: WatchdogStatus
+                  value: WatchdogStatus @ 0x3FCDC5C0
+                  children:
+                    - name:
+                        Named: Disabled
+                      type_name:
+                        Struct: Disabled
+                      value: Disabled @ 0x3FCDC5C0
+                - name:
+                    Named: timg1
+                  type_name:
+                    Struct: WatchdogStatus
+                  value: WatchdogStatus @ 0x3FCDC5D0
+                  children:
+                    - name:
+                        Named: Disabled
+                      type_name:
+                        Struct: Disabled
+                      value: Disabled @ 0x3FCDC5D0
+        - name:
+            Named: timer0
+          type_name:
+            Struct: SystemTimer
+          value: SystemTimer @ 0x3FCDC5F2
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+            line: 21
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: alarm0
+              type_name:
+                Struct: Alarm
+              value: Alarm @ 0x3FCDC5F2
+              children:
+                - name:
+                    Named: comp
+                  type_name:
+                    Base: u8
+                  value: "0"
+                - name:
+                    Named: unit
+                  type_name:
+                    Enum: Unit
+                  value: "Unit::Unit0"
+            - name:
+                Named: alarm1
+              type_name:
+                Struct: Alarm
+              value: Alarm @ 0x3FCDC5F4
+              children:
+                - name:
+                    Named: comp
+                  type_name:
+                    Base: u8
+                  value: "1"
+                - name:
+                    Named: unit
+                  type_name:
+                    Enum: Unit
+                  value: "Unit::Unit0"
+            - name:
+                Named: alarm2
+              type_name:
+                Struct: Alarm
+              value: Alarm @ 0x3FCDC5F6
+              children:
+                - name:
+                    Named: comp
+                  type_name:
+                    Base: u8
+                  value: "2"
+                - name:
+                    Named: unit
+                  type_name:
+                    Enum: Unit
+                  value: "Unit::Unit0"
+  canonical_frame_address: ~
+- function_name: "poll<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+  source_location:
+    path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+    line: 214
+    column:
+      Column: 15
+    address: 1107299479
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181057617
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070450064
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070112512
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 3
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 1070112544
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070112512
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107299600
+  pc:
+    U64: 1107299479
+  frame_base: 1070450064
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tp: TaskRef = TaskRef @ 0x3FC89F00,\n\tthis: *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> = *const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> @ 0x3FC89F00,\n\tfuture: Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> = Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> @ 0x3FC89F20,\n\twaker: Waker = Waker @ 0x3FCDC598,\n\tcx: Context = Context @ 0x3FCDC5A0}"
+      children:
+        - name:
+            Named: p
+          type_name:
+            Struct: TaskRef
+          value: TaskRef @ 0x3FC89F00
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+            line: 208
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: ptr
+              type_name:
+                Struct: "NonNull<embassy_executor::raw::TaskHeader>"
+              value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x3FC89F00"
+              children:
+                - name:
+                    Named: pointer
+                  type_name:
+                    Pointer: "*const embassy_executor::raw::TaskHeader"
+                  value: "*const embassy_executor::raw::TaskHeader @ 0x3FC89F00"
+                  children:
+                    - name:
+                        Named: "*pointer"
+                      type_name:
+                        Struct: TaskHeader
+                      value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >}"
+                      children:
+                        - name:
+                            Named: state
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >"
+                        - name:
+                            Named: run_queue_item
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >"
+                        - name:
+                            Named: executor
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >"
+                        - name:
+                            Named: poll_fn
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >"
+                        - name:
+                            Named: timer_queue_item
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >"
+        - name:
+            Named: this
+          type_name:
+            Pointer: "*const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+          value: "*const embassy_executor::raw::TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> @ 0x3FC89F00"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+            line: 209
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*this"
+              type_name:
+                Struct: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+              value: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}> {\n\traw: <unknown> = < Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >,\n\tfuture: <unknown> = < Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >}"
+              children:
+                - name:
+                    Named: raw
+                  type_name: Unknown
+                  value: "< Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >"
+                - name:
+                    Named: future
+                  type_name: Unknown
+                  value: "< Failed to read referenced variable address from memory location 0x3FC89F00 : The coredump does not include the memory for address 0x3fc89f00 of size 0x4. >"
+        - name:
+            Named: future
+          type_name:
+            Struct: "Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+          value: "Pin<&mut coredump_c6::____embassy_main_task::{async_fn_env#0}> @ 0x3FC89F20"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+            line: 211
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: __pointer
+              type_name:
+                Pointer: "&mut coredump_c6::____embassy_main_task::{async_fn_env#0}"
+              value: "&mut coredump_c6::____embassy_main_task::{async_fn_env#0} @ 0x3FC89F20"
+              children:
+                - name:
+                    Named: "*__pointer"
+                  type_name:
+                    Struct: "{async_fn_env#0}"
+                  value: "{async_fn_env#0}"
+        - name:
+            Named: waker
+          type_name:
+            Struct: Waker
+          value: Waker @ 0x3FCDC598
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+            line: 212
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: waker
+              type_name:
+                Struct: RawWaker
+              value: RawWaker @ 0x3FCDC598
+              children:
+                - name:
+                    Named: data
+                  type_name:
+                    Pointer: "*const ()"
+                  value: "*const () @ 0x3FCDC59C"
+                - name:
+                    Named: vtable
+                  type_name:
+                    Pointer: "&core::task::wake::RawWakerVTable"
+                  value: "&core::task::wake::RawWakerVTable @ 0x3FCDC598"
+                  children:
+                    - name:
+                        Named: "*vtable"
+                      type_name:
+                        Struct: RawWakerVTable
+                      value: RawWakerVTable @ 0x3C013574
+                      children:
+                        - name:
+                            Named: clone
+                          type_name:
+                            Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                          value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3C013574"
+                          children:
+                            - name:
+                                Named: "*clone"
+                              type_name:
+                                Other: RawWaker
+                              value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                        - name:
+                            Named: wake
+                          type_name:
+                            Pointer: unsafe fn(*const ())
+                          value: "*raw unsafe fn(*const ()) @ 0x3C013578"
+                          children:
+                            - name:
+                                Named: "*wake"
+                              type_name: Unknown
+                              value: "<No Return Value>"
+                        - name:
+                            Named: wake_by_ref
+                          type_name:
+                            Pointer: unsafe fn(*const ())
+                          value: "*raw unsafe fn(*const ()) @ 0x3C01357C"
+                          children:
+                            - name:
+                                Named: "*wake_by_ref"
+                              type_name: Unknown
+                              value: "<No Return Value>"
+                        - name:
+                            Named: drop
+                          type_name:
+                            Pointer: unsafe fn(*const ())
+                          value: "*raw unsafe fn(*const ()) @ 0x3C013580"
+                          children:
+                            - name:
+                                Named: "*drop"
+                              type_name: Unknown
+                              value: "<No Return Value>"
+        - name:
+            Named: cx
+          type_name:
+            Struct: Context
+          value: Context @ 0x3FCDC5A0
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+            line: 213
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: waker
+              type_name:
+                Pointer: "&core::task::wake::Waker"
+              value: "&core::task::wake::Waker @ 0x3FCDC5A0"
+              children:
+                - name:
+                    Named: "*waker"
+                  type_name:
+                    Struct: Waker
+                  value: Waker @ 0x3FCDC598
+                  children:
+                    - name:
+                        Named: waker
+                      type_name:
+                        Struct: RawWaker
+                      value: RawWaker @ 0x3FCDC598
+                      children:
+                        - name:
+                            Named: data
+                          type_name:
+                            Pointer: "*const ()"
+                          value: "*const () @ 0x3FCDC59C"
+                        - name:
+                            Named: vtable
+                          type_name:
+                            Pointer: "&core::task::wake::RawWakerVTable"
+                          value: "&core::task::wake::RawWakerVTable @ 0x3FCDC598"
+                          children:
+                            - name:
+                                Named: "*vtable"
+                              type_name:
+                                Struct: RawWakerVTable
+                              value: RawWakerVTable @ 0x3C013574
+                              children:
+                                - name:
+                                    Named: clone
+                                  type_name:
+                                    Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                  value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3C013574"
+                                  children:
+                                    - name:
+                                        Named: "*clone"
+                                      type_name:
+                                        Other: RawWaker
+                                      value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                - name:
+                                    Named: wake
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ()) @ 0x3C013578"
+                                  children:
+                                    - name:
+                                        Named: "*wake"
+                                      type_name: Unknown
+                                      value: "<No Return Value>"
+                                - name:
+                                    Named: wake_by_ref
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ()) @ 0x3C01357C"
+                                  children:
+                                    - name:
+                                        Named: "*wake_by_ref"
+                                      type_name: Unknown
+                                      value: "<No Return Value>"
+                                - name:
+                                    Named: drop
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ()) @ 0x3C013580"
+                                  children:
+                                    - name:
+                                        Named: "*drop"
+                                      type_name: Unknown
+                                      value: "<No Return Value>"
+            - name:
+                Named: local_waker
+              type_name:
+                Pointer: "&core::task::wake::LocalWaker"
+              value: "&core::task::wake::LocalWaker @ 0x3FCDC5A4"
+              children:
+                - name:
+                    Named: "*local_waker"
+                  type_name:
+                    Struct: LocalWaker
+                  value: LocalWaker @ 0x3FCDC598
+                  children:
+                    - name:
+                        Named: waker
+                      type_name:
+                        Struct: RawWaker
+                      value: RawWaker @ 0x3FCDC598
+                      children:
+                        - name:
+                            Named: data
+                          type_name:
+                            Pointer: "*const ()"
+                          value: "*const () @ 0x3FCDC59C"
+                        - name:
+                            Named: vtable
+                          type_name:
+                            Pointer: "&core::task::wake::RawWakerVTable"
+                          value: "&core::task::wake::RawWakerVTable @ 0x3FCDC598"
+                          children:
+                            - name:
+                                Named: "*vtable"
+                              type_name:
+                                Struct: RawWakerVTable
+                              value: RawWakerVTable @ 0x3C013574
+                              children:
+                                - name:
+                                    Named: clone
+                                  type_name:
+                                    Pointer: "unsafe fn(*const ()) -> core::task::wake::RawWaker"
+                                  value: "*raw unsafe fn(*const ()) -> core::task::wake::RawWaker @ 0x3C013574"
+                                  children:
+                                    - name:
+                                        Named: "*clone"
+                                      type_name:
+                                        Other: RawWaker
+                                      value: "Unimplemented: Get value of type Other(\"RawWaker\") of (None bytes) at location <unknown value>"
+                                - name:
+                                    Named: wake
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ()) @ 0x3C013578"
+                                  children:
+                                    - name:
+                                        Named: "*wake"
+                                      type_name: Unknown
+                                      value: "<No Return Value>"
+                                - name:
+                                    Named: wake_by_ref
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ()) @ 0x3C01357C"
+                                  children:
+                                    - name:
+                                        Named: "*wake_by_ref"
+                                      type_name: Unknown
+                                      value: "<No Return Value>"
+                                - name:
+                                    Named: drop
+                                  type_name:
+                                    Pointer: unsafe fn(*const ())
+                                  value: "*raw unsafe fn(*const ()) @ 0x3C013580"
+                                  children:
+                                    - name:
+                                        Named: "*drop"
+                                      type_name: Unknown
+                                      value: "<No Return Value>"
+            - name:
+                Named: ext
+              type_name:
+                Struct: "AssertUnwindSafe<core::task::wake::ExtData>"
+              value: "AssertUnwindSafe<core::task::wake::ExtData> @ 0x3FCDC5A8"
+              children:
+                - name:
+                    Named: __0
+                  type_name:
+                    Struct: ExtData
+                  value: ExtData @ 0x3FCDC5A8
+                  children:
+                    - name:
+                        Named: Some
+                      type_name:
+                        Struct: Some
+                      value: Some @ 0x3FCDC5A8
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Struct: "&mut dyn core::any::Any"
+                          value: "&mut dyn core::any::Any @ 0x3FCDC5A8"
+                          children:
+                            - name:
+                                Named: pointer
+                              type_name:
+                                Pointer: "dyn core::any::Any"
+                              value: "*raw dyn core::any::Any @ 0x3FCDC5A8"
+                              children:
+                                - name:
+                                    Named: "*pointer"
+                                  type_name:
+                                    Struct: "dyn core::any::Any"
+                                  value: "dyn core::any::Any @ 0x00000000"
+                            - name:
+                                Named: vtable
+                              type_name:
+                                Pointer: "&[usize; 4]"
+                              value: "&[usize; 4] @ 0x3FCDC5AC"
+                              children:
+                                - name:
+                                    Named: "*vtable"
+                                  type_name:
+                                    Array:
+                                      item_type_name:
+                                        Base: usize
+                                      count: 4
+                                  value: "[usize; 4] = [\n\t< Probe(Other(\"The coredump does not include the memory for address 0x0 of size 0x4\")) >,\n\t< Probe(Other(\"The coredump does not include the memory for address 0x4 of size 0x4\")) >,\n\t< Probe(Other(\"The coredump does not include the memory for address 0x8 of size 0x4\")) >,\n\t< Probe(Other(\"The coredump does not include the memory for address 0xc of size 0x4\")) >]"
+                                  children:
+                                    - name:
+                                        Indexed: 0
+                                      type_name:
+                                        Base: usize
+                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x0 of size 0x4\")) >"
+                                    - name:
+                                        Indexed: 1
+                                      type_name:
+                                        Base: usize
+                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x4 of size 0x4\")) >"
+                                    - name:
+                                        Indexed: 2
+                                      type_name:
+                                        Base: usize
+                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0x8 of size 0x4\")) >"
+                                    - name:
+                                        Indexed: 3
+                                      type_name:
+                                        Base: usize
+                                      value: "< Probe(Other(\"The coredump does not include the memory for address 0xc of size 0x4\")) >"
+  canonical_frame_address: ~
+- function_name: "{closure#0}"
+  source_location:
+    path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+    line: 430
+    column:
+      Column: 13
+    address: 1107315790
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181041084
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070450240
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070450352
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1070112512
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1610670080
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1792
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 4294967293
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107315790
+  pc:
+    U32: 1107315790
+  frame_base: 1070450240
+  is_inlined: true
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tp: TaskRef = TaskRef @ 0x00000000,\n\ttask: &embassy_executor::raw::TaskHeader = &embassy_executor::raw::TaskHeader @ 0x00000000}"
+      children:
+        - name:
+            Named: p
+          type_name:
+            Struct: TaskRef
+          value: TaskRef @ 0x00000000
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+            line: 423
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: ptr
+              type_name:
+                Struct: "NonNull<embassy_executor::raw::TaskHeader>"
+              value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x00000000"
+              children:
+                - name:
+                    Named: pointer
+                  type_name:
+                    Pointer: "*const embassy_executor::raw::TaskHeader"
+                  value: "*const embassy_executor::raw::TaskHeader @ 0x00000000"
+                  children:
+                    - name:
+                        Named: "*pointer"
+                      type_name:
+                        Struct: TaskHeader
+                      value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
+                      children:
+                        - name:
+                            Named: state
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                        - name:
+                            Named: run_queue_item
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                        - name:
+                            Named: executor
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                        - name:
+                            Named: poll_fn
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                        - name:
+                            Named: timer_queue_item
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+        - name:
+            Named: task
+          type_name:
+            Pointer: "&embassy_executor::raw::TaskHeader"
+          value: "&embassy_executor::raw::TaskHeader @ 0x00000000"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+            line: 424
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*task"
+              type_name:
+                Struct: TaskHeader
+              value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
+              children:
+                - name:
+                    Named: state
+                  type_name: Unknown
+                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                - name:
+                    Named: run_queue_item
+                  type_name: Unknown
+                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                - name:
+                    Named: executor
+                  type_name: Unknown
+                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                - name:
+                    Named: poll_fn
+                  type_name: Unknown
+                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                - name:
+                    Named: timer_queue_item
+                  type_name: Unknown
+                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+  canonical_frame_address: ~
+- function_name: "dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
+  source_location:
+    path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
+    line: 85
+    column:
+      Column: 13
+    address: 1107315785
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181041084
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070450240
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070450352
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1070112512
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1610670080
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1792
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 4294967293
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107315790
+  pc:
+    U64: 1107315785
+  frame_base: 1070450240
+  is_inlined: true
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tself: &embassy_executor::raw::run_queue::RunQueue = &embassy_executor::raw::run_queue::RunQueue @ 0x3FCDC6B0,\n\tptr: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tnext: Option<embassy_executor::raw::TaskRef> = Option<embassy_executor::raw::TaskRef> @ 0x00000000,\n\ttask: TaskRef = TaskRef @ 0x00000000}"
+      children:
+        - name:
+            Named: self
+          type_name:
+            Pointer: "&embassy_executor::raw::run_queue::RunQueue"
+          value: "&embassy_executor::raw::run_queue::RunQueue @ 0x3FCDC6B0"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
+            line: 70
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*self"
+              type_name:
+                Struct: RunQueue
+              value: RunQueue @ 0x00000000
+              children:
+                - name:
+                    Named: head
+                  type_name:
+                    Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                  value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
+                  children:
+                    - name:
+                        Named: p
+                      type_name:
+                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
+                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                      children:
+                        - name:
+                            Named: value
+                          type_name:
+                            Pointer: "*mut embassy_executor::raw::TaskHeader"
+                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                          children:
+                            - name:
+                                Named: "*value"
+                              type_name:
+                                Struct: TaskHeader
+                              value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
+                              children:
+                                - name:
+                                    Named: state
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                - name:
+                                    Named: run_queue_item
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                - name:
+                                    Named: executor
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                - name:
+                                    Named: poll_fn
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                - name:
+                                    Named: timer_queue_item
+                                  type_name: Unknown
+                                  value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+        - name:
+            Named: ptr
+          type_name: Unknown
+          value: "< <value optimized away by compiler, out of scope, or dropped> >"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
+            line: 72
+            column: ~
+            address: ~
+        - name:
+            Named: next
+          type_name:
+            Struct: "Option<embassy_executor::raw::TaskRef>"
+          value: "Option<embassy_executor::raw::TaskRef> @ 0x00000000"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
+            line: 75
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: None
+              type_name:
+                Struct: None
+              value: None @ 0x00000000
+        - name:
+            Named: task
+          type_name:
+            Struct: TaskRef
+          value: TaskRef @ 0x00000000
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
+            line: 78
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: ptr
+              type_name:
+                Struct: "NonNull<embassy_executor::raw::TaskHeader>"
+              value: "NonNull<embassy_executor::raw::TaskHeader> @ 0x00000000"
+              children:
+                - name:
+                    Named: pointer
+                  type_name:
+                    Pointer: "*const embassy_executor::raw::TaskHeader"
+                  value: "*const embassy_executor::raw::TaskHeader @ 0x00000000"
+                  children:
+                    - name:
+                        Named: "*pointer"
+                      type_name:
+                        Struct: TaskHeader
+                      value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
+                      children:
+                        - name:
+                            Named: state
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                        - name:
+                            Named: run_queue_item
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                        - name:
+                            Named: executor
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                        - name:
+                            Named: poll_fn
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                        - name:
+                            Named: timer_queue_item
+                          type_name: Unknown
+                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+  canonical_frame_address: ~
+- function_name: poll
+  source_location:
+    path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+    line: 423
+    column:
+      Column: 9
+    address: 1107315720
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181041084
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070450240
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070450352
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1070112512
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1610670080
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1792
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 4294967293
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107315790
+  pc:
+    U64: 1107315720
+  frame_base: 1070450240
+  is_inlined: true
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tself: &embassy_executor::raw::SyncExecutor = &embassy_executor::raw::SyncExecutor @ 0x3FCDC6B0}"
+      children:
+        - name:
+            Named: self
+          type_name:
+            Pointer: "&embassy_executor::raw::SyncExecutor"
+          value: "&embassy_executor::raw::SyncExecutor @ 0x3FCDC6B0"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+            line: 422
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*self"
+              type_name:
+                Struct: SyncExecutor
+              value: SyncExecutor @ 0x00000000
+              children:
+                - name:
+                    Named: run_queue
+                  type_name:
+                    Struct: RunQueue
+                  value: RunQueue @ 0x00000000
+                  children:
+                    - name:
+                        Named: head
+                      type_name:
+                        Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                      value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
+                      children:
+                        - name:
+                            Named: p
+                          type_name:
+                            Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
+                          value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                          children:
+                            - name:
+                                Named: value
+                              type_name:
+                                Pointer: "*mut embassy_executor::raw::TaskHeader"
+                              value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                              children:
+                                - name:
+                                    Named: "*value"
+                                  type_name:
+                                    Struct: TaskHeader
+                                  value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
+                                  children:
+                                    - name:
+                                        Named: state
+                                      type_name: Unknown
+                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                    - name:
+                                        Named: run_queue_item
+                                      type_name: Unknown
+                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                    - name:
+                                        Named: executor
+                                      type_name: Unknown
+                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                    - name:
+                                        Named: poll_fn
+                                      type_name: Unknown
+                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                    - name:
+                                        Named: timer_queue_item
+                                      type_name: Unknown
+                                      value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                - name:
+                    Named: pender
+                  type_name:
+                    Struct: Pender
+                  value: Pender @ 0x00000004
+                  children:
+                    - name:
+                        Named: __0
+                      type_name:
+                        Pointer: "*mut ()"
+                      value: "*mut () @ 0x00000004"
+  canonical_frame_address: ~
+- function_name: poll
+  source_location:
+    path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+    line: 533
+    column:
+      Column: 9
+    address: 1107315720
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181041084
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070450240
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070450352
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1070112512
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1610670080
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1792
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 4294967293
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107315790
+  pc:
+    U64: 1107315720
+  frame_base: 1070450240
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tself: &embassy_executor::raw::Executor = &embassy_executor::raw::Executor @ 0x3FCDC6B0}"
+      children:
+        - name:
+            Named: self
+          type_name:
+            Pointer: "&embassy_executor::raw::Executor"
+          value: "&embassy_executor::raw::Executor @ 0x3FCDC6B0"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
+            line: 532
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*self"
+              type_name:
+                Struct: Executor
+              value: Executor @ 0x00000000
+              children:
+                - name:
+                    Named: inner
+                  type_name:
+                    Struct: SyncExecutor
+                  value: SyncExecutor @ 0x00000000
+                  children:
+                    - name:
+                        Named: run_queue
+                      type_name:
+                        Struct: RunQueue
+                      value: RunQueue @ 0x00000000
+                      children:
+                        - name:
+                            Named: head
+                          type_name:
+                            Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                          value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
+                          children:
+                            - name:
+                                Named: p
+                              type_name:
+                                Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
+                              value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                              children:
+                                - name:
+                                    Named: value
+                                  type_name:
+                                    Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                  value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                  children:
+                                    - name:
+                                        Named: "*value"
+                                      type_name:
+                                        Struct: TaskHeader
+                                      value: "TaskHeader {\n\tstate: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\trun_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\texecutor: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\tpoll_fn: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >,\n\ttimer_queue_item: <unknown> = < Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >}"
+                                      children:
+                                        - name:
+                                            Named: state
+                                          type_name: Unknown
+                                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                        - name:
+                                            Named: run_queue_item
+                                          type_name: Unknown
+                                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                        - name:
+                                            Named: executor
+                                          type_name: Unknown
+                                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                        - name:
+                                            Named: poll_fn
+                                          type_name: Unknown
+                                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                                        - name:
+                                            Named: timer_queue_item
+                                          type_name: Unknown
+                                          value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
+                    - name:
+                        Named: pender
+                      type_name:
+                        Struct: Pender
+                      value: Pender @ 0x00000004
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Pointer: "*mut ()"
+                          value: "*mut () @ 0x00000004"
+  canonical_frame_address: ~
+- function_name: "run<coredump_c6::__xtensa_lx_rt_main::{closure_env#0}>"
+  source_location:
+    path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
+    line: 111
+    column:
+      Column: 22
+    address: 1107299255
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181042050
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070450272
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 1070450352
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 2
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1792
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 1107301812
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 1107315720
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 0
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107299257
+  pc:
+    U32: 1107299257
+  frame_base: 1070450272
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tself: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0,\n\tinit: {closure_env#0} = {closure_env#0} @ <unknown value>,\n\tcpu: usize = 0}"
+      children:
+        - name:
+            Named: self
+          type_name:
+            Pointer: "&mut esp_hal_embassy::executor::thread::Executor"
+          value: "&mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
+            line: 96
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*self"
+              type_name:
+                Struct: Executor
+              value: Executor @ 0x00000000
+              children:
+                - name:
+                    Named: inner
+                  type_name:
+                    Struct: InnerExecutor
+                  value: InnerExecutor @ 0x00000000
+                  children:
+                    - name:
+                        Named: inner
+                      type_name:
+                        Struct: Executor
+                      value: Executor @ 0x00000000
+                      children:
+                        - name:
+                            Named: inner
+                          type_name:
+                            Struct: SyncExecutor
+                          value: SyncExecutor @ 0x00000000
+                          children:
+                            - name:
+                                Named: run_queue
+                              type_name:
+                                Struct: RunQueue
+                              value: RunQueue @ 0x00000000
+                              children:
+                                - name:
+                                    Named: head
+                                  type_name:
+                                    Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                                  value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                  children:
+                                    - name:
+                                        Named: p
+                                      type_name:
+                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
+                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                          children:
+                                            - name:
+                                                Named: "*value"
+                                              type_name:
+                                                Struct: TaskHeader
+                                              value: TaskHeader
+                            - name:
+                                Named: pender
+                              type_name:
+                                Struct: Pender
+                              value: Pender @ 0x00000004
+                              children:
+                                - name:
+                                    Named: __0
+                                  type_name:
+                                    Pointer: "*mut ()"
+                                  value: "*mut () @ 0x00000004"
+        - name:
+            Named: init
+          type_name:
+            Struct: "{closure_env#0}"
+          value: "{closure_env#0} @ <unknown value>"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
+            line: 96
+            column: ~
+            address: ~
+        - name:
+            Named: cpu
+          type_name:
+            Base: usize
+          value: "0"
+          source_location:
+            path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
+            line: 108
+            column: ~
+            address: ~
+  canonical_frame_address: ~
+- function_name: __xtensa_lx_rt_main
+  source_location:
+    path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+    line: 14
+    column:
+      Column: 1
+    address: 1107300221
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181055622
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070450352
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 0
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1070132996
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1006707328
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 254
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 255
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070450352
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107300223
+  pc:
+    U32: 1107300223
+  frame_base: 1070450352
+  is_inlined: true
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\texecutor: Executor = Executor @ 0x3FCDC6B0,\n\texecutor: &mut esp_hal_embassy::executor::thread::Executor = &mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0}"
+      children:
+        - name:
+            Named: executor
+          type_name:
+            Struct: Executor
+          value: Executor @ 0x3FCDC6B0
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+            line: 14
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: inner
+              type_name:
+                Struct: InnerExecutor
+              value: InnerExecutor @ 0x3FCDC6B0
+              children:
+                - name:
+                    Named: inner
+                  type_name:
+                    Struct: Executor
+                  value: Executor @ 0x3FCDC6B0
+                  children:
+                    - name:
+                        Named: inner
+                      type_name:
+                        Struct: SyncExecutor
+                      value: SyncExecutor @ 0x3FCDC6B0
+                      children:
+                        - name:
+                            Named: run_queue
+                          type_name:
+                            Struct: RunQueue
+                          value: RunQueue @ 0x3FCDC6B0
+                          children:
+                            - name:
+                                Named: head
+                              type_name:
+                                Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                              value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                              children:
+                                - name:
+                                    Named: p
+                                  type_name:
+                                    Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
+                                  value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x3FCDC6B0"
+                                  children:
+                                    - name:
+                                        Named: value
+                                      type_name:
+                                        Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                      value: "*mut embassy_executor::raw::TaskHeader @ 0x3FCDC6B0"
+                                      children:
+                                        - name:
+                                            Named: "*value"
+                                          type_name:
+                                            Struct: TaskHeader
+                                          value: TaskHeader @ 0x00000000
+                                          children:
+                                            - name:
+                                                Named: state
+                                              type_name:
+                                                Struct: State
+                                              value: State @ 0x00000010
+                                            - name:
+                                                Named: run_queue_item
+                                              type_name:
+                                                Struct: RunQueueItem
+                                              value: RunQueueItem @ 0x00000014
+                                            - name:
+                                                Named: executor
+                                              type_name:
+                                                Struct: "AtomicPtr<embassy_executor::raw::SyncExecutor>"
+                                              value: "AtomicPtr<embassy_executor::raw::SyncExecutor> @ 0x00000018"
+                                            - name:
+                                                Named: poll_fn
+                                              type_name:
+                                                Struct: "SyncUnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>>"
+                                              value: "SyncUnsafeCell<core::option::Option<unsafe fn(embassy_executor::raw::TaskRef)>> @ 0x0000001C"
+                                            - name:
+                                                Named: timer_queue_item
+                                              type_name:
+                                                Struct: TimerQueueItem
+                                              value: TimerQueueItem @ 0x00000000
+                        - name:
+                            Named: pender
+                          type_name:
+                            Struct: Pender
+                          value: Pender @ 0x3FCDC6B4
+                          children:
+                            - name:
+                                Named: __0
+                              type_name:
+                                Pointer: "*mut ()"
+                              value: "*mut () @ 0x3FCDC6B4"
+        - name:
+            Named: executor
+          type_name:
+            Pointer: "&mut esp_hal_embassy::executor::thread::Executor"
+          value: "&mut esp_hal_embassy::executor::thread::Executor @ 0x3FCDC6B0"
+          source_location:
+            path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+            line: 14
+            column: ~
+            address: ~
+          children:
+            - name:
+                Named: "*executor"
+              type_name:
+                Struct: Executor
+              value: Executor @ 0x00000000
+              children:
+                - name:
+                    Named: inner
+                  type_name:
+                    Struct: InnerExecutor
+                  value: InnerExecutor @ 0x00000000
+                  children:
+                    - name:
+                        Named: inner
+                      type_name:
+                        Struct: Executor
+                      value: Executor @ 0x00000000
+                      children:
+                        - name:
+                            Named: inner
+                          type_name:
+                            Struct: SyncExecutor
+                          value: SyncExecutor @ 0x00000000
+                          children:
+                            - name:
+                                Named: run_queue
+                              type_name:
+                                Struct: RunQueue
+                              value: RunQueue @ 0x00000000
+                              children:
+                                - name:
+                                    Named: head
+                                  type_name:
+                                    Struct: "AtomicPtr<embassy_executor::raw::TaskHeader>"
+                                  value: "AtomicPtr<embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                  children:
+                                    - name:
+                                        Named: p
+                                      type_name:
+                                        Struct: "UnsafeCell<*mut embassy_executor::raw::TaskHeader>"
+                                      value: "UnsafeCell<*mut embassy_executor::raw::TaskHeader> @ 0x00000000"
+                                      children:
+                                        - name:
+                                            Named: value
+                                          type_name:
+                                            Pointer: "*mut embassy_executor::raw::TaskHeader"
+                                          value: "*mut embassy_executor::raw::TaskHeader @ 0x00000000"
+                                          children:
+                                            - name:
+                                                Named: "*value"
+                                              type_name:
+                                                Struct: TaskHeader
+                                              value: TaskHeader
+                            - name:
+                                Named: pender
+                              type_name:
+                                Struct: Pender
+                              value: Pender @ 0x00000004
+                              children:
+                                - name:
+                                    Named: __0
+                                  type_name:
+                                    Pointer: "*mut ()"
+                                  value: "*mut () @ 0x00000004"
+  canonical_frame_address: ~
+- function_name: __xtensa_lx_rt_main_trampoline
+  source_location:
+    path: "C:\\_Espressif\\_Demos\\coredump-c6\\src\\bin\\main.rs"
+    line: 14
+    column:
+      Column: 1
+    address: 1107300213
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2181055622
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070450352
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 0
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1070132996
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 1006707328
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 254
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 255
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1070450352
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107300223
+  pc:
+    U64: 1107300213
+  frame_base: 1070450352
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: ~
+- function_name: Reset
+  source_location:
+    path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\xtensa-lx-rt-0.18.0\\src\\lib.rs"
+    line: 82
+    column:
+      Column: 5
+    address: 1107313795
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: a0
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value:
+        U32: 2151123001
+    - core_register:
+        id: 1
+        roles:
+          - Core: sp
+          - Core: a1
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value:
+        U32: 1070450400
+    - core_register:
+        id: 2
+        roles:
+          - Core: a2
+          - Argument: a2
+          - Return: a2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value:
+        U32: 21
+    - core_register:
+        id: 3
+        roles:
+          - Core: a3
+          - Argument: a3
+          - Return: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value:
+        U32: 1342177280
+    - core_register:
+        id: 4
+        roles:
+          - Core: a4
+          - Argument: a4
+          - Return: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: a5
+          - Argument: a5
+          - Return: a5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 3
+    - core_register:
+        id: 6
+        roles:
+          - Core: a6
+          - Argument: a6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: fp
+          - Core: a7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 1611407360
+    - core_register:
+        id: 8
+        roles:
+          - Core: a8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 2181055971
+    - core_register:
+        id: 9
+        roles:
+          - Core: a9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 10
+        roles:
+          - Core: a10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: a11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 1070449860
+    - core_register:
+        id: 12
+        roles:
+          - Core: a12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 1070449907
+    - core_register:
+        id: 13
+        roles:
+          - Core: a13
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 0
+    - core_register:
+        id: 14
+        roles:
+          - Core: a14
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 1610842116
+    - core_register:
+        id: 15
+        roles:
+          - Core: a15
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 1070449792
+    - core_register:
+        id: 65280
+        roles:
+          - Core: pc
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value:
+        U32: 1107313795
+  pc:
+    U32: 1107313795
+  frame_base: 1070450400
+  is_inlined: false
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown>"
+  canonical_frame_address: ~
