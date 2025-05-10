@@ -15,7 +15,7 @@ impl InterfaceExt for Interface {
     fn write_bulk(&self, endpoint: u8, buf: &[u8], timeout: Duration) -> io::Result<usize> {
         let fut = async {
             let mut ep_out = self.endpoint::<Bulk, Out>(endpoint).unwrap();
-            let mut transfer = ep_out.allocate(64);
+            let mut transfer = ep_out.allocate(buf.len());
             transfer.extend_from_slice(buf);
             ep_out.submit(transfer);
             let Some(comp) = ep_out.wait_next_complete(timeout) else {
