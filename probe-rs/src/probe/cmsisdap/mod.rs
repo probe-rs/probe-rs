@@ -18,8 +18,8 @@ use crate::{
         },
     },
     probe::{
-        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagAccess,
-        JtagDriverState, ProbeFactory, WireProtocol,
+        AutoImplementJtagAccess, BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo,
+        DebugProbeSelector, JtagAccess, JtagDriverState, ProbeFactory, WireProtocol,
         cmsisdap::commands::{
             CmsisDapError, RequestError,
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
@@ -973,6 +973,9 @@ impl DebugProbe for CmsisDap {
         true
     }
 }
+
+// TODO: we will want to replace the default implementation with one that can use vendor extensions.
+impl AutoImplementJtagAccess for CmsisDap {}
 
 impl RawDapAccess for CmsisDap {
     fn core_status_notification(&mut self, status: CoreStatus) -> Result<(), DebugProbeError> {
