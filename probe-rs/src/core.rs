@@ -645,7 +645,7 @@ impl CoreInterface for Core<'_> {
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
-        todo!()
+        self.inner.hw_breakpoints_enabled()
     }
 
     fn architecture(&self) -> Architecture {
