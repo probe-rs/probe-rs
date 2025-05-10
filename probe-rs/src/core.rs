@@ -405,21 +405,6 @@ impl<'probe> Core<'probe> {
         self.inner.return_address()
     }
 
-    /// Find the index of the next available HW breakpoint comparator.
-    fn find_free_breakpoint_comparator_index(&mut self) -> Result<usize, Error> {
-        let mut next_available_hw_breakpoint = 0;
-        for breakpoint in self.inner.hw_breakpoints()? {
-            if breakpoint.is_none() {
-                return Ok(next_available_hw_breakpoint);
-            } else {
-                next_available_hw_breakpoint += 1;
-            }
-        }
-        Err(Error::Other(
-            "No available hardware breakpoints".to_string(),
-        ))
-    }
-
     /// Set a hardware breakpoint
     ///
     /// This function will try to set a hardware breakpoint att `address`.
@@ -433,15 +418,15 @@ impl<'probe> Core<'probe> {
         }
 
         // If there is a breakpoint set already, return its bp_unit_index, else find the next free index.
-        let breakpoint_comparator_index = match self
-            .inner
-            .hw_breakpoints()?
-            .iter()
-            .position(|&bp| bp == Some(address))
-        {
-            Some(breakpoint_comparator_index) => breakpoint_comparator_index,
-            None => self.find_free_breakpoint_comparator_index()?,
-        };
+        let breakpoints = self.inner.hw_breakpoints()?;
+        let breakpoint_comparator_index =
+            match breakpoints.iter().position(|&bp| bp == Some(address)) {
+                Some(breakpoint_comparator_index) => breakpoint_comparator_index,
+                None => breakpoints
+                    .iter()
+                    .position(|bp| bp.is_none())
+                    .ok_or_else(|| Error::Other("No available hardware breakpoints".to_string()))?,
+            };
 
         tracing::debug!(
             "Trying to set HW breakpoint #{} with comparator address  {:#08x}",
