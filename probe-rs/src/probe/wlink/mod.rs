@@ -7,7 +7,7 @@ use std::fmt;
 use std::time::Duration;
 
 use bitvec::{bitvec, order::Lsb0, vec::BitVec, view::BitView};
-use nusb::DeviceInfo;
+use nusb::{DeviceInfo, MaybeFuture};
 use probe_rs_target::ScanChainElement;
 
 use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
@@ -533,7 +533,7 @@ fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
 #[tracing::instrument(skip_all)]
 fn list_wlink_devices() -> Vec<DebugProbeInfo> {
     tracing::debug!("Searching for WCH-Link(RV) probes");
-    let Ok(devices) = nusb::list_devices() else {
+    let Ok(devices) = nusb::list_devices().wait() else {
         return vec![];
     };
     let probes: Vec<_> = devices

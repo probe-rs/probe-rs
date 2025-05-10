@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use nusb::Interface;
+use nusb::{Interface, MaybeFuture};
 
 use crate::probe::{
     DebugProbeError, DebugProbeSelector, ProbeCreationError, usb_util::InterfaceExt,
@@ -21,6 +21,7 @@ pub struct WchLinkUsbDevice {
 impl WchLinkUsbDevice {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
         let device = nusb::list_devices()
+            .wait()
             .map_err(ProbeCreationError::Usb)?
             .filter(|device| selector.matches(device))
             .find(|device| get_wlink_info(device).is_some())
@@ -29,7 +30,7 @@ impl WchLinkUsbDevice {
         let mut endpoint_out = false;
         let mut endpoint_in = false;
 
-        let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
+        let device_handle = device.open().wait().map_err(ProbeCreationError::Usb)?;
 
         let mut configs = device_handle.configurations();
         if let Some(config) = configs.next() {
@@ -53,6 +54,7 @@ impl WchLinkUsbDevice {
         tracing::trace!("Aquired handle for probe");
         let device_handle = device_handle
             .claim_interface(0)
+            .wait()
             .map_err(ProbeCreationError::Usb)?;
         tracing::trace!("Claimed interface 0 of USB device.");
 
