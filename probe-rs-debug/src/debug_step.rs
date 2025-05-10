@@ -337,16 +337,18 @@ fn run_to_address(
     }
 
     let breakpoints = core.hw_breakpoints()?;
-    if core.set_hw_breakpoint(0, target_address).is_ok() {
+    let bp_to_use = breakpoints.iter().position(|bp| bp.is_none()).unwrap_or(0);
+
+    if core.set_hw_breakpoint(bp_to_use, target_address).is_ok() {
         core.run()?;
         // It is possible that we are stepping over long running instructions.
         let status = core.wait_for_core_halted(Duration::from_millis(1000));
 
         // Restore the original breakpoint.
-        if let Some(Some(bp)) = breakpoints.get(0) {
-            core.set_hw_breakpoint(0, *bp)?;
+        if let Some(Some(bp)) = breakpoints.get(bp_to_use) {
+            core.set_hw_breakpoint(bp_to_use, *bp)?;
         } else {
-            core.clear_hw_breakpoint(0)?;
+            core.clear_hw_breakpoint(bp_to_use)?;
         }
 
         match status {
