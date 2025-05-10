@@ -94,8 +94,7 @@ struct FtdiContext {
 
 impl FtdiContext {
     fn sio_write(&mut self, request: u8, value: u16) -> Result<()> {
-        let result = self
-            .handle
+        self.handle
             .control_out(
                 ControlOut {
                     control_type: ControlType::Vendor,
@@ -109,9 +108,6 @@ impl FtdiContext {
             )
             .wait()
             .map_err(std::io::Error::from)?;
-
-        tracing::debug!("Response to {:02X}/{:04X}: {:?}", request, value, result);
-
         Ok(())
     }
 
