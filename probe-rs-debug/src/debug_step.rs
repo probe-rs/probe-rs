@@ -327,31 +327,41 @@ fn run_to_address(
     target_address: u64,
     core: &mut impl CoreInterface,
 ) -> Result<(CoreStatus, u64), DebugError> {
-    Ok(if target_address == program_counter {
+    if target_address == program_counter {
         // No need to step further. e.g. For inline functions we have already stepped to the best available target address..
-        (
+        return Ok((
             core.status()?,
             core.read_core_reg(core.program_counter().id())?
                 .try_into()?,
-        )
-    } else if core.set_hw_breakpoint(0, target_address).is_ok() {
+        ));
+    }
+
+    let breakpoints = core.hw_breakpoints()?;
+    if core.set_hw_breakpoint(0, target_address).is_ok() {
         core.run()?;
         // It is possible that we are stepping over long running instructions.
-        match core.wait_for_core_halted(Duration::from_millis(1000)) {
+        let status = core.wait_for_core_halted(Duration::from_millis(1000));
+
+        // Restore the original breakpoint.
+        if let Some(Some(bp)) = breakpoints.get(0) {
+            core.set_hw_breakpoint(0, *bp)?;
+        } else {
+            core.clear_hw_breakpoint(0)?;
+        }
+
+        match status {
             Ok(()) => {
                 // We have hit the target address, so all is good.
                 // NOTE: It is conceivable that the core has halted, but we have not yet stepped to the target address. (e.g. the user tries to step out of a function, but there is another breakpoint active before the end of the function.)
                 //       This is a legitimate situation, so we clear the breakpoint at the target address, and pass control back to the user
-                core.clear_hw_breakpoint(0)?;
-                (
+                Ok((
                     core.status()?,
                     core.read_core_reg(core.program_counter().id())?
                         .try_into()?,
-                )
+                ))
             }
             Err(error) => {
                 program_counter = core.halt(Duration::from_millis(500))?.pc;
-                core.clear_hw_breakpoint(0)?;
                 if matches!(
                     error,
                     probe_rs::Error::Arm(ArmError::Timeout)
@@ -364,21 +374,22 @@ fn run_to_address(
                         target_address,
                         program_counter
                     );
-                    (core.status()?, program_counter)
+                    Ok((core.status()?, program_counter))
                 } else {
                     // Something else is wrong.
-                    return Err(DebugError::Other(format!(
+                    Err(DebugError::Other(format!(
                         "Unexpected error while waiting for the core to halt after stepping to {:#010X}. Forced a halt at {:#010X}. {:?}.",
                         program_counter, target_address, error
-                    )));
+                    )))
                 }
             }
         }
     } else {
         // If we don't have breakpoints to use, we have to rely on single stepping.
         // TODO: In theory, this could go on for a long time. Should we consider NOT allowing this kind of stepping if there are no breakpoints available?
-        step_to_address(target_address..=u64::MAX, core)?
-    })
+
+        Ok(step_to_address(target_address..=u64::MAX, core)?)
+    }
 }
 
 /// In some cases, we need to single-step the core, until ONE of the following conditions are met:
