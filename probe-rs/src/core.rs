@@ -464,7 +464,7 @@ impl<'probe> Core<'probe> {
             .inner
             .hw_breakpoints()?
             .iter()
-            .position(|bp| bp.is_some() && bp.unwrap() == address);
+            .position(|bp| *bp == Some(address));
 
         tracing::debug!(
             "Will clear HW breakpoint    #{} with comparator address    {:#08x}",
@@ -619,8 +619,9 @@ impl CoreInterface for Core<'_> {
         self.set_hw_breakpoint(addr)
     }
 
-    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), Error> {
-        self.clear_all_hw_breakpoints()
+    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
+        self.inner.clear_hw_breakpoint(unit_index)?;
+        Ok(())
     }
 
     fn registers(&self) -> &'static registers::CoreRegisters {
