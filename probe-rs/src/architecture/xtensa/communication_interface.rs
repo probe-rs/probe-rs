@@ -135,6 +135,9 @@ pub struct XtensaCoreProperties {
 
     /// Configurable options in the Windowed Register Option
     pub window_option_properties: WindowProperties,
+
+    /// The maximum interrupt level that can be used by user code.
+    pub max_user_handler_level: u32,
 }
 
 impl Default for XtensaCoreProperties {
@@ -144,6 +147,7 @@ impl Default for XtensaCoreProperties {
             debug_level: DebugLevel::L6,
             memory_ranges: HashMap::new(),
             window_option_properties: WindowProperties::lx(64),
+            max_user_handler_level: 3,
         }
     }
 }
@@ -414,18 +418,27 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Steps the core by one instruction.
-    pub fn step(&mut self, by: u32, intlevel: u32) -> Result<(), XtensaError> {
+    pub fn step(&mut self, by: u32) -> Result<(), XtensaError> {
         // Instructions executed below icountlevel increment the ICOUNT register.
-        self.schedule_write_register(ICountLevel(intlevel + 1))?;
+        self.schedule_write_register(ICountLevel(self.core_properties.max_user_handler_level + 1))?;
 
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
         self.schedule_write_register(ICount(-((1 + by) as i32) as u32))?;
 
         self.resume_core()?;
-        self.wait_for_core_halted(Duration::from_millis(100))?;
+        // TODO: instructions like WAITI should be emulated as they are not single steppable.
+        // For now it's good enough to force a halt on timeout (instead of crashing) although it can
+        // stop in a long-running interrupt handler which isn't what the user wants. Maybe we should
+        // hardcode the intlevel to max_user_handler_level so that we step into interrupt handlers.
+        // Even then, WAITI should be detected and emulated.
+        match self.wait_for_core_halted(Duration::from_millis(100)) {
+            Ok(()) => {}
+            Err(XtensaError::Timeout) => self.halt(Duration::from_millis(100))?,
+            Err(e) => return Err(e),
+        }
 
         // Avoid stopping again
-        self.schedule_write_register(ICountLevel(self.core_properties.debug_level as u32 + 1))?;
+        self.schedule_write_register(ICountLevel(0))?;
 
         Ok(())
     }
