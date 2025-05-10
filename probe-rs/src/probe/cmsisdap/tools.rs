@@ -3,10 +3,7 @@ use crate::probe::{
     DebugProbeInfo, DebugProbeSelector, ProbeCreationError, cmsisdap::CmsisDapFactory,
 };
 use hidapi::HidApi;
-use nusb::{
-    DeviceInfo,
-    transfer::{Direction, EndpointType},
-};
+use nusb::{DeviceInfo, MaybeFuture, descriptors::TransferType, transfer::Direction};
 
 const USB_CLASS_HID: u8 = 0x03;
 
@@ -19,7 +16,7 @@ const USB_CLASS_HID: u8 = 0x03;
 pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
     tracing::debug!("Searching for CMSIS-DAP probes using nusb");
 
-    let mut probes = match nusb::list_devices() {
+    let mut probes = match nusb::list_devices().wait() {
         Ok(devices) => devices
             .filter_map(|device| get_cmsisdap_info(&device))
             .collect(),
@@ -149,7 +146,7 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
     let vid = device_info.vendor_id();
     let pid = device_info.product_id();
 
-    let device = device_info.open().ok()?;
+    let device = device_info.open().wait().ok()?;
 
     // Go through interfaces to try and find a v2 interface.
     // The CMSIS-DAPv2 spec says that v2 interfaces should use a specific
@@ -181,13 +178,13 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
             let eps: Vec<_> = i_desc.endpoints().collect();
 
             // Check the first endpoint is bulk out
-            if eps[0].transfer_type() != EndpointType::Bulk || eps[0].direction() != Direction::Out
+            if eps[0].transfer_type() != TransferType::Bulk || eps[0].direction() != Direction::Out
             {
                 continue;
             }
 
             // Check the second endpoint is bulk in
-            if eps[1].transfer_type() != EndpointType::Bulk || eps[1].direction() != Direction::In {
+            if eps[1].transfer_type() != TransferType::Bulk || eps[1].direction() != Direction::In {
                 continue;
             }
 
@@ -195,14 +192,14 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
             let mut swo_ep = None;
 
             if eps.len() > 2
-                && eps[2].transfer_type() == EndpointType::Bulk
+                && eps[2].transfer_type() == TransferType::Bulk
                 && eps[2].direction() == Direction::In
             {
                 swo_ep = Some((eps[2].address(), eps[2].max_packet_size()));
             }
 
             // Attempt to claim this interface
-            match device.claim_interface(interface.interface_number()) {
+            match device.claim_interface(interface.interface_number()).wait() {
                 Ok(handle) => {
                     tracing::debug!("Opening {:04x}:{:04x} in CMSIS-DAPv2 mode", vid, pid);
                     return Some(CmsisDapDevice::V2 {
@@ -246,7 +243,7 @@ pub fn open_device_from_selector(
     // Try using nusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver
     // or permission issues with opening bulk devices.
-    if let Ok(devices) = nusb::list_devices() {
+    if let Ok(devices) = nusb::list_devices().wait() {
         for device in devices {
             tracing::trace!("Trying device {:?}", device);
 

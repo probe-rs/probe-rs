@@ -49,7 +49,7 @@ object = { version = "0.36", default-features = false, features = [
     "read_core",
     "std",
 ] }
-nusb = "0.1.12"
+nusb = { git = "https://github.com/kevinmehall/nusb.git" }
 futures-lite = { version = "2", default-features = false }
 async-io = "2"
 scroll = "0.12"
