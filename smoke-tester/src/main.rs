@@ -478,6 +478,7 @@ impl<'dut> TestTracker<'dut> {
                 println_test_status!(self, yellow, "Missing resource for test: {}", message);
             }
             Err(_e) => {
+                println_test_status!(self, red, "{_e:?}");
                 println_test_status!(self, red, "Test failed in {formatted_duration}.");
             }
         };
