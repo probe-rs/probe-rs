@@ -45,7 +45,7 @@ use crate::{
             },
             info::{InfoEvent, TargetInfoRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
-            monitor::{MonitorMode, MonitorOptions, MonitorRequest},
+            monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
                 ListProbesRequest, SelectProbeRequest, SelectProbeResult,
@@ -501,7 +501,7 @@ impl SessionInterface {
         mode: MonitorMode,
         options: MonitorOptions,
         on_msg: impl AsyncFnMut(MonitorEvent),
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<MonitorExitReason> {
         self.client
             .send_and_read_stream::<MonitorEndpoint, MonitorEvent, _>(
                 &MonitorRequest {

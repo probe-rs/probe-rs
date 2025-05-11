@@ -20,6 +20,8 @@ pub enum ReturnReason<R> {
     Timeout,
     /// Cancelled
     Cancelled,
+    /// The core locked up
+    LockedUp,
 }
 
 impl RunLoop {
@@ -124,26 +126,27 @@ impl RunLoop {
         // check for halt first, poll rtt after.
         // this is important so we do one last poll after halt, so we flush all messages
         // the core printed before halting, such as a panic message.
-        let mut return_reason = None;
-        match core.status()? {
+        let return_reason = match core.status()? {
             probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core) {
-                Ok(Some(r)) => return_reason = Some(Ok(ReturnReason::Predicate(r))),
-                Err(e) => return_reason = Some(Err(e)),
+                Ok(Some(r)) => Some(Ok(ReturnReason::Predicate(r))),
+                Err(e) => Some(Err(e)),
                 Ok(None) => {
                     // Poll at 1kHz if the core was halted, to speed up reading strings
                     // from semihosting. The core is not expected to be halted for other reasons.
                     next_poll = Duration::from_millis(1);
                     core.run()?;
+                    None
                 }
             },
             probe_rs::CoreStatus::Running
             | probe_rs::CoreStatus::Sleeping
             | probe_rs::CoreStatus::Unknown => {
                 // Carry on
+                None
             }
 
-            probe_rs::CoreStatus::LockedUp => anyhow::bail!("The core is locked up."),
-        }
+            probe_rs::CoreStatus::LockedUp => Some(Ok(ReturnReason::LockedUp)),
+        };
 
         let poller_result = poller.poll(core);
 
