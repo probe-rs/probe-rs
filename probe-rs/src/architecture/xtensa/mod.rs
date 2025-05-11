@@ -168,7 +168,7 @@ impl<'probe> Xtensa<'probe> {
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
-    fn skip_breakpoint_instruction(&mut self) -> Result<(), Error> {
+    fn skip_breakpoint(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
         if !self.state.pc_written {
             let debug_cause = self.debug_cause()?;
@@ -183,10 +183,22 @@ impl<'probe> Xtensa<'probe> {
 
             if pc_increment > 0 {
                 // Step through the breakpoint
-                let pc = self.program_counter().id;
-                let mut pc_value = self.read_core_reg(pc)?;
-                pc_value.increment_address(pc_increment)?;
-                self.write_core_reg(pc, pc_value)?;
+                let mut pc_value = self.interface.read_register_untyped(Register::CurrentPc)?;
+                pc_value += pc_increment;
+                self.interface
+                    .write_register_untyped(Register::CurrentPc, pc_value)?;
+            } else if debug_cause.ibreak_exception() {
+                let pc_value = self.interface.read_register_untyped(Register::CurrentPc)?;
+                let bps = self.hw_breakpoints()?;
+                if let Some(bp_unit) = bps.iter().position(|bp| *bp == Some(pc_value as u64)) {
+                    // Disable the breakpoint
+                    self.clear_hw_breakpoint(bp_unit)?;
+                    // Single step
+                    let ps = self.current_ps()?;
+                    self.interface.step(1, ps.intlevel())?;
+                    // Re-enable the breakpoint
+                    self.set_hw_breakpoint(bp_unit, pc_value as u64)?;
+                }
             }
         }
 
@@ -476,7 +488,7 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
-        self.skip_breakpoint_instruction()?;
+        self.skip_breakpoint()?;
         Ok(self.interface.resume_core()?)
     }
 
@@ -499,10 +511,12 @@ impl CoreInterface for Xtensa<'_> {
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
-        self.skip_breakpoint_instruction()?;
-        let ps = self.current_ps()?;
+        self.skip_breakpoint()?;
 
+        // Only count instructions in the current context.
+        let ps = self.current_ps()?;
         self.interface.step(1, ps.intlevel())?;
+
         self.on_halted()?;
 
         self.core_info()

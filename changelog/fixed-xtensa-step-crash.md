@@ -1,0 +1,1 @@
+Fixed a crash during step operations while debugging Xtensa CPUs.

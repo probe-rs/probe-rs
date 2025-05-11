@@ -422,10 +422,18 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         self.schedule_write_register(ICount(-((1 + by) as i32) as u32))?;
 
         self.resume_core()?;
-        self.wait_for_core_halted(Duration::from_millis(100))?;
+        // TODO: instructions like WAITI should be emulated as they are not single steppable.
+        // For now it's good enough to force a halt on timeout (instead of crashing) although it can
+        // stop in a long-running interrupt handler which isn't necessarily what the user wants.
+        // Even then, WAITI should be detected and emulated.
+        match self.wait_for_core_halted(Duration::from_millis(100)) {
+            Ok(()) => {}
+            Err(XtensaError::Timeout) => self.halt(Duration::from_millis(100))?,
+            Err(e) => return Err(e),
+        }
 
         // Avoid stopping again
-        self.schedule_write_register(ICountLevel(self.core_properties.debug_level as u32 + 1))?;
+        self.schedule_write_register(ICountLevel(0))?;
 
         Ok(())
     }

@@ -3,7 +3,7 @@ use std::time::Instant;
 use colored::Colorize;
 use linkme::distributed_slice;
 use probe_rs::{
-    Architecture, Core, MemoryInterface, Session,
+    Architecture, Core, CoreInterface, MemoryInterface, Session,
     config::MemoryRegion,
     flashing::{DownloadOptions, FlashProgress, FormatKind, download_file_with_options},
 };
@@ -247,6 +247,24 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
         println_test_status!(tracker, blue, "{} breakpoints supported", num_breakpoints);
 
+        // Test CoreInterface
+        for i in 0..num_breakpoints {
+            CoreInterface::set_hw_breakpoint(
+                core,
+                i as usize,
+                initial_breakpoint_addr + 4 * i as u64,
+            )
+            .into_diagnostic()?;
+        }
+
+        // TODO: check if a breakpoint can be overwritten - the position argument is currently ignored
+
+        // Clear all breakpoints again
+        for i in 0..num_breakpoints {
+            CoreInterface::clear_hw_breakpoint(core, i as usize).into_diagnostic()?;
+        }
+
+        // Test inherent methods
         for i in 0..num_breakpoints {
             core.set_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
                 .into_diagnostic()?;
