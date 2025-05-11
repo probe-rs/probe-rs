@@ -247,17 +247,37 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
         println_test_status!(tracker, blue, "{} breakpoints supported", num_breakpoints);
 
-        // Test CoreInterface
-        for i in 0..num_breakpoints {
-            CoreInterface::set_hw_breakpoint(
-                core,
-                i as usize,
-                initial_breakpoint_addr + 4 * i as u64,
-            )
-            .into_diagnostic()?;
+        if num_breakpoints == 0 {
+            println_test_status!(tracker, blue, "No HW breakpoints supported");
+            continue;
         }
 
-        // TODO: check if a breakpoint can be overwritten - the position argument is currently ignored
+        let breakpoint_addresses = (0..num_breakpoints as u64)
+            .map(|i| initial_breakpoint_addr + 4 * i)
+            .collect::<Vec<_>>();
+
+        // Test CoreInterface
+        for (i, address) in breakpoint_addresses.iter().enumerate() {
+            CoreInterface::set_hw_breakpoint(core, i, *address).into_diagnostic()?;
+        }
+
+        let breakpoints = core.hw_breakpoints().into_diagnostic()?;
+        for (i, address) in breakpoint_addresses.iter().enumerate() {
+            assert_eq!(
+                breakpoints[i],
+                Some(*address),
+                "Error reading back HW breakpoint at index {i}"
+            );
+        }
+
+        // Now check that breakpoints can be overwritten.
+        CoreInterface::set_hw_breakpoint(core, 0, breakpoint_addresses[0] + 4).into_diagnostic()?;
+        let breakpoints = core.hw_breakpoints().into_diagnostic()?;
+        assert_eq!(
+            breakpoints[0],
+            Some(breakpoint_addresses[0] + 4),
+            "Error reading back HW breakpoint at index 0"
+        );
 
         // Clear all breakpoints again
         for i in 0..num_breakpoints {
@@ -273,6 +293,10 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
         // Try to set an additional breakpoint, which should fail
         core.set_hw_breakpoint(initial_breakpoint_addr + num_breakpoints as u64 * 4)
             .expect_err("Trying to use more than supported number of breakpoints should fail.");
+
+        // However, we should be able to update a specific breakpoint
+        core.set_hw_breakpoint_unit(0, initial_breakpoint_addr + num_breakpoints as u64 * 4)
+            .into_diagnostic()?;
 
         // Clear all breakpoints again
         for i in 0..num_breakpoints {

@@ -407,7 +407,7 @@ impl<'probe> Core<'probe> {
 
     /// Set a hardware breakpoint
     ///
-    /// This function will try to set a hardware breakpoint att `address`.
+    /// This function will try to set a hardware breakpoint at `address`.
     ///
     /// The amount of hardware breakpoints which are supported is chip specific,
     /// and can be queried using the `get_available_breakpoint_units` function.
@@ -436,8 +436,28 @@ impl<'probe> Core<'probe> {
 
         // Actually set the breakpoint. Even if it has been set, set it again so it will be active.
         self.inner
-            .set_hw_breakpoint(breakpoint_comparator_index, address)?;
-        Ok(())
+            .set_hw_breakpoint(breakpoint_comparator_index, address)
+    }
+
+    /// Set a hardware breakpoint
+    ///
+    /// This function will try to set a given hardware breakpoint unit to `address`.
+    ///
+    /// The amount of hardware breakpoints which are supported is chip specific,
+    /// and can be queried using the `get_available_breakpoint_units` function.
+    #[tracing::instrument(skip(self))]
+    pub fn set_hw_breakpoint_unit(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+        if !self.inner.hw_breakpoints_enabled() {
+            self.enable_breakpoints(true)?;
+        }
+
+        tracing::debug!(
+            "Trying to set HW breakpoint #{} with comparator address  {:#08x}",
+            unit_index,
+            addr
+        );
+
+        self.inner.set_hw_breakpoint(unit_index, addr)
     }
 
     /// Set a hardware breakpoint
@@ -600,8 +620,8 @@ impl CoreInterface for Core<'_> {
         self.enable_breakpoints(state)
     }
 
-    fn set_hw_breakpoint(&mut self, _unit_index: usize, addr: u64) -> Result<(), Error> {
-        self.set_hw_breakpoint(addr)
+    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+        self.set_hw_breakpoint_unit(unit_index, addr)
     }
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
