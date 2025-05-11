@@ -299,7 +299,9 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
             .into_diagnostic()?;
 
         // Clear all breakpoints again
-        for i in 0..num_breakpoints {
+        core.clear_hw_breakpoint(initial_breakpoint_addr + num_breakpoints as u64 * 4)
+            .into_diagnostic()?;
+        for i in 1..num_breakpoints {
             core.clear_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
                 .into_diagnostic()?;
         }
