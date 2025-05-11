@@ -6,9 +6,7 @@ use super::{
     unit_info::UnitInfo,
     variable::*,
 };
-use crate::{
-    SourceLocation, VerifiedBreakpoint, registers, stack_frame::StackFrameInfo, unit_info::RangeExt,
-};
+use crate::{SourceLocation, VerifiedBreakpoint, stack_frame::StackFrameInfo, unit_info::RangeExt};
 use gimli::{
     BaseAddresses, DebugFrame, RunTimeEndian, UnwindContext, UnwindSection, UnwindTableRow,
 };
@@ -38,14 +36,18 @@ pub struct DebugInfo {
 
     pub(crate) unit_infos: Vec<UnitInfo>,
     pub(crate) endianness: gimli::RunTimeEndian,
+
+    pub(crate) addr2line: Option<addr2line::Loader>,
 }
 
 impl DebugInfo {
     /// Read debug info directly from a ELF file.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<DebugInfo, DebugError> {
-        let data = std::fs::read(path)?;
+        let data = std::fs::read(path.as_ref())?;
 
-        DebugInfo::from_raw(&data)
+        let mut this = DebugInfo::from_raw(&data)?;
+        this.addr2line = addr2line::Loader::new(path).ok();
+        Ok(this)
     }
 
     /// Parse debug information directly from a buffer containing an ELF file.
@@ -108,6 +110,7 @@ impl DebugInfo {
             debug_line_section,
             unit_infos,
             endianness,
+            addr2line: None,
         })
     }
 
@@ -312,6 +315,49 @@ impl DebugInfo {
         Ok(())
     }
 
+    /// Best-effort way to look up a function name without debuginfo.
+    fn get_stackframe_from_symbols(
+        &self,
+        address: u64,
+        unwind_registers: &DebugRegisters,
+    ) -> Result<Vec<StackFrame>, DebugError> {
+        let Some(ref addr2line) = self.addr2line else {
+            return Ok(vec![]);
+        };
+        let Some(fn_name) = addr2line.find_symbol(address) else {
+            return Ok(vec![]);
+        };
+
+        let mut fn_name = fn_name.to_string();
+        for lang in [
+            gimli::DW_LANG_Rust,
+            gimli::DW_LANG_C_plus_plus,
+            gimli::DW_LANG_C_plus_plus_03,
+            gimli::DW_LANG_C_plus_plus_11,
+            gimli::DW_LANG_C_plus_plus_14,
+        ] {
+            if let Some(demangle) = addr2line::demangle(&fn_name, lang) {
+                fn_name = demangle;
+                break;
+            }
+        }
+
+        Ok(vec![StackFrame {
+            id: get_object_reference(),
+            function_name: format!(
+                "{fn_name} @ {address:#0width$x}>",
+                width = (unwind_registers.get_address_size_bytes() * 2 + 2)
+            ),
+            source_location: None,
+            registers: unwind_registers.clone(),
+            pc: RegisterValue::from(address),
+            frame_base: None,
+            is_inlined: false,
+            local_variables: None,
+            canonical_frame_address: None,
+        }])
+    }
+
     /// Returns a populated (resolved) [`StackFrame`] struct.
     /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`,
     /// while taking into account the appropriate strategy for lazy-loading of variables.
@@ -320,25 +366,24 @@ impl DebugInfo {
         memory: &mut impl MemoryInterface,
         address: u64,
         cfa: Option<u64>,
-        unwind_registers: &registers::DebugRegisters,
+        unwind_registers: &DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         // When reporting the address, we format it as a hex string, with the width matching
         // the configured size of the datatype used in the `RegisterValue` address.
         let unknown_function = || {
             format!(
-                "<unknown function @ {:#0width$x}>",
-                address,
+                "<unknown function @ {address:#0width$x}>",
                 width = (unwind_registers.get_address_size_bytes() * 2 + 2)
             )
         };
 
         let Ok((unit_info, functions)) = self.get_function_dies(address) else {
             // No function found at the given address.
-            return Ok(vec![]);
+            return self.get_stackframe_from_symbols(address, unwind_registers);
         };
         if functions.is_empty() {
             // No function found at the given address.
-            return Ok(vec![]);
+            return self.get_stackframe_from_symbols(address, unwind_registers);
         }
 
         // The first function is the non-inlined function, and the rest are inlined functions.
@@ -503,7 +548,7 @@ impl DebugInfo {
 
     pub(crate) fn unwind_impl(
         &self,
-        initial_registers: registers::DebugRegisters,
+        initial_registers: DebugRegisters,
         memory: &mut impl MemoryInterface,
         exception_handler: &dyn ExceptionInterface,
         instruction_set: Option<InstructionSet>,

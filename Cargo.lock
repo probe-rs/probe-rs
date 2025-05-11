@@ -3021,6 +3021,7 @@ dependencies = [
 name = "probe-rs-debug"
 version = "0.27.0"
 dependencies = [
+ "addr2line",
  "bitfield",
  "gimli 0.31.1",
  "insta",

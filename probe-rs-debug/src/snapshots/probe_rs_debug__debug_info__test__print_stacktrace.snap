@@ -66,7 +66,7 @@ Frame:
   column: Some(Column(1))
  frame_base:      Some(20003ff8)
 Frame:
- function:        <unknown function @ 0x000000ce> : ERROR: UNWIND: Failed to read value for register R7/FP from address 0x0000000000000000 (4 bytes): The coredump does not include the memory for address 0x0 of size 0x4
+ function:        Reset @ 0x000000ce> : ERROR: UNWIND: Failed to read value for register R7/FP from address 0x0000000000000000 (4 bytes): The coredump does not include the memory for address 0x0 of size 0x4
  source_location:
 None
  frame_base:      None
