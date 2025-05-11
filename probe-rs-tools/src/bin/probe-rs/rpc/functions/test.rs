@@ -175,6 +175,9 @@ fn list_tests_impl(
             version: 1,
             tests: vec![],
         }),
+        ReturnReason::LockedUp => {
+            anyhow::bail!("The target locked up while waiting for the test list.")
+        }
     }
 }
 
@@ -266,6 +269,9 @@ fn run_test_impl(
             expected_outcome, outcome
         ))),
         ReturnReason::Cancelled => Ok(TestResult::Cancelled),
+        ReturnReason::LockedUp => {
+            anyhow::bail!("The target locked up while running the test.")
+        }
     }
 }
 

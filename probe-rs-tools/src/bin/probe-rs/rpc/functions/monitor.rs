@@ -4,10 +4,10 @@ use crate::{
     rpc::{
         Key,
         functions::{
-            MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, RpcSpawnContext, RttTopic,
-            SemihostingTopic, WireTxImpl, flash::BootInfo,
+            MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, RpcResult, RpcSpawnContext,
+            RttTopic, SemihostingTopic, WireTxImpl, flash::BootInfo,
         },
-        utils::run_loop::{RunLoop, RunLoopPoller},
+        utils::run_loop::{ReturnReason, RunLoop, RunLoopPoller},
     },
     util::rtt::client::RttClient,
 };
@@ -62,6 +62,27 @@ pub struct MonitorRequest {
     pub mode: MonitorMode,
     pub options: MonitorOptions,
 }
+
+/// Reasons why the firmware exited.
+#[derive(Serialize, Deserialize, Schema)]
+pub enum MonitorExitReason {
+    Success,
+    SemihostingExit(Result<(), SemihostingExitError>),
+    UnexpectedExit(String),
+}
+
+/// Details of an unexpected exit, triggered by a semihosting call.
+#[derive(Serialize, Deserialize, Schema)]
+pub struct SemihostingExitError {
+    /// The reason for the exit.
+    pub reason: u32,
+    /// The subcode of the exit, if the call was EXIT_EXTENDED.
+    pub subcode: Option<u32>,
+}
+
+/// If a communication error occurs, an error is returned. If we detect that the firmware exited,
+/// a `MonitorExitReason` is returned.
+pub type MonitorResponse = RpcResult<MonitorExitReason>;
 
 pub async fn monitor(
     mut ctx: RpcSpawnContext,
@@ -153,7 +174,7 @@ fn monitor_impl(
     ctx: RpcSpawnContext,
     request: MonitorRequest,
     sender: MonitorSender,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<MonitorExitReason> {
     let mut session = ctx.session_blocking(request.sessid);
 
     let mut semihosting_sink =
@@ -189,7 +210,7 @@ fn monitor_impl(
         },
     });
 
-    run_loop.run_until(
+    let exit_reason = run_loop.run_until(
         &mut core,
         request.options.catch_hardfault,
         request.options.catch_reset,
@@ -198,7 +219,12 @@ fn monitor_impl(
         |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
     )?;
 
-    Ok(())
+    match exit_reason {
+        ReturnReason::Predicate(reason) => Ok(reason),
+        ReturnReason::Timeout => anyhow::bail!("Run loop exited due to an unexpected timeout"),
+        ReturnReason::Cancelled => anyhow::bail!("Exited due to user request"),
+        ReturnReason::LockedUp => anyhow::bail!("Run loop exited due to a locked up core"),
+    }
 }
 
 pub struct RttPoller<'c, S>
@@ -283,16 +309,22 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
         &mut self,
         halt_reason: HaltReason,
         core: &mut Core<'_>,
-    ) -> anyhow::Result<Option<()>> {
+    ) -> anyhow::Result<Option<MonitorExitReason>> {
         let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
-            anyhow::bail!("CPU halted unexpectedly. Halt reason: {halt_reason:?}");
+            return Ok(Some(MonitorExitReason::UnexpectedExit(format!(
+                "{:?}",
+                halt_reason
+            ))));
         };
 
         match cmd {
-            SemihostingCommand::ExitSuccess => Ok(Some(())), // Exit the run loop
-            SemihostingCommand::ExitError(details) => {
-                anyhow::bail!("Semihosting indicated exit with {details}")
-            }
+            SemihostingCommand::ExitSuccess => Ok(Some(MonitorExitReason::SemihostingExit(Ok(())))), // Exit the run loop
+            SemihostingCommand::ExitError(details) => Ok(Some(MonitorExitReason::SemihostingExit(
+                Err(SemihostingExitError {
+                    reason: details.reason,
+                    subcode: details.exit_status.or(details.subcode),
+                }),
+            ))),
             SemihostingCommand::Unknown(details) => {
                 tracing::warn!(
                     "Target wanted to run semihosting operation {:#x} with parameter {:#x},\
@@ -315,7 +347,10 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
                 }
                 Ok(None)
             }
-            other => anyhow::bail!("Unexpected semihosting command {:?}", other),
+            other => Ok(Some(MonitorExitReason::UnexpectedExit(format!(
+                "Unexpected semihosting command {:?}",
+                other,
+            )))),
         }
     }
 }
