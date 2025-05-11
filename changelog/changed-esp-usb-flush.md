@@ -1,0 +1,1 @@
+Changed the initial buffer flush procedure of ESP USB-JTAG probes.
