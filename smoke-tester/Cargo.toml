@@ -20,6 +20,8 @@ clap = { version = "4.5", features = ["derive"] }
 colored = "3"
 linkme = "0.3.25"
 thiserror.workspace = true
+smol = "2"
+web-time = { workspace = true }
 
 [lints]
 workspace = true

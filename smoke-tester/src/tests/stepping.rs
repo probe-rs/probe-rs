@@ -7,12 +7,11 @@ use probe_rs::{
     config::MemoryRegion, probe::DebugProbeError,
 };
 
-use crate::{CORE_TESTS, TestFailure, TestResult, TestTracker, println_test_status};
+use crate::{TestFailure, TestResult, TestTracker, println_test_status};
 
 const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
 
-#[distributed_slice(CORE_TESTS)]
-fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
+pub async fn test_stepping(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> TestResult {
     println_test_status!(tracker, blue, "Testing stepping on core {}...", core.id());
 
     if core.architecture() != Architecture::Arm {
@@ -78,7 +77,7 @@ fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
     let break_address = code_load_address + 0x6;
     core.run()?;
 
-    match core.wait_for_core_halted(Duration::from_millis(100)) {
+    match core.wait_for_core_halted(Duration::from_millis(100)).await {
         Ok(()) => {}
         Err(Error::Probe(DebugProbeError::Timeout)) => {
             println_test_status!(tracker, yellow, "Core did not halt after timeout!");
@@ -127,7 +126,7 @@ fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
     let break_address = code_load_address + 0x10;
 
-    match core.wait_for_core_halted(Duration::from_millis(100)) {
+    match core.wait_for_core_halted(Duration::from_millis(100)).await {
         Ok(()) => {}
         Err(Error::Probe(DebugProbeError::Timeout)) => {
             println_test_status!(tracker, yellow, "Core did not halt after timeout!");

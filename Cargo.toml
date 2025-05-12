@@ -15,7 +15,7 @@ members = [
     "probe-rs",
     "probe-rs-target",
     # "rtthost",
-    # "smoke-tester",
+    "smoke-tester",
     # "xtask",
     # "target-gen",
     # "probe-rs-tools",

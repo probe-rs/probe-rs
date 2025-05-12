@@ -88,5 +88,5 @@ pub async fn wait(timeout: Duration) {
 
 #[cfg(not(target_family = "wasm"))]
 pub async fn wait(timeout: Duration) {
-    Timer::after(timeout).await;
+    async_io::Timer::after(timeout).await;
 }
