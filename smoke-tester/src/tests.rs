@@ -1,5 +1,4 @@
 use colored::Colorize;
-use linkme::distributed_slice;
 use probe_rs::{
     Architecture, Core, CoreInterface, MemoryInterface, Session,
     config::MemoryRegion,
@@ -11,10 +10,9 @@ pub mod stepping;
 
 use miette::{IntoDiagnostic, Result, WrapErr};
 
-use crate::{CORE_TESTS, SESSION_TESTS, TestFailure, TestResult, TestTracker, println_test_status};
+use crate::{TestFailure, TestResult, TestTracker, println_test_status};
 
-#[distributed_slice(CORE_TESTS)]
-pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> TestResult {
+pub async fn test_register_read(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> TestResult {
     println_test_status!(tracker, blue, "Testing register read...");
 
     let register = core.registers();
@@ -22,6 +20,7 @@ pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> TestResult 
     for register in register.core_registers() {
         let _: u64 = core
             .read_core_reg(register)
+            .await
             .into_diagnostic()
             .with_context(|| format!("Failed to read register {}", register.name()))?;
     }
@@ -29,8 +28,7 @@ pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> TestResult 
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
+pub async fn test_register_write(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> TestResult {
     println_test_status!(tracker, blue, "Testing register write...");
 
     let register = core.registers();
@@ -56,9 +54,10 @@ fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
         // Write new value
 
         core.write_core_reg(register, test_value)
+            .await
             .into_diagnostic()?;
 
-        let readback: u64 = core.read_core_reg(register).into_diagnostic()?;
+        let readback: u64 = core.read_core_reg(register).await.into_diagnostic()?;
 
         assert_eq!(
             test_value, readback,
@@ -71,10 +70,10 @@ fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
     Ok(())
 }
 
-fn test_write_read(
+async fn test_write_read(
     scenario: &str,
-    tracker: &TestTracker,
-    core: &mut Core,
+    tracker: &TestTracker<'_>,
+    core: &mut Core<'_>,
     address: u64,
     data: &[u8],
 ) -> TestResult {
@@ -86,11 +85,13 @@ fn test_write_read(
     );
 
     core.write(address, data)
+        .await
         .into_diagnostic()
         .wrap_err_with(|| format!("write to address {:#010X}", address))?;
 
     let mut read_data = vec![0; data.len()];
     core.read(address, &mut read_data)
+        .await
         .into_diagnostic()
         .wrap_err_with(|| format!("read from address {:#010X}", address))?;
 
@@ -105,8 +106,7 @@ fn test_write_read(
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
+pub async fn test_memory_access(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> TestResult {
     let memory_regions = core
         .memory_regions()
         .filter_map(MemoryRegion::as_ram_region)
@@ -128,8 +128,8 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
         println_test_status!(tracker, blue, "Test - RAM Start 32");
         // Write first word
-        core.write_word_32(ram_start, 0xababab)?;
-        let value = core.read_word_32(ram_start).into_diagnostic()?;
+        core.write_word_32(ram_start, 0xababab).await?;
+        let value = core.read_word_32(ram_start).await.into_diagnostic()?;
         assert_eq!(
             value, 0xababab,
             "Error reading back 4 bytes from address {:#010X}",
@@ -139,8 +139,8 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         println_test_status!(tracker, blue, "Test - RAM End 32");
         // Write last word
         let addr = ram_start + ram_size - 4;
-        core.write_word_32(addr, 0xababac).into_diagnostic()?;
-        let value = core.read_word_32(addr).into_diagnostic()?;
+        core.write_word_32(addr, 0xababac).await.into_diagnostic()?;
+        let value = core.read_word_32(addr).await.into_diagnostic()?;
         assert_eq!(
             value, 0xababac,
             "Error reading back 4 bytes from address {:#010X}",
@@ -149,8 +149,8 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
         println_test_status!(tracker, blue, "Test - RAM Start 8");
         // Write first byte
-        core.write_word_8(ram_start, 0xac).into_diagnostic()?;
-        let value = core.read_word_8(ram_start).into_diagnostic()?;
+        core.write_word_8(ram_start, 0xac).await.into_diagnostic()?;
+        let value = core.read_word_8(ram_start).await.into_diagnostic()?;
         assert_eq!(
             value, 0xac,
             "Error reading back 1 byte from address {:#010X}",
@@ -162,11 +162,13 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         let data = 0x23;
         // Write last byte
         core.write_word_8(address, data)
+            .await
             .into_diagnostic()
             .wrap_err_with(|| format!("write_word_8 to address {address:#010X}"))?;
 
         let value = core
             .read_word_8(address)
+            .await
             .into_diagnostic()
             .wrap_err_with(|| format!("read_word_8 from address {address:#010X}"))?;
         assert_eq!(
@@ -179,11 +181,13 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         // Write last byte
         let address = ram_start + ram_size - 1;
         core.write_word_8(address, 0xcd)
+            .await
             .into_diagnostic()
             .wrap_err_with(|| format!("write_word_8 to address {address:#010X}"))?;
 
         let value = core
             .read_word_8(address)
+            .await
             .into_diagnostic()
             .wrap_err_with(|| format!("read_word_8 from address {address:#010X}"))?;
         assert_eq!(
@@ -192,28 +196,29 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
             address
         );
 
-        test_write_read("1 byte at RAM start", tracker, core, ram_start, &[0x56])?;
+        test_write_read("1 byte at RAM start", tracker, core, ram_start, &[0x56]).await?;
         test_write_read(
             "4 bytes at RAM start",
             tracker,
             core,
             ram_start,
             &[0x12, 0x34, 0x56, 0x78],
-        )?;
+        )
+        .await?;
         test_write_read(
             "4 bytes at RAM end",
             tracker,
             core,
             ram_start + ram_size - 4,
             &[0x12, 0x34, 0x56, 0x78],
-        )?;
+        )
+        .await?;
     }
 
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
+pub async fn test_hw_breakpoints(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> TestResult {
     println_test_status!(tracker, blue, "Testing HW breakpoints");
 
     let memory_regions: Vec<_> = core
@@ -242,7 +247,7 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
         );
         let initial_breakpoint_addr = region.range.start;
 
-        let num_breakpoints = core.available_breakpoint_units().into_diagnostic()?;
+        let num_breakpoints = core.available_breakpoint_units().await.into_diagnostic()?;
 
         println_test_status!(tracker, blue, "{} breakpoints supported", num_breakpoints);
 
@@ -257,10 +262,12 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
         // Test CoreInterface
         for (i, address) in breakpoint_addresses.iter().enumerate() {
-            CoreInterface::set_hw_breakpoint(core, i, *address).into_diagnostic()?;
+            CoreInterface::set_hw_breakpoint(core, i, *address)
+                .await
+                .into_diagnostic()?;
         }
 
-        let breakpoints = core.hw_breakpoints().into_diagnostic()?;
+        let breakpoints = core.hw_breakpoints().await.into_diagnostic()?;
         for (i, address) in breakpoint_addresses.iter().enumerate() {
             assert_eq!(
                 breakpoints[i],
@@ -270,8 +277,10 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
         }
 
         // Now check that breakpoints can be overwritten.
-        CoreInterface::set_hw_breakpoint(core, 0, breakpoint_addresses[0] + 4).into_diagnostic()?;
-        let breakpoints = core.hw_breakpoints().into_diagnostic()?;
+        CoreInterface::set_hw_breakpoint(core, 0, breakpoint_addresses[0] + 4)
+            .await
+            .into_diagnostic()?;
+        let breakpoints = core.hw_breakpoints().await.into_diagnostic()?;
         assert_eq!(
             breakpoints[0],
             Some(breakpoint_addresses[0] + 4),
@@ -280,28 +289,35 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
         // Clear all breakpoints again
         for i in 0..num_breakpoints {
-            CoreInterface::clear_hw_breakpoint(core, i as usize).into_diagnostic()?;
+            CoreInterface::clear_hw_breakpoint(core, i as usize)
+                .await
+                .into_diagnostic()?;
         }
 
         // Test inherent methods
         for i in 0..num_breakpoints {
             core.set_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
+                .await
                 .into_diagnostic()?;
         }
 
         // Try to set an additional breakpoint, which should fail
         core.set_hw_breakpoint(initial_breakpoint_addr + num_breakpoints as u64 * 4)
+            .await
             .expect_err("Trying to use more than supported number of breakpoints should fail.");
 
         // However, we should be able to update a specific breakpoint
         core.set_hw_breakpoint_unit(0, initial_breakpoint_addr + num_breakpoints as u64 * 4)
+            .await
             .into_diagnostic()?;
 
         // Clear all breakpoints again
         core.clear_hw_breakpoint(initial_breakpoint_addr + num_breakpoints as u64 * 4)
+            .await
             .into_diagnostic()?;
         for i in 1..num_breakpoints {
             core.clear_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
+                .await
                 .into_diagnostic()?;
         }
     }
@@ -309,8 +325,10 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
     Ok(())
 }
 
-#[distributed_slice(SESSION_TESTS)]
-pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(), TestFailure> {
+pub async fn test_flashing(
+    tracker: &TestTracker<'_>,
+    session: &mut Session,
+) -> Result<(), TestFailure> {
     let Some(test_binary) = tracker
         .current_dut_definition()
         .flash_test_binary
@@ -336,7 +354,7 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
 
     let format = FormatKind::from_optional(session.target().default_format.as_deref()).unwrap();
 
-    let result = download_file_with_options(session, test_binary, format, options);
+    let result = download_file_with_options(session, test_binary, format, options).await;
 
     println!();
 

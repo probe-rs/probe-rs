@@ -20,6 +20,8 @@ colored = "3"
 linkme = "0.3.25"
 miette = { version = "7.2.0", features = ["fancy"] }
 thiserror.workspace = true
+smol = "2"
+web-time = { workspace = true }
 
 [lints]
 workspace = true
