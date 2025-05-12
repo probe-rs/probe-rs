@@ -183,7 +183,8 @@ impl<'a> SwoReader<'a> {
 }
 
 impl SwoReader<'_> {
-    async fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+    /// Read all available bytes from SWO.
+    pub async fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         use std::{cmp, io::Error, mem};
 
         // Always buffer: this pulls data as quickly as possible from
