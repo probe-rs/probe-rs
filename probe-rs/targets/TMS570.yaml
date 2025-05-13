@@ -1,0 +1,34 @@
+name: TMS570
+manufacturer:
+  id: 0x17
+  cc: 0x0
+variants:
+- name: TMS570LC4357
+  cores:
+  - name: core0
+    type: armv7a
+    # DPv0
+    core_access_options: !Arm
+      ap: !v1 1
+      debug_base: 0x80001000
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x400000
+    cores:
+    - core0
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0x08000000
+      end: 0x08080000
+    cores:
+    - core0
+  jtag:
+    scan_chain:
+    - name: core0
+      ir_len: 4
+    - name: ICEPICK
+      ir_len: 6
