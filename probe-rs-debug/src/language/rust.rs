@@ -217,7 +217,7 @@ impl ProgrammingLanguage for Rust {
         }
     }
 
-    fn auto_resolve_children(&self, name: &str) -> bool {
+    fn auto_resolve_children(&self, name: &str, parent_resolves_children: bool) -> bool {
         name.starts_with("&str")
             || name.starts_with("&[")
             || name.starts_with("Option")
@@ -225,6 +225,9 @@ impl ProgrammingLanguage for Rust {
             || name.starts_with("Result")
             || name.starts_with("Ok")
             || name.starts_with("Err")
+            || name.starts_with("Atomic")
+            || name.starts_with("Cell")
+            || (name.starts_with("UnsafeCell") && parent_resolves_children) // We don't always want to resolve children of UnsafeCell
     }
 
     fn process_struct(
@@ -237,10 +240,24 @@ impl ProgrammingLanguage for Rust {
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
-        if variable.type_name().starts_with("&[") {
+        let type_name = variable.type_name();
+        if type_name.starts_with("&[") {
             self.expand_slice(
                 unit_info, debug_info, node, variable, memory, cache, frame_info,
             )?;
+        } else if type_name.starts_with("Atomic")
+            || type_name.starts_with("NonNull")
+            || type_name.starts_with("Cell")
+        {
+            // Collapses the type hierarachy by one level.
+            // `Cell<T> -> UnsafeCell<T> -> T` becomes `Cell<T> -> T`
+            let Some(unsafecell_child_variable) =
+                cache.get_children(variable.variable_key).next().cloned()
+            else {
+                return Ok(());
+            };
+
+            cache.adopt_grand_children(variable, &unsafecell_child_variable)?;
         }
 
         Ok(())
