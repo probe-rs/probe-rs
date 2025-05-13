@@ -297,6 +297,25 @@ impl<'probe> Armv7a<'probe> {
     fn set_core_status(&mut self, new_status: CoreStatus) {
         super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
     }
+
+    pub(crate) fn halted_access<R>(
+        &mut self,
+        op: impl FnOnce(&mut Self) -> Result<R, Error>,
+    ) -> Result<R, Error> {
+        let was_running = !(self.state.current_state.is_halted() || self.core_halted()?);
+
+        if was_running {
+            self.halt(Duration::from_millis(100))?;
+        }
+
+        let result = op(self);
+
+        if was_running {
+            self.run()?
+        }
+
+        result
+    }
 }
 
 impl CoreInterface for Armv7a<'_> {
@@ -777,24 +796,28 @@ impl CoreInterface for Armv7a<'_> {
 
     #[tracing::instrument(skip(self))]
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.sequence.reset_catch_set(
-            &mut *self.memory,
-            CoreType::Armv7a,
-            Some(self.base_address),
-        )?;
-
+        self.halted_access(|core| {
+            core.sequence.reset_catch_set(
+                &mut *core.memory,
+                CoreType::Armv7a,
+                Some(core.base_address),
+            )?;
+            Ok(())
+        })?;
         Ok(())
     }
 
     #[tracing::instrument(skip(self))]
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
         // Clear the reset_catch bit which was set earlier.
-        self.sequence.reset_catch_clear(
-            &mut *self.memory,
-            CoreType::Armv7a,
-            Some(self.base_address),
-        )?;
-
+        self.halted_access(|core| {
+            core.sequence.reset_catch_clear(
+                &mut *core.memory,
+                CoreType::Armv7a,
+                Some(core.base_address),
+            )?;
+            Ok(())
+        })?;
         Ok(())
     }
 
@@ -819,166 +842,198 @@ impl MemoryInterface for Armv7a<'_> {
     }
 
     fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
-        let mut ret: u64 = self.read_word_32(address)? as u64;
-        ret |= (self.read_word_32(address + 4)? as u64) << 32;
+        self.halted_access(|core| {
+            let mut ret: u64 = core.read_word_32(address)? as u64;
+            ret |= (core.read_word_32(address + 4)? as u64) << 32;
 
-        Ok(ret)
+            Ok(ret)
+        })
     }
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        let address = valid_32bit_address(address)?;
+        self.halted_access(|core| {
+            let address = valid_32bit_address(address)?;
 
-        // LDC p14, c5, [r0], #4
-        let instr = build_ldc(14, 5, 0, 4);
+            // LDC p14, c5, [r0], #4
+            let instr = build_ldc(14, 5, 0, 4);
 
-        // Save r0
-        self.prepare_r0_for_clobber()?;
+            // Save r0
+            core.prepare_r0_for_clobber()?;
 
-        // Load r0 with the address to read from
-        self.set_r0(address)?;
+            // Load r0 with the address to read from
+            core.set_r0(address)?;
 
-        // Read memory from [r0]
-        self.execute_instruction_with_result(instr)
+            // Read memory from [r0]
+            core.execute_instruction_with_result(instr)
+        })
     }
 
     fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
-        // Find the word this is in and its byte offset
-        let byte_offset = address % 4;
-        let word_start = address - byte_offset;
+        self.halted_access(|core| {
+            // Find the word this is in and its byte offset
+            let byte_offset = address % 4;
+            let word_start = address - byte_offset;
 
-        // Read the word
-        let data = self.read_word_32(word_start)?;
+            // Read the word
+            let data = core.read_word_32(word_start)?;
 
-        // Return the byte
-        Ok((data >> (byte_offset * 8)) as u16)
+            // Return the byte
+            Ok((data >> (byte_offset * 8)) as u16)
+        })
     }
 
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        // Find the word this is in and its byte offset
-        let byte_offset = address % 4;
-        let word_start = address - byte_offset;
+        self.halted_access(|core| {
+            // Find the word this is in and its byte offset
+            let byte_offset = address % 4;
+            let word_start = address - byte_offset;
 
-        // Read the word
-        let data = self.read_word_32(word_start)?;
+            // Read the word
+            let data = core.read_word_32(word_start)?;
 
-        // Return the byte
-        Ok(data.to_le_bytes()[byte_offset as usize])
+            // Return the byte
+            Ok(data.to_le_bytes()[byte_offset as usize])
+        })
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        for (i, word) in data.iter_mut().enumerate() {
-            *word = self.read_word_64(address + ((i as u64) * 8))?;
-        }
+        self.halted_access(|core| {
+            for (i, word) in data.iter_mut().enumerate() {
+                *word = core.read_word_64(address + ((i as u64) * 8))?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        for (i, word) in data.iter_mut().enumerate() {
-            *word = self.read_word_32(address + ((i as u64) * 4))?;
-        }
+        self.halted_access(|core| {
+            for (i, word) in data.iter_mut().enumerate() {
+                *word = core.read_word_32(address + ((i as u64) * 4))?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        for (i, word) in data.iter_mut().enumerate() {
-            *word = self.read_word_16(address + ((i as u64) * 2))?;
-        }
+        self.halted_access(|core| {
+            for (i, word) in data.iter_mut().enumerate() {
+                *word = core.read_word_16(address + ((i as u64) * 2))?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        for (i, byte) in data.iter_mut().enumerate() {
-            *byte = self.read_word_8(address + (i as u64))?;
-        }
+        self.halted_access(|core| {
+            for (i, byte) in data.iter_mut().enumerate() {
+                *byte = core.read_word_8(address + (i as u64))?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        let data_low = data as u32;
-        let data_high = (data >> 32) as u32;
+        self.halted_access(|core| {
+            let data_low = data as u32;
+            let data_high = (data >> 32) as u32;
 
-        self.write_word_32(address, data_low)?;
-        self.write_word_32(address + 4, data_high)
+            core.write_word_32(address, data_low)?;
+            core.write_word_32(address + 4, data_high)
+        })
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        let address = valid_32bit_address(address)?;
+        self.halted_access(|core| {
+            let address = valid_32bit_address(address)?;
 
-        // STC p14, c5, [r0], #4
-        let instr = build_stc(14, 5, 0, 4);
+            // STC p14, c5, [r0], #4
+            let instr = build_stc(14, 5, 0, 4);
 
-        // Save r0
-        self.prepare_r0_for_clobber()?;
+            // Save r0
+            core.prepare_r0_for_clobber()?;
 
-        // Load r0 with the address to write to
-        self.set_r0(address)?;
+            // Load r0 with the address to write to
+            core.set_r0(address)?;
 
-        // Write to [r0]
-        self.execute_instruction_with_input(instr, data)
+            // Write to [r0]
+            core.execute_instruction_with_input(instr, data)
+        })
     }
 
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        // Find the word this is in and its byte offset
-        let byte_offset = address % 4;
-        let word_start = address - byte_offset;
+        self.halted_access(|core| {
+            // Find the word this is in and its byte offset
+            let byte_offset = address % 4;
+            let word_start = address - byte_offset;
 
-        // Get the current word value
-        let current_word = self.read_word_32(word_start)?;
-        let mut word_bytes = current_word.to_le_bytes();
-        word_bytes[byte_offset as usize] = data;
+            // Get the current word value
+            let current_word = core.read_word_32(word_start)?;
+            let mut word_bytes = current_word.to_le_bytes();
+            word_bytes[byte_offset as usize] = data;
 
-        self.write_word_32(word_start, u32::from_le_bytes(word_bytes))
+            core.write_word_32(word_start, u32::from_le_bytes(word_bytes))
+        })
     }
 
     fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
-        // Find the word this is in and its byte offset
-        let byte_offset = address % 4;
-        let word_start = address - byte_offset;
+        self.halted_access(|core| {
+            // Find the word this is in and its byte offset
+            let byte_offset = address % 4;
+            let word_start = address - byte_offset;
 
-        // Get the current word value
-        let mut word = self.read_word_32(word_start)?;
+            // Get the current word value
+            let mut word = core.read_word_32(word_start)?;
 
-        // patch the word into it
-        word &= !(0xFFFFu32 << (byte_offset * 8));
-        word |= (data as u32) << (byte_offset * 8);
+            // patch the word into it
+            word &= !(0xFFFFu32 << (byte_offset * 8));
+            word |= (data as u32) << (byte_offset * 8);
 
-        self.write_word_32(word_start, word)
+            core.write_word_32(word_start, word)
+        })
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        for (i, word) in data.iter().enumerate() {
-            self.write_word_64(address + ((i as u64) * 8), *word)?;
-        }
+        self.halted_access(|core| {
+            for (i, word) in data.iter().enumerate() {
+                core.write_word_64(address + ((i as u64) * 8), *word)?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        for (i, word) in data.iter().enumerate() {
-            self.write_word_32(address + ((i as u64) * 4), *word)?;
-        }
+        self.halted_access(|core| {
+            for (i, word) in data.iter().enumerate() {
+                core.write_word_32(address + ((i as u64) * 4), *word)?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        for (i, word) in data.iter().enumerate() {
-            self.write_word_16(address + ((i as u64) * 2), *word)?;
-        }
+        self.halted_access(|core| {
+            for (i, word) in data.iter().enumerate() {
+                core.write_word_16(address + ((i as u64) * 2), *word)?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        for (i, byte) in data.iter().enumerate() {
-            self.write_word_8(address + (i as u64), *byte)?;
-        }
+        self.halted_access(|core| {
+            for (i, byte) in data.iter().enumerate() {
+                core.write_word_8(address + (i as u64), *byte)?;
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn supports_8bit_transfers(&self) -> Result<bool, Error> {
