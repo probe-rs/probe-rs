@@ -220,19 +220,23 @@ impl<'a> FunctionDie<'a> {
     }
 
     /// Try to retrieve the frame base for this function
-    pub fn frame_base(
+    pub async fn frame_base(
         &self,
         debug_info: &super::DebugInfo,
         memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo,
+        frame_info: StackFrameInfo<'_>,
     ) -> Result<Option<u64>, DebugError> {
-        match self.unit_info.extract_location(
-            debug_info,
-            &self.function_die,
-            &VariableLocation::Unknown,
-            memory,
-            frame_info,
-        )? {
+        match self
+            .unit_info
+            .extract_location(
+                debug_info,
+                &self.function_die,
+                &VariableLocation::Unknown,
+                memory,
+                frame_info,
+            )
+            .await?
+        {
             ExpressionResult::Location(VariableLocation::Address(address)) => Ok(Some(address)),
             ExpressionResult::Location(VariableLocation::RegisterValue(value)) => {
                 Ok(value.try_into().ok())

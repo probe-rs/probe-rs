@@ -82,7 +82,7 @@ pub struct DebugRegisters(pub Vec<DebugRegister>);
 
 impl DebugRegisters {
     /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
-    pub fn from_core(core: &mut impl CoreInterface) -> Self {
+    pub async fn from_core(core: &mut impl CoreInterface) -> Self {
         let mut debug_registers = Vec::<DebugRegister>::new();
 
         for (dwarf_id, core_register) in core.registers().core_registers().enumerate() {
@@ -97,7 +97,7 @@ impl DebugRegisters {
                     } else {
                         None
                     },
-                    value: match core.read_core_reg(core_register.id()) {
+                    value: match core.read_core_reg(core_register.id()).await {
                         Ok::<RegisterValue, _>(register_value) => Some(register_value),
                         Err(e) => {
                             tracing::warn!(

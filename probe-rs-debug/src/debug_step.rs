@@ -36,15 +36,16 @@ impl SteppingMode {
     /// - Currently, no special provision is made for the effect of interrupts that get triggered
     ///   during stepping. The user must ensure that interrupts are disabled during stepping, or
     ///   accept that stepping may be diverted by the interrupt processing on the core.
-    pub fn step(
+    pub async fn step(
         &self,
         core: &mut impl CoreInterface,
         debug_info: &DebugInfo,
     ) -> Result<(CoreStatus, u64), DebugError> {
-        let mut core_status = core.status()?;
+        let mut core_status = core.status().await?;
         let mut program_counter = match core_status {
             CoreStatus::Halted(_) => core
-                .read_core_reg(core.program_counter().id())?
+                .read_core_reg(core.program_counter().id())
+                .await?
                 .try_into()?,
             _ => {
                 return Err(DebugError::Other(
@@ -53,7 +54,10 @@ impl SteppingMode {
             }
         };
         let origin_program_counter = program_counter;
-        let mut return_address = core.read_core_reg(core.return_address().id())?.try_into()?;
+        let mut return_address = core
+            .read_core_reg(core.return_address().id())
+            .await?
+            .try_into()?;
 
         // Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points.
         // When DebugError::NoValidHaltLocation happens, we will step to the next instruction and try again(until we can reasonably expect to have passed out of an epilogue), before giving up.
@@ -62,18 +66,20 @@ impl SteppingMode {
             let post_step_target = match self {
                 SteppingMode::StepInstruction => {
                     // First deal with the the fast/easy case.
-                    program_counter = core.step()?.pc;
-                    core_status = core.status()?;
+                    program_counter = core.step().await?.pc;
+                    core_status = core.status().await?;
                     return Ok((core_status, program_counter));
                 }
                 SteppingMode::BreakPoint => {
                     self.get_halt_location(core, debug_info, program_counter, None)
+                        .await
                 }
                 SteppingMode::IntoStatement
                 | SteppingMode::OverStatement
                 | SteppingMode::OutOfStatement => {
                     // The more complex cases, where specific handling is required.
                     self.get_halt_location(core, debug_info, program_counter, Some(return_address))
+                        .await
                 }
             };
             match post_step_target {
@@ -81,7 +87,8 @@ impl SteppingMode {
                     target_address = Some(post_step_target.address);
                     // Re-read the program_counter, because it may have changed during the `get_halt_location` call.
                     program_counter = core
-                        .read_core_reg(core.program_counter().id())?
+                        .read_core_reg(core.program_counter().id())
+                        .await?
                         .try_into()?;
                     break;
                 }
@@ -92,15 +99,18 @@ impl SteppingMode {
                             tracing::trace!(
                                 "Incomplete stepping information @{program_counter:#010X}: {message}"
                             );
-                            program_counter = core.step()?.pc;
-                            return_address =
-                                core.read_core_reg(core.return_address().id())?.try_into()?;
+                            program_counter = core.step().await?.pc;
+                            return_address = core
+                                .read_core_reg(core.return_address().id())
+                                .await?
+                                .try_into()?;
                             continue;
                         }
                         other_error => {
-                            core_status = core.status()?;
+                            core_status = core.status().await?;
                             program_counter = core
-                                .read_core_reg(core.program_counter().id())?
+                                .read_core_reg(core.program_counter().id())
+                                .await?
                                 .try_into()?;
                             tracing::error!("Error during step ({:?}): {}", self, other_error);
                             return Ok((core_status, program_counter));
@@ -133,7 +143,7 @@ impl SteppingMode {
                     target_address,
                 );
 
-                run_to_address(program_counter, target_address, core)?
+                run_to_address(program_counter, target_address, core).await?
             }
             None => {
                 return Err(DebugError::WarnAndContinue {
@@ -162,7 +172,7 @@ impl SteppingMode {
     /// NOTE about errors returned: Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements
     /// for halt points, and we will return a `DebugError::NoValidHaltLocation`. In this case, we recommend the consumer of this API step the core to the next instruction
     /// and try again, with a reasonable retry limit. All other error kinds are should be treated as non recoverable errors.
-    pub(crate) fn get_halt_location(
+    pub(crate) async fn get_halt_location(
         &self,
         core: &mut impl CoreInterface,
         debug_info: &DebugInfo,
@@ -185,19 +195,20 @@ impl SteppingMode {
                 //    -- If there is one, it means the step over target is in the current sequence,
                 //       so we get the valid breakpoint location for this next location.
                 //    -- If there is not one, the step over target is the same as the step out target.
-                return VerifiedBreakpoint::for_address(
-                    debug_info,
-                    program_counter.saturating_add(1),
-                )
-                .or_else(|_| {
-                    // If we cannot find a valid breakpoint in the current sequence, we will step out of the current sequence.
-                    SteppingMode::OutOfStatement.get_halt_location(
-                        core,
-                        debug_info,
-                        program_counter,
-                        return_address,
-                    )
-                });
+                match VerifiedBreakpoint::for_address(debug_info, program_counter.saturating_add(1))
+                {
+                    Ok(v) => return Ok(v),
+                    Err(_) => {
+                        // If we cannot find a valid breakpoint in the current sequence, we will step out of the current sequence.
+                        return Box::pin(SteppingMode::OutOfStatement.get_halt_location(
+                            core,
+                            debug_info,
+                            program_counter,
+                            return_address,
+                        ))
+                        .await;
+                    }
+                }
             }
             SteppingMode::IntoStatement => {
                 // This is a tricky case because the current RUST generated DWARF, does not store the DW_TAG_call_site information described in the DWARF 5 standard.
@@ -232,7 +243,8 @@ impl SteppingMode {
                     }
                 };
 
-                let (core_status, new_pc) = step_to_address(program_counter..=target_pc, core)?;
+                let (core_status, new_pc) =
+                    step_to_address(program_counter..=target_pc, core).await?;
                 if (program_counter..=target_pc).contains(&new_pc) {
                     // We have halted at an address after the current instruction (either in the same sequence,
                     // or at the return address of the current function),
@@ -247,7 +259,10 @@ impl SteppingMode {
                     tracing::debug!("Stepping into next statement at address: {:#010x}.", new_pc);
                 }
 
-                return SteppingMode::BreakPoint.get_halt_location(core, debug_info, new_pc, None);
+                return Box::pin(
+                    SteppingMode::BreakPoint.get_halt_location(core, debug_info, new_pc, None),
+                )
+                .await;
             }
             SteppingMode::OutOfStatement => {
                 if let Ok(function_dies) =
@@ -281,25 +296,28 @@ impl SteppingMode {
                                     program_counter,
                                     function.high_pc().unwrap(), //unwrap is OK because `range_contains` is true.
                                     core,
-                                )?;
-                                return SteppingMode::BreakPoint.get_halt_location(
+                                )
+                                .await?;
+                                return Box::pin(SteppingMode::BreakPoint.get_halt_location(
                                     core,
                                     debug_info,
                                     next_instruction_address,
                                     None,
-                                );
+                                ))
+                                .await;
                             } else if let Some(return_address) = return_address {
                                 tracing::debug!(
                                     "Step Out target: non-inline function, stepping over return address: {:#010x}",
                                     return_address
                                 );
                                 // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
-                                return SteppingMode::BreakPoint.get_halt_location(
+                                return Box::pin(SteppingMode::BreakPoint.get_halt_location(
                                     core,
                                     debug_info,
                                     return_address,
                                     None,
-                                );
+                                ))
+                                .await;
                             }
                         }
                     }
@@ -322,7 +340,7 @@ impl SteppingMode {
 /// - We reach some other legitimate halt point (e.g. the user tries to step past a series of statements, but there is another breakpoint active in that "gap")
 /// - We encounter an error (e.g. the core locks up, or the USB cable is unplugged, etc.)
 /// - It turns out this step will be long-running, and we do not have to wait any longer for the request to complete.
-fn run_to_address(
+async fn run_to_address(
     mut program_counter: u64,
     target_address: u64,
     core: &mut impl CoreInterface,
@@ -330,25 +348,30 @@ fn run_to_address(
     if target_address == program_counter {
         // No need to step further. e.g. For inline functions we have already stepped to the best available target address..
         return Ok((
-            core.status()?,
-            core.read_core_reg(core.program_counter().id())?
+            core.status().await?,
+            core.read_core_reg(core.program_counter().id())
+                .await?
                 .try_into()?,
         ));
     }
 
-    let breakpoints = core.hw_breakpoints()?;
+    let breakpoints = core.hw_breakpoints().await?;
     let bp_to_use = breakpoints.iter().position(|bp| bp.is_none()).unwrap_or(0);
 
-    if core.set_hw_breakpoint(bp_to_use, target_address).is_ok() {
-        core.run()?;
+    if core
+        .set_hw_breakpoint(bp_to_use, target_address)
+        .await
+        .is_ok()
+    {
+        core.run().await?;
         // It is possible that we are stepping over long running instructions.
-        let status = core.wait_for_core_halted(Duration::from_millis(1000));
+        let status = core.wait_for_core_halted(Duration::from_millis(1000)).await;
 
         // Restore the original breakpoint.
         if let Some(Some(bp)) = breakpoints.get(bp_to_use) {
-            core.set_hw_breakpoint(bp_to_use, *bp)?;
+            core.set_hw_breakpoint(bp_to_use, *bp).await?;
         } else {
-            core.clear_hw_breakpoint(bp_to_use)?;
+            core.clear_hw_breakpoint(bp_to_use).await?;
         }
 
         match status {
@@ -357,13 +380,14 @@ fn run_to_address(
                 // NOTE: It is conceivable that the core has halted, but we have not yet stepped to the target address. (e.g. the user tries to step out of a function, but there is another breakpoint active before the end of the function.)
                 //       This is a legitimate situation, so we clear the breakpoint at the target address, and pass control back to the user
                 Ok((
-                    core.status()?,
-                    core.read_core_reg(core.program_counter().id())?
+                    core.status().await?,
+                    core.read_core_reg(core.program_counter().id())
+                        .await?
                         .try_into()?,
                 ))
             }
             Err(error) => {
-                program_counter = core.halt(Duration::from_millis(500))?.pc;
+                program_counter = core.halt(Duration::from_millis(500)).await?.pc;
                 if matches!(
                     error,
                     probe_rs::Error::Arm(ArmError::Timeout)
@@ -376,7 +400,7 @@ fn run_to_address(
                         target_address,
                         program_counter
                     );
-                    Ok((core.status()?, program_counter))
+                    Ok((core.status().await?, program_counter))
                 } else {
                     // Something else is wrong.
                     Err(DebugError::Other(format!(
@@ -390,7 +414,7 @@ fn run_to_address(
         // If we don't have breakpoints to use, we have to rely on single stepping.
         // TODO: In theory, this could go on for a long time. Should we consider NOT allowing this kind of stepping if there are no breakpoints available?
 
-        Ok(step_to_address(target_address..=u64::MAX, core)?)
+        Ok(step_to_address(target_address..=u64::MAX, core).await?)
     }
 }
 
@@ -401,13 +425,13 @@ fn run_to_address(
 /// - We reach some other legitimate halt point (e.g. the user tries to step past a series of statements,
 ///   but there is another breakpoint active in that "gap")
 /// - We encounter an error (e.g. the core locks up).
-fn step_to_address(
+async fn step_to_address(
     target_address_range: RangeInclusive<u64>,
     core: &mut impl CoreInterface,
 ) -> Result<(CoreStatus, u64), DebugError> {
-    while target_address_range.contains(&core.step()?.pc) {
+    while target_address_range.contains(&core.step().await?.pc) {
         // Single step the core until we get to the target_address;
-        match core.status()? {
+        match core.status().await? {
             CoreStatus::Halted(halt_reason) => match halt_reason {
                 HaltReason::Step | HaltReason::Request => continue,
                 HaltReason::Breakpoint(_) => {
@@ -436,8 +460,9 @@ fn step_to_address(
         }
     }
     Ok((
-        core.status()?,
-        core.read_core_reg(core.program_counter().id())?
+        core.status().await?,
+        core.read_core_reg(core.program_counter().id())
+            .await?
             .try_into()?,
     ))
 }
