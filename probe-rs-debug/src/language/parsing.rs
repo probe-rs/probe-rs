@@ -10,7 +10,7 @@ pub trait ValueExt: Sized {
     fn parse_to_bytes(s: &str) -> Result<Self::Out, DebugError>;
 
     /// Read the value from a [`VariableLocation`].
-    fn read_from_location(
+    async fn read_from_location(
         variable: &crate::Variable,
         memory: &mut dyn crate::MemoryInterface,
     ) -> Result<Self, DebugError>;
@@ -30,7 +30,7 @@ macro_rules! impl_extensions {
                 }
             }
 
-            fn read_from_location(
+            async fn read_from_location(
                 variable: &Variable,
                 memory: &mut dyn MemoryInterface,
             ) -> Result<Self, DebugError> {
@@ -42,7 +42,9 @@ macro_rules! impl_extensions {
                     buff.copy_from_slice(&reg_bytes[..$bytes]);
                 } else {
                     // We only have an address, we need to read the value from memory.
-                    memory.read(variable.memory_location.memory_address()?, &mut buff)?;
+                    memory
+                        .read(variable.memory_location.memory_address()?, &mut buff)
+                        .await?;
                 }
 
                 Ok(<$t>::from_le_bytes(buff))

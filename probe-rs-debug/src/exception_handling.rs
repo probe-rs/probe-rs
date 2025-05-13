@@ -53,6 +53,7 @@ pub struct ExceptionInfo {
 }
 
 /// A generic interface to identify and decode exceptions during unwind processing.
+#[async_trait::async_trait(?Send)]
 pub trait ExceptionInterface {
     /// Using the `stackframe_registers` for a "called frame",
     /// determine if the given frame was called from an exception handler,
@@ -60,7 +61,7 @@ pub trait ExceptionInterface {
     /// and the stackframe registers for the frame that triggered the exception.
     /// A return value of `Ok(None)` indicates that the given frame was called from within the current thread,
     /// and the unwind should continue normally.
-    fn exception_details(
+    async fn exception_details(
         &self,
         _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &DebugRegisters,
@@ -73,7 +74,7 @@ pub trait ExceptionInterface {
     }
 
     /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
-    fn calling_frame_registers(
+    async fn calling_frame_registers(
         &self,
         _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &crate::DebugRegisters,
@@ -92,7 +93,7 @@ pub trait ExceptionInterface {
 
     /// Convert the architecture specific exception number into a human readable description.
     /// Where possible, the implementation may read additional registers from the core, to provide additional context.
-    fn exception_description(
+    async fn exception_description(
         &self,
         _raw_exception: u32,
         _memory: &mut dyn MemoryInterface,
@@ -103,7 +104,7 @@ pub trait ExceptionInterface {
     /// Unwind the stack without debug info.
     ///
     /// This method can be implemented to provide a stack trace using frame pointers, for example.
-    fn unwind_without_debuginfo(
+    async fn unwind_without_debuginfo(
         &self,
         unwind_registers: &mut DebugRegisters,
         frame_pc: u64,

@@ -23,6 +23,8 @@ serde = { version = "1.0.217", features = ["derive"] }
 thiserror.workspace = true
 tracing = "0.1.41"
 typed-path = "0.11.0"
+async-trait = "0.1"
+pollster = { version = "0.4", features = ["macro"] }
 
 [lints]
 workspace = true

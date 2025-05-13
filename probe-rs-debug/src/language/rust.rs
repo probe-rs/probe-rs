@@ -47,11 +47,11 @@ impl Rust {
     ///
     /// This function may return `Ok(())` even if it does not modify the variable.
     #[allow(clippy::too_many_arguments)]
-    fn expand_slice(
+    async fn expand_slice(
         &self,
         unit_info: &UnitInfo,
         debug_info: &DebugInfo,
-        _node: &DebuggingInformationEntry<GimliReader>,
+        _node: &DebuggingInformationEntry<'_, '_, GimliReader>,
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
@@ -97,22 +97,25 @@ impl Rust {
             .expect("Failed to get array member type node. This is a bug, please report it!");
 
         let member_range = 0..length;
-        unit_info.expand_array_members(
-            debug_info,
-            &array_member_type_node,
-            cache,
-            &mut pointee,
-            memory,
-            &[member_range],
-            frame_info,
-        )?;
+        unit_info
+            .expand_array_members(
+                debug_info,
+                &array_member_type_node,
+                cache,
+                &mut pointee,
+                memory,
+                &[member_range],
+                frame_info,
+            )
+            .await?;
 
         Ok(())
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ProgrammingLanguage for Rust {
-    fn read_variable_value(
+    async fn read_variable_value(
         &self,
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
@@ -126,29 +129,55 @@ impl ProgrammingLanguage for Rust {
             VariableType::Base(type_name) => match type_name.as_str() {
                 "!" => VariableValue::Valid("<Never returns>".to_string()),
                 "()" => VariableValue::Valid("()".to_string()),
-                "bool" => bool::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "char" => char::get_value(variable, memory, variable_cache).into(),
-                "i8" => i8::get_value(variable, memory, variable_cache).into(),
-                "i16" => i16::get_value(variable, memory, variable_cache).into(),
-                "i32" => i32::get_value(variable, memory, variable_cache).into(),
-                "i64" => i64::get_value(variable, memory, variable_cache).into(),
-                "i128" => i128::get_value(variable, memory, variable_cache).into(),
+                "bool" => bool::get_value(variable, memory, variable_cache)
+                    .await
+                    .map_or_else(
+                        |err| VariableValue::Error(format!("{err:?}")),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                "char" => char::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
+                "i8" => i8::get_value(variable, memory, variable_cache).await.into(),
+                "i16" => i16::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
+                "i32" => i32::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
+                "i64" => i64::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
+                "i128" => i128::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
                 // TODO: We can get the actual WORD length from DWARF instead of assuming `i32`
-                "isize" => i32::get_value(variable, memory, variable_cache).into(),
-                "u8" => u8::get_value(variable, memory, variable_cache).into(),
-                "u16" => u16::get_value(variable, memory, variable_cache).into(),
-                "u32" => u32::get_value(variable, memory, variable_cache).into(),
-                "u64" => u64::get_value(variable, memory, variable_cache).into(),
-                "u128" => u128::get_value(variable, memory, variable_cache).into(),
+                "isize" => i32::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
+                "u8" => u8::get_value(variable, memory, variable_cache).await.into(),
+                "u16" => u16::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
+                "u32" => u32::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
+                "u64" => u64::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
+                "u128" => u128::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
                 // TODO: We can get the actual WORD length from DWARF instead of assuming `u32`
-                "usize" => u32::get_value(variable, memory, variable_cache).into(),
+                "usize" => u32::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
                 "f32" => f32::get_value(variable, memory, variable_cache)
+                    .await
                     .map(|f| format_float(f as f64))
                     .into(),
                 "f64" => f64::get_value(variable, memory, variable_cache)
+                    .await
                     .map(format_float)
                     .into(),
                 "None" => VariableValue::Valid("None".to_string()),
@@ -156,13 +185,15 @@ impl ProgrammingLanguage for Rust {
                 _undetermined_value => VariableValue::Empty,
             },
             VariableType::Struct(name) if name == "&str" => {
-                String::get_value(variable, memory, variable_cache).into()
+                String::get_value(variable, memory, variable_cache)
+                    .await
+                    .into()
             }
             _other => VariableValue::Empty,
         }
     }
 
-    fn update_variable(
+    async fn update_variable(
         &self,
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
@@ -170,24 +201,24 @@ impl ProgrammingLanguage for Rust {
     ) -> Result<(), DebugError> {
         match variable.type_name.inner() {
             VariableType::Base(name) => match name.as_str() {
-                "bool" => bool::update_value(variable, memory, new_value),
-                "char" => char::update_value(variable, memory, new_value),
-                "i8" => i8::update_value(variable, memory, new_value),
-                "i16" => i16::update_value(variable, memory, new_value),
-                "i32" => i32::update_value(variable, memory, new_value),
-                "i64" => i64::update_value(variable, memory, new_value),
-                "i128" => i128::update_value(variable, memory, new_value),
+                "bool" => bool::update_value(variable, memory, new_value).await,
+                "char" => char::update_value(variable, memory, new_value).await,
+                "i8" => i8::update_value(variable, memory, new_value).await,
+                "i16" => i16::update_value(variable, memory, new_value).await,
+                "i32" => i32::update_value(variable, memory, new_value).await,
+                "i64" => i64::update_value(variable, memory, new_value).await,
+                "i128" => i128::update_value(variable, memory, new_value).await,
                 // TODO: We can get the actual WORD length from DWARF instead of assuming `i32`
-                "isize" => i32::update_value(variable, memory, new_value),
-                "u8" => u8::update_value(variable, memory, new_value),
-                "u16" => u16::update_value(variable, memory, new_value),
-                "u32" => u32::update_value(variable, memory, new_value),
-                "u64" => u64::update_value(variable, memory, new_value),
-                "u128" => u128::update_value(variable, memory, new_value),
+                "isize" => i32::update_value(variable, memory, new_value).await,
+                "u8" => u8::update_value(variable, memory, new_value).await,
+                "u16" => u16::update_value(variable, memory, new_value).await,
+                "u32" => u32::update_value(variable, memory, new_value).await,
+                "u64" => u64::update_value(variable, memory, new_value).await,
+                "u128" => u128::update_value(variable, memory, new_value).await,
                 // TODO: We can get the actual WORD length from DWARF instead of assuming `u32`
-                "usize" => u32::update_value(variable, memory, new_value),
-                "f32" => f32::update_value(variable, memory, new_value),
-                "f64" => f64::update_value(variable, memory, new_value),
+                "usize" => u32::update_value(variable, memory, new_value).await,
+                "f32" => f32::update_value(variable, memory, new_value).await,
+                "f64" => f64::update_value(variable, memory, new_value).await,
                 other => Err(DebugError::WarnAndContinue {
                     message: format!("Updating {other} variables is not yet supported."),
                 }),
@@ -227,11 +258,11 @@ impl ProgrammingLanguage for Rust {
             || name.starts_with("Err")
     }
 
-    fn process_struct(
+    async fn process_struct(
         &self,
         unit_info: &UnitInfo,
         debug_info: &DebugInfo,
-        node: &DebuggingInformationEntry<GimliReader>,
+        node: &DebuggingInformationEntry<'_, '_, GimliReader>,
         variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
@@ -240,7 +271,8 @@ impl ProgrammingLanguage for Rust {
         if variable.type_name().starts_with("&[") {
             self.expand_slice(
                 unit_info, debug_info, node, variable, memory, cache, frame_info,
-            )?;
+            )
+            .await?;
         }
 
         Ok(())

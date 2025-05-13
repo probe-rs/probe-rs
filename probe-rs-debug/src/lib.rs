@@ -1,3 +1,4 @@
+#![deny(clippy::large_futures)]
 //! Debugging support for probe-rs
 //!
 //! The `debug` module contains various debug functionality, which can be
@@ -239,12 +240,12 @@ fn extract_line(attribute_value: AttributeValue<GimliReader>) -> Option<u64> {
 }
 
 #[allow(clippy::unwrap_used, clippy::expect_used)]
-pub(crate) fn _print_all_attributes(
+pub(crate) async fn _print_all_attributes(
     core: &mut Core<'_>,
     stackframe_cfa: Option<u64>,
     dwarf: &gimli::Dwarf<DwarfReader>,
     unit: &gimli::Unit<DwarfReader>,
-    tag: &gimli::DebuggingInformationEntry<DwarfReader>,
+    tag: &gimli::DebuggingInformationEntry<'_, '_, DwarfReader>,
     print_depth: usize,
 ) {
     let mut attrs = tag.attrs();
@@ -267,7 +268,8 @@ pub(crate) fn _print_all_attributes(
                 // go for evaluation
                 let mut result = evaluation.evaluate().unwrap();
 
-                while let Some(next) = iterate(result, core, &mut evaluation, stackframe_cfa) {
+                while let Some(next) = iterate(result, core, &mut evaluation, stackframe_cfa).await
+                {
                     result = next;
                 }
 
@@ -284,9 +286,9 @@ pub(crate) fn _print_all_attributes(
 }
 
 #[allow(dead_code)]
-fn iterate(
+async fn iterate(
     result: EvaluationResult<DwarfReader>,
-    core: &mut Core,
+    core: &mut Core<'_>,
     evaluation: &mut gimli::Evaluation<DwarfReader>,
     stackframe_cfa: Option<u64>,
 ) -> Option<EvaluationResult<DwarfReader>> {
@@ -295,6 +297,7 @@ fn iterate(
         EvaluationResult::RequiresMemory { address, size, .. } => {
             let mut buff = vec![0u8; size as usize];
             core.read(address, &mut buff)
+                .await
                 .expect("Failed to read memory");
 
             let value = match size {
@@ -315,6 +318,7 @@ fn iterate(
         } => {
             let raw_value = core
                 .read_core_reg::<u64>(register.0)
+                .await
                 .expect("Failed to read memory");
 
             if base_type != gimli::UnitOffset(0) {

@@ -575,7 +575,7 @@ impl Variable {
     /// Currently this only works for base data types. There is no provision in the MS DAP API to
     /// catch this client side, so we can only respond with a 'gentle' error message if the user
     /// attempts unsupported data types.
-    pub fn update_value(
+    pub async fn update_value(
         &self,
         memory: &mut impl MemoryInterface,
         variable_cache: &mut VariableCache,
@@ -594,6 +594,7 @@ impl Variable {
             // We have everything we need to update the variable value.
             language::from_dwarf(self.language)
                 .update_variable(self, memory, &new_value)
+                .await
                 .map_err(|error| DebugError::WarnAndContinue {
                     message: format!("Invalid data value={new_value:?}: {error}"),
                 })?;
@@ -601,7 +602,7 @@ impl Variable {
             // Now update the cache with the new value for this variable.
             let mut cache_variable = self.clone();
             cache_variable.value = VariableValue::Valid(new_value);
-            cache_variable.extract_value(memory, variable_cache);
+            cache_variable.extract_value(memory, variable_cache).await;
             variable_cache.update_variable(&cache_variable)?;
             Ok(())
         }
@@ -659,7 +660,7 @@ impl Variable {
     }
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
-    pub fn extract_value(
+    pub async fn extract_value(
         &mut self,
         memory: &mut dyn MemoryInterface,
         variable_cache: &VariableCache,
@@ -696,8 +697,9 @@ impl Variable {
             self.type_name
         );
 
-        self.value =
-            language::from_dwarf(self.language).read_variable_value(self, memory, variable_cache);
+        self.value = language::from_dwarf(self.language)
+            .read_variable_value(self, memory, variable_cache)
+            .await;
     }
 
     /// The variable is considered to be an 'indexed' variable if the name starts with two
