@@ -1,4 +1,4 @@
-//! Sequences for cc13xx_cc26xx devices
+//! Sequences for devices with an ICEPick JTAG router
 
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::communication_interface::DapProbe;
@@ -10,7 +10,7 @@ pub struct Icepick<'a> {
     jtag_state: JtagState,
 }
 
-// IR register values, see <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf> table 6-7
+// IR register values, see <https://www.ti.com/lit/ug/spruh35/spruh35.pdf> table 2-1
 const IR_ROUTER: u64 = 0x02;
 const IR_CONNECT: u64 = 0x07;
 const IR_BYPASS: u64 = 0x3F;
@@ -209,16 +209,15 @@ impl<'a> Icepick<'a> {
         Ok(())
     }
 
-    /// Does setup of the ICEPICK
+    /// Does setup of the ICEPick
     ///
-    /// This will setup the ICEPICK to have the CPU/DAP on the scan chain and
+    /// This will setup the ICEPick to have the CPU/DAP on the scan chain and
     /// also power and enable the debug interface for use with probe-rs. The ICEPick
     /// will be placed in BYPASS mode, and only the selected `secondary_tap` will be
     /// present on the scan chain.
     ///
     /// This is a direct port of the openocd implementation:
     /// <https://github.com/openocd-org/openocd/blob/master/tcl/target/icepick.cfg#L81-L124>
-    /// A few things were removed to fit the cc13xx_cc26xx family.
     pub(crate) fn select_tap(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
         tracing::trace!("Selecting seconary tap {secondary_tap}");
         // Select the Connect register
