@@ -19,6 +19,7 @@ use postcard_rpc::server::WireRxErrorKind;
 use probe_rs::probe::list::Lister;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
+use tokio::task::LocalSet;
 use tokio_util::bytes::Bytes;
 
 use std::{fmt::Write, sync::Arc};
@@ -47,11 +48,12 @@ pub(crate) struct ServerUser {
 
 struct ServerState {
     config: ServerConfig,
+    requests: tokio::sync::mpsc::Sender<(WebSocket, String)>,
 }
 
 impl ServerState {
-    fn new(config: ServerConfig) -> Self {
-        Self { config }
+    fn new(config: ServerConfig, requests: tokio::sync::mpsc::Sender<(WebSocket, String)>) -> Self {
+        Self { config, requests }
     }
 }
 
@@ -101,7 +103,20 @@ impl Cmd {
             .await
             .unwrap();
 
-        let state = Arc::new(ServerState::new(config));
+        let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(64);
+
+        let set = LocalSet::new();
+        let state = Arc::new(ServerState::new(config, request_tx));
+
+        set.spawn_local({
+            let state = state.clone();
+            async move {
+                while let Some((socket, challenge)) = request_rx.recv().await {
+                    // Spawn a new task for each connection
+                    tokio::task::spawn_local(handle_socket(socket, challenge, state.clone()));
+                }
+            }
+        });
 
         let app = Router::new()
             .route("/", get(server_info))
@@ -110,7 +125,12 @@ impl Cmd {
 
         tracing::info!("listening on {}", listener.local_addr().unwrap());
 
-        axum::serve(listener, app).await?;
+        let (result, _) = tokio::join! {
+            axum::serve(listener, app),
+            set,
+        };
+
+        result.unwrap();
 
         Ok(())
     }
@@ -128,7 +148,10 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<Arc<ServerState>>) -> imp
     // we can customize the callback by sending additional info such as address.
     let mut response = ws.on_upgrade({
         let challenge = challenge.clone();
-        move |socket| handle_socket(socket, challenge, state.0)
+        async move |socket| {
+            // Send the request out of here so the task can be spawned on the local set.
+            state.requests.send((socket, challenge)).await.unwrap();
+        }
     });
 
     response.headers_mut().insert(
@@ -139,7 +162,7 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<Arc<ServerState>>) -> imp
     response
 }
 
-/// Actual websocket statemachine (one will be spawned per connection)
+/// Actual websocket state machine (one will be spawned per connection on the local set)
 async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerState>) {
     let (writer, reader) = socket.split();
 
