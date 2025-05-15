@@ -12,7 +12,7 @@ pub mod erase;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod gdb_server;
 pub mod info;
-// pub mod itm;
+pub mod itm;
 pub mod list;
 pub mod mi;
 pub mod profile;

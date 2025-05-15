@@ -77,7 +77,7 @@ impl CoreHandle<'_> {
     /// - Whenever we check the status, we compare it against `last_known_status` and send the appropriate event to the client.
     /// - If we cannot determine the core status, then there is no sense in continuing the debug session, so please propagate the error.
     /// - If the core status has changed, then we update `last_known_status` to the new value, and return `true` as part of the Result<>.
-    pub(crate) fn poll_core<P: ProtocolAdapter>(
+    pub(crate) async fn poll_core<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<CoreStatus, DebuggerError> {
@@ -90,7 +90,7 @@ impl CoreHandle<'_> {
             return Ok(CoreStatus::Unknown);
         }
 
-        let status = match self.core.status() {
+        let status = match self.core.status().await {
             Ok(status) => {
                 if status == self.core_data.last_known_status {
                     return Ok(status);
@@ -121,7 +121,11 @@ impl CoreHandle<'_> {
                 // In this case, we don't re-send the "stopped" event, but further down, we will
                 // update the `last_known_status` to the actual HaltReason returned by the core.
                 if self.core_data.last_known_status != CoreStatus::Halted(HaltReason::Step) {
-                    let program_counter = self.core.read_core_reg(self.core.program_counter()).ok();
+                    let program_counter = self
+                        .core
+                        .read_core_reg(self.core.program_counter())
+                        .await
+                        .ok();
                     let (reason, description) = status.short_long_status(program_counter);
                     let event_body = Some(StoppedEventBody {
                         reason: reason.to_string(),
@@ -165,7 +169,7 @@ impl CoreHandle<'_> {
     }
 
     /// Confirm RTT initialization on the target, and use the RTT channel configurations to initialize the output windows on the DAP Client.
-    pub fn attach_to_rtt<P: ProtocolAdapter>(
+    pub async fn attach_to_rtt<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
         program_binary: &Path,
@@ -193,7 +197,7 @@ impl CoreHandle<'_> {
         }
 
         if self.core_data.clear_rtt_header && !self.core_data.rtt_header_cleared {
-            client.clear_control_block(&mut self.core)?;
+            client.clear_control_block(&mut self.core).await?;
             self.core_data.rtt_header_cleared = true;
             // Trigger a reattach
             return Ok(());
@@ -294,7 +298,7 @@ impl CoreHandle<'_> {
     }
 
     /// Set a single breakpoint in target configuration as well as [`super::core_data::CoreHandle`]
-    pub(crate) fn set_breakpoint(
+    pub(crate) async fn set_breakpoint(
         &mut self,
         address: u64,
         breakpoint_type: session_data::BreakpointType,
@@ -303,11 +307,12 @@ impl CoreHandle<'_> {
         // identify a `InstructionBreakpoint` as a `SourceBreakpoint`. This results in breakpoints not being cleared correctly from [`CoreHandle::clear_breakpoints()`].
         // To work around this, we have to clear the breakpoints manually before we set them again.
         if let Some((_, breakpoint)) = self.find_breakpoint_in_cache(address) {
-            self.clear_breakpoint(breakpoint.address)?;
+            self.clear_breakpoint(breakpoint.address).await?;
         }
 
         self.core
             .set_hw_breakpoint(address)
+            .await
             .map_err(DebuggerError::ProbeRs)?;
         // Wait until the set of the hw breakpoint succeeded, before we cache it here ...
         self.core_data
@@ -320,9 +325,10 @@ impl CoreHandle<'_> {
     }
 
     /// Clear a single breakpoint from target configuration.
-    pub(crate) fn clear_breakpoint(&mut self, address: u64) -> Result<()> {
+    pub(crate) async fn clear_breakpoint(&mut self, address: u64) -> Result<()> {
         self.core
             .clear_hw_breakpoint(address)
+            .await
             .map_err(DebuggerError::ProbeRs)?;
         if let Some((breakpoint_position, _)) = self.find_breakpoint_in_cache(address) {
             self.core_data.breakpoints.remove(breakpoint_position);
@@ -333,7 +339,7 @@ impl CoreHandle<'_> {
     /// Clear all breakpoints of a specified [`super::session_data::BreakpointType`].
     /// Affects target configuration as well as [`CoreData::breakpoints`].
     /// If `breakpoint_type` is of type [`super::session_data::BreakpointType::SourceBreakpoint`], then all breakpoints for the contained [`Source`] will be cleared.
-    pub(crate) fn clear_breakpoints(
+    pub(crate) async fn clear_breakpoints(
         &mut self,
         breakpoint_type: session_data::BreakpointType,
     ) -> Result<()> {
@@ -353,7 +359,7 @@ impl CoreHandle<'_> {
             .map(|breakpoint| breakpoint.address)
             .collect::<Vec<u64>>();
         for breakpoint in target_breakpoints {
-            self.clear_breakpoint(breakpoint)?;
+            self.clear_breakpoint(breakpoint).await?;
         }
         Ok(())
     }
@@ -362,9 +368,9 @@ impl CoreHandle<'_> {
     /// if the requested address is not a valid breakpoint location,
     /// the debugger will attempt to find the closest location to the requested location, and set a breakpoint there.
     /// The Result<> contains the "verified" `address` and `SourceLocation` where the breakpoint that was set.
-    pub(crate) fn verify_and_set_breakpoint(
+    pub(crate) async fn verify_and_set_breakpoint(
         &mut self,
-        source_path: TypedPath,
+        source_path: TypedPath<'_>,
         requested_breakpoint_line: u64,
         requested_breakpoint_column: Option<u64>,
         requested_source: &Source,
@@ -387,7 +393,8 @@ impl CoreHandle<'_> {
                 source: Box::new(requested_source.clone()),
                 location: SourceLocationScope::Specific(source_location.clone()),
             },
-        )?;
+        )
+        .await?;
         Ok(VerifiedBreakpoint {
             address,
             source_location,
@@ -397,7 +404,7 @@ impl CoreHandle<'_> {
     /// In the case where a new binary is flashed as part of a restart, we need to recompute the breakpoint address,
     /// for a specified source location, of any [`super::session_data::BreakpointType::SourceBreakpoint`].
     /// This is because the address of the breakpoint may have changed based on changes in the source file that created the new binary.
-    pub(crate) fn recompute_breakpoints(&mut self) -> Result<(), DebuggerError> {
+    pub(crate) async fn recompute_breakpoints(&mut self) -> Result<(), DebuggerError> {
         let target_breakpoints = self.core_data.breakpoints.clone();
         for breakpoint in target_breakpoints
             .iter()
@@ -409,21 +416,23 @@ impl CoreHandle<'_> {
             })
             .cloned()
         {
-            self.clear_breakpoint(breakpoint.address)?;
+            self.clear_breakpoint(breakpoint.address).await?;
             if let BreakpointType::SourceBreakpoint {
                 source,
                 location: SourceLocationScope::Specific(source_location),
             } = breakpoint.breakpoint_type
             {
-                let breakpoint_err = self.verify_and_set_breakpoint(
-                    source_location.path.to_path(),
-                    source_location.line.unwrap_or(0),
-                    source_location.column.map(|col| match col {
-                        ColumnType::LeftEdge => 0_u64,
-                        ColumnType::Column(c) => c,
-                    }),
-                    &source,
-                );
+                let breakpoint_err = self
+                    .verify_and_set_breakpoint(
+                        source_location.path.to_path(),
+                        source_location.line.unwrap_or(0),
+                        source_location.column.map(|col| match col {
+                            ColumnType::LeftEdge => 0_u64,
+                            ColumnType::Column(c) => c,
+                        }),
+                        &source,
+                    )
+                    .await;
 
                 if let Err(breakpoint_error) = breakpoint_err {
                     return Err(DebuggerError::Other(anyhow!(
@@ -438,22 +447,25 @@ impl CoreHandle<'_> {
     /// Traverse all the variables in the available stack frames, and return the memory ranges
     /// required to resolve the values of these variables. This is used to provide the minimal
     /// memory ranges required to create a [`CoreDump`](probe_rs::CoreDump) for the current scope.
-    pub(crate) fn get_memory_ranges(&mut self) -> Vec<Range<u64>> {
+    pub(crate) async fn get_memory_ranges(&mut self) -> Vec<Range<u64>> {
         let recursion_limit = 10;
 
         let mut all_discrete_memory_ranges = Vec::new();
 
         if let Some(static_variables) = &mut self.core_data.static_variables {
-            static_variables.recurse_deferred_variables(
-                &self.core_data.debug_info,
-                &mut self.core,
-                recursion_limit,
-                StackFrameInfo {
-                    registers: &self.core_data.stack_frames[0].registers,
-                    frame_base: self.core_data.stack_frames[0].frame_base,
-                    canonical_frame_address: self.core_data.stack_frames[0].canonical_frame_address,
-                },
-            );
+            static_variables
+                .recurse_deferred_variables(
+                    &self.core_data.debug_info,
+                    &mut self.core,
+                    recursion_limit,
+                    StackFrameInfo {
+                        registers: &self.core_data.stack_frames[0].registers,
+                        frame_base: self.core_data.stack_frames[0].frame_base,
+                        canonical_frame_address: self.core_data.stack_frames[0]
+                            .canonical_frame_address,
+                    },
+                )
+                .await;
             all_discrete_memory_ranges.append(&mut static_variables.get_discrete_memory_ranges());
         }
 
@@ -465,16 +477,18 @@ impl CoreHandle<'_> {
             }
             for variable_cache in variable_caches {
                 // Cache the deferred top level children of the of the cache.
-                variable_cache.recurse_deferred_variables(
-                    &self.core_data.debug_info,
-                    &mut self.core,
-                    10,
-                    StackFrameInfo {
-                        registers: &frame.registers,
-                        frame_base: frame.frame_base,
-                        canonical_frame_address: frame.canonical_frame_address,
-                    },
-                );
+                variable_cache
+                    .recurse_deferred_variables(
+                        &self.core_data.debug_info,
+                        &mut self.core,
+                        10,
+                        StackFrameInfo {
+                            registers: &frame.registers,
+                            frame_base: frame.frame_base,
+                            canonical_frame_address: frame.canonical_frame_address,
+                        },
+                    )
+                    .await;
                 all_discrete_memory_ranges.append(&mut variable_cache.get_discrete_memory_ranges());
             }
             // Also capture memory addresses for essential registers.
@@ -485,14 +499,14 @@ impl CoreHandle<'_> {
             }
         }
         // Consolidating all memory ranges that are withing 0x400 bytes of each other.
-        consolidate_memory_ranges(all_discrete_memory_ranges, 0x400)
+        consolidate_memory_ranges(all_discrete_memory_ranges, 0x400).await
     }
 }
 
 /// Return a Vec of memory ranges that consolidate the adjacent memory ranges of the input ranges.
 /// Note: The concept of "adjacent" is calculated to include a gap of up to specified number of bytes between ranges.
 /// This serves to consolidate memory ranges that are separated by a small gap, but are still close enough for the purpose of the caller.
-fn consolidate_memory_ranges(
+async fn consolidate_memory_ranges(
     mut discrete_memory_ranges: Vec<Range<u64>>,
     include_bytes_between_ranges: u64,
 ) -> Vec<Range<u64>> {
@@ -526,81 +540,81 @@ fn consolidate_memory_ranges(
 }
 
 /// A single range should remain the same after consolidation.
-#[test]
-fn test_single_range() {
+#[pollster::test]
+async fn test_single_range() {
     let input = vec![Range { start: 0, end: 5 }];
     let expected = vec![Range { start: 0, end: 5 }];
-    let result = consolidate_memory_ranges(input, 0);
+    let result = consolidate_memory_ranges(input, 0).await;
     assert_eq!(result, expected);
 }
 
 /// Three ranges that are adjacent should be consolidated into one.
-#[test]
-fn test_three_adjacent_ranges() {
+#[pollster::test]
+async fn test_three_adjacent_ranges() {
     let input = vec![
         Range { start: 0, end: 5 },
         Range { start: 6, end: 10 },
         Range { start: 11, end: 15 },
     ];
     let expected = vec![Range { start: 0, end: 15 }];
-    let result = consolidate_memory_ranges(input, 0);
+    let result = consolidate_memory_ranges(input, 0).await;
     assert_eq!(result, expected);
 }
 
 /// Two ranges that are distinct should remain distinct after consolidation.
-#[test]
-fn test_distinct_ranges() {
+#[pollster::test]
+async fn test_distinct_ranges() {
     let input = vec![Range { start: 0, end: 5 }, Range { start: 7, end: 10 }];
     let expected = vec![Range { start: 0, end: 5 }, Range { start: 7, end: 10 }];
-    let result = consolidate_memory_ranges(input, 0);
+    let result = consolidate_memory_ranges(input, 0).await;
     assert_eq!(result, expected);
 }
 
 /// Two ranges that are contiguous should be consolidated into one.
-#[test]
-fn test_contiguous_ranges() {
+#[pollster::test]
+async fn test_contiguous_ranges() {
     let input = vec![Range { start: 0, end: 5 }, Range { start: 5, end: 10 }];
     let expected = vec![Range { start: 0, end: 10 }];
-    let result = consolidate_memory_ranges(input, 0);
+    let result = consolidate_memory_ranges(input, 0).await;
     assert_eq!(result, expected);
 }
 
 /// Three ranges where the first two are adjacent and the third is distinct should be consolidated into two.
-#[test]
-fn test_adjacent_and_distinct_ranges() {
+#[pollster::test]
+async fn test_adjacent_and_distinct_ranges() {
     let input = vec![
         Range { start: 0, end: 5 },
         Range { start: 6, end: 10 },
         Range { start: 12, end: 15 },
     ];
     let expected = vec![Range { start: 0, end: 10 }, Range { start: 12, end: 15 }];
-    let result = consolidate_memory_ranges(input, 0);
+    let result = consolidate_memory_ranges(input, 0).await;
     assert_eq!(result, expected);
 }
 
 /// Two ranges where the second starts and ends before the first should remain distinct after consolidation.
-#[test]
-fn test_non_overlapping_ranges() {
+#[pollster::test]
+async fn test_non_overlapping_ranges() {
     let input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
     let expected = vec![Range { start: 0, end: 5 }, Range { start: 10, end: 20 }];
-    let result = consolidate_memory_ranges(input, 0);
+    let result = consolidate_memory_ranges(input, 0).await;
     assert_eq!(result, expected);
 }
 
 /// Two ranges where the second starts and ends before the first but are consolidated because they are within 5 bytes of each other.
-#[test]
-fn test_non_overlapping_ranges_with_extra_bytes() {
+#[pollster::test]
+async fn test_non_overlapping_ranges_with_extra_bytes() {
     let input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
     let expected = vec![Range { start: 0, end: 20 }];
-    let result = consolidate_memory_ranges(input, 5);
+    let result = consolidate_memory_ranges(input, 5).await;
     assert_eq!(result, expected);
 }
 
 /// Two ranges where the second starts before, but intersects with the first, should be consolidated.
-#[test]
-fn test_reversed_intersecting_ranges() {
+#[pollster::test]
+async fn test_reversed_intersecting_ranges() {
     let input = vec![Range { start: 10, end: 20 }, Range { start: 5, end: 15 }];
     let expected = vec![Range { start: 5, end: 20 }];
-    let result = consolidate_memory_ranges(input, 0);
+    let result = consolidate_memory_ranges(input, 0).await;
     assert_eq!(result, expected);
 }

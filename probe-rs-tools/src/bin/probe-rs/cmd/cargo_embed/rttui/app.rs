@@ -247,7 +247,7 @@ impl App {
     }
 
     /// Returns `true` if the application should exit.
-    pub fn handle_event(&mut self, core: &mut Core) -> bool {
+    pub async fn handle_event(&mut self, core: &mut Core<'_>) -> bool {
         let event = match self.events.next() {
             // Ignore key release events emitted by Crossterm on Windows
             Ok(event) if event.kind != KeyEventKind::Press => return false,
@@ -270,7 +270,7 @@ impl App {
             KeyCode::F(n) => self.select_tab(n as usize - 1),
             KeyCode::Tab => self.next_tab(),
             KeyCode::BackTab => self.previous_tab(),
-            KeyCode::Enter => self.push_rtt(core),
+            KeyCode::Enter => self.push_rtt(core).await,
             KeyCode::Char(c) => {
                 if has_control {
                     if let Some(digit) = c.to_digit(10).and_then(|d| d.checked_sub(1)) {
@@ -312,13 +312,16 @@ impl App {
         Ok(())
     }
 
-    pub fn push_rtt(&mut self, core: &mut Core) {
-        if let Err(error) = self.tabs[self.current_tab].send_input(core, &mut self.client) {
+    pub async fn push_rtt(&mut self, core: &mut Core<'_>) {
+        if let Err(error) = self.tabs[self.current_tab]
+            .send_input(core, &mut self.client)
+            .await
+        {
             tracing::warn!("Failed to send input to RTT channel: {error:?}");
         }
     }
 
-    pub(crate) fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+    pub(crate) async fn clean_up(&mut self, core: &mut Core<'_>) -> Result<()> {
         clean_up_terminal();
         let _ = self.terminal.show_cursor();
 

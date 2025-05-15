@@ -77,7 +77,7 @@ impl RttClient {
         self.target.is_some()
     }
 
-    async fn try_attach_impl(&mut self, core: &mut Core) -> Result<bool, Error> {
+    async fn try_attach_impl(&mut self, core: &mut Core<'_>) -> Result<bool, Error> {
         if self.is_attached() {
             return Ok(true);
         }
@@ -89,7 +89,7 @@ impl RttClient {
         let location = if let Some(location) = self.last_control_block_address {
             location
         } else {
-            let location = match Rtt::find_contol_block(core, &self.scan_region) {
+            let location = match Rtt::find_contol_block(core, &self.scan_region).await {
                 Ok(location) => location,
                 Err(Error::ControlBlockNotFound) => {
                     tracing::debug!("Failed to attach - control block not found");
@@ -107,7 +107,7 @@ impl RttClient {
             location
         };
 
-        let rtt = match Rtt::attach_at(core, location) {
+        let rtt = match Rtt::attach_at(core, location).await {
             Ok(rtt) => rtt,
             Err(Error::ControlBlockNotFound) => {
                 self.last_control_block_address = None;
@@ -121,7 +121,7 @@ impl RttClient {
             Err(error) => return Err(error),
         };
 
-        match RttConnection::new(rtt) {
+        match RttConnection::new(rtt).await {
             Ok(rtt) => self.target = Some(rtt),
             Err(Error::ControlBlockCorrupted(error)) => {
                 tracing::debug!("Failed to attach - control block corrupted: {}", error);
@@ -132,22 +132,26 @@ impl RttClient {
         Ok(self.target.is_some())
     }
 
-    pub async fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
-        self.try_attach_impl(core)?;
+    pub async fn try_attach(&mut self, core: &mut Core<'_>) -> Result<bool, Error> {
+        self.try_attach_impl(core).await?;
 
         if self.need_configure {
-            self.configure(core)?;
+            self.configure(core).await?;
             self.need_configure = false;
         }
 
         Ok(self.is_attached())
     }
 
-    pub fn poll_channel(&mut self, core: &mut Core, channel: u32) -> Result<&[u8], Error> {
-        self.try_attach(core)?;
+    pub async fn poll_channel(
+        &mut self,
+        core: &mut Core<'_>,
+        channel: u32,
+    ) -> Result<&[u8], Error> {
+        self.try_attach(core).await?;
 
         if let Some(ref mut target) = self.target {
-            match target.poll_channel(core, channel) {
+            match target.poll_channel(core, channel).await {
                 Ok(()) => self.polled_data = true,
 
                 Err(Error::ControlBlockCorrupted(error)) => {
@@ -178,7 +182,7 @@ impl RttClient {
 
     pub(crate) async fn write_down_channel(
         &mut self,
-        core: &mut Core,
+        core: &mut Core<'_>,
         channel: u32,
         input: impl AsRef<[u8]>,
     ) -> Result<(), Error> {
@@ -191,7 +195,7 @@ impl RttClient {
         target.write_down_channel(core, channel, input).await
     }
 
-    pub async fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub async fn clean_up(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
         self.need_configure = true;
 
         if let Some(target) = self.target.as_mut() {
@@ -204,17 +208,17 @@ impl RttClient {
     /// This function prevents probe-rs from attaching to an RTT control block that is not
     /// supposed to be valid. This is useful when probe-rs has reset the MCU before attaching,
     /// or during/after flashing, when the MCU has not yet been started.
-    pub(crate) fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub(crate) async fn clear_control_block(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
         if self.disallow_clearing_rtt_header {
             tracing::debug!("Not clearing RTT control block");
             return Ok(());
         }
 
-        self.try_attach(core)?;
+        self.try_attach(core).await?;
 
         tracing::debug!("Clearing RTT control block");
         if let Some(mut target) = self.target.take() {
-            target.clear_control_block(core)?;
+            target.clear_control_block(core).await?;
         } else {
             // While the entire block isn't valid in itself, some parts of it may be.
             // Depending on the firmware, the control block may be initialized in such
@@ -226,19 +230,19 @@ impl RttClient {
                     if location == scan_location {
                         if core.is_64_bit() {
                             const SIZE_64B: usize = 16 + 2 * 8;
-                            core.write_8(location, &[0; SIZE_64B])?;
+                            core.write_8(location, &[0; SIZE_64B]).await?;
                         } else {
                             const SIZE_32B: usize = 16 + 2 * 4;
-                            core.write_8(location, &[0; SIZE_32B])?;
+                            core.write_8(location, &[0; SIZE_32B]).await?;
                         }
                     }
                 } else {
                     // If we have to scan for the location or we somehow found the magic string
                     // somewhere else, we can only clear the magic string.
                     let mut magic = [0; Rtt::RTT_ID.len()];
-                    core.read_8(location, &mut magic)?;
+                    core.read_8(location, &mut magic).await?;
                     if magic == Rtt::RTT_ID {
-                        core.write_8(location, &[0; 16])?;
+                        core.write_8(location, &[0; 16]).await?;
                     }
                 }
             }
@@ -267,7 +271,7 @@ impl RttClient {
         self.core_id
     }
 
-    pub(crate) fn configure(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
+    pub(crate) async fn configure(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
         let Some(target) = self.target.as_mut() else {
             return Ok(());
         };
@@ -287,7 +291,7 @@ impl RttClient {
                 });
 
             if let Some(mode) = channel_mode {
-                channel.change_mode(core, mode)?;
+                channel.change_mode(core, mode).await?;
             }
         }
 

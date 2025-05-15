@@ -143,11 +143,15 @@ impl RttActiveUpChannel {
         }
     }
 
-    pub fn change_mode(&mut self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
+    pub async fn change_mode(
+        &mut self,
+        core: &mut Core<'_>,
+        mode: ChannelMode,
+    ) -> Result<(), Error> {
         if self.original_mode.is_none() {
-            self.original_mode = Some(self.up_channel.mode(core)?);
+            self.original_mode = Some(self.up_channel.mode(core).await?);
         }
-        self.up_channel.set_mode(core, mode.into())
+        self.up_channel.set_mode(core, mode.into()).await
     }
 
     pub fn channel_name(&self) -> String {
@@ -162,8 +166,8 @@ impl RttActiveUpChannel {
     }
 
     /// Reads available channel data into the internal buffer.
-    pub async fn poll(&mut self, core: &mut Core) -> Result<(), Error> {
-        self.bytes_buffered = self.up_channel.read(core, self.rtt_buffer.as_mut())?;
+    pub async fn poll(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
+        self.bytes_buffered = self.up_channel.read(core, self.rtt_buffer.as_mut()).await?;
         Ok(())
     }
 
@@ -202,8 +206,15 @@ impl RttActiveDownChannel {
         self.down_channel.number() as u32
     }
 
-    pub fn write(&mut self, core: &mut Core<'_>, data: impl AsRef<[u8]>) -> Result<(), Error> {
-        self.down_channel.write(core, data.as_ref()).map(|_| ())
+    pub async fn write(
+        &mut self,
+        core: &mut Core<'_>,
+        data: impl AsRef<[u8]>,
+    ) -> Result<(), Error> {
+        self.down_channel
+            .write(core, data.as_ref())
+            .await
+            .map(|_| ())
     }
 }
 
@@ -227,14 +238,13 @@ pub struct RttConnection {
 
 impl RttConnection {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
-    pub fn new(rtt: Rtt) -> Result<Self, Error> {
+    pub async fn new(rtt: Rtt) -> Result<Self, Error> {
         let control_block_addr = rtt.ptr();
 
-        let active_up_channels = rtt
-            .up_channels
-            .into_iter()
-            .map(RttActiveUpChannel::new)
-            .collect::<Vec<_>>();
+        let mut active_up_channels = vec![];
+        for channel in rtt.up_channels.into_iter() {
+            active_up_channels.push(RttActiveUpChannel::new(channel).await);
+        }
 
         let active_down_channels = rtt
             .down_channels
@@ -251,10 +261,14 @@ impl RttConnection {
 
     /// Polls the RTT target on all channels and returns available data.
     /// An error on any channel will return an error instead of incomplete data.
-    pub fn poll_channel(&mut self, core: &mut Core, channel_idx: u32) -> Result<(), Error> {
+    pub async fn poll_channel(
+        &mut self,
+        core: &mut Core<'_>,
+        channel_idx: u32,
+    ) -> Result<(), Error> {
         let channel_idx = channel_idx as usize;
         if let Some(channel) = self.active_up_channels.get_mut(channel_idx) {
-            channel.poll(core)
+            channel.poll(core).await
         } else {
             Err(Error::MissingChannel(channel_idx))
         }
@@ -272,13 +286,13 @@ impl RttConnection {
     /// Send data to a down channel.
     pub async fn write_down_channel(
         &mut self,
-        core: &mut Core,
+        core: &mut Core<'_>,
         channel_idx: u32,
         data: impl AsRef<[u8]>,
     ) -> Result<(), Error> {
         let channel_idx = channel_idx as usize;
         if let Some(channel) = self.active_down_channels.get_mut(channel_idx) {
-            channel.write(core, data)
+            channel.write(core, data).await
         } else {
             Err(Error::MissingChannel(channel_idx))
         }

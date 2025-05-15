@@ -217,10 +217,7 @@ impl RpcSpawnContext {
         self.state.session_blocking(sessid)
     }
 
-    pub fn object_mut_blocking<T: Any + Send>(
-        &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
+    pub fn object_mut_blocking<T: Any>(&self, key: Key<T>) -> impl DerefMut<Target = T> + use<T> {
         self.state.object_mut_blocking(key)
     }
 
@@ -231,21 +228,21 @@ impl RpcSpawnContext {
     pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
     where
         T: MultiTopicWriter,
-        F: FnOnce(RpcSpawnContext, REQ, T::Sender) -> RESP,
-        F: Send + 'static,
-        REQ: Send + 'static,
-        RESP: Send + 'static,
+        F: AsyncFnOnce(RpcSpawnContext, REQ, T::Sender) -> RESP,
+        F: 'static,
+        REQ: 'static,
+        RESP: 'static,
     {
         let token = self.cancellation_token();
         let (sender, publisher) = T::create(token);
 
         let ctx = self.clone();
-        let blocking = tokio::task::spawn_blocking(move || task(ctx, request, sender));
+        let blocking = task(ctx, request, sender);
 
         tokio::select! {
             _ =  publisher.publish(&self.sender) => unreachable!(),
             response = blocking => {
-                response.unwrap()
+                response
             }
         }
     }
@@ -285,19 +282,21 @@ impl LimitedLister {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ProbeLister for LimitedLister {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+    async fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
         if !self.is_allowed(selector) {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,
             ));
         }
-        self.all_probes.open(selector)
+        self.all_probes.open(selector).await
     }
 
-    fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    async fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
         self.all_probes
             .list(selector)
+            .await
             .into_iter()
             .filter(|info| self.is_allowed(&DebugProbeSelector::from(info)))
             .collect()
@@ -362,14 +361,11 @@ impl RpcContext {
             .map_err(|e| anyhow!("{:?}", e))
     }
 
-    pub async fn object_mut<T: Any + Send>(
-        &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
+    pub async fn object_mut<T: Any>(&self, key: Key<T>) -> impl DerefMut<Target = T> + use<T> {
         self.state.object_mut(key).await
     }
 
-    pub async fn store_object<T: Any + Send>(&mut self, obj: T) -> Key<T> {
+    pub async fn store_object<T: Any>(&mut self, obj: T) -> Key<T> {
         self.state.store_object(obj).await
     }
 
@@ -377,10 +373,7 @@ impl RpcContext {
         self.state.set_session(session, dry_run).await
     }
 
-    pub async fn session(
-        &self,
-        sid: Key<Session>,
-    ) -> impl DerefMut<Target = Session> + Send + use<> {
+    pub async fn session(&self, sid: Key<Session>) -> impl DerefMut<Target = Session> + use<> {
         self.object_mut(sid).await
     }
 
@@ -396,7 +389,7 @@ impl RpcContext {
     where
         T: Topic,
         T::Message: Serialize + Schema + Sized + Send + 'static,
-        F: FnOnce(RpcSpawnContext, REQ, Sender<T::Message>) -> RESP,
+        F: AsyncFnOnce(RpcSpawnContext, REQ, Sender<T::Message>) -> RESP,
         F: Send + 'static,
         REQ: Send + 'static,
         RESP: Send + 'static,
@@ -429,15 +422,15 @@ impl server::WireSpawn for TokioSpawner {
 }
 impl host_client::WireSpawn for TokioSpawner {
     fn spawn(&mut self, fut: impl Future<Output = ()> + Send + 'static) {
-        _ = tokio::spawn(fut);
+        _ = tokio::task::spawn_local(fut);
     }
 }
 
 pub fn spawn_fn(
     _sp: &TokioSpawner,
-    fut: impl Future<Output = ()> + 'static + Send,
+    fut: impl Future<Output = ()> + 'static,
 ) -> Result<(), Infallible> {
-    tokio::task::spawn(fut);
+    tokio::task::spawn_local(fut);
     Ok(())
 }
 
@@ -523,7 +516,7 @@ postcard_rpc::define_dispatch! {
 
         | EndpointTy                | kind      | handler           |
         | ----------                | ----      | -------           |
-        | ListProbesEndpoint        | blocking  | list_probes       |
+        | ListProbesEndpoint        | async     | list_probes       |
         | SelectProbeEndpoint       | async     | select_probe      |
         | AttachEndpoint            | async     | attach            |
 

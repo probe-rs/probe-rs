@@ -60,7 +60,7 @@ struct CliOptions {
 
 pub fn main(args: &[OsString]) {
     let mut registry = Registry::from_builtin_families();
-    match main_try(&mut registry, args) {
+    match pollster::block_on(main_try(&mut registry, args)) {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling process::exit,
@@ -154,9 +154,12 @@ async fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), Oper
             .map_err(OperationError::AttachingToCoreFailed)?;
         if opt.reset_halt {
             core.reset_and_halt(std::time::Duration::from_millis(500))
+                .await
                 .map_err(OperationError::TargetResetHaltFailed)?;
         } else {
-            core.reset().map_err(OperationError::TargetResetFailed)?;
+            core.reset()
+                .await
+                .map_err(OperationError::TargetResetFailed)?;
         }
     }
 

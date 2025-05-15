@@ -69,7 +69,7 @@ pub(crate) struct SessionData {
 }
 
 impl SessionData {
-    pub(crate) fn new(
+    pub(crate) async fn new(
         registry: &mut Registry,
         lister: &Lister,
         config: &mut configuration::SessionConfig,
@@ -78,9 +78,9 @@ impl SessionData {
         let target_selector = TargetSelector::from(config.chip.as_deref());
 
         let options = config.probe_options().load(registry)?;
-        let target_probe = options.attach_probe(lister)?;
+        let target_probe = options.attach_probe(lister).await?;
         let mut target_session = options
-            .attach_session(target_probe, target_selector)
+            .attach_session(target_probe, target_selector).await
             .map_err(|operation_error| {
                 match operation_error {
                     OperationError::AttachingFailed {
@@ -139,28 +139,34 @@ impl SessionData {
 
         for core_configuration in valid_core_configs {
             if core_configuration.catch_hardfault || core_configuration.catch_reset {
-                let mut core = target_session.core(core_configuration.core_index)?;
-                let was_halted = core.core_halted()?;
+                let mut core = target_session.core(core_configuration.core_index).await?;
+                let was_halted = core.core_halted().await?;
 
                 if !was_halted {
-                    core.halt(Duration::from_millis(100))?;
+                    core.halt(Duration::from_millis(100)).await?;
                 }
 
                 if core_configuration.catch_hardfault {
-                    match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+                    match core
+                        .enable_vector_catch(VectorCatchCondition::HardFault)
+                        .await
+                    {
                         Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                         Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                     }
                 }
                 if core_configuration.catch_reset {
-                    match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                    match core
+                        .enable_vector_catch(VectorCatchCondition::CoreReset)
+                        .await
+                    {
                         Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                         Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                     }
                 }
 
                 if was_halted {
-                    core.run()?;
+                    core.run().await?;
                 }
             }
 
@@ -262,9 +268,12 @@ impl SessionData {
     }
 
     /// Do a 'light weight'(just get references to existing data structures) attach to the core and return relevant debug data.
-    pub(crate) fn attach_core(&mut self, core_index: usize) -> Result<CoreHandle, DebuggerError> {
+    pub(crate) async fn attach_core(
+        &mut self,
+        core_index: usize,
+    ) -> Result<CoreHandle, DebuggerError> {
         if let (Ok(target_core), Some(core_data)) = (
-            self.session.core(core_index),
+            self.session.core(core_index).await,
             self.core_data
                 .iter_mut()
                 .find(|core_data| core_data.core_index == core_index),
@@ -313,7 +322,7 @@ impl SessionData {
         // Always set `all_cores_halted` to true, until one core is found to be running.
         debug_adapter.all_cores_halted = true;
         for core_config in session_config.core_configs.iter() {
-            let Ok(mut target_core) = self.attach_core(core_config.core_index) else {
+            let Ok(mut target_core) = self.attach_core(core_config.core_index).await else {
                 tracing::debug!(
                     "Failed to attach to target core #{}. Cannot poll for RTT data.",
                     core_config.core_index
@@ -323,9 +332,12 @@ impl SessionData {
 
             // We need to poll the core to determine its status.
             let current_core_status =
-                target_core.poll_core(debug_adapter).inspect_err(|error| {
-                    let _ = debug_adapter.show_error_message(error);
-                })?;
+                target_core
+                    .poll_core(debug_adapter)
+                    .await
+                    .inspect_err(|error| {
+                        let _ = debug_adapter.show_error_message(error);
+                    })?;
 
             // If appropriate, check for RTT data.
             if core_config.rtt_config.enabled {
@@ -339,12 +351,15 @@ impl SessionData {
                     }
                 } else {
                     #[allow(clippy::unwrap_used)]
-                    if let Err(error) = target_core.attach_to_rtt(
-                        debug_adapter,
-                        core_config.program_binary.as_ref().unwrap(),
-                        &core_config.rtt_config,
-                        timestamp_offset,
-                    ) {
+                    if let Err(error) = target_core
+                        .attach_to_rtt(
+                            debug_adapter,
+                            core_config.program_binary.as_ref().unwrap(),
+                            &core_config.rtt_config,
+                            timestamp_offset,
+                        )
+                        .await
+                    {
                         debug_adapter
                             .show_error_message(&DebuggerError::Other(error))
                             .ok();
@@ -365,29 +380,36 @@ impl SessionData {
                     target_core.core.id()
                 );
 
-                let initial_registers = DebugRegisters::from_core(&mut target_core.core);
+                let initial_registers = DebugRegisters::from_core(&mut target_core.core).await;
                 let exception_interface = exception_handler_for_core(target_core.core.core_type());
-                let instruction_set = target_core.core.instruction_set().ok();
+                let instruction_set = target_core.core.instruction_set().await.ok();
 
                 target_core.core_data.static_variables =
                     Some(target_core.core_data.debug_info.create_static_scope_cache());
 
-                target_core.core_data.stack_frames = target_core.core_data.debug_info.unwind(
-                    &mut target_core.core,
-                    initial_registers,
-                    exception_interface.as_ref(),
-                    instruction_set,
-                )?;
+                target_core.core_data.stack_frames = target_core
+                    .core_data
+                    .debug_info
+                    .unwind(
+                        &mut target_core.core,
+                        initial_registers,
+                        exception_interface.as_ref(),
+                        instruction_set,
+                    )
+                    .await?;
             }
             status_of_cores.push(current_core_status);
         }
         Ok((status_of_cores, suggest_delay_required))
     }
 
-    pub(crate) fn clean_up(&mut self, session_config: &SessionConfig) -> Result<(), DebuggerError> {
+    pub(crate) async fn clean_up(
+        &mut self,
+        session_config: &SessionConfig,
+    ) -> Result<(), DebuggerError> {
         for core_config in session_config.core_configs.iter() {
             if core_config.rtt_config.enabled {
-                let Ok(mut target_core) = self.attach_core(core_config.core_index) else {
+                let Ok(mut target_core) = self.attach_core(core_config.core_index).await else {
                     tracing::debug!(
                         "Failed to attach to target core #{}. Cannot clean up.",
                         core_config.core_index
@@ -396,7 +418,7 @@ impl SessionData {
                 };
 
                 if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
-                    core_rtt.clean_up(&mut target_core.core)?;
+                    core_rtt.clean_up(&mut target_core.core).await?;
                 }
             }
         }

@@ -88,14 +88,14 @@ fn rustc_binary() -> std::ffi::OsString {
     rustc.to_os_string()
 }
 
-pub(crate) fn disassemble_target_memory(
-    target_core: &mut CoreHandle,
+pub(crate) async fn disassemble_target_memory(
+    target_core: &mut CoreHandle<'_>,
     instruction_offset: i64,
     byte_offset: i64,
     memory_reference: u64,
     instruction_count: i64,
 ) -> Result<Vec<DisassembledInstruction>, DebuggerError> {
-    let instruction_set = target_core.core.instruction_set()?;
+    let instruction_set = target_core.core.instruction_set().await?;
     match instruction_set {
         InstructionSet::Thumb2
         | InstructionSet::RV32C
@@ -160,7 +160,7 @@ pub(crate) fn disassemble_target_memory(
     start_from_address &= !(min_instruction_size - 1);
     read_until_address &= !(min_instruction_size - 1);
 
-    let cs_le = get_capstone_le(target_core)?;
+    let cs_le = get_capstone_le(target_core).await?;
     let mut code_buffer_le: Vec<u8> = vec![];
     let mut disassembled_instructions: Vec<DisassembledInstruction> = vec![];
     let mut maybe_previous_source_location = None;
@@ -181,7 +181,7 @@ pub(crate) fn disassemble_target_memory(
         let mut read_pointer = instruction_pointer + code_buffer_le.len() as u64;
         let mut read_error = None;
         while read_error.is_none() && code_buffer_le.len() < max_instruction_size as usize {
-            fn read_instruction<const N: usize, M>(
+            async fn read_instruction<const N: usize, M>(
                 ptr: &mut u64,     // read pointer
                 mem: &mut M,       // the target's memory interface
                 buf: &mut Vec<u8>, // the code buffer to read into
@@ -194,6 +194,7 @@ pub(crate) fn disassemble_target_memory(
                 // independently of host endianness and memory interface implementation.
                 let mut data: [u8; N] = [0; N];
                 mem.read(*ptr, &mut data)
+                    .await
                     .inspect(|_| {
                         if conv {
                             data.reverse()
@@ -212,18 +213,24 @@ pub(crate) fn disassemble_target_memory(
                 // the code as a halfword stream. Reading a full word and
                 // then changing endianness would otherwise reverse instruction
                 // order or garble partial 32 bit instructions.
-                HALFWORD => read_instruction::<HALFWORD, _>(
-                    &mut read_pointer,
-                    &mut target_core.core,
-                    &mut code_buffer_le,
-                    convert_endianness,
-                ),
-                WORD => read_instruction::<WORD, _>(
-                    &mut read_pointer,
-                    &mut target_core.core,
-                    &mut code_buffer_le,
-                    convert_endianness,
-                ),
+                HALFWORD => {
+                    read_instruction::<HALFWORD, _>(
+                        &mut read_pointer,
+                        &mut target_core.core,
+                        &mut code_buffer_le,
+                        convert_endianness,
+                    )
+                    .await
+                }
+                WORD => {
+                    read_instruction::<WORD, _>(
+                        &mut read_pointer,
+                        &mut target_core.core,
+                        &mut code_buffer_le,
+                        convert_endianness,
+                    )
+                    .await
+                }
                 // All supported architectures have either 16 or 32 bit instructions.
                 _ => return Err(DebuggerError::Unimplemented),
             };
@@ -380,8 +387,8 @@ pub(crate) fn disassemble_target_memory(
     Ok(disassembled_instructions)
 }
 
-fn get_capstone_le(target_core: &mut CoreHandle) -> Result<Capstone, DebuggerError> {
-    let mut cs = match target_core.core.instruction_set()? {
+async fn get_capstone_le(target_core: &mut CoreHandle<'_>) -> Result<Capstone, DebuggerError> {
+    let mut cs = match target_core.core.instruction_set().await? {
         InstructionSet::Thumb2 => {
             let mut capstone_builder = Capstone::new()
                 .arm()
@@ -497,11 +504,12 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
 }
 
 /// Provides halt functionality that is re-used elsewhere, in context of multiple DAP Requests
-pub(crate) fn halt_core(
-    target_core: &mut probe_rs::Core,
+pub(crate) async fn halt_core(
+    target_core: &mut probe_rs::Core<'_>,
 ) -> Result<probe_rs::CoreInformation, DebuggerError> {
     target_core
         .halt(Duration::from_millis(100))
+        .await
         .map_err(DebuggerError::from)
 }
 
@@ -533,7 +541,7 @@ pub(crate) fn get_variable_reference(
             indexed_child_variables_cnt,
         )
     } else if parent_variable.variable_node_type.is_deferred()
-        && parent_variable.to_string() != "()"
+        && parent_variable.to_string(cache) != "()"
     {
         // We have not yet cached the children for this reference.
         // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
@@ -565,9 +573,9 @@ pub(crate) fn get_svd_variable_reference(
 }
 
 /// A helper function to set and return a [`Breakpoint`] struct from a [`InstructionBreakpoint`]
-pub(crate) fn set_instruction_breakpoint(
+pub(crate) async fn set_instruction_breakpoint(
     requested_breakpoint: InstructionBreakpoint,
-    target_core: &mut CoreHandle,
+    target_core: &mut CoreHandle<'_>,
 ) -> Breakpoint {
     let mut breakpoint_response = Breakpoint {
         column: None,
@@ -587,7 +595,10 @@ pub(crate) fn set_instruction_breakpoint(
         .as_str()
         .try_into()
     {
-        match target_core.set_breakpoint(memory_reference, BreakpointType::InstructionBreakpoint) {
+        match target_core
+            .set_breakpoint(memory_reference, BreakpointType::InstructionBreakpoint)
+            .await
+        {
             Ok(_) => {
                 breakpoint_response.verified = true;
                 breakpoint_response.instruction_reference =

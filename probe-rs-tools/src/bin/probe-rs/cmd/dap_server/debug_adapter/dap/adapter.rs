@@ -95,10 +95,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.configuration_done
     }
 
-    pub(crate) fn pause(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
-        match target_core.core.halt(Duration::from_millis(500)) {
+    pub(crate) async fn pause(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+        request: &Request,
+    ) -> Result<()> {
+        match target_core.core.halt(Duration::from_millis(500)).await {
             Ok(cpu_info) => {
-                let new_status = match target_core.core.status() {
+                let new_status = match target_core.core.status().await {
                     Ok(new_status) => new_status,
                     Err(error) => {
                         self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error)))?;
@@ -133,9 +137,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn disconnect(
+    pub(crate) async fn disconnect(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: DisconnectArguments = get_arguments(self, request)?;
@@ -145,15 +149,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             || arguments.suspend_debuggee.unwrap_or(false);
 
         if must_halt_debuggee {
-            let _ = target_core.core.halt(Duration::from_millis(100));
+            let _ = target_core.core.halt(Duration::from_millis(100)).await;
         }
 
         self.send_response::<DisconnectResponse>(request, Ok(None))
     }
 
-    pub(crate) fn read_memory(
+    pub(crate) async fn read_memory(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: ReadMemoryArguments = get_arguments(self, request)?;
@@ -181,7 +185,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut fast_buff = vec![0u8; large_read_byte_count];
         // Read as many large chunks as possible.
         while num_bytes_unread > 0 {
-            if let Ok(()) = target_core.core.read(address, &mut fast_buff) {
+            if let Ok(()) = target_core.core.read(address, &mut fast_buff).await {
                 result_buffer.extend_from_slice(&fast_buff);
                 address += large_read_byte_count as u64;
                 num_bytes_unread -= large_read_byte_count;
@@ -191,7 +195,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
         // Read the remaining bytes one by one.
         while num_bytes_unread > 0 {
-            if let Ok(good_byte) = target_core.core.read_word_8(address) {
+            if let Ok(good_byte) = target_core.core.read_word_8(address).await {
                 result_buffer.push(good_byte);
                 address += 1;
                 num_bytes_unread -= 1;
@@ -226,9 +230,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn write_memory(
+    pub(crate) async fn write_memory(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: WriteMemoryArguments = get_arguments(self, request)?;
@@ -269,6 +273,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         match target_core
             .core
             .write_8(address, &data_bytes)
+            .await
             .map_err(DebuggerError::ProbeRs)
         {
             Ok(_) => {
@@ -296,9 +301,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     /// Evaluates the given expression in the context of the top most stack frame.
     /// The expression has access to any variables and arguments that are in scope.
-    pub(crate) fn evaluate(
+    pub(crate) async fn evaluate(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
@@ -320,58 +325,58 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             if context == "clipboard" {
                 response_body.result = arguments.expression;
             } else if context == "repl" {
-                match self.handle_repl(target_core, &arguments) {
-                    Ok(repl_response) => {
-                        // In all other cases, the response would have been updated by the repl command handler.
-                        response_body.result = if repl_response.success {
-                            repl_response
-                                .message
-                                // This should always have a value, but just in case someone was lazy ...
-                                .unwrap_or_else(|| "Success.".to_string())
-                        } else {
-                            format!(
-                                "Error: {:?} {:?}",
-                                repl_response.command, repl_response.message
-                            )
-                        };
+                // match self.handle_repl(target_core, &arguments).await {
+                //     Ok(repl_response) => {
+                //         // In all other cases, the response would have been updated by the repl command handler.
+                //         response_body.result = if repl_response.success {
+                //             repl_response
+                //                 .message
+                //                 // This should always have a value, but just in case someone was lazy ...
+                //                 .unwrap_or_else(|| "Success.".to_string())
+                //         } else {
+                //             format!(
+                //                 "Error: {:?} {:?}",
+                //                 repl_response.command, repl_response.message
+                //             )
+                //         };
 
-                        // Perform any special post-processing of the response.
-                        match repl_response.command.as_str() {
-                            "terminate" => {
-                                // This is a special case, where a repl command has requested that the debug session be terminated.
-                                self.send_event(
-                                    "terminated",
-                                    Some(TerminatedEventBody { restart: None }),
-                                )?;
-                            }
-                            "variables" => {
-                                // This is a special case, where a repl command has requested that the variables be displayed.
-                                if let Some(repl_response_body) = repl_response.body {
-                                    if let Ok(evaluate_response) =
-                                        serde_json::from_value(repl_response_body.clone())
-                                    {
-                                        response_body = evaluate_response;
-                                    } else {
-                                        response_body.result = format!(
-                                            "Error: Could not parse response body: {repl_response_body:?}"
-                                        );
-                                    }
-                                }
-                            }
-                            "setBreakpoints" => {
-                                // This is a special case, where we've added a breakpoint, and need to synch the DAP client UI.
-                                self.send_event("breakpoint", repl_response.body)?;
-                            }
-                            _other_commands => {}
-                        }
-                    }
-                    Err(error) => {
-                        response_body.result = match error {
-                            DebuggerError::UserMessage(repl_message) => repl_message,
-                            other_error => format!("{other_error:?}"),
-                        };
-                    }
-                }
+                //         // Perform any special post-processing of the response.
+                //         match repl_response.command.as_str() {
+                //             "terminate" => {
+                //                 // This is a special case, where a repl command has requested that the debug session be terminated.
+                //                 self.send_event(
+                //                     "terminated",
+                //                     Some(TerminatedEventBody { restart: None }),
+                //                 )?;
+                //             }
+                //             "variables" => {
+                //                 // This is a special case, where a repl command has requested that the variables be displayed.
+                //                 if let Some(repl_response_body) = repl_response.body {
+                //                     if let Ok(evaluate_response) =
+                //                         serde_json::from_value(repl_response_body.clone())
+                //                     {
+                //                         response_body = evaluate_response;
+                //                     } else {
+                //                         response_body.result = format!(
+                //                             "Error: Could not parse response body: {repl_response_body:?}"
+                //                         );
+                //                     }
+                //                 }
+                //             }
+                //             "setBreakpoints" => {
+                //                 // This is a special case, where we've added a breakpoint, and need to synch the DAP client UI.
+                //                 self.send_event("breakpoint", repl_response.body)?;
+                //             }
+                //             _other_commands => {}
+                //         }
+                //     }
+                //     Err(error) => {
+                //         response_body.result = match error {
+                //             DebuggerError::UserMessage(repl_message) => repl_message,
+                //             other_error => format!("{other_error:?}"),
+                //         };
+                //     }
+                // }
             } else {
                 // Handle other contexts: 'watch', 'hover', etc.
                 // The Variables request sometimes returns the variable name, and other times the variable id, so this expression will be tested to determine if it is an id or not.
@@ -416,17 +421,21 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 // This is a special case where we have a single variable in the cache, and it is the root of a scope.
                                 // These variables don't have cached children by default, so we need to resolve them before we proceed.
                                 // We check for len() == 1, so unwrap() on first_mut() is safe.
-                                target_core.core_data.debug_info.cache_deferred_variables(
-                                    search_cache,
-                                    &mut target_core.core,
-                                    &mut root_variable,
-                                    StackFrameInfo {
-                                        registers: &stack_frame.registers,
-                                        frame_base: stack_frame.frame_base,
-                                        canonical_frame_address: stack_frame
-                                            .canonical_frame_address,
-                                    },
-                                )?;
+                                target_core
+                                    .core_data
+                                    .debug_info
+                                    .cache_deferred_variables(
+                                        search_cache,
+                                        &mut target_core.core,
+                                        &mut root_variable,
+                                        StackFrameInfo {
+                                            registers: &stack_frame.registers,
+                                            frame_base: stack_frame.frame_base,
+                                            canonical_frame_address: stack_frame
+                                                .canonical_frame_address,
+                                        },
+                                    )
+                                    .await?;
                             }
 
                             if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
@@ -482,7 +491,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                         svd_variable.memory_reference();
                                     response_body.named_variables = Some(named_child_variables_cnt);
                                     response_body.result =
-                                        svd_variable.get_value(&mut target_core.core);
+                                        svd_variable.get_value(&mut target_core.core).await;
                                     response_body.type_ = svd_variable.type_name();
                                     response_body.variables_reference = variables_reference.into();
                                 }
@@ -495,48 +504,56 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(response_body)))
     }
 
-    fn handle_repl(
-        &mut self,
-        target_core: &mut CoreHandle<'_>,
-        arguments: &EvaluateArguments,
-    ) -> Result<Response, DebuggerError> {
-        if !target_core.core.core_halted()?
-            && !arguments.expression.starts_with("break")
-            && !arguments.expression.starts_with("quit")
-            && !arguments.expression.starts_with("help")
-        {
-            return Err(DebuggerError::UserMessage(
-                "The target is running. Only the 'break', 'help' or 'quit' commands are allowed."
-                    .to_string(),
-            ));
-        }
+    // async fn handle_repl(
+    //     &mut self,
+    //     target_core: &mut CoreHandle<'_>,
+    //     arguments: &EvaluateArguments,
+    // ) -> Result<Response, DebuggerError> {
+    //     if !target_core.core.core_halted().await?
+    //         && !arguments.expression.starts_with("break")
+    //         && !arguments.expression.starts_with("quit")
+    //         && !arguments.expression.starts_with("help")
+    //     {
+    //         return Err(DebuggerError::UserMessage(
+    //             "The target is running. Only the 'break', 'help' or 'quit' commands are allowed."
+    //                 .to_string(),
+    //         ));
+    //     }
 
-        // The target is halted, so we can allow any repl command.
-        //TODO: Do we need to look for '/' in the expression, before we split it?
-        // Now we can make sure we have a valid expression and evaluate it.
-        let (command_root, repl_commands) = build_expanded_commands(arguments.expression.trim());
+    //     // The target is halted, so we can allow any repl command.
+    //     //TODO: Do we need to look for '/' in the expression, before we split it?
+    //     // Now we can make sure we have a valid expression and evaluate it.
+    //     let (command_root, repl_commands) = build_expanded_commands(arguments.expression.trim());
+    //     let first = repl_commands.first();
 
-        let Some(repl_command) = repl_commands.first() else {
-            return Err(DebuggerError::UserMessage(format!(
-                "Invalid REPL command: {:?}.",
-                command_root
-            )));
-        };
+    //     let Some(repl_command) = first else {
+    //         return Err(DebuggerError::UserMessage(format!(
+    //             "Invalid REPL command: {:?}.",
+    //             command_root
+    //         )));
+    //     };
 
-        // We have a valid repl command, so we can evaluate it.
-        // First, let's extract the remainder of the arguments, so that we can pass them to the handler.
-        let argument_string = arguments
-            .expression
-            .trim_start_matches(&command_root)
-            .trim_start()
-            .trim_start_matches(repl_command.command)
-            .trim_start();
+    //     // We have a valid repl command, so we can evaluate it.
+    //     // First, let's extract the remainder of the arguments, so that we can pass them to the handler.
+    //     let argument_string = arguments
+    //         .expression
+    //         .trim_start_matches(&command_root)
+    //         .trim_start()
+    //         .trim_start_matches(repl_command.command)
+    //         .trim_start()
+    //         .to_string();
 
-        (repl_command.handler)(target_core, argument_string, arguments)
-    }
+    //     let fut = (repl_command.handler)(target_core, "", arguments);
+
+    //     todo!()
+    // }
 
     /// Works in tandem with the `evaluate` request, to provide possible completions in the Debug Console REPL window.
-    pub(crate) fn completions(&mut self, _: &mut CoreHandle, request: &Request) -> Result<()> {
+    pub(crate) async fn completions(
+        &mut self,
+        _: &mut CoreHandle<'_>,
+        request: &Request,
+    ) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
 
         let arguments: CompletionsArguments = get_arguments(self, request)?;
@@ -549,9 +566,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     /// Set the variable with the given name in the variable container to a new value.
-    pub(crate) fn set_variable(
+    pub(crate) async fn set_variable(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: SetVariableArguments = get_arguments(self, request)?;
@@ -617,11 +634,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     (cache_variable, variable_cache)
                 {
                     // We have found the variable that needs to be updated.
-                    match cache_variable.update_value(
-                        &mut target_core.core,
-                        variable_cache,
-                        new_value.clone(),
-                    ) {
+                    match cache_variable
+                        .update_value(&mut target_core.core, variable_cache, new_value.clone())
+                        .await
+                    {
                         Ok(()) => {
                             let (
                                 variables_reference,
@@ -665,12 +681,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn restart(
+    pub(crate) async fn restart(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: Option<&Request>,
     ) -> Result<()> {
-        match target_core.core.halt(Duration::from_millis(500)) {
+        match target_core.core.halt(Duration::from_millis(500)).await {
             Ok(_) => {}
             Err(error) => {
                 if let Some(request) = request {
@@ -689,7 +705,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
             // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
-            if let Err(error) = target_core.core.reset_and_halt(Duration::from_millis(500)) {
+            if let Err(error) = target_core
+                .core
+                .reset_and_halt(Duration::from_millis(500))
+                .await
+            {
                 return self.send_response::<()>(
                     request,
                     Err(&DebuggerError::Other(anyhow!("{}", error))),
@@ -697,7 +717,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
 
             // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-            target_core.core.debug_on_sw_breakpoint(true)?;
+            target_core.core.debug_on_sw_breakpoint(true).await?;
 
             // For RISC-V, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
             if target_core.core.architecture() == Riscv {
@@ -706,6 +726,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 for breakpoint in saved_breakpoints {
                     match target_core
                         .set_breakpoint(breakpoint.address, breakpoint.breakpoint_type.clone())
+                        .await
                     {
                         Ok(_) => {}
                         Err(error) => {
@@ -722,7 +743,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
             // Now that we have the breakpoints re-enabled, we can decide if it is appropriate to resume the core.
             if !self.halt_after_reset {
-                match self.r#continue(target_core, request) {
+                match self.r#continue(target_core, request).await {
                     Ok(_) => {
                         self.send_response::<()>(request, Ok(None))?;
                         let event_body = Some(ContinuedEventBody {
@@ -758,7 +779,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         } else {
             // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
             // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
-            let core_info = match target_core.core.reset_and_halt(Duration::from_millis(500)) {
+            let core_info = match target_core
+                .core
+                .reset_and_halt(Duration::from_millis(500))
+                .await
+            {
                 Ok(core_info) => core_info,
                 Err(error) => {
                     return self.show_error_message(&DebuggerError::Other(anyhow!("{}", error)));
@@ -766,7 +791,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             };
 
             // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-            target_core.core.debug_on_sw_breakpoint(true)?;
+            target_core.core.debug_on_sw_breakpoint(true).await?;
 
             // Only notify the DAP client if we are NOT in initialization stage ([`DebugAdapter::configuration_done`]).
             if self.configuration_is_done() {
@@ -790,12 +815,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     #[tracing::instrument(level = "debug", skip_all, name = "Handle configuration done")]
-    pub(crate) fn configuration_done(
+    pub(crate) async fn configuration_done(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
-        let current_core_status = target_core.core.status()?;
+        let current_core_status = target_core.core.status().await?;
 
         if current_core_status.is_halted() {
             if self.halt_after_reset
@@ -807,6 +832,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let program_counter = target_core
                     .core
                     .read_core_reg(target_core.core.program_counter())
+                    .await
                     .ok();
                 let event_body = Some(StoppedEventBody {
                     reason: current_core_status
@@ -825,7 +851,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 tracing::debug!(
                     "Core is halted, but not due to a breakpoint and halt_after_reset is not set. Continuing."
                 );
-                self.r#continue(target_core, request)?;
+                self.r#continue(target_core, request).await?;
             }
         }
 
@@ -833,9 +859,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response::<()>(request, Ok(None))
     }
 
-    pub(crate) fn set_breakpoints(
+    pub(crate) async fn set_breakpoints(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let args: SetBreakpointsArguments = get_arguments(self, request)?;
@@ -845,10 +871,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(source_path) = args.source.path.as_ref() {
             // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
             // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
-            match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint {
-                source: Box::new(args.source.clone()),
-                location: SourceLocationScope::All,
-            }) {
+            match target_core
+                .clear_breakpoints(BreakpointType::SourceBreakpoint {
+                    source: Box::new(args.source.clone()),
+                    location: SourceLocationScope::All,
+                })
+                .await
+            {
                 Ok(_) => {}
                 Err(error) => {
                     return self.send_response::<()>(
@@ -882,12 +911,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         Some(bp.column.unwrap_or(0) as u64 + 1)
                     };
 
-                    match target_core.verify_and_set_breakpoint(
-                        source_path.to_path(),
-                        requested_breakpoint_line,
-                        requested_breakpoint_column,
-                        &args.source,
-                    ) {
+                    match target_core
+                        .verify_and_set_breakpoint(
+                            source_path.to_path(),
+                            requested_breakpoint_line,
+                            requested_breakpoint_column,
+                            &args.source,
+                        )
+                        .await
+                    {
                         Ok(VerifiedBreakpoint {
                             address,
                             source_location,
@@ -938,27 +970,31 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn set_instruction_breakpoints(
+    pub(crate) async fn set_instruction_breakpoints(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: SetInstructionBreakpointsArguments = get_arguments(self, request)?;
 
         // Always clear existing breakpoints before setting new ones.
-        match target_core.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
+        match target_core
+            .clear_breakpoints(BreakpointType::InstructionBreakpoint)
+            .await
+        {
             Ok(_) => {}
             Err(error) => tracing::warn!("Failed to clear instruction breakpoints. {}", error),
         }
 
         let instruction_breakpoint_body = SetInstructionBreakpointsResponseBody {
-            breakpoints: arguments
-                .breakpoints
-                .into_iter()
-                .map(|requested_breakpoint| {
-                    set_instruction_breakpoint(requested_breakpoint, target_core)
-                })
-                .collect(),
+            breakpoints: {
+                let mut breakpoints = vec![];
+                for requested_breakpoint in arguments.breakpoints.into_iter() {
+                    breakpoints
+                        .push(set_instruction_breakpoint(requested_breakpoint, target_core).await);
+                }
+                breakpoints
+            },
         };
 
         // In addition to the response values, also show a message to users for any breakpoints that could not be verified.
@@ -974,13 +1010,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(instruction_breakpoint_body)))
     }
 
-    pub(crate) fn threads(
+    pub(crate) async fn threads(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
-        let current_core_status = target_core.core.status()?;
+        let current_core_status = target_core.core.status().await?;
         let mut threads: Vec<Thread> = vec![];
         if self.configuration_is_done() {
             // We can handle this request normally.
@@ -1000,12 +1036,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         )
     }
 
-    pub(crate) fn stack_trace(
+    pub(crate) async fn stack_trace(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
-        match target_core.core.status() {
+        match target_core.core.status().await {
             Ok(status) => {
                 if !status.is_halted() {
                     return self.send_response::<()>(
@@ -1164,7 +1200,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// - static scope  : Variables with `static` modifier
     /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
     /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
-    pub(crate) fn scopes(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
+    pub(crate) async fn scopes(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+        request: &Request,
+    ) -> Result<()> {
         let arguments: ScopesArguments = get_arguments(self, request)?;
 
         let mut dap_scopes: Vec<Scope> = vec![];
@@ -1259,9 +1299,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     /// Attempt to extract disassembled source code to supply the instruction_count required.
-    pub(crate) fn get_disassembled_source(
+    pub(crate) async fn get_disassembled_source(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         // The program_counter where our desired instruction range is based.
         memory_reference: i64,
         // The number of bytes offset from the memory reference. Can be zero.
@@ -1277,7 +1317,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             byte_offset,
             memory_reference as u64,
             instruction_count,
-        )?;
+        )
+        .await?;
 
         if assembly_lines.is_empty() {
             Err(DebuggerError::Other(anyhow::anyhow!(
@@ -1304,9 +1345,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ///   - Reached the required number of instructions.
     ///   - We encounter 'unreadable' memory on the target.
     ///     - In this case, pad the results with, as the api requires, "implementation defined invalid instructions"
-    pub(crate) fn disassemble(
+    pub(crate) async fn disassemble(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: DisassembleArguments = get_arguments(self, request)?;
@@ -1318,13 +1359,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         } else {
             arguments.memory_reference.parse()
         } {
-            match self.get_disassembled_source(
-                target_core,
-                memory_reference as i64,
-                arguments.offset.unwrap_or(0_i64),
-                arguments.instruction_offset.unwrap_or(0_i64),
-                arguments.instruction_count,
-            ) {
+            match self
+                .get_disassembled_source(
+                    target_core,
+                    memory_reference as i64,
+                    arguments.offset.unwrap_or(0_i64),
+                    arguments.instruction_offset.unwrap_or(0_i64),
+                    arguments.instruction_count,
+                )
+                .await
+            {
                 Ok(disassembled_instructions) => self.send_response(
                     request,
                     Ok(Some(DisassembleResponseBody {
@@ -1350,9 +1394,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// nor does it specify if this variable is in the local, register or static scope.
     /// Unfortunately this means we have to search through all the available [`probe_rs::debug::variable_cache::VariableCache`]'s until we find it.
     /// To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
-    pub(crate) fn variables(
+    pub(crate) async fn variables(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: VariablesArguments = get_arguments(self, request)?;
@@ -1367,39 +1411,37 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .map(|cp| &cp.svd_variable_cache)
         {
             if svd_cache.get_variable_by_key(variable_ref).is_some() {
-                let dap_variables: Vec<Variable> = svd_cache
-                    .get_children(variable_ref)
-                    .iter()
-                    // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
-                    .map(|variable| {
-                        let (variables_reference, named_child_variables_cnt) =
-                            get_svd_variable_reference(variable, svd_cache);
+                let mut dap_variables: Vec<Variable> = vec![];
+                for variable in svd_cache.get_children(variable_ref).iter()
+                // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
+                {
+                    let (variables_reference, named_child_variables_cnt) =
+                        get_svd_variable_reference(variable, svd_cache);
 
-                        // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
-                        let name = if let Some(last_part) =
-                            variable.name().split_terminator('.').next_back()
-                        {
-                            last_part.to_string()
-                        } else {
-                            variable.name().to_string()
-                        };
+                    // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
+                    let name = if let Some(last_part) =
+                        variable.name().split_terminator('.').next_back()
+                    {
+                        last_part.to_string()
+                    } else {
+                        variable.name().to_string()
+                    };
 
-                        Variable {
-                            name,
-                            evaluate_name: Some(variable.name().to_string()),
-                            memory_reference: variable.memory_reference(),
-                            indexed_variables: None,
-                            named_variables: Some(named_child_variables_cnt),
-                            presentation_hint: None,
-                            type_: variable.type_name(),
-                            value: {
-                                // The SVD cache is not automatically refreshed on every stack trace, and we only need to refresh the field values.
-                                variable.get_value(&mut target_core.core)
-                            },
-                            variables_reference: variables_reference.into(),
-                        }
-                    })
-                    .collect();
+                    dap_variables.push(Variable {
+                        name,
+                        evaluate_name: Some(variable.name().to_string()),
+                        memory_reference: variable.memory_reference(),
+                        indexed_variables: None,
+                        named_variables: Some(named_child_variables_cnt),
+                        presentation_hint: None,
+                        type_: variable.type_name(),
+                        value: {
+                            // The SVD cache is not automatically refreshed on every stack trace, and we only need to refresh the field values.
+                            variable.get_value(&mut target_core.core).await
+                        },
+                        variables_reference: variables_reference.into(),
+                    });
+                }
 
                 return self.send_response(
                     request,
@@ -1485,12 +1527,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     && !variable_cache.has_children(parent_variable)
                 {
                     if let Some(frame_info) = frame_info {
-                        target_core.core_data.debug_info.cache_deferred_variables(
-                            variable_cache,
-                            &mut target_core.core,
-                            parent_variable,
-                            frame_info,
-                        )?;
+                        target_core
+                            .core_data
+                            .debug_info
+                            .cache_deferred_variables(
+                                variable_cache,
+                                &mut target_core.core,
+                                parent_variable,
+                                frame_info,
+                            )
+                            .await?;
                     } else {
                         tracing::error!(
                             "Could not cache deferred child variables for variable: {}. No register data available.",
@@ -1556,12 +1602,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn r#continue(
+    pub(crate) async fn r#continue(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
-        if let Err(error) = target_core.core.run() {
+        if let Err(error) = target_core.core.run().await {
             self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{}", error))))?;
             return Err(error.into());
         }
@@ -1590,7 +1636,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         tracing::trace!("Checking if core halts again after continue, timeout = {wait_timeout:?}");
 
-        match target_core.core.wait_for_core_halted(wait_timeout) {
+        match target_core.core.wait_for_core_halted(wait_timeout).await {
             // The core has halted, so we can proceed.
             Ok(_) => Ok(()),
             // The core is still running.
@@ -1607,7 +1653,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Steps through the code at the requested granularity.
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::OverStatement]: In all other cases.
-    pub(crate) fn next(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
+    pub(crate) async fn next(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+        request: &Request,
+    ) -> Result<()> {
         let arguments: NextArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
@@ -1616,14 +1666,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         };
 
         self.debug_step(stepping_granularity, target_core, request)
+            .await
     }
 
     /// Steps through the code at the requested granularity.
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::IntoStatement]: In all other cases.
-    pub(crate) fn step_in(
+    pub(crate) async fn step_in(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: StepInArguments = get_arguments(self, request)?;
@@ -1633,14 +1684,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             _ => SteppingMode::IntoStatement,
         };
         self.debug_step(stepping_granularity, target_core, request)
+            .await
     }
 
     /// Steps through the code at the requested granularity.
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::OutOfStatement]: In all other cases.
-    pub(crate) fn step_out(
+    pub(crate) async fn step_out(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: StepOutArguments = get_arguments(self, request)?;
@@ -1651,32 +1703,35 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         };
 
         self.debug_step(stepping_granularity, target_core, request)
+            .await
     }
 
     /// Common code for the `next`, `step_in`, and `step_out` methods.
-    fn debug_step(
+    async fn debug_step(
         &mut self,
         stepping_granularity: SteppingMode,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<(), anyhow::Error> {
         target_core.reset_core_status(self);
         let (new_status, program_counter) = match stepping_granularity
             .step(&mut target_core.core, &target_core.core_data.debug_info)
+            .await
         {
             Ok((new_status, program_counter)) => (new_status, program_counter),
             Err(probe_rs_debug::DebugError::WarnAndContinue { message }) => {
                 let pc_at_error = target_core
                     .core
-                    .read_core_reg(target_core.core.program_counter())?;
+                    .read_core_reg(target_core.core.program_counter())
+                    .await?;
                 self.show_message(
                     MessageSeverity::Information,
                     format!("Step error @{pc_at_error:#010X}: {message}"),
                 );
-                (target_core.core.status()?, pc_at_error)
+                (target_core.core.status().await?, pc_at_error)
             }
             Err(other_error) => {
-                target_core.core.halt(Duration::from_millis(100)).ok();
+                target_core.core.halt(Duration::from_millis(100)).await.ok();
                 return Err(other_error).context("Unexpected error during stepping");
             }
         };

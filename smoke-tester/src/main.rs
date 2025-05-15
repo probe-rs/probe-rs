@@ -455,11 +455,7 @@ impl<'dut> TestTracker<'dut> {
                         succesful: false,
                     });
 
-                    println_dut_status!(self, red, "Error message: {:#}", e);
-
-                    if let Some(source) = e.source() {
-                        println_dut_status!(self, red, " caused by:    {}", source);
-                    }
+                    println_dut_status!(self, red, "Error message: {:?}", e);
 
                     println_dut_status!(self, red, "Tests Failed");
                 }

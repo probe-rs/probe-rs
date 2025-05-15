@@ -41,7 +41,7 @@ impl TargetDescriptionXmlOverride for RuntimeTarget<'_> {
 
 impl RuntimeTarget<'_> {
     pub(crate) async fn load_target_desc(&mut self) -> Result<(), Error> {
-        let mut session = self.session.lock();
+        let mut session = self.session.lock().await;
         let mut core = session.core(self.cores[0]).await?;
 
         self.target_desc = build_target_description(
@@ -61,11 +61,14 @@ impl MemoryMap for RuntimeTarget<'_> {
         length: usize,
         buf: &mut [u8],
     ) -> gdbstub::target::TargetResult<usize, Self> {
-        let mut session = self.session.lock();
-        let xml = block_on(gdb_memory_map(&mut session, self.cores[0])).into_target_result()?;
-        let xml_data = xml.as_bytes();
+        pollster::block_on(async move {
+            let mut session = self.session.lock().await;
+            let xml = pollster::block_on(gdb_memory_map(&mut session, self.cores[0]))
+                .into_target_result()?;
+            let xml_data = xml.as_bytes();
 
-        Ok(copy_range_to_buf(xml_data, offset, length, buf))
+            Ok(copy_range_to_buf(xml_data, offset, length, buf))
+        })
     }
 }
 

@@ -197,8 +197,8 @@ impl Variable {
     /// Value of the variable, compatible with DAP
     ///
     /// The value might be retrieved using the `MemoryInterface` to read the value from the target.
-    pub fn get_value(&self, memory: &mut dyn MemoryInterface) -> String {
-        self.variable_kind.get_value(memory)
+    pub async fn get_value(&self, memory: &mut dyn MemoryInterface) -> String {
+        self.variable_kind.get_value(memory).await
     }
 }
 
@@ -238,7 +238,7 @@ pub enum SvdVariable {
 }
 
 impl SvdVariable {
-    fn get_value(&self, memory: &mut dyn MemoryInterface) -> String {
+    async fn get_value(&self, memory: &mut dyn MemoryInterface) -> String {
         match &self {
             SvdVariable::Root => "".to_string(),
             // For peripheral and peripheral group, we use the description as the value if there is one, otherwise there is no value
@@ -264,17 +264,20 @@ impl SvdVariable {
                     let value = match *size {
                         0..=8 => memory
                             .read_word_8(*address)
+                            .await
                             .map(|val| format!("{val:#04X}")),
                         9..=16 => {
                             let aligned_address = *address & !0b1;
                             memory
                                 .read_word_16(aligned_address)
+                                .await
                                 .map(|val| format!("{:#06X}", val >> bits_alignment_offset))
                         }
                         _ => {
                             let aligned_address = *address & !0b11;
                             memory
                                 .read_word_32(aligned_address)
+                                .await
                                 .map(|val| format!("{:#010X}", val >> bits_alignment_offset))
                         }
                     };
@@ -302,9 +305,9 @@ impl SvdVariable {
                     )
                 } else {
                     let value = match *bit_range_upper_bound {
-                        0..8 => memory.read_word_8(*address).map(u32::from),
-                        8..16 => memory.read_word_16(*address & !0b1).map(u32::from),
-                        _ => memory.read_word_32(*address & !0b11),
+                        0..8 => memory.read_word_8(*address).await.map(u32::from),
+                        8..16 => memory.read_word_16(*address & !0b1).await.map(u32::from),
+                        _ => memory.read_word_32(*address & !0b11).await,
                     };
 
                     // In this special case, we extract just the bits we need from the stored value of the register.

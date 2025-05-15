@@ -17,6 +17,7 @@ use std::{
     fmt::{Display, Write as _},
     ops::Range,
     path::Path,
+    pin::Pin,
     str::FromStr,
     time::Duration,
 };
@@ -33,18 +34,20 @@ use std::{
 /// The majority of the REPL command results will be populated into the response body.
 //
 // TODO: Make this less confusing by having a different struct for this.
-pub(crate) type ReplHandler = fn(
-    target_core: &mut CoreHandle,
-    command_arguments: &str,
-    evaluate_arguments: &EvaluateArguments,
-) -> Result<Response, DebuggerError>;
+pub(crate) type ReplHandler<'a: 'b, 'b> =
+    fn(
+        &'a mut CoreHandle,
+        &'b str,
+        &EvaluateArguments,
+    ) -> Pin<Box<dyn Future<Output = Result<Response, DebuggerError>> + 'a>>;
 
+#[derive(Clone)]
 pub(crate) struct ReplCommand<H: 'static> {
     /// The text that the user will type to invoke the command.
     /// - This is case sensitive.
     pub(crate) command: &'static str,
     pub(crate) help_text: &'static str,
-    pub(crate) sub_commands: &'static [ReplCommand<H>],
+    pub(crate) sub_commands: Vec<ReplCommand<H>>,
     pub(crate) args: &'static [ReplCommandArgs],
     pub(crate) handler: H,
 }
@@ -61,7 +64,7 @@ impl<H> Display for ReplCommand<H> {
         write!(f, ": {}", self.help_text)?;
         if !self.sub_commands.is_empty() {
             write!(f, "\n  Subcommands:")?;
-            for sub_command in self.sub_commands {
+            for sub_command in &self.sub_commands {
                 write!(f, "\n  - {sub_command}")?;
             }
         }
@@ -69,562 +72,606 @@ impl<H> Display for ReplCommand<H> {
     }
 }
 
-pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
-    ReplCommand {
-        command: "help",
-        help_text: "Information about available commands and how to use them.",
-        sub_commands: &[],
-        args: &[],
-        handler: |_, _, _| {
-            let mut help_text =
-                "Usage:\t- Use <Ctrl+Space> to get a list of available commands.".to_string();
-            help_text.push_str("\n\t- Use <Up/DownArrows> to navigate through the command list.");
-            help_text.push_str("\n\t- Use <Hab> to insert the currently selected command.");
-            help_text.push_str("\n\t- Note: This implementation is a subset of gdb commands, and is intended to behave similarly.");
-            help_text.push_str("\nAvailable commands:");
-            for command in REPL_COMMANDS {
-                help_text.push_str(&format!("\n{command}"));
-            }
-            Ok(Response {
-                command: "help".to_string(),
-                success: true,
-                message: Some(help_text),
-                type_: "response".to_string(),
-                request_seq: 0,
-                seq: 0,
-                body: None,
-            })
-        },
-    },
-    ReplCommand {
-        command: "quit",
-        help_text: "Disconnect (and suspend) the target.",
-        sub_commands: &[],
-        args: &[],
-        handler: |target_core, _, _| {
-            target_core.core.halt(Duration::from_millis(500))?;
-            Ok(Response {
-                command: "terminate".to_string(),
-                success: true,
-                message: Some("Debug Session Terminated".to_string()),
-                type_: "response".to_string(),
-                request_seq: 0,
-                seq: 0,
-                body: None,
-            })
-        },
-    },
-    ReplCommand {
-        command: "c",
-        help_text: "Continue running the program on the target.",
-        sub_commands: &[],
-        args: &[],
-        handler: |target_core, _, _| {
-            target_core.core.run()?;
-            Ok(Response {
-                command: "continue".to_string(),
-                success: true,
-                message: Some(CoreStatus::Running.short_long_status(None).1),
-                type_: "response".to_string(),
-                request_seq: 0,
-                seq: 0,
-                body: None,
-            })
-        },
-    },
-    ReplCommand {
-        command: "break",
-        // Stricly speaking, gdb refers to this as an expression, but we only support variables.
-        help_text: "Sets a breakpoint specified location, or next instruction if unspecified.",
-        sub_commands: &[],
-        args: &[ReplCommandArgs::Optional("*address")],
-        handler: |target_core, command_arguments, _| {
-            if command_arguments.is_empty() {
-                let core_info = target_core.core.halt(Duration::from_millis(500))?;
-                return Ok(Response {
-                    command: "pause".to_string(),
-                    success: true,
-                    message: Some(
-                        CoreStatus::Halted(HaltReason::Request)
-                            .short_long_status(Some(core_info.pc))
-                            .1,
-                    ),
-                    type_: "response".to_string(),
-                    request_seq: 0,
-                    seq: 0,
-                    body: None,
-                });
-            }
-
-            let mut input_arguments = command_arguments.split_whitespace();
-            let Some(address_str) = input_arguments.next().and_then(|arg| arg.strip_prefix('*'))
-            else {
-                return Err(DebuggerError::UserMessage(format!(
-                    "Invalid parameters {command_arguments:?}. See the `help` command for more information."
-                )));
-            };
-
-            let result = set_instruction_breakpoint(
-                InstructionBreakpoint {
-                    instruction_reference: address_str.to_string(),
-                    condition: None,
-                    hit_condition: None,
-                    offset: None,
-                },
-                target_core,
-            );
-            let mut response = Response {
-                command: "setBreakpoints".to_string(),
-                success: true,
-                message: Some(result.message.clone().unwrap_or_else(|| {
-                    format!("Unexpected error creating breakpoint at {address_str}.")
-                })),
-                type_: "response".to_string(),
-                request_seq: 0,
-                seq: 0,
-                body: None,
-            };
-            if result.verified {
-                // The caller will catch this event body and use it to synch the UI breakpoint list.
-                response.body = serde_json::to_value(BreakpointEventBody {
-                    breakpoint: result,
-                    reason: "new".to_string(),
-                })
-                .ok();
-            }
-            Ok(response)
-        },
-    },
-    ReplCommand {
-        command: "bt",
-        sub_commands: &[ReplCommand {
-            command: "yaml",
-            help_text: "Print all information about the backtrace of the current thread to a local file in YAML format.",
-            sub_commands: &[],
-            args: &[ReplCommandArgs::Required(
-                "path (e.g. my_dir/backtrace.yaml)",
-            )],
-            handler: |target_core, command_arguments, _| {
-                let args = command_arguments.split_whitespace().collect_vec();
-
-                let write_to_file = args.first().map(Path::new);
-
-                // Using the `insta` crate to serialize, because they add a couple of transformations to the yaml output,
-                // presumeably to make it easier to read.
-                // In our case, we want this backtrace format to be comparable to the unwind tests
-                // in `probe-rs::debug::debuginfo`.
-                // The reason for this is that these 'live' backtraces are used to create the 'master' snapshots,
-                // which is used to compare against backtraces generated from coredumps.
-                use insta::_macro_support as insta_yaml;
-                let yaml_data = insta_yaml::serialize_value(
-                    &target_core.core_data.stack_frames,
-                    insta_yaml::SerializationFormat::Yaml,
-                );
-
-                let response_message = if let Some(location) = write_to_file {
-                    std::fs::write(location, yaml_data)
-                        .map_err(|e| DebuggerError::UserMessage(format!("{e:?}")))?;
-                    format!("Stacktrace successfully stored at {location:?}.")
-                } else {
-                    yaml_data
-                };
-                Ok(Response {
-                    command: "backtrace".to_string(),
-                    success: true,
-                    message: Some(response_message),
-                    type_: "response".to_string(),
-                    request_seq: 0,
-                    seq: 0,
-                    body: None,
-                })
-            },
-        }],
-        help_text: "Print the backtrace of the current thread.",
-        args: &[],
-        handler: |target_core, _, _| {
-            let mut response_message = String::new();
-
-            for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
-                response_message.push_str(&format!(
-                    "Frame #{}: {}\n",
-                    i + 1,
-                    ReplStackFrame(frame)
-                ));
-            }
-
-            Ok(Response {
-                command: "backtrace".to_string(),
-                success: true,
-                message: Some(response_message),
-                type_: "response".to_string(),
-                request_seq: 0,
-                seq: 0,
-                body: None,
-            })
-        },
-    },
-    ReplCommand {
-        command: "info",
-        help_text: "Information of specified program data.",
-        sub_commands: &[
-            ReplCommand {
-                command: "frame",
-                help_text: "Describe the current frame, or the frame at the specified (hex) address.",
-                sub_commands: &[],
-                args: &[ReplCommandArgs::Optional("address")],
-                // TODO: This is easy to implement ... just requires deciding how to format the output.
-                handler: |_, _, _| Err(DebuggerError::Unimplemented),
-            },
-            ReplCommand {
-                command: "locals",
-                help_text: "List local variables of the selected frame.",
-                sub_commands: &[],
-                args: &[],
-                handler: |target_core, _, evaluate_arguments| {
-                    let gdb_nuf = GdbNuf {
-                        format_specifier: GdbFormat::Native,
-                        ..Default::default()
-                    };
-                    let variable_name = VariableName::LocalScopeRoot;
-                    get_local_variable(evaluate_arguments, target_core, variable_name, gdb_nuf)
-                },
-            },
-            ReplCommand {
-                command: "reg",
-                help_text: "List registers in the selected frame.",
-                sub_commands: &[],
-                args: &[ReplCommandArgs::Optional("register name")],
-                handler: |target_core, command_arguments, _| {
-                    let register_name = command_arguments.trim();
-                    let regs = target_core.core.registers().all_registers().filter(|reg| {
-                        if register_name.is_empty() {
-                            true
-                        } else {
-                            reg.name().eq_ignore_ascii_case(register_name)
-                        }
-                    });
-
-                    let mut results = vec![];
-                    for reg in regs {
-                        let reg_value: RegisterValue = target_core.core.read_core_reg(reg.id())?;
-                        results.push((format!("{reg}:"), reg_value.to_string()));
+pub(crate) fn repl_commands<'a, 'b>() -> Vec<ReplCommand<ReplHandler<'a, 'b>>> {
+    vec![
+        ReplCommand {
+            command: "help",
+            help_text: "Information about available commands and how to use them.",
+            sub_commands: vec![],
+            args: &[],
+            handler: |_, _, _| {
+                Box::pin(async move {
+                    let mut help_text =
+                        "Usage:\t- Use <Ctrl+Space> to get a list of available commands."
+                            .to_string();
+                    help_text.push_str(
+                        "\n\t- Use <Up/DownArrows> to navigate through the command list.",
+                    );
+                    help_text.push_str("\n\t- Use <Hab> to insert the currently selected command.");
+                    help_text.push_str("\n\t- Note: This implementation is a subset of gdb commands, and is intended to behave similarly.");
+                    help_text.push_str("\nAvailable commands:");
+                    for command in repl_commands() {
+                        help_text.push_str(&format!("\n{command}"));
                     }
-
-                    if results.is_empty() {
-                        return Err(DebuggerError::UserMessage(format!(
-                            "No registers found matching {register_name:?}. See the `help` command for more information."
-                        )));
-                    }
-
                     Ok(Response {
-                        command: "registers".to_string(),
+                        command: "help".to_string(),
                         success: true,
-                        message: Some(reg_table(&results, 80)),
+                        message: Some(help_text),
                         type_: "response".to_string(),
                         request_seq: 0,
                         seq: 0,
                         body: None,
                     })
-                },
+                })
             },
-            ReplCommand {
-                command: "var",
-                help_text: "List all static variables.",
-                sub_commands: &[],
-                args: &[],
-                // TODO: This is easy to implement ... just requires deciding how to format the output.
-                handler: |_, _, _| Err(DebuggerError::Unimplemented),
-            },
-            ReplCommand {
-                command: "break",
-                help_text: "List all breakpoints.",
-                sub_commands: &[],
-                args: &[],
-                handler: |target_core, _, _| {
-                    let breakpoint_addrs = target_core
-                        .core
-                        .hw_breakpoints()?
-                        .into_iter()
-                        .enumerate()
-                        .filter_map(|(idx, bpt)| bpt.map(|bpt| (idx, bpt)));
-
-                    let mut response_message = String::new();
-                    if breakpoint_addrs.clone().count() == 0 {
-                        response_message.push_str("No breakpoints set.");
-                    } else {
-                        for (idx, bpt) in breakpoint_addrs {
-                            writeln!(&mut response_message, "Breakpoint #{idx} @ {bpt:#010X}\n")
-                                .unwrap();
-                        }
-                    }
-
+        },
+        // TODO: fix references of boxed futures
+        ReplCommand {
+            command: "quit",
+            help_text: "Disconnect (and suspend) the target.",
+            sub_commands: vec![],
+            args: &[],
+            handler: |target_core, _, _| {
+                Box::pin(async move {
+                    target_core.core.halt(Duration::from_millis(500)).await?;
                     Ok(Response {
-                        command: "breakpoints".to_string(),
+                        command: "terminate".to_string(),
                         success: true,
-                        message: Some(response_message),
+                        message: Some("Debug Session Terminated".to_string()),
                         type_: "response".to_string(),
                         request_seq: 0,
                         seq: 0,
                         body: None,
                     })
-                },
+                })
             },
-        ],
-        args: &[],
-        handler: |_, _, _| {
-            Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
         },
-    },
-    ReplCommand {
-        command: "p",
-        // Stricly speaking, gdb refers to this as an expression, but we only support variables.
-        help_text: "Print known information about variable.",
-        sub_commands: &[],
-        args: &[
-            ReplCommandArgs::Optional("/f (f=format[n|v])"),
-            ReplCommandArgs::Required("<local variable name>"),
-        ],
-        handler: |target_core, command_arguments, evaluate_arguments| {
-            let input_arguments = command_arguments.split_whitespace();
-            let mut gdb_nuf = GdbNuf {
-                format_specifier: GdbFormat::Native,
-                ..Default::default()
-            };
-            // If no variable name is provided, use the root of the local scope, and print all it's children.
-            let mut variable_name = VariableName::LocalScopeRoot;
-
-            for input_argument in input_arguments {
-                if input_argument.starts_with('/') {
-                    let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
-                        return Err(DebuggerError::UserMessage(
-                            "The '/' specifier must be followed by a valid gdb 'f' format specifier."
-                                .to_string(),
-                        ));
-                    };
-                    gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
-                    gdb_nuf
-                        .check_supported_formats(&[
-                            GdbFormat::Native,
-                            GdbFormat::DapReference,
-                        ])
-                        .map_err(|error| {
-                            DebuggerError::UserMessage(format!(
-                                "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
-                            ))
-                        })?;
-                } else {
-                    variable_name = VariableName::Named(input_argument.to_string());
-                }
-            }
-
-            get_local_variable(evaluate_arguments, target_core, variable_name, gdb_nuf)
-        },
-    },
-    ReplCommand {
-        command: "x",
-        help_text: "Examine Memory, using format specifications, at the specified address.",
-        sub_commands: &[],
-        args: &[
-            ReplCommandArgs::Optional("/Nuf (N=count, u=unit[b|h|w|g], f=format[t|x|i])"),
-            ReplCommandArgs::Optional("address (hex)"),
-        ],
-        handler: |target_core, command_arguments, request_arguments| {
-            let input_arguments = command_arguments.split_whitespace();
-            let mut gdb_nuf = GdbNuf {
-                ..Default::default()
-            };
-            // Sequence of evaluations will be:
-            // 1. Specified address
-            // 2. Frame address
-            // 3. Program counter
-            let mut input_address = 0_u64;
-
-            for input_argument in input_arguments {
-                if input_argument.starts_with("0x") || input_argument.starts_with("0X") {
-                    MemoryAddress(input_address) = input_argument.try_into()?;
-                } else if input_argument.starts_with('/') {
-                    let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
-                        return Err(DebuggerError::UserMessage(
-                            "The '/' specifier must be followed by a valid gdb 'Nuf' format specifier."
-                                .to_string(),
-                        ));
-                    };
-
-                    gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
-                    gdb_nuf
-                        .check_supported_formats(&[
-                            GdbFormat::Binary,
-                            GdbFormat::Hex,
-                            GdbFormat::Instruction,
-                        ])
-                        .map_err(|error| {
-                            DebuggerError::UserMessage(format!(
-                                "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
-                            ))
-                        })?;
-                } else {
-                    return Err(DebuggerError::UserMessage(
-                        "Invalid parameters. See the `help` command for more information."
-                            .to_string(),
-                    ));
-                }
-            }
-            if input_address == 0 {
-                // No address was specified, so we'll use the frame address, if available.
-
-                let frame_id = request_arguments.frame_id.map(ObjectRef::from);
-
-                input_address = if let Some(frame_pc) = frame_id
-                    .and_then(|frame_id| {
-                        target_core
-                            .core_data
-                            .stack_frames
-                            .iter()
-                            .find(|stack_frame| stack_frame.id == frame_id)
+        ReplCommand {
+            command: "c",
+            help_text: "Continue running the program on the target.",
+            sub_commands: vec![],
+            args: &[],
+            handler: |target_core, _, _| {
+                Box::pin(async move {
+                    target_core.core.run().await?;
+                    Ok(Response {
+                        command: "continue".to_string(),
+                        success: true,
+                        message: Some(CoreStatus::Running.short_long_status(None).1),
+                        type_: "response".to_string(),
+                        request_seq: 0,
+                        seq: 0,
+                        body: None,
                     })
-                    .map(|stack_frame| stack_frame.pc)
-                {
-                    frame_pc.try_into()?
-                } else {
-                    target_core
-                        .core
-                        .read_core_reg(target_core.core.program_counter())?
-                }
-            }
-
-            memory_read(input_address, gdb_nuf, target_core)
-        },
-    },
-    ReplCommand {
-        command: "dump",
-        help_text: "Create a core dump at a target location. Specify memory ranges to dump, or leave blank to dump in-scope memory regions.",
-        sub_commands: &[],
-        args: &[
-            ReplCommandArgs::Optional("memory start address"),
-            ReplCommandArgs::Optional("memory size in bytes"),
-            ReplCommandArgs::Optional("path (default: ./coredump)"),
-        ],
-        handler: |target_core, command_arguments, _| {
-            let mut args = command_arguments.split_whitespace().collect_vec();
-
-            // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks
-            // and the last argument as the path tho store the coredump at.
-            let location = Path::new(
-                if args.len() % 2 != 0 {
-                    args.pop()
-                } else {
-                    None
-                }
-                .unwrap_or("./coredump"),
-            );
-
-            let ranges = if args.is_empty() {
-                // No specific memory ranges were requested, so we will dump the
-                // memory ranges we know are specifically referenced by the variables
-                // in the current scope.
-                target_core.get_memory_ranges()
-            } else {
-                args
-                .chunks(2)
-                .map(|c| {
-                    let start = if let Some(start) = c.first() {
-                        parse_int::parse::<u64>(start)
-                            .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
-                    } else {
-                        unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
-                    };
-
-                    let size = if let Some(size) = c.get(1) {
-                        parse_int::parse::<u64>(size)
-                            .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
-                    } else {
-                        unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
-                    };
-
-                    Ok::<_, DebuggerError>(Range {start,end: start + size})
                 })
-                .collect::<Result<Vec<Range<u64>>, _>>()?
-            };
-            let mut range_string = String::new();
-            for memory_range in &ranges {
-                if !range_string.is_empty() {
-                    write!(&mut range_string, ", ").unwrap();
-                }
-                write!(&mut range_string, "{memory_range:#X?}").unwrap();
-            }
-            range_string = if range_string.is_empty() {
-                "(No memory ranges specified)".to_string()
-            } else {
-                format!("(Includes memory ranges: {range_string})")
-            };
-            CoreDump::dump_core(&mut target_core.core, ranges)?.store(location)?;
-
-            Ok(Response {
-                command: "dump".to_string(),
-                success: true,
-                message: Some(format!(
-                    "Core dump {range_string} successfully stored at {location:?}.",
-                )),
-                type_: "response".to_string(),
-                request_seq: 0,
-                seq: 0,
-                body: None,
-            })
+            },
         },
-    },
-    ReplCommand {
-        command: "clear",
-        help_text: "Clear a breakpoint",
-        sub_commands: &[],
-        args: &[ReplCommandArgs::Required("*address")],
-        handler: |target_core, args, _| {
-            let mut input_arguments = args.split_whitespace();
-            let Some(input_argument) = input_arguments.next() else {
-                return Err(DebuggerError::UserMessage(
-                    "Missing breakpoint address to clear. See the `help` command for more information.".to_string()
-                ));
-            };
+        // ReplCommand {
+        //     command: "break",
+        //     // Stricly speaking, gdb refers to this as an expression, but we only support variables.
+        //     help_text: "Sets a breakpoint specified location, or next instruction if unspecified.",
+        //     sub_commands: &[],
+        //     args: &[ReplCommandArgs::Optional("*address")],
+        //     handler: |target_core, command_arguments, _| {
+        //         Box::pin(async move {
+        //             if command_arguments.is_empty() {
+        //                 let core_info = target_core.core.halt(Duration::from_millis(500)).await?;
+        //                 return Ok(Response {
+        //                     command: "pause".to_string(),
+        //                     success: true,
+        //                     message: Some(
+        //                         CoreStatus::Halted(HaltReason::Request)
+        //                             .short_long_status(Some(core_info.pc))
+        //                             .1,
+        //                     ),
+        //                     type_: "response".to_string(),
+        //                     request_seq: 0,
+        //                     seq: 0,
+        //                     body: None,
+        //                 });
+        //             }
 
-            let Some(address_str) = input_argument.strip_prefix('*') else {
-                return Err(DebuggerError::UserMessage(format!(
-                    "Invalid input argument {input_argument}. See the `help` command for more information."
-                )));
-            };
-            let Ok(MemoryAddress(address)) = address_str.try_into() else {
-                return Err(DebuggerError::UserMessage(format!(
-                    "Invalid memory address {address_str}. See the `help` command for more information."
-                )));
-            };
-            target_core.clear_breakpoint(address)?;
+        //             let mut input_arguments = command_arguments.split_whitespace();
+        //             let Some(address_str) =
+        //                 input_arguments.next().and_then(|arg| arg.strip_prefix('*'))
+        //             else {
+        //                 return Err(DebuggerError::UserMessage(format!(
+        //                     "Invalid parameters {command_arguments:?}. See the `help` command for more information."
+        //                 )));
+        //             };
 
-            let response = Response {
-                command: "setBreakpoints".to_string(),
-                success: true,
-                message: Some("Breakpoint cleared".to_string()),
-                type_: "response".to_string(),
-                request_seq: 0,
-                seq: 0,
-                body: serde_json::to_value(BreakpointEventBody {
-                    breakpoint: Breakpoint {
-                        id: Some(address as i64),
-                        column: None,
-                        end_column: None,
-                        end_line: None,
-                        instruction_reference: None,
-                        line: None,
-                        message: None,
-                        offset: None,
-                        source: None,
-                        verified: false,
-                    },
-                    reason: "removed".to_string(),
-                })
-                .ok(),
-            };
-            Ok(response)
-        },
-    },
-];
+        //             let result = set_instruction_breakpoint(
+        //                 InstructionBreakpoint {
+        //                     instruction_reference: address_str.to_string(),
+        //                     condition: None,
+        //                     hit_condition: None,
+        //                     offset: None,
+        //                 },
+        //                 target_core,
+        //             )
+        //             .await;
+        //             let mut response = Response {
+        //                 command: "setBreakpoints".to_string(),
+        //                 success: true,
+        //                 message: Some(result.message.clone().unwrap_or_else(|| {
+        //                     format!("Unexpected error creating breakpoint at {address_str}.")
+        //                 })),
+        //                 type_: "response".to_string(),
+        //                 request_seq: 0,
+        //                 seq: 0,
+        //                 body: None,
+        //             };
+        //             if result.verified {
+        //                 // The caller will catch this event body and use it to synch the UI breakpoint list.
+        //                 response.body = serde_json::to_value(BreakpointEventBody {
+        //                     breakpoint: result,
+        //                     reason: "new".to_string(),
+        //                 })
+        //                 .ok();
+        //             }
+        //             Ok(response)
+        //         })
+        //     },
+        // },
+        // ReplCommand {
+        //     command: "bt",
+        //     sub_commands: &[ReplCommand {
+        //         command: "yaml",
+        //         help_text: "Print all information about the backtrace of the current thread to a local file in YAML format.",
+        //         sub_commands: &[],
+        //         args: &[ReplCommandArgs::Required(
+        //             "path (e.g. my_dir/backtrace.yaml)",
+        //         )],
+        //         handler: |target_core, command_arguments, _| {
+        //             Box::pin(async move {
+        //                 let args = command_arguments.split_whitespace().collect_vec();
+
+        //                 let write_to_file = args.first().map(Path::new);
+
+        //                 // Using the `insta` crate to serialize, because they add a couple of transformations to the yaml output,
+        //                 // presumeably to make it easier to read.
+        //                 // In our case, we want this backtrace format to be comparable to the unwind tests
+        //                 // in `probe-rs::debug::debuginfo`.
+        //                 // The reason for this is that these 'live' backtraces are used to create the 'master' snapshots,
+        //                 // which is used to compare against backtraces generated from coredumps.
+        //                 use insta::_macro_support as insta_yaml;
+        //                 let yaml_data = insta_yaml::serialize_value(
+        //                     &target_core.core_data.stack_frames,
+        //                     insta_yaml::SerializationFormat::Yaml,
+        //                 );
+
+        //                 let response_message = if let Some(location) = write_to_file {
+        //                     std::fs::write(location, yaml_data)
+        //                         .map_err(|e| DebuggerError::UserMessage(format!("{e:?}")))?;
+        //                     format!("Stacktrace successfully stored at {location:?}.")
+        //                 } else {
+        //                     yaml_data
+        //                 };
+        //                 Ok(Response {
+        //                     command: "backtrace".to_string(),
+        //                     success: true,
+        //                     message: Some(response_message),
+        //                     type_: "response".to_string(),
+        //                     request_seq: 0,
+        //                     seq: 0,
+        //                     body: None,
+        //                 })
+        //             })
+        //         },
+        //     }],
+        //     help_text: "Print the backtrace of the current thread.",
+        //     args: &[],
+        //     handler: |target_core, _, _| {
+        //         Box::pin(async move {
+        //             let mut response_message = String::new();
+
+        //             for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
+        //                 response_message.push_str(&format!(
+        //                     "Frame #{}: {}\n",
+        //                     i + 1,
+        //                     ReplStackFrame(frame)
+        //                 ));
+        //             }
+
+        //             Ok(Response {
+        //                 command: "backtrace".to_string(),
+        //                 success: true,
+        //                 message: Some(response_message),
+        //                 type_: "response".to_string(),
+        //                 request_seq: 0,
+        //                 seq: 0,
+        //                 body: None,
+        //             })
+        //         })
+        //     },
+        // },
+        // ReplCommand {
+        //     command: "info",
+        //     help_text: "Information of specified program data.",
+        //     sub_commands: &[
+        //         ReplCommand {
+        //             command: "frame",
+        //             help_text: "Describe the current frame, or the frame at the specified (hex) address.",
+        //             sub_commands: &[],
+        //             args: &[ReplCommandArgs::Optional("address")],
+        //             // TODO: This is easy to implement ... just requires deciding how to format the output.
+        //             handler: |_, _, _| Box::pin(async move { Err(DebuggerError::Unimplemented) }),
+        //         },
+        //         ReplCommand {
+        //             command: "locals",
+        //             help_text: "List local variables of the selected frame.",
+        //             sub_commands: &[],
+        //             args: &[],
+        //             handler: |target_core, _, evaluate_arguments| {
+        //                 Box::pin(async move {
+        //                     let gdb_nuf = GdbNuf {
+        //                         format_specifier: GdbFormat::Native,
+        //                         ..Default::default()
+        //                     };
+        //                     let variable_name = VariableName::LocalScopeRoot;
+        //                     get_local_variable(evaluate_arguments, target_core, variable_name, gdb_nuf)
+        //                 })
+        //             },
+        //         },
+        //         ReplCommand {
+        //             command: "reg",
+        //             help_text: "List registers in the selected frame.",
+        //             sub_commands: &[],
+        //             args: &[ReplCommandArgs::Optional("register name")],
+        //             handler: |target_core, command_arguments, _| {
+        //                 Box::pin(async move {
+        //                     let register_name = command_arguments.trim();
+        //                     let regs = target_core.core.registers().all_registers().filter(|reg| {
+        //                         if register_name.is_empty() {
+        //                             true
+        //                         } else {
+        //                             reg.name().eq_ignore_ascii_case(register_name)
+        //                         }
+        //                     });
+
+        //                     let mut results = vec![];
+        //                     for reg in regs {
+        //                         let reg_value: RegisterValue =
+        //                             target_core.core.read_core_reg(reg.id()).await?;
+        //                         results.push((format!("{reg}:"), reg_value.to_string()));
+        //                     }
+
+        //                     if results.is_empty() {
+        //                         return Err(DebuggerError::UserMessage(format!(
+        //                             "No registers found matching {register_name:?}. See the `help` command for more information."
+        //                         )));
+        //                     }
+
+        //                     Ok(Response {
+        //                         command: "registers".to_string(),
+        //                         success: true,
+        //                         message: Some(reg_table(&results, 80)),
+        //                         type_: "response".to_string(),
+        //                         request_seq: 0,
+        //                         seq: 0,
+        //                         body: None,
+        //                     })
+        //                 })
+        //             },
+        //         },
+        //         ReplCommand {
+        //             command: "var",
+        //             help_text: "List all static variables.",
+        //             sub_commands: &[],
+        //             args: &[],
+        //             // TODO: This is easy to implement ... just requires deciding how to format the output.
+        //             handler: |_, _, _| Box::pin(async move { Err(DebuggerError::Unimplemented) }),
+        //         },
+        //         ReplCommand {
+        //             command: "break",
+        //             help_text: "List all breakpoints.",
+        //             sub_commands: &[],
+        //             args: &[],
+        //             handler: |target_core, _, _| {
+        //                 Box::pin(async move {
+        //                     let breakpoint_addrs = target_core
+        //                         .core
+        //                         .hw_breakpoints()
+        //                         .await?
+        //                         .into_iter()
+        //                         .enumerate()
+        //                         .filter_map(|(idx, bpt)| bpt.map(|bpt| (idx, bpt)));
+
+        //                     let mut response_message = String::new();
+        //                     if breakpoint_addrs.clone().count() == 0 {
+        //                         response_message.push_str("No breakpoints set.");
+        //                     } else {
+        //                         for (idx, bpt) in breakpoint_addrs {
+        //                             writeln!(
+        //                                 &mut response_message,
+        //                                 "Breakpoint #{idx} @ {bpt:#010X}\n"
+        //                             )
+        //                             .unwrap();
+        //                         }
+        //                     }
+
+        //                     Ok(Response {
+        //                         command: "breakpoints".to_string(),
+        //                         success: true,
+        //                         message: Some(response_message),
+        //                         type_: "response".to_string(),
+        //                         request_seq: 0,
+        //                         seq: 0,
+        //                         body: None,
+        //                     })
+        //                 })
+        //             },
+        //         },
+        //     ],
+        //     args: &[],
+        //     handler: |_, _, _| {
+        //         Box::pin(async move {
+        //             Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
+        //         })
+        //     },
+        // },
+        // ReplCommand {
+        //     command: "p",
+        //     // Stricly speaking, gdb refers to this as an expression, but we only support variables.
+        //     help_text: "Print known information about variable.",
+        //     sub_commands: &[],
+        //     args: &[
+        //         ReplCommandArgs::Optional("/f (f=format[n|v])"),
+        //         ReplCommandArgs::Required("<local variable name>"),
+        //     ],
+        //     handler: |target_core, command_arguments, evaluate_arguments| {
+        //         Box::pin(async move {
+        //             let input_arguments = command_arguments.split_whitespace();
+        //             let mut gdb_nuf = GdbNuf {
+        //                 format_specifier: GdbFormat::Native,
+        //                 ..Default::default()
+        //             };
+        //             // If no variable name is provided, use the root of the local scope, and print all it's children.
+        //             let mut variable_name = VariableName::LocalScopeRoot;
+
+        //             for input_argument in input_arguments {
+        //                 if input_argument.starts_with('/') {
+        //                     let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
+        //                         return Err(DebuggerError::UserMessage(
+        //                         "The '/' specifier must be followed by a valid gdb 'f' format specifier."
+        //                             .to_string(),
+        //                     ));
+        //                     };
+        //                     gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
+        //                     gdb_nuf
+        //                     .check_supported_formats(&[
+        //                         GdbFormat::Native,
+        //                         GdbFormat::DapReference,
+        //                     ])
+        //                     .map_err(|error| {
+        //                         DebuggerError::UserMessage(format!(
+        //                             "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
+        //                         ))
+        //                     })?;
+        //                 } else {
+        //                     variable_name = VariableName::Named(input_argument.to_string());
+        //                 }
+        //             }
+
+        //             get_local_variable(evaluate_arguments, target_core, variable_name, gdb_nuf)
+        //         })
+        //     },
+        // },
+        // ReplCommand {
+        //     command: "x",
+        //     help_text: "Examine Memory, using format specifications, at the specified address.",
+        //     sub_commands: &[],
+        //     args: &[
+        //         ReplCommandArgs::Optional("/Nuf (N=count, u=unit[b|h|w|g], f=format[t|x|i])"),
+        //         ReplCommandArgs::Optional("address (hex)"),
+        //     ],
+        //     handler: |target_core, command_arguments, request_arguments| {
+        //         Box::pin(async move {
+        //             let input_arguments = command_arguments.split_whitespace();
+        //             let mut gdb_nuf = GdbNuf {
+        //                 ..Default::default()
+        //             };
+        //             // Sequence of evaluations will be:
+        //             // 1. Specified address
+        //             // 2. Frame address
+        //             // 3. Program counter
+        //             let mut input_address = 0_u64;
+
+        //             for input_argument in input_arguments {
+        //                 if input_argument.starts_with("0x") || input_argument.starts_with("0X") {
+        //                     MemoryAddress(input_address) = input_argument.try_into()?;
+        //                 } else if input_argument.starts_with('/') {
+        //                     let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
+        //                         return Err(DebuggerError::UserMessage(
+        //                         "The '/' specifier must be followed by a valid gdb 'Nuf' format specifier."
+        //                             .to_string(),
+        //                     ));
+        //                     };
+
+        //                     gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
+        //                     gdb_nuf
+        //                     .check_supported_formats(&[
+        //                         GdbFormat::Binary,
+        //                         GdbFormat::Hex,
+        //                         GdbFormat::Instruction,
+        //                     ])
+        //                     .map_err(|error| {
+        //                         DebuggerError::UserMessage(format!(
+        //                             "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
+        //                         ))
+        //                     })?;
+        //                 } else {
+        //                     return Err(DebuggerError::UserMessage(
+        //                         "Invalid parameters. See the `help` command for more information."
+        //                             .to_string(),
+        //                     ));
+        //                 }
+        //             }
+        //             if input_address == 0 {
+        //                 // No address was specified, so we'll use the frame address, if available.
+
+        //                 let frame_id = request_arguments.frame_id.map(ObjectRef::from);
+
+        //                 input_address = if let Some(frame_pc) = frame_id
+        //                     .and_then(|frame_id| {
+        //                         target_core
+        //                             .core_data
+        //                             .stack_frames
+        //                             .iter()
+        //                             .find(|stack_frame| stack_frame.id == frame_id)
+        //                     })
+        //                     .map(|stack_frame| stack_frame.pc)
+        //                 {
+        //                     frame_pc.try_into()?
+        //                 } else {
+        //                     target_core
+        //                         .core
+        //                         .read_core_reg(target_core.core.program_counter())
+        //                         .await?
+        //                 }
+        //             }
+
+        //             memory_read(input_address, gdb_nuf, target_core).await
+        //         })
+        //     },
+        // },
+        // ReplCommand {
+        //     command: "dump",
+        //     help_text: "Create a core dump at a target location. Specify memory ranges to dump, or leave blank to dump in-scope memory regions.",
+        //     sub_commands: &[],
+        //     args: &[
+        //         ReplCommandArgs::Optional("memory start address"),
+        //         ReplCommandArgs::Optional("memory size in bytes"),
+        //         ReplCommandArgs::Optional("path (default: ./coredump)"),
+        //     ],
+        //     handler: |target_core, command_arguments, _| {
+        //         Box::pin(async move {
+        //             let mut args = command_arguments.split_whitespace().collect_vec();
+
+        //             // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks
+        //             // and the last argument as the path tho store the coredump at.
+        //             let location = Path::new(
+        //                 if args.len() % 2 != 0 {
+        //                     args.pop()
+        //                 } else {
+        //                     None
+        //                 }
+        //                 .unwrap_or("./coredump"),
+        //             );
+
+        //             let ranges = if args.is_empty() {
+        //                 // No specific memory ranges were requested, so we will dump the
+        //                 // memory ranges we know are specifically referenced by the variables
+        //                 // in the current scope.
+        //                 target_core.get_memory_ranges().await
+        //             } else {
+        //                 args
+        //             .chunks(2)
+        //             .map(|c| {
+        //                 let start = if let Some(start) = c.first() {
+        //                     parse_int::parse::<u64>(start)
+        //                         .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
+        //                 } else {
+        //                     unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
+        //                 };
+
+        //                 let size = if let Some(size) = c.get(1) {
+        //                     parse_int::parse::<u64>(size)
+        //                         .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
+        //                 } else {
+        //                     unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
+        //                 };
+
+        //                 Ok::<_, DebuggerError>(Range {start,end: start + size})
+        //             })
+        //             .collect::<Result<Vec<Range<u64>>, _>>()?
+        //             };
+        //             let mut range_string = String::new();
+        //             for memory_range in &ranges {
+        //                 if !range_string.is_empty() {
+        //                     write!(&mut range_string, ", ").unwrap();
+        //                 }
+        //                 write!(&mut range_string, "{memory_range:#X?}").unwrap();
+        //             }
+        //             range_string = if range_string.is_empty() {
+        //                 "(No memory ranges specified)".to_string()
+        //             } else {
+        //                 format!("(Includes memory ranges: {range_string})")
+        //             };
+        //             CoreDump::dump_core(&mut target_core.core, ranges)
+        //                 .await?
+        //                 .store(location)?;
+
+        //             Ok(Response {
+        //                 command: "dump".to_string(),
+        //                 success: true,
+        //                 message: Some(format!(
+        //                     "Core dump {range_string} successfully stored at {location:?}.",
+        //                 )),
+        //                 type_: "response".to_string(),
+        //                 request_seq: 0,
+        //                 seq: 0,
+        //                 body: None,
+        //             })
+        //         })
+        //     },
+        // },
+        // ReplCommand {
+        //     command: "clear",
+        //     help_text: "Clear a breakpoint",
+        //     sub_commands: &[],
+        //     args: &[ReplCommandArgs::Required("*address")],
+        //     handler: |target_core, args, _| {
+        //         Box::pin(async move {
+        //             let mut input_arguments = args.split_whitespace();
+        //             let Some(input_argument) = input_arguments.next() else {
+        //                 return Err(DebuggerError::UserMessage(
+        //                 "Missing breakpoint address to clear. See the `help` command for more information.".to_string()
+        //             ));
+        //             };
+
+        //             let Some(address_str) = input_argument.strip_prefix('*') else {
+        //                 return Err(DebuggerError::UserMessage(format!(
+        //                     "Invalid input argument {input_argument}. See the `help` command for more information."
+        //                 )));
+        //             };
+        //             let Ok(MemoryAddress(address)) = address_str.try_into() else {
+        //                 return Err(DebuggerError::UserMessage(format!(
+        //                     "Invalid memory address {address_str}. See the `help` command for more information."
+        //                 )));
+        //             };
+        //             target_core.clear_breakpoint(address).await?;
+
+        //             let response = Response {
+        //                 command: "setBreakpoints".to_string(),
+        //                 success: true,
+        //                 message: Some("Breakpoint cleared".to_string()),
+        //                 type_: "response".to_string(),
+        //                 request_seq: 0,
+        //                 seq: 0,
+        //                 body: serde_json::to_value(BreakpointEventBody {
+        //                     breakpoint: Breakpoint {
+        //                         id: Some(address as i64),
+        //                         column: None,
+        //                         end_column: None,
+        //                         end_line: None,
+        //                         instruction_reference: None,
+        //                         line: None,
+        //                         message: None,
+        //                         offset: None,
+        //                         source: None,
+        //                         verified: false,
+        //                     },
+        //                     reason: "removed".to_string(),
+        //                 })
+        //                 .ok(),
+        //             };
+        //             Ok(response)
+        //         })
+        //     },
+        // },
+    ]
+}
 
 struct ReplStackFrame<'a>(&'a StackFrame);
 

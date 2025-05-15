@@ -71,7 +71,7 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach(registry, lister)?;
+        let (mut session, _probe_options) = self.common.simple_attach(registry, lister).await?;
 
         match self.source {
             ItmSource::TraceMemory { coreclk } => {
@@ -105,19 +105,20 @@ impl Cmd {
                     )
                     .await?;
 
-                let decoder = itm::Decoder::new(
-                    session.swo_reader()?,
-                    itm::DecoderOptions { ignore_eof: true },
-                );
+                // TODO: Make the decoder work with async.
+                // let decoder = itm::Decoder::new(
+                //     session.swo_reader()?,
+                //     itm::DecoderOptions { ignore_eof: true },
+                // );
 
-                let start = Instant::now();
-                let stop = Duration::from_millis(duration);
-                for packet in decoder.singles() {
-                    println!("{packet:?}");
-                    if start.elapsed() > stop {
-                        return Ok(());
-                    }
-                }
+                // let start = Instant::now();
+                // let stop = Duration::from_millis(duration);
+                // for packet in decoder.singles() {
+                //     println!("{packet:?}");
+                //     if start.elapsed() > stop {
+                //         return Ok(());
+                //     }
+                // }
             }
         };
         Ok(())
