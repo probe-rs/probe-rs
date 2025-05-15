@@ -109,7 +109,8 @@ impl Cmd {
                     self.address,
                     self.word_size,
                     self.iterations,
-                );
+                )
+                .await;
                 if let Err(e) = res {
                     println!(
                         "Test failed for speed {} size {} word_size {}bit - {}",
@@ -124,7 +125,7 @@ impl Cmd {
 
     /// Print probe and target info
     async fn print_info(
-        common_options: &LoadedProbeOptions,
+        common_options: &LoadedProbeOptions<'_>,
         lister: &Lister,
     ) -> anyhow::Result<()> {
         let probe = common_options.attach_probe(lister).await?;
@@ -146,7 +147,7 @@ impl Cmd {
 
     /// Run a specific benchmark
     async fn benchmark(
-        common_options: &LoadedProbeOptions,
+        common_options: &LoadedProbeOptions<'_>,
         lister: &Lister,
         speed: u32,
         size: usize,
@@ -168,13 +169,14 @@ impl Cmd {
             );
             let mut core = session.core(0).await.context("Failed to attach to core")?;
             core.halt(Duration::from_millis(100))
+                .await
                 .context("Halting failed")?;
 
             let mut read_results = Vec::<f64>::with_capacity(iterations);
             let mut write_results = Vec::<f64>::with_capacity(iterations);
             'inner: for _ in 0..iterations {
-                let write_throughput = test.block_write(&mut core)?;
-                let read_throughput = test.block_read(&mut core)?;
+                let write_throughput = test.block_write(&mut core).await?;
+                let read_throughput = test.block_read(&mut core).await?;
                 let verify_success = test.block_verify();
                 if verify_success {
                     read_results.push(read_throughput);

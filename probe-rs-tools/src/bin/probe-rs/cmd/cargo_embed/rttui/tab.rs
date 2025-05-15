@@ -101,7 +101,7 @@ impl Tab {
 
     pub async fn send_input(
         &mut self,
-        core: &mut Core,
+        core: &mut Core<'_>,
         client: &mut RttClient,
     ) -> anyhow::Result<()> {
         if let Some((channel, input)) = self.down_channel.as_mut() {

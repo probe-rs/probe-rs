@@ -217,7 +217,10 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     };
 
     let lister = Lister::new();
-    let (mut session, probe_options) = match probe_options.simple_attach(&mut registry, &lister) {
+    let (mut session, probe_options) = match probe_options
+        .simple_attach(&mut registry, &lister)
+        .await
+    {
         Ok((session, probe_options)) => (session, probe_options),
 
         Err(OperationError::MultipleProbesFound { list }) => {
@@ -291,7 +294,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             verify: config.flashing.verify,
         };
         let format_options = FormatOptions::default();
-        let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
+        let loader = build_loader(&mut session, &path, format_options, image_instr_set).await?;
 
         rtt_client.configure_from_loader(&loader);
 
@@ -304,62 +307,68 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             &probe_options,
             loader,
             config.flashing.do_chip_erase,
-        )?;
+        )
+        .await?;
 
         match boot_info {
             BootInfo::FromRam {
                 vector_table_addr, ..
             } => {
                 // core should be already reset and halt by this point.
-                session.prepare_running_on_ram(vector_table_addr)?;
+                session.prepare_running_on_ram(vector_table_addr).await?;
             }
             BootInfo::Other => {
                 // reset the core to leave it in a consistent state after flashing
                 session
-                    .core(core_id)?
-                    .reset_and_halt(Duration::from_millis(100))?;
+                    .core(core_id)
+                    .await?
+                    .reset_and_halt(Duration::from_millis(100))
+                    .await?;
             }
         }
     } else if config.reset.enabled {
         session
-            .core(core_id)?
-            .reset_and_halt(Duration::from_millis(100))?;
+            .core(core_id)
+            .await?
+            .reset_and_halt(Duration::from_millis(100))
+            .await?;
     }
 
     if config.flashing.enabled || config.reset.enabled {
-        let mut core = session.core(core_id)?;
-        rtt_client.clear_control_block(&mut core)?;
+        let mut core = session.core(core_id).await?;
+        rtt_client.clear_control_block(&mut core).await?;
     }
 
     let session = Arc::new(FairMutex::new(session));
 
-    let mut gdb_thread_handle = None;
+    // TODO: Make this not on a separate thread.
+    // let mut gdb_thread_handle = None;
 
-    if config.gdb.enabled {
-        let gdb_connection_string = config.gdb.gdb_connection_string.clone();
-        let session = session.clone();
+    // if config.gdb.enabled {
+    //     let gdb_connection_string = config.gdb.gdb_connection_string.clone();
+    //     let session = session.clone();
 
-        gdb_thread_handle = Some(thread::spawn(move || {
-            let gdb_connection_string =
-                gdb_connection_string.as_deref().unwrap_or("127.0.0.1:1337");
+    //     gdb_thread_handle = Some(thread::spawn(move || {
+    //         let gdb_connection_string =
+    //             gdb_connection_string.as_deref().unwrap_or("127.0.0.1:1337");
 
-            logging::println(format!(
-                "    {} listening at {}",
-                "GDB stub".green().bold(),
-                gdb_connection_string,
-            ));
+    //         logging::println(format!(
+    //             "    {} listening at {}",
+    //             "GDB stub".green().bold(),
+    //             gdb_connection_string,
+    //         ));
 
-            let instances = {
-                let session = session.lock();
-                GdbInstanceConfiguration::from_session(&session, Some(gdb_connection_string))
-            };
+    //         let instances = {
+    //             let session = session.lock();
+    //             GdbInstanceConfiguration::from_session(&session, Some(gdb_connection_string))
+    //         };
 
-            if let Err(e) = crate::cmd::gdb_server::run(&session, instances.iter(), None) {
-                logging::eprintln("During the execution of GDB an error was encountered:");
-                logging::eprintln(format!("{e:?}"));
-            }
-        }));
-    }
+    //         if let Err(e) = crate::cmd::gdb_server::run(&session, instances.iter(), None) {
+    //             logging::eprintln("During the execution of GDB an error was encountered:");
+    //             logging::eprintln(format!("{e:?}"));
+    //         }
+    //     }));
+    // }
 
     if config.rtt.enabled {
         // GDB is also using the session, so we do not lock on the outside.
@@ -367,16 +376,16 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     } else if should_resume_core(&config) {
         // If we don't run the app, we have to resume the core somewhere else.
         let mut session_handle = session.lock();
-        let mut core = session_handle.core(0)?;
+        let mut core = session_handle.core(0).await?;
 
-        if core.core_halted()? {
-            core.run()?;
+        if core.core_halted().await? {
+            core.run().await?;
         }
     }
 
-    if let Some(gdb_thread_handle) = gdb_thread_handle {
-        let _ = gdb_thread_handle.join();
-    }
+    // if let Some(gdb_thread_handle) = gdb_thread_handle {
+    //     let _ = gdb_thread_handle.join();
+    // }
 
     logging::println(format!(
         "        {} processing config {}",
@@ -411,19 +420,19 @@ async fn run_rttui_app(
 
     if should_resume_core(&config) {
         let mut session_handle = session.lock();
-        let mut core = session_handle.core(core_id)?;
+        let mut core = session_handle.core(core_id).await?;
 
-        if core.core_halted()? {
-            core.run()?;
+        if core.core_halted().await? {
+            core.run().await?;
         }
     }
 
     let start = Instant::now();
     let rtt = loop {
         let mut session_handle = session.lock();
-        let mut core = session_handle.core(core_id)?;
+        let mut core = session_handle.core(core_id).await?;
 
-        if client.try_attach(&mut core)? {
+        if client.try_attach(&mut core).await? {
             break client;
         }
 
@@ -469,9 +478,9 @@ async fn run_rttui_app(
 
         {
             let mut session_handle = session.lock();
-            let mut core = session_handle.core(core_id)?;
+            let mut core = session_handle.core(core_id).await?;
 
-            if app.handle_event(&mut core) {
+            if app.handle_event(&mut core).await {
                 logging::println("Shutting down.");
                 break;
             }
@@ -483,8 +492,8 @@ async fn run_rttui_app(
     }
 
     let mut session_handle = session.lock();
-    let mut core = session_handle.core(core_id)?;
-    app.clean_up(&mut core)?;
+    let mut core = session_handle.core(core_id).await?;
+    app.clean_up(&mut core).await?;
 
     Ok(())
 }

@@ -5,12 +5,12 @@ mod stub;
 mod target;
 
 pub(crate) use stub::{GdbInstanceConfiguration, run};
+use tokio::sync::Mutex;
 
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
 
-use parking_lot::FairMutex;
 use probe_rs::{config::Registry, probe::list::Lister};
 
 use crate::util::common_options::ProbeOptions;
@@ -47,13 +47,18 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach(registry, lister)?;
+    pub async fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
+        let (mut session, _probe_options) =
+            pollster::block_on(self.common.simple_attach(registry, lister))?;
 
         if self.reset_halt {
-            session
-                .core(0)?
-                .reset_and_halt(Duration::from_millis(100))?;
+            pollster::block_on(async {
+                session
+                    .core(0)
+                    .await?
+                    .reset_and_halt(Duration::from_millis(100))
+                    .await
+            })?;
         }
 
         let gdb_connection_string = self
@@ -96,9 +101,9 @@ impl Cmd {
             None
         };
 
-        let session = FairMutex::new(session);
+        let session = Mutex::new(session);
 
-        if let Err(e) = run(&session, instances.iter(), gdb) {
+        if let Err(e) = run(&session, instances.iter(), gdb).await {
             eprintln!("During the execution of GDB an error was encountered:");
             eprintln!("{e:?}");
         }

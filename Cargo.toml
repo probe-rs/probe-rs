@@ -18,7 +18,7 @@ members = [
     "smoke-tester",
     # "xtask",
     # "target-gen",
-    # "probe-rs-tools",
+    "probe-rs-tools",
     "probe-rs-mi",
     "probe-rs-debug",
 ]

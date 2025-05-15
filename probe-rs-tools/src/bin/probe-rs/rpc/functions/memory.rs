@@ -8,72 +8,92 @@ use probe_rs::{MemoryInterface, Session};
 use serde::{Deserialize, Serialize};
 
 pub trait Word: Copy + Default + Send + Schema {
-    fn read(
+    async fn read(
         core: &mut impl MemoryInterface,
         address: u64,
         out: &mut Vec<Self>,
     ) -> anyhow::Result<()>;
 
-    fn write(core: &mut impl MemoryInterface, address: u64, data: &[Self]) -> anyhow::Result<()>;
+    async fn write(
+        core: &mut impl MemoryInterface,
+        address: u64,
+        data: &[Self],
+    ) -> anyhow::Result<()>;
 }
 
 impl Word for u8 {
-    fn read(
+    async fn read(
         core: &mut impl MemoryInterface,
         address: u64,
         out: &mut Vec<Self>,
     ) -> anyhow::Result<()> {
-        core.read_8(address, out)?;
+        core.read_8(address, out).await?;
         Ok(())
     }
 
-    fn write(core: &mut impl MemoryInterface, address: u64, data: &[Self]) -> anyhow::Result<()> {
-        core.write_8(address, data)?;
+    async fn write(
+        core: &mut impl MemoryInterface,
+        address: u64,
+        data: &[Self],
+    ) -> anyhow::Result<()> {
+        core.write_8(address, data).await?;
         Ok(())
     }
 }
 impl Word for u16 {
-    fn read(
+    async fn read(
         core: &mut impl MemoryInterface,
         address: u64,
         out: &mut Vec<Self>,
     ) -> anyhow::Result<()> {
-        core.read_16(address, out)?;
+        core.read_16(address, out).await?;
         Ok(())
     }
 
-    fn write(core: &mut impl MemoryInterface, address: u64, data: &[Self]) -> anyhow::Result<()> {
-        core.write_16(address, data)?;
+    async fn write(
+        core: &mut impl MemoryInterface,
+        address: u64,
+        data: &[Self],
+    ) -> anyhow::Result<()> {
+        core.write_16(address, data).await?;
         Ok(())
     }
 }
 impl Word for u32 {
-    fn read(
+    async fn read(
         core: &mut impl MemoryInterface,
         address: u64,
         out: &mut Vec<Self>,
     ) -> anyhow::Result<()> {
-        core.read_32(address, out)?;
+        core.read_32(address, out).await?;
         Ok(())
     }
 
-    fn write(core: &mut impl MemoryInterface, address: u64, data: &[Self]) -> anyhow::Result<()> {
-        core.write_32(address, data)?;
+    async fn write(
+        core: &mut impl MemoryInterface,
+        address: u64,
+        data: &[Self],
+    ) -> anyhow::Result<()> {
+        core.write_32(address, data).await?;
         Ok(())
     }
 }
 impl Word for u64 {
-    fn read(
+    async fn read(
         core: &mut impl MemoryInterface,
         address: u64,
         out: &mut Vec<Self>,
     ) -> anyhow::Result<()> {
-        core.read_64(address, out)?;
+        core.read_64(address, out).await?;
         Ok(())
     }
 
-    fn write(core: &mut impl MemoryInterface, address: u64, data: &[Self]) -> anyhow::Result<()> {
-        core.write_64(address, data)?;
+    async fn write(
+        core: &mut impl MemoryInterface,
+        address: u64,
+        data: &[Self],
+    ) -> anyhow::Result<()> {
+        core.write_64(address, data).await?;
         Ok(())
     }
 }
@@ -92,8 +112,8 @@ pub async fn write_memory<W: Word>(
     request: WriteMemoryRequest<W>,
 ) -> NoResponse {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize).unwrap();
-    W::write(&mut core, request.address, &request.data)?;
+    let mut core = session.core(request.core as usize).await.unwrap();
+    W::write(&mut core, request.address, &request.data).await?;
     Ok(())
 }
 
@@ -111,9 +131,9 @@ pub async fn read_memory<W: Word>(
     request: ReadMemoryRequest,
 ) -> RpcResult<Vec<W>> {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
+    let mut core = session.core(request.core as usize).await?;
 
     let mut words = vec![W::default(); request.count as usize];
-    W::read(&mut core, request.address, &mut words)?;
+    W::read(&mut core, request.address, &mut words).await?;
     Ok(words)
 }

@@ -13,71 +13,77 @@ use probe_rs::{Core, Error, MemoryInterface};
 
 impl MultiThreadBase for RuntimeTarget<'_> {
     fn read_registers(&mut self, regs: &mut RuntimeRegisters, tid: Tid) -> TargetResult<(), Self> {
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
+        pollster::block_on(async move {
+            let mut session = self.session.lock().await;
+            let mut core = session.core(tid.get() - 1).await.into_target_result()?;
 
-        regs.pc = core
-            .read_core_reg(core.program_counter())
-            .into_target_result()?;
+            regs.pc = core
+                .read_core_reg(core.program_counter())
+                .await
+                .into_target_result()?;
 
-        let mut reg_buffer = Vec::<u8>::new();
+            let mut reg_buffer = Vec::<u8>::new();
 
-        for reg in self.target_desc.get_registers_for_main_group() {
-            let bytesize = reg.size_in_bytes();
-            let mut value: u128 =
-                read_register_from_source(&mut core, reg.source()).into_target_result()?;
+            for reg in self.target_desc.get_registers_for_main_group() {
+                let bytesize = reg.size_in_bytes();
+                let mut value: u128 =
+                    read_register_from_source(&mut core, reg.source()).into_target_result()?;
 
-            for _ in 0..bytesize {
-                reg_buffer.push(value as u8);
-                value >>= 8;
+                for _ in 0..bytesize {
+                    reg_buffer.push(value as u8);
+                    value >>= 8;
+                }
             }
-        }
 
-        regs.regs = reg_buffer;
+            regs.regs = reg_buffer;
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn write_registers(&mut self, regs: &RuntimeRegisters, tid: Tid) -> TargetResult<(), Self> {
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
+        pollster::block_on(async move {
+            let mut session = self.session.lock().await;
+            let mut core = session.core(tid.get() - 1).await.into_target_result()?;
 
-        core.write_core_reg(core.program_counter(), regs.pc)
-            .into_target_result()?;
+            core.write_core_reg(core.program_counter(), regs.pc)
+                .await
+                .into_target_result()?;
 
-        let mut current_regval_offset = 0;
+            let mut current_regval_offset = 0;
 
-        for reg in self.target_desc.get_registers_for_main_group() {
-            let bytesize = reg.size_in_bytes();
+            for reg in self.target_desc.get_registers_for_main_group() {
+                let bytesize = reg.size_in_bytes();
 
-            let current_regval_end = current_regval_offset + bytesize;
+                let current_regval_end = current_regval_offset + bytesize;
 
-            if current_regval_end > regs.regs.len() {
-                // Supplied write general registers command argument length not valid, tell GDB
-                tracing::error!(
-                    "Unable to write register {:#?}, because supplied register value length was too short",
-                    reg.source()
-                );
-                return Err(TargetError::Errno(22));
+                if current_regval_end > regs.regs.len() {
+                    // Supplied write general registers command argument length not valid, tell GDB
+                    tracing::error!(
+                        "Unable to write register {:#?}, because supplied register value length was too short",
+                        reg.source()
+                    );
+                    return Err(TargetError::Errno(22));
+                }
+
+                let str_value = &regs.regs[current_regval_offset..current_regval_end];
+
+                let mut value = 0;
+                for (exp, ch) in str_value.iter().enumerate() {
+                    value += (*ch as u128) << (8 * exp);
+                }
+
+                write_register_from_source(&mut core, reg.source(), value).into_target_result()?;
+
+                current_regval_offset = current_regval_end;
+
+                if current_regval_offset == regs.regs.len() {
+                    break;
+                }
             }
 
-            let str_value = &regs.regs[current_regval_offset..current_regval_end];
-
-            let mut value = 0;
-            for (exp, ch) in str_value.iter().enumerate() {
-                value += (*ch as u128) << (8 * exp);
-            }
-
-            write_register_from_source(&mut core, reg.source(), value).into_target_result()?;
-
-            current_regval_offset = current_regval_end;
-
-            if current_regval_offset == regs.regs.len() {
-                break;
-            }
-        }
-
-        Ok(())
+            Ok(())
+        })
     }
 
     fn read_addrs(
@@ -86,23 +92,29 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         data: &mut [u8],
         tid: Tid,
     ) -> TargetResult<usize, Self> {
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
+        pollster::block_on(async move {
+            let mut session = self.session.lock().await;
+            let mut core = session.core(tid.get() - 1).await.into_target_result()?;
 
-        // We currently either read the entire buffer or nothing
-        let num_read = data.len();
+            // We currently either read the entire buffer or nothing
+            let num_read = data.len();
 
-        core.read(start_addr, data)
-            .map(|_| num_read)
-            .into_target_result_non_fatal()
+            core.read(start_addr, data)
+                .await
+                .map(|_| num_read)
+                .into_target_result_non_fatal()
+        })
     }
 
     fn write_addrs(&mut self, start_addr: u64, data: &[u8], tid: Tid) -> TargetResult<(), Self> {
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
+        pollster::block_on(async move {
+            let mut session = self.session.lock().await;
+            let mut core = session.core(tid.get() - 1).await.into_target_result()?;
 
-        core.write_8(start_addr, data)
-            .into_target_result_non_fatal()
+            core.write_8(start_addr, data)
+                .await
+                .into_target_result_non_fatal()
+        })
     }
 
     fn list_active_threads(
@@ -138,21 +150,23 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         reg_id: RuntimeRegId,
         buf: &mut [u8],
     ) -> TargetResult<usize, Self> {
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
+        pollster::block_on(async move {
+            let mut session = self.session.lock().await;
+            let mut core = session.core(tid.get() - 1).await.into_target_result()?;
 
-        let reg = self.target_desc.get_register(reg_id.into());
-        let bytesize = reg.size_in_bytes();
+            let reg = self.target_desc.get_register(reg_id.into());
+            let bytesize = reg.size_in_bytes();
 
-        let mut value: u128 =
-            read_register_from_source(&mut core, reg.source()).into_target_result()?;
+            let mut value: u128 =
+                read_register_from_source(&mut core, reg.source()).into_target_result()?;
 
-        for buf_entry in buf.iter_mut().take(bytesize) {
-            *buf_entry = value as u8;
-            value >>= 8;
-        }
+            for buf_entry in buf.iter_mut().take(bytesize) {
+                *buf_entry = value as u8;
+                value >>= 8;
+            }
 
-        Ok(bytesize)
+            Ok(bytesize)
+        })
     }
 
     fn write_register(
@@ -161,44 +175,48 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         reg_id: RuntimeRegId,
         val: &[u8],
     ) -> TargetResult<(), Self> {
-        let mut session = self.session.lock();
-        let mut core = session.core(tid.get() - 1).into_target_result()?;
+        pollster::block_on(async move {
+            let mut session = self.session.lock().await;
+            let mut core = session.core(tid.get() - 1).await.into_target_result()?;
 
-        let reg = self.target_desc.get_register(reg_id.into());
-        let bytesize = reg.size_in_bytes();
+            let reg = self.target_desc.get_register(reg_id.into());
+            let bytesize = reg.size_in_bytes();
 
-        let mut value = 0;
+            let mut value = 0;
 
-        for (exp, ch) in val.iter().enumerate().take(bytesize) {
-            value += (*ch as u128) << (8 * exp);
-        }
+            for (exp, ch) in val.iter().enumerate().take(bytesize) {
+                value += (*ch as u128) << (8 * exp);
+            }
 
-        write_register_from_source(&mut core, reg.source(), value).into_target_result()?;
+            write_register_from_source(&mut core, reg.source(), value).into_target_result()?;
 
-        Ok(())
+            Ok(())
+        })
     }
 }
 
 fn read_register_from_source(core: &mut Core, source: GdbRegisterSource) -> Result<u128, Error> {
-    match source {
-        GdbRegisterSource::SingleRegister(id) => {
-            let val: u128 = core.read_core_reg(id)?;
+    pollster::block_on(async move {
+        match source {
+            GdbRegisterSource::SingleRegister(id) => {
+                let val: u128 = core.read_core_reg(id).await?;
 
-            Ok(val)
+                Ok(val)
+            }
+            GdbRegisterSource::TwoWordRegister {
+                low,
+                high,
+                word_size,
+            } => {
+                let mut val: u128 = core.read_core_reg(low).await?;
+                let high_val: u128 = core.read_core_reg(high).await?;
+
+                val |= high_val << word_size;
+
+                Ok(val)
+            }
         }
-        GdbRegisterSource::TwoWordRegister {
-            low,
-            high,
-            word_size,
-        } => {
-            let mut val: u128 = core.read_core_reg(low)?;
-            let high_val: u128 = core.read_core_reg(high)?;
-
-            val |= high_val << word_size;
-
-            Ok(val)
-        }
-    }
+    })
 }
 
 fn write_register_from_source(
@@ -206,18 +224,20 @@ fn write_register_from_source(
     source: GdbRegisterSource,
     value: u128,
 ) -> Result<(), Error> {
-    match source {
-        GdbRegisterSource::SingleRegister(id) => core.write_core_reg(id, value),
-        GdbRegisterSource::TwoWordRegister {
-            low,
-            high,
-            word_size,
-        } => {
-            let low_word = value & ((1 << word_size) - 1);
-            let high_word = value >> word_size;
+    pollster::block_on(async move {
+        match source {
+            GdbRegisterSource::SingleRegister(id) => core.write_core_reg(id, value).await,
+            GdbRegisterSource::TwoWordRegister {
+                low,
+                high,
+                word_size,
+            } => {
+                let low_word = value & ((1 << word_size) - 1);
+                let high_word = value >> word_size;
 
-            core.write_core_reg(low, low_word)?;
-            core.write_core_reg(high, high_word)
+                core.write_core_reg(low, low_word).await?;
+                core.write_core_reg(high, high_word).await
+            }
         }
-    }
+    })
 }

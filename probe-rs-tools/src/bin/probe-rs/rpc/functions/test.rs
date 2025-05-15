@@ -123,7 +123,7 @@ pub async fn list_tests(
         .unwrap();
 }
 
-fn list_tests_impl(
+async fn list_tests_impl(
     ctx: RpcSpawnContext,
     request: ListTestsRequest,
     sender: MonitorSender,
@@ -143,11 +143,14 @@ fn list_tests_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    request.boot_info.prepare(&mut session, run_loop.core_id)?;
+    request
+        .boot_info
+        .prepare(&mut session, run_loop.core_id)
+        .await?;
 
-    let mut core = session.core(0)?;
+    let mut core = session.core(0).await?;
     if let Some(rtt_client) = rtt_client.as_mut() {
-        rtt_client.clear_control_block(&mut core)?;
+        rtt_client.clear_control_block(&mut core).await?;
     }
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
@@ -159,14 +162,17 @@ fn list_tests_impl(
         },
     });
 
-    match run_loop.run_until(
-        &mut core,
-        true,
-        true,
-        poller,
-        Some(Duration::from_secs(5)),
-        |halt_reason, core| list_handler.handle_halt(halt_reason, core),
-    )? {
+    match run_loop
+        .run_until(
+            &mut core,
+            true,
+            true,
+            poller,
+            Some(Duration::from_secs(5)),
+            async |halt_reason, core| list_handler.handle_halt(halt_reason, core).await,
+        )
+        .await?
+    {
         ReturnReason::Predicate(tests) => Ok(tests),
         ReturnReason::Timeout => {
             anyhow::bail!("The target did not respond with test list until timeout.")
@@ -208,7 +214,7 @@ pub async fn run_test(
         .unwrap();
 }
 
-fn run_test_impl(
+async fn run_test_impl(
     ctx: RpcSpawnContext,
     request: RunTestRequest,
     sender: MonitorSender,
@@ -225,11 +231,11 @@ fn run_test_impl(
         .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
 
     let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
-    let mut core = session.core(core_id)?;
-    core.reset_and_halt(Duration::from_millis(100))?;
+    let mut core = session.core(core_id).await?;
+    core.reset_and_halt(Duration::from_millis(100)).await?;
 
     if let Some(rtt_client) = rtt_client.as_mut() {
-        rtt_client.clear_control_block(&mut core)?;
+        rtt_client.clear_control_block(&mut core).await?;
     }
 
     let expected_outcome = request.test.expected_outcome;
@@ -251,14 +257,17 @@ fn run_test_impl(
         },
     });
 
-    match run_loop.run_until(
-        &mut core,
-        true,
-        true,
-        poller,
-        Some(timeout),
-        |halt_reason, core| run_handler.handle_halt(halt_reason, core),
-    )? {
+    match run_loop
+        .run_until(
+            &mut core,
+            true,
+            true,
+            poller,
+            Some(timeout),
+            async |halt_reason, core| run_handler.handle_halt(halt_reason, core).await,
+        )
+        .await?
+    {
         ReturnReason::Timeout => Ok(TestResult::Failed(format!(
             "Test timed out after {:?}",
             timeout
@@ -292,7 +301,7 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
         }
     }
 
-    fn handle_halt(
+    async fn handle_halt(
         &mut self,
         halt_reason: HaltReason,
         core: &mut Core<'_>,
@@ -307,13 +316,13 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
             SemihostingCommand::GetCommandLine(request) if !self.cmdline_requested => {
                 tracing::debug!("target asked for cmdline. send 'list'");
                 self.cmdline_requested = true;
-                request.write_command_line_to_target(core, "list")?;
+                request.write_command_line_to_target(core, "list").await?;
                 Ok(None) // Continue running
             }
             SemihostingCommand::Unknown(details)
                 if details.operation == Self::SEMIHOSTING_USER_LIST && self.cmdline_requested =>
             {
-                let list = read_test_list(details, core)?;
+                let list = read_test_list(details, core).await?;
 
                 tracing::debug!("got list of tests from target: {list:?}");
                 if list.version != 1 {
@@ -323,7 +332,7 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
                 Ok(Some(list.into()))
             }
             other if SemihostingReader::is_io(other) => {
-                if let Some((stream, data)) = self.semihosting_reader.handle(other, core)? {
+                if let Some((stream, data)) = self.semihosting_reader.handle(other, core).await? {
                     (self.sender)(SemihostingEvent::Output { stream, data });
                 }
                 Ok(None)
@@ -338,16 +347,16 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
     }
 }
 
-fn read_test_list(
+async fn read_test_list(
     details: probe_rs::semihosting::UnknownCommandDetails,
     core: &mut Core<'_>,
 ) -> anyhow::Result<TestDefinitions> {
-    let buf = details.get_buffer(core)?;
-    let buf = buf.read(core)?;
+    let buf = details.get_buffer(core).await?;
+    let buf = buf.read(core).await?;
     let list = serde_json::from_slice::<TestDefinitions>(&buf[..])?;
 
     // Signal status=success back to the target
-    details.write_status(core, 0)?;
+    details.write_status(core, 0).await?;
 
     Ok(list)
 }
@@ -369,7 +378,7 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
         }
     }
 
-    fn handle_halt(
+    async fn handle_halt(
         &mut self,
         halt_reason: HaltReason,
         core: &mut Core<'_>,
@@ -387,7 +396,7 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
                 let cmdline = format!("run {}", self.test.name);
                 tracing::debug!("target asked for cmdline. send '{cmdline}'");
                 self.cmdline_requested = true;
-                request.write_command_line_to_target(core, &cmdline)?;
+                request.write_command_line_to_target(core, &cmdline).await?;
                 Ok(None) // Continue running
             }
             SemihostingCommand::ExitSuccess if self.cmdline_requested => {
@@ -398,7 +407,7 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
                 Ok(Some(TestOutcome::Panic))
             }
             other if SemihostingReader::is_io(other) => {
-                if let Some((stream, data)) = self.semihosting_reader.handle(other, core)? {
+                if let Some((stream, data)) = self.semihosting_reader.handle(other, core).await? {
                     (self.sender)(SemihostingEvent::Output { stream, data });
                 }
                 Ok(None)

@@ -74,7 +74,7 @@ impl UpChannel {
         core: &mut Core<'_>,
         client: &mut RttClient,
     ) -> Result<(), Error> {
-        let bytes = client.poll_channel(core, self.channel_number)?;
+        let bytes = client.poll_channel(core, self.channel_number).await?;
 
         self.data_format
             .process(bytes, &mut (&mut self.tcp_stream, &mut self.data))

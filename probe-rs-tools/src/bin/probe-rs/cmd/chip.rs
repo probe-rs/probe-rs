@@ -88,6 +88,8 @@ pub async fn print_chip_info(
 
 #[cfg(test)]
 mod test {
+    use tokio::task::LocalSet;
+
     use super::*;
     use std::future::Future;
 
@@ -101,7 +103,8 @@ mod test {
         // Create a local server to run commands against.
         let (mut local_server, tx, rx) =
             RpcApp::create_server(16, crate::rpc::functions::ProbeAccess::All);
-        let handle = tokio::spawn(async move { local_server.run().await });
+        let local = LocalSet::new();
+        let handle = local.spawn_local(async move { local_server.run().await });
 
         // Run the command locally.
         let client = RpcClient::new_local_from_wire(tx, rx);
@@ -109,7 +112,10 @@ mod test {
         f(client).await;
 
         // Wait for the server to shut down
-        _ = handle.await.unwrap();
+        let (_, _) = tokio::join! {
+            handle,
+            local,
+        };
     }
 
     #[tokio::test]

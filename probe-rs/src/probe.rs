@@ -616,7 +616,7 @@ impl Probe {
 /// The `std::fmt::Display` implementation will be used to display the probe in the list of available probes,
 /// and should return a human-readable name for the probe type.
 #[async_trait::async_trait(?Send)]
-pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sync {
+pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sync + Send {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.

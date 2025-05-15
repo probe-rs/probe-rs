@@ -80,7 +80,7 @@ impl<T> Key<T> {
 }
 
 struct ObjectStorage {
-    storage: HashMap<u64, Arc<Mutex<dyn Any + Send>>>,
+    storage: HashMap<u64, Arc<Mutex<dyn Any>>>,
 }
 
 impl ObjectStorage {
@@ -90,32 +90,22 @@ impl ObjectStorage {
         }
     }
 
-    pub fn store_object<T: Any + Send>(&mut self, obj: T) -> Key<T> {
+    pub fn store_object<T: Any>(&mut self, obj: T) -> Key<T> {
         let key = Key::new();
         self.storage.insert(key.key, Arc::new(Mutex::new(obj)));
         key
     }
 
-    pub async fn object_mut<T: Any + Send>(
-        &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
+    pub async fn object_mut<T: Any>(&self, key: Key<T>) -> impl DerefMut<Target = T> + use<T> {
         let obj = self.storage.get(&key.key).unwrap();
         let guard = obj.clone().lock_owned().await;
-        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
-            e.downcast_mut::<T>().unwrap()
-        })
+        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any)| e.downcast_mut::<T>().unwrap())
     }
 
-    pub fn object_mut_blocking<T: Any + Send>(
-        &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
+    pub fn object_mut_blocking<T: Any>(&self, key: Key<T>) -> impl DerefMut<Target = T> + use<T> {
         let obj = self.storage.get(&key.key).unwrap();
         let guard = obj.clone().blocking_lock_owned();
-        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
-            e.downcast_mut::<T>().unwrap()
-        })
+        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any)| e.downcast_mut::<T>().unwrap())
     }
 }
 
@@ -136,25 +126,19 @@ impl SessionState {
         }
     }
 
-    pub async fn store_object<T: Any + Send>(&mut self, obj: T) -> Key<T> {
+    pub async fn store_object<T: Any>(&mut self, obj: T) -> Key<T> {
         self.object_storage.lock().await.store_object(obj)
     }
 
-    pub fn store_object_blocking<T: Any + Send>(&mut self, obj: T) -> Key<T> {
+    pub fn store_object_blocking<T: Any>(&mut self, obj: T) -> Key<T> {
         self.object_storage.blocking_lock().store_object(obj)
     }
 
-    pub async fn object_mut<T: Any + Send>(
-        &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
+    pub async fn object_mut<T: Any>(&self, key: Key<T>) -> impl DerefMut<Target = T> + use<T> {
         self.object_storage.lock().await.object_mut(key).await
     }
 
-    pub fn object_mut_blocking<T: Any + Send>(
-        &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
+    pub fn object_mut_blocking<T: Any>(&self, key: Key<T>) -> impl DerefMut<Target = T> + use<T> {
         self.object_storage.blocking_lock().object_mut_blocking(key)
     }
 
@@ -164,10 +148,7 @@ impl SessionState {
         key
     }
 
-    pub fn session_blocking(
-        &self,
-        sid: Key<Session>,
-    ) -> impl DerefMut<Target = Session> + Send + use<> {
+    pub fn session_blocking(&self, sid: Key<Session>) -> impl DerefMut<Target = Session> + use<> {
         self.object_mut_blocking(sid)
     }
 

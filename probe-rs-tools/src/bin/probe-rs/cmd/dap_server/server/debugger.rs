@@ -174,6 +174,7 @@ impl Debugger {
 
         let mut target_core = session_data
             .attach_core(target_core_config.core_index)
+            .await
             .context("Unable to connect to target core")?;
 
         // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
@@ -194,7 +195,7 @@ impl Debugger {
             | "writeMemory"
             | "disassemble" => {
                 if new_status == CoreStatus::Sleeping {
-                    match target_core.core.halt(Duration::from_millis(100)) {
+                    match target_core.core.halt(Duration::from_millis(100)).await {
                         Ok(_) => unhalt_me = true,
                         Err(error) => {
                             let err = DebuggerError::from(error);
@@ -238,40 +239,51 @@ impl Debugger {
                 Ok(())
             }
             "disconnect" => {
-                let result = debug_adapter.disconnect(&mut target_core, &request);
+                let result = debug_adapter.disconnect(&mut target_core, &request).await;
                 debug_session = DebugSessionStatus::Terminate;
                 result
             }
-            "next" => debug_adapter.next(&mut target_core, &request),
-            "stepIn" => debug_adapter.step_in(&mut target_core, &request),
-            "stepOut" => debug_adapter.step_out(&mut target_core, &request),
-            "pause" => debug_adapter.pause(&mut target_core, &request),
-            "readMemory" => debug_adapter.read_memory(&mut target_core, &request),
-            "writeMemory" => debug_adapter.write_memory(&mut target_core, &request),
-            "setVariable" => debug_adapter.set_variable(&mut target_core, &request),
-            "configurationDone" => debug_adapter.configuration_done(&mut target_core, &request),
-            "threads" => debug_adapter.threads(&mut target_core, &request),
+            "next" => debug_adapter.next(&mut target_core, &request).await,
+            "stepIn" => debug_adapter.step_in(&mut target_core, &request).await,
+            "stepOut" => debug_adapter.step_out(&mut target_core, &request).await,
+            "pause" => debug_adapter.pause(&mut target_core, &request).await,
+            "readMemory" => debug_adapter.read_memory(&mut target_core, &request).await,
+            "writeMemory" => debug_adapter.write_memory(&mut target_core, &request).await,
+            "setVariable" => debug_adapter.set_variable(&mut target_core, &request).await,
+            "configurationDone" => {
+                debug_adapter
+                    .configuration_done(&mut target_core, &request)
+                    .await
+            }
+            "threads" => debug_adapter.threads(&mut target_core, &request).await,
             "restart" => {
                 let result = target_core
                     .core
                     .halt(Duration::from_millis(500))
+                    .await
                     .map_err(|error| anyhow!("Failed to halt core: {}", error))
                     .and(Ok(()));
 
                 debug_session = DebugSessionStatus::Restart(request);
                 result
             }
-            "setBreakpoints" => debug_adapter.set_breakpoints(&mut target_core, &request),
-            "setInstructionBreakpoints" => {
-                debug_adapter.set_instruction_breakpoints(&mut target_core, &request)
+            "setBreakpoints" => {
+                debug_adapter
+                    .set_breakpoints(&mut target_core, &request)
+                    .await
             }
-            "stackTrace" => debug_adapter.stack_trace(&mut target_core, &request),
-            "scopes" => debug_adapter.scopes(&mut target_core, &request),
-            "disassemble" => debug_adapter.disassemble(&mut target_core, &request),
-            "variables" => debug_adapter.variables(&mut target_core, &request),
-            "continue" => debug_adapter.r#continue(&mut target_core, &request),
-            "evaluate" => debug_adapter.evaluate(&mut target_core, &request),
-            "completions" => debug_adapter.completions(&mut target_core, &request),
+            "setInstructionBreakpoints" => {
+                debug_adapter
+                    .set_instruction_breakpoints(&mut target_core, &request)
+                    .await
+            }
+            "stackTrace" => debug_adapter.stack_trace(&mut target_core, &request).await,
+            "scopes" => debug_adapter.scopes(&mut target_core, &request).await,
+            "disassemble" => debug_adapter.disassemble(&mut target_core, &request).await,
+            "variables" => debug_adapter.variables(&mut target_core, &request).await,
+            "continue" => debug_adapter.r#continue(&mut target_core, &request).await,
+            "evaluate" => debug_adapter.evaluate(&mut target_core, &request).await,
+            "completions" => debug_adapter.completions(&mut target_core, &request).await,
             other_command => {
                 // Unimplemented command.
                 debug_adapter.send_response::<()>(
@@ -287,7 +299,7 @@ impl Debugger {
         result.map_err(|e| DebuggerError::Other(e.context("Error executing request.")))?;
 
         if unhalt_me {
-            if let Err(error) = target_core.core.run() {
+            if let Err(error) = target_core.core.run().await {
                 let error =
                     DebuggerError::Other(anyhow!(error).context("Failed to resume target."));
                 debug_adapter.show_error_message(&error)?;
@@ -327,12 +339,15 @@ impl Debugger {
         };
 
         // Process either the Launch or Attach request.
-        let mut session_data = match self.handle_launch_attach(
-            &mut registry,
-            &launch_attach_request,
-            &mut debug_adapter,
-            lister,
-        ) {
+        let mut session_data = match self
+            .handle_launch_attach(
+                &mut registry,
+                &launch_attach_request,
+                &mut debug_adapter,
+                lister,
+            )
+            .await
+        {
             Ok(session_data) => session_data,
             Err(error) => {
                 debug_adapter.send_response::<()>(&launch_attach_request, Err(&error))?;
@@ -370,15 +385,16 @@ impl Debugger {
                     }
                 }
                 DebugSessionStatus::Restart(request) => {
-                    if let Err(error) =
-                        self.restart(&mut debug_adapter, &mut session_data, &request)
+                    if let Err(error) = self
+                        .restart(&mut debug_adapter, &mut session_data, &request)
+                        .await
                     {
                         debug_adapter.send_response::<()>(&request, Err(&error))?;
                         return Err(error);
                     }
                 }
                 DebugSessionStatus::Terminate => {
-                    session_data.clean_up(&self.config)?;
+                    session_data.clean_up(&self.config).await?;
                     return Ok(());
                 }
             };
@@ -400,7 +416,7 @@ impl Debugger {
 
     /// Process launch or attach request
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
-    pub(crate) fn handle_launch_attach<P: ProtocolAdapter + 'static>(
+    pub(crate) async fn handle_launch_attach<P: ProtocolAdapter + 'static>(
         &mut self,
         registry: &mut Registry,
         launch_attach_request: &Request,
@@ -428,7 +444,7 @@ impl Debugger {
         self.config.validate_config_files()?;
 
         let mut session_data =
-            SessionData::new(registry, lister, &mut self.config, self.timestamp_offset)?;
+            SessionData::new(registry, lister, &mut self.config, self.timestamp_offset).await?;
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
@@ -454,15 +470,18 @@ impl Debugger {
                 debug_adapter,
                 launch_attach_request,
                 &mut session_data,
-            )?;
+            )
+            .await?;
         }
 
         // First, attach to the core
-        let mut target_core = session_data.attach_core(target_core_config.core_index)?;
+        let mut target_core = session_data
+            .attach_core(target_core_config.core_index)
+            .await?;
 
         // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
         // Depending on supplied `config`, the core will be restarted at the end of initialization in the `configuration_done` request.
-        halt_core(&mut target_core.core)?;
+        halt_core(&mut target_core.core).await?;
 
         // Before we complete, load the (optional) CMSIS-SVD file and its variable cache.
         // Configure the [CorePeripherals].
@@ -482,11 +501,12 @@ impl Debugger {
             // This will effectively do a `reset` and `halt` of the core, which is what we want until after the `configuration_done` request.
             debug_adapter
                 .restart(&mut target_core, None)
+                .await
                 .context("Failed to restart core")?;
         } else {
             // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
             // For LaunchRequest, this is done in the `restart` above.
-            target_core.core.debug_on_sw_breakpoint(true)?;
+            target_core.core.debug_on_sw_breakpoint(true).await?;
         }
 
         drop(target_core);
@@ -498,7 +518,7 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all)]
-    fn restart<P: ProtocolAdapter + 'static>(
+    async fn restart<P: ProtocolAdapter + 'static>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
         session_data: &mut SessionData,
@@ -521,13 +541,16 @@ impl Debugger {
                 // If there is a new binary as part of a restart, there are some key things that
                 // need to be 'reset' for things to work properly.
                 session_data.load_debug_info_for_core(target_core_config)?;
-                session_data
+                match session_data
                     .attach_core(target_core_config.core_index)
-                    .map(|mut target_core| {
-                        // Reset RTT so that the link can be re-established
+                    .await
+                {
+                    Ok(mut target_core) => {
                         target_core.core_data.rtt_connection = None;
-                        target_core.recompute_breakpoints()
-                    })??;
+                        target_core.recompute_breakpoints().await?;
+                    }
+                    Err(e) => return Err(e),
+                };
 
                 session_data.load_rtt_location(&self.config)?;
 
@@ -537,19 +560,23 @@ impl Debugger {
                     debug_adapter,
                     request,
                     session_data,
-                )?;
+                )
+                .await?;
             }
         }
 
         // First, attach to the core
-        let mut target_core = session_data.attach_core(target_core_config.core_index)?;
+        let mut target_core = session_data
+            .attach_core(target_core_config.core_index)
+            .await?;
 
         // Immediately after attaching, halt the core, so that we can finish restart logic without bumping into user code.
-        halt_core(&mut target_core.core)?;
+        halt_core(&mut target_core.core).await?;
 
         // After completing optional flashing and other config, we can run the debug adapter's restart logic.
         debug_adapter
             .restart(&mut target_core, Some(request))
+            .await
             .context("Failed to restart core")?;
 
         Ok(())
@@ -558,7 +585,7 @@ impl Debugger {
     /// Flash the given binary, and report the progress to the
     /// debug adapter.
     // Note: This function consumes the 'debug_adapter', so all error reporting via that handle must be done before returning from this function.
-    fn flash<P: ProtocolAdapter + 'static>(
+    async fn flash<P: ProtocolAdapter + 'static>(
         config: &SessionConfig,
         path_to_elf: &Path,
         debug_adapter: &mut DebugAdapter<P>,
@@ -654,16 +681,21 @@ impl Debugger {
             path_to_elf,
             config.flashing_config.format_options.clone(),
             None,
-        ) {
+        )
+        .await
+        {
             Ok(loader) => {
                 let do_flashing = if config.flashing_config.verify_before_flashing {
-                    match loader.verify(
-                        &mut session_data.session,
-                        download_options
-                            .progress
-                            .clone()
-                            .unwrap_or_else(FlashProgress::empty),
-                    ) {
+                    match loader
+                        .verify(
+                            &mut session_data.session,
+                            download_options
+                                .progress
+                                .clone()
+                                .unwrap_or_else(FlashProgress::empty),
+                        )
+                        .await
+                    {
                         Ok(_) => false,
                         Err(FlashError::Verify) => true,
                         Err(other) => {
@@ -688,6 +720,7 @@ impl Debugger {
                 if do_flashing {
                     loader
                         .commit(&mut session_data.session, download_options)
+                        .await
                         .map_err(FileDownloadError::Flash)
                 } else {
                     drop(download_options);
@@ -878,6 +911,7 @@ mod test {
         collections::{BTreeMap, HashMap, VecDeque},
         fmt::Display,
         path::PathBuf,
+        sync::Arc,
     };
     use test_case::test_case;
     use time::UtcOffset;
@@ -902,7 +936,7 @@ mod test {
             todo!()
         }
 
-        async fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
+        async fn list_probes(&self) -> Vec<DebugProbeInfo> {
             todo!()
         }
     }
@@ -1250,7 +1284,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            MockProbeFactory,
+            Arc::new(MockProbeFactory),
             None,
         );
 

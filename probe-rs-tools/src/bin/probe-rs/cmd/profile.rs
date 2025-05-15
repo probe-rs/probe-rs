@@ -136,17 +136,17 @@ impl ProfileCmd {
                 }
             }
             ProfileMethod::Pcsr => {
-                enable_tracing(&mut session.core(self.core)?)?;
+                enable_tracing(&mut session.core(self.core).await?).await?;
 
-                let components = session.get_arm_components(DpAddress::Default)?;
+                let components = session.get_arm_components(DpAddress::Default).await?;
                 let component = find_component(&components, PeripheralType::Dwt)?;
                 let interface = session.get_arm_interface()?;
 
                 let mut dwt = Dwt::new(interface, component);
-                dwt.enable()?;
+                dwt.enable().await?;
 
                 while start.elapsed() <= duration {
-                    let pc = dwt.read_pcsr()?;
+                    let pc = dwt.read_pcsr().await?;
                     *samples.entry(pc).or_insert(1) += 1;
                     reads += 1;
                 }
@@ -161,22 +161,23 @@ impl ProfileCmd {
                 let mut dwt = Dwt::new(interface, component);
                 dwt.enable_pc_sampling().await?;
 
-                let decoder = itm::Decoder::new(
-                    session.swo_reader()?,
-                    itm::DecoderOptions { ignore_eof: true },
-                );
+                // TODO: Fix ITM
+                // let decoder = itm::Decoder::new(
+                //     session.swo_reader()?,
+                //     itm::DecoderOptions { ignore_eof: true },
+                // );
 
-                let iter = decoder.singles();
+                // let iter = decoder.singles();
 
-                for packet in iter {
-                    if let TracePacket::PCSample { pc: Some(pc) } = packet? {
-                        *samples.entry(pc).or_insert(1) += 1;
-                        reads += 1;
-                    }
-                    if start.elapsed() > duration {
-                        break;
-                    }
-                }
+                // for packet in iter {
+                //     if let TracePacket::PCSample { pc: Some(pc) } = packet? {
+                //         *samples.entry(pc).or_insert(1) += 1;
+                //         reads += 1;
+                //     }
+                //     if start.elapsed() > duration {
+                //         break;
+                //     }
+                // }
             }
         }
 

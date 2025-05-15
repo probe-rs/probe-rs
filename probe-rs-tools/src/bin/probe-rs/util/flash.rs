@@ -5,7 +5,7 @@ use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, Operation
 use super::logging;
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use web_time::Instant;
 
@@ -25,7 +25,7 @@ pub async fn run_flash_download(
     session: &mut Session,
     path: impl AsRef<Path>,
     download_options: &BinaryDownloadOptions,
-    probe_options: &LoadedProbeOptions,
+    probe_options: &LoadedProbeOptions<'_>,
     loader: FlashLoader,
     do_chip_erase: bool,
 ) -> Result<(), OperationError> {

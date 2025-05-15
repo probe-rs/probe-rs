@@ -62,7 +62,7 @@ pub async fn build(
 ) -> BuildResponse {
     // build loader
     let mut session = ctx.session(request.sessid).await;
-    let loader = build_loader(&mut session, &request.path, request.format, None)?;
+    let loader = build_loader(&mut session, &request.path, request.format, None).await?;
 
     Ok(BuildResult {
         boot_info: loader.boot_info().into(),
@@ -299,19 +299,21 @@ pub enum BootInfo {
 }
 
 impl BootInfo {
-    pub fn prepare(&self, session: &mut Session, core_id: usize) -> anyhow::Result<()> {
+    pub async fn prepare(&self, session: &mut Session, core_id: usize) -> anyhow::Result<()> {
         match self {
             BootInfo::FromRam {
                 vector_table_addr, ..
             } => {
                 // core should be already reset and halt by this point.
-                session.prepare_running_on_ram(*vector_table_addr)?;
+                session.prepare_running_on_ram(*vector_table_addr).await?;
             }
             BootInfo::Other => {
                 // reset the core to leave it in a consistent state after flashing
                 session
-                    .core(core_id)?
-                    .reset_and_halt(Duration::from_millis(100))?;
+                    .core(core_id)
+                    .await?
+                    .reset_and_halt(Duration::from_millis(100))
+                    .await?;
             }
         }
 
@@ -339,7 +341,7 @@ pub async fn flash(ctx: &mut RpcContext, _header: VarHeader, request: FlashReque
         .await
 }
 
-fn flash_impl(
+async fn flash_impl(
     ctx: RpcSpawnContext,
     request: FlashRequest,
     sender: Sender<ProgressEvent>,
@@ -367,6 +369,7 @@ fn flash_impl(
     // run flash download
     loader
         .commit(&mut session, options)
+        .await
         .map_err(FileDownloadError::Flash)?;
 
     Ok(())
@@ -388,7 +391,7 @@ pub async fn erase(ctx: &mut RpcContext, _header: VarHeader, request: EraseReque
         .await
 }
 
-fn erase_impl(
+async fn erase_impl(
     ctx: RpcSpawnContext,
     request: EraseRequest,
     sender: Sender<ProgressEvent>,
@@ -405,7 +408,7 @@ fn erase_impl(
     });
 
     match request.command {
-        EraseCommand::All => flashing::erase_all(&mut session, progress)?,
+        EraseCommand::All => flashing::erase_all(&mut session, progress).await?,
     }
 
     Ok(())
@@ -434,7 +437,7 @@ pub async fn verify(
         .await
 }
 
-fn verify_impl(
+async fn verify_impl(
     ctx: RpcSpawnContext,
     request: VerifyRequest,
     sender: Sender<ProgressEvent>,
@@ -451,7 +454,7 @@ fn verify_impl(
         });
     });
 
-    match loader.verify(&mut session, progress) {
+    match loader.verify(&mut session, progress).await {
         Ok(()) => Ok(VerifyResult::Ok),
         Err(flashing::FlashError::Verify) => Ok(VerifyResult::Mismatch),
         Err(other) => Err(other.into()),

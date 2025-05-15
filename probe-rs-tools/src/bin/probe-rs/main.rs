@@ -1,5 +1,3 @@
-#![feature(async_closure)]
-
 mod cmd;
 mod report;
 mod rpc;
@@ -24,6 +22,7 @@ use probe_rs::{Target, probe::list::Lister};
 use report::Report;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
+use tokio::task::LocalSet;
 
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::RpcApp;
@@ -119,7 +118,7 @@ impl Cli {
             Subcommand::Serve(cmd) => cmd.run(_config.server).await,
             Subcommand::List(cmd) => cmd.run(client).await,
             Subcommand::Info(cmd) => cmd.run(client).await,
-            Subcommand::Gdb(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Gdb(cmd) => cmd.run(&mut *client.registry().await, &lister).await,
             Subcommand::Reset(cmd) => cmd.run(client).await,
             Subcommand::Debug(cmd) => {
                 cmd.run(&mut *client.registry().await, &lister, utc_offset)
@@ -130,15 +129,15 @@ impl Cli {
             Subcommand::Attach(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Verify(cmd) => cmd.run(client).await,
             Subcommand::Erase(cmd) => cmd.run(client).await,
-            Subcommand::Trace(cmd) => cmd.run(&mut *client.registry().await, &lister),
-            Subcommand::Itm(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Trace(cmd) => cmd.run(&mut *client.registry().await, &lister).await,
+            Subcommand::Itm(cmd) => cmd.run(&mut *client.registry().await, &lister).await,
             Subcommand::Chip(cmd) => cmd.run(client).await,
-            Subcommand::Benchmark(cmd) => cmd.run(&mut *client.registry().await, &lister),
-            Subcommand::Profile(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Benchmark(cmd) => cmd.run(&mut *client.registry().await, &lister).await,
+            Subcommand::Profile(cmd) => cmd.run(&mut *client.registry().await, &lister).await,
             Subcommand::Read(cmd) => cmd.run(client).await,
             Subcommand::Write(cmd) => cmd.run(client).await,
-            Subcommand::Complete(cmd) => cmd.run(&lister),
-            Subcommand::Mi(cmd) => cmd.run(),
+            Subcommand::Complete(cmd) => cmd.run(&lister).await,
+            Subcommand::Mi(cmd) => cmd.run().await,
         }
     }
 
@@ -431,7 +430,7 @@ fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<&'list 
     None
 }
 
-#[pollster::main]
+#[tokio::main]
 async fn main() -> Result<()> {
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.
@@ -496,8 +495,13 @@ async fn main() -> Result<()> {
 
     #[cfg(feature = "remote")]
     if let Some(host) = cli.host.as_deref() {
+        let host = host.to_string();
+        let token = cli.token.clone();
         // Run the command remotely.
-        let client = rpc::client::connect(host, cli.token.clone()).await?;
+        let local = LocalSet::new();
+        let client = local
+            .spawn_local(async move { rpc::client::connect(&host, token).await })
+            .await??;
 
         anyhow::ensure!(
             cli.subcommand.is_remote_cmd(),
@@ -511,14 +515,18 @@ async fn main() -> Result<()> {
 
     // Create a local server to run commands against.
     let (mut local_server, tx, rx) = RpcApp::create_server(16, rpc::functions::ProbeAccess::All);
-    let handle = tokio::spawn(async move { local_server.run().await });
+    let local = LocalSet::new();
+    let handle = local.spawn_local(async move { local_server.run().await });
 
     // Run the command locally.
     let client = RpcClient::new_local_from_wire(tx, rx);
     let result = cli.run(client, config, utc_offset).await;
 
     // Wait for the server to shut down
-    _ = handle.await.unwrap();
+    let (_, _) = tokio::join! {
+        handle,
+        local,
+    };
 
     compile_report(result, report_path, elf, log_path.as_deref())
 }

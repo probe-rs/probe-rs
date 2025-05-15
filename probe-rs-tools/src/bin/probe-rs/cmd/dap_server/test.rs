@@ -18,8 +18,9 @@ impl TestLister {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ProbeLister for TestLister {
-    fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+    async fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
         let probe_index = self.probes.borrow().iter().position(|(info, _)| {
             info.product_id == selector.product_id
                 && info.vendor_id == selector.vendor_id
@@ -37,7 +38,7 @@ impl ProbeLister for TestLister {
         }
     }
 
-    fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    async fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
         self.probes
             .borrow()
             .iter()
