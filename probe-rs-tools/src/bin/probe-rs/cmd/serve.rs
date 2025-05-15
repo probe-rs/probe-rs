@@ -28,22 +28,12 @@ use crate::rpc::{
     transport::websocket::{AxumWebsocketTx, WebsocketRx},
 };
 
-fn default_port() -> u16 {
-    3000
-}
-
-fn default_address() -> String {
-    String::from("0.0.0.0")
-}
-
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct ServerConfig {
     pub users: Vec<ServerUser>,
-    #[serde(default = "default_address")]
-    pub address: String,
-    #[serde(default = "default_port")]
-    pub port: u16,
+    pub address: Option<String>,
+    pub port: Option<u16>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,7 +94,10 @@ impl Cmd {
             tracing::warn!("No users configured.");
         }
 
-        let listener = tokio::net::TcpListener::bind(format!("{}:{}", config.address, config.port))
+        let address = config.address.as_deref().unwrap_or("0.0.0.0");
+        let port = config.port.unwrap_or(3000);
+
+        let listener = tokio::net::TcpListener::bind(format!("{}:{}", address, port))
             .await
             .unwrap();
 
