@@ -1,1 +1,0 @@
-CMSIS-DAP probes can now be used to connect to RISC-V and Xtensa MCUs.

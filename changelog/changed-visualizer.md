@@ -1,1 +1,0 @@
-The FlashLayout visualizer has been moved from the library into the CLI codebase.

@@ -1,1 +1,0 @@
-Fixed a few STM32 part numbers which had repeated letters at the end

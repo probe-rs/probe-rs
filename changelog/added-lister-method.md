@@ -1,3 +1,0 @@
-- Added `ProbeLister::list`, `Lister::list` that accepts a device selector.
-- Added `ProbeFactory::list_probes_filtered` that accepts a device selector. This method has a default implementation that falls back to `list_probes`.
-- Added `DebugProbeSelector::matches_probe`.

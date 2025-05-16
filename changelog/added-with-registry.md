@@ -1,1 +1,0 @@
-Added `Probe::attach_with_registry` and `attach_under_reset_with_registry` to allow working with a custom registry.

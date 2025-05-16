@@ -1,1 +1,0 @@
-Adding nRF9120 target which covers the nRF9161, nRF9151 and nRF9120.

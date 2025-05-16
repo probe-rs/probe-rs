@@ -1,1 +1,0 @@
-Added OTP memory to STM32 targets

@@ -1,1 +1,0 @@
-Xtensa cores are now halted before modifying breakpoints and registers.

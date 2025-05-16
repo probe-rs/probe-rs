@@ -1,1 +1,0 @@
-Added `Core::set_hw_breakpoint_unit` to update a selected breakpoint unit.

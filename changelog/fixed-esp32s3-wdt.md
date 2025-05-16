@@ -1,1 +1,0 @@
-probe-rs now correctly disables the RTC WDT of ESP32-S3
