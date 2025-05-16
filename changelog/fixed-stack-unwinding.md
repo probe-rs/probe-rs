@@ -1,1 +1,0 @@
-Fixed an issue that caused stack unwinding to stop early.

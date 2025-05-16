@@ -1,1 +1,0 @@
-The `select_target` function has been moved from RawJtagIo to JTAGAccess.

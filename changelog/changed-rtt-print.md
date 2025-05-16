@@ -1,1 +1,0 @@
-probe-rs-tools now prints RTT channel names if there are multiple.

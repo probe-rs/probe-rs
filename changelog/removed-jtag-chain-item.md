@@ -1,1 +1,0 @@
-The `JtagChainItem` struct has been removed in favour of `ScanChainElement`.

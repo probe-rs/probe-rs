@@ -1,1 +1,0 @@
-The debugger can now reflash non-ARM chips when restarting the session.

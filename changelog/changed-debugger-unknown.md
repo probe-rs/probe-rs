@@ -1,1 +1,0 @@
-The debugger now shows the name of the nearest symbol as the function name when debug info is not available.

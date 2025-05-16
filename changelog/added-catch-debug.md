@@ -1,1 +1,0 @@
-Added catch-hardfault and catch-reset options to debugger configurations.

@@ -1,1 +1,0 @@
-Fixed an issue where halting an ESP-IDF based firmware caused WDT resets.

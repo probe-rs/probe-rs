@@ -1,1 +1,0 @@
-Added the ability to set speed and protocol in `smoke-tester` and `target-gen`.

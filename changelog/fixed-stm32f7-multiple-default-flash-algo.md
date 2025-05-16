@@ -1,1 +1,0 @@
-Removed stm32f7x_1024dual as default flash algorithm to eliminate multiple default flash algorithms error for many STM32F7xx chips.

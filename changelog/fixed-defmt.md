@@ -1,1 +1,0 @@
-Fixed defmt not being able to read messages larger than the RTT buffer.

@@ -1,1 +1,0 @@
-Fixed working with RTT when a channel has no name.
