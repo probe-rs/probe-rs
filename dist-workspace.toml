@@ -39,7 +39,6 @@ aarch64-unknown-linux-musl = "buildjet-2vcpu-ubuntu-2204-arm"
 [dist.github-custom-runners.x86_64-unknown-linux-gnu]
 # taken from <https://github.com/axodotdev/cargo-dist/issues/1760#issuecomment-2769218034>
 runner = "ubuntu-latest"
-container = { image = "quay.io/pypa/manylinux_2_28_x86_64", host = "x86_64-unknown-linux-musl" }
 
 [dist.dependencies.apt]
 libudev-dev = '*'
