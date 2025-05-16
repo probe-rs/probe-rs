@@ -20,7 +20,6 @@ parse_int = "0.9.0"
 probe-rs = { workspace = true }
 probe-rs-target.workspace = true
 serde = { version = "1.0.217", features = ["derive"] }
-termtree = "0.5.1"
 thiserror.workspace = true
 tracing = "0.1.41"
 typed-path = "0.11.0"
@@ -32,4 +31,5 @@ workspace = true
 insta = { version = "1.41.1", features = ["yaml"] }
 pretty_assertions = "1.4.1"
 probe-rs = { workspace = true, features = ["test"] }
+termtree = "0.5.1"
 test-case = "3.3.1"
