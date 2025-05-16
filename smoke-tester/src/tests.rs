@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use anyhow::Context;
 use colored::Colorize;
 use linkme::distributed_slice;
 use probe_rs::{
@@ -9,8 +10,6 @@ use probe_rs::{
 };
 
 pub mod stepping;
-
-use miette::{IntoDiagnostic, Result, WrapErr};
 
 use crate::{CORE_TESTS, SESSION_TESTS, TestFailure, TestResult, TestTracker, println_test_status};
 
@@ -23,7 +22,6 @@ pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> TestResult 
     for register in register.core_registers() {
         let _: u64 = core
             .read_core_reg(register)
-            .into_diagnostic()
             .with_context(|| format!("Failed to read register {}", register.name()))?;
     }
 
@@ -56,10 +54,9 @@ fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
         // Write new value
 
-        core.write_core_reg(register, test_value)
-            .into_diagnostic()?;
+        core.write_core_reg(register, test_value)?;
 
-        let readback: u64 = core.read_core_reg(register).into_diagnostic()?;
+        let readback: u64 = core.read_core_reg(register)?;
 
         assert_eq!(
             test_value, readback,
@@ -87,13 +84,11 @@ fn test_write_read(
     );
 
     core.write(address, data)
-        .into_diagnostic()
-        .wrap_err_with(|| format!("write to address {:#010X}", address))?;
+        .with_context(|| format!("write to address {:#010X}", address))?;
 
     let mut read_data = vec![0; data.len()];
     core.read(address, &mut read_data)
-        .into_diagnostic()
-        .wrap_err_with(|| format!("read from address {:#010X}", address))?;
+        .with_context(|| format!("read from address {:#010X}", address))?;
 
     assert_eq!(
         data,
@@ -130,7 +125,7 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         println_test_status!(tracker, blue, "Test - RAM Start 32");
         // Write first word
         core.write_word_32(ram_start, 0xababab)?;
-        let value = core.read_word_32(ram_start).into_diagnostic()?;
+        let value = core.read_word_32(ram_start)?;
         assert_eq!(
             value, 0xababab,
             "Error reading back 4 bytes from address {:#010X}",
@@ -140,8 +135,8 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         println_test_status!(tracker, blue, "Test - RAM End 32");
         // Write last word
         let addr = ram_start + ram_size - 4;
-        core.write_word_32(addr, 0xababac).into_diagnostic()?;
-        let value = core.read_word_32(addr).into_diagnostic()?;
+        core.write_word_32(addr, 0xababac)?;
+        let value = core.read_word_32(addr)?;
         assert_eq!(
             value, 0xababac,
             "Error reading back 4 bytes from address {:#010X}",
@@ -150,8 +145,8 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
         println_test_status!(tracker, blue, "Test - RAM Start 8");
         // Write first byte
-        core.write_word_8(ram_start, 0xac).into_diagnostic()?;
-        let value = core.read_word_8(ram_start).into_diagnostic()?;
+        core.write_word_8(ram_start, 0xac)?;
+        let value = core.read_word_8(ram_start)?;
         assert_eq!(
             value, 0xac,
             "Error reading back 1 byte from address {:#010X}",
@@ -163,13 +158,11 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         let data = 0x23;
         // Write last byte
         core.write_word_8(address, data)
-            .into_diagnostic()
-            .wrap_err_with(|| format!("write_word_8 to address {address:#010X}"))?;
+            .with_context(|| format!("write_word_8 to address {address:#010X}"))?;
 
         let value = core
             .read_word_8(address)
-            .into_diagnostic()
-            .wrap_err_with(|| format!("read_word_8 from address {address:#010X}"))?;
+            .with_context(|| format!("read_word_8 from address {address:#010X}"))?;
         assert_eq!(
             value, data,
             "Error reading back 1 byte from address {:#010X}",
@@ -180,13 +173,11 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         // Write last byte
         let address = ram_start + ram_size - 1;
         core.write_word_8(address, 0xcd)
-            .into_diagnostic()
-            .wrap_err_with(|| format!("write_word_8 to address {address:#010X}"))?;
+            .with_context(|| format!("write_word_8 to address {address:#010X}"))?;
 
         let value = core
             .read_word_8(address)
-            .into_diagnostic()
-            .wrap_err_with(|| format!("read_word_8 from address {address:#010X}"))?;
+            .with_context(|| format!("read_word_8 from address {address:#010X}"))?;
         assert_eq!(
             value, 0xcd,
             "Error reading back 1 byte from address {:#010X}",
@@ -243,7 +234,7 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
         );
         let initial_breakpoint_addr = region.range.start;
 
-        let num_breakpoints = core.available_breakpoint_units().into_diagnostic()?;
+        let num_breakpoints = core.available_breakpoint_units()?;
 
         println_test_status!(tracker, blue, "{} breakpoints supported", num_breakpoints);
 
@@ -258,10 +249,10 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
         // Test CoreInterface
         for (i, address) in breakpoint_addresses.iter().enumerate() {
-            CoreInterface::set_hw_breakpoint(core, i, *address).into_diagnostic()?;
+            CoreInterface::set_hw_breakpoint(core, i, *address)?;
         }
 
-        let breakpoints = core.hw_breakpoints().into_diagnostic()?;
+        let breakpoints = core.hw_breakpoints()?;
         for (i, address) in breakpoint_addresses.iter().enumerate() {
             assert_eq!(
                 breakpoints[i],
@@ -271,8 +262,8 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
         }
 
         // Now check that breakpoints can be overwritten.
-        CoreInterface::set_hw_breakpoint(core, 0, breakpoint_addresses[0] + 4).into_diagnostic()?;
-        let breakpoints = core.hw_breakpoints().into_diagnostic()?;
+        CoreInterface::set_hw_breakpoint(core, 0, breakpoint_addresses[0] + 4)?;
+        let breakpoints = core.hw_breakpoints()?;
         assert_eq!(
             breakpoints[0],
             Some(breakpoint_addresses[0] + 4),
@@ -281,13 +272,12 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
 
         // Clear all breakpoints again
         for i in 0..num_breakpoints {
-            CoreInterface::clear_hw_breakpoint(core, i as usize).into_diagnostic()?;
+            CoreInterface::clear_hw_breakpoint(core, i as usize)?;
         }
 
         // Test inherent methods
         for i in 0..num_breakpoints {
-            core.set_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
-                .into_diagnostic()?;
+            core.set_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)?;
         }
 
         // Try to set an additional breakpoint, which should fail
@@ -295,15 +285,12 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
             .expect_err("Trying to use more than supported number of breakpoints should fail.");
 
         // However, we should be able to update a specific breakpoint
-        core.set_hw_breakpoint_unit(0, initial_breakpoint_addr + num_breakpoints as u64 * 4)
-            .into_diagnostic()?;
+        core.set_hw_breakpoint_unit(0, initial_breakpoint_addr + num_breakpoints as u64 * 4)?;
 
         // Clear all breakpoints again
-        core.clear_hw_breakpoint(initial_breakpoint_addr + num_breakpoints as u64 * 4)
-            .into_diagnostic()?;
+        core.clear_hw_breakpoint(initial_breakpoint_addr + num_breakpoints as u64 * 4)?;
         for i in 1..num_breakpoints {
-            core.clear_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)
-                .into_diagnostic()?;
+            core.clear_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)?;
         }
     }
 
@@ -342,7 +329,7 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
     println!();
 
     if let Err(err) = result {
-        return Err(TestFailure::Error(Box::new(err)));
+        return Err(TestFailure::Error(err.into()));
     }
 
     println_test_status!(

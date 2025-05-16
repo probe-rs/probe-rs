@@ -7,20 +7,20 @@ use std::{
 
 use crate::dut_definition::{DefinitionSource, DutDefinition};
 
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use linkme::distributed_slice;
-use miette::{Context, IntoDiagnostic, Result};
 use probe_rs::{Permissions, probe::WireProtocol};
 
 mod dut_definition;
 mod macros;
 mod tests;
 
-#[derive(Debug, miette::Diagnostic, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum TestFailure {
     #[error("Test returned an error")]
-    Error(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
+    Error(#[from] anyhow::Error),
 
     #[error("The test was skipped: {0}")]
     Skipped(String),
@@ -32,13 +32,7 @@ pub enum TestFailure {
 
     /// A fatal error means that all future tests will be cancelled as well.
     #[error("A fatal error occured")]
-    Fatal(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
-}
-
-impl From<miette::ErrReport> for TestFailure {
-    fn from(report: miette::ErrReport) -> Self {
-        TestFailure::Error(report.into())
-    }
+    Fatal(#[source] anyhow::Error),
 }
 
 impl From<probe_rs::Error> for TestFailure {
@@ -56,10 +50,6 @@ struct SingleTestReport {
 }
 
 impl SingleTestReport {
-    fn has_fatal_error(&self) -> bool {
-        matches!(self.result, Err(TestFailure::Fatal(_)))
-    }
-
     fn failed(&self) -> bool {
         matches!(
             self.result,
@@ -153,8 +143,7 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
 
         let mut session = probe
             .attach(definition.chip.clone(), permissions)
-            .into_diagnostic()
-            .wrap_err("Failed to attach to chip")?;
+            .context("Failed to attach to chip")?;
         let cores = session.list_cores();
 
         // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
@@ -162,18 +151,17 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
         for (core_index, core_type) in cores.into_iter().take(1) {
             println_dut_status!(tracker, blue, "Core {}: {:?}", core_index, core_type);
 
-            let mut core = session.core(core_index).into_diagnostic()?;
+            let mut core = session.core(core_index)?;
 
             println_dut_status!(tracker, blue, "Halting core..");
 
-            core.reset_and_halt(Duration::from_millis(500))
-                .into_diagnostic()?;
+            core.reset_and_halt(Duration::from_millis(500))?;
 
             for test_fn in CORE_TESTS {
                 let result = tracker.run_test(|tracker| test_fn(tracker, &mut core));
 
-                if result.has_fatal_error() {
-                    return Err(miette::miette!("Test failed with fatal error"));
+                if let Err(TestFailure::Fatal(error)) = result.result {
+                    return Err(error.context("Fatal error in test"));
                 }
 
                 if result.failed() {
@@ -183,8 +171,7 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
 
             // Ensure core is not running anymore.
             core.reset_and_halt(Duration::from_millis(200))
-                .into_diagnostic()
-                .wrap_err_with(|| {
+                .with_context(|| {
                     format!("Failed to reset core with index {core_index} after test")
                 })?;
         }
@@ -192,8 +179,8 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
         for test in SESSION_TESTS {
             let result = tracker.run_test(|tracker| test(tracker, &mut session));
 
-            if result.has_fatal_error() {
-                return Err(miette::miette!("Test failed with fatal error"));
+            if let Err(TestFailure::Fatal(error)) = result.result {
+                return Err(error.context("Fatal error in test"));
             }
 
             if result.failed() {
@@ -208,15 +195,14 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
         if definition.reset_connected {
             let probe = definition.open_probe()?;
 
-            let _session = probe
-                .attach_under_reset(definition.chip.clone(), Permissions::default())
-                .into_diagnostic()?;
+            let _session =
+                probe.attach_under_reset(definition.chip.clone(), Permissions::default())?;
         }
 
         match fail_counter {
             0 => Ok(()),
-            1 => Err(miette::miette!("1 test failed")),
-            count => Err(miette::miette!("{count} tests failed")),
+            1 => anyhow::bail!("1 test failed"),
+            count => anyhow::bail!("{count} tests failed"),
         }
     });
 
@@ -224,26 +210,22 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
 
     let printer = ConsoleReportPrinter;
 
-    printer
-        .print(&result, std::io::stdout())
-        .into_diagnostic()?;
+    printer.print(&result, std::io::stdout())?;
 
     if let Some(summary_file) = &markdown_summary {
-        let mut file = std::fs::File::create(summary_file)
-            .into_diagnostic()
-            .wrap_err_with(|| {
-                format!(
-                    "Failed to create markdown summary file at location {}",
-                    summary_file.display()
-                )
-            })?;
+        let mut file = std::fs::File::create(summary_file).with_context(|| {
+            format!(
+                "Failed to create markdown summary file at location {}",
+                summary_file.display()
+            )
+        })?;
 
-        writeln!(file, "## smoke-tester").into_diagnostic()?;
+        writeln!(file, "## smoke-tester")?;
 
         for dut in &result.dut_tests {
             let test_state = if dut.succesful { "Passed" } else { "Failed" };
 
-            writeln!(file, " - {}: {}", dut.name, test_state).into_diagnostic()?;
+            writeln!(file, " - {}: {}", dut.name, test_state)?;
         }
     }
 
@@ -382,7 +364,7 @@ impl<'dut> TestTracker<'dut> {
     #[must_use]
     fn run(
         &mut self,
-        handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> miette::Result<()> + Sync + Send,
+        handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> anyhow::Result<()> + Sync + Send,
     ) -> TestReport {
         let mut report = TestReport::new();
 

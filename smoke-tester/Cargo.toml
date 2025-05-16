@@ -10,6 +10,7 @@ publish = false
 
 [dependencies]
 
+anyhow = { version = "1.0" }
 serde = { version = "1", features = ["derive"] }
 probe-rs = { workspace = true }
 toml = "0.8.12"
@@ -18,7 +19,6 @@ log = "0.4.21"
 clap = { version = "4.5", features = ["derive"] }
 colored = "3"
 linkme = "0.3.25"
-miette = { version = "7.2.0", features = ["fancy"] }
 thiserror.workspace = true
 
 [lints]

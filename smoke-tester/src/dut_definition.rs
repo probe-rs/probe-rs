@@ -3,9 +3,7 @@
 //! This module handles the definition of the different devices under test (DUTs),
 //! which are used by the tester.
 
-use miette::IntoDiagnostic;
-use miette::Result;
-use miette::WrapErr;
+use anyhow::{Context, Result};
 use probe_rs::config::Registry;
 use probe_rs::probe::WireProtocol;
 use probe_rs::{
@@ -36,9 +34,9 @@ struct RawDutDefinition {
 impl RawDutDefinition {
     /// Try to parse a DUT definition from a file.
     fn from_file(file: &Path) -> Result<Self> {
-        let file_content = std::fs::read_to_string(file).into_diagnostic()?;
+        let file_content = std::fs::read_to_string(file)?;
 
-        let definition: RawDutDefinition = toml::from_str(&file_content).into_diagnostic()?;
+        let definition: RawDutDefinition = toml::from_str(&file_content)?;
 
         Ok(definition)
     }
@@ -84,10 +82,10 @@ pub struct DutDefinition {
 }
 
 impl DutDefinition {
-    pub fn new(chip: &str, probe: &str) -> miette::Result<Self> {
+    pub fn new(chip: &str, probe: &str) -> Result<Self> {
         let target = lookup_unique_target(chip)?;
 
-        let selector: DebugProbeSelector = probe.parse().into_diagnostic()?;
+        let selector: DebugProbeSelector = probe.parse()?;
 
         Ok(DutDefinition {
             chip: target,
@@ -100,7 +98,7 @@ impl DutDefinition {
         })
     }
 
-    pub fn autodetect_probe(chip: &str) -> miette::Result<Self> {
+    pub fn autodetect_probe(chip: &str) -> Result<Self> {
         let target = lookup_unique_target(chip)?;
 
         Ok(DutDefinition {
@@ -125,7 +123,7 @@ impl DutDefinition {
     pub fn collect(directory: impl AsRef<Path>) -> Result<Vec<DutDefinition>> {
         let directory = directory.as_ref();
 
-        miette::ensure!(
+        anyhow::ensure!(
             directory.is_dir(),
             "Unable to collect target definitions from path '{}'. Path is not a directory.",
             directory.display()
@@ -133,8 +131,8 @@ impl DutDefinition {
 
         let mut definitions = Vec::new();
 
-        for file in directory.read_dir().into_diagnostic()? {
-            let file_path = file.into_diagnostic()?.path();
+        for file in directory.read_dir()? {
+            let file_path = file?.path();
 
             // Ignore files without .toml ending
             if file_path.extension() != Some(OsStr::new("toml")) {
@@ -145,9 +143,8 @@ impl DutDefinition {
                 continue;
             }
 
-            let definition = DutDefinition::from_file(&file_path).wrap_err_with(|| {
-                format!("Failed to parse definition '{}'", file_path.display())
-            })?;
+            let definition = DutDefinition::from_file(&file_path)
+                .with_context(|| format!("Failed to parse definition '{}'", file_path.display()))?;
 
             definitions.push(definition);
         }
@@ -168,35 +165,34 @@ impl DutDefinition {
         let mut probe = match &self.probe_selector {
             Some(selector) => lister
                 .open(selector)
-                .into_diagnostic()
-                .wrap_err_with(|| format!("Failed to open probe with selector {selector}"))?,
+                .with_context(|| format!("Failed to open probe with selector {selector}"))?,
             None => {
                 let probes = lister.list_all();
 
-                miette::ensure!(!probes.is_empty(), "No probes detected!");
+                anyhow::ensure!(!probes.is_empty(), "No probes detected!");
 
-                miette::ensure!(
+                anyhow::ensure!(
                     probes.len() < 2,
                     "Multiple probes detected. Specify which probe to use using the '--probe' argument."
                 );
 
-                probes[0].open().into_diagnostic()?
+                probes[0].open()?
             }
         };
 
         if let Some(probe_speed) = self.probe_speed {
-            probe.set_speed(probe_speed).into_diagnostic()?;
+            probe.set_speed(probe_speed)?;
         }
 
         if let Some(protocol) = self.protocol {
-            probe.select_protocol(protocol).into_diagnostic()?;
+            probe.select_protocol(protocol)?;
         }
 
         Ok(probe)
     }
 
     fn from_raw_definition(raw_definition: RawDutDefinition, source_file: &Path) -> Result<Self> {
-        let probe_selector = Some(raw_definition.probe_selector.try_into().into_diagnostic()?);
+        let probe_selector = Some(raw_definition.probe_selector.try_into()?);
 
         let target = lookup_unique_target(&raw_definition.chip)?;
 
@@ -228,10 +224,10 @@ impl DutDefinition {
 
 fn lookup_unique_target(chip: &str) -> Result<Target> {
     let registry = Registry::from_builtin_families();
-    let target = registry.get_target_by_name(chip).into_diagnostic()?;
+    let target = registry.get_target_by_name(chip)?;
 
     if !target.name.eq_ignore_ascii_case(chip) {
-        miette::bail!(
+        anyhow::bail!(
             "Chip definition does not match exactly, the chip is specified as {}, but the entry in the registry is {}",
             chip,
             target.name
