@@ -1,22 +1,36 @@
-//! Sequences for devices with an ICEPick JTAG router
+//! Sequences for cc13xx_cc26xx devices
 
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::communication_interface::DapProbe;
 
 /// A TI ICEPick device. An ICEPick manages a JTAG device and can be used to add or
 /// remove JTAG TAPs from a bus.
+#[derive(Debug)]
 pub struct Icepick<'a> {
     interface: &'a mut dyn DapProbe,
     jtag_state: JtagState,
 }
 
-// IR register values, see <https://www.ti.com/lit/ug/spruh35/spruh35.pdf> table 2-1
+// IR register values, see <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf> table 6-7
 const IR_ROUTER: u64 = 0x02;
 const IR_CONNECT: u64 = 0x07;
 const IR_BYPASS: u64 = 0x3F;
 const IR_LEN_IN_BITS: u8 = 6;
 
-#[derive(PartialEq)]
+/// Write to register 0 in the Debug TAP linking block (Section 6.3.4.3)
+/// Namely:
+/// * [20]   : `InhibitSleep`
+/// * [16:14]: `ResetControl == Reset`
+/// * [8]    : `SelectTAP == 1`
+/// * [3]    : `ForceActive == Enable clocks`
+const SD_TAP_DEFAULT: u32 = (1 << 20) | (1 << 8) | (1 << 3);
+const SD_TAP_WAIT_IN_RESET: u32 = 1 << 14;
+const SD_TAP_RELEASE_FROM_WIR: u32 = 1 << 17;
+
+const SYSCTRL_DEFAULT: u32 = 0x80;
+const SYSCTRL_RESET: u32 = 1;
+
+#[derive(PartialEq, Debug)]
 enum JtagState {
     RunTestIdle = 0x1,
     SelectDrScan = 0x2,
@@ -68,6 +82,31 @@ impl<'a> Icepick<'a> {
             interface,
             jtag_state: JtagState::RunTestIdle,
         })
+    }
+
+    /// Creates a new ICEPick device that is assumed to be initialized already.
+    pub fn initialized(interface: &'a mut dyn DapProbe) -> Result<Self, ArmError> {
+        Ok(Icepick {
+            interface,
+            jtag_state: JtagState::RunTestIdle,
+        })
+    }
+
+    /// Indicate we want to catch a reet by setting the `RESETCONTROL` to `Wait-in-reset`
+    pub fn catch_reset(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
+        self.icepick_router(
+            IcepickRoutingRegister::SdTap(secondary_tap),
+            SD_TAP_DEFAULT | SD_TAP_WAIT_IN_RESET,
+        )
+    }
+
+    /// After a sysreset, the core will be waiting in a reset state.
+    /// This will release the target from reset by setting the `RELEASEFROMWIR` bit.
+    pub fn release_from_reset(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
+        self.icepick_router(
+            IcepickRoutingRegister::SdTap(secondary_tap),
+            SD_TAP_DEFAULT | SD_TAP_RELEASE_FROM_WIR,
+        )
     }
 
     /// This function implements a Zero Bit Scan(ZBS)
@@ -209,15 +248,16 @@ impl<'a> Icepick<'a> {
         Ok(())
     }
 
-    /// Does setup of the ICEPick
+    /// Does setup of the ICEPICK
     ///
-    /// This will setup the ICEPick to have the CPU/DAP on the scan chain and
+    /// This will setup the ICEPICK to have the CPU/DAP on the scan chain and
     /// also power and enable the debug interface for use with probe-rs. The ICEPick
     /// will be placed in BYPASS mode, and only the selected `secondary_tap` will be
     /// present on the scan chain.
     ///
     /// This is a direct port of the openocd implementation:
     /// <https://github.com/openocd-org/openocd/blob/master/tcl/target/icepick.cfg#L81-L124>
+    /// A few things were removed to fit the cc13xx_cc26xx family.
     pub(crate) fn select_tap(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
         tracing::trace!("Selecting seconary tap {secondary_tap}");
         // Select the Connect register
@@ -225,14 +265,8 @@ impl<'a> Icepick<'a> {
         // Enable write, set the `ConnectKey` to 0b1001 (0x9) as per TRM section 6.3.3
         self.shift_dr(8, 0x89, JtagState::SelectDrScan)?;
         // Write to register 1 in the ICEPICK control block - keep JTAG powered in test logic reset
-        self.icepick_router(IcepickRoutingRegister::Sysctrl, 0x000080)?;
-        // Write to register 0 in the Debug TAP linking block (Section 6.3.4.3)
-        // Namely:
-        // * [20]   : `InhibitSleep`
-        // * [16:14]: `ResetControl == Wait In Reset`
-        // * [8]    : `SelectTAP == 1`
-        // * [3]    : `ForceActive == Enable clocks`
-        self.icepick_router(IcepickRoutingRegister::SdTap(secondary_tap), 0x110108)?;
+        self.icepick_router(IcepickRoutingRegister::Sysctrl, SYSCTRL_DEFAULT)?;
+        self.icepick_router(IcepickRoutingRegister::SdTap(secondary_tap), SD_TAP_DEFAULT)?;
         // Enter the bypass state to remove the ICEPick from the scan chain
         self.shift_ir(IR_BYPASS, JtagState::RunTestIdle)?;
 
@@ -240,6 +274,15 @@ impl<'a> Icepick<'a> {
         self.interface.jtag_sequence(10, false, set_n_bits(10))?;
 
         Ok(())
+    }
+
+    pub(crate) fn sysreset(&mut self) -> Result<(), ArmError> {
+        // Write to register 1 in the ICEPICK control block - keep JTAG powered in test logic reset.
+        // Add bit 1 to initiate a reset.
+        self.icepick_router(
+            IcepickRoutingRegister::Sysctrl,
+            SYSCTRL_DEFAULT | SYSCTRL_RESET,
+        )
     }
 
     /// Disable "Compact JTAG" support and enable full JTAG.
@@ -268,5 +311,10 @@ impl<'a> Icepick<'a> {
         self.shift_ir(IR_BYPASS, JtagState::RunTestIdle)?;
 
         Ok(())
+    }
+
+    /// Load IR with BYPASS so that future state transitions don't affect IR
+    pub(crate) fn bypass(&mut self) -> Result<(), ArmError> {
+        self.shift_ir(IR_BYPASS, JtagState::RunTestIdle)
     }
 }
