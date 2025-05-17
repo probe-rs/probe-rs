@@ -54,33 +54,36 @@ impl<'a> TraceMemoryController<'a> {
     ///
     /// # Args
     /// * `mode` - The desired operational mode of the FIFO.
-    pub fn set_mode(&mut self, mode: Mode) -> Result<(), Error> {
-        let mut mode_reg = EtfMode::load(self.component, self.interface)?;
+    pub async fn set_mode(&mut self, mode: Mode) -> Result<(), Error> {
+        let mut mode_reg = EtfMode::load(self.component, self.interface).await?;
         mode_reg.set_mode(mode as _);
-        mode_reg.store(self.component, self.interface)?;
+        mode_reg.store(self.component, self.interface).await?;
         Ok(())
     }
 
     /// Enable trace captures using the FIFO.
-    pub fn enable_capture(&mut self) -> Result<(), Error> {
+    pub async fn enable_capture(&mut self) -> Result<(), Error> {
         self.component
-            .write_reg(self.interface, REGISTER_OFFSET_CTL, 1)?;
+            .write_reg(self.interface, REGISTER_OFFSET_CTL, 1)
+            .await?;
         Ok(())
     }
 
     /// Disable trace captures using the FIFO.
-    pub fn disable_capture(&mut self) -> Result<(), Error> {
+    pub async fn disable_capture(&mut self) -> Result<(), Error> {
         self.component
-            .write_reg(self.interface, REGISTER_OFFSET_CTL, 0)?;
+            .write_reg(self.interface, REGISTER_OFFSET_CTL, 0)
+            .await?;
         Ok(())
     }
 
     /// Attempt to read a value out of the FIFO
-    pub fn read(&mut self) -> Result<Option<u32>, ArmError> {
+    pub async fn read(&mut self) -> Result<Option<u32>, ArmError> {
         // Read the RRD register.
         match self
             .component
-            .read_reg(self.interface, REGISTER_OFFSET_RRD)?
+            .read_reg(self.interface, REGISTER_OFFSET_RRD)
+            .await?
         {
             // The register has a sentinel value to indicate no more data is available in the FIFO.
             0xFFFF_FFFF => Ok(None),
@@ -90,21 +93,21 @@ impl<'a> TraceMemoryController<'a> {
     }
 
     /// Check if the FIFO is full.
-    pub fn full(&mut self) -> Result<bool, Error> {
-        let status = Status::load(self.component, self.interface)?;
+    pub async fn full(&mut self) -> Result<bool, Error> {
+        let status = Status::load(self.component, self.interface).await?;
         Ok(status.full())
     }
 
     /// Check if the FIFO is empty.
-    pub fn empty(&mut self) -> Result<bool, Error> {
-        let status = Status::load(self.component, self.interface)?;
+    pub async fn empty(&mut self) -> Result<bool, Error> {
+        let status = Status::load(self.component, self.interface).await?;
         Ok(status.empty())
     }
 
     /// Check if the ET capture has stopped and all internal pipelines and buffers have been
     /// drained.
-    pub fn ready(&mut self) -> Result<bool, Error> {
-        let status = Status::load(self.component, self.interface)?;
+    pub async fn ready(&mut self) -> Result<bool, Error> {
+        let status = Status::load(self.component, self.interface).await?;
         Ok(status.ready())
     }
 
@@ -112,8 +115,8 @@ impl<'a> TraceMemoryController<'a> {
     ///
     /// # Note
     /// This will only be set when operating in circular buffer modes.
-    pub fn triggered(&mut self) -> Result<bool, Error> {
-        let status = Status::load(self.component, self.interface)?;
+    pub async fn triggered(&mut self) -> Result<bool, Error> {
+        let status = Status::load(self.component, self.interface).await?;
         Ok(status.trigd())
     }
 
@@ -121,10 +124,11 @@ impl<'a> TraceMemoryController<'a> {
     ///
     /// # Note
     /// This will always return zero if the capture is disabled.
-    pub fn fill_level(&mut self) -> Result<u32, Error> {
+    pub async fn fill_level(&mut self) -> Result<u32, Error> {
         let level = self
             .component
-            .read_reg(self.interface, REGISTER_OFFSET_CBUFLVL)?;
+            .read_reg(self.interface, REGISTER_OFFSET_CBUFLVL)
+            .await?;
         Ok(level * core::mem::size_of::<u32>() as u32)
     }
 
@@ -132,26 +136,27 @@ impl<'a> TraceMemoryController<'a> {
     ///
     /// # Args
     /// * `stop` - Specified true if the capture should stop on flush events.
-    pub fn stop_on_flush(&mut self, stop: bool) -> Result<(), Error> {
-        let mut ffcr = FormatFlushControl::load(self.component, self.interface)?;
+    pub async fn stop_on_flush(&mut self, stop: bool) -> Result<(), Error> {
+        let mut ffcr = FormatFlushControl::load(self.component, self.interface).await?;
         ffcr.set_stoponfl(stop);
-        ffcr.store(self.component, self.interface)?;
+        ffcr.store(self.component, self.interface).await?;
         Ok(())
     }
 
     /// Generate a manual flush event.
-    pub fn manual_flush(&mut self) -> Result<(), Error> {
-        let mut ffcr = FormatFlushControl::load(self.component, self.interface)?;
+    pub async fn manual_flush(&mut self) -> Result<(), Error> {
+        let mut ffcr = FormatFlushControl::load(self.component, self.interface).await?;
         ffcr.set_flushman(true);
-        ffcr.store(self.component, self.interface)?;
+        ffcr.store(self.component, self.interface).await?;
         Ok(())
     }
 
     /// Get the size of the FIFO in bytes.
-    pub fn fifo_size(&mut self) -> Result<u32, ArmError> {
+    pub async fn fifo_size(&mut self) -> Result<u32, ArmError> {
         let size_words = self
             .component
-            .read_reg(self.interface, REGISTER_OFFSET_RSZ)?;
+            .read_reg(self.interface, REGISTER_OFFSET_RSZ)
+            .await?;
         Ok(size_words * core::mem::size_of::<u32>() as u32)
     }
 }

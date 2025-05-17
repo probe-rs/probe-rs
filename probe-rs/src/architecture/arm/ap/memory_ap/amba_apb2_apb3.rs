@@ -19,12 +19,12 @@ pub struct AmbaApb2Apb3 {
 
 impl AmbaApb2Apb3 {
     /// Creates a new AmbaAhb3 with `address` as base address.
-    pub fn new<P: DapAccess>(
+    pub async fn new<P: DapAccess>(
         probe: &mut P,
         address: FullyQualifiedApAddress,
     ) -> Result<Self, ArmError> {
-        let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
-        let cfg = probe.read_raw_ap_register(&address, CFG::ADDRESS)?;
+        let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS).await?;
+        let cfg = probe.read_raw_ap_register(&address, CFG::ADDRESS).await?;
 
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
 
@@ -34,21 +34,22 @@ impl AmbaApb2Apb3 {
             AddrInc: AddressIncrement::Single,
             ..me.csw
         };
-        probe.write_ap_register(&me, csw)?;
+        probe.write_ap_register(&me, csw).await?;
         Ok(Self { csw, ..me })
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl super::MemoryApType for AmbaApb2Apb3 {
     type CSW = CSW;
 
-    fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
+    async fn status<P: ApAccess + ?Sized>(&mut self, probe: &mut P) -> Result<CSW, ArmError> {
         const { assert!(crate::architecture::arm::ap::CSW::ADDRESS == CSW::ADDRESS) };
-        self.csw = probe.read_ap_register(self)?;
+        self.csw = probe.read_ap_register(self).await?;
         Ok(self.csw)
     }
 
-    fn try_set_datasize<P: ApAccess + ?Sized>(
+    async fn try_set_datasize<P: ApAccess + ?Sized>(
         &mut self,
         _probe: &mut P,
         data_size: DataSize,

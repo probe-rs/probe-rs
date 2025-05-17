@@ -8,9 +8,9 @@ use crate::{
 use probe_rs::MemoryInterface;
 
 /// Traits and Impl's to read from, and write to, memory value based on Variable::typ and Variable::location.
-pub trait Value {
+pub(crate) trait Value {
     /// The MS DAP protocol passes the value as a string, so this trait is here to provide the memory read logic before returning it as a string.
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
@@ -21,7 +21,7 @@ pub trait Value {
     /// This `update_value` will update the target memory with a new value for the [`Variable`], ...
     /// - Only `base` data types can have their value updated in target memory.
     /// - The input format of the [Variable.value] is a [String], and the impl of this trait must convert the memory value appropriately before storing.
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -41,17 +41,19 @@ where
 }
 
 impl Value for bool {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        let mem_data = memory.read_word_8(variable.memory_location.memory_address()?)?;
+        let mem_data = memory
+            .read_word_8(variable.memory_location.memory_address()?)
+            .await?;
         let ret_value: bool = mem_data != 0;
         Ok(ret_value)
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -73,18 +75,21 @@ impl Value for bool {
                     }
                 })? as u8,
             )
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for char {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        let mem_data = memory.read_word_32(variable.memory_location.memory_address()?)?;
+        let mem_data = memory
+            .read_word_32(variable.memory_location.memory_address()?)
+            .await?;
         if let Some(return_value) = char::from_u32(mem_data) {
             Ok(return_value)
         } else {
@@ -92,7 +97,7 @@ impl Value for char {
         }
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -114,13 +119,14 @@ impl Value for char {
                     }
                 })? as u32,
             )
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for String {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         variable_cache: &VariableCache,
@@ -175,7 +181,7 @@ impl Value for String {
                     // A string with length 0 doesn't need to be read from memory.
                 } else {
                     let mut buff = vec![0u8; string_length];
-                    memory.read(string_location, &mut buff)?;
+                    memory.read(string_location, &mut buff).await?;
                     std::str::from_utf8(&buff)?.clone_into(&mut str_value);
                 }
             }
@@ -185,7 +191,7 @@ impl Value for String {
         Ok(str_value)
     }
 
-    fn update_value(
+    async fn update_value(
         _variable: &Variable,
         _memory: &mut dyn MemoryInterface,
         _new_value: &str,
@@ -195,15 +201,15 @@ impl Value for String {
 }
 
 impl Value for i8 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -217,21 +223,22 @@ impl Value for i8 {
         let buff = i8::parse_to_bytes(new_value)?;
         memory
             .write_word_8(variable.memory_location.memory_address()?, buff[0])
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for i16 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -245,21 +252,22 @@ impl Value for i16 {
         let buff = i16::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for i32 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -273,21 +281,22 @@ impl Value for i32 {
         let buff = i32::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for i64 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -301,21 +310,22 @@ impl Value for i64 {
         let buff = i64::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for i128 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -329,21 +339,22 @@ impl Value for i128 {
         let buff = i128::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for u8 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -357,21 +368,22 @@ impl Value for u8 {
         let buff = u8::parse_to_bytes(new_value)?;
         memory
             .write_word_8(variable.memory_location.memory_address()?, buff[0])
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for u16 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -385,21 +397,22 @@ impl Value for u16 {
         let buff = u16::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for u32 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -413,21 +426,22 @@ impl Value for u32 {
         let buff = u32::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for u64 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -441,21 +455,22 @@ impl Value for u64 {
         let buff = u64::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for u128 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -469,21 +484,22 @@ impl Value for u128 {
         let buff = u128::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for f32 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -497,21 +513,22 @@ impl Value for f32 {
         let buff = f32::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
 }
 impl Value for f64 {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        Self::read_from_location(variable, memory)
+        Self::read_from_location(variable, memory).await
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -525,6 +542,7 @@ impl Value for f64 {
         let buff = f64::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
+            .await
             .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })

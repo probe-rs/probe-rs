@@ -33,9 +33,9 @@ impl RunLoop {
     /// * If the predicate returns `Err(e)` the run loop will return `Err(e)`.
     ///
     /// The function will also return on timeout with `Ok(ReturnReason::Timeout)` or if the user presses CTRL + C with `Ok(ReturnReason::User)`.
-    pub fn run_until<F, R>(
+    pub async fn run_until<F, R>(
         &mut self,
-        core: &mut Core,
+        core: &mut Core<'_>,
         catch_hardfault: bool,
         catch_reset: bool,
         mut poller: impl RunLoopPoller,
@@ -43,37 +43,45 @@ impl RunLoop {
         mut predicate: F,
     ) -> Result<ReturnReason<R>>
     where
-        F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
+        F: AsyncFnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
         if catch_hardfault || catch_reset {
-            if !core.core_halted()? {
-                core.halt(Duration::from_millis(100))?;
+            if !core.core_halted().await? {
+                core.halt(Duration::from_millis(100)).await?;
             }
 
             if catch_hardfault {
-                match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+                match core
+                    .enable_vector_catch(VectorCatchCondition::HardFault)
+                    .await
+                {
                     Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                     Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                 }
             }
             if catch_reset {
-                match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                match core
+                    .enable_vector_catch(VectorCatchCondition::CoreReset)
+                    .await
+                {
                     Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                     Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                 }
             }
         }
 
-        poller.start(core)?;
+        poller.start(core).await?;
 
-        if core.core_halted()? {
-            core.run()?;
+        if core.core_halted().await? {
+            core.run().await?;
         }
 
-        let result = self.do_run_until(core, &mut poller, timeout, &mut predicate);
+        let result = self
+            .do_run_until(core, &mut poller, timeout, &mut predicate)
+            .await;
 
         // Always clean up after RTT but don't overwrite the original result.
-        let poller_exit_result = poller.exit(core);
+        let poller_exit_result = poller.exit(core).await;
         if result.is_ok() {
             // If the result is Ok, we return the potential error during cleanup.
             poller_exit_result?;
@@ -82,7 +90,7 @@ impl RunLoop {
         result
     }
 
-    fn do_run_until<F, R>(
+    async fn do_run_until<F, R>(
         &mut self,
         core: &mut Core<'_>,
         poller: &mut impl RunLoopPoller,
@@ -90,12 +98,12 @@ impl RunLoop {
         predicate: &mut F,
     ) -> Result<ReturnReason<R>>
     where
-        F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
+        F: AsyncFnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
         let start = Instant::now();
 
         loop {
-            match self.poll_once(core, poller, predicate)? {
+            match self.poll_once(core, poller, predicate).await? {
                 ControlFlow::Break(reason) => return Ok(reason),
                 ControlFlow::Continue(next_poll) => {
                     if let Some(timeout) = timeout {
@@ -112,29 +120,29 @@ impl RunLoop {
         }
     }
 
-    fn poll_once<F, R>(
+    async fn poll_once<F, R>(
         &self,
         core: &mut Core<'_>,
         poller: &mut impl RunLoopPoller,
         predicate: &mut F,
     ) -> Result<ControlFlow<ReturnReason<R>, Duration>>
     where
-        F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
+        F: AsyncFnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
         let mut next_poll = Duration::from_millis(100);
 
         // check for halt first, poll rtt after.
         // this is important so we do one last poll after halt, so we flush all messages
         // the core printed before halting, such as a panic message.
-        let return_reason = match core.status()? {
-            probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core) {
+        let return_reason = match core.status().await? {
+            probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core).await {
                 Ok(Some(r)) => Some(Ok(ReturnReason::Predicate(r))),
                 Err(e) => Some(Err(e)),
                 Ok(None) => {
                     // Poll at 1kHz if the core was halted, to speed up reading strings
                     // from semihosting. The core is not expected to be halted for other reasons.
                     next_poll = Duration::from_millis(1);
-                    core.run()?;
+                    core.run().await?;
                     None
                 }
             },
@@ -148,7 +156,7 @@ impl RunLoop {
             probe_rs::CoreStatus::LockedUp => Some(Ok(ReturnReason::LockedUp)),
         };
 
-        let poller_result = poller.poll(core);
+        let poller_result = poller.poll(core).await;
 
         if let Some(reason) = return_reason {
             return reason.map(ControlFlow::Break);
@@ -166,23 +174,23 @@ impl RunLoop {
 }
 
 pub trait RunLoopPoller {
-    fn start(&mut self, core: &mut Core<'_>) -> Result<()>;
-    fn poll(&mut self, core: &mut Core<'_>) -> Result<Duration>;
-    fn exit(&mut self, core: &mut Core<'_>) -> Result<()>;
+    async fn start(&mut self, core: &mut Core<'_>) -> Result<()>;
+    async fn poll(&mut self, core: &mut Core<'_>) -> Result<Duration>;
+    async fn exit(&mut self, core: &mut Core<'_>) -> Result<()>;
 }
 
 pub struct NoopPoller;
 
 impl RunLoopPoller for NoopPoller {
-    fn start(&mut self, _core: &mut Core<'_>) -> Result<()> {
+    async fn start(&mut self, _core: &mut Core<'_>) -> Result<()> {
         Ok(())
     }
 
-    fn poll(&mut self, _core: &mut Core<'_>) -> Result<Duration> {
+    async fn poll(&mut self, _core: &mut Core<'_>) -> Result<Duration> {
         Ok(Duration::from_secs(u64::MAX))
     }
 
-    fn exit(&mut self, _core: &mut Core<'_>) -> Result<()> {
+    async fn exit(&mut self, _core: &mut Core<'_>) -> Result<()> {
         Ok(())
     }
 }
@@ -191,27 +199,27 @@ impl<T> RunLoopPoller for Option<T>
 where
     T: RunLoopPoller,
 {
-    fn start(&mut self, core: &mut Core<'_>) -> Result<()> {
+    async fn start(&mut self, core: &mut Core<'_>) -> Result<()> {
         if let Some(poller) = self {
-            poller.start(core)
+            poller.start(core).await
         } else {
-            NoopPoller.start(core)
+            NoopPoller.start(core).await
         }
     }
 
-    fn poll(&mut self, core: &mut Core<'_>) -> Result<Duration> {
+    async fn poll(&mut self, core: &mut Core<'_>) -> Result<Duration> {
         if let Some(poller) = self {
-            poller.poll(core)
+            poller.poll(core).await
         } else {
-            NoopPoller.poll(core)
+            NoopPoller.poll(core).await
         }
     }
 
-    fn exit(&mut self, core: &mut Core<'_>) -> Result<()> {
+    async fn exit(&mut self, core: &mut Core<'_>) -> Result<()> {
         if let Some(poller) = self {
-            poller.exit(core)
+            poller.exit(core).await
         } else {
-            NoopPoller.exit(core)
+            NoopPoller.exit(core).await
         }
     }
 }

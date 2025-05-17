@@ -14,8 +14,8 @@ const TEST_DATA: [(u64, u64, ColumnType); 8] = [
     (0x8000D6A, 408, ColumnType::Column(55)),
 ];
 
-#[test]
-fn breakpoint_location_absolute() {
+#[pollster::test]
+async fn breakpoint_location_absolute() {
     let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
     // Here we test with an absolute path, i.e. the combination of compilation directory
@@ -43,8 +43,8 @@ fn breakpoint_location_absolute() {
     }
 }
 
-#[test]
-fn breakpoint_location_inexact() {
+#[pollster::test]
+async fn breakpoint_location_inexact() {
     // test getting breakpoint location for an inexact location,
     // i.e. no exact entry exists for line 277 and column 1, but we find one for column 10.
     let test_data = [(0x80009AC, 277, ColumnType::LeftEdge)];
@@ -78,8 +78,8 @@ fn breakpoint_location_inexact() {
     }
 }
 
-#[test]
-fn source_location() {
+#[pollster::test]
+async fn source_location() {
     let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
     let path = UnixPathBuf::from("/Users/jacknoppe/dev/probe-rs-debugger-test/src/main.rs")
@@ -98,8 +98,8 @@ fn source_location() {
     }
 }
 
-#[test]
-fn find_non_existing_unit_by_path() {
+#[pollster::test]
+async fn find_non_existing_unit_by_path() {
     let unit_path =
         UnixPathBuf::from("/Users/jacknoppe/dev/probe-rs-debugger-test/src/non-existent-path.rs")
             .to_typed_path_buf();
@@ -113,8 +113,8 @@ fn find_non_existing_unit_by_path() {
     );
 }
 
-#[test]
-fn regression_pr2324() {
+#[pollster::test]
+async fn regression_pr2324() {
     let path = "C:\\_Hobby\\probe-rs-test-c-firmware/Atmel/hpl/core/hpl_init.c";
 
     let di = DebugInfo::from_file("tests/debug-unwind-tests/atsamd51p19a.elf").unwrap();

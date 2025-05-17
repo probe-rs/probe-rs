@@ -13,8 +13,9 @@ use std::fmt::{Display, Write};
 #[derive(Debug, Clone)]
 pub struct C;
 
+#[async_trait::async_trait(?Send)]
 impl ProgrammingLanguage for C {
-    fn read_variable_value(
+    async fn read_variable_value(
         &self,
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
@@ -24,15 +25,21 @@ impl ProgrammingLanguage for C {
             _ if variable.memory_location == VariableLocation::Unknown => VariableValue::Empty,
 
             VariableType::Base(name) => match name.as_str() {
-                "_Bool" => UnsignedInt::get_value(variable, None, memory, variable_cache).into(),
-                "char" => CChar::get_value(variable, memory, variable_cache).into(),
+                "_Bool" => UnsignedInt::get_value(variable, None, memory, variable_cache)
+                    .await
+                    .into(),
+                "char" => CChar::get_value(variable, memory, variable_cache)
+                    .await
+                    .into(),
 
                 "unsigned char"
                 | "unsigned int"
                 | "short unsigned int"
                 | "long unsigned int"
                 | "long long unsigned int" => {
-                    UnsignedInt::get_value(variable, None, memory, variable_cache).into()
+                    UnsignedInt::get_value(variable, None, memory, variable_cache)
+                        .await
+                        .into()
                 }
                 "signed char"
                 | "int"
@@ -43,11 +50,14 @@ impl ProgrammingLanguage for C {
                 | "short signed int"
                 | "long signed int"
                 | "long long signed int" => {
-                    SignedInt::get_value(variable, None, memory, variable_cache).into()
+                    SignedInt::get_value(variable, None, memory, variable_cache)
+                        .await
+                        .into()
                 }
 
                 "float" => match variable.byte_size {
                     Some(4) | None => f32::get_value(variable, memory, variable_cache)
+                        .await
                         .map(|f| format_float(f as f64))
                         .into(),
                     Some(size) => {
@@ -56,6 +66,7 @@ impl ProgrammingLanguage for C {
                 },
                 "double" => match variable.byte_size {
                     Some(8) | None => f64::get_value(variable, memory, variable_cache)
+                        .await
                         .map(format_float)
                         .into(),
                     Some(size) => {
@@ -69,9 +80,11 @@ impl ProgrammingLanguage for C {
                 VariableType::Base(name) => {
                     if name.as_str().contains("unsigned") {
                         UnsignedInt::get_value(variable, Some(*bitfield), memory, variable_cache)
+                            .await
                             .into()
                     } else {
                         SignedInt::get_value(variable, Some(*bitfield), memory, variable_cache)
+                            .await
                             .into()
                     }
                 }
@@ -83,7 +96,7 @@ impl ProgrammingLanguage for C {
         }
     }
 
-    fn update_variable(
+    async fn update_variable(
         &self,
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
@@ -91,16 +104,16 @@ impl ProgrammingLanguage for C {
     ) -> Result<(), DebugError> {
         match variable.type_name.inner() {
             VariableType::Base(name) => match name.as_str() {
-                "_Bool" => UnsignedInt::update_value(variable, None, memory, new_value),
-                "char" => CChar::update_value(variable, memory, new_value),
+                "_Bool" => UnsignedInt::update_value(variable, None, memory, new_value).await,
+                "char" => CChar::update_value(variable, memory, new_value).await,
                 "unsigned char" | "unsigned int" | "short unsigned int" | "long unsigned int" => {
-                    UnsignedInt::update_value(variable, None, memory, new_value)
+                    UnsignedInt::update_value(variable, None, memory, new_value).await
                 }
                 "signed char" | "int" | "short int" | "long int" | "signed int"
                 | "short signed int" | "long signed int" => {
-                    SignedInt::update_value(variable, None, memory, new_value)
+                    SignedInt::update_value(variable, None, memory, new_value).await
                 }
-                "float" => f32::update_value(variable, memory, new_value),
+                "float" => f32::update_value(variable, memory, new_value).await,
                 // TODO: doubles
                 other => Err(DebugError::WarnAndContinue {
                     message: format!("Updating {other} variables is not yet supported."),
@@ -111,8 +124,9 @@ impl ProgrammingLanguage for C {
                 VariableType::Base(name) => {
                     if name.as_str().contains("unsigned") {
                         UnsignedInt::update_value(variable, Some(*bitfield), memory, new_value)
+                            .await
                     } else {
-                        SignedInt::update_value(variable, Some(*bitfield), memory, new_value)
+                        SignedInt::update_value(variable, Some(*bitfield), memory, new_value).await
                     }
                 }
 
@@ -173,7 +187,7 @@ impl Display for CChar {
 }
 
 impl Value for CChar {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
@@ -181,12 +195,12 @@ impl Value for CChar {
     where
         Self: Sized,
     {
-        let buff = u8::get_value(variable, memory, _variable_cache)?;
+        let buff = u8::get_value(variable, memory, _variable_cache).await?;
 
         Ok(Self(buff))
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
@@ -209,7 +223,9 @@ impl Value for CChar {
             return Err(input_error(new_value));
         };
 
-        memory.write_word_8(variable.memory_location.memory_address()?, new_value)?;
+        memory
+            .write_word_8(variable.memory_location.memory_address()?, new_value)
+            .await?;
 
         Ok(())
     }
@@ -224,7 +240,7 @@ impl Display for UnsignedInt {
 }
 
 impl UnsignedInt {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         bitfield: Option<Bitfield>,
         memory: &mut dyn MemoryInterface,
@@ -243,10 +259,12 @@ impl UnsignedInt {
             buff[..bytes].copy_from_slice(&reg_bytes[..bytes]);
         } else {
             // We only have an address, we need to read the value from memory.
-            memory.read(
-                variable.memory_location.memory_address()?,
-                &mut buff[..bytes],
-            )?;
+            memory
+                .read(
+                    variable.memory_location.memory_address()?,
+                    &mut buff[..bytes],
+                )
+                .await?;
         }
 
         let value = u128::from_le_bytes(buff);
@@ -260,14 +278,14 @@ impl UnsignedInt {
         Ok(Self(value))
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         bitfield: Option<Bitfield>,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         match parse_int::parse::<u128>(new_value) {
-            Ok(value) => write_unsigned_bytes(variable, bitfield, memory, value),
+            Ok(value) => write_unsigned_bytes(variable, bitfield, memory, value).await,
             Err(e) => Err(DebugError::WarnAndContinue {
                 message: format!("Invalid data conversion from value: {new_value:?}. {e:?}"),
             }),
@@ -275,7 +293,7 @@ impl UnsignedInt {
     }
 }
 
-fn write_unsigned_bytes(
+async fn write_unsigned_bytes(
     variable: &Variable,
     bitfield: Option<Bitfield>,
     memory: &mut dyn MemoryInterface,
@@ -287,7 +305,9 @@ fn write_unsigned_bytes(
     // Figure out the bitfield offset & bit count
     let Some(bitfield) = bitfield else {
         let buff = unsigned.to_le_bytes();
-        memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
+        memory
+            .write_8(variable.memory_location.memory_address()?, &buff[..bytes])
+            .await?;
         return Ok(());
     };
 
@@ -295,17 +315,21 @@ fn write_unsigned_bytes(
 
     // Read the bits
     let mut buff = [0u8; 16];
-    memory.read(
-        variable.memory_location.memory_address()?,
-        &mut buff[..bytes],
-    )?;
+    memory
+        .read(
+            variable.memory_location.memory_address()?,
+            &mut buff[..bytes],
+        )
+        .await?;
     let read_value = u128::from_le_bytes(buff);
 
     let new_value = bitfield.insert(read_value, unsigned);
 
     // Write the new value
     let buff = new_value.to_le_bytes();
-    memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
+    memory
+        .write_8(variable.memory_location.memory_address()?, &buff[..bytes])
+        .await?;
 
     Ok(())
 }
@@ -319,7 +343,7 @@ impl Display for SignedInt {
 }
 
 impl SignedInt {
-    fn get_value(
+    async fn get_value(
         variable: &Variable,
         bitfield: Option<Bitfield>,
         memory: &mut dyn MemoryInterface,
@@ -329,7 +353,9 @@ impl SignedInt {
         Self: Sized,
     {
         // We read the number as Unsigned first, to avoid duplicating the bitfield handling.
-        let unsigned = UnsignedInt::get_value(variable, bitfield, memory, variable_cache)?.0;
+        let unsigned = UnsignedInt::get_value(variable, bitfield, memory, variable_cache)
+            .await?
+            .0;
         let bytes = variable.byte_size.unwrap_or(1).min(16) as usize;
 
         // Sign extend
@@ -348,14 +374,14 @@ impl SignedInt {
         Ok(Self(value))
     }
 
-    fn update_value(
+    async fn update_value(
         variable: &Variable,
         bitfield: Option<Bitfield>,
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         match parse_int::parse::<i128>(new_value) {
-            Ok(value) => write_unsigned_bytes(variable, bitfield, memory, value as u128),
+            Ok(value) => write_unsigned_bytes(variable, bitfield, memory, value as u128).await,
             Err(e) => Err(DebugError::WarnAndContinue {
                 message: format!("Invalid data conversion from value: {new_value:?}. {e:?}"),
             }),

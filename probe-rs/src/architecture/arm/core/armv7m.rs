@@ -21,11 +21,8 @@ use crate::{
     memory::{CoreMemoryInterface, valid_32bit_address},
 };
 use bitfield::bitfield;
-use std::{
-    mem::size_of,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{mem::size_of, sync::Arc, time::Duration};
+use web_time::Instant;
 
 bitfield! {
     /// Debug Halting Control and Status Register, DHCSR (see armv7-M Architecture Reference Manual C1.6.2)
@@ -598,19 +595,19 @@ pub struct Armv7m<'probe> {
 }
 
 impl<'probe> Armv7m<'probe> {
-    pub(crate) fn new(
+    pub(crate) async fn new(
         mut memory: Box<dyn ArmMemoryInterface + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
-            let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+            let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address()).await?);
 
             let core_state = if dhcsr.s_sleep() {
                 CoreStatus::Sleeping
             } else if dhcsr.s_halt() {
-                let dfsr = Dfsr(memory.read_word_32(Dfsr::get_mmio_address())?);
+                let dfsr = Dfsr(memory.read_word_32(Dfsr::get_mmio_address()).await?);
 
                 let reason = dfsr.halt_reason();
 
@@ -625,10 +622,13 @@ impl<'probe> Armv7m<'probe> {
             // so we clear them here to ensure that that none are set.
             let dfsr_clear = Dfsr::clear_all();
 
-            memory.write_word_32(Dfsr::get_mmio_address(), dfsr_clear.into())?;
+            memory
+                .write_word_32(Dfsr::get_mmio_address(), dfsr_clear.into())
+                .await?;
 
             state.current_state = core_state;
-            state.fp_present = Mvfr0(memory.read_word_32(Mvfr0::get_mmio_address())?).fp_present();
+            state.fp_present =
+                Mvfr0(memory.read_word_32(Mvfr0::get_mmio_address()).await?).fp_present();
 
             state.initialize();
         }
@@ -640,17 +640,19 @@ impl<'probe> Armv7m<'probe> {
         })
     }
 
-    fn set_core_status(&mut self, new_status: CoreStatus) {
-        super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
+    async fn set_core_status(&mut self, new_status: CoreStatus) {
+        super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status)
+            .await;
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl CoreInterface for Armv7m<'_> {
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
+    async fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
         let start = Instant::now();
 
-        while !self.core_halted()? {
+        while !self.core_halted().await? {
             if start.elapsed() >= timeout {
                 return Err(Error::Arm(ArmError::Timeout));
             }
@@ -661,19 +663,19 @@ impl CoreInterface for Armv7m<'_> {
         Ok(())
     }
 
-    fn core_halted(&mut self) -> Result<bool, Error> {
-        Ok(self.status()?.is_halted())
+    async fn core_halted(&mut self) -> Result<bool, Error> {
+        Ok(self.status().await?.is_halted())
     }
 
-    fn status(&mut self) -> Result<CoreStatus, Error> {
-        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
+    async fn status(&mut self) -> Result<CoreStatus, Error> {
+        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address()).await?);
 
         if dhcsr.s_lockup() {
             tracing::error!(
                 "The core is in locked up status as a result of an unrecoverable exception"
             );
 
-            self.set_core_status(CoreStatus::LockedUp);
+            self.set_core_status(CoreStatus::LockedUp).await;
 
             return Ok(CoreStatus::LockedUp);
         }
@@ -684,19 +686,20 @@ impl CoreInterface for Armv7m<'_> {
                 tracing::warn!("Expected core to be halted, but core is running");
             }
 
-            self.set_core_status(CoreStatus::Sleeping);
+            self.set_core_status(CoreStatus::Sleeping).await;
 
             return Ok(CoreStatus::Sleeping);
         }
 
         if dhcsr.s_halt() {
-            let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address())?);
+            let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address()).await?);
 
             let mut reason = dfsr.halt_reason();
 
             // Clear bits from Dfsr register
             self.memory
-                .write_word_32(Dfsr::get_mmio_address(), Dfsr::clear_all().into())?;
+                .write_word_32(Dfsr::get_mmio_address(), Dfsr::clear_all().into())
+                .await?;
 
             // If the core was halted before, we cannot read the halt reason from the chip,
             // because we clear it directly after reading.
@@ -717,19 +720,20 @@ impl CoreInterface for Armv7m<'_> {
             }
 
             // Set the status so any semihosting operations will know we're halted
-            self.set_core_status(CoreStatus::Halted(reason));
+            self.set_core_status(CoreStatus::Halted(reason)).await;
 
             if let HaltReason::Breakpoint(_) = reason {
                 self.state.semihosting_command = super::cortex_m::check_for_semihosting(
                     self.state.semihosting_command.take(),
                     self,
-                )?;
+                )
+                .await?;
                 if let Some(command) = self.state.semihosting_command {
                     reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(command));
                 }
 
                 // Set it again if it's changed
-                self.set_core_status(CoreStatus::Halted(reason));
+                self.set_core_status(CoreStatus::Halted(reason)).await;
             }
 
             return Ok(CoreStatus::Halted(reason));
@@ -740,12 +744,12 @@ impl CoreInterface for Armv7m<'_> {
             tracing::warn!("Core is running, but we expected it to be halted");
         }
 
-        self.set_core_status(CoreStatus::Running);
+        self.set_core_status(CoreStatus::Running).await;
 
         Ok(CoreStatus::Running)
     }
 
-    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+    async fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         // TODO: Generic halt support
 
         let mut value = Dhcsr(0);
@@ -754,12 +758,13 @@ impl CoreInterface for Armv7m<'_> {
         value.enable_write();
 
         self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
+            .write_word_32(Dhcsr::get_mmio_address(), value.into())
+            .await?;
 
-        self.wait_for_core_halted(timeout)?;
+        self.wait_for_core_halted(timeout).await?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.program_counter().into())?;
+        let pc_value = self.read_core_reg(self.program_counter().into()).await?;
 
         // get pc
         Ok(CoreInformation {
@@ -767,19 +772,20 @@ impl CoreInterface for Armv7m<'_> {
         })
     }
 
-    fn run(&mut self) -> Result<(), Error> {
+    async fn run(&mut self) -> Result<(), Error> {
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
-        self.step()?;
+        self.step().await?;
 
-        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
+        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address()).await?);
 
         // First disable the DHCSR->C_MASKINTS.
         if dhcsr.c_maskints() {
             dhcsr.set_c_maskints(false);
             dhcsr.enable_write();
             self.memory
-                .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-            self.memory.flush()?;
+                .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+                .await?;
+            self.memory.flush().await?;
         }
 
         // Exit halt state ..
@@ -787,63 +793,67 @@ impl CoreInterface for Armv7m<'_> {
         dhcsr.set_c_halt(false);
         dhcsr.enable_write();
         self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        self.memory.flush()?;
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+            .await?;
+        self.memory.flush().await?;
 
         // We assume that the core is running now
-        self.set_core_status(CoreStatus::Running);
+        self.set_core_status(CoreStatus::Running).await;
 
         Ok(())
     }
 
-    fn reset(&mut self) -> Result<(), Error> {
+    async fn reset(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
 
         self.sequence
-            .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
+            .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)
+            .await?;
         // Invalidate cached core status
-        self.set_core_status(CoreStatus::Unknown);
+        self.set_core_status(CoreStatus::Unknown).await;
         Ok(())
     }
 
-    fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
+    async fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
-        self.reset_catch_set()?;
+        self.reset_catch_set().await?;
 
         self.sequence
-            .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
+            .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)
+            .await?;
 
         // Invalidate cached core status
-        self.set_core_status(CoreStatus::Unknown);
+        self.set_core_status(CoreStatus::Unknown).await;
 
         // Some processors may not enter the halt state immediately after clearing the reset state.
         // Particularly: on PSOC 6, vector catch takes effect after the core's boot ROM finishes
         // executing, when jumping to the reset vector of the user application.
-        match self.wait_for_core_halted(Duration::from_millis(100)) {
+        match self.wait_for_core_halted(Duration::from_millis(100)).await {
             Ok(()) => (),
-            Err(Error::Arm(ArmError::Timeout)) if self.status()? == CoreStatus::Sleeping => {
+            Err(Error::Arm(ArmError::Timeout)) if self.status().await? == CoreStatus::Sleeping => {
                 // On PSOC 6, if no application is loaded in flash, or if this core is waiting for
                 // another core to boot it, the boot ROM sleeps and vector catch is not triggered.
                 tracing::warn!(
                     "reset_and_halt timed out and core is sleeping; assuming core is quiescent"
                 );
-                self.halt(Duration::from_millis(100))?;
+                self.halt(Duration::from_millis(100)).await?;
             }
             Err(e) => return Err(e),
         }
 
         const XPSR_THUMB: u32 = 1 << 24;
 
-        let xpsr_value: u32 = self.read_core_reg(XPSR.id())?.try_into()?;
+        let xpsr_value: u32 = self.read_core_reg(XPSR.id()).await?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(XPSR.id(), (xpsr_value | XPSR_THUMB).into())?;
+            self.write_core_reg(XPSR.id(), (xpsr_value | XPSR_THUMB).into())
+                .await?;
         }
 
-        self.reset_catch_clear()?;
+        self.reset_catch_clear().await?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.program_counter().into())?;
+        let pc_value = self.read_core_reg(self.program_counter().into()).await?;
 
         // get pc
         Ok(CoreInformation {
@@ -851,20 +861,20 @@ impl CoreInterface for Armv7m<'_> {
         })
     }
 
-    fn step(&mut self) -> Result<CoreInformation, Error> {
+    async fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
         let breakpoint_at_pc = if matches!(
             self.state.current_state,
             CoreStatus::Halted(HaltReason::Breakpoint(_))
         ) {
-            let pc_before_step = self.read_core_reg(self.program_counter().into())?;
-            self.enable_breakpoints(false)?;
+            let pc_before_step = self.read_core_reg(self.program_counter().into()).await?;
+            self.enable_breakpoints(false).await?;
             Some(pc_before_step)
         } else {
             None
         };
 
-        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
+        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address()).await?);
 
         // Follow the rules of the ... ARMv7-M Architecture reference, C1.6 Debug System Registers - DHCSR, with respect to setting maskints
         if !dhcsr.c_debugen() {
@@ -874,8 +884,9 @@ impl CoreInterface for Armv7m<'_> {
             dhcsr.set_c_maskints(true); // This must be reset to false when we run() again.
             dhcsr.enable_write();
             self.memory
-                .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-            self.memory.flush()?;
+                .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+                .await?;
+            self.memory.flush().await?;
         }
 
         // Leave halted state.
@@ -884,20 +895,23 @@ impl CoreInterface for Armv7m<'_> {
         dhcsr.set_c_halt(false);
         dhcsr.enable_write();
         self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        self.memory.flush()?;
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+            .await?;
+        self.memory.flush().await?;
 
-        self.wait_for_core_halted(Duration::from_millis(100))?;
+        self.wait_for_core_halted(Duration::from_millis(100))
+            .await?;
 
         // Try to read the new program counter.
-        let mut pc_after_step = self.read_core_reg(self.program_counter().into())?;
+        let mut pc_after_step = self.read_core_reg(self.program_counter().into()).await?;
 
         // Re-enable breakpoints before we continue.
         if let Some(pc_before_step) = breakpoint_at_pc {
             // If we were stopped on a software breakpoint, then we need to manually advance the PC, or else we will be stuck here forever.
             if pc_before_step == pc_after_step
                 && !self
-                    .hw_breakpoints()?
+                    .hw_breakpoints()
+                    .await?
                     .contains(&pc_before_step.try_into().ok())
             {
                 tracing::debug!(
@@ -906,9 +920,10 @@ impl CoreInterface for Armv7m<'_> {
                 );
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
                 pc_after_step.increment_address(2)?;
-                self.write_core_reg(self.program_counter().into(), pc_after_step)?;
+                self.write_core_reg(self.program_counter().into(), pc_after_step)
+                    .await?;
             }
-            self.enable_breakpoints(true)?;
+            self.enable_breakpoints(true).await?;
         }
 
         self.state.semihosting_command = None;
@@ -918,26 +933,30 @@ impl CoreInterface for Armv7m<'_> {
         })
     }
 
-    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
+    async fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
         if self.state.current_state.is_halted() {
-            let val = super::cortex_m::read_core_reg(&mut *self.memory, address)?;
+            let val = super::cortex_m::read_core_reg(&mut *self.memory, address).await?;
             Ok(val.into())
         } else {
             Err(Error::Arm(ArmError::CoreNotHalted))
         }
     }
 
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
+    async fn write_core_reg(
+        &mut self,
+        address: RegisterId,
+        value: RegisterValue,
+    ) -> Result<(), Error> {
         if self.state.current_state.is_halted() {
-            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
+            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?).await?;
             Ok(())
         } else {
             Err(Error::Arm(ArmError::CoreNotHalted))
         }
     }
 
-    fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
-        let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address())?;
+    async fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
+        let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address()).await?;
 
         let reg = FpCtrl::from(raw_val);
 
@@ -956,18 +975,19 @@ impl CoreInterface for Armv7m<'_> {
     }
 
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait.
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+    async fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
         let mut breakpoints = vec![];
-        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
-        { 0..num_hw_breakpoints }.try_for_each(|bp_unit_index| {
-            let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address())?;
+        let num_hw_breakpoints = self.available_breakpoint_units().await? as usize;
+        for bp_unit_index in 0..num_hw_breakpoints {
+            let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address()).await?;
             let ctrl_reg = FpCtrl::from(raw_val);
             // FpRev1 and FpRev2 needs different decoding of the register value, but the location where we read from is the same ...
-            let reg_addr = FpRev1CompX::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
+            let reg_addr =
+                FpRev1CompX::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
             // The raw breakpoint address as read from memory.
-            let register_value = self.memory.read_word_32(reg_addr)?;
+            let register_value = self.memory.read_word_32(reg_addr).await?;
             // The breakpoint address after it has been adjusted for FpRev 1 or 2.
-            let breakpoint:u32;
+            let breakpoint: u32;
             if register_value & 0b1 == 0b1 {
                 // We only care about `enabled` breakpoints.
                 if ctrl_reg.rev() == 0 {
@@ -975,33 +995,39 @@ impl CoreInterface for Armv7m<'_> {
                 } else if ctrl_reg.rev() == 1 {
                     breakpoint = FpRev2CompX::from(register_value).bpaddr() << 1;
                 } else {
-                    tracing::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
-                    return Err(Error::Other(format!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
+                    tracing::warn!(
+                        "This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.",
+                        ctrl_reg.rev()
+                    );
+                    return Err(Error::Other(format!(
+                        "This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.",
+                        ctrl_reg.rev()
+                    )));
                 }
                 breakpoints.push(Some(breakpoint as u64));
             } else {
                 breakpoints.push(None);
             }
-            Ok(())
-        })?;
+        }
         Ok(breakpoints)
     }
 
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
+    async fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
         let mut val = FpCtrl::from(0);
         val.set_key(true);
         val.set_enable(state);
 
         self.memory
-            .write_word_32(FpCtrl::get_mmio_address(), val.into())?;
-        self.memory.flush()?;
+            .write_word_32(FpCtrl::get_mmio_address(), val.into())
+            .await?;
+        self.memory.flush().await?;
 
         self.state.hw_breakpoints_enabled = state;
 
         Ok(())
     }
 
-    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), Error> {
+    async fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), Error> {
         let addr = valid_32bit_address(addr)?;
 
         // First make sure they are asking for a breakpoint on a half-word boundary.
@@ -1012,7 +1038,7 @@ impl CoreInterface for Armv7m<'_> {
             )));
         }
 
-        let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address())?;
+        let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address()).await?;
         let ctrl_reg = FpCtrl::from(raw_val);
 
         let val: u32;
@@ -1036,18 +1062,18 @@ impl CoreInterface for Armv7m<'_> {
         // address spaces than Rev1.
         let reg_addr = FpRev1CompX::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
 
-        self.memory.write_word_32(reg_addr, val)?;
+        self.memory.write_word_32(reg_addr, val).await?;
 
         Ok(())
     }
 
-    fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
+    async fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let mut val = FpRev1CompX::from(0);
         val.set_enable(false);
 
         let reg_addr = FpRev1CompX::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
 
-        self.memory.write_word_32(reg_addr, val.into())?;
+        self.memory.write_word_32(reg_addr, val.into()).await?;
 
         Ok(())
     }
@@ -1088,11 +1114,11 @@ impl CoreInterface for Armv7m<'_> {
         CoreType::Armv7m
     }
 
-    fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+    async fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
         Ok(InstructionSet::Thumb2)
     }
 
-    fn fpu_support(&mut self) -> Result<bool, Error> {
+    async fn fpu_support(&mut self) -> Result<bool, Error> {
         Ok(self.state.fp_present)
     }
 
@@ -1101,36 +1127,40 @@ impl CoreInterface for Armv7m<'_> {
     }
 
     #[tracing::instrument(skip(self))]
-    fn reset_catch_set(&mut self) -> Result<(), Error> {
+    async fn reset_catch_set(&mut self) -> Result<(), Error> {
         self.sequence
-            .reset_catch_set(&mut *self.memory, CoreType::Armv7m, None)?;
+            .reset_catch_set(&mut *self.memory, CoreType::Armv7m, None)
+            .await?;
 
         Ok(())
     }
 
     #[tracing::instrument(skip(self))]
-    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+    async fn reset_catch_clear(&mut self) -> Result<(), Error> {
         self.sequence
-            .reset_catch_clear(&mut *self.memory, CoreType::Armv7m, None)?;
+            .reset_catch_clear(&mut *self.memory, CoreType::Armv7m, None)
+            .await?;
 
         Ok(())
     }
 
     #[tracing::instrument(skip(self))]
-    fn debug_core_stop(&mut self) -> Result<(), Error> {
+    async fn debug_core_stop(&mut self) -> Result<(), Error> {
         self.sequence
-            .debug_core_stop(&mut *self.memory, CoreType::Armv7m)?;
+            .debug_core_stop(&mut *self.memory, CoreType::Armv7m)
+            .await?;
         Ok(())
     }
 
     #[tracing::instrument(skip(self))]
-    fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
-        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
+    async fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address()).await?);
         dhcsr.set_c_debugen(true);
         self.memory
-            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+            .await?;
 
-        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
+        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address()).await?);
         match condition {
             VectorCatchCondition::HardFault => demcr.set_vc_harderr(true),
             VectorCatchCondition::CoreReset => demcr.set_vc_corereset(true),
@@ -1144,12 +1174,13 @@ impl CoreInterface for Armv7m<'_> {
         };
 
         self.memory
-            .write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())
+            .await?;
         Ok(())
     }
 
-    fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
-        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
+    async fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address()).await?);
         match condition {
             VectorCatchCondition::HardFault => demcr.set_vc_harderr(false),
             VectorCatchCondition::CoreReset => demcr.set_vc_corereset(false),
@@ -1163,7 +1194,8 @@ impl CoreInterface for Armv7m<'_> {
         };
 
         self.memory
-            .write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())
+            .await?;
         Ok(())
     }
 }

@@ -3,3 +3,9 @@ xtask = "run --package xtask --"
 probe-rs = "run --package probe-rs-tools --bin probe-rs --features remote --"
 smoke-tester = "run --package smoke_tester --"
 target-gen = "run --package target-gen --release --"
+
+[target.wasm32-unknown-unknown]
+rustflags = "--cfg=web_sys_unstable_apis"
+
+# [build]
+# target = "wasm32-unknown-unknown"

@@ -73,7 +73,7 @@ pub async fn target_info(
     let mut registry = ctx.registry().await;
     let probe_options = ProbeOptions::from(&request).load(&mut registry)?;
 
-    let probe = probe_options.attach_probe(&ctx.lister())?;
+    let probe = probe_options.attach_probe(&ctx.lister()).await?;
 
     if let Err(e) = try_show_info(
         ctx,
@@ -293,12 +293,14 @@ async fn try_show_info(
     connect_under_reset: bool,
     target_sel: Option<u32>,
 ) -> anyhow::Result<()> {
-    probe.select_protocol(ProbeRsWireProtocol::from(protocol))?;
+    probe
+        .select_protocol(ProbeRsWireProtocol::from(protocol))
+        .await?;
 
     if connect_under_reset {
-        probe.attach_to_unspecified_under_reset()?;
+        probe.attach_to_unspecified_under_reset().await?;
     } else {
-        probe.attach_to_unspecified()?;
+        probe.attach_to_unspecified().await?;
     }
 
     if probe.has_arm_interface() {
@@ -387,10 +389,10 @@ async fn try_read_riscv_info(
 ) -> Result<(), anyhow::Error> {
     if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show RISC-V chip information");
-        let factory = probe.try_get_riscv_interface_builder()?;
+        let factory = probe.try_get_riscv_interface_builder().await?;
 
         let mut state = factory.create_state();
-        let mut interface = factory.attach(&mut state)?;
+        let mut interface = factory.attach(&mut state).await?;
         show_riscv_info(ctx, &mut interface).await?;
     } else if protocol == WireProtocol::Swd {
         ctx.publish::<TargetInfoDataTopic>(
@@ -423,7 +425,7 @@ async fn try_read_xtensa_info(
     if probe.has_xtensa_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show Xtensa chip information");
         let mut state = XtensaDebugInterfaceState::default();
-        let mut interface = probe.try_get_xtensa_interface(&mut state)?;
+        let mut interface = probe.try_get_xtensa_interface(&mut state).await?;
 
         show_xtensa_info(ctx, &mut interface).await?;
     } else if protocol == WireProtocol::Swd {
@@ -455,19 +457,25 @@ async fn try_show_arm_dp_info(
     dp_address: dp::DpAddress,
 ) -> (Probe, anyhow::Result<dp::DebugPortVersion>) {
     tracing::debug!("Trying to show ARM chip information");
-    match probe
+    let uninitialized_interface = probe
         .try_into_arm_interface()
-        .map_err(|(iface, e)| (iface, anyhow!(e)))
-        .and_then(|interface| {
-            interface
-                .initialize(DefaultArmSequence::create(), dp_address)
-                .map_err(|(interface, e)| (interface.close(), anyhow!(e)))
-        }) {
+        .map_err(|(iface, e)| (iface, anyhow!(e)));
+
+    let uninitialized_interface = match uninitialized_interface {
+        Ok(interface) => interface,
+        Err((probe, e)) => return (probe, Err(e)),
+    };
+
+    let interface = uninitialized_interface
+        .initialize(DefaultArmSequence::create(), dp_address)
+        .await;
+
+    match interface {
         Ok(mut interface) => {
             let res = show_arm_info(ctx, &mut *interface, dp_address).await;
-            (interface.close(), res)
+            (interface.close().await, res)
         }
-        Err((probe, e)) => (probe, Err(e)),
+        Err((probe, e)) => (probe.close().await, Err(anyhow!(e))),
     }
 }
 
@@ -479,19 +487,21 @@ async fn show_arm_info(
     interface: &mut dyn ArmProbeInterface,
     dp: dp::DpAddress,
 ) -> anyhow::Result<dp::DebugPortVersion> {
-    let dp_info = interface.read_raw_dp_register(dp, DPIDR::ADDRESS)?;
+    let dp_info = interface.read_raw_dp_register(dp, DPIDR::ADDRESS).await?;
     let dp_info = dp::DebugPortId::from(DPIDR(dp_info));
 
     let dpinfo = if dp_info.version == dp::DebugPortVersion::DPv2 {
-        let targetid = interface.read_raw_dp_register(dp, TARGETID::ADDRESS)?;
+        let targetid = interface
+            .read_raw_dp_register(dp, TARGETID::ADDRESS)
+            .await?;
 
         // Read Instance ID
-        let dlpidr = interface.read_raw_dp_register(dp, DLPIDR::ADDRESS)?;
+        let dlpidr = interface.read_raw_dp_register(dp, DLPIDR::ADDRESS).await?;
 
         // Read from the CTRL/STAT register, to ensure that the dpbanksel field is set to zero.
         // This helps with error handling later, because it means the CTRL/AP register can be
         // read in case of an error.
-        let _ = interface.read_raw_dp_register(dp, Ctrl::ADDRESS)?;
+        let _ = interface.read_raw_dp_register(dp, Ctrl::ADDRESS).await?;
 
         DebugPortInfoNode {
             dp_info: DebugPortId::from(&dp_info),
@@ -518,11 +528,13 @@ async fn show_arm_info(
     .await?;
 
     if dp_info.version != dp::DebugPortVersion::DPv3 {
-        let access_ports = interface.access_ports(dp)?;
+        let access_ports = interface.access_ports(dp).await?;
         for ap_address in access_ports {
             match ap_address.ap() {
                 ApAddress::V1(_) => {
-                    let raw_idr = interface.read_raw_ap_register(&ap_address, IDR::ADDRESS)?;
+                    let raw_idr = interface
+                        .read_raw_ap_register(&ap_address, IDR::ADDRESS)
+                        .await?;
                     let idr: IDR = raw_idr.try_into()?;
 
                     let ap_info = if idr.CLASS == ApClass::MemAp {
@@ -531,7 +543,9 @@ async fn show_arm_info(
                             ap_address.ap_v1()?,
                             idr.TYPE
                         ));
-                        if let Err(e) = handle_memory_ap(interface, &ap_address, &mut ap_nodes) {
+                        if let Err(e) =
+                            handle_memory_ap(interface, &ap_address, &mut ap_nodes).await
+                        {
                             ap_nodes.push(format!("Error during access: {e}"));
                         };
                         ApInfo::MemoryAp {
@@ -562,12 +576,12 @@ async fn show_arm_info(
     } else {
         let fqa = arm::FullyQualifiedApAddress::v2_with_dp(dp, ApV2Address::root());
         let root_rom_table = {
-            let mut root_memory = interface.memory_interface(&fqa)?;
-            let base_address = root_memory.base_address()?;
-            Component::try_parse(&mut *root_memory, base_address)?
+            let mut root_memory = interface.memory_interface(&fqa).await?;
+            let base_address = root_memory.base_address().await?;
+            Component::try_parse(&mut *root_memory, base_address).await?
         };
         let mut component_tree = ComponentTreeNode::new(String::new());
-        coresight_component_tree(interface, root_rom_table, &fqa, &mut component_tree)?;
+        coresight_component_tree(interface, root_rom_table, &fqa, &mut component_tree).await?;
         info.aps.push(ApInfo::ApV2Root { component_tree });
     }
 
@@ -577,16 +591,16 @@ async fn show_arm_info(
     Ok(dp_info.version)
 }
 
-fn handle_memory_ap(
+async fn handle_memory_ap(
     interface: &mut dyn ArmProbeInterface,
     access_port: &arm::FullyQualifiedApAddress,
     parent: &mut ComponentTreeNode,
 ) -> anyhow::Result<()> {
     let component = {
-        let mut memory = interface.memory_interface(access_port)?;
+        let mut memory = interface.memory_interface(access_port).await?;
 
         // Check if the AP is accessible
-        let csw = memory.generic_status()?;
+        let csw = memory.generic_status().await?;
         if !csw.DeviceEn {
             *parent = ComponentTreeNode::new(
                 "Memory AP is not accessible, DeviceEn bit not set".to_string(),
@@ -594,13 +608,19 @@ fn handle_memory_ap(
             return Ok(());
         }
 
-        let base_address = memory.base_address()?;
-        Component::try_parse(&mut *memory, base_address)?
+        let base_address = memory.base_address().await?;
+        Component::try_parse(&mut *memory, base_address).await?
     };
-    coresight_component_tree(interface, component, access_port, parent)
+    Box::pin(coresight_component_tree(
+        interface,
+        component,
+        access_port,
+        parent,
+    ))
+    .await
 }
 
-fn coresight_component_tree(
+async fn coresight_component_tree(
     interface: &mut dyn ArmProbeInterface,
     component: Component,
     access_port: &arm::FullyQualifiedApAddress,
@@ -627,13 +647,19 @@ fn coresight_component_tree(
 
             let mut tree =
                 ComponentTreeNode::new(format!("{:#06x} {}", id.component_address(), root));
-            process_vendor_rom_tables(interface, id, table, access_port, &mut tree)?;
+            process_vendor_rom_tables(interface, id, table, access_port, &mut tree).await?;
             parent.push(tree);
 
             for entry in table.entries() {
                 let component = entry.component().clone();
 
-                coresight_component_tree(interface, component, access_port, parent)?;
+                Box::pin(coresight_component_tree(
+                    interface,
+                    component,
+                    access_port,
+                    parent,
+                ))
+                .await?;
             }
         }
         Component::CoresightComponent(id) => {
@@ -666,7 +692,8 @@ fn coresight_component_tree(
                 peripheral_id,
                 &component,
                 access_port,
-            )?;
+            )
+            .await?;
             parent.push(tree);
         }
 
@@ -686,7 +713,8 @@ fn coresight_component_tree(
             };
 
             let mut tree = ComponentTreeNode::new(desc);
-            process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)?;
+            process_component_entry(&mut tree, interface, peripheral_id, &component, access_port)
+                .await?;
         }
 
         Component::CoreLinkOrPrimeCellOrSystemComponent(id) => {
@@ -712,7 +740,7 @@ fn coresight_component_tree(
 ///
 /// Some manufacturer-specific ROM tables contain more than just entries. This function tries
 /// to make sense of these tables.
-fn process_vendor_rom_tables(
+async fn process_vendor_rom_tables(
     interface: &mut dyn ArmProbeInterface,
     id: &ComponentId,
     _table: &RomTable,
@@ -730,8 +758,10 @@ fn process_vendor_rom_tables(
         // Read and parse the DID register
         let did = DsuDid(
             interface
-                .memory_interface(access_port)?
-                .read_word_32(DsuDid::ADDRESS)?,
+                .memory_interface(access_port)
+                .await?
+                .read_word_32(DsuDid::ADDRESS)
+                .await?,
         );
 
         tree.push(format!("Atmel device (DID = {:#010x})", did.0));
@@ -741,7 +771,7 @@ fn process_vendor_rom_tables(
 }
 
 /// Processes ROM table entries and adds them to the tree.
-fn process_component_entry(
+async fn process_component_entry(
     tree: &mut ComponentTreeNode,
     interface: &mut dyn ArmProbeInterface,
     peripheral_id: &PeripheralID,
@@ -756,7 +786,7 @@ fn process_component_entry(
         PeripheralType::Scs => {
             let cc = &CoresightComponent::new(component.clone(), access_port.clone());
             let scs = &mut Scs::new(interface, cc);
-            let cpu_tree = cpu_info_tree(scs)?;
+            let cpu_tree = cpu_info_tree(scs).await?;
 
             tree.push(cpu_tree);
         }
@@ -772,22 +802,29 @@ fn process_component_entry(
                 dp,
                 arm::ApV2Address::new(component.id().component_address()),
             );
-            handle_memory_ap(interface, &addr, tree)?;
+            handle_memory_ap(interface, &addr, tree).await?;
         }
         PeripheralType::Rom => {
             let id = component.id();
-            let mut memory = interface.memory_interface(access_port)?;
+            let mut memory = interface.memory_interface(access_port).await?;
             let rom_table = RomTable::try_parse(
                 memory.as_mut() as &mut dyn ArmMemoryInterface,
                 id.component_address(),
-            )?;
+            )
+            .await?;
             drop(memory);
 
-            process_vendor_rom_tables(interface, id, &rom_table, access_port, tree)?;
+            process_vendor_rom_tables(interface, id, &rom_table, access_port, tree).await?;
             for entry in rom_table.entries() {
                 let component = entry.component().clone();
 
-                coresight_component_tree(interface, component, access_port, tree)?;
+                Box::pin(coresight_component_tree(
+                    interface,
+                    component,
+                    access_port,
+                    tree,
+                ))
+                .await?;
             }
         }
         _ => {}
@@ -796,10 +833,10 @@ fn process_component_entry(
     Ok(())
 }
 
-fn cpu_info_tree(scs: &mut Scs) -> anyhow::Result<ComponentTreeNode> {
+async fn cpu_info_tree(scs: &mut Scs<'_>) -> anyhow::Result<ComponentTreeNode> {
     let mut tree = ComponentTreeNode::new("CPUID".into());
 
-    let cpuid = scs.cpuid()?;
+    let cpuid = scs.cpuid().await?;
 
     tree.push(format!("IMPLEMENTER: {}", cpuid.implementer_name()));
     tree.push(format!("VARIANT: {}", cpuid.variant()));
@@ -813,7 +850,7 @@ async fn show_riscv_info(
     ctx: &mut RpcContext,
     interface: &mut RiscvCommunicationInterface<'_>,
 ) -> anyhow::Result<()> {
-    let idcode = interface.read_idcode()?;
+    let idcode = interface.read_idcode().await?;
 
     ctx.publish::<TargetInfoDataTopic>(
         VarSeq::Seq2(0),
@@ -829,7 +866,7 @@ async fn show_xtensa_info(
     ctx: &mut RpcContext,
     interface: &mut XtensaCommunicationInterface<'_>,
 ) -> anyhow::Result<()> {
-    let idcode = interface.read_idcode()?;
+    let idcode = interface.read_idcode().await?;
 
     ctx.publish::<TargetInfoDataTopic>(
         VarSeq::Seq2(0),

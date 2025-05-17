@@ -3,11 +3,11 @@
 use probe_rs::probe::{Probe, list::Lister};
 use probe_rs::{MemoryInterface, Permissions, config::TargetSelector, probe::WireProtocol};
 
+use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use std::num::ParseIntError;
-use std::time::{Duration, Instant};
-
-use anyhow::{Context, Result, anyhow};
+use std::time::Duration;
+use web_time::Instant;
 
 #[derive(clap::Parser)]
 struct Cli {
@@ -27,12 +27,13 @@ fn parse_hex(src: &str) -> Result<u64, ParseIntError> {
     u64::from_str_radix(src.trim_start_matches("0x"), 16)
 }
 
-fn main() -> Result<()> {
+#[pollster::main]
+async fn main() -> Result<()> {
     env_logger::init();
 
     let matches = Cli::parse();
 
-    let mut probe = open_probe(None)?;
+    let mut probe = open_probe(None).await?;
 
     let target_selector = match matches.chip {
         Some(identifier) => identifier.into(),
@@ -48,18 +49,21 @@ fn main() -> Result<()> {
 
     probe
         .select_protocol(protocol)
+        .await
         .context("Failed to select SWD as the transport protocol")?;
 
     if let Some(speed) = matches.speed {
         probe
             .set_speed(speed)
+            .await
             .context("Failed to set probe speed")?;
     }
 
     let mut session = probe
         .attach(target_selector, Permissions::default())
+        .await
         .context("Failed to attach probe to target")?;
-    let mut core = session.core(0).context("Failed to attach to core")?;
+    let mut core = session.core(0).await.context("Failed to attach to core")?;
 
     let data_size_words = matches.size;
 
@@ -74,10 +78,12 @@ fn main() -> Result<()> {
     }
 
     core.halt(Duration::from_millis(100))
+        .await
         .expect("Halting failed");
 
     let write_start = Instant::now();
     core.write_32(matches.address, &sample_data)
+        .await
         .context("Writing the sample data failed")?;
 
     let write_duration = write_start.elapsed();
@@ -97,6 +103,7 @@ fn main() -> Result<()> {
 
     let read_start = Instant::now();
     core.read_32(matches.address, &mut readback_data)
+        .await
         .expect("Reading the sample data failed");
     let read_duration = read_start.elapsed();
 
@@ -149,10 +156,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn open_probe(index: Option<usize>) -> Result<Probe> {
+async fn open_probe(index: Option<usize>) -> Result<Probe> {
     let lister = Lister::new();
 
-    let list = lister.list_all();
+    let list = lister.list_all().await;
 
     let device = match index {
         Some(index) => list
@@ -168,7 +175,7 @@ fn open_probe(index: Option<usize>) -> Result<Probe> {
         }
     };
 
-    let probe = device.open().context("Failed to open probe")?;
+    let probe = device.open().await.context("Failed to open probe")?;
 
     Ok(probe)
 }

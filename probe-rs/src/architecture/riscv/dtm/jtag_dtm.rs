@@ -6,7 +6,8 @@
 use bitfield::bitfield;
 use bitvec::field::BitField;
 use bitvec::slice::BitSlice;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 use crate::architecture::riscv::communication_interface::{
     RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError, RiscvInterfaceBuilder,
@@ -36,12 +37,13 @@ impl<'f> JtagDtmBuilder<'f> {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
     fn create_state(&self) -> RiscvDebugInterfaceState {
         RiscvDebugInterfaceState::new(Box::<DtmState>::default())
     }
 
-    fn attach<'state>(
+    async fn attach<'state>(
         self: Box<Self>,
         state: &'state mut RiscvDebugInterfaceState,
     ) -> Result<RiscvCommunicationInterface<'state>, DebugProbeError>
@@ -56,7 +58,7 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
         ))
     }
 
-    fn attach_tunneled<'state>(
+    async fn attach_tunneled<'state>(
         self: Box<Self>,
         tunnel_ir_id: u32,
         tunnel_ir_width: u32,
@@ -110,7 +112,7 @@ impl<'probe> JtagDtm<'probe> {
     ///
     /// Every access both writes and reads from the register, which means a value is always
     /// returned. The `op` is checked for errors, and if it is not equal to zero, an error is returned.
-    fn dmi_register_access(
+    async fn dmi_register_access(
         &mut self,
         op: DmiOperation,
     ) -> Result<Result<u32, DmiOperationStatus>, DebugProbeError> {
@@ -120,10 +122,11 @@ impl<'probe> JtagDtm<'probe> {
 
         self.probe
             .write_register(DMI_ADDRESS, &bytes, bit_size)
+            .await
             .map(|bits| Self::transform_dmi_result(&bits))
     }
 
-    fn schedule_dmi_register_access(
+    async fn schedule_dmi_register_access(
         &mut self,
         op: DmiOperation,
     ) -> Result<DeferredResultIndex, RiscvError> {
@@ -143,21 +146,21 @@ impl<'probe> JtagDtm<'probe> {
         }))
     }
 
-    fn dmi_register_access_with_timeout(
+    async fn dmi_register_access_with_timeout(
         &mut self,
         op: DmiOperation,
         timeout: Duration,
     ) -> Result<u32, RiscvError> {
         let start_time = Instant::now();
 
-        self.execute()?;
+        self.execute().await?;
 
         loop {
-            match self.dmi_register_access(op)? {
+            match self.dmi_register_access(op).await? {
                 Ok(result) => return Ok(result),
                 Err(DmiOperationStatus::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
-                    self.clear_error_state()?;
+                    self.clear_error_state().await?;
                     self.probe
                         .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                 }
@@ -171,10 +174,11 @@ impl<'probe> JtagDtm<'probe> {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl DtmAccess for JtagDtm<'_> {
-    fn init(&mut self) -> Result<(), RiscvError> {
-        self.probe.tap_reset()?;
-        let dtmcs_raw = self.probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH)?;
+    async fn init(&mut self) -> Result<(), RiscvError> {
+        self.probe.tap_reset().await?;
+        let dtmcs_raw = self.probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH).await?;
 
         let raw_dtmcs = dtmcs_raw.load_le::<u32>();
 
@@ -202,15 +206,15 @@ impl DtmAccess for JtagDtm<'_> {
         Ok(())
     }
 
-    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        self.probe.target_reset_assert()
+    async fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.probe.target_reset_assert().await
     }
 
-    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        self.probe.target_reset_deassert()
+    async fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        self.probe.target_reset_deassert().await
     }
 
-    fn clear_error_state(&mut self) -> Result<(), RiscvError> {
+    async fn clear_error_state(&mut self) -> Result<(), RiscvError> {
         let mut dtmcs = Dtmcs(0);
 
         dtmcs.set_dmireset(true);
@@ -220,19 +224,20 @@ impl DtmAccess for JtagDtm<'_> {
         let bytes = reg_value.to_le_bytes();
 
         self.probe
-            .write_register(DTMCS_ADDRESS, &bytes, DTMCS_WIDTH)?;
+            .write_register(DTMCS_ADDRESS, &bytes, DTMCS_WIDTH)
+            .await?;
 
         Ok(())
     }
 
-    fn read_deferred_result(
+    async fn read_deferred_result(
         &mut self,
         index: DeferredResultIndex,
     ) -> Result<CommandResult, RiscvError> {
         match self.state.jtag_results.take(index) {
             Ok(result) => Ok(result),
             Err(index) => {
-                self.execute()?;
+                self.execute().await?;
                 // We can lose data if `execute` fails.
                 self.state
                     .jtag_results
@@ -242,18 +247,18 @@ impl DtmAccess for JtagDtm<'_> {
         }
     }
 
-    fn execute(&mut self) -> Result<(), RiscvError> {
+    async fn execute(&mut self) -> Result<(), RiscvError> {
         let mut cmds = std::mem::take(&mut self.state.queued_commands);
 
         while !cmds.is_empty() {
-            match self.probe.write_register_batch(&cmds) {
+            match self.probe.write_register_batch(&cmds).await {
                 Ok(r) => {
                     self.state.jtag_results.merge_from(r);
                     return Ok(());
                 }
                 Err(e) => match e.error {
                     Error::Riscv(RiscvError::DtmOperationInProcess) => {
-                        self.clear_error_state()?;
+                        self.clear_error_state().await?;
 
                         // queue up the remaining commands when we retry
                         cmds.consume(e.results.len());
@@ -272,42 +277,51 @@ impl DtmAccess for JtagDtm<'_> {
         Ok(())
     }
 
-    fn schedule_write(
+    async fn schedule_write(
         &mut self,
         address: u64,
         value: u32,
     ) -> Result<Option<DeferredResultIndex>, RiscvError> {
         self.schedule_dmi_register_access(DmiOperation::Write { address, value })
+            .await
             .map(Some)
     }
 
-    fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError> {
+    async fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError> {
         // Prepare the read by sending a read request with the register address
-        self.schedule_dmi_register_access(DmiOperation::Read { address })?;
+        self.schedule_dmi_register_access(DmiOperation::Read { address })
+            .await?;
 
         // Read back the response from the previous request.
-        self.schedule_dmi_register_access(DmiOperation::NoOp)
+        self.schedule_dmi_register_access(DmiOperation::NoOp).await
     }
 
-    fn read_with_timeout(&mut self, address: u64, timeout: Duration) -> Result<u32, RiscvError> {
+    async fn read_with_timeout(
+        &mut self,
+        address: u64,
+        timeout: Duration,
+    ) -> Result<u32, RiscvError> {
         // Prepare the read by sending a read request with the register address
-        self.schedule_dmi_register_access(DmiOperation::Read { address })?;
+        self.schedule_dmi_register_access(DmiOperation::Read { address })
+            .await?;
 
         self.dmi_register_access_with_timeout(DmiOperation::NoOp, timeout)
+            .await
     }
 
-    fn write_with_timeout(
+    async fn write_with_timeout(
         &mut self,
         address: u64,
         value: u32,
         timeout: Duration,
     ) -> Result<Option<u32>, RiscvError> {
         self.dmi_register_access_with_timeout(DmiOperation::Write { address, value }, timeout)
+            .await
             .map(Some)
     }
 
-    fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
-        let value = self.probe.read_register(0x1, 32)?;
+    async fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
+        let value = self.probe.read_register(0x1, 32).await?;
 
         Ok(Some(value.load_le::<u32>()))
     }
@@ -347,16 +361,19 @@ impl<'probe> TunneledJtagDtm<'probe> {
         }
     }
 
-    fn write_dtmcs(&mut self, data: u32) -> Result<u32, RiscvError> {
-        self.probe.write_register(
-            self.select_dtmcs.address,
-            &self.select_dtmcs.data,
-            self.select_dtmcs.len,
-        )?;
+    async fn write_dtmcs(&mut self, data: u32) -> Result<u32, RiscvError> {
+        self.probe
+            .write_register(
+                self.select_dtmcs.address,
+                &self.select_dtmcs.data,
+                self.select_dtmcs.len,
+            )
+            .await?;
         let cmd = tunnel_dtmcs_command(data);
         let result = self
             .probe
             .write_dr(&cmd.data, cmd.len)
+            .await
             .map(|r| (cmd.transform)(&cmd, &r))?;
         match result {
             Ok(CommandResult::U32(d)) => Ok(d),
@@ -369,24 +386,26 @@ impl<'probe> TunneledJtagDtm<'probe> {
         &response_bits[4..]
     }
 
-    fn dmi_register_access(
+    async fn dmi_register_access(
         &mut self,
         op: DmiOperation,
     ) -> Result<Result<u32, DmiOperationStatus>, DebugProbeError> {
-        self.probe.write_register(
-            self.select_dmi.address,
-            &self.select_dmi.data,
-            self.select_dmi.len,
-        )?;
+        self.probe
+            .write_register(
+                self.select_dmi.address,
+                &self.select_dmi.data,
+                self.select_dmi.len,
+            )
+            .await?;
 
         let dmi_bits = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
         let (bit_size, bytes) = op.to_tunneled_byte_batch(dmi_bits);
-        let result = self.probe.write_dr(&bytes, bit_size)?;
+        let result = self.probe.write_dr(&bytes, bit_size).await?;
         let tunneled_result = Self::transform_tunneled_dr_result(&result);
         Ok(JtagDtm::transform_dmi_result(tunneled_result))
     }
 
-    fn schedule_dmi_register_access(
+    async fn schedule_dmi_register_access(
         &mut self,
         op: DmiOperation,
     ) -> Result<DeferredResultIndex, RiscvError> {
@@ -407,21 +426,21 @@ impl<'probe> TunneledJtagDtm<'probe> {
         }))
     }
 
-    fn dmi_register_access_with_timeout(
+    async fn dmi_register_access_with_timeout(
         &mut self,
         op: DmiOperation,
         timeout: Duration,
     ) -> Result<u32, RiscvError> {
         let start_time = Instant::now();
 
-        self.execute()?;
+        self.execute().await?;
 
         loop {
-            match self.dmi_register_access(op)? {
+            match self.dmi_register_access(op).await? {
                 Ok(result) => return Ok(result),
                 Err(DmiOperationStatus::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
-                    self.clear_error_state()?;
+                    self.clear_error_state().await?;
                     self.probe
                         .set_idle_cycles(self.probe.idle_cycles().saturating_add(1))?;
                 }
@@ -435,10 +454,11 @@ impl<'probe> TunneledJtagDtm<'probe> {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl DtmAccess for TunneledJtagDtm<'_> {
-    fn init(&mut self) -> Result<(), RiscvError> {
-        self.probe.tap_reset()?;
-        let raw_dtmcs = self.write_dtmcs(0)?;
+    async fn init(&mut self) -> Result<(), RiscvError> {
+        self.probe.tap_reset().await?;
+        let raw_dtmcs = self.write_dtmcs(0).await?;
 
         if raw_dtmcs == 0 {
             return Err(RiscvError::NoRiscvTarget);
@@ -464,34 +484,34 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         Ok(())
     }
 
-    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        self.probe.target_reset_assert()
+    async fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.probe.target_reset_assert().await
     }
 
-    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        self.probe.target_reset_deassert()
+    async fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        self.probe.target_reset_deassert().await
     }
 
-    fn clear_error_state(&mut self) -> Result<(), RiscvError> {
+    async fn clear_error_state(&mut self) -> Result<(), RiscvError> {
         let mut dtmcs = Dtmcs(0);
 
         dtmcs.set_dmireset(true);
 
         let Dtmcs(reg_value) = dtmcs;
 
-        self.write_dtmcs(reg_value)?;
+        self.write_dtmcs(reg_value).await?;
 
         Ok(())
     }
 
-    fn read_deferred_result(
+    async fn read_deferred_result(
         &mut self,
         index: DeferredResultIndex,
     ) -> Result<CommandResult, RiscvError> {
         match self.state.jtag_results.take(index) {
             Ok(result) => Ok(result),
             Err(index) => {
-                self.execute()?;
+                self.execute().await?;
                 // We can lose data if `execute` fails.
                 self.state
                     .jtag_results
@@ -501,18 +521,18 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         }
     }
 
-    fn execute(&mut self) -> Result<(), RiscvError> {
+    async fn execute(&mut self) -> Result<(), RiscvError> {
         let mut cmds = std::mem::take(&mut self.state.queued_commands);
 
         while !cmds.is_empty() {
-            match self.probe.write_register_batch(&cmds) {
+            match self.probe.write_register_batch(&cmds).await {
                 Ok(r) => {
                     self.state.jtag_results.merge_from(r);
                     return Ok(());
                 }
                 Err(e) => match e.error {
                     Error::Riscv(RiscvError::DtmOperationInProcess) => {
-                        self.clear_error_state()?;
+                        self.clear_error_state().await?;
 
                         // queue up the remaining commands when we retry
                         cmds.consume(e.results.len());
@@ -531,42 +551,51 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         Ok(())
     }
 
-    fn schedule_write(
+    async fn schedule_write(
         &mut self,
         address: u64,
         value: u32,
     ) -> Result<Option<DeferredResultIndex>, RiscvError> {
         self.schedule_dmi_register_access(DmiOperation::Write { address, value })
+            .await
             .map(Some)
     }
 
-    fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError> {
+    async fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError> {
         // Prepare the read by sending a read request with the register address
-        self.schedule_dmi_register_access(DmiOperation::Read { address })?;
+        self.schedule_dmi_register_access(DmiOperation::Read { address })
+            .await?;
 
         // Read back the response from the previous request.
-        self.schedule_dmi_register_access(DmiOperation::NoOp)
+        self.schedule_dmi_register_access(DmiOperation::NoOp).await
     }
 
-    fn read_with_timeout(&mut self, address: u64, timeout: Duration) -> Result<u32, RiscvError> {
+    async fn read_with_timeout(
+        &mut self,
+        address: u64,
+        timeout: Duration,
+    ) -> Result<u32, RiscvError> {
         // Prepare the read by sending a read request with the register address
-        self.schedule_dmi_register_access(DmiOperation::Read { address })?;
+        self.schedule_dmi_register_access(DmiOperation::Read { address })
+            .await?;
 
         self.dmi_register_access_with_timeout(DmiOperation::NoOp, timeout)
+            .await
     }
 
-    fn write_with_timeout(
+    async fn write_with_timeout(
         &mut self,
         address: u64,
         value: u32,
         timeout: Duration,
     ) -> Result<Option<u32>, RiscvError> {
         self.dmi_register_access_with_timeout(DmiOperation::Write { address, value }, timeout)
+            .await
             .map(Some)
     }
 
-    fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
-        let value = self.probe.read_register(0x1, 32)?;
+    async fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
+        let value = self.probe.read_register(0x1, 32).await?;
         Ok(Some(value.load_le::<u32>()))
     }
 }

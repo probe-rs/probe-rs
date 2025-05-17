@@ -150,10 +150,10 @@ impl UnitInfo {
     /// Recurse the ELF structure below the `tree_node`,
     /// and updates the `cache` with the updated value of the `child_variable`.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn process_tree_node_attributes(
+    pub(crate) async fn process_tree_node_attributes(
         &self,
         debug_info: &DebugInfo,
-        tree_node: &gimli::DebuggingInformationEntry<GimliReader>,
+        tree_node: &gimli::DebuggingInformationEntry<'_, '_, GimliReader>,
         parent_variable: &mut Variable,
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
@@ -180,7 +180,8 @@ impl UnitInfo {
                         child_variable,
                         memory,
                         frame_info,
-                    )?;
+                    )
+                    .await?;
 
                     abstract_entry = self.unit.entry(unit_ref)?;
 
@@ -215,7 +216,8 @@ impl UnitInfo {
                         child_variable,
                         memory,
                         frame_info,
-                    )?;
+                    )
+                    .await?;
 
                     specification_entry = self.unit.entry(unit_ref)?;
 
@@ -274,7 +276,7 @@ impl UnitInfo {
                         // - The `DW_AT_location` of the child.
                         // - The `DW_AT_byte_size` of the child.
                         // - The `DW_AT_name` of the data type node.
-                        self.process_type_attribute(
+                        Box::pin(self.process_type_attribute(
                             &attr,
                             debug_info,
                             attributes_entry,
@@ -283,7 +285,8 @@ impl UnitInfo {
                             memory,
                             frame_info,
                             cache,
-                        )?;
+                        ))
+                        .await?;
                     }
                     gimli::DW_AT_enum_class => match attr.value() {
                         gimli::AttributeValue::Flag(true) => {
@@ -330,7 +333,7 @@ impl UnitInfo {
                             let discriminant_node = self.unit.entry(unit_ref)?;
                             let mut discriminant_variable =
                                 cache.create_variable(parent_variable.variable_key, Some(self))?;
-                            self.process_tree_node_attributes(
+                            Box::pin(self.process_tree_node_attributes(
                                 debug_info,
                                 &discriminant_node,
                                 parent_variable,
@@ -338,7 +341,8 @@ impl UnitInfo {
                                 memory,
                                 cache,
                                 frame_info,
-                            )?;
+                            ))
+                            .await?;
 
                             let variant_part = if discriminant_variable.is_valid() {
                                 discriminant_variable
@@ -411,18 +415,18 @@ impl UnitInfo {
         // Need to process bitfields last as they need type information to be resolved first.
         self.process_bitfield_info(child_variable, tree_node, cache)?;
 
-        child_variable.extract_value(memory, cache);
+        child_variable.extract_value(memory, cache).await;
         cache.update_variable(child_variable)?;
 
         Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn process_type_attribute(
+    async fn process_type_attribute(
         &self,
         attr: &gimli::Attribute<GimliReader>,
         debug_info: &DebugInfo,
-        attributes_entry: &gimli::DebuggingInformationEntry<GimliReader>,
+        attributes_entry: &gimli::DebuggingInformationEntry<'_, '_, GimliReader>,
         parent_variable: &Variable,
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
@@ -439,11 +443,12 @@ impl UnitInfo {
             child_variable,
             memory,
             frame_info,
-        )?;
+        )
+        .await?;
 
         match debug_info.resolve_die_reference_with_unit(attr, self) {
             Ok((unit_info, referenced_type_tree_node)) => {
-                unit_info.extract_type(
+                Box::pin(unit_info.extract_type(
                     debug_info,
                     &referenced_type_tree_node,
                     parent_variable,
@@ -451,7 +456,8 @@ impl UnitInfo {
                     memory,
                     cache,
                     frame_info,
-                )?;
+                ))
+                .await?;
             }
             Err(error) => {
                 child_variable.set_value(VariableValue::Error(format!(
@@ -467,10 +473,10 @@ impl UnitInfo {
     /// - Consumes the `parent_variable`.
     /// - Updates the `DebugInfo::VariableCache` with all descendant `Variable`s.
     /// - Returns a clone of the most up-to-date `parent_variable` in the cache.
-    pub(crate) fn process_tree(
+    pub(crate) async fn process_tree(
         &self,
         debug_info: &DebugInfo,
-        parent_node: gimli::EntriesTreeNode<GimliReader>,
+        parent_node: gimli::EntriesTreeNode<'_, '_, '_, GimliReader>,
         parent_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
@@ -514,14 +520,15 @@ impl UnitInfo {
                     };
 
                     // Recurse for additional namespace variables.
-                    self.process_tree(
+                    Box::pin(self.process_tree(
                         debug_info,
                         child_node,
                         &mut namespace_variable,
                         memory,
                         cache,
                         frame_info,
-                    )?;
+                    ))
+                    .await?;
 
                     // Do not keep empty namespaces around
                     if !cache.has_children(&namespace_variable) {
@@ -537,7 +544,7 @@ impl UnitInfo {
                     //  - Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
                     let mut child_variable =
                         cache.create_variable(parent_variable.variable_key, Some(self))?;
-                    self.process_tree_node_attributes(
+                    Box::pin(self.process_tree_node_attributes(
                         debug_info,
                         child_node.entry(),
                         parent_variable,
@@ -545,7 +552,8 @@ impl UnitInfo {
                         memory,
                         cache,
                         frame_info,
-                    )?;
+                    ))
+                    .await?;
 
                     // In the case of C code, we can have entries for both the declaration and the definition of a variable.
                     // We don't do anything with the declaration right now, so we remove it from the cache.
@@ -565,14 +573,15 @@ impl UnitInfo {
                         cache.remove_cache_entry(child_variable.variable_key)?;
                     } else if child_variable.is_valid() {
                         // Recursively process each child.
-                        self.process_tree(
+                        Box::pin(self.process_tree(
                             debug_info,
                             child_node,
                             &mut child_variable,
                             memory,
                             cache,
                             frame_info,
-                        )?;
+                        ))
+                        .await?;
                     }
                 }
                 gimli::DW_TAG_variant_part => {
@@ -610,18 +619,20 @@ impl UnitInfo {
                         memory,
                         cache,
                         frame_info,
-                    )?;
+                    )
+                    .await?;
                     // At this point we have everything we need (It has updated the parent's `role`) from the
                     // child_variable, so elimnate it before we continue ...
                     cache.remove_cache_entry(child_variable.variable_key)?;
-                    self.process_tree(
+                    Box::pin(self.process_tree(
                         debug_info,
                         child_node,
                         parent_variable,
                         memory,
                         cache,
                         frame_info,
-                    )?;
+                    ))
+                    .await?;
                 }
 
                 // Variant is a child of a structure, and one of them should have a discriminant value to match the
@@ -640,7 +651,8 @@ impl UnitInfo {
                             memory,
                             cache,
                             frame_info,
-                        )?;
+                        )
+                        .await?;
                         if child_variable.is_valid() {
                             if let VariantRole::Variant(discriminant) = child_variable.role {
                                 // Only process the discriminant variants or when we eventually   encounter the default
@@ -654,16 +666,18 @@ impl UnitInfo {
                                         &mut child_variable,
                                         memory,
                                         frame_info,
-                                    )?;
+                                    )
+                                    .await?;
                                     // Recursively process each relevant child node.
-                                    self.process_tree(
+                                    Box::pin(self.process_tree(
                                         debug_info,
                                         child_node,
                                         &mut child_variable,
                                         memory,
                                         cache,
                                         frame_info,
-                                    )?;
+                                    ))
+                                    .await?;
                                     if child_variable.is_valid() {
                                         // Eliminate intermediate DWARF nodes, but keep their children
                                         cache.adopt_grand_children(
@@ -758,14 +772,15 @@ impl UnitInfo {
                         // This is IN scope.
                         // Recursively process each child, but pass the parent_variable, so that we don't create
                         // intermediate nodes for scope identifiers.
-                        self.process_tree(
+                        Box::pin(self.process_tree(
                             debug_info,
                             child_node,
                             parent_variable,
                             memory,
                             cache,
                             frame_info,
-                        )?;
+                        ))
+                        .await?;
                     } else {
                         // This lexical block is NOT in scope, but other children of this parent may well be in scope,
                         // so do NOT invalidate the parent_variable.
@@ -807,7 +822,7 @@ impl UnitInfo {
             }
         }
 
-        parent_variable.extract_value(memory, cache);
+        parent_variable.extract_value(memory, cache).await;
         cache.update_variable(parent_variable)?;
 
         Ok(())
@@ -963,10 +978,10 @@ impl UnitInfo {
     /// [e]: Self::extract_type()
     /// [p]: Self::process_tree()
     #[allow(clippy::too_many_arguments)]
-    fn extract_type(
+    async fn extract_type(
         &self,
         debug_info: &DebugInfo,
-        node: &gimli::DebuggingInformationEntry<GimliReader>,
+        node: &gimli::DebuggingInformationEntry<'_, '_, GimliReader>,
         parent_variable: &Variable,
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
@@ -1001,7 +1016,8 @@ impl UnitInfo {
                     child_variable,
                     memory,
                     frame_info,
-                )?;
+                )
+                .await?;
             }
             gimli::DW_TAG_pointer_type => {
                 child_variable.type_name = VariableType::Pointer(type_name);
@@ -1012,7 +1028,8 @@ impl UnitInfo {
                     child_variable,
                     memory,
                     frame_info,
-                )?;
+                )
+                .await?;
 
                 // This needs to resolve the pointer before the regular recursion can continue.
                 match node.attr_value(gimli::DW_AT_type) {
@@ -1037,7 +1054,7 @@ impl UnitInfo {
 
                             let referenced_node = self.unit.entry(unit_ref)?;
 
-                            self.extract_type(
+                            Box::pin(self.extract_type(
                                 debug_info,
                                 &referenced_node,
                                 child_variable,
@@ -1045,7 +1062,8 @@ impl UnitInfo {
                                 memory,
                                 cache,
                                 frame_info,
-                            )?;
+                            ))
+                            .await?;
 
                             if matches!(referenced_variable.type_name.inner(), VariableType::Base(name) if name == "()")
                             {
@@ -1089,7 +1107,8 @@ impl UnitInfo {
                     memory,
                     cache,
                     frame_info,
-                )?;
+                )
+                .await?;
             }
             gimli::DW_TAG_enumeration_type => {
                 self.extract_enumeration_type(
@@ -1100,7 +1119,8 @@ impl UnitInfo {
                     parent_variable,
                     memory,
                     frame_info,
-                )?;
+                )
+                .await?;
             }
             gimli::DW_TAG_array_type => {
                 self.extract_array_type(
@@ -1111,7 +1131,8 @@ impl UnitInfo {
                     memory,
                     frame_info,
                     cache,
-                )?;
+                )
+                .await?;
             }
             gimli::DW_TAG_union_type => {
                 child_variable.type_name =
@@ -1123,19 +1144,21 @@ impl UnitInfo {
                     child_variable,
                     memory,
                     frame_info,
-                )?;
+                )
+                .await?;
 
                 let mut tree = self.unit.entries_tree(Some(node.offset()))?;
 
                 // Recursively process a child types.
-                self.process_tree(
+                Box::pin(self.process_tree(
                     debug_info,
                     tree.root()?,
                     child_variable,
                     memory,
                     cache,
                     frame_info,
-                )?;
+                ))
+                .await?;
                 if child_variable.is_valid() && !cache.has_children(child_variable) {
                     // Empty structs don't have values.
                     child_variable.set_value(VariableValue::Valid(child_variable.type_name()));
@@ -1187,7 +1210,7 @@ impl UnitInfo {
             | gimli::DW_TAG_restrict_type
             | gimli::DW_TAG_atomic_type) => match node.attr(gimli::DW_AT_type) {
                 Ok(Some(attr)) => {
-                    self.process_type_attribute(
+                    Box::pin(self.process_type_attribute(
                         &attr,
                         debug_info,
                         node,
@@ -1196,7 +1219,8 @@ impl UnitInfo {
                         memory,
                         frame_info,
                         cache,
-                    )?;
+                    ))
+                    .await?;
 
                     let modifier = match other {
                         gimli::DW_TAG_typedef => {
@@ -1246,18 +1270,18 @@ impl UnitInfo {
             }
         }
 
-        child_variable.extract_value(memory, cache);
+        child_variable.extract_value(memory, cache).await;
         cache.update_variable(child_variable)?;
 
         Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn extract_struct(
+    async fn extract_struct(
         &self,
         type_name: Option<String>,
         debug_info: &DebugInfo,
-        node: &DebuggingInformationEntry<GimliReader>,
+        node: &DebuggingInformationEntry<'_, '_, GimliReader>,
         parent_variable: &Variable,
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
@@ -1273,7 +1297,8 @@ impl UnitInfo {
             child_variable,
             memory,
             frame_info,
-        )?;
+        )
+        .await?;
 
         if child_variable.memory_location != VariableLocation::Unavailable {
             // The default behaviour is to defer the processing of child types.
@@ -1289,14 +1314,15 @@ impl UnitInfo {
 
                 let mut tree = self.unit.entries_tree(Some(node.offset()))?;
 
-                self.process_tree(
+                Box::pin(self.process_tree(
                     debug_info,
                     tree.root()?,
                     child_variable,
                     memory,
                     cache,
                     frame_info,
-                )?;
+                ))
+                .await?;
                 child_variable.variable_node_type = temp_node_type;
             }
         } else {
@@ -1304,26 +1330,28 @@ impl UnitInfo {
             child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
         }
 
-        self.language.process_struct(
-            self,
-            debug_info,
-            node,
-            child_variable,
-            memory,
-            cache,
-            frame_info,
-        )
+        self.language
+            .process_struct(
+                self,
+                debug_info,
+                node,
+                child_variable,
+                memory,
+                cache,
+                frame_info,
+            )
+            .await
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn extract_array_type(
+    async fn extract_array_type(
         &self,
-        node: &DebuggingInformationEntry<GimliReader>,
+        node: &DebuggingInformationEntry<'_, '_, GimliReader>,
         debug_info: &DebugInfo,
         parent_variable: &Variable,
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo,
+        frame_info: StackFrameInfo<'_>,
         cache: &mut VariableCache,
     ) -> Result<(), DebugError> {
         let subranges = match self.extract_array_range(node.offset()) {
@@ -1346,7 +1374,8 @@ impl UnitInfo {
                     child_variable,
                     memory,
                     frame_info,
-                )?;
+                )
+                .await?;
 
                 // Now we can explode the array members.
                 if let Ok(array_member_type_node) = self.unit.entry(unit_ref) {
@@ -1361,7 +1390,8 @@ impl UnitInfo {
                         memory,
                         &subranges,
                         frame_info,
-                    )?;
+                    )
+                    .await?;
                 };
             }
             Ok(Some(other_attribute_value)) => {
@@ -1386,15 +1416,15 @@ impl UnitInfo {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn extract_enumeration_type(
+    async fn extract_enumeration_type(
         &self,
         child_variable: &mut Variable,
         type_name: Option<String>,
         debug_info: &DebugInfo,
-        node: &DebuggingInformationEntry<GimliReader>,
+        node: &DebuggingInformationEntry<'_, '_, GimliReader>,
         parent_variable: &Variable,
         memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo,
+        frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         child_variable.type_name =
             VariableType::Enum(type_name.unwrap_or_else(|| "<unnamed enum>".to_string()));
@@ -1406,7 +1436,8 @@ impl UnitInfo {
             child_variable,
             memory,
             frame_info,
-        )?;
+        )
+        .await?;
 
         let mut tree = self.unit.entries_tree(Some(node.offset()))?;
         let enumerator_values = self.process_enumerator(debug_info, tree.root()?)?;
@@ -1418,7 +1449,9 @@ impl UnitInfo {
         let value = if let VariableLocation::Address(address) = child_variable.memory_location {
             // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
             let mut buff = 0u8;
-            memory.read(address, std::slice::from_mut(&mut buff))?;
+            memory
+                .read(address, std::slice::from_mut(&mut buff))
+                .await?;
             let this_enum_const_value = buff.to_string();
 
             let enumumerator_value = match enumerator_values
@@ -1501,10 +1534,10 @@ impl UnitInfo {
 
     /// Create child variable entries to represent array members and their values.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn expand_array_members(
+    pub(crate) async fn expand_array_members(
         &self,
         debug_info: &DebugInfo,
-        array_member_type_node: &DebuggingInformationEntry<GimliReader>,
+        array_member_type_node: &DebuggingInformationEntry<'_, '_, GimliReader>,
         cache: &mut VariableCache,
         array_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
@@ -1546,12 +1579,13 @@ impl UnitInfo {
                 &mut array_member_variable,
                 memory,
                 frame_info,
-            )?;
+            )
+            .await?;
 
             if !remaining_ranges.is_empty() {
                 // Recursively process the nested array and place
                 // its items under the current variable.
-                self.expand_array_members(
+                Box::pin(self.expand_array_members(
                     debug_info,
                     array_member_type_node,
                     cache,
@@ -1559,9 +1593,10 @@ impl UnitInfo {
                     memory,
                     remaining_ranges,
                     frame_info,
-                )?;
+                ))
+                .await?;
             } else {
-                self.extract_type(
+                Box::pin(self.extract_type(
                     debug_info,
                     array_member_type_node,
                     array_variable,
@@ -1569,7 +1604,8 @@ impl UnitInfo {
                     memory,
                     cache,
                     frame_info,
-                )?;
+                ))
+                .await?;
             }
 
             if member_index == explode_range.start {
@@ -1584,7 +1620,7 @@ impl UnitInfo {
                 }
             }
 
-            array_member_variable.extract_value(memory, cache);
+            array_member_variable.extract_value(memory, cache).await;
             cache.update_variable(&array_member_variable)?;
         }
 
@@ -1599,10 +1635,10 @@ impl UnitInfo {
 
     /// Process a memory location for a variable, by first evaluating the `byte_size`, and then calling the `self.extract_location`.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn process_memory_location(
+    pub(crate) async fn process_memory_location(
         &self,
         debug_info: &DebugInfo,
-        node_die: &gimli::DebuggingInformationEntry<GimliReader>,
+        node_die: &gimli::DebuggingInformationEntry<'_, '_, GimliReader>,
         parent_variable: &Variable,
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
@@ -1630,13 +1666,16 @@ impl UnitInfo {
 
         if child_variable.memory_location == VariableLocation::Unknown {
             // Any expected errors should be handled by one of the variants in the Ok() result.
-            let expression_result = match self.extract_location(
-                debug_info,
-                node_die,
-                &parent_variable.memory_location,
-                memory,
-                frame_info,
-            ) {
+            let expression_result = match self
+                .extract_location(
+                    debug_info,
+                    node_die,
+                    &parent_variable.memory_location,
+                    memory,
+                    frame_info,
+                )
+                .await
+            {
                 Ok(expr) => expr,
                 Err(debug_error) => {
                     // An Err() result indicates something happened that we have not accounted for. Currently, we support all known location expressions for non-optimized code.
@@ -1683,7 +1722,8 @@ impl UnitInfo {
             child_variable,
             parent_variable,
             memory,
-        );
+        )
+        .await;
 
         Ok(())
     }
@@ -1694,10 +1734,10 @@ impl UnitInfo {
     /// - `Result<_, DebugError>`: This happens when we encounter an error we did not expect, and will propagate upwards until the debugger request is failed. **NOT GRACEFUL**, and should be avoided.
     /// - `Result<ExpressionResult::Value(),_>`: The value is statically stored in the binary, and can be returned, and has no relevant memory location.
     /// - `Result<ExpressionResult::Location(),_>`: One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
-    pub(crate) fn extract_location(
+    pub(crate) async fn extract_location(
         &self,
         debug_info: &DebugInfo,
-        node_die: &gimli::DebuggingInformationEntry<GimliReader>,
+        node_die: &gimli::DebuggingInformationEntry<'_, '_, GimliReader>,
         parent_location: &VariableLocation,
         memory: &mut dyn MemoryInterface,
         frame_info: StackFrameInfo<'_>,
@@ -1728,6 +1768,7 @@ impl UnitInfo {
                 | gimli::DW_AT_data_member_location => match attr.value() {
                     gimli::AttributeValue::Exprloc(expression) => self
                         .evaluate_expression(memory, expression, frame_info)
+                        .await
                         .convert_incomplete()?,
 
                     gimli::AttributeValue::Udata(offset_from_location) => {
@@ -1753,6 +1794,7 @@ impl UnitInfo {
                             frame_info,
                             memory,
                         )
+                        .await
                         .convert_incomplete()?,
 
                     other_attribute_value => {
@@ -1796,7 +1838,7 @@ impl UnitInfo {
         Ok(ExpressionResult::Location(VariableLocation::Unknown))
     }
 
-    fn evaluate_location_list_ref(
+    async fn evaluate_location_list_ref(
         &self,
         debug_info: &DebugInfo,
         location_list_offset: gimli::LocationListsOffset,
@@ -1852,6 +1894,7 @@ impl UnitInfo {
         };
 
         self.evaluate_expression(memory, valid_expression, frame_info)
+            .await
     }
 
     /// Evaluate a [`gimli::Expression`] as a valid memory location.
@@ -1859,14 +1902,19 @@ impl UnitInfo {
     /// - `Result<_, DebugError>`: This happens when we encounter an error we did not expect, and will propagate upwards until the debugger request is failed. NOT GRACEFUL, and should be avoided.
     /// - `Result<ExpressionResult::Value(),_>`: The value is statically stored in the binary, and can be returned, and has no relevant memory location.
     /// - `Result<ExpressionResult::Location(),_>`: One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
-    pub(crate) fn evaluate_expression(
+    pub(crate) async fn evaluate_expression(
         &self,
         memory: &mut dyn MemoryInterface,
         expression: gimli::Expression<GimliReader>,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<ExpressionResult, DebugError> {
-        fn evaluate_address(address: u64, memory: &mut dyn MemoryInterface) -> ExpressionResult {
-            let location = if address >= u32::MAX as u64 && !memory.supports_native_64bit_access() {
+        async fn evaluate_address(
+            address: u64,
+            memory: &mut dyn MemoryInterface,
+        ) -> ExpressionResult {
+            let location = if address >= u32::MAX as u64
+                && !memory.supports_native_64bit_access().await
+            {
                 VariableLocation::Error(format!(
                     "The memory location for this variable value ({:#010X}) is invalid. Please report this as a bug.",
                     address
@@ -1878,7 +1926,9 @@ impl UnitInfo {
             ExpressionResult::Location(location)
         }
 
-        let pieces = self.expression_to_piece(memory, expression, frame_info)?;
+        let pieces = self
+            .expression_to_piece(memory, expression, frame_info)
+            .await?;
 
         if pieces.is_empty() {
             return Ok(ExpressionResult::Location(VariableLocation::Error(
@@ -1900,7 +1950,7 @@ impl UnitInfo {
                 let error = "The value of this variable may have been optimized out of the debug info, by the compiler.".to_string();
                 ExpressionResult::Location(VariableLocation::Error(error))
             }
-            Location::Address { address } => evaluate_address(*address, memory),
+            Location::Address { address } => evaluate_address(*address, memory).await,
             Location::Value { value } => {
                 let value = match value {
                     gimli::Value::Generic(value) => value.to_string(),
@@ -1941,7 +1991,7 @@ impl UnitInfo {
     }
 
     /// Tries to get the result of a DWARF expression in the form of a Piece.
-    pub(crate) fn expression_to_piece(
+    pub(crate) async fn expression_to_piece(
         &self,
         memory: &mut dyn MemoryInterface,
         expression: gimli::Expression<GimliReader>,
@@ -1954,7 +2004,7 @@ impl UnitInfo {
             result = match result {
                 EvaluationResult::Complete => return Ok(evaluation.result()),
                 EvaluationResult::RequiresMemory { address, size, .. } => {
-                    read_memory(size, memory, address, &mut evaluation)?
+                    read_memory(size, memory, address, &mut evaluation).await?
                 }
                 EvaluationResult::RequiresFrameBase => {
                     provide_frame_base(frame_info.frame_base, &mut evaluation)?
@@ -1984,7 +2034,7 @@ impl UnitInfo {
     /// A helper function, to handle memory_location for special cases, such as array members, pointers, and intermediate nodes.
     /// Normally, the memory_location is calculated before the type is calculated,
     ///     but special cases require the type related info of the variable to correctly compute the memory_location.
-    fn handle_memory_location_special_cases(
+    async fn handle_memory_location_special_cases(
         &self,
         unit_ref: UnitOffset,
         child_variable: &mut Variable,
@@ -2019,7 +2069,7 @@ impl UnitInfo {
                     address @ (VariableLocation::Address(_)
                     | VariableLocation::RegisterValue(_)) => {
                         // Now, retrieve the location by reading the adddress pointed to by the parent variable.
-                        match memory.read_word_32(address.memory_address().unwrap()) {
+                        match memory.read_word_32(address.memory_address().unwrap()).await {
                             Ok(memory_location) => {
                                 VariableLocation::Address(memory_location as u64)
                             }
@@ -2377,19 +2427,19 @@ fn provide_cfa(
 }
 
 /// Reads memory requested by the DWARF resolver.
-fn read_memory(
+async fn read_memory(
     size: u8,
     memory: &mut dyn MemoryInterface,
     address: u64,
     evaluation: &mut gimli::Evaluation<EndianReader>,
 ) -> Result<EvaluationResult<EndianReader>, DebugError> {
     /// Reads `SIZE` bytes from the memory.
-    fn read<const SIZE: usize>(
+    async fn read<const SIZE: usize>(
         memory: &mut dyn MemoryInterface,
         address: u64,
     ) -> Result<[u8; SIZE], DebugError> {
         let mut buff = [0u8; SIZE];
-        memory.read(address, &mut buff).map_err(|error| {
+        memory.read(address, &mut buff).await.map_err(|error| {
             DebugError::WarnAndContinue {
                 message: format!("Unexpected error while reading debug expressions from target memory: {error:?}. Please report this as a bug.")
             }
@@ -2399,15 +2449,15 @@ fn read_memory(
 
     let val = match size {
         1 => {
-            let buff = read::<1>(memory, address)?;
+            let buff = read::<1>(memory, address).await?;
             gimli::Value::U8(buff[0])
         }
         2 => {
-            let buff = read::<2>(memory, address)?;
+            let buff = read::<2>(memory, address).await?;
             gimli::Value::U16(u16::from_le_bytes(buff))
         }
         4 => {
-            let buff = read::<4>(memory, address)?;
+            let buff = read::<4>(memory, address).await?;
             gimli::Value::U32(u32::from_le_bytes(buff))
         }
         x => {

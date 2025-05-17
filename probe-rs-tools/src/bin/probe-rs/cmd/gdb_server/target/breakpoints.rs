@@ -27,15 +27,17 @@ impl HwBreakpoint for RuntimeTarget<'_> {
         addr: u64,
         _kind: <Self::Arch as Arch>::BreakpointKind,
     ) -> gdbstub::target::TargetResult<bool, Self> {
-        let mut session = self.session.lock();
+        pollster::block_on(async move {
+            let mut session = self.session.lock().await;
 
-        for core_id in &self.cores {
-            let mut core = session.core(*core_id).into_target_result()?;
+            for core_id in &self.cores {
+                let mut core = session.core(*core_id).await.into_target_result()?;
 
-            core.set_hw_breakpoint(addr).into_target_result()?;
-        }
+                core.set_hw_breakpoint(addr).await.into_target_result()?;
+            }
 
-        Ok(true)
+            Ok(true)
+        })
     }
 
     fn remove_hw_breakpoint(
@@ -43,14 +45,16 @@ impl HwBreakpoint for RuntimeTarget<'_> {
         addr: u64,
         _kind: <Self::Arch as Arch>::BreakpointKind,
     ) -> gdbstub::target::TargetResult<bool, Self> {
-        let mut session = self.session.lock();
+        pollster::block_on(async move {
+            let mut session = self.session.lock().await;
 
-        for core_id in &self.cores {
-            let mut core = session.core(*core_id).into_target_result()?;
+            for core_id in &self.cores {
+                let mut core = session.core(*core_id).await.into_target_result()?;
 
-            core.clear_hw_breakpoint(addr).into_target_result()?;
-        }
+                core.clear_hw_breakpoint(addr).await.into_target_result()?;
+            }
 
-        Ok(true)
+            Ok(true)
+        })
     }
 }

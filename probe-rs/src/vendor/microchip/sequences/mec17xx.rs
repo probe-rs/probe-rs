@@ -25,7 +25,7 @@ impl Mec172x {
     }
 
     /// Release the CPU core from Reset Extension
-    pub fn release_reset_extension(
+    pub async fn release_reset_extension(
         &self,
         memory: &mut dyn ArmMemoryInterface,
     ) -> Result<(), ArmError> {
@@ -34,31 +34,37 @@ impl Mec172x {
         dhcsr.enable_write();
         dhcsr.set_c_halt(true);
         dhcsr.set_c_debugen(true);
-        memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        memory.flush()?;
+        memory
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+            .await?;
+        memory.flush().await?;
 
         // Clear VECTOR CATCH and set TRCENA
-        let mut demcr: Demcr = memory.read_word_32(Demcr::get_mmio_address())?.into();
+        let mut demcr: Demcr = memory.read_word_32(Demcr::get_mmio_address()).await?.into();
         demcr.set_trcena(true);
-        memory.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
-        memory.flush()?;
+        memory
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())
+            .await?;
+        memory.flush().await?;
 
         Ok(())
     }
 
     /// Halt or unhalt the core.
-    fn halt(&self, memory: &mut dyn ArmMemoryInterface, halt: bool) -> Result<(), ArmError> {
-        let mut dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+    async fn halt(&self, memory: &mut dyn ArmMemoryInterface, halt: bool) -> Result<(), ArmError> {
+        let mut dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address()).await?);
         dhcsr.set_c_halt(halt);
         dhcsr.set_c_debugen(true);
         dhcsr.enable_write();
-        memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        memory.flush()?;
+        memory
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())
+            .await?;
+        memory.flush().await?;
 
         let start = Instant::now();
         let action = if halt { "halt" } else { "unhalt" };
 
-        while Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?).s_halt() != halt {
+        while Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address()).await?).s_halt() != halt {
             if start.elapsed() > Duration::from_millis(100) {
                 tracing::debug!("Exceeded timeout while waiting for the core to {action}");
                 return Err(ArmError::Timeout);
@@ -70,7 +76,7 @@ impl Mec172x {
     }
 
     /// Poll the AP's status until it can accept transfers.
-    fn wait_for_enable(
+    async fn wait_for_enable(
         &self,
         memory: &mut dyn ArmMemoryInterface,
         timeout: Duration,
@@ -80,7 +86,7 @@ impl Mec172x {
         let mut disables = 0usize;
 
         loop {
-            match memory.generic_status() {
+            match memory.generic_status().await {
                 Ok(csw) if csw.DeviceEn => {
                     tracing::debug!(
                         "Device enabled after {}ms with {errors} errors and {disables} invalid statuses",
@@ -105,8 +111,9 @@ impl Mec172x {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for Mec172x {
-    fn debug_core_start(
+    async fn debug_core_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
         core_ap: &FullyQualifiedApAddress,
@@ -114,12 +121,12 @@ impl ArmDebugSequence for Mec172x {
         _debug_base: Option<u64>,
         _cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        let mut core = interface.memory_interface(core_ap)?;
+        let mut core = interface.memory_interface(core_ap).await?;
 
-        self.release_reset_extension(&mut *core)
+        self.release_reset_extension(&mut *core).await
     }
 
-    fn reset_system(
+    async fn reset_system(
         &self,
         memory: &mut dyn ArmMemoryInterface,
         core_type: CoreType,
@@ -132,8 +139,9 @@ impl ArmDebugSequence for Mec172x {
         aircr.set_sysresetreq(true);
         memory
             .write_word_32(Aircr::get_mmio_address(), aircr.into())
+            .await
             .ok();
-        memory.flush().ok();
+        memory.flush().await.ok();
 
         // If all goes well, we lost the debug port. Thanks, boot ROM. Let's bring it back.
         //
@@ -141,16 +149,18 @@ impl ArmDebugSequence for Mec172x {
         // Re-initializing the core(s) is on us.
         let ap = memory.fully_qualified_address();
         let interface = memory.get_arm_probe_interface()?;
-        interface.reinitialize()?;
+        interface.reinitialize().await?;
 
         assert!(debug_base.is_none());
-        self.debug_core_start(interface, &ap, core_type, None, None)?;
+        self.debug_core_start(interface, &ap, core_type, None, None)
+            .await?;
 
         // Are we back?
-        self.wait_for_enable(memory, Duration::from_millis(300))?;
+        self.wait_for_enable(memory, Duration::from_millis(300))
+            .await?;
 
         // We're back. Halt the core so we can establish the reset context.
-        self.halt(memory, true)?;
+        self.halt(memory, true).await?;
 
         Ok(())
     }

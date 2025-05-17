@@ -8,8 +8,8 @@ mod traits;
 mod utils;
 
 use super::arch::RuntimeArch;
-use parking_lot::FairMutex;
 use probe_rs::{BreakpointCause, CoreStatus, Error, HaltReason, Session};
+use tokio::sync::Mutex;
 
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::num::NonZeroUsize;
@@ -44,7 +44,7 @@ pub(crate) enum ResumeAction {
 /// The top level gdbstub target for a probe-rs debug session
 pub(crate) struct RuntimeTarget<'a> {
     /// The probe-rs session object
-    session: &'a FairMutex<Session>,
+    session: &'a Mutex<Session>,
     /// A list of core IDs for this stub
     cores: Vec<usize>,
 
@@ -62,7 +62,7 @@ pub(crate) struct RuntimeTarget<'a> {
 impl<'a> RuntimeTarget<'a> {
     /// Create a new RuntimeTarget and get ready to start processing GDB input
     pub fn new(
-        session: &'a FairMutex<Session>,
+        session: &'a Mutex<Session>,
         cores: Vec<usize>,
         addrs: &[SocketAddr],
     ) -> Result<Self, anyhow::Error> {
@@ -82,7 +82,7 @@ impl<'a> RuntimeTarget<'a> {
     /// Process any pending work for this target
     ///
     /// Returns: Duration to wait before processing this target again
-    pub fn process(&mut self) -> Result<Duration, anyhow::Error> {
+    pub async fn process(&mut self) -> Result<Duration, anyhow::Error> {
         // State 1 - unconnected
         if self.gdb.is_none() {
             // See if we have a connection
@@ -101,8 +101,8 @@ impl<'a> RuntimeTarget<'a> {
 
             // When we first attach to the core, GDB expects us to halt the core,
             // so we do this here when a new client connects.
-            self.halt_all_cores()?;
-            self.load_target_desc()?;
+            self.halt_all_cores().await?;
+            self.load_target_desc().await?;
 
             // Start the GDB Stub state machine
             // Any errors at this state are either IO errors or fatal config errors
@@ -122,8 +122,10 @@ impl<'a> RuntimeTarget<'a> {
 
         self.gdb = match gdb {
             GdbStubStateMachine::Idle(state) => self.handle_idle(state, &mut wait_time)?,
-            GdbStubStateMachine::Running(state) => self.handle_running(state, &mut wait_time)?,
-            GdbStubStateMachine::CtrlCInterrupt(state) => self.handle_ctrl_c(state)?,
+            GdbStubStateMachine::Running(state) => {
+                self.handle_running(state, &mut wait_time).await?
+            }
+            GdbStubStateMachine::CtrlCInterrupt(state) => self.handle_ctrl_c(state).await?,
             GdbStubStateMachine::Disconnected(state) => {
                 tracing::info!("GDB client disconnected: {:?}", state.get_reason());
 
@@ -134,13 +136,13 @@ impl<'a> RuntimeTarget<'a> {
         Ok(wait_time)
     }
 
-    fn halt_all_cores(&mut self) -> Result<(), Error> {
-        let mut session = self.session.lock();
+    async fn halt_all_cores(&mut self) -> Result<(), Error> {
+        let mut session = self.session.lock().await;
 
         for i in &self.cores {
-            let mut core = session.core(*i)?;
-            if !core.core_halted()? {
-                core.halt(Duration::from_millis(100))?;
+            let mut core = session.core(*i).await?;
+            if !core.core_halted().await? {
+                core.halt(Duration::from_millis(100)).await?;
             }
         }
 
@@ -168,7 +170,7 @@ impl<'a> RuntimeTarget<'a> {
         Ok(Some(next_state))
     }
 
-    fn handle_running<'b>(
+    async fn handle_running<'b>(
         &mut self,
         mut state: GdbStubStateMachineInner<'b, state::Running, Self, TcpStream>,
         wait_time: &mut Duration,
@@ -186,11 +188,11 @@ impl<'a> RuntimeTarget<'a> {
         // Check for break
         let mut stop_reason: Option<MultiThreadStopReason<u64>> = None;
         {
-            let mut session = self.session.lock();
+            let mut session = self.session.lock().await;
 
             for i in &self.cores {
-                let mut core = session.core(*i)?;
-                let CoreStatus::Halted(reason) = core.status()? else {
+                let mut core = session.core(*i).await?;
+                let CoreStatus::Halted(reason) = core.status().await? else {
                     continue;
                 };
 
@@ -216,7 +218,7 @@ impl<'a> RuntimeTarget<'a> {
         let next_state = if let Some(reason) = stop_reason {
             // Halt all remaining cores that are still running.
             // GDB expects all or nothing stops.
-            self.halt_all_cores()?;
+            self.halt_all_cores().await?;
             state.report_stop(self, reason)?
         } else {
             *wait_time = Duration::from_millis(10);
@@ -226,11 +228,11 @@ impl<'a> RuntimeTarget<'a> {
         Ok(Some(next_state))
     }
 
-    fn handle_ctrl_c<'b>(
+    async fn handle_ctrl_c<'b>(
         &mut self,
         state: GdbStubStateMachineInner<'b, state::CtrlCInterrupt, Self, TcpStream>,
     ) -> Result<Option<GdbStubStateMachine<'b, Self, TcpStream>>, anyhow::Error> {
-        self.halt_all_cores()?;
+        self.halt_all_cores().await?;
         let next_state =
             state.interrupt_handled(self, Some(MultiThreadStopReason::Signal(Signal::SIGINT)))?;
 

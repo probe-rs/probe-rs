@@ -9,8 +9,9 @@ use probe_rs::{MemoryInterface, RegisterRole, RegisterValue};
 
 pub struct XtensaExceptionHandler;
 
+#[async_trait::async_trait(?Send)]
 impl ExceptionInterface for XtensaExceptionHandler {
-    fn unwind_without_debuginfo(
+    async fn unwind_without_debuginfo(
         &self,
         unwind_registers: &mut DebugRegisters,
         frame_pc: u64,
@@ -58,7 +59,7 @@ impl ExceptionInterface for XtensaExceptionHandler {
 
         // Read A0-A3 from current stack frame's Register-Spill Area.
         let mut stack_frame = [0; 4];
-        if let Err(e) = memory.read_32(sp - 16, &mut stack_frame) {
+        if let Err(e) = memory.read_32(sp - 16, &mut stack_frame).await {
             // FP points at something we can't read.
             return ControlFlow::Break(Some(e.into()));
         }
@@ -92,7 +93,7 @@ impl ExceptionInterface for XtensaExceptionHandler {
 
         if windowsize > 1 {
             // The rest of the registers are in the previous stack frame.
-            let frame_sp = match memory.read_word_32(caller_sp as u64 - 12) {
+            let frame_sp = match memory.read_word_32(caller_sp as u64 - 12).await {
                 Ok(sp) => sp,
                 Err(e) => {
                     // FP points at something we can't read.
@@ -108,10 +109,13 @@ impl ExceptionInterface for XtensaExceptionHandler {
             let frame_to_read = &mut frame[..regs_to_read as usize];
 
             // For windowsize = 3(12 registers), the offset is -48
-            if let Err(e) = memory.read_32(
-                frame_sp as u64 - 16 - 4 * regs_to_read,
-                &mut frame_to_read[..],
-            ) {
+            if let Err(e) = memory
+                .read_32(
+                    frame_sp as u64 - 16 - 4 * regs_to_read,
+                    &mut frame_to_read[..],
+                )
+                .await
+            {
                 // FP points at something we can't read.
                 return ControlFlow::Break(Some(e.into()));
             }

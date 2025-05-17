@@ -57,7 +57,7 @@ impl ServerState {
     }
 }
 
-async fn server_info() -> Html<String> {
+async fn server_info(state: State<Arc<ServerState>>) -> Html<String> {
     let mut body = String::new();
     body.push_str("<!DOCTYPE html>");
     body.push_str("<html>");
@@ -67,7 +67,8 @@ async fn server_info() -> Html<String> {
     body.push_str("<body>");
     body.push_str("<h1>probe-rs status</h1>");
 
-    let probes = Lister::new().list_all();
+    // TODO: Make this work properly (DebugProbeInfo is not Send/Sync and thus axum/tokio are not happy)
+    let probes = Lister::new().list_all().await;
     if probes.is_empty() {
         body.push_str("<p>No probes connected</p>");
     } else {
@@ -105,10 +106,9 @@ impl Cmd {
 
         let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(64);
 
-        let set = LocalSet::new();
         let state = Arc::new(ServerState::new(config, request_tx));
 
-        set.spawn_local({
+        tokio::task::spawn_local({
             let state = state.clone();
             async move {
                 while let Some((socket, challenge)) = request_rx.recv().await {
@@ -119,16 +119,14 @@ impl Cmd {
         });
 
         let app = Router::new()
-            .route("/", get(server_info))
+            // TODO:
+            // .route("/", get(server_info))
             .route("/worker", any(ws_handler))
             .with_state(state);
 
         tracing::info!("listening on {}", listener.local_addr().unwrap());
 
-        let (result, _) = tokio::join! {
-            axum::serve(listener, app),
-            set,
-        };
+        let result = axum::serve(listener, app).await;
 
         result.unwrap();
 
