@@ -106,10 +106,9 @@ impl Cmd {
 
         let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(64);
 
-        let set = LocalSet::new();
         let state = Arc::new(ServerState::new(config, request_tx));
 
-        set.spawn_local({
+        tokio::task::spawn_local({
             let state = state.clone();
             async move {
                 while let Some((socket, challenge)) = request_rx.recv().await {
@@ -127,10 +126,7 @@ impl Cmd {
 
         tracing::info!("listening on {}", listener.local_addr().unwrap());
 
-        let (result, _) = tokio::join! {
-            axum::serve(listener, app),
-            set,
-        };
+        let result = axum::serve(listener, app).await;
 
         result.unwrap();
 
