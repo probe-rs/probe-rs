@@ -3008,7 +3008,6 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "serialport",
- "termtree",
  "test-case",
  "test-log",
  "thiserror 2.0.12",
