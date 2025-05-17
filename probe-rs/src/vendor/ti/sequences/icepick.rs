@@ -20,7 +20,7 @@ const IR_LEN_IN_BITS: u8 = 6;
 /// Write to register 0 in the Debug TAP linking block (Section 6.3.4.3)
 /// Namely:
 /// * [20]   : `InhibitSleep`
-/// * [16:14]: `ResetControl == Reset`
+/// * [16:14]: `ResetControl == Normal`
 /// * [8]    : `SelectTAP == 1`
 /// * [3]    : `ForceActive == Enable clocks`
 const SD_TAP_DEFAULT: u32 = (1 << 20) | (1 << 8) | (1 << 3);

@@ -1,4 +1,4 @@
-//! Sequences for tms570 devices
+//! Sequences for TMS570 devices
 //!
 //! The sequence used for catching a reset from Section 3 of the document
 //! [JTAG Programmer Overview for Hercules-based Microcontrollers](https://www.ti.com/lit/an/spna230/spna230.pdf),
@@ -20,6 +20,7 @@ use crate::probe::WireProtocol;
 
 use super::icepick::Icepick;
 
+/// The TMS570 is at index 0 in the TAP chain
 const TMS570_TAP_INDEX: u8 = 0;
 
 /// How long to wait for the core to halt.
@@ -99,12 +100,12 @@ impl ArmDebugSequence for TMS570 {
 
         // TMS570 has ECC RAM. Ensure it's cleared to avoid cascading failures. Without
         // this, writes to SRAM will trap, preventing execution from RAM.
-        write_word_32(memory, base_address, 0xffff_ff5c, 0xau32)?;
-        write_word_32(memory, base_address, 0xffff_ff60, 1u32)?;
-        while read_word_32(memory, base_address, 0xffff_ff68)? & (1u32 << 8) == 0 {
+        write_word_32(memory, base_address, 0xffff_ff5c, 0xa)?;
+        write_word_32(memory, base_address, 0xffff_ff60, 1)?;
+        while read_word_32(memory, base_address, 0xffff_ff68)? & (1 << 8) == 0 {
             std::thread::sleep(Duration::from_millis(1));
         }
-        write_word_32(memory, base_address, 0xffff_ff5c, 0x5u32)?;
+        write_word_32(memory, base_address, 0xffff_ff5c, 0x5)?;
 
         Ok(())
     }
