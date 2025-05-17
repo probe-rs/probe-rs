@@ -88,7 +88,7 @@ pub trait StLinkUsb: std::fmt::Debug {
 // Copy of `Selector::matches` except it uses the stlink-specific read_serial_number
 // to handle the broken stlink-v2 serial numbers that need hex-encoding.
 fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
-    let res = info.vendor_id() == selector.vendor_id
+    info.vendor_id() == selector.vendor_id
         && info.product_id() == selector.product_id
         && selector
             .serial_number
@@ -100,9 +100,7 @@ fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
                     s.is_empty()
                 }
             })
-            .unwrap_or(true);
-
-    res
+            .unwrap_or(true)
 }
 
 impl StLinkUsbDevice {

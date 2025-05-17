@@ -31,13 +31,10 @@ impl SvdVariableCache {
     /// Retrieve all the children of a `Variable`.
     /// If `parent_key == None`, it will return all the top level variables (no parents) in this cache.
     pub fn get_children(&self, parent_key: ObjectRef) -> Vec<&Variable> {
-        let children = self
-            .variable_hash_map
+        self.variable_hash_map
             .values()
             .filter(|child_variable| child_variable.parent_key == parent_key)
-            .collect::<Vec<_>>();
-
-        children
+            .collect::<Vec<_>>()
     }
 
     /// Retrieve a specific `Variable`, using the `variable_key`.
