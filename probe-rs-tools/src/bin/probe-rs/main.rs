@@ -430,7 +430,7 @@ fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<&'list 
     None
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.
@@ -498,10 +498,9 @@ async fn main() -> Result<()> {
         let host = host.to_string();
         let token = cli.token.clone();
         // Run the command remotely.
-        let local = LocalSet::new();
-        let client = local
-            .spawn_local(async move { rpc::client::connect(&host, token).await })
-            .await??;
+        let client =
+            tokio::task::spawn_local(async move { rpc::client::connect(&host, token).await })
+                .await??;
 
         anyhow::ensure!(
             cli.subcommand.is_remote_cmd(),
@@ -515,18 +514,14 @@ async fn main() -> Result<()> {
 
     // Create a local server to run commands against.
     let (mut local_server, tx, rx) = RpcApp::create_server(16, rpc::functions::ProbeAccess::All);
-    let local = LocalSet::new();
-    let handle = local.spawn_local(async move { local_server.run().await });
+    let handle = tokio::task::spawn_local(async move { local_server.run().await });
 
     // Run the command locally.
     let client = RpcClient::new_local_from_wire(tx, rx);
     let result = cli.run(client, config, utc_offset).await;
 
     // Wait for the server to shut down
-    let (_, _) = tokio::join! {
-        handle,
-        local,
-    };
+    handle.await?;
 
     compile_report(result, report_path, elf, log_path.as_deref())
 }

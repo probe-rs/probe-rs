@@ -103,8 +103,7 @@ mod test {
         // Create a local server to run commands against.
         let (mut local_server, tx, rx) =
             RpcApp::create_server(16, crate::rpc::functions::ProbeAccess::All);
-        let local = LocalSet::new();
-        let handle = local.spawn_local(async move { local_server.run().await });
+        let handle = tokio::task::spawn_local(async move { local_server.run().await });
 
         // Run the command locally.
         let client = RpcClient::new_local_from_wire(tx, rx);
@@ -112,10 +111,7 @@ mod test {
         f(client).await;
 
         // Wait for the server to shut down
-        let (_, _) = tokio::join! {
-            handle,
-            local,
-        };
+        handle.await;
     }
 
     #[tokio::test]
