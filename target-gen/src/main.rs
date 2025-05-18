@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, ensure};
 use clap::Parser;
-use probe_rs::probe::WireProtocol;
+use probe_rs::probe::{DebugProbeSelector, WireProtocol};
 use probe_rs_target::ChipFamily;
 use std::{
     env::current_dir,
@@ -105,6 +105,12 @@ enum TargetGen {
         /// Name of the flash algorithm to test
         #[clap(long = "name", short = 'n')]
         name: Option<String>,
+        /// Use this flag to select a specific probe in the list.
+        ///
+        /// Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one
+        /// probe with the same VID:PID.",
+        #[arg(long)]
+        probe: Option<DebugProbeSelector>,
         /// Speed to run the probe at
         #[clap(long = "speed", default_value = None)]
         speed: Option<u32>,
@@ -167,6 +173,7 @@ async fn main() -> Result<()> {
             name,
             speed,
             protocol,
+            probe,
         } => cmd_test(
             target_artifact.as_path(),
             template_path.as_path(),
@@ -174,6 +181,7 @@ async fn main() -> Result<()> {
             test_start_sector_address,
             chip,
             name,
+            probe,
             speed,
             protocol,
         )?,
