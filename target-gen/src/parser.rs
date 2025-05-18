@@ -77,6 +77,13 @@ pub fn extract_flash_algo(
     let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, buffer)?;
     algo.instructions = algorithm_binary.blob();
 
+    // Flash algorithms are all little endian. Swap the algorithm if necessary.
+    if !elf.little_endian {
+        for instruction in algo.instructions.chunks_exact_mut(4) {
+            instruction.reverse();
+        }
+    }
+
     let code_section_offset = algorithm_binary.code_section.start;
 
     // Extract the function pointers,
