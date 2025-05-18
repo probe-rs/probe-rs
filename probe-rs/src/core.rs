@@ -1,5 +1,5 @@
 use crate::{
-    CoreType, InstructionSet, MemoryInterface, Target,
+    CoreType, Endian, InstructionSet, MemoryInterface, Target,
     architecture::{
         arm::sequences::ArmDebugSequence, riscv::sequences::RiscvDebugSequence,
         xtensa::sequences::XtensaDebugSequence,
@@ -131,6 +131,13 @@ pub trait CoreInterface: MemoryInterface {
     /// This must be queried while halted as this is a runtime
     /// decision for some core types
     fn instruction_set(&mut self) -> Result<InstructionSet, Error>;
+
+    /// Return which endianness the core is currently in. Some cores
+    /// allow for changing the endianness.
+    fn endianness(&mut self) -> Result<Endian, Error> {
+        // Return little endian, since that is the most common mode by far.
+        Ok(Endian::Little)
+    }
 
     /// Determine if an FPU is present.
     /// This must be queried while halted as this is a runtime
