@@ -400,6 +400,10 @@ where
         self.memory_mut().read_8(address, data).map_err(Error::from)
     }
 
+    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        self.memory_mut().read(address, data).map_err(Error::from)
+    }
+
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         self.memory_mut()
             .write_word_64(address, data)
