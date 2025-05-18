@@ -58,12 +58,13 @@ fn extract_flash_device(elf: &goblin::elf::Elf, buffer: &[u8]) -> Result<FlashDe
 
 /// Extracts a position & memory independent flash algorithm blob from the provided ELF file.
 pub fn extract_flash_algo(
+    existing_algo: Option<RawFlashAlgorithm>,
     buffer: &[u8],
     file_name: &std::path::Path,
     default: bool,
     fixed_load_address: bool,
 ) -> Result<RawFlashAlgorithm> {
-    let mut algo = RawFlashAlgorithm::default();
+    let mut algo = existing_algo.unwrap_or_default();
 
     let elf = goblin::elf::Elf::parse(buffer)?;
 
