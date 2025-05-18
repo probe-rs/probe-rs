@@ -12,7 +12,7 @@ use probe_rs::{
         DownloadOptions, FlashLoader, FlashProgress, ProgressEvent, ProgressOperation, erase_all,
         erase_sectors,
     },
-    probe::WireProtocol,
+    probe::{DebugProbeSelector, WireProtocol, list::Lister},
 };
 use probe_rs_target::RawFlashAlgorithm;
 use xshell::{Shell, cmd};
@@ -27,6 +27,7 @@ pub fn cmd_test(
     test_start_sector_address: Option<u64>,
     chip: Option<String>,
     name: Option<String>,
+    probe: Option<DebugProbeSelector>,
     speed: Option<u32>,
     protocol: Option<WireProtocol>,
 ) -> Result<()> {
@@ -97,9 +98,30 @@ pub fn cmd_test(
         protocol,
     };
 
+    let lister = Lister::new();
+    let available_probes = lister.list(probe.as_ref());
+    if available_probes.len() > 1 {
+        return Err(anyhow!(
+            "Multiple probes were found -- please specify a probe with `--probe`"
+        ));
+    }
+    let Some(probe) = available_probes.first() else {
+        return Err(anyhow!("No probes were found"));
+    };
+    let mut probe = probe.open()?;
+
+    // If the caller has specified speed or protocol in SessionConfig, set them
+    if let Some(speed) = session_config.speed {
+        probe.set_speed(speed)?;
+    }
+
+    if let Some(protocol) = session_config.protocol {
+        probe.select_protocol(protocol)?;
+    }
+
     // We need to get the chip name so that special startup procedure can be used. (matched on name)
     let mut session =
-        probe_rs::Session::auto_attach_with_registry(target_name, session_config, &registry)?;
+        probe.attach_with_registry(target_name, session_config.permissions, &registry)?;
 
     // Register callback to update the progress.
     let t = Rc::new(RefCell::new(Instant::now()));
