@@ -49,6 +49,7 @@ where
 {
     let algo_bytes = kind.read_bytes(&flash_algorithm.file_name)?;
     let mut algo = crate::parser::extract_flash_algo(
+        None,
         &algo_bytes,
         &flash_algorithm.file_name,
         flash_algorithm.default,
