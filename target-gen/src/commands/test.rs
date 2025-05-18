@@ -10,7 +10,7 @@ use probe_rs::{
     config::Registry,
     flashing::{
         DownloadOptions, FlashLoader, FlashProgress, ProgressEvent, ProgressOperation, erase_all,
-        erase_sectors,
+        erase_sectors, run_blank_check,
     },
     probe::{DebugProbeSelector, WireProtocol, list::Lister},
 };
@@ -176,7 +176,6 @@ pub fn cmd_test(
     let start_address = flash_properties.address_range.start;
     let end_address = flash_properties.address_range.end;
     let data_size = flash_properties.page_size;
-    let erased_state = flash_properties.erased_byte_value;
     let sector_size = flash_properties.sectors[0].size;
 
     let test_start_sector_address = test_start_sector_address.unwrap_or(start_address);
@@ -201,14 +200,7 @@ pub fn cmd_test(
 
     println!("{test}: Erase done");
 
-    let mut readback = vec![0; (sector_size * 2) as usize];
-    session
-        .core(0)?
-        .read_8(test_start_sector_address, &mut readback)?;
-    assert!(
-        readback.iter().all(|v| *v == erased_state),
-        "Not all sectors were erased"
-    );
+    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2)?;
 
     println!("{test}: Writing two pages ...");
 
@@ -222,20 +214,13 @@ pub fn cmd_test(
     let mut readback = vec![0; data_size as usize];
     session
         .core(0)?
-        .read_8(test_start_sector_address + 1, &mut readback)?;
+        .read(test_start_sector_address + 1, &mut readback)?;
     assert_eq!(readback, data);
 
     println!("{test}: Erasing the entire chip and writing two pages ...");
     run_flash_erase(&mut session, progress.clone(), EraseType::EraseAll)?;
     println!("{test}: Erase done");
-    let mut readback = vec![0; (sector_size * 2) as usize];
-    session
-        .core(0)?
-        .read_8(test_start_sector_address, &mut readback)?;
-    assert!(
-        readback.iter().all(|v| *v == erased_state),
-        "Not all sectors were erased"
-    );
+    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2)?;
 
     println!("{test}: Writing two pages ...");
     let mut loader = session.target().flash_loader();
@@ -259,14 +244,7 @@ pub fn cmd_test(
     )?;
     println!("{test}: Erase done");
 
-    let mut readback = vec![0; (sector_size * 2) as usize];
-    session
-        .core(0)?
-        .read_8(test_start_sector_address, &mut readback)?;
-    assert!(
-        readback.iter().all(|v| *v == erased_state),
-        "Not all sectors were erased"
-    );
+    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2)?;
 
     println!("{test}: Writing two pages ...");
     let mut loader = session.target().flash_loader();

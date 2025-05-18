@@ -4137,6 +4137,7 @@ dependencies = [
  "tokio",
  "tracing-subscriber",
  "xshell",
+ "zerocopy",
  "zip",
 ]
 
