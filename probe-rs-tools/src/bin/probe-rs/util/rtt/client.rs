@@ -229,9 +229,9 @@ impl RttClient {
                 } else {
                     // If we have to scan for the location or we somehow found the magic string
                     // somewhere else, we can only clear the magic string.
-                    let mut magic = [0; Rtt::RTT_ID.len()];
+                    let mut magic = [0; Rtt::RTT_ID_LE.len()];
                     core.read_8(location, &mut magic)?;
-                    if magic == Rtt::RTT_ID {
+                    if magic == Rtt::RTT_ID_LE {
                         core.write_8(location, &[0; 16])?;
                     }
                 }
