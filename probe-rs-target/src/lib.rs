@@ -23,7 +23,7 @@ pub use chip::{
     RiscvJtagTunnel, ScanChainElement, XtensaCoreAccessOptions,
 };
 pub use chip_family::{
-    Architecture, ChipFamily, CoreType, InstructionSet, TargetDescriptionSource,
+    Architecture, ChipFamily, CoreType, Endian, InstructionSet, TargetDescriptionSource,
 };
 pub use flash_algorithm::{RawFlashAlgorithm, TransferEncoding};
 pub use flash_properties::FlashProperties;
