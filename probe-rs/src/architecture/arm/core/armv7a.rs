@@ -1,9 +1,11 @@
 //! Register types and the core interface for armv7-a
 
+use zerocopy::IntoBytes;
+
 use super::{
     CortexAState,
     instructions::aarch32::{
-        build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc, build_vmov,
+        build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_msr, build_stc, build_vmov,
         build_vmrs,
     },
     registers::{
@@ -214,9 +216,14 @@ impl<'probe> Armv7a<'probe> {
 
                             self.execute_instruction_with_input(instruction, val.try_into()?)?;
 
-                            // BX r0
-                            let instruction = build_bx(0);
+                            // mov pc, r0
+                            let instruction = build_mov(15, 0);
                             self.execute_instruction(instruction)?;
+                        }
+                        16 => {
+                            // msr cpsr_fsxc, r0
+                            let instruction = build_msr(0);
+                            self.execute_instruction_with_input(instruction, val.try_into()?)?;
                         }
                         17..=48 => {
                             // Move value to r0, r1
