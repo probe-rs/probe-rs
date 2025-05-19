@@ -176,9 +176,6 @@ impl CoreHandle<'_> {
         if self.core_data.rtt_connection.is_some() {
             return Ok(());
         }
-        // Create the RTT client using the RTT control block address from the ELF file.
-        let elf = std::fs::read(program_binary)
-            .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
 
         let client = if let Some(client) = self.core_data.rtt_client.as_mut() {
             client
@@ -190,14 +187,14 @@ impl CoreHandle<'_> {
             ))
         };
 
-        if !client.try_attach(&mut self.core)? {
-            return Ok(());
-        }
-
         if self.core_data.clear_rtt_header && !self.core_data.rtt_header_cleared {
             client.clear_control_block(&mut self.core)?;
             self.core_data.rtt_header_cleared = true;
             // Trigger a reattach
+            return Ok(());
+        }
+
+        if !client.try_attach(&mut self.core)? {
             return Ok(());
         }
 
@@ -208,7 +205,7 @@ impl CoreHandle<'_> {
 
         let mut debugger_rtt_channels = vec![];
 
-        let defmt_data = DefmtState::try_from_bytes(&elf)?;
+        let mut defmt_data = None;
 
         for up_channel in client.up_channels() {
             let number = up_channel.up_channel.number();
@@ -234,7 +231,14 @@ impl CoreHandle<'_> {
                 },
                 DataFormat::BinaryLE => RttDecoder::BinaryLE,
                 DataFormat::Defmt => {
-                    let Some(defmt_data) = defmt_data.clone() else {
+                    if defmt_data.is_none() {
+                        // Create the RTT client using the RTT control block address from the ELF file.
+                        let elf = std::fs::read(program_binary).map_err(|error| {
+                            anyhow!("Error attempting to attach to RTT: {error}")
+                        })?;
+                        defmt_data = Some(DefmtState::try_from_bytes(&elf)?);
+                    }
+                    let Some(defmt_data) = defmt_data.clone().unwrap() else {
                         tracing::warn!("Defmt data not found in ELF file");
                         continue;
                     };
