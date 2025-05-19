@@ -92,6 +92,7 @@ pub fn extract_flash_algo(
             "ProgramPage" => algo.pc_program_page = sym.st_value - code_section_offset as u64,
             "Verify" => algo.pc_verify = Some(sym.st_value - code_section_offset as u64),
             "ReadFlash" => algo.pc_read = Some(sym.st_value - code_section_offset as u64),
+            "BlankCheck" => algo.pc_blank_check = Some(sym.st_value - code_section_offset as u64),
             "_SEGGER_RTT" => {
                 algo.rtt_location = Some(sym.st_value);
                 log::debug!("Found RTT control block at address {:#010x}", sym.st_value);

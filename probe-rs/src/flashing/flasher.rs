@@ -1,5 +1,6 @@
 use probe_rs_target::{RawFlashAlgorithm, TransferEncoding};
 use tracing::Level;
+use zerocopy::IntoBytes;
 
 use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
@@ -207,9 +208,23 @@ impl Flasher {
         if algo.stack_overflow_check {
             // Fill the stack with known data.
             let stack_bottom = algo.stack_top - algo.stack_size;
-            let fill = vec![STACK_FILL_BYTE; algo.stack_size as usize];
-            core.write_8(stack_bottom, &fill)
-                .map_err(FlashError::Core)?;
+            if algo.stack_size & 3 == 0 {
+                let fill = vec![
+                    u32::from_ne_bytes([
+                        STACK_FILL_BYTE,
+                        STACK_FILL_BYTE,
+                        STACK_FILL_BYTE,
+                        STACK_FILL_BYTE
+                    ]);
+                    algo.stack_size as usize / 4
+                ];
+                core.write_32(stack_bottom, &fill)
+                    .map_err(FlashError::Core)?;
+            } else {
+                let fill = vec![STACK_FILL_BYTE; algo.stack_size as usize];
+                core.write_8(stack_bottom, &fill)
+                    .map_err(FlashError::Core)?;
+            }
         }
 
         tracing::debug!("RAM contents match flashing algo blob.");
@@ -270,6 +285,21 @@ impl Flasher {
         }
 
         result
+    }
+
+    pub(super) fn run_blank_check<'p, T, F>(
+        &mut self,
+        session: &mut Session,
+        progress: &FlashProgress<'p>,
+        f: F,
+    ) -> Result<T, FlashError>
+    where
+        F: FnOnce(&mut ActiveFlasher<'_, 'p, Erase>, &mut [LoadedRegion]) -> Result<T, FlashError>,
+    {
+        let (mut active, data) = self.init(session, progress, None)?;
+        let r = f(&mut active, data)?;
+        active.uninit()?;
+        Ok(r)
     }
 
     pub(super) fn run_erase<'p, T, F>(
@@ -1126,7 +1156,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         let t1 = Instant::now();
 
         self.core
-            .write_32(address, &words)
+            .write(address, words.as_bytes())
             .map_err(FlashError::Core)?;
 
         tracing::info!(
@@ -1207,6 +1237,68 @@ impl ActiveFlasher<'_, '_, Erase> {
             })
         } else {
             self.progress.sector_erased(sector.size(), t1.elapsed());
+            Ok(())
+        }
+    }
+
+    pub(super) fn blank_check(&mut self, sector: &FlashSector) -> Result<(), FlashError> {
+        let address = sector.address();
+        let size = sector.size();
+        tracing::info!(
+            "Checking for blanked flash between address {:#010x} and {:#010x}",
+            address,
+            address + size
+        );
+        let t1 = Instant::now();
+
+        if let Some(blank_check) = self.flash_algorithm.pc_blank_check {
+            let error_code = self.call_function_and_wait(
+                &Registers {
+                    pc: into_reg(blank_check)?,
+                    r0: Some(into_reg(address)?),
+                    r1: Some(into_reg(size)?),
+                    r2: Some(into_reg(
+                        self.flash_algorithm
+                            .flash_properties
+                            .erased_byte_value
+                            .into(),
+                    )?),
+                    r3: None,
+                },
+                false,
+                Duration::from_millis(
+                    // self.flash_algorithm.flash_properties.erase_sector_timeout as u64,
+                    10_000,
+                ),
+            )?;
+            tracing::info!(
+                "Done checking blank. Result is {}. This took {:?}",
+                error_code,
+                t1.elapsed()
+            );
+
+            if error_code != 0 {
+                Err(FlashError::RoutineCallFailed {
+                    name: "blank_check",
+                    error_code,
+                })
+            } else {
+                self.progress.sector_erased(sector.size(), t1.elapsed());
+                Ok(())
+            }
+        } else {
+            let mut data = vec![0; size as usize];
+            self.core
+                .read(address, &mut data)
+                .map_err(FlashError::Core)?;
+            if !data
+                .iter()
+                .all(|v| *v == self.flash_algorithm.flash_properties.erased_byte_value)
+            {
+                return Err(FlashError::ChipEraseFailed {
+                    source: "Not all sectors were erased".into(),
+                });
+            }
             Ok(())
         }
     }
