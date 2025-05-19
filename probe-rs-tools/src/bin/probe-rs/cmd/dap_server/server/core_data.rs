@@ -184,8 +184,13 @@ impl CoreHandle<'_> {
             self.core_data.rtt_client.insert(RttClient::new(
                 rtt_config.clone(),
                 self.core_data.rtt_scan_ranges.clone(),
+                self.core.target(),
             ))
         };
+
+        if client.core_id() != self.core.id() {
+            return Ok(());
+        }
 
         if self.core_data.clear_rtt_header && !self.core_data.rtt_header_cleared {
             client.clear_control_block(&mut self.core)?;
