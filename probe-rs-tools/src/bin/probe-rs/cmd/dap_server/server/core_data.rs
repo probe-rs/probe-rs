@@ -236,14 +236,16 @@ impl CoreHandle<'_> {
                 },
                 DataFormat::BinaryLE => RttDecoder::BinaryLE,
                 DataFormat::Defmt => {
-                    if defmt_data.is_none() {
+                    let defmt_data = if let Some(data) = defmt_data.as_ref() {
+                        data
+                    } else {
                         // Create the RTT client using the RTT control block address from the ELF file.
                         let elf = std::fs::read(program_binary).map_err(|error| {
                             anyhow!("Error attempting to attach to RTT: {error}")
                         })?;
-                        defmt_data = Some(DefmtState::try_from_bytes(&elf)?);
-                    }
-                    let Some(defmt_data) = defmt_data.clone().unwrap() else {
+                        defmt_data.insert(DefmtState::try_from_bytes(&elf)?)
+                    };
+                    let Some(defmt_data) = defmt_data.clone() else {
                         tracing::warn!("Defmt data not found in ELF file");
                         continue;
                     };
