@@ -1,5 +1,8 @@
 use futures_lite::FutureExt;
-use nusb::{Interface, transfer::RequestBuffer};
+use nusb::{
+    Interface,
+    transfer::{Bulk, In, Out},
+};
 use std::{io, time::Duration};
 
 pub trait InterfaceExt {
@@ -11,10 +14,14 @@ pub trait InterfaceExt {
 impl InterfaceExt for Interface {
     async fn write_bulk(&self, endpoint: u8, buf: &[u8], timeout: Duration) -> io::Result<usize> {
         let fut = async {
-            let comp = self.bulk_out(endpoint, buf.to_vec()).await;
+            let mut ep_out = self.endpoint::<Bulk, Out>(endpoint).unwrap();
+            let mut transfer = ep_out.allocate(buf.len());
+            transfer.extend_from_slice(buf);
+            ep_out.submit(transfer);
+            let comp = ep_out.next_complete().await;
             comp.status.map_err(io::Error::other)?;
+            let n = comp.actual_len;
 
-            let n = comp.data.actual_length();
             Ok::<usize, io::Error>(n)
         };
 
@@ -32,11 +39,21 @@ impl InterfaceExt for Interface {
         timeout: Duration,
     ) -> io::Result<usize> {
         let fut = async {
-            let comp = self.bulk_in(endpoint, RequestBuffer::new(buf.len())).await;
+            let mut ep_in = self.endpoint::<Bulk, In>(endpoint).unwrap();
+            let transfer = ep_in.allocate(buf.len());
+            ep_in.submit(transfer);
+            let comp = ep_in.next_complete().await;
             comp.status.map_err(io::Error::other)?;
 
-            let n = comp.data.len();
-            buf[..n].copy_from_slice(&comp.data);
+            let n = comp.actual_len;
+            // If we got some number of bytes that is divisible by
+            // wMaxPacketSize (and is nonzero), then we'll need to read a
+            // zero length packet.
+            if n != 0 && n % 64 == 0 {
+                ep_in.submit(ep_in.allocate(0));
+                ep_in.next_complete().await;
+            }
+            buf[..n].copy_from_slice(&comp.buffer);
             Ok::<usize, io::Error>(n)
         };
 

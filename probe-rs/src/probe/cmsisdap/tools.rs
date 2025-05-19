@@ -6,7 +6,9 @@ use crate::probe::{
 };
 use hidapi::HidApi;
 use nusb::{
-    descriptors::TransferType, transfer::{Direction, EndpointType}, DeviceInfo
+    DeviceInfo,
+    descriptors::TransferType,
+    transfer::{Direction, EndpointType},
 };
 
 const USB_CLASS_HID: u8 = 0x03;
