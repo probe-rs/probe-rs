@@ -327,12 +327,15 @@ impl Debugger {
         };
 
         // Process either the Launch or Attach request.
-        let mut session_data = match self.handle_launch_attach(
-            &mut registry,
-            &launch_attach_request,
-            &mut debug_adapter,
-            lister,
-        ) {
+        let mut session_data = match self
+            .handle_launch_attach(
+                &mut registry,
+                &launch_attach_request,
+                &mut debug_adapter,
+                lister,
+            )
+            .await
+        {
             Ok(session_data) => session_data,
             Err(error) => {
                 debug_adapter.send_response::<()>(&launch_attach_request, Err(&error))?;
@@ -400,7 +403,7 @@ impl Debugger {
 
     /// Process launch or attach request
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
-    pub(crate) fn handle_launch_attach<P: ProtocolAdapter + 'static>(
+    pub(crate) async fn handle_launch_attach<P: ProtocolAdapter + 'static>(
         &mut self,
         registry: &mut Registry,
         launch_attach_request: &Request,
@@ -490,6 +493,10 @@ impl Debugger {
         }
 
         drop(target_core);
+
+        // Poll cores once while still halted. This will ensure that the RTT control block is
+        // cleared even when haltAfterReset = false.
+        session_data.poll_cores(&self.config, debug_adapter).await?;
 
         debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
         self.debug_logger.flush_to_dap(debug_adapter)?;

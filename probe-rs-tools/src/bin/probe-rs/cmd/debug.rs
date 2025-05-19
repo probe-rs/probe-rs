@@ -252,8 +252,9 @@ impl Cmd {
         // A bit weird since we need the request to be removable,
         // but we also need to pass it directly.
         shared.borrow_mut().next_request = Some(attach_request.clone());
-        let mut session_data =
-            debugger.handle_launch_attach(registry, &attach_request, &mut debug_adapter, lister)?;
+        let mut session_data = debugger
+            .handle_launch_attach(registry, &attach_request, &mut debug_adapter, lister)
+            .await?;
 
         shared.borrow_mut().next_request = Some(Request {
             command: "configurationDone".to_string(),
