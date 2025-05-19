@@ -6,7 +6,7 @@
 To test a single board quickly, the chip and probe can be specified directly on the command line:
 
 ```console
-cargo run -- --chip nrf51822_xxAB --probe 0d28:0204
+cargo run -- test --chip nrf51822_xxAB --probe 0d28:0204
 ```
 
 ## Multiple boards
@@ -33,4 +33,3 @@ The smoke tester can called like this:
 ```console
 cargo run -- --dut-definitions <dut_dir>
 ```
-
