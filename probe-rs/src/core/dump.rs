@@ -19,17 +19,26 @@ use std::{
 };
 
 trait Processor {
+    /// Returns the instruction set of the processor.
     fn instruction_set(&self) -> InstructionSet;
+
+    /// Returns the core type of the processor.
     fn core_type(&self) -> CoreType;
+
+    /// Returns whether the processor supports native 64 bit access.
     fn supports_native_64bit_access(&self) -> bool {
         false
     }
+
     /// Returns the length of the register data in bytes.
     fn register_data_len(&self) -> usize;
+
     /// Returns the core registers and their positions in the register data.
     ///
     /// The positions are in register indexes, not byte offsets.
     fn register_map(&self) -> &[(usize, RegisterId)];
+
+    /// Reads the registers from the .elf note data and stores them in the provided map.
     fn read_registers(
         &self,
         note_data: &[u8],
@@ -42,6 +51,9 @@ trait Processor {
 
         Ok(())
     }
+
+    /// Reads a single register value from the note data. The register is addressed by its
+    /// position in the .elf note data.
     fn read_register(&self, note_data: &[u8], idx: usize) -> Result<RegisterValue, CoreDumpError> {
         let value = u32::from_le_bytes(note_data[idx * 4..][..4].try_into().unwrap());
         Ok(RegisterValue::U32(value))
@@ -220,6 +232,7 @@ impl CoreDump {
 
         // The memory is in a Load segment.
         let mut data = Vec::new();
+        // `elf.segments()` returns PT_LOAD segments only.
         for segment in elf.segments() {
             let address: u64 = segment.elf_program_header().p_vaddr(endianness).into();
             let size: u64 = segment.elf_program_header().p_memsz(endianness).into();
@@ -257,8 +270,9 @@ impl CoreDump {
             // We only care about the registers, so let's cut off the rest. If we decide to use
             // the other information, we can do that later, most likely without
             // architecture-specific processing code.
+            const CORE_NOTE_HEADER_SIZE: usize = 72;
             let note_length = processor.register_data_len();
-            let note_data = &note.desc()[72..][..note_length];
+            let note_data = &note.desc()[CORE_NOTE_HEADER_SIZE..][..note_length];
             processor.read_registers(note_data, &mut registers)?;
         }
 
