@@ -2059,8 +2059,10 @@ mod test {
     }
 
     fn coredump_path(base: String) -> PathBuf {
-        let possible_coredump_paths =
-            [get_path_for_test_files(format!("{base}.coredump").as_str())];
+        let possible_coredump_paths = [
+            get_path_for_test_files(format!("{base}.coredump").as_str()),
+            get_path_for_test_files(format!("{base}_coredump.elf").as_str()),
+        ];
 
         possible_coredump_paths
             .iter()
