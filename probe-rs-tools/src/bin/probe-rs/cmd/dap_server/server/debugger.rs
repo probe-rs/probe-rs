@@ -373,8 +373,9 @@ impl Debugger {
                     }
                 }
                 DebugSessionStatus::Restart(request) => {
-                    if let Err(error) =
-                        self.restart(&mut debug_adapter, &mut session_data, &request)
+                    if let Err(error) = self
+                        .restart(&mut debug_adapter, &mut session_data, &request)
+                        .await
                     {
                         debug_adapter.send_response::<()>(&request, Err(&error))?;
                         return Err(error);
@@ -505,7 +506,7 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all)]
-    fn restart<P: ProtocolAdapter + 'static>(
+    async fn restart<P: ProtocolAdapter + 'static>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
         session_data: &mut SessionData,
@@ -530,11 +531,7 @@ impl Debugger {
                 session_data.load_debug_info_for_core(target_core_config)?;
                 session_data
                     .attach_core(target_core_config.core_index)
-                    .map(|mut target_core| {
-                        // Reset RTT so that the link can be re-established
-                        target_core.core_data.rtt_connection = None;
-                        target_core.recompute_breakpoints()
-                    })??;
+                    .map(|mut target_core| target_core.recompute_breakpoints())??;
 
                 session_data.load_rtt_location(&self.config)?;
 
@@ -553,6 +550,19 @@ impl Debugger {
 
         // Immediately after attaching, halt the core, so that we can finish restart logic without bumping into user code.
         halt_core(&mut target_core.core)?;
+
+        // Reset RTT so that the link can be re-established and the control block cleared.
+        target_core.core_data.rtt_connection = None;
+
+        // We can't keep the reference for borrow checker reasons.
+        drop(target_core);
+
+        // Poll cores once while still halted. This will ensure that the RTT control block is
+        // cleared even when haltAfterReset = false.
+        session_data.poll_cores(&self.config, debug_adapter).await?;
+
+        // Re-attach
+        let mut target_core = session_data.attach_core(target_core_config.core_index)?;
 
         // After completing optional flashing and other config, we can run the debug adapter's restart logic.
         debug_adapter
