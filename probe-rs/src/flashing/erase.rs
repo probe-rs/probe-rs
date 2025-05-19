@@ -258,9 +258,9 @@ pub async fn erase_sectors(
 }
 
 /// Check that a memory range has been erased.
-pub fn run_blank_check(
+pub async fn run_blank_check(
     session: &mut Session,
-    progress: FlashProgress,
+    progress: FlashProgress<'_>,
     start_sector: usize,
     sectors: usize,
 ) -> Result<(), FlashError> {
@@ -321,24 +321,26 @@ pub fn run_blank_check(
             })
             .collect::<Vec<_>>();
 
-        flasher.run_blank_check(session, &progress, |active, _| {
-            for info in sectors {
-                tracing::debug!(
-                    "    sector: {:#010x}-{:#010x} ({} bytes)",
-                    info.base_address,
-                    info.base_address + info.size,
-                    info.size
-                );
+        flasher
+            .run_blank_check(session, &progress, async |active, _| {
+                for info in sectors {
+                    tracing::debug!(
+                        "    sector: {:#010x}-{:#010x} ({} bytes)",
+                        info.base_address,
+                        info.base_address + info.size,
+                        info.size
+                    );
 
-                let sector = FlashSector {
-                    address: info.base_address,
-                    size: info.size,
-                };
+                    let sector = FlashSector {
+                        address: info.base_address,
+                        size: info.size,
+                    };
 
-                active.blank_check(&sector)?;
-            }
-            Ok(())
-        })?;
+                    active.blank_check(&sector).await?;
+                }
+                Ok(())
+            })
+            .await?;
     }
 
     Ok(())

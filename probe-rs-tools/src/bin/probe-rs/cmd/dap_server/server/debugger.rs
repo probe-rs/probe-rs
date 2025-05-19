@@ -587,7 +587,9 @@ impl Debugger {
         session_data.poll_cores(&self.config, debug_adapter).await?;
 
         // Re-attach
-        let mut target_core = session_data.attach_core(target_core_config.core_index)?;
+        let mut target_core = session_data
+            .attach_core(target_core_config.core_index)
+            .await?;
 
         // After completing optional flashing and other config, we can run the debug adapter's restart logic.
         debug_adapter

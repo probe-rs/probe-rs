@@ -112,9 +112,9 @@ impl ArmDebugSequence for CC13xxCC26xx {
 
         match interface.active_protocol() {
             Some(WireProtocol::Jtag) => {
-                let mut icepick = Icepick::new(interface)?;
-                icepick.ctag_to_jtag()?;
-                icepick.select_tap(0)?;
+                let mut icepick = Icepick::new(interface).await?;
+                icepick.ctag_to_jtag().await?;
+                icepick.select_tap(0).await?;
 
                 // Call the configure JTAG function. We don't derive the scan chain at runtime
                 // for these devices, but regardless the scan chain must be told to the debug probe

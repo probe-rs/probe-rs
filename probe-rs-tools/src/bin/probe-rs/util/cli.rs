@@ -590,7 +590,7 @@ fn create_trial(
                 std::process::exit(0);
             }
 
-            let handle = tokio::spawn(async move {
+            let handle = tokio::task::spawn_local(async move {
                 match session
                     .run_test(test, rtt_client, async move |msg| sender.send(msg).unwrap())
                     .await

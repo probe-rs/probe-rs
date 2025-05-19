@@ -78,7 +78,7 @@ impl Cmd {
         }
 
         let gdb = if let Some(gdb) = self.gdb {
-            tokio::spawn(async move {
+            tokio::task::spawn_local(async move {
                 loop {
                     // Don't exit on ctrl-c as you need to use this key combination
                     // to ask gdb to interrupt execution of the tracee.

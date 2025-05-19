@@ -111,7 +111,7 @@ mod test {
         f(client).await;
 
         // Wait for the server to shut down
-        handle.await;
+        handle.await.unwrap();
     }
 
     #[tokio::test]

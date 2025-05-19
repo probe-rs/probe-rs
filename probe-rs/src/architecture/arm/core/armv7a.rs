@@ -144,7 +144,7 @@ impl<'probe> Armv7a<'probe> {
             self.itr_enabled = true;
         }
 
-        execute_instruction(&mut *self.memory, self.base_address, instruction)
+        execute_instruction(&mut *self.memory, self.base_address, instruction).await
     }
 
     /// Execute an instruction on the CPU and return the result
@@ -289,20 +289,21 @@ impl<'probe> Armv7a<'probe> {
             .await;
     }
 
-    pub(crate) fn halted_access<R>(
+    pub(crate) async fn halted_access<R>(
         &mut self,
-        op: impl FnOnce(&mut Self) -> Result<R, Error>,
+        op: impl AsyncFnOnce(&mut Self) -> Result<R, Error>,
     ) -> Result<R, Error> {
-        let was_running = !(self.state.current_state.is_halted() || self.status()?.is_halted());
+        let was_running =
+            !(self.state.current_state.is_halted() || self.status().await?.is_halted());
 
         if was_running {
-            self.halt(Duration::from_millis(100))?;
+            self.halt(Duration::from_millis(100)).await?;
         }
 
-        let result = op(self);
+        let result = op(self).await;
 
         if was_running {
-            self.run()?
+            self.run().await?
         }
 
         result
@@ -313,7 +314,7 @@ impl<'probe> Armv7a<'probe> {
 // They are also used by the `CoreInterface` to avoid code duplication.
 
 /// Request the core to halt. Does not wait for the core to halt.
-pub(crate) fn request_halt(
+pub(crate) async fn request_halt(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
 ) -> Result<(), ArmError> {
@@ -321,23 +322,26 @@ pub(crate) fn request_halt(
     let mut value = Dbgdrcr(0);
     value.set_hrq(true);
 
-    memory.write_word_32(address, value.into())?;
+    memory.write_word_32(address, value.into()).await?;
     Ok(())
 }
 
 /// Start the core running. This does not flush any state.
-pub(crate) fn run(memory: &mut dyn ArmMemoryInterface, base_address: u64) -> Result<(), ArmError> {
+pub(crate) async fn run(
+    memory: &mut dyn ArmMemoryInterface,
+    base_address: u64,
+) -> Result<(), ArmError> {
     let address = Dbgdrcr::get_mmio_address_from_base(base_address)?;
     let mut value = Dbgdrcr(0);
     value.set_rrq(true);
 
-    memory.write_word_32(address, value.into())?;
+    memory.write_word_32(address, value.into()).await?;
 
     // Wait for ack
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
 
     loop {
-        let dbgdscr = Dbgdscr(memory.read_word_32(address)?);
+        let dbgdscr = Dbgdscr(memory.read_word_32(address).await?);
         if dbgdscr.restarted() {
             return Ok(());
         }
@@ -346,7 +350,7 @@ pub(crate) fn run(memory: &mut dyn ArmMemoryInterface, base_address: u64) -> Res
 
 /// Wait for the core to be halted. If the core does not halt, then
 /// this will return `ArmError::Timeout`.
-pub(crate) fn wait_for_core_halted(
+pub(crate) async fn wait_for_core_halted(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
     timeout: Duration,
@@ -354,7 +358,7 @@ pub(crate) fn wait_for_core_halted(
     // Wait until halted state is active again.
     let start = Instant::now();
 
-    while !core_halted(memory, base_address)? {
+    while !core_halted(memory, base_address).await? {
         if start.elapsed() >= timeout {
             return Err(ArmError::Timeout);
         }
@@ -366,16 +370,19 @@ pub(crate) fn wait_for_core_halted(
 }
 
 /// Return whether or not the core is halted.
-fn core_halted(memory: &mut dyn ArmMemoryInterface, base_address: u64) -> Result<bool, ArmError> {
+async fn core_halted(
+    memory: &mut dyn ArmMemoryInterface,
+    base_address: u64,
+) -> Result<bool, ArmError> {
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
-    let dbgdscr = Dbgdscr(memory.read_word_32(address)?);
+    let dbgdscr = Dbgdscr(memory.read_word_32(address).await?);
 
     Ok(dbgdscr.halted())
 }
 
 /// Set and enable a specific breakpoint. If the breakpoint is in use, it
 /// will be cleared.
-pub(crate) fn set_hw_breakpoint(
+pub(crate) async fn set_hw_breakpoint(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
     bp_unit_index: usize,
@@ -397,14 +404,16 @@ pub(crate) fn set_hw_breakpoint(
     // Enable
     bp_control.set_e(true);
 
-    memory.write_word_32(bp_value_addr, addr)?;
-    memory.write_word_32(bp_control_addr, bp_control.into())?;
+    memory.write_word_32(bp_value_addr, addr).await?;
+    memory
+        .write_word_32(bp_control_addr, bp_control.into())
+        .await?;
 
     Ok(())
 }
 
 /// If a specified breakpoint is set, disable it and clear it.
-pub(crate) fn clear_hw_breakpoint(
+pub(crate) async fn clear_hw_breakpoint(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
     bp_unit_index: usize,
@@ -414,44 +423,44 @@ pub(crate) fn clear_hw_breakpoint(
     let bp_control_addr = Dbgbcr::get_mmio_address_from_base(base_address)?
         + (bp_unit_index * size_of::<u32>()) as u64;
 
-    memory.write_word_32(bp_value_addr, 0)?;
-    memory.write_word_32(bp_control_addr, 0)?;
+    memory.write_word_32(bp_value_addr, 0).await?;
+    memory.write_word_32(bp_control_addr, 0).await?;
     Ok(())
 }
 
 /// Get a specific hardware breakpoint. If the breakpoint is not set, return `None`.
-pub(crate) fn get_hw_breakpoint(
+pub(crate) async fn get_hw_breakpoint(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
     bp_unit_index: usize,
 ) -> Result<Option<u32>, ArmError> {
     let bp_value_addr = Dbgbvr::get_mmio_address_from_base(base_address)?
         + (bp_unit_index * size_of::<u32>()) as u64;
-    let bp_value = memory.read_word_32(bp_value_addr)?;
+    let bp_value = memory.read_word_32(bp_value_addr).await?;
 
     let bp_control_addr = Dbgbcr::get_mmio_address_from_base(base_address)?
         + (bp_unit_index * size_of::<u32>()) as u64;
-    let bp_control = Dbgbcr(memory.read_word_32(bp_control_addr)?);
+    let bp_control = Dbgbcr(memory.read_word_32(bp_control_addr).await?);
 
     Ok(if bp_control.e() { Some(bp_value) } else { None })
 }
 
 /// Execute a single instruction.
-fn execute_instruction(
+async fn execute_instruction(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
     instruction: u32,
 ) -> Result<Dbgdscr, ArmError> {
     // Run instruction
     let address = Dbgitr::get_mmio_address_from_base(base_address)?;
-    memory.write_word_32(address, instruction)?;
+    memory.write_word_32(address, instruction).await?;
 
     // Wait for completion
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
-    let mut dbgdscr = Dbgdscr(memory.read_word_32(address)?);
+    let mut dbgdscr = Dbgdscr(memory.read_word_32(address).await?);
 
     while !dbgdscr.instrcoml_l() {
-        dbgdscr = Dbgdscr(memory.read_word_32(address)?);
+        dbgdscr = Dbgdscr(memory.read_word_32(address).await?);
     }
 
     // Check if we had any aborts, if so clear them and fail
@@ -460,7 +469,7 @@ fn execute_instruction(
         let mut dbgdrcr = Dbgdrcr(0);
         dbgdrcr.set_cse(true);
 
-        memory.write_word_32(address, dbgdrcr.into())?;
+        memory.write_word_32(address, dbgdrcr.into()).await?;
         return Err(ArmError::Armv7a(
             crate::architecture::arm::armv7a::Armv7aError::DataAbort,
         ));
@@ -471,35 +480,35 @@ fn execute_instruction(
 
 /// Set the DBGDBGDTRRX register, which can be accessed with an
 /// `STC p14, c5, ..., #4` instruction.
-fn set_instruction_input(
+async fn set_instruction_input(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
     value: u32,
 ) -> Result<(), ArmError> {
     // Move value
     let address = Dbgdtrrx::get_mmio_address_from_base(base_address)?;
-    memory.write_word_32(address, value)?;
+    memory.write_word_32(address, value).await?;
 
     // Wait for RXfull
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
-    let mut dbgdscr = Dbgdscr(memory.read_word_32(address)?);
+    let mut dbgdscr = Dbgdscr(memory.read_word_32(address).await?);
 
     while !dbgdscr.rxfull_l() {
-        dbgdscr = Dbgdscr(memory.read_word_32(address)?);
+        dbgdscr = Dbgdscr(memory.read_word_32(address).await?);
     }
     Ok(())
 }
 
 /// Return the contents of DBGDTRTX, which is set as a result of an
 /// `LDC, p14, c5, ..., #4` instruction.
-fn get_instruction_result(
+async fn get_instruction_result(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
 ) -> Result<u32, ArmError> {
     // Wait for TXfull
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
     loop {
-        let dbgdscr = Dbgdscr(memory.read_word_32(address)?);
+        let dbgdscr = Dbgdscr(memory.read_word_32(address).await?);
         if dbgdscr.txfull_l() {
             break;
         }
@@ -507,57 +516,57 @@ fn get_instruction_result(
 
     // Read result
     let address = Dbgdtrtx::get_mmio_address_from_base(base_address)?;
-    memory.read_word_32(address)
+    memory.read_word_32(address).await
 }
 
 /// Write a 32-bit value to main memory. Assumes that the core is halted. Note that
 /// this clobbers $r0.
-pub(crate) fn write_word_32(
+pub(crate) async fn write_word_32(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
     address: u32,
     data: u32,
 ) -> Result<(), ArmError> {
     // Load address into r0
-    set_instruction_input(memory, base_address, address)?;
-    execute_instruction(memory, base_address, build_mrc(14, 0, 0, 0, 5, 0))?;
+    set_instruction_input(memory, base_address, address).await?;
+    execute_instruction(memory, base_address, build_mrc(14, 0, 0, 0, 5, 0)).await?;
 
     // Store the value in the DBGDBGDTRRX register and store that value into RAM.
     // STC p14, c5, [r0], #4
-    set_instruction_input(memory, base_address, data)?;
-    execute_instruction(memory, base_address, build_stc(14, 5, 0, 4))?;
+    set_instruction_input(memory, base_address, data).await?;
+    execute_instruction(memory, base_address, build_stc(14, 5, 0, 4)).await?;
     Ok(())
 }
 
 /// Read a 32-bit value from main memory. Assumes that the core is halted. Note that
 /// this clobbers $r0.
-pub(crate) fn read_word_32(
+pub(crate) async fn read_word_32(
     memory: &mut dyn ArmMemoryInterface,
     base_address: u64,
     address: u32,
 ) -> Result<u32, ArmError> {
     // Load address into r0
-    set_instruction_input(memory, base_address, address)?;
-    execute_instruction(memory, base_address, build_mrc(14, 0, 0, 0, 5, 0))?;
+    set_instruction_input(memory, base_address, address).await?;
+    execute_instruction(memory, base_address, build_mrc(14, 0, 0, 0, 5, 0)).await?;
 
     // Execute the instruction and store the result in the DBGDTRTX register.
     // LDC p14, c5, [r0], #4
-    execute_instruction(memory, base_address, build_ldc(14, 5, 0, 4))?;
-    get_instruction_result(memory, base_address)
+    execute_instruction(memory, base_address, build_ldc(14, 5, 0, 4)).await?;
+    get_instruction_result(memory, base_address).await
 }
 
 #[async_trait::async_trait(?Send)]
 impl CoreInterface for Armv7a<'_> {
     async fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         wait_for_core_halted(&mut *self.memory, self.base_address, timeout)
-            .map_err(|e| e.into())
             .await
+            .map_err(|e| e.into())
     }
 
     async fn core_halted(&mut self) -> Result<bool, Error> {
         core_halted(&mut *self.memory, self.base_address)
-            .map_err(|e| e.into())
             .await
+            .map_err(|e| e.into())
     }
 
     async fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
@@ -1034,7 +1043,7 @@ impl MemoryInterface for Armv7a<'_> {
     }
 
     async fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
-        self.halted_access(|core| {
+        self.halted_access(async |core| {
             let mut ret: u64 = core.read_word_32(address).await? as u64;
             ret |= (core.read_word_32(address + 4).await? as u64) << 32;
 
@@ -1043,7 +1052,7 @@ impl MemoryInterface for Armv7a<'_> {
         .await
     }
 
-    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
+    async fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
         self.halted_access(async |core| {
             let address = valid_32bit_address(address)?;
 
@@ -1051,13 +1060,13 @@ impl MemoryInterface for Armv7a<'_> {
             let instr = build_ldc(14, 5, 0, 4);
 
             // Save r0
-            core.prepare_r0_for_clobber()?;
+            core.prepare_r0_for_clobber().await?;
 
             // Load r0 with the address to read from
-            core.set_r0(address)?;
+            core.set_r0(address).await?;
 
             // Read memory from [r0]
-            core.execute_instruction_with_result(instr)
+            core.execute_instruction_with_result(instr).await
         })
         .await
     }
@@ -1069,7 +1078,7 @@ impl MemoryInterface for Armv7a<'_> {
             let word_start = address - byte_offset;
 
             // Read the word
-            let data = core.read_word_32(word_start)?;
+            let data = core.read_word_32(word_start).await?;
 
             // Return the byte
             Ok((data >> (byte_offset * 8)) as u16)
@@ -1117,21 +1126,23 @@ impl MemoryInterface for Armv7a<'_> {
     async fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
         self.halted_access(async |core| {
             for (i, word) in data.iter_mut().enumerate() {
-                *word = core.read_word_16(address + ((i as u64) * 2))?;
+                *word = core.read_word_16(address + ((i as u64) * 2)).await?;
             }
 
             Ok(())
         })
+        .await
     }
 
     async fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.halted_access(async |core| {
             for (i, byte) in data.iter_mut().enumerate() {
-                *byte = core.read_word_8(address + (i as u64))?;
+                *byte = core.read_word_8(address + (i as u64)).await?;
             }
 
             Ok(())
         })
+        .await
     }
 
     async fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
@@ -1139,9 +1150,10 @@ impl MemoryInterface for Armv7a<'_> {
             let data_low = data as u32;
             let data_high = (data >> 32) as u32;
 
-            core.write_word_32(address, data_low)?;
-            core.write_word_32(address + 4, data_high)
+            core.write_word_32(address, data_low).await?;
+            core.write_word_32(address + 4, data_high).await
         })
+        .await
     }
 
     async fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
@@ -1152,14 +1164,15 @@ impl MemoryInterface for Armv7a<'_> {
             let instr = build_stc(14, 5, 0, 4);
 
             // Save r0
-            core.prepare_r0_for_clobber()?;
+            core.prepare_r0_for_clobber().await?;
 
             // Load r0 with the address to write to
-            core.set_r0(address)?;
+            core.set_r0(address).await?;
 
             // Write to [r0]
-            core.execute_instruction_with_input(instr, data)
+            core.execute_instruction_with_input(instr, data).await
         })
+        .await
     }
 
     async fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
@@ -1169,12 +1182,14 @@ impl MemoryInterface for Armv7a<'_> {
             let word_start = address - byte_offset;
 
             // Get the current word value
-            let current_word = core.read_word_32(word_start)?;
+            let current_word = core.read_word_32(word_start).await?;
             let mut word_bytes = current_word.to_le_bytes();
             word_bytes[byte_offset as usize] = data;
 
             core.write_word_32(word_start, u32::from_le_bytes(word_bytes))
+                .await
         })
+        .await
     }
 
     async fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
@@ -1184,54 +1199,62 @@ impl MemoryInterface for Armv7a<'_> {
             let word_start = address - byte_offset;
 
             // Get the current word value
-            let mut word = core.read_word_32(word_start)?;
+            let mut word = core.read_word_32(word_start).await?;
 
             // patch the word into it
             word &= !(0xFFFFu32 << (byte_offset * 8));
             word |= (data as u32) << (byte_offset * 8);
 
-            core.write_word_32(word_start, word)
+            core.write_word_32(word_start, word).await
         })
+        .await
     }
 
     async fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
         self.halted_access(async |core| {
             for (i, word) in data.iter().enumerate() {
-                core.write_word_64(address + ((i as u64) * 8), *word)?;
+                core.write_word_64(address + ((i as u64) * 8), *word)
+                    .await?;
             }
 
             Ok(())
         })
+        .await
     }
 
     async fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         self.halted_access(async |core| {
             for (i, word) in data.iter().enumerate() {
-                core.write_word_32(address + ((i as u64) * 4), *word)?;
+                core.write_word_32(address + ((i as u64) * 4), *word)
+                    .await?;
             }
 
             Ok(())
         })
+        .await
     }
 
     async fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
         self.halted_access(async |core| {
             for (i, word) in data.iter().enumerate() {
-                core.write_word_16(address + ((i as u64) * 2), *word)?;
+                core.write_word_16(address + ((i as u64) * 2), *word)
+                    .await?;
             }
 
             Ok(())
         })
+        .await
     }
 
     async fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.halted_access(async |core| {
             for (i, byte) in data.iter().enumerate() {
-                core.write_word_8(address + (i as u64), *byte)?;
+                core.write_word_8(address + (i as u64), *byte).await?;
             }
 
             Ok(())
         })
+        .await
     }
 
     async fn supports_8bit_transfers(&self) -> Result<bool, Error> {

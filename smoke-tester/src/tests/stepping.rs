@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use colored::Colorize;
-use linkme::distributed_slice;
 use probe_rs::{
     Architecture, BreakpointCause, Core, CoreStatus, Error, HaltReason, MemoryInterface,
     config::MemoryRegion, probe::DebugProbeError,
@@ -38,18 +37,19 @@ pub async fn test_stepping(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> Te
 
     let code_load_address = ram_region.range.start;
 
-    core.reset_and_halt(Duration::from_millis(100))?;
+    core.reset_and_halt(Duration::from_millis(100)).await?;
 
-    core.write_8(code_load_address, TEST_CODE)?;
+    core.write_8(code_load_address, TEST_CODE).await?;
 
     let registers = core.registers();
-    core.write_core_reg(registers.pc().unwrap(), code_load_address)?;
+    core.write_core_reg(registers.pc().unwrap(), code_load_address)
+        .await?;
 
-    let core_information = core.step()?;
+    let core_information = core.step().await?;
 
     let expected_pc = code_load_address + 2;
 
-    let core_status = core.status()?;
+    let core_status = core.status().await?;
 
     assert_eq!(
         core_information.pc, expected_pc,
@@ -60,7 +60,7 @@ pub async fn test_stepping(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> Te
         log::warn!("Unexpected core status: {:?}!", core_status);
     }
 
-    let r0_value: u64 = core.read_core_reg(registers.core_register(0))?;
+    let r0_value: u64 = core.read_core_reg(registers.core_register(0)).await?;
 
     assert_eq!(r0_value, 0);
 
@@ -75,19 +75,19 @@ pub async fn test_stepping(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> Te
 
     // Run up to the software breakpoint (bkpt) at offset 0x6
     let break_address = code_load_address + 0x6;
-    core.run()?;
+    core.run().await?;
 
     match core.wait_for_core_halted(Duration::from_millis(100)).await {
         Ok(()) => {}
         Err(Error::Probe(DebugProbeError::Timeout)) => {
             println_test_status!(tracker, yellow, "Core did not halt after timeout!");
-            core.halt(Duration::from_millis(100))?;
+            core.halt(Duration::from_millis(100)).await?;
 
-            let pc: u64 = core.read_core_reg(core.program_counter())?;
+            let pc: u64 = core.read_core_reg(core.program_counter()).await?;
 
             println_test_status!(tracker, blue, "Core stopped at: {pc:#08x}");
 
-            let r2_val: u64 = core.read_core_reg(registers.core_register(2))?;
+            let r2_val: u64 = core.read_core_reg(registers.core_register(2)).await?;
 
             println_test_status!(tracker, blue, "$r2 = {r2_val:#08x}");
         }
@@ -96,7 +96,7 @@ pub async fn test_stepping(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> Te
 
     println_test_status!(tracker, green, "Core halted again!");
 
-    let core_status = core.status()?;
+    let core_status = core.status().await?;
 
     assert!(matches!(
         core_status,
@@ -104,7 +104,7 @@ pub async fn test_stepping(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> Te
             | CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Unknown))
     ));
 
-    let pc: u64 = core.read_core_reg(core.program_counter())?;
+    let pc: u64 = core.read_core_reg(core.program_counter()).await?;
 
     assert_eq!(pc, break_address);
 
@@ -115,12 +115,12 @@ pub async fn test_stepping(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> Te
     );
 
     // Increase PC by 2 to skip breakpoint.
-    core.write_core_reg(core.program_counter(), pc + 2)?;
+    core.write_core_reg(core.program_counter(), pc + 2).await?;
 
     println_test_status!(tracker, blue, "Run core again, with pc = {:#010x}", pc + 2);
 
     // Run to the finish
-    core.run()?;
+    core.run().await?;
 
     // Final breakpoint is at offset 0x10
 
@@ -130,20 +130,20 @@ pub async fn test_stepping(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> Te
         Ok(()) => {}
         Err(Error::Probe(DebugProbeError::Timeout)) => {
             println_test_status!(tracker, yellow, "Core did not halt after timeout!");
-            core.halt(Duration::from_millis(100))?;
+            core.halt(Duration::from_millis(100)).await?;
 
-            let pc: u64 = core.read_core_reg(core.program_counter())?;
+            let pc: u64 = core.read_core_reg(core.program_counter()).await?;
 
             println_test_status!(tracker, blue, "Core stopped at: {pc:#08x}");
 
-            let r2_val: u64 = core.read_core_reg(registers.core_register(2))?;
+            let r2_val: u64 = core.read_core_reg(registers.core_register(2)).await?;
 
             println_test_status!(tracker, blue, "$r2 = {r2_val:#08x}");
         }
         Err(other) => return Err(other.into()),
     }
 
-    let core_status = core.status()?;
+    let core_status = core.status().await?;
 
     assert!(matches!(
         core_status,
@@ -151,12 +151,12 @@ pub async fn test_stepping(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> Te
             | CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Unknown))
     ));
 
-    let pc: u64 = core.read_core_reg(core.program_counter())?;
+    let pc: u64 = core.read_core_reg(core.program_counter()).await?;
 
     assert_eq!(pc, break_address, "{pc:#08x} != {break_address:#08x}");
 
     // Register r2 should be 1 to indicate end of test.
-    let r2_val: u64 = core.read_core_reg(registers.core_register(2))?;
+    let r2_val: u64 = core.read_core_reg(registers.core_register(2)).await?;
     assert_eq!(1, r2_val);
 
     Ok(())

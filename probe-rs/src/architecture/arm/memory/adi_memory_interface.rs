@@ -288,7 +288,7 @@ where
             let end_address = end_address + (4 - (end_address & 3));
             let start_extra_count = address as usize % 4;
             let mut buffer = vec![0u32; (end_address - start_address) as usize / 4];
-            self.read_32(start_address, &mut buffer)?;
+            self.read_32(start_address, &mut buffer).await?;
             data.copy_from_slice(
                 &buffer.as_bytes()[start_extra_count..start_extra_count + data.len()],
             );
@@ -836,12 +836,13 @@ mod tests {
     async fn read() {
         let mut mock = MockMemoryAp::with_pattern_and_size(256);
         mock.memory[..DATA8.len()].copy_from_slice(DATA8);
-        let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+        let mut mi = ADIMemoryInterface::new_mock(&mut mock).await;
 
         for address in 0..4 {
             for len in 0..12 {
                 let mut data = vec![0u8; len];
                 mi.read(address, &mut data)
+                    .await
                     .unwrap_or_else(|_| panic!("read failed, address = {address}, len = {len}"));
 
                 assert_eq!(

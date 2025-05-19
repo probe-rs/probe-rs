@@ -156,7 +156,7 @@ impl CoreDump {
     /// # Arguments
     /// * `core`: The core to dump.
     /// * `ranges`: Memory ranges that should be dumped.
-    pub async fn dump_core(core: &mut Core, ranges: Vec<Range<u64>>) -> Result<Self, Error> {
+    pub async fn dump_core(core: &mut Core<'_>, ranges: Vec<Range<u64>>) -> Result<Self, Error> {
         let mut registers = HashMap::new();
         for register in core.registers().all_registers() {
             let value = core.read_core_reg(register.id()).await?;
@@ -173,10 +173,10 @@ impl CoreDump {
         Ok(CoreDump {
             registers,
             data,
-            instruction_set: core.instruction_set()?,
-            supports_native_64bit_access: core.supports_native_64bit_access(),
+            instruction_set: core.instruction_set().await?,
+            supports_native_64bit_access: core.supports_native_64bit_access().await,
             core_type: core.core_type(),
-            fpu_support: core.fpu_support()?,
+            fpu_support: core.fpu_support().await?,
             floating_point_register_count: Some(core.floating_point_register_count()?),
         })
     }

@@ -153,59 +153,59 @@ async fn run_test(
 
             let mut fail_counter = 0;
 
-        let mut session = probe
-            .attach(definition.chip.clone(), permissions).await
-            .context("Failed to attach to chip")?;
-        let cores = session.list_cores();
+            let mut session = probe
+                .attach(definition.chip.clone(), permissions)
+                .await
+                .context("Failed to attach to chip")?;
+            let cores = session.list_cores();
 
             // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
             //       some cores need additional setup so that they can be used, and this is not handled yet.
             for (core_index, core_type) in cores.into_iter().take(1) {
                 println_dut_status!(tracker, blue, "Core {}: {:?}", core_index, core_type);
 
-            let mut core = session.core(core_index).await?;
+                let mut core = session.core(core_index).await?;
 
                 println_dut_status!(tracker, blue, "Halting core..");
 
-            core.reset_and_halt(Duration::from_millis(500)).await?;
+                core.reset_and_halt(Duration::from_millis(500)).await?;
 
-            for test_fn in CORE_TESTS {
-                let result = tracker.run_test(|tracker| test_fn(tracker, &mut core));
-
+                let result = tracker
+                    .run_test(async |tracker| test_register_read(tracker, &mut core).await)
+                    .await;
                 if let Err(TestFailure::Fatal(error)) = result.result {
                     return Err(error.context("Fatal error in test"));
                 }
-
                 if result.failed() {
                     fail_counter += 1;
                 }
+
                 let result = tracker
                     .run_test(async |tracker| test_register_write(tracker, &mut core).await)
                     .await;
-                if result.has_fatal_error() {
-                    return Err(miette::miette!("Test failed with fatal error"));
+                if let Err(TestFailure::Fatal(error)) = result.result {
+                    return Err(error.context("Fatal error in test"));
                 }
-
                 if result.failed() {
                     fail_counter += 1;
                 }
+
                 let result = tracker
                     .run_test(async |tracker| test_memory_access(tracker, &mut core).await)
                     .await;
-                if result.has_fatal_error() {
-                    return Err(miette::miette!("Test failed with fatal error"));
+                if let Err(TestFailure::Fatal(error)) = result.result {
+                    return Err(error.context("Fatal error in test"));
                 }
-
                 if result.failed() {
                     fail_counter += 1;
                 }
+
                 let result = tracker
                     .run_test(async |tracker| test_hw_breakpoints(tracker, &mut core).await)
                     .await;
-                if result.has_fatal_error() {
-                    return Err(miette::miette!("Test failed with fatal error"));
+                if let Err(TestFailure::Fatal(error)) = result.result {
+                    return Err(error.context("Fatal error in test"));
                 }
-
                 if result.failed() {
                     fail_counter += 1;
                 }
@@ -213,10 +213,9 @@ async fn run_test(
                 let result = tracker
                     .run_test(async |tracker| test_stepping(tracker, &mut core).await)
                     .await;
-                if result.has_fatal_error() {
-                    return Err(miette::miette!("Test failed with fatal error"));
+                if let Err(TestFailure::Fatal(error)) = result.result {
+                    return Err(error.context("Fatal error in test"));
                 }
-
                 if result.failed() {
                     fail_counter += 1;
                 }
@@ -224,26 +223,17 @@ async fn run_test(
                 // Ensure core is not running anymore.
                 core.reset_and_halt(Duration::from_millis(200))
                     .await
-                    .into_diagnostic()
-                    .wrap_err_with(|| {
+                    .with_context(|| {
                         format!("Failed to reset core with index {core_index} after test")
                     })?;
             }
 
-            // Ensure core is not running anymore.
-            core.reset_and_halt(Duration::from_millis(200)).await
-                .with_context(|| {
-                    format!("Failed to reset core with index {core_index} after test")
-                })?;
-        }
-
-        for test in SESSION_TESTS {
-            let result = tracker.run_test(|tracker| test(tracker, &mut session));
-
+            let result = tracker
+                .run_test(async |tracker| test_flashing(tracker, &mut session).await)
+                .await;
             if let Err(TestFailure::Fatal(error)) = result.result {
                 return Err(error.context("Fatal error in test"));
             }
-
             if result.failed() {
                 fail_counter += 1;
             }
@@ -255,16 +245,18 @@ async fn run_test(
             if definition.reset_connected {
                 let probe = definition.open_probe().await?;
 
-            let _session =
-                probe.attach_under_reset(definition.chip.clone(), Permissions::default()).await?;
-        }
+                let _session = probe
+                    .attach_under_reset(definition.chip.clone(), Permissions::default())
+                    .await?;
+            }
 
-        match fail_counter {
-            0 => Ok(()),
-            1 => anyhow::bail!("1 test failed"),
-            count => anyhow::bail!("{count} tests failed"),
-        }
-    });
+            match fail_counter {
+                0 => Ok(()),
+                1 => anyhow::bail!("1 test failed"),
+                count => anyhow::bail!("{count} tests failed"),
+            }
+        })
+        .await;
 
     println!();
 

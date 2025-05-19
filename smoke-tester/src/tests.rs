@@ -9,7 +9,7 @@ use web_time::Instant;
 
 pub mod stepping;
 
-use crate::{CORE_TESTS, SESSION_TESTS, TestFailure, TestResult, TestTracker, println_test_status};
+use crate::{TestFailure, TestResult, TestTracker, println_test_status};
 
 pub async fn test_register_read(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> TestResult {
     println_test_status!(tracker, blue, "Testing register read...");
@@ -255,7 +255,7 @@ pub async fn test_hw_breakpoints(tracker: &TestTracker<'_>, core: &mut Core<'_>)
             CoreInterface::set_hw_breakpoint(core, i, *address).await?;
         }
 
-        let breakpoints = core.hw_breakpoints()?;
+        let breakpoints = core.hw_breakpoints().await?;
         for (i, address) in breakpoint_addresses.iter().enumerate() {
             assert_eq!(
                 breakpoints[i],

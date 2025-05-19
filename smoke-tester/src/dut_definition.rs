@@ -164,14 +164,8 @@ impl DutDefinition {
 
         let mut probe = match &self.probe_selector {
             Some(selector) => lister
-                .open(selector)
-<<<<<<< HEAD
+                .open(selector).await
                 .with_context(|| format!("Failed to open probe with selector {selector}"))?,
-=======
-                .await
-                .into_diagnostic()
-                .wrap_err_with(|| format!("Failed to open probe with selector {selector}"))?,
->>>>>>> 42738bd7 (smoke-tester works with async)
             None => {
                 let probes = lister.list_all().await;
 
@@ -182,28 +176,16 @@ impl DutDefinition {
                     "Multiple probes detected. Specify which probe to use using the '--probe' argument."
                 );
 
-<<<<<<< HEAD
-                probes[0].open()?
-=======
-                probes[0].open().await.into_diagnostic()?
->>>>>>> 42738bd7 (smoke-tester works with async)
+                probes[0].open().await?
             }
         };
 
         if let Some(probe_speed) = self.probe_speed {
-<<<<<<< HEAD
-            probe.set_speed(probe_speed)?;
+            probe.set_speed(probe_speed).await?;
         }
 
         if let Some(protocol) = self.protocol {
-            probe.select_protocol(protocol)?;
-=======
-            probe.set_speed(probe_speed).await.into_diagnostic()?;
-        }
-
-        if let Some(protocol) = self.protocol {
-            probe.select_protocol(protocol).await.into_diagnostic()?;
->>>>>>> 42738bd7 (smoke-tester works with async)
+            probe.select_protocol(protocol).await?;
         }
 
         Ok(probe)

@@ -2,7 +2,7 @@ use bitvec::prelude::*;
 use nusb::{
     DeviceInfo,
     descriptors::TransferType,
-    transfer::{Direction, EndpointType},
+    transfer::{Direction},
 };
 use std::{fmt::Debug, sync::Arc, time::Duration};
 use web_time::Instant;

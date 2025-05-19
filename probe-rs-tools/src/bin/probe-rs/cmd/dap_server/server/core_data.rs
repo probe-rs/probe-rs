@@ -203,7 +203,7 @@ impl CoreHandle<'_> {
             return Ok(());
         }
 
-        if !client.try_attach(&mut self.core)? {
+        if !client.try_attach(&mut self.core).await? {
             return Ok(());
         }
 

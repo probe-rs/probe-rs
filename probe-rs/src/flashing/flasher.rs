@@ -222,11 +222,11 @@ impl Flasher {
                     ]);
                     algo.stack_size as usize / 4
                 ];
-                core.write_32(stack_bottom, &fill)
+                core.write_32(stack_bottom, &fill).await
                     .map_err(FlashError::Core)?;
             } else {
                 let fill = vec![STACK_FILL_BYTE; algo.stack_size as usize];
-                core.write_8(stack_bottom, &fill)
+                core.write_8(stack_bottom, &fill).await
                     .map_err(FlashError::Core)?;
             }
         }
@@ -310,13 +310,13 @@ impl Flasher {
             &mut [LoadedRegion],
         ) -> Result<T, FlashError>,
     {
-        let (mut active, data) = self.init(session, progress, None)?;
-        let r = f(&mut active, data)?;
-        active.uninit()?;
+        let (mut active, data) = self.init(session, progress, None).await?;
+        let r = f(&mut active, data).await?;
+        active.uninit().await?;
         Ok(r)
     }
 
-    pub(super) fn run_erase<'p, T, F>(
+    pub(super) async fn run_erase<'p, T, F>(
         &mut self,
         session: &mut Session,
         progress: &FlashProgress<'p>,
@@ -1228,6 +1228,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
         self.core
             .write(address, words.as_bytes())
+            .await
             .map_err(FlashError::Core)?;
 
         tracing::info!(
@@ -1315,7 +1316,7 @@ impl ActiveFlasher<'_, '_, Erase> {
         }
     }
 
-    pub(super) fn blank_check(&mut self, sector: &FlashSector) -> Result<(), FlashError> {
+    pub(super) async fn blank_check(&mut self, sector: &FlashSector) -> Result<(), FlashError> {
         let address = sector.address();
         let size = sector.size();
         tracing::info!(
@@ -1326,25 +1327,27 @@ impl ActiveFlasher<'_, '_, Erase> {
         let t1 = Instant::now();
 
         if let Some(blank_check) = self.flash_algorithm.pc_blank_check {
-            let error_code = self.call_function_and_wait(
-                &Registers {
-                    pc: into_reg(blank_check)?,
-                    r0: Some(into_reg(address)?),
-                    r1: Some(into_reg(size)?),
-                    r2: Some(into_reg(
-                        self.flash_algorithm
-                            .flash_properties
-                            .erased_byte_value
-                            .into(),
-                    )?),
-                    r3: None,
-                },
-                false,
-                Duration::from_millis(
-                    // self.flash_algorithm.flash_properties.erase_sector_timeout as u64,
-                    10_000,
-                ),
-            )?;
+            let error_code = self
+                .call_function_and_wait(
+                    &Registers {
+                        pc: into_reg(blank_check)?,
+                        r0: Some(into_reg(address)?),
+                        r1: Some(into_reg(size)?),
+                        r2: Some(into_reg(
+                            self.flash_algorithm
+                                .flash_properties
+                                .erased_byte_value
+                                .into(),
+                        )?),
+                        r3: None,
+                    },
+                    false,
+                    Duration::from_millis(
+                        // self.flash_algorithm.flash_properties.erase_sector_timeout as u64,
+                        10_000,
+                    ),
+                )
+                .await?;
             tracing::info!(
                 "Done checking blank. Result is {}. This took {:?}",
                 error_code,
@@ -1363,7 +1366,7 @@ impl ActiveFlasher<'_, '_, Erase> {
         } else {
             let mut data = vec![0; size as usize];
             self.core
-                .read(address, &mut data)
+                .read(address, &mut data).await
                 .map_err(FlashError::Core)?;
             if !data
                 .iter()

@@ -233,13 +233,13 @@ impl Session {
             }
         }
 
-        probe.attach_to_unspecified()?;
+        probe.attach_to_unspecified().await?;
         if probe.protocol() == Some(WireProtocol::Jtag) {
             if let Some(probe) = probe.try_as_jtag_probe() {
-                if let Ok(chain) = probe.scan_chain() {
+                if let Ok(chain) = probe.scan_chain().await {
                     if !chain.is_empty() {
                         for core in &cores {
-                            probe.select_target(core.interface_idx())?;
+                            probe.select_target(core.interface_idx()).await?;
                         }
                     }
                 }

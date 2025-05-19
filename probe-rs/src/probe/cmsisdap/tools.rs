@@ -8,7 +8,7 @@ use hidapi::HidApi;
 use nusb::{
     DeviceInfo,
     descriptors::TransferType,
-    transfer::{Direction, EndpointType},
+    transfer::{Direction},
 };
 
 const USB_CLASS_HID: u8 = 0x03;

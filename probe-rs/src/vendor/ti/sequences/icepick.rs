@@ -70,13 +70,13 @@ impl<'a> Icepick<'a> {
     /// Create a new ICEPick interface. An ICEPick is a mux that sits on the JTAG bus
     /// and must be asked to enable various parts on the bus in order to allow us to
     /// talk to them. By default, the ICEPick will disable all secondary TAPs.
-    pub fn new(interface: &'a mut dyn DapProbe) -> Result<Self, ArmError> {
+    pub async fn new(interface: &'a mut dyn DapProbe) -> Result<Self, ArmError> {
         // Put the interface in Test-Logic Reset
         for _ in 0..5 {
-            interface.jtag_sequence(1, true, 0)?;
+            interface.jtag_sequence(1, true, 0).await?;
         }
         // Move to Run-Test/Idle
-        interface.jtag_sequence(1, false, 0)?;
+        interface.jtag_sequence(1, false, 0).await?;
 
         Ok(Icepick {
             interface,
@@ -93,20 +93,22 @@ impl<'a> Icepick<'a> {
     }
 
     /// Indicate we want to catch a reet by setting the `RESETCONTROL` to `Wait-in-reset`
-    pub fn catch_reset(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
+    pub async fn catch_reset(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
         self.icepick_router(
             IcepickRoutingRegister::SdTap(secondary_tap),
             SD_TAP_DEFAULT | SD_TAP_WAIT_IN_RESET,
         )
+        .await
     }
 
     /// After a sysreset, the core will be waiting in a reset state.
     /// This will release the target from reset by setting the `RELEASEFROMWIR` bit.
-    pub fn release_from_reset(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
+    pub async fn release_from_reset(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
         self.icepick_router(
             IcepickRoutingRegister::SdTap(secondary_tap),
             SD_TAP_DEFAULT | SD_TAP_RELEASE_FROM_WIR,
         )
+        .await
     }
 
     /// This function implements a Zero Bit Scan(ZBS)
@@ -145,7 +147,7 @@ impl<'a> Icepick<'a> {
     /// * `action`    - Whether to load the IR or DR register, if IR is wanted then `JtagState::ShiftIR` should be passed
     ///   otherwise the default is to load DR.
     /// * `end_state` - The state to end in, this can either be `JtagState::RunTestIdle` or `JtagState::SelectDRScan`
-    fn shift_reg(
+    async fn shift_reg(
         &mut self,
         cycles: u8,
         reg: u64,
@@ -154,16 +156,16 @@ impl<'a> Icepick<'a> {
     ) -> Result<(), ArmError> {
         if self.jtag_state == JtagState::RunTestIdle {
             // Enter DR-SCAN state
-            self.interface.swj_sequence(1, 1)?;
+            self.interface.swj_sequence(1, 1).await?;
         }
 
         if action == JtagOperation::ShiftIr {
             // Enter IR-SCAN state
-            self.interface.swj_sequence(1, 1)?;
+            self.interface.swj_sequence(1, 1).await?;
         }
 
         // Enter IR/DR CAPTURE -> EXIT1 -> PAUSE -> EXIT2 -> SHIFT state
-        self.interface.swj_sequence(5, 0b01010)?;
+        self.interface.swj_sequence(5, 0b01010).await?;
 
         // Shift out the bits
         for i in 0..cycles {
@@ -173,18 +175,21 @@ impl<'a> Icepick<'a> {
             let reg_masked = (reg & (0x01 << u64::from(i))) != 0;
             // Send to the probe
             self.interface
-                .jtag_sequence(1, tms, u64::from(reg_masked))?;
+                .jtag_sequence(1, tms, u64::from(reg_masked))
+                .await?;
         }
 
         // Enter DR/IR UPDATE -> RUN/TEST-IDLE or DR-SCAN state
-        self.interface.swj_sequence(
-            2,
-            if end_state == JtagState::SelectDrScan {
-                0b11
-            } else {
-                0b01
-            },
-        )?;
+        self.interface
+            .swj_sequence(
+                2,
+                if end_state == JtagState::SelectDrScan {
+                    0b11
+                } else {
+                    0b01
+                },
+            )
+            .await?;
 
         // Update the state to the desired end state
         self.jtag_state = end_state;
@@ -199,9 +204,10 @@ impl<'a> Icepick<'a> {
     /// * `cycles`    - Number of TCK cycles to shift in the data to IR
     /// * `ir`        - The value to shift into either IR
     /// * `end_state` - The state to end in, this can either be `JtagState::RunTestIdle` or `JtagState::SelectDRScan`
-    fn shift_ir(&mut self, ir: u64, end_state: JtagState) -> Result<(), ArmError> {
+    async fn shift_ir(&mut self, ir: u64, end_state: JtagState) -> Result<(), ArmError> {
         // This is a wrapper around shift_reg that loads the IR register
-        self.shift_reg(IR_LEN_IN_BITS, ir, JtagOperation::ShiftIr, end_state)?;
+        self.shift_reg(IR_LEN_IN_BITS, ir, JtagOperation::ShiftIr, end_state)
+            .await?;
 
         Ok(())
     }
@@ -213,8 +219,14 @@ impl<'a> Icepick<'a> {
     /// * `cycles`    - Number of TCK cycles to shift in the data to DR
     /// * `reg`       - The value to shift into either DR
     /// * `end_state` - The state to end in, this can either be `JtagState::RunTestIdle` or `JtagState::SelectDRScan`
-    fn shift_dr(&mut self, cycles: u8, reg: u64, end_state: JtagState) -> Result<(), ArmError> {
-        self.shift_reg(cycles, reg, JtagOperation::ShiftDr, end_state)?;
+    async fn shift_dr(
+        &mut self,
+        cycles: u8,
+        reg: u64,
+        end_state: JtagState,
+    ) -> Result<(), ArmError> {
+        self.shift_reg(cycles, reg, JtagOperation::ShiftDr, end_state)
+            .await?;
         Ok(())
     }
 
@@ -228,7 +240,7 @@ impl<'a> Icepick<'a> {
     ///
     /// * `register`  - The register to access
     /// * `payload`   - The data to write to the register
-    fn icepick_router(
+    async fn icepick_router(
         &mut self,
         register: IcepickRoutingRegister,
         payload: u32,
@@ -241,10 +253,11 @@ impl<'a> Icepick<'a> {
         let dr = (rw << 31) | (u32::from(register) << 24) | (payload & 0xFFFFFF);
 
         // Load IR with the router instruction, this allows us to write or read a data register
-        self.shift_ir(IR_ROUTER, JtagState::SelectDrScan)?;
+        self.shift_ir(IR_ROUTER, JtagState::SelectDrScan).await?;
         // Load the data register with the register block, address, and data
         // The address and value to be written is encoded in the DR value
-        self.shift_dr(32, dr as u64, JtagState::SelectDrScan)?;
+        self.shift_dr(32, dr as u64, JtagState::SelectDrScan)
+            .await?;
         Ok(())
     }
 
@@ -258,63 +271,70 @@ impl<'a> Icepick<'a> {
     /// This is a direct port of the openocd implementation:
     /// <https://github.com/openocd-org/openocd/blob/master/tcl/target/icepick.cfg#L81-L124>
     /// A few things were removed to fit the cc13xx_cc26xx family.
-    pub(crate) fn select_tap(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
+    pub(crate) async fn select_tap(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
         tracing::trace!("Selecting seconary tap {secondary_tap}");
         // Select the Connect register
-        self.shift_ir(IR_CONNECT, JtagState::SelectDrScan)?;
+        self.shift_ir(IR_CONNECT, JtagState::SelectDrScan).await?;
         // Enable write, set the `ConnectKey` to 0b1001 (0x9) as per TRM section 6.3.3
-        self.shift_dr(8, 0x89, JtagState::SelectDrScan)?;
+        self.shift_dr(8, 0x89, JtagState::SelectDrScan).await?;
         // Write to register 1 in the ICEPICK control block - keep JTAG powered in test logic reset
-        self.icepick_router(IcepickRoutingRegister::Sysctrl, SYSCTRL_DEFAULT)?;
-        self.icepick_router(IcepickRoutingRegister::SdTap(secondary_tap), SD_TAP_DEFAULT)?;
+        self.icepick_router(IcepickRoutingRegister::Sysctrl, SYSCTRL_DEFAULT)
+            .await?;
+        self.icepick_router(IcepickRoutingRegister::SdTap(secondary_tap), SD_TAP_DEFAULT)
+            .await?;
         // Enter the bypass state to remove the ICEPick from the scan chain
-        self.shift_ir(IR_BYPASS, JtagState::RunTestIdle)?;
+        self.shift_ir(IR_BYPASS, JtagState::RunTestIdle).await?;
 
         // Remain in run-test idle for at least three cycles to activate the device
-        self.interface.jtag_sequence(10, false, set_n_bits(10))?;
+        self.interface
+            .jtag_sequence(10, false, set_n_bits(10))
+            .await?;
 
         Ok(())
     }
 
-    pub(crate) fn sysreset(&mut self) -> Result<(), ArmError> {
+    pub(crate) async fn sysreset(&mut self) -> Result<(), ArmError> {
         // Write to register 1 in the ICEPICK control block - keep JTAG powered in test logic reset.
         // Add bit 1 to initiate a reset.
         self.icepick_router(
             IcepickRoutingRegister::Sysctrl,
             SYSCTRL_DEFAULT | SYSCTRL_RESET,
         )
+        .await
     }
 
     /// Disable "Compact JTAG" support and enable full JTAG.
-    pub(crate) fn ctag_to_jtag(&mut self) -> Result<(), ArmError> {
+    pub(crate) async fn ctag_to_jtag(&mut self) -> Result<(), ArmError> {
         // Load IR with BYPASS
-        self.shift_ir(IR_BYPASS, JtagState::RunTestIdle)?;
+        self.shift_ir(IR_BYPASS, JtagState::RunTestIdle).await?;
 
         // cJTAG: Open Command Window
         // This is described in section 6.2.2.1 of this document:
         // <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
         // Also refer to the openocd implementation:
         // <https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35>
-        self.zero_bit_scan()?;
-        self.zero_bit_scan()?;
-        self.shift_dr(1, 0x01, JtagState::RunTestIdle)?;
+        self.zero_bit_scan().await?;
+        self.zero_bit_scan().await?;
+        self.shift_dr(1, 0x01, JtagState::RunTestIdle).await?;
 
         // cJTAG: Switch to 4 pin
         // This is described in section 6.2.2.2 of this document:
         // <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
         // Also refer to the openocd implementation:
         // <https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35>
-        self.shift_dr(2, set_n_bits(2), JtagState::RunTestIdle)?;
-        self.shift_dr(9, set_n_bits(9), JtagState::RunTestIdle)?;
+        self.shift_dr(2, set_n_bits(2), JtagState::RunTestIdle)
+            .await?;
+        self.shift_dr(9, set_n_bits(9), JtagState::RunTestIdle)
+            .await?;
 
         // Load IR with BYPASS so that future state transitions don't affect IR
-        self.shift_ir(IR_BYPASS, JtagState::RunTestIdle)?;
+        self.shift_ir(IR_BYPASS, JtagState::RunTestIdle).await?;
 
         Ok(())
     }
 
     /// Load IR with BYPASS so that future state transitions don't affect IR
-    pub(crate) fn bypass(&mut self) -> Result<(), ArmError> {
-        self.shift_ir(IR_BYPASS, JtagState::RunTestIdle)
+    pub(crate) async fn bypass(&mut self) -> Result<(), ArmError> {
+        self.shift_ir(IR_BYPASS, JtagState::RunTestIdle).await
     }
 }
