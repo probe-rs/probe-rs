@@ -9,6 +9,7 @@ use object::{Object, ObjectSegment};
 use probe_rs_target::MemoryRange;
 use scroll::Cread;
 use serde::{Deserialize, Serialize};
+use std::array;
 use std::sync::LazyLock;
 use std::{
     collections::HashMap,
@@ -62,9 +63,8 @@ impl Processor for XtensaProcessor {
         static REGS: LazyLock<[(usize, RegisterId); 24]> = LazyLock::new(|| {
             let core_regs = &XTENSA_CORE_REGISTERS;
 
-            let mut idx = 0;
-            [(); 24].map(|_| {
-                let regid = match idx {
+            array::from_fn(|idx| {
+                match idx {
                     // First 8 registers are special registers.
                     0 => (idx, RegisterId::from(XtensaRegister::CurrentPc)),
                     1 => (idx, RegisterId::from(SpecialRegister::Ps)),
@@ -82,9 +82,7 @@ impl Processor for XtensaProcessor {
                         (ar_idx + 64, core_regs.core_register(ar_idx).id())
                     }
                     _ => unreachable!(),
-                };
-                idx += 1;
-                regid
+                }
             })
         });
 
@@ -107,17 +105,14 @@ impl Processor for RiscvProcessor {
         static REGS: LazyLock<[(usize, RegisterId); 32]> = LazyLock::new(|| {
             let core_regs = &RISCV_CORE_REGISTERS;
 
-            let mut idx = 0;
-            [(); 32].map(|_| {
+            array::from_fn(|idx| {
                 // Core register 0 is the "zero" register. Coredumps place the PC there instead.
                 let regid = if idx == 0 {
                     core_regs.pc().unwrap().id()
                 } else {
                     core_regs.core_register(idx).id()
                 };
-                let reg_idx = idx;
-                idx += 1;
-                (reg_idx, regid)
+                (idx, regid)
             })
         });
         &*REGS
