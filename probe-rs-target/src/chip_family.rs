@@ -173,6 +173,15 @@ impl InstructionSet {
     }
 }
 
+/// The current endianness of a core
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Endian {
+    /// Little endian mode -- this is the most common mode
+    Little,
+    /// Big endian mode -- this is common on network hardware
+    Big,
+}
+
 /// This describes a chip family with all its variants.
 ///
 /// This struct is usually read from a target description
