@@ -71,6 +71,7 @@ pub async fn create_rtt_client(
             channels: request.config,
         },
         rtt_scan_regions,
+        session.target(),
     );
 
     Ok(RttClientData {

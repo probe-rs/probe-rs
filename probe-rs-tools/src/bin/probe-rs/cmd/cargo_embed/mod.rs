@@ -273,7 +273,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         ScanRegion::Ram
     };
 
-    let mut rtt_client = RttClient::new(create_rtt_config(&config).clone(), scan);
+    let mut rtt_client = RttClient::new(create_rtt_config(&config).clone(), scan, session.target());
 
     // FIXME: we should probably figure out in a different way which core we can work with.
     // It seems arbitrary that we reset the target using the same core we use for polling RTT.

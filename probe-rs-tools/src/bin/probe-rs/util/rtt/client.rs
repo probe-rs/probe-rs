@@ -2,7 +2,7 @@ use crate::util::rtt::{
     ChannelMode, RttActiveDownChannel, RttActiveUpChannel, RttConfig, RttConnection,
 };
 use probe_rs::{
-    Core, MemoryInterface,
+    Core, MemoryInterface, Target,
     flashing::FlashLoader,
     rtt::{Error, Rtt, ScanRegion},
 };
@@ -32,7 +32,13 @@ pub struct RttClient {
 }
 
 impl RttClient {
-    pub fn new(config: RttConfig, scan_region: ScanRegion) -> Self {
+    pub fn new(config: RttConfig, scan_region: ScanRegion, target: &Target) -> Self {
+        let core_id = if let ScanRegion::Exact(address) = scan_region {
+            target.core_index_by_address(address).unwrap_or(0)
+        } else {
+            0
+        };
+
         Self {
             scan_region,
             channel_modes: config.channels.iter().map(|c| c.mode).collect(),
@@ -43,7 +49,7 @@ impl RttClient {
             disallow_clearing_rtt_header: false,
             try_attaching: true,
             polled_data: false,
-            core_id: 0,
+            core_id,
         }
     }
 
