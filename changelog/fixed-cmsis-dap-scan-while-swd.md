@@ -1,0 +1,1 @@
+Fixed CMSIS-DAP probes incorrectly trying to scan the JTAG chain while using SWD.
