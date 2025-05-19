@@ -27,10 +27,10 @@ pub fn cmd_elf(
     let elf_file = std::fs::read(file)
         .with_context(|| format!("Failed to open ELF file {}", file.display()))?;
 
-    let mut algorithm = extract_flash_algo(&elf_file, file, true, fixed_load_address)?;
+    let mut algorithm = extract_flash_algo(None, &elf_file, file, true, fixed_load_address)?;
 
-    if let Some(name) = name {
-        algorithm.name = name;
+    if let Some(name) = &name {
+        algorithm.name = name.clone();
     }
 
     if update {
@@ -58,6 +58,17 @@ pub fn cmd_elf(
         };
 
         let current = &family.flash_algorithms[algorithm_to_update];
+        // Re-extract the algorithm, keeping existing values in the target definition
+        let mut algorithm = extract_flash_algo(
+            Some(current.clone()),
+            &elf_file,
+            file,
+            true,
+            fixed_load_address,
+        )?;
+        if let Some(name) = name {
+            algorithm.name = name;
+        }
 
         // if a load address was specified, use it in the replacement
         if let Some(load_addr) = current.load_address {
