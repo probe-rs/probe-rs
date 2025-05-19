@@ -272,6 +272,15 @@ impl CoreDump {
             // architecture-specific processing code.
             const CORE_NOTE_HEADER_SIZE: usize = 72;
             let note_length = processor.register_data_len();
+
+            if note.desc().len() < CORE_NOTE_HEADER_SIZE + note_length {
+                return Err(CoreDumpError::DecodingElfCoreDump(format!(
+                    "Note segment is too small: {} bytes instead of at least {}",
+                    note.desc().len(),
+                    CORE_NOTE_HEADER_SIZE + note_length
+                )));
+            }
+
             let note_data = &note.desc()[CORE_NOTE_HEADER_SIZE..][..note_length];
             processor.read_registers(note_data, &mut registers)?;
         }
