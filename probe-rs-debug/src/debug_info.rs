@@ -1974,15 +1974,15 @@ mod test {
     #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
     #[test_case("esp32c3_full_unwind"; "full_unwind RISC-V32E using esp32c3")]
     #[test_case("esp32s3_esp_hal_panic"; "Xtensa unwinding on an esp32s3 in a panic handler")]
+    #[test_case("esp32c6_coredump_elf"; "Unwind using a RISC-V coredump in ELF format")]
+    #[test_case("esp32s3_coredump_elf"; "Unwind using an Xtensa coredump in ELF format")]
     fn full_unwind(test_name: &str) {
-        // TODO: Add RISC-V tests.
-
         let debug_info =
             load_test_elf_as_debug_info(format!("debug-unwind-tests/{test_name}.elf").as_str());
-        let mut adapter = CoreDump::load(&get_path_for_test_files(
-            format!("debug-unwind-tests/{test_name}.coredump").as_str(),
-        ))
-        .unwrap();
+
+        let coredump_path = coredump_path(format!("debug-unwind-tests/{test_name}"));
+        let mut adapter = CoreDump::load(&coredump_path).unwrap();
+
         let snapshot_name = test_name.to_string();
 
         let initial_registers = debug_registers(&adapter);
@@ -2034,10 +2034,8 @@ mod test {
         let debug_info =
             load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
 
-        let mut adapter = CoreDump::load(&get_path_for_test_files(
-            format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
-        ))
-        .unwrap();
+        let coredump_path = coredump_path(format!("debug-unwind-tests/{chip_name}"));
+        let mut adapter = CoreDump::load(&coredump_path).unwrap();
 
         let initial_registers = debug_registers(&adapter);
 
@@ -2058,6 +2056,24 @@ mod test {
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
         insta::assert_yaml_snapshot!(snapshot_name, static_variables);
+    }
+
+    fn coredump_path(base: String) -> PathBuf {
+        let possible_coredump_paths = [
+            get_path_for_test_files(format!("{base}.coredump").as_str()),
+            get_path_for_test_files(format!("{base}_coredump.elf").as_str()),
+        ];
+
+        possible_coredump_paths
+            .iter()
+            .find(|path| path.exists())
+            .unwrap_or_else(|| {
+                panic!(
+                    "No coredump found for chip {base}. Expected one of: {:?}",
+                    possible_coredump_paths
+                )
+            })
+            .clone()
     }
 
     #[test]
