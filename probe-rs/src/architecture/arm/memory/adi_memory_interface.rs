@@ -1,5 +1,7 @@
 use std::any::Any;
 
+use zerocopy::IntoBytes;
+
 use crate::{
     CoreStatus, MemoryInterface,
     architecture::arm::{
@@ -262,16 +264,15 @@ where
                 bytes.copy_from_slice(&u32::to_le_bytes(*value));
             }
         } else {
-            let start_extra_count = (address % 4) as usize;
-            let mut buffer = vec![0u32; (start_extra_count + len).div_ceil(4)];
-            let read_address = address - start_extra_count as u64;
-            self.read_32(read_address, &mut buffer)?;
-            for (bytes, value) in data
-                .chunks_exact_mut(4)
-                .zip(buffer[start_extra_count..start_extra_count + len].iter())
-            {
-                bytes.copy_from_slice(&u32::to_le_bytes(*value));
-            }
+            let start_address = address & !3;
+            let end_address = address + (data.len() as u64);
+            let end_address = end_address + (4 - (end_address & 3));
+            let start_extra_count = address as usize % 4;
+            let mut buffer = vec![0u32; (end_address - start_address) as usize / 4];
+            self.read_32(start_address, &mut buffer)?;
+            data.copy_from_slice(
+                &buffer.as_bytes()[start_extra_count..start_extra_count + data.len()],
+            );
         }
         Ok(())
     }
@@ -780,6 +781,27 @@ mod tests {
                 assert_eq!(
                     data.as_slice(),
                     &DATA8[address as usize..address as usize + len],
+                    "address = {address}, len = {len}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn read() {
+        let mut mock = MockMemoryAp::with_pattern_and_size(256);
+        mock.memory[..DATA8.len()].copy_from_slice(DATA8);
+        let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+
+        for address in 0..4 {
+            for len in 0..12 {
+                let mut data = vec![0u8; len];
+                mi.read(address, &mut data)
+                    .unwrap_or_else(|_| panic!("read failed, address = {address}, len = {len}"));
+
+                assert_eq!(
+                    &DATA8[address as usize..address as usize + len],
+                    data.as_slice(),
                     "address = {address}, len = {len}"
                 );
             }
