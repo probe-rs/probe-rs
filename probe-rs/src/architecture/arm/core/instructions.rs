@@ -51,14 +51,6 @@ pub(crate) mod aarch32 {
         ret
     }
 
-    pub(crate) fn build_bx(reg: u16) -> u32 {
-        let mut ret = 0b1110_0001_0010_1111_1111_1111_0001_0000;
-
-        ret |= reg as u32;
-
-        ret
-    }
-
     pub(crate) fn build_ldc(coproc: u8, ctrl_reg: u8, reg: u16, imm: u8) -> u32 {
         let mut ret = 0b1110_1100_1011_0000_0000_0000_0000_0000;
 
@@ -145,14 +137,6 @@ pub(crate) mod aarch32 {
 
             // MOV r2, pc
             assert_eq!(0xE1A0200F, instr);
-        }
-
-        #[test]
-        fn gen_bx_instruction() {
-            let instr = build_bx(2);
-
-            // BX r2
-            assert_eq!(0xE12FFF12, instr);
         }
 
         #[test]
