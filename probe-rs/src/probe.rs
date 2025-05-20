@@ -244,7 +244,7 @@ pub enum ProbeCreationError {
     NotFound,
 
     /// The selected USB device could not be opened.
-    CouldNotOpen,
+    CouldNotOpen(#[source] anyhow::Error),
 
     /// An HID API occurred.
     HidApi(#[from] hidapi::HidError),

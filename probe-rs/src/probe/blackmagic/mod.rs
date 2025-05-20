@@ -24,6 +24,7 @@ use crate::{
         ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
     },
 };
+use anyhow::anyhow;
 use bitvec::vec::BitVec;
 use serialport::{SerialPortType, available_ports};
 
@@ -653,7 +654,9 @@ impl BlackMagicProbe {
         let response_len = Self::recv(&mut reader, Some(&mut handshake_response), false)
             .map_err(|e| {
                 tracing::error!("Unable to receive command: {:?}", e);
-                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                    anyhow!(e).context("Handshake failed"),
+                ))
             })?
             .0;
         let version =
@@ -1438,11 +1441,16 @@ impl ProbeFactory for BlackMagicProbeFactory {
         }
 
         // Otherwise, treat it as a serial port and iterate through all ports.
-        let Ok(ports) = available_ports() else {
-            tracing::trace!("unable to get available serial ports");
-            return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                ProbeCreationError::CouldNotOpen,
-            ));
+        let ports = match available_ports() {
+            Ok(ports) => ports,
+            Err(e) => {
+                tracing::trace!("unable to get available serial ports");
+                return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::CouldNotOpen(
+                        anyhow!(e).context("Unable to get serial ports"),
+                    ),
+                ));
+            }
         };
 
         for port_description in ports {
@@ -1467,19 +1475,25 @@ impl ProbeFactory for BlackMagicProbeFactory {
             let mut port = serialport::new(port_description.port_name, 115200)
                 .timeout(std::time::Duration::from_secs(1))
                 .open()
-                .map_err(|_| {
-                    DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+                .map_err(|e| {
+                    DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                        anyhow!(e).context("Serial port could not be opened"),
+                    ))
                 })?;
 
             // Set DTR, indicating we're ready to communicate.
-            port.write_data_terminal_ready(true).map_err(|_| {
-                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+            port.write_data_terminal_ready(true).map_err(|e| {
+                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                    anyhow!(e).context("Unable to set DTR for the serial"),
+                ))
             })?;
             // A delay appears necessary to allow the BMP to recognize the DTR signal.
             std::thread::sleep(Duration::from_millis(250));
             let reader = port;
-            let writer = reader.try_clone().map_err(|_| {
-                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+            let writer = reader.try_clone().map_err(|e| {
+                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                    anyhow!(e).context("No serial writer could be created"),
+                ))
             })?;
             return BlackMagicProbe::new(Box::new(reader), Box::new(writer))
                 .map(|p| Box::new(p) as Box<dyn DebugProbe>);

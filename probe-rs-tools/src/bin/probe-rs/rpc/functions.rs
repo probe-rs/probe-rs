@@ -286,9 +286,10 @@ impl LimitedLister {
 impl ProbeLister for LimitedLister {
     async fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
         if !self.is_allowed(selector) {
-            println!("not allowed");
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                ProbeCreationError::CouldNotOpen,
+                ProbeCreationError::CouldNotOpen(anyhow!(
+                    "{selector} is not explicitely allowed to be opened"
+                )),
             ));
         }
         self.all_probes.open(selector).await

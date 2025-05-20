@@ -5,6 +5,8 @@ use probe_rs::{
     probe::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError},
 };
 
+use anyhow::anyhow;
+
 #[derive(Debug)]
 pub struct TestLister {
     pub probes: RefCell<Vec<(DebugProbeInfo, FakeProbe)>>,
@@ -33,7 +35,7 @@ impl ProbeLister for TestLister {
             Ok(Probe::from_specific_probe(Box::new(probe)))
         } else {
             Err(DebugProbeError::ProbeCouldNotBeCreated(
-                ProbeCreationError::CouldNotOpen,
+                ProbeCreationError::CouldNotOpen(anyhow!("No pid:vid:serial pair matched")),
             ))
         }
     }

@@ -10,6 +10,7 @@ use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     ProbeFactory, WireProtocol,
 };
+use anyhow::anyhow;
 use serialport::{SerialPort, SerialPortType, available_ports};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::sync::Arc;
@@ -416,21 +417,31 @@ impl SifliUartFactory {
             .dtr_on_open(false)
             .timeout(Duration::from_secs(3))
             .open()
-            .map_err(|_| {
-                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+            .map_err(|e| {
+                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                    anyhow!(e).context("Sifli: Unable to send DTR for serial"),
+                ))
             })?;
-        port.write_data_terminal_ready(false).map_err(|_| {
-            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+        port.write_data_terminal_ready(false).map_err(|e| {
+            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                anyhow!(e).context("Sifli: Could not signal readyness on serial"),
+            ))
         })?;
-        port.write_request_to_send(false).map_err(|_| {
-            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+        port.write_request_to_send(false).map_err(|e| {
+            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                anyhow!(e).context("Sifli: Could not request to send on serial"),
+            ))
         })?;
 
-        let reader = port.try_clone().map_err(|_| {
-            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+        let reader = port.try_clone().map_err(|e| {
+            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                anyhow!(e).context("Sifli: Could not get reader for serial"),
+            ))
         })?;
-        let writer = reader.try_clone().map_err(|_| {
-            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+        let writer = reader.try_clone().map_err(|e| {
+            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                anyhow!(e).context("Sifli: Could not get writer for serial"),
+            ))
         })?;
 
         SifliUart::new(Box::new(reader), Box::new(writer), port)
@@ -450,10 +461,16 @@ impl ProbeFactory for SifliUartFactory {
         &self,
         selector: &DebugProbeSelector,
     ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let Ok(ports) = available_ports() else {
-            return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                ProbeCreationError::CouldNotOpen,
-            ));
+        let ports = match available_ports() {
+            Ok(ports) => ports,
+            Err(e) => {
+                tracing::trace!("unable to get available serial ports");
+                return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::CouldNotOpen(
+                        anyhow!(e).context("Sifli: Unable to get serial ports"),
+                    ),
+                ));
+            }
         };
 
         if selector.serial_number.is_some() {
