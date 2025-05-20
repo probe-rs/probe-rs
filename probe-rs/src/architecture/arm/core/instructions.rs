@@ -51,14 +51,6 @@ pub(crate) mod aarch32 {
         ret
     }
 
-    pub(crate) fn build_bx(reg: u16) -> u32 {
-        let mut ret = 0b1110_0001_0010_1111_1111_1111_0001_0000;
-
-        ret |= reg as u32;
-
-        ret
-    }
-
     pub(crate) fn build_ldc(coproc: u8, ctrl_reg: u8, reg: u16, imm: u8) -> u32 {
         let mut ret = 0b1110_1100_1011_0000_0000_0000_0000_0000;
 
@@ -81,10 +73,20 @@ pub(crate) mod aarch32 {
         ret
     }
 
+    /// Read the CPSR
     pub(crate) fn build_mrs(reg: u16) -> u32 {
         let mut ret = 0b1110_0001_0000_1111_0000_0000_0000_0000;
 
         ret |= (reg as u32) << 12;
+
+        ret
+    }
+
+    /// Set all bits of the CPSR
+    pub(crate) fn build_msr(reg: u16) -> u32 {
+        let mut ret = 0b1110_0001_0010_1111_1111_0000_0000_0000;
+
+        ret |= reg as u32;
 
         ret
     }
@@ -138,14 +140,6 @@ pub(crate) mod aarch32 {
         }
 
         #[test]
-        fn gen_bx_instruction() {
-            let instr = build_bx(2);
-
-            // BX r2
-            assert_eq!(0xE12FFF12, instr);
-        }
-
-        #[test]
         fn gen_ldc_instruction() {
             let instr = build_ldc(14, 5, 2, 4);
 
@@ -167,6 +161,14 @@ pub(crate) mod aarch32 {
 
             // MRS r2, CPSR
             assert_eq!(0xE10F2000, instr);
+        }
+
+        #[test]
+        fn gen_msr_instruction() {
+            let instr = build_msr(2);
+
+            // MSR CPSR_FSXC, r0
+            assert_eq!(0xE12FF002, instr);
         }
 
         #[test]
