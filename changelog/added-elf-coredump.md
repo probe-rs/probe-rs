@@ -1,1 +1,0 @@
-probe-rs can now parse Xtensa and RISC-V coredumps from .elf format

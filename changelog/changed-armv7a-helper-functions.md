@@ -1,1 +1,0 @@
-Create helper functions for ARMv7A accesses. This allows Sequences to perform operations such as reading and writing main memory or halting the core. Update various `CoreInterface` calls to use these new helper functions.

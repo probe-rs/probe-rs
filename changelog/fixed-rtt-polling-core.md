@@ -1,1 +1,0 @@
-Fixed polling RTT with the right core if the location is known upfront.
