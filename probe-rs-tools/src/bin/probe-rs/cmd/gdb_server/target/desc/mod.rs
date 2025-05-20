@@ -40,12 +40,15 @@ impl TargetDescriptionXmlOverride for RuntimeTarget<'_> {
 }
 
 impl RuntimeTarget<'_> {
-    pub(crate) fn load_target_desc(&mut self) -> Result<(), Error> {
-        let mut session = self.session.lock();
-        let mut core = session.core(self.cores[0])?;
+    pub(crate) async fn load_target_desc(&mut self) -> Result<(), Error> {
+        let mut session = self.session.lock().await;
+        let mut core = session.core(self.cores[0]).await?;
 
-        self.target_desc =
-            build_target_description(core.registers(), core.core_type(), core.instruction_set()?);
+        self.target_desc = build_target_description(
+            core.registers(),
+            core.core_type(),
+            core.instruction_set().await?,
+        );
 
         Ok(())
     }
@@ -58,18 +61,21 @@ impl MemoryMap for RuntimeTarget<'_> {
         length: usize,
         buf: &mut [u8],
     ) -> gdbstub::target::TargetResult<usize, Self> {
-        let mut session = self.session.lock();
-        let xml = gdb_memory_map(&mut session, self.cores[0]).into_target_result()?;
-        let xml_data = xml.as_bytes();
+        pollster::block_on(async move {
+            let mut session = self.session.lock().await;
+            let xml = pollster::block_on(gdb_memory_map(&mut session, self.cores[0]))
+                .into_target_result()?;
+            let xml_data = xml.as_bytes();
 
-        Ok(copy_range_to_buf(xml_data, offset, length, buf))
+            Ok(copy_range_to_buf(xml_data, offset, length, buf))
+        })
     }
 }
 
 /// Compute GDB memory map for a session and primary core
-fn gdb_memory_map(session: &mut Session, primary_core_id: usize) -> Result<String, Error> {
+async fn gdb_memory_map(session: &mut Session, primary_core_id: usize) -> Result<String, Error> {
     let (virtual_addressing, address_size) = {
-        let core = session.core(primary_core_id)?;
+        let core = session.core(primary_core_id).await?;
         let address_size = core.program_counter().size_in_bits();
 
         (

@@ -67,9 +67,10 @@ impl std::fmt::Debug for StLinkUsbDevice {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 pub trait StLinkUsb: std::fmt::Debug {
     /// Writes to the probe and reads back data if needed.
-    fn write(
+    async fn write(
         &mut self,
         cmd: &[u8],
         write_data: &[u8],
@@ -79,10 +80,14 @@ pub trait StLinkUsb: std::fmt::Debug {
 
     /// Reset the USB device. This can be used to recover when the
     /// STLink does not respond to USB requests.
-    fn reset(&mut self) -> Result<(), StlinkError>;
+    async fn reset(&mut self) -> Result<(), StlinkError>;
 
     /// Reads SWO data from the probe.
-    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<usize, StlinkError>;
+    async fn read_swo(
+        &mut self,
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<usize, StlinkError>;
 }
 
 // Copy of `Selector::matches` except it uses the stlink-specific read_serial_number
@@ -105,8 +110,11 @@ fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
 
 impl StLinkUsbDevice {
     /// Creates and initializes a new USB device.
-    pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        let device = nusb::list_devices()
+    pub async fn new_from_selector(
+        selector: &DebugProbeSelector,
+    ) -> Result<Self, ProbeCreationError> {
+        let device = crate::probe::list::list_devices()
+            .await
             .map_err(ProbeCreationError::Usb)?
             .filter(is_stlink_device)
             .find(|device| selector_matches(selector, device))
@@ -114,7 +122,7 @@ impl StLinkUsbDevice {
 
         let info = USB_PID_EP_MAP[&device.product_id()].clone();
 
-        let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
+        let device_handle = device.open().await.map_err(ProbeCreationError::Usb)?;
         tracing::debug!("Aquired handle for probe");
 
         let mut endpoint_out = false;
@@ -148,6 +156,7 @@ impl StLinkUsbDevice {
 
         let interface = device_handle
             .claim_interface(0)
+            .await
             .map_err(ProbeCreationError::Usb)?;
 
         tracing::debug!("Claimed interface 0 of USB device.");
@@ -164,12 +173,13 @@ impl StLinkUsbDevice {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl StLinkUsb for StLinkUsbDevice {
     /// Writes to the out EP and reads back data if needed.
     /// First the `cmd` is sent.
     /// In a second step `write_data` is transmitted.
     /// And lastly, data will be read back until `read_data` is filled.
-    fn write(
+    async fn write(
         &mut self,
         cmd: &[u8],
         write_data: &[u8],
@@ -190,7 +200,10 @@ impl StLinkUsb for StLinkUsbDevice {
         let ep_out = self.info.ep_out;
         let ep_in = self.info.ep_in;
 
-        let written_bytes = self.interface.write_bulk(ep_out, &padded_cmd, timeout)?;
+        let written_bytes = self
+            .interface
+            .write_bulk(ep_out, &padded_cmd, timeout)
+            .await?;
 
         if written_bytes != CMD_LEN {
             return Err(StlinkError::NotEnoughBytesWritten {
@@ -206,9 +219,10 @@ impl StLinkUsb for StLinkUsbDevice {
             let mut write_index = 0;
 
             while remaining_bytes > 0 {
-                let written_bytes =
-                    self.interface
-                        .write_bulk(ep_out, &write_data[write_index..], timeout)?;
+                let written_bytes = self
+                    .interface
+                    .write_bulk(ep_out, &write_data[write_index..], timeout)
+                    .await?;
 
                 remaining_bytes -= written_bytes;
                 write_index += written_bytes;
@@ -229,9 +243,10 @@ impl StLinkUsb for StLinkUsbDevice {
             let mut read_index = 0;
 
             while remaining_bytes > 0 {
-                let read_bytes =
-                    self.interface
-                        .read_bulk(ep_in, &mut read_data[read_index..], timeout)?;
+                let read_bytes = self
+                    .interface
+                    .read_bulk(ep_in, &mut read_data[read_index..], timeout)
+                    .await?;
 
                 read_index += read_bytes;
                 remaining_bytes -= read_bytes;
@@ -246,7 +261,11 @@ impl StLinkUsb for StLinkUsbDevice {
         Ok(())
     }
 
-    fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<usize, StlinkError> {
+    async fn read_swo(
+        &mut self,
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<usize, StlinkError> {
         tracing::trace!(
             "Reading {:?} SWO bytes to STLink, timeout: {:?}",
             read_data.len(),
@@ -260,14 +279,15 @@ impl StLinkUsb for StLinkUsbDevice {
         } else {
             self.interface
                 .read_bulk(ep_swo, read_data, timeout)
+                .await
                 .map_err(StlinkError::Usb)
         }
     }
 
     /// Reset the USB device. This can be used to recover when the
     /// STLink does not respond to USB requests.
-    fn reset(&mut self) -> Result<(), StlinkError> {
+    async fn reset(&mut self) -> Result<(), StlinkError> {
         tracing::debug!("Resetting USB device of STLink");
-        self.device_handle.reset().map_err(StlinkError::Usb)
+        self.device_handle.reset().await.map_err(StlinkError::Usb)
     }
 }

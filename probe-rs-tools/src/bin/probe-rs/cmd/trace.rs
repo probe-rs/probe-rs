@@ -1,7 +1,7 @@
 use std::io::prelude::*;
 use std::thread::sleep;
 use std::time::Duration;
-use std::time::Instant;
+use web_time::Instant;
 
 use probe_rs::MemoryInterface;
 use probe_rs::config::Registry;
@@ -25,15 +25,15 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
+    pub async fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
         let mut xs = vec![];
         let mut ys = vec![];
 
         let start = Instant::now();
 
-        let (mut session, _probe_options) = self.common.simple_attach(registry, lister)?;
+        let (mut session, _probe_options) = self.common.simple_attach(registry, lister).await?;
 
-        let mut core = session.core(self.shared.core)?;
+        let mut core = session.core(self.shared.core).await?;
 
         loop {
             // Prepare read.
@@ -41,7 +41,7 @@ impl Cmd {
             let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
 
             // Read data.
-            let value: u32 = core.read_word_32(self.loc)?;
+            let value: u32 = core.read_word_32(self.loc).await?;
 
             xs.push(instant);
             ys.push(value);

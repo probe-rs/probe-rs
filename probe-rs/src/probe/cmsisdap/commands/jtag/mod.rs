@@ -14,8 +14,9 @@ pub mod sequence;
 
 // Implement everything necessary to bitbang JTAG for non-ARM interfaces. As this is
 // mutually exclusive with ARM JTAG, we can ignore the ARM-side batching implementation.
+#[async_trait::async_trait(?Send)]
 impl RawJtagIo for CmsisDap {
-    fn shift_bit(
+    async fn shift_bit(
         &mut self,
         tms: bool,
         tdi: bool,
@@ -23,13 +24,13 @@ impl RawJtagIo for CmsisDap {
     ) -> Result<(), DebugProbeError> {
         self.state_mut().state.update(tms);
         if self.jtag_buffer.shift_bit(tms, tdi, capture_tdo) {
-            self.flush_jtag()?;
+            self.flush_jtag().await?;
         }
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
-        self.flush_jtag()?;
+    async fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
+        self.flush_jtag().await?;
         Ok(std::mem::take(&mut self.jtag_buffer.response))
     }
 
@@ -43,7 +44,7 @@ impl RawJtagIo for CmsisDap {
 }
 
 impl CmsisDap {
-    fn flush_jtag(&mut self) -> Result<(), DebugProbeError> {
+    async fn flush_jtag(&mut self) -> Result<(), DebugProbeError> {
         if let Some(seq) = self.jtag_buffer.current_sequence.take() {
             if !seq.is_empty() {
                 self.jtag_buffer.complete_sequences.push(seq);
@@ -71,7 +72,7 @@ impl CmsisDap {
 
         let command = SequenceRequest::new(sequences)?;
 
-        let response = self.send_jtag_sequences(command)?;
+        let response = self.send_jtag_sequences(command).await?;
         self.jtag_buffer.response.extend_from_bitslice(&response);
 
         Ok(())

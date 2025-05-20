@@ -29,15 +29,16 @@ pub fn from_dwarf(language: DwLang) -> Box<dyn ProgrammingLanguage> {
 }
 
 /// Programming language specific operations.
+#[async_trait::async_trait(?Send)]
 pub trait ProgrammingLanguage {
-    fn read_variable_value(
+    async fn read_variable_value(
         &self,
         _variable: &Variable,
         _memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
     ) -> VariableValue;
 
-    fn update_variable(
+    async fn update_variable(
         &self,
         variable: &Variable,
         _memory: &mut dyn MemoryInterface,
@@ -76,11 +77,11 @@ pub trait ProgrammingLanguage {
 
     // Post-process raw type representations for more user-friendly output.
     #[allow(clippy::too_many_arguments)]
-    fn process_struct(
+    async fn process_struct(
         &self,
         _unit_info: &UnitInfo,
         _debug_info: &DebugInfo,
-        _node: &DebuggingInformationEntry<GimliReader>,
+        _node: &DebuggingInformationEntry<'_, '_, GimliReader>,
         _variable: &mut Variable,
         _memory: &mut dyn MemoryInterface,
         _cache: &mut VariableCache,
@@ -93,8 +94,9 @@ pub trait ProgrammingLanguage {
 #[derive(Clone)]
 pub struct UnknownLanguage(DwLang);
 
+#[async_trait::async_trait(?Send)]
 impl ProgrammingLanguage for UnknownLanguage {
-    fn read_variable_value(
+    async fn read_variable_value(
         &self,
         _variable: &Variable,
         _memory: &mut dyn MemoryInterface,
@@ -106,7 +108,7 @@ impl ProgrammingLanguage for UnknownLanguage {
         ))
     }
 
-    fn update_variable(
+    async fn update_variable(
         &self,
         _variable: &Variable,
         _memory: &mut dyn MemoryInterface,

@@ -78,17 +78,18 @@ impl ExceptionReason {
 /// Exception handling for cores based on the ARMv6-M architecture.
 pub struct ArmV6MExceptionHandler;
 
+#[async_trait::async_trait(?Send)]
 impl ExceptionInterface for ArmV6MExceptionHandler {
-    fn exception_details(
+    async fn exception_details(
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
         _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, DebugError> {
-        armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers)
+        armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers).await
     }
 
-    fn calling_frame_registers(
+    async fn calling_frame_registers(
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::DebugRegisters,
@@ -107,7 +108,8 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
         let mut updated_registers = stackframe_registers.clone();
 
         updated_registers =
-            armv6m_armv7m_shared::calling_frame_registers(memory_interface, &updated_registers)?;
+            armv6m_armv7m_shared::calling_frame_registers(memory_interface, &updated_registers)
+                .await?;
 
         if !exception_reason.is_precise_fault() {
             // PC is always stored on the stack when unwinding an exception,
@@ -136,7 +138,7 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
         Ok(value)
     }
 
-    fn exception_description(
+    async fn exception_description(
         &self,
         raw_exception: u32,
         _memory_interface: &mut dyn MemoryInterface,
@@ -163,8 +165,8 @@ mod test {
     use crate::exception_handling::ExceptionInterface;
     use crate::{DebugRegister, DebugRegisters};
 
-    #[test]
-    fn exception_handler_reset_exception() {
+    #[pollster::test]
+    async fn exception_handler_reset_exception() {
         let handler = ArmV6MExceptionHandler {};
 
         let mut memory = MockMemory::new();
@@ -185,13 +187,14 @@ mod test {
 
         let description = handler
             .exception_description(raw_exception, &mut memory)
+            .await
             .unwrap();
 
         assert_eq!(description, "Reset")
     }
 
-    #[test]
-    fn exception_handler_no_exception_description() {
+    #[pollster::test]
+    async fn exception_handler_no_exception_description() {
         let handler = ArmV6MExceptionHandler {};
 
         let mut memory = MockMemory::new();
@@ -212,6 +215,7 @@ mod test {
 
         let description = handler
             .exception_description(raw_exception, &mut memory)
+            .await
             .unwrap();
 
         assert_eq!(description, "<No active exception>")

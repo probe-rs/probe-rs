@@ -3,6 +3,7 @@ use std::{
     char,
     io::{BufReader, BufWriter, Read, Write},
     net::SocketAddr,
+    sync::Arc,
     time::Duration,
 };
 
@@ -23,6 +24,7 @@ use crate::{
         ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
     },
 };
+use anyhow::anyhow;
 use bitvec::vec::BitVec;
 use serialport::{SerialPortType, available_ports};
 
@@ -652,7 +654,9 @@ impl BlackMagicProbe {
         let response_len = Self::recv(&mut reader, Some(&mut handshake_response), false)
             .map_err(|e| {
                 tracing::error!("Unable to receive command: {:?}", e);
-                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                    anyhow!(e).context("Handshake failed"),
+                ))
             })?
             .0;
         let version =
@@ -1027,6 +1031,7 @@ impl BlackMagicProbe {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl DebugProbe for BlackMagicProbe {
     fn get_name(&self) -> &str {
         "Black Magic probe"
@@ -1036,13 +1041,13 @@ impl DebugProbe for BlackMagicProbe {
         self.speed_khz
     }
 
-    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+    async fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         self.command(RemoteCommand::SetSpeedHz(speed_khz * 1000))?;
         self.speed_khz = self.get_speed()?;
         Ok(self.speed_khz)
     }
 
-    fn attach(&mut self) -> Result<(), DebugProbeError> {
+    async fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching with protocol '{:?}'", self.protocol);
 
         // Enable output on the clock pin (if supported)
@@ -1055,7 +1060,7 @@ impl DebugProbe for BlackMagicProbe {
 
         match self.protocol {
             Some(WireProtocol::Jtag) => {
-                self.select_target(0)?;
+                self.select_target(0).await?;
 
                 if let ProtocolVersion::V1
                 | ProtocolVersion::V2
@@ -1082,11 +1087,11 @@ impl DebugProbe for BlackMagicProbe {
         }
     }
 
-    fn detach(&mut self) -> Result<(), crate::Error> {
+    async fn detach(&mut self) -> Result<(), crate::Error> {
         Ok(())
     }
 
-    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         // TODO we could add this by using a GPIO. However, different probes may connect
         // different pins (if any) to the reset line, so we would need to make this configurable.
         Err(DebugProbeError::NotImplemented {
@@ -1094,17 +1099,17 @@ impl DebugProbe for BlackMagicProbe {
         })
     }
 
-    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         self.command(RemoteCommand::TargetReset(true))?;
         Ok(())
     }
 
-    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+    async fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         self.command(RemoteCommand::TargetReset(false))?;
         Ok(())
     }
 
-    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+    async fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         self.protocol = Some(protocol);
 
         tracing::debug!("Switching to protocol {}", protocol);
@@ -1128,7 +1133,7 @@ impl DebugProbe for BlackMagicProbe {
         Some(self)
     }
 
-    fn try_get_riscv_interface_builder<'probe>(
+    async fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
         Ok(Box::new(JtagDtmBuilder::new(self)))
@@ -1173,7 +1178,7 @@ impl DebugProbe for BlackMagicProbe {
         true
     }
 
-    fn try_get_xtensa_interface<'probe>(
+    async fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
         state: &'probe mut XtensaDebugInterfaceState,
     ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
@@ -1188,8 +1193,9 @@ impl DebugProbe for BlackMagicProbe {
 impl AutoImplementJtagAccess for BlackMagicProbe {}
 impl DapProbe for BlackMagicProbe {}
 
+#[async_trait::async_trait(?Send)]
 impl RawSwdIo for BlackMagicProbe {
-    fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    async fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
     {
@@ -1197,7 +1203,7 @@ impl RawSwdIo for BlackMagicProbe {
         self.perform_swdio_transfer(swdio)
     }
 
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
         pin_out: u32,
         pin_select: u32,
@@ -1226,8 +1232,9 @@ impl RawSwdIo for BlackMagicProbe {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl RawJtagIo for BlackMagicProbe {
-    fn shift_bit(
+    async fn shift_bit(
         &mut self,
         tms: bool,
         tdi: bool,
@@ -1241,7 +1248,7 @@ impl RawJtagIo for BlackMagicProbe {
         Ok(())
     }
 
-    fn shift_bits(
+    async fn shift_bits(
         &mut self,
         tms: impl IntoIterator<Item = bool>,
         tdi: impl IntoIterator<Item = bool>,
@@ -1279,7 +1286,7 @@ impl RawJtagIo for BlackMagicProbe {
 
         if special_transaction {
             for (tms, tdi, cap) in transaction {
-                self.shift_bit(tms, tdi, cap)?;
+                self.shift_bit(tms, tdi, cap).await?;
             }
         } else {
             self.jtag_state.state.update(tms_true_count > 0);
@@ -1289,7 +1296,7 @@ impl RawJtagIo for BlackMagicProbe {
         Ok(())
     }
 
-    fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
+    async fn read_captured_bits(&mut self) -> Result<BitVec, DebugProbeError> {
         tracing::trace!("reading captured bits");
         Ok(std::mem::take(&mut self.in_bits))
     }
@@ -1393,13 +1400,14 @@ fn black_magic_debug_port_info(
         vendor_id,
         product_id,
         serial_number,
-        probe_factory: &BlackMagicProbeFactory,
+        probe_factory: Arc::new(BlackMagicProbeFactory) as Arc<dyn ProbeFactory>,
         hid_interface: interface,
     })
 }
 
+#[async_trait::async_trait(?Send)]
 impl ProbeFactory for BlackMagicProbeFactory {
-    fn open(
+    async fn open(
         &self,
         selector: &super::DebugProbeSelector,
     ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
@@ -1433,11 +1441,16 @@ impl ProbeFactory for BlackMagicProbeFactory {
         }
 
         // Otherwise, treat it as a serial port and iterate through all ports.
-        let Ok(ports) = available_ports() else {
-            tracing::trace!("unable to get available serial ports");
-            return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                ProbeCreationError::CouldNotOpen,
-            ));
+        let ports = match available_ports() {
+            Ok(ports) => ports,
+            Err(e) => {
+                tracing::trace!("unable to get available serial ports");
+                return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::CouldNotOpen(
+                        anyhow!(e).context("Unable to get serial ports"),
+                    ),
+                ));
+            }
         };
 
         for port_description in ports {
@@ -1462,19 +1475,25 @@ impl ProbeFactory for BlackMagicProbeFactory {
             let mut port = serialport::new(port_description.port_name, 115200)
                 .timeout(std::time::Duration::from_secs(1))
                 .open()
-                .map_err(|_| {
-                    DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+                .map_err(|e| {
+                    DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                        anyhow!(e).context("Serial port could not be opened"),
+                    ))
                 })?;
 
             // Set DTR, indicating we're ready to communicate.
-            port.write_data_terminal_ready(true).map_err(|_| {
-                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+            port.write_data_terminal_ready(true).map_err(|e| {
+                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                    anyhow!(e).context("Unable to set DTR for the serial"),
+                ))
             })?;
             // A delay appears necessary to allow the BMP to recognize the DTR signal.
             std::thread::sleep(Duration::from_millis(250));
             let reader = port;
-            let writer = reader.try_clone().map_err(|_| {
-                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+            let writer = reader.try_clone().map_err(|e| {
+                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen(
+                    anyhow!(e).context("No serial writer could be created"),
+                ))
             })?;
             return BlackMagicProbe::new(Box::new(reader), Box::new(writer))
                 .map(|p| Box::new(p) as Box<dyn DebugProbe>);
@@ -1486,7 +1505,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
         ))
     }
 
-    fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
+    async fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
         let mut probes = vec![];
         let ports = match available_ports() {
             Ok(ports) => ports,
@@ -1505,10 +1524,13 @@ impl ProbeFactory for BlackMagicProbeFactory {
         probes
     }
 
-    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    async fn list_probes_filtered(
+        &self,
+        selector: Option<&DebugProbeSelector>,
+    ) -> Vec<DebugProbeInfo> {
         // No selector - list probes as usual
         let Some(selector) = selector else {
-            return self.list_probes();
+            return self.list_probes().await;
         };
 
         let vid_pid = (selector.vendor_id, selector.product_id);
@@ -1519,7 +1541,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
                 return vec![];
             }
             // Since there is no serial specified, we can list all probes.
-            return self.list_probes();
+            return self.list_probes().await;
         };
 
         // If the selector refers to an IP:port pair, return that as the list of probes.
@@ -1531,6 +1553,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
             // The selector is not an IP:port pair, so we can list all probes, applying the requested filter.
             return self
                 .list_probes()
+                .await
                 .into_iter()
                 .filter(|probe| selector.matches_probe(probe))
                 .collect();
@@ -1547,7 +1570,7 @@ impl ProbeFactory for BlackMagicProbeFactory {
             vendor_id: BLACK_MAGIC_PROBE_VID,
             product_id: BLACK_MAGIC_PROBE_PID,
             serial_number: Some(ip_port.to_string()),
-            probe_factory: &BlackMagicProbeFactory,
+            probe_factory: Arc::new(BlackMagicProbeFactory),
             hid_interface: None,
         }]
     }

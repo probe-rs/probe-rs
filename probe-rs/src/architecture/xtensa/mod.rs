@@ -93,7 +93,7 @@ impl<'probe> Xtensa<'probe> {
         [SpecialRegister::IBreakA0, SpecialRegister::IBreakA1];
 
     /// Create a new Xtensa interface for a particular core.
-    pub fn new(
+    pub async fn new(
         interface: XtensaCommunicationInterface<'probe>,
         state: &'probe mut XtensaCoreState,
         sequence: Arc<dyn XtensaDebugSequence>,
@@ -104,7 +104,7 @@ impl<'probe> Xtensa<'probe> {
             sequence,
         };
 
-        this.on_attach()?;
+        this.on_attach().await?;
 
         Ok(this)
     }
@@ -114,16 +114,20 @@ impl<'probe> Xtensa<'probe> {
         self.interface.clear_register_cache();
     }
 
-    fn on_attach(&mut self) -> Result<(), Error> {
+    async fn on_attach(&mut self) -> Result<(), Error> {
         // If the core was reset, force a reconnection.
         let core_reset;
         if self.state.enabled {
-            let status = self.interface.xdm.power_status({
-                let mut clear_value = PowerStatus(0);
-                clear_value.set_core_was_reset(true);
-                clear_value.set_debug_was_reset(true);
-                clear_value
-            })?;
+            let status = self
+                .interface
+                .xdm
+                .power_status({
+                    let mut clear_value = PowerStatus(0);
+                    clear_value.set_core_was_reset(true);
+                    clear_value.set_debug_was_reset(true);
+                    clear_value
+                })
+                .await?;
             core_reset = status.core_was_reset() || !status.core_domain_on();
             let debug_reset = status.debug_was_reset() || !status.debug_domain_on();
 
@@ -142,19 +146,20 @@ impl<'probe> Xtensa<'probe> {
         // (Re)enter debug mode if necessary. This also checks if the core is enabled.
         if !self.state.enabled {
             // Enable debug module.
-            self.interface.enter_debug_mode()?;
+            self.interface.enter_debug_mode().await?;
             self.state.enabled = true;
 
             if core_reset {
                 // Run the connection sequence while halted.
                 let was_running = self
                     .interface
-                    .halt_with_previous(Duration::from_millis(500))?;
+                    .halt_with_previous(Duration::from_millis(500))
+                    .await?;
 
-                self.sequence.on_connect(&mut self.interface)?;
+                self.sequence.on_connect(&mut self.interface).await?;
 
                 if was_running {
-                    self.run()?;
+                    self.run().await?;
                 }
             }
         }
@@ -162,16 +167,16 @@ impl<'probe> Xtensa<'probe> {
         Ok(())
     }
 
-    fn core_info(&mut self) -> Result<CoreInformation, Error> {
-        let pc = self.read_core_reg(self.program_counter().id)?;
+    async fn core_info(&mut self) -> Result<CoreInformation, Error> {
+        let pc = self.read_core_reg(self.program_counter().id).await?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
-    fn skip_breakpoint(&mut self) -> Result<(), Error> {
+    async fn skip_breakpoint(&mut self) -> Result<(), Error> {
         self.state.semihosting_command = None;
         if !self.state.pc_written {
-            let debug_cause = self.debug_cause()?;
+            let debug_cause = self.debug_cause().await?;
 
             let pc_increment = if debug_cause.break_instruction() {
                 3
@@ -183,21 +188,28 @@ impl<'probe> Xtensa<'probe> {
 
             if pc_increment > 0 {
                 // Step through the breakpoint
-                let mut pc_value = self.interface.read_register_untyped(Register::CurrentPc)?;
+                let mut pc_value = self
+                    .interface
+                    .read_register_untyped(Register::CurrentPc)
+                    .await?;
                 pc_value += pc_increment;
                 self.interface
-                    .write_register_untyped(Register::CurrentPc, pc_value)?;
+                    .write_register_untyped(Register::CurrentPc, pc_value)
+                    .await?;
             } else if debug_cause.ibreak_exception() {
-                let pc_value = self.interface.read_register_untyped(Register::CurrentPc)?;
-                let bps = self.hw_breakpoints()?;
+                let pc_value = self
+                    .interface
+                    .read_register_untyped(Register::CurrentPc)
+                    .await?;
+                let bps = self.hw_breakpoints().await?;
                 if let Some(bp_unit) = bps.iter().position(|bp| *bp == Some(pc_value as u64)) {
                     // Disable the breakpoint
-                    self.clear_hw_breakpoint(bp_unit)?;
+                    self.clear_hw_breakpoint(bp_unit).await?;
                     // Single step
-                    let ps = self.current_ps()?;
-                    self.interface.step(1, ps.intlevel())?;
+                    let ps = self.current_ps().await?;
+                    self.interface.step(1, ps.intlevel()).await?;
                     // Re-enable the breakpoint
-                    self.set_hw_breakpoint(bp_unit, pc_value as u64)?;
+                    self.set_hw_breakpoint(bp_unit, pc_value as u64).await?;
                 }
             }
         }
@@ -207,7 +219,7 @@ impl<'probe> Xtensa<'probe> {
 
     /// Check if the current breakpoint is a semihosting call
     // OpenOCD implementation: https://github.com/espressif/openocd-esp32/blob/93dd01511fd13d4a9fb322cd9b600c337becef9e/src/target/espressif/esp_xtensa_semihosting.c#L42-L103
-    fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
+    async fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
         const SEMI_BREAK: u32 = const {
             let InstructionEncoding::Narrow(bytes) = Instruction::Break(1, 14).encode();
             bytes
@@ -218,10 +230,13 @@ impl<'probe> Xtensa<'probe> {
             return Ok(Some(command));
         }
 
-        let pc: u64 = self.read_core_reg(self.program_counter().id)?.try_into()?;
+        let pc: u64 = self
+            .read_core_reg(self.program_counter().id)
+            .await?
+            .try_into()?;
 
         let mut actual_instruction = [0u8; 3];
-        self.read_8(pc, &mut actual_instruction)?;
+        self.read_8(pc, &mut actual_instruction).await?;
         let actual_instruction = u32::from_le_bytes([
             actual_instruction[0],
             actual_instruction[1],
@@ -232,11 +247,12 @@ impl<'probe> Xtensa<'probe> {
         tracing::debug!("Semihosting check pc={pc:#x} instruction={actual_instruction:#010x}");
 
         let command = if actual_instruction == SEMI_BREAK {
-            let syscall = decode_semihosting_syscall(self)?;
+            let syscall = decode_semihosting_syscall(self).await?;
             if let SemihostingCommand::Unknown(details) = syscall {
                 self.sequence
                     .clone()
-                    .on_unknown_semihosting_command(self, details)?
+                    .on_unknown_semihosting_command(self, details)
+                    .await?
             } else {
                 Some(syscall)
             }
@@ -248,58 +264,59 @@ impl<'probe> Xtensa<'probe> {
         Ok(command)
     }
 
-    fn on_halted(&mut self) -> Result<(), Error> {
+    async fn on_halted(&mut self) -> Result<(), Error> {
         self.state.pc_written = false;
         self.clear_cache();
 
-        let status = self.status()?;
+        let status = self.status().await?;
         tracing::debug!("Core halted: {:#?}", status);
 
         if status.is_halted() {
-            self.sequence.on_halt(&mut self.interface)?;
+            self.sequence.on_halt(&mut self.interface).await?;
         }
 
         Ok(())
     }
 
-    fn halt_with_previous(&mut self, timeout: Duration) -> Result<bool, Error> {
-        let was_running = self.interface.halt_with_previous(timeout)?;
+    async fn halt_with_previous(&mut self, timeout: Duration) -> Result<bool, Error> {
+        let was_running = self.interface.halt_with_previous(timeout).await?;
         if was_running {
-            self.on_halted()?;
+            self.on_halted().await?;
         }
 
         Ok(was_running)
     }
 
-    fn halted_access<F, T>(&mut self, op: F) -> Result<T, Error>
+    async fn halted_access<F, T>(&mut self, op: F) -> Result<T, Error>
     where
-        F: FnOnce(&mut Self) -> Result<T, Error>,
+        F: AsyncFnOnce(&mut Self) -> Result<T, Error>,
     {
-        let was_running = self.halt_with_previous(Duration::from_millis(100))?;
+        let was_running = self.halt_with_previous(Duration::from_millis(100)).await?;
 
-        let result = op(self);
+        let result = op(self).await;
 
         if was_running {
-            self.run()?;
+            self.run().await?;
         }
 
         result
     }
 
-    fn current_ps(&mut self) -> Result<ProgramStatus, Error> {
+    async fn current_ps(&mut self) -> Result<ProgramStatus, Error> {
         // Reading ProgramStatus using `read_register` would return the value
         // after the debug interrupt has been taken.
         Ok(self
             .interface
             .read_register_untyped(Register::CurrentPs)
+            .await
             .map(ProgramStatus)?)
     }
 
-    fn debug_cause(&mut self) -> Result<DebugCause, Error> {
-        Ok(self.interface.read_register::<DebugCause>()?)
+    async fn debug_cause(&mut self) -> Result<DebugCause, Error> {
+        Ok(self.interface.read_register::<DebugCause>().await?)
     }
 
-    fn spill_registers(&mut self) -> Result<(), Error> {
+    async fn spill_registers(&mut self) -> Result<(), Error> {
         if self.state.spilled {
             return Ok(());
         }
@@ -308,7 +325,8 @@ impl<'probe> Xtensa<'probe> {
         let register_file = RegisterFile::read(
             self.interface.core_properties().window_option_properties,
             &mut self.interface,
-        )?;
+        )
+        .await?;
 
         let window_reg_count = register_file.core.window_regs;
         for reg in 0..window_reg_count {
@@ -321,15 +339,15 @@ impl<'probe> Xtensa<'probe> {
                 .store(Register::Cpu(reg), value);
         }
 
-        if self.current_ps()?.excm() {
+        if self.current_ps().await?.excm() {
             // We are in an exception, possibly WindowOverflowN or WindowUnderflowN.
             // We can't spill registers in this state.
             return Ok(());
         }
-        if self.current_ps()?.woe() {
+        if self.current_ps().await?.woe() {
             // We should only spill registers if PS.WOE is set. According to the debug guide, we
             // also should not spill if INTLEVEL != 0 but I don't see why.
-            register_file.spill(&mut self.interface)?;
+            register_file.spill(&mut self.interface).await?;
         }
 
         Ok(())
@@ -338,137 +356,144 @@ impl<'probe> Xtensa<'probe> {
 
 // We can't use CoreMemoryInterface here, because we need to spill registers before reading.
 // This needs to be considerably cleaned up.
+#[async_trait::async_trait(?Send)]
 impl MemoryInterface for Xtensa<'_> {
-    fn supports_native_64bit_access(&mut self) -> bool {
-        self.interface.supports_native_64bit_access()
+    async fn supports_native_64bit_access(&mut self) -> bool {
+        self.interface.supports_native_64bit_access().await
     }
 
-    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
-        self.halted_access(|this| {
-            this.spill_registers()?;
+    async fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
+        self.halted_access(async |this| {
+            this.spill_registers().await?;
 
-            this.interface.read_word_64(address)
+            this.interface.read_word_64(address).await
         })
+        .await
     }
 
-    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        self.halted_access(|this| {
-            this.spill_registers()?;
+    async fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
+        self.halted_access(async |this| {
+            this.spill_registers().await?;
 
-            this.interface.read_word_32(address)
+            this.interface.read_word_32(address).await
         })
+        .await
     }
 
-    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
-        self.halted_access(|this| {
-            this.spill_registers()?;
+    async fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        self.halted_access(async |this| {
+            this.spill_registers().await?;
 
-            this.interface.read_word_16(address)
+            this.interface.read_word_16(address).await
         })
+        .await
     }
 
-    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        self.halted_access(|this| {
-            this.spill_registers()?;
+    async fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
+        self.halted_access(async |this| {
+            this.spill_registers().await?;
 
-            this.interface.read_word_8(address)
+            this.interface.read_word_8(address).await
         })
+        .await
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        self.read_8(address, data.as_mut_bytes())
+    async fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
+        self.read_8(address, data.as_mut_bytes()).await
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        self.read_8(address, data.as_mut_bytes())
+    async fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
+        self.read_8(address, data.as_mut_bytes()).await
     }
 
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        self.read_8(address, data.as_mut_bytes())
+    async fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        self.read_8(address, data.as_mut_bytes()).await
     }
 
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.halted_access(|this| {
-            this.spill_registers()?;
+    async fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        self.halted_access(async |this| {
+            this.spill_registers().await?;
 
-            this.interface.read_8(address, data)
+            this.interface.read_8(address, data).await
         })
+        .await
     }
 
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        self.interface.write_word_64(address, data)
+    async fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
+        self.interface.write_word_64(address, data).await
     }
 
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        self.interface.write_word_32(address, data)
+    async fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        self.interface.write_word_32(address, data).await
     }
 
-    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
-        self.interface.write_word_16(address, data)
+    async fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        self.interface.write_word_16(address, data).await
     }
 
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        self.interface.write_word_8(address, data)
+    async fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
+        self.interface.write_word_8(address, data).await
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        self.interface.write_64(address, data)
+    async fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
+        self.interface.write_64(address, data).await
     }
 
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        self.interface.write_32(address, data)
+    async fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
+        self.interface.write_32(address, data).await
     }
 
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        self.interface.write_16(address, data)
+    async fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        self.interface.write_16(address, data).await
     }
 
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.interface.write_8(address, data)
+    async fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.interface.write_8(address, data).await
     }
 
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.interface.write(address, data)
+    async fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.interface.write(address, data).await
     }
 
-    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
-        self.interface.supports_8bit_transfers()
+    async fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        self.interface.supports_8bit_transfers().await
     }
 
-    fn flush(&mut self) -> Result<(), Error> {
-        self.interface.flush()
+    async fn flush(&mut self) -> Result<(), Error> {
+        self.interface.flush().await
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl CoreInterface for Xtensa<'_> {
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
-        self.interface.wait_for_core_halted(timeout)?;
-        self.on_halted()?;
+    async fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
+        self.interface.wait_for_core_halted(timeout).await?;
+        self.on_halted().await?;
 
         Ok(())
     }
 
-    fn core_halted(&mut self) -> Result<bool, Error> {
+    async fn core_halted(&mut self) -> Result<bool, Error> {
         let was_halted = self.interface.state.is_halted;
-        let is_halted = self.interface.core_halted()?;
+        let is_halted = self.interface.core_halted().await?;
 
         if !was_halted && is_halted {
-            self.on_halted()?;
+            self.on_halted().await?;
         }
 
         Ok(is_halted)
     }
 
-    fn status(&mut self) -> Result<CoreStatus, Error> {
-        let status = if self.core_halted()? {
-            let debug_cause = self.debug_cause()?;
+    async fn status(&mut self) -> Result<CoreStatus, Error> {
+        let status = if self.core_halted().await? {
+            let debug_cause = self.debug_cause().await?;
 
             let mut reason = debug_cause.halt_reason();
             if reason == HaltReason::Breakpoint(BreakpointCause::Software) {
                 // The chip initiated this halt, therefore we need to update pc_written state
                 self.state.pc_written = false;
                 // Check if the breakpoint is a semihosting call
-                if let Some(cmd) = self.check_for_semihosting()? {
+                if let Some(cmd) = self.check_for_semihosting().await? {
                     reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd));
                 }
             }
@@ -481,58 +506,64 @@ impl CoreInterface for Xtensa<'_> {
         Ok(status)
     }
 
-    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.halt_with_previous(timeout)?;
+    async fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.halt_with_previous(timeout).await?;
 
-        self.core_info()
+        self.core_info().await
     }
 
-    fn run(&mut self) -> Result<(), Error> {
-        self.skip_breakpoint()?;
-        Ok(self.interface.resume_core()?)
+    async fn run(&mut self) -> Result<(), Error> {
+        self.skip_breakpoint().await?;
+        Ok(self.interface.resume_core().await?)
     }
 
-    fn reset(&mut self) -> Result<(), Error> {
-        self.reset_and_halt(Duration::from_millis(500))?;
+    async fn reset(&mut self) -> Result<(), Error> {
+        self.reset_and_halt(Duration::from_millis(500)).await?;
 
-        self.run()
+        self.run().await
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+    async fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.state.semihosting_command = None;
         self.sequence
-            .reset_system_and_halt(&mut self.interface, timeout)?;
-        self.on_halted()?;
+            .reset_system_and_halt(&mut self.interface, timeout)
+            .await?;
+        self.on_halted().await?;
 
         // TODO: this may return that the core has gone away, which is fine but currently unexpected
-        self.on_attach()?;
+        self.on_attach().await?;
 
-        self.core_info()
+        self.core_info().await
     }
 
-    fn step(&mut self) -> Result<CoreInformation, Error> {
-        self.skip_breakpoint()?;
+    async fn step(&mut self) -> Result<CoreInformation, Error> {
+        self.skip_breakpoint().await?;
 
         // Only count instructions in the current context.
-        let ps = self.current_ps()?;
-        self.interface.step(1, ps.intlevel())?;
+        let ps = self.current_ps().await?;
+        self.interface.step(1, ps.intlevel()).await?;
 
-        self.on_halted()?;
+        self.on_halted().await?;
 
-        self.core_info()
+        self.core_info().await
     }
 
-    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
-        self.halted_access(|this| {
+    async fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
+        self.halted_access(async |this| {
             let register = Register::try_from(address)?;
-            let value = this.interface.read_register_untyped(register)?;
+            let value = this.interface.read_register_untyped(register).await?;
 
             Ok(RegisterValue::U32(value))
         })
+        .await
     }
 
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
-        self.halted_access(|this| {
+    async fn write_core_reg(
+        &mut self,
+        address: RegisterId,
+        value: RegisterValue,
+    ) -> Result<(), Error> {
+        self.halted_access(async |this| {
             let value: u32 = value.try_into()?;
 
             if address == this.program_counter().id {
@@ -540,28 +571,33 @@ impl CoreInterface for Xtensa<'_> {
             }
 
             let register = Register::try_from(address)?;
-            this.interface.write_register_untyped(register, value)?;
+            this.interface
+                .write_register_untyped(register, value)
+                .await?;
 
             Ok(())
         })
+        .await
     }
 
-    fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
+    async fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
         Ok(self.interface.available_breakpoint_units())
     }
 
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        self.halted_access(|this| {
-            let mut breakpoints = Vec::with_capacity(this.available_breakpoint_units()? as usize);
+    async fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        self.halted_access(async |this| {
+            let mut breakpoints =
+                Vec::with_capacity(this.available_breakpoint_units().await? as usize);
 
-            let enabled_breakpoints = this.interface.read_register::<IBreakEn>()?;
+            let enabled_breakpoints = this.interface.read_register::<IBreakEn>().await?;
 
-            for i in 0..this.available_breakpoint_units()? as usize {
+            for i in 0..this.available_breakpoint_units().await? as usize {
                 let is_enabled = enabled_breakpoints.0 & (1 << i) != 0;
                 let breakpoint = if is_enabled {
                     let address = this
                         .interface
-                        .read_register_untyped(Self::IBREAKA_REGS[i])?;
+                        .read_register_untyped(Self::IBREAKA_REGS[i])
+                        .await?;
 
                     Some(address as u64)
                 } else {
@@ -573,10 +609,11 @@ impl CoreInterface for Xtensa<'_> {
 
             Ok(breakpoints)
         })
+        .await
     }
 
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
-        self.halted_access(|this| {
+    async fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
+        self.halted_access(async |this| {
             this.state.breakpoints_enabled = state;
             let mask = if state {
                 this.state.breakpoint_mask()
@@ -584,38 +621,42 @@ impl CoreInterface for Xtensa<'_> {
                 0
             };
 
-            this.interface.write_register(IBreakEn(mask))?;
+            this.interface.write_register(IBreakEn(mask)).await?;
 
             Ok(())
         })
+        .await
     }
 
-    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
-        self.halted_access(|this| {
+    async fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+        self.halted_access(async |this| {
             this.state.breakpoint_set[unit_index] = true;
             this.interface
-                .write_register_untyped(Self::IBREAKA_REGS[unit_index], addr as u32)?;
+                .write_register_untyped(Self::IBREAKA_REGS[unit_index], addr as u32)
+                .await?;
 
             if this.state.breakpoints_enabled {
                 let mask = this.state.breakpoint_mask();
-                this.interface.write_register(IBreakEn(mask))?;
+                this.interface.write_register(IBreakEn(mask)).await?;
             }
 
             Ok(())
         })
+        .await
     }
 
-    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
-        self.halted_access(|this| {
+    async fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
+        self.halted_access(async |this| {
             this.state.breakpoint_set[unit_index] = false;
 
             if this.state.breakpoints_enabled {
                 let mask = this.state.breakpoint_mask();
-                this.interface.write_register(IBreakEn(mask))?;
+                this.interface.write_register(IBreakEn(mask)).await?;
             }
 
             Ok(())
         })
+        .await
     }
 
     fn registers(&self) -> &'static CoreRegisters {
@@ -650,12 +691,12 @@ impl CoreInterface for Xtensa<'_> {
         CoreType::Xtensa
     }
 
-    fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+    async fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
         // TODO: NX exists, too
         Ok(InstructionSet::Xtensa)
     }
 
-    fn fpu_support(&mut self) -> Result<bool, Error> {
+    async fn fpu_support(&mut self) -> Result<bool, Error> {
         // TODO: ESP32 and ESP32-S3 have FPU
         Ok(false)
     }
@@ -665,16 +706,16 @@ impl CoreInterface for Xtensa<'_> {
         Ok(0)
     }
 
-    fn reset_catch_set(&mut self) -> Result<(), Error> {
+    async fn reset_catch_set(&mut self) -> Result<(), Error> {
         Err(Error::NotImplemented("reset_catch_set"))
     }
 
-    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+    async fn reset_catch_clear(&mut self) -> Result<(), Error> {
         Err(Error::NotImplemented("reset_catch_clear"))
     }
 
-    fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.interface.leave_debug_mode()?;
+    async fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.interface.leave_debug_mode().await?;
         Ok(())
     }
 }
@@ -687,12 +728,16 @@ struct RegisterFile {
 }
 
 impl RegisterFile {
-    fn read(
+    async fn read(
         xtensa: WindowProperties,
         interface: &mut XtensaCommunicationInterface<'_>,
     ) -> Result<Self, Error> {
-        let window_base_result = interface.schedule_read_register(SpecialRegister::Windowbase)?;
-        let window_start_result = interface.schedule_read_register(SpecialRegister::Windowstart)?;
+        let window_base_result = interface
+            .schedule_read_register(SpecialRegister::Windowbase)
+            .await?;
+        let window_start_result = interface
+            .schedule_read_register(SpecialRegister::Windowstart)
+            .await?;
 
         let mut register_results = Vec::with_capacity(xtensa.num_aregs as usize);
 
@@ -700,7 +745,7 @@ impl RegisterFile {
 
         // Restore registers before reading them, as reading a special
         // register overwrote scratch registers.
-        interface.restore_registers()?;
+        interface.restore_registers().await?;
         // The window registers alias each other, so we need to make sure we don't read
         // the cached values. We'll then use the registers we read here to prime the cache.
         for ar in ar0..ar0 + xtensa.window_regs {
@@ -712,7 +757,7 @@ impl RegisterFile {
             // Read registers visible in the current window
             for ar in ar0..ar0 + xtensa.window_regs {
                 let reg = CpuRegister::try_from(ar)?;
-                let result = interface.schedule_read_register(reg)?;
+                let result = interface.schedule_read_register(reg).await?;
 
                 register_results.push(result);
             }
@@ -721,23 +766,27 @@ impl RegisterFile {
             let rotw_arg = xtensa.window_regs / xtensa.rotw_rotates;
             interface
                 .xdm
-                .schedule_execute_instruction(Instruction::Rotw(rotw_arg));
+                .schedule_execute_instruction(Instruction::Rotw(rotw_arg))
+                .await;
         }
 
         // Now do the actual read.
         interface
             .xdm
             .execute()
+            .await
             .expect("Failed to execute read. This shouldn't happen.");
 
-        let mut register_values = register_results
-            .into_iter()
-            .map(|result| interface.read_deferred_result(result))
-            .collect::<Result<Vec<_>, _>>()?;
+        let mut register_values = vec![];
+        for result in register_results.into_iter() {
+            if let Ok(value) = interface.read_deferred_result(result).await {
+                register_values.push(value);
+            }
+        }
 
         // WindowBase points to the first register of the current window in the register file.
         // In essence, it selects which 16 registers are visible out of the 64 physical registers.
-        let window_base = interface.read_deferred_result(window_base_result)?;
+        let window_base = interface.read_deferred_result(window_base_result).await?;
 
         // The WindowStart Special Register, which is also added by the option and consists of
         // NAREG/4 bits. Each call frame, which has not been spilled, is represented by a bit in the
@@ -754,7 +803,7 @@ impl RegisterFile {
         // This value is used by the hardware to determine if WindowOverflow or WindowUnderflow
         // exceptions should be raised. The exception handlers then spill or reload registers
         // from the stack and set/clear the corresponding bit in the WindowStart register.
-        let window_start = interface.read_deferred_result(window_start_result)?;
+        let window_start = interface.read_deferred_result(window_start_result).await?;
 
         // We have read registers relative to the current windowbase. Let's
         // rotate the registers back so that AR0 is at index 0.
@@ -768,7 +817,7 @@ impl RegisterFile {
         })
     }
 
-    fn spill(&self, xtensa: &mut XtensaCommunicationInterface<'_>) -> Result<(), Error> {
+    async fn spill(&self, xtensa: &mut XtensaCommunicationInterface<'_>) -> Result<(), Error> {
         if !self.core.has_windowed_registers {
             return Ok(());
         }
@@ -800,7 +849,7 @@ impl RegisterFile {
         let mut window_base = self.next_window_base(self.window_base);
 
         while let Some(window) = RegisterWindow::at_windowbase(self, window_base) {
-            window.spill(xtensa)?;
+            window.spill(xtensa).await?;
             window_base = self.next_window_base(window_base);
 
             if window_base == self.window_base {
@@ -877,7 +926,7 @@ impl<'a> RegisterWindow<'a> {
         (idx + self.window_base * self.file.core.rotw_rotates) % self.file.core.num_aregs
     }
 
-    fn spill(&self, interface: &mut XtensaCommunicationInterface<'_>) -> Result<(), Error> {
+    async fn spill(&self, interface: &mut XtensaCommunicationInterface<'_>) -> Result<(), Error> {
         // a0-a3 goes into our stack, the rest into the stack of the caller.
         let a0_a3 = [
             self.read_register(CpuRegister::A0),
@@ -889,21 +938,30 @@ impl<'a> RegisterWindow<'a> {
         match self.window_size {
             0 => {} // Nowhere to spill to
 
-            1 => interface.write_32(self.read_register(CpuRegister::A5) as u64 - 16, &a0_a3)?,
+            1 => {
+                interface
+                    .write_32(self.read_register(CpuRegister::A5) as u64 - 16, &a0_a3)
+                    .await?
+            }
 
             // Spill a4-a7
             2 => {
-                let sp = interface.read_word_32(self.read_register(CpuRegister::A1) as u64 - 12)?;
+                let sp = interface
+                    .read_word_32(self.read_register(CpuRegister::A1) as u64 - 12)
+                    .await?;
 
-                interface.write_32(self.read_register(CpuRegister::A9) as u64 - 16, &a0_a3)?;
+                interface
+                    .write_32(self.read_register(CpuRegister::A9) as u64 - 16, &a0_a3)
+                    .await?;
 
                 // Enable check at INFO level to avoid spamming the logs.
                 if tracing::enabled!(tracing::Level::INFO) {
                     // In some cases (spilling on each halt),
                     // this readback comes back as 0 for some reason. This assertion is temporarily
                     // meant to help me debug this.
-                    let written =
-                        interface.read_word_32(self.read_register(CpuRegister::A9) as u64 - 12)?;
+                    let written = interface
+                        .read_word_32(self.read_register(CpuRegister::A9) as u64 - 12)
+                        .await?;
                     assert!(
                         written == self.read_register(CpuRegister::A1),
                         "Failed to spill A1. Expected {:#x}, got {:#x}",
@@ -918,13 +976,17 @@ impl<'a> RegisterWindow<'a> {
                     self.read_register(CpuRegister::A6),
                     self.read_register(CpuRegister::A7),
                 ];
-                interface.write_32(sp as u64 - 32, &regs)?;
+                interface.write_32(sp as u64 - 32, &regs).await?;
             }
 
             // Spill a4-a11
             3 => {
-                let sp = interface.read_word_32(self.read_register(CpuRegister::A1) as u64 - 12)?;
-                interface.write_32(self.read_register(CpuRegister::A13) as u64 - 16, &a0_a3)?;
+                let sp = interface
+                    .read_word_32(self.read_register(CpuRegister::A1) as u64 - 12)
+                    .await?;
+                interface
+                    .write_32(self.read_register(CpuRegister::A13) as u64 - 16, &a0_a3)
+                    .await?;
 
                 let regs = [
                     self.read_register(CpuRegister::A4),
@@ -936,7 +998,7 @@ impl<'a> RegisterWindow<'a> {
                     self.read_register(CpuRegister::A10),
                     self.read_register(CpuRegister::A11),
                 ];
-                interface.write_32(sp as u64 - 48, &regs)?;
+                interface.write_32(sp as u64 - 48, &regs).await?;
             }
 
             // There is no such thing as spilling a12-a15 - there can be only 12 active registers in

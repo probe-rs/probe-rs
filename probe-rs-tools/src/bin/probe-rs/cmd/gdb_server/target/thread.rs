@@ -9,9 +9,11 @@ impl ThreadExtraInfo for RuntimeTarget<'_> {
         tid: gdbstub::common::Tid,
         buf: &mut [u8],
     ) -> Result<usize, Self::Error> {
-        let session = self.session.lock();
-        let name = &session.target().cores[tid.get() - 1].name;
+        pollster::block_on(async move {
+            let session = self.session.lock().await;
+            let name = &session.target().cores[tid.get() - 1].name;
 
-        Ok(copy_to_buf(name.as_bytes(), buf))
+            Ok(copy_to_buf(name.as_bytes(), buf))
+        })
     }
 }

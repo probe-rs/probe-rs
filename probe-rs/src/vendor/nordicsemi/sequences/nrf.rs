@@ -11,6 +11,7 @@ use crate::{
 };
 use std::fmt::Debug;
 
+#[async_trait::async_trait(?Send)]
 pub trait Nrf: Sync + Send + Debug {
     /// Returns the ahb_ap and ctrl_ap of every core
     fn core_aps(
@@ -19,7 +20,7 @@ pub trait Nrf: Sync + Send + Debug {
     ) -> Vec<(FullyQualifiedApAddress, FullyQualifiedApAddress)>;
 
     /// Returns true when the core is unlocked and false when it is locked.
-    fn is_core_unlocked(
+    async fn is_core_unlocked(
         &self,
         interface: &mut dyn ArmProbeInterface,
         ahb_ap_address: &FullyQualifiedApAddress,
@@ -42,7 +43,7 @@ const RELEASE_FORCEOFF: u32 = 0;
 
 /// Unlocks the core by performing an erase all procedure.
 /// The `ap_address` must be of the ctrl ap of the core.
-fn unlock_core(
+async fn unlock_core(
     arm_interface: &mut dyn ArmProbeInterface,
     ap_address: &FullyQualifiedApAddress,
     permissions: &crate::Permissions,
@@ -51,18 +52,24 @@ fn unlock_core(
         .erase_all()
         .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
 
-    arm_interface.write_raw_ap_register(ap_address, ERASEALL, 1)?;
+    arm_interface
+        .write_raw_ap_register(ap_address, ERASEALL, 1)
+        .await?;
 
-    while arm_interface.read_raw_ap_register(ap_address, ERASEALLSTATUS)? != 0 {}
+    while arm_interface
+        .read_raw_ap_register(ap_address, ERASEALLSTATUS)
+        .await?
+        != 0
+    {}
 
     Ok(())
 }
 
 /// Sets the network core to active running.
-fn set_network_core_running(interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+async fn set_network_core_running(interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
     // Determine if the RESET peripheral is mapped to secure or non-secure address space.
     let periph_config_address = APPLICATION_SPU_PERIPH_PERM + 0x4 * APPLICATION_RESET_PERIPH_ID;
-    let periph_config = interface.read_word_32(periph_config_address)?;
+    let periph_config = interface.read_word_32(periph_config_address).await?;
     let is_secure = (periph_config >> 4) & 1 == 1;
 
     let forceoff_addr = if is_secure {
@@ -73,12 +80,15 @@ fn set_network_core_running(interface: &mut dyn ArmMemoryInterface) -> Result<()
         APPLICATION_RESET_NS_NETWORK_FORCEOFF_REGISTER
     };
 
-    interface.write_32(forceoff_addr as u64, &[RELEASE_FORCEOFF])?;
+    interface
+        .write_32(forceoff_addr as u64, &[RELEASE_FORCEOFF])
+        .await?;
     Ok(())
 }
 
+#[async_trait::async_trait(?Send)]
 impl<T: Nrf> ArmDebugSequence for T {
-    fn debug_device_unlock(
+    async fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
         default_ap: &FullyQualifiedApAddress,
@@ -92,7 +102,10 @@ impl<T: Nrf> ArmDebugSequence for T {
 
         for (core_index, (core_ahb_ap_address, core_ctrl_ap_address)) in aps.iter().enumerate() {
             tracing::info!("Checking if core {} is unlocked", core_index);
-            if self.is_core_unlocked(interface, core_ahb_ap_address, core_ctrl_ap_address)? {
+            if self
+                .is_core_unlocked(interface, core_ahb_ap_address, core_ctrl_ap_address)
+                .await?
+            {
                 tracing::info!("Core {} is already unlocked", core_index);
                 continue;
             }
@@ -101,9 +114,12 @@ impl<T: Nrf> ArmDebugSequence for T {
                 "Core {} is locked. Erase procedure will be started to unlock it.",
                 core_index
             );
-            unlock_core(interface, core_ctrl_ap_address, permissions)?;
+            unlock_core(interface, core_ctrl_ap_address, permissions).await?;
 
-            if !self.is_core_unlocked(interface, core_ahb_ap_address, core_ctrl_ap_address)? {
+            if !self
+                .is_core_unlocked(interface, core_ahb_ap_address, core_ctrl_ap_address)
+                .await?
+            {
                 return Err(ArmDebugSequenceError::custom(format!(
                     "Could not unlock core {core_index}"
                 ))
@@ -112,11 +128,11 @@ impl<T: Nrf> ArmDebugSequence for T {
         }
 
         if self.has_network_core() {
-            let mut memory_interface = interface.memory_interface(default_ap)?;
+            let mut memory_interface = interface.memory_interface(default_ap).await?;
             tracing::debug!("Setting network core to running");
-            set_network_core_running(&mut *memory_interface)?;
+            set_network_core_running(&mut *memory_interface).await?;
 
-            memory_interface.flush()?;
+            memory_interface.flush().await?;
         }
 
         Ok(())

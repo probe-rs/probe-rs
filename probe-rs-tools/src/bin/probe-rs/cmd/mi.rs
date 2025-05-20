@@ -14,7 +14,7 @@ pub enum Subcommand {
 }
 
 impl Cmd {
-    pub fn run(self) -> anyhow::Result<()> {
+    pub async fn run(self) -> anyhow::Result<()> {
         match self.subcommand {
             Subcommand::Meta => meta::run()?,
         }

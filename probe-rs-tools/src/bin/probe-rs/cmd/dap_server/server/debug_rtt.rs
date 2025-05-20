@@ -35,9 +35,10 @@ impl RttConnection {
     }
 
     /// Clean up the RTT connection, restoring the state changes that we made.
-    pub fn clean_up(&mut self, target_core: &mut Core) -> Result<(), DebuggerError> {
+    pub async fn clean_up(&mut self, target_core: &mut Core<'_>) -> Result<(), DebuggerError> {
         self.client
             .clean_up(target_core)
+            .await
             .map_err(|err| DebuggerError::Other(anyhow!(err)))?;
         Ok(())
     }
@@ -66,7 +67,7 @@ impl DebuggerRttChannel {
 
         let mut out = StringCollector { data: None };
 
-        match client.poll_channel(core, self.channel_number) {
+        match client.poll_channel(core, self.channel_number).await {
             Ok(bytes) => self.channel_data_format.process(bytes, &mut out).await.ok(),
             Err(e) => {
                 debug_adapter

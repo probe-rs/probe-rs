@@ -159,15 +159,15 @@ impl DutDefinition {
         DutDefinition::from_raw_definition(raw_definition, file)
     }
 
-    pub fn open_probe(&self) -> Result<Probe> {
+    pub async fn open_probe(&self) -> Result<Probe> {
         let lister = Lister::new();
 
         let mut probe = match &self.probe_selector {
             Some(selector) => lister
-                .open(selector)
+                .open(selector).await
                 .with_context(|| format!("Failed to open probe with selector {selector}"))?,
             None => {
-                let probes = lister.list_all();
+                let probes = lister.list_all().await;
 
                 anyhow::ensure!(!probes.is_empty(), "No probes detected!");
 
@@ -176,16 +176,16 @@ impl DutDefinition {
                     "Multiple probes detected. Specify which probe to use using the '--probe' argument."
                 );
 
-                probes[0].open()?
+                probes[0].open().await?
             }
         };
 
         if let Some(probe_speed) = self.probe_speed {
-            probe.set_speed(probe_speed)?;
+            probe.set_speed(probe_speed).await?;
         }
 
         if let Some(protocol) = self.protocol {
-            probe.select_protocol(protocol)?;
+            probe.select_protocol(protocol).await?;
         }
 
         Ok(probe)

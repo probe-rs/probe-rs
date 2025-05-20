@@ -1,6 +1,11 @@
 //! Vendor support modules.
 
-use std::{ops::Deref, sync::LazyLock};
+use std::{
+    future::Future,
+    ops::Deref,
+    pin::Pin,
+    sync::{Arc, LazyLock},
+};
 
 use parking_lot::{RwLock, RwLockReadGuard};
 use probe_rs_target::Chip;
@@ -33,12 +38,13 @@ pub mod ti;
 pub mod vorago;
 
 /// Vendor support trait.
+#[async_trait::async_trait(?Send)]
 pub trait Vendor: Send + Sync + std::fmt::Display {
     /// Tries to create a debug sequence for the given chip.
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence>;
 
     /// Tries to identify an ARM chip. Returns `Some(target name)` on success.
-    fn try_detect_arm_chip(
+    async fn try_detect_arm_chip(
         &self,
         _registry: &Registry,
         _probe: &mut dyn ArmProbeInterface,
@@ -48,20 +54,20 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
     }
 
     /// Tries to identify an RISC-V chip. Returns `Some(target name)` on success.
-    fn try_detect_riscv_chip(
+    async fn try_detect_riscv_chip(
         &self,
         _registry: &Registry,
-        _probe: &mut RiscvCommunicationInterface,
+        _probe: &mut RiscvCommunicationInterface<'_>,
         _idcode: u32,
     ) -> Result<Option<String>, Error> {
         Ok(None)
     }
 
     /// Tries to identify an Xtensa chip. Returns `Some(target name)` on success.
-    fn try_detect_xtensa_chip(
+    async fn try_detect_xtensa_chip(
         &self,
         _registry: &Registry,
-        _probe: &mut XtensaCommunicationInterface,
+        _probe: &mut XtensaCommunicationInterface<'_>,
         _idcode: u32,
     ) -> Result<Option<String>, Error> {
         Ok(None)
@@ -108,100 +114,110 @@ pub fn try_create_debug_sequence(chip: &Chip) -> Option<DebugSequence> {
     None
 }
 
-fn try_detect_arm_chip(
-    registry: &Registry,
-    mut probe: Probe,
-) -> Result<(Probe, Option<Target>), Error> {
-    let mut found_target = None;
+type DetectFuture = Pin<Box<dyn Future<Output = Result<(Probe, Option<Target>), Error>>>>;
 
-    if !probe.has_arm_interface() {
-        // No ARM interface available.
-        tracing::debug!("No ARM interface available, skipping detection.");
-        return Ok((probe, None));
-    }
+fn try_detect_arm_chip(registry: Arc<Registry>, mut probe: Probe) -> DetectFuture {
+    Box::pin(async move {
+        let mut found_target = None;
 
-    // We have no information about the target, so we must assume it's using the default DP.
-    // We cannot automatically detect DPs if SWD multi-drop is used.
-    // TODO: collect known DP addresses for known targets.
-    let dp_addresses = [DpAddress::Default];
+        if !probe.has_arm_interface() {
+            // No ARM interface available.
+            tracing::debug!("No ARM interface available, skipping detection.");
+            return Ok((probe, None));
+        }
 
-    for dp_address in dp_addresses {
-        // TODO: do not consume probe
-        match probe.try_into_arm_interface() {
-            Ok(interface) => {
-                let mut interface =
-                    match interface.initialize(DefaultArmSequence::create(), dp_address) {
+        // We have no information about the target, so we must assume it's using the default DP.
+        // We cannot automatically detect DPs if SWD multi-drop is used.
+        // TODO: collect known DP addresses for known targets.
+        let dp_addresses = [DpAddress::Default];
+
+        for dp_address in dp_addresses {
+            // TODO: do not consume probe
+            match probe.try_into_arm_interface() {
+                Ok(interface) => {
+                    let mut interface = match interface
+                        .initialize(DefaultArmSequence::create(), dp_address)
+                        .await
+                    {
                         Ok(interface) => interface,
                         Err((interface, error)) => {
-                            probe = interface.close();
+                            probe = interface.close().await;
                             tracing::debug!("Error during ARM chip detection: {error}");
                             // If we can't connect, assume this is not an ARM chip and not an error.
                             return Ok((probe, None));
                         }
                     };
 
-                let found_arm_chip = read_chip_info_from_rom_table(interface.as_mut(), dp_address)
-                    .unwrap_or_else(|error| {
-                        tracing::debug!("Error during ARM chip detection: {error}");
-                        None
-                    });
+                    let found_arm_chip =
+                        read_chip_info_from_rom_table(interface.as_mut(), dp_address)
+                            .await
+                            .unwrap_or_else(|error| {
+                                tracing::debug!("Error during ARM chip detection: {error}");
+                                None
+                            });
 
-                if let Some(found_chip) = found_arm_chip {
-                    let vendors = vendors();
-                    for vendor in vendors.iter() {
-                        // TODO: only consider families with matching JEP106.
-                        if let Some(target_name) =
-                            vendor.try_detect_arm_chip(registry, interface.as_mut(), found_chip)?
-                        {
-                            found_target = Some(registry.get_target_by_name(&target_name)?);
-                            break;
+                    if let Some(found_chip) = found_arm_chip {
+                        let vendors = vendors();
+                        for vendor in vendors.iter() {
+                            // TODO: only consider families with matching JEP106.
+                            if let Some(target_name) = vendor
+                                .try_detect_arm_chip(&registry, interface.as_mut(), found_chip)
+                                .await?
+                            {
+                                found_target = Some(registry.get_target_by_name(&target_name)?);
+                                break;
+                            }
+                        }
+
+                        // No vendor-specific match, try to find a target by chip info.
+                        if found_target.is_none() {
+                            found_target =
+                                Some(registry.get_target_by_chip_info(ChipInfo::from(found_chip))?);
                         }
                     }
 
-                    // No vendor-specific match, try to find a target by chip info.
-                    if found_target.is_none() {
-                        found_target =
-                            Some(registry.get_target_by_chip_info(ChipInfo::from(found_chip))?);
-                    }
+                    probe = interface.close().await;
                 }
-
-                probe = interface.close();
-            }
-            Err((returned_probe, error)) => {
-                probe = returned_probe;
-                tracing::debug!("Error using ARM interface: {error}");
+                Err((returned_probe, error)) => {
+                    probe = returned_probe;
+                    tracing::debug!("Error using ARM interface: {error}");
+                }
             }
         }
-    }
 
-    Ok((probe, found_target))
+        Ok((probe, found_target))
+    })
 }
 
-fn try_detect_riscv_chip(registry: &Registry, probe: &mut Probe) -> Result<Option<Target>, Error> {
+async fn try_detect_riscv_chip(
+    registry: &Registry,
+    probe: &mut Probe,
+) -> Result<Option<Target>, Error> {
     let mut found_target = None;
 
     if let Some(probe) = probe.try_as_jtag_probe() {
         _ = probe.select_target(0);
     }
 
-    match probe.try_get_riscv_interface_builder() {
+    match probe.try_get_riscv_interface_builder().await {
         Ok(factory) => {
             let mut state = factory.create_state();
-            let mut interface = factory.attach(&mut state)?;
+            let mut interface = factory.attach(&mut state).await?;
 
-            if let Err(error) = interface.enter_debug_mode() {
+            if let Err(error) = interface.enter_debug_mode().await {
                 tracing::debug!("Failed to enter RISC-V debug mode: {error}");
                 return Ok(None);
             }
 
-            match interface.read_idcode() {
+            match interface.read_idcode().await {
                 Ok(Some(idcode)) => {
                     tracing::debug!("ID code read over JTAG: {idcode:#x}");
                     let vendors = vendors();
                     for vendor in vendors.iter() {
                         // TODO: only consider families with matching JEP106.
-                        if let Some(target_name) =
-                            vendor.try_detect_riscv_chip(registry, &mut interface, idcode)?
+                        if let Some(target_name) = vendor
+                            .try_detect_riscv_chip(registry, &mut interface, idcode)
+                            .await?
                         {
                             found_target = Some(registry.get_target_by_name(target_name)?);
                             break;
@@ -227,7 +243,10 @@ fn try_detect_riscv_chip(registry: &Registry, probe: &mut Probe) -> Result<Optio
     Ok(found_target)
 }
 
-fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Option<Target>, Error> {
+async fn try_detect_xtensa_chip(
+    registry: &Registry,
+    probe: &mut Probe,
+) -> Result<Option<Target>, Error> {
     let mut found_target = None;
 
     if let Some(probe) = probe.try_as_jtag_probe() {
@@ -235,21 +254,22 @@ fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Opti
     }
 
     let mut state = XtensaDebugInterfaceState::default();
-    match probe.try_get_xtensa_interface(&mut state) {
+    match probe.try_get_xtensa_interface(&mut state).await {
         Ok(mut interface) => {
-            if let Err(error) = interface.enter_debug_mode() {
+            if let Err(error) = interface.enter_debug_mode().await {
                 tracing::debug!("Failed to enter Xtensa debug mode: {error}");
                 return Ok(None);
             }
 
-            match interface.read_idcode() {
+            match interface.read_idcode().await {
                 Ok(idcode) => {
                     tracing::debug!("ID code read over JTAG: {idcode:#x}");
                     let vendors = vendors();
                     for vendor in vendors.iter() {
                         // TODO: only consider families with matching JEP106.
-                        if let Some(target_name) =
-                            vendor.try_detect_xtensa_chip(registry, &mut interface, idcode)?
+                        if let Some(target_name) = vendor
+                            .try_detect_xtensa_chip(registry, &mut interface, idcode)
+                            .await?
                         {
                             found_target = Some(registry.get_target_by_name(target_name)?);
                             break;
@@ -259,7 +279,7 @@ fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Opti
                 Err(error) => tracing::debug!("Error during Xtensa chip detection: {error}"),
             }
 
-            interface.leave_debug_mode()?;
+            interface.leave_debug_mode().await?;
         }
 
         Err(DebugProbeError::InterfaceNotAvailable { .. }) => {
@@ -275,8 +295,8 @@ fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Opti
 }
 
 /// Tries to identify the chip using the given probe.
-pub(crate) fn auto_determine_target(
-    registry: &Registry,
+pub(crate) async fn auto_determine_target(
+    registry: Arc<Registry>,
     mut probe: Probe,
 ) -> Result<(Probe, Option<Target>), Error> {
     tracing::info!("Auto-detecting target");
@@ -285,21 +305,27 @@ pub(crate) fn auto_determine_target(
     // Xtensa and RISC-V interfaces don't need moving the probe. For clarity, their
     // handlers work with the borrowed probe, and we use these wrappers to adapt to the
     // ARM way of moving in and out of the probe.
-    fn try_detect_riscv_chip_wrapper(
-        registry: &Registry,
-        mut probe: Probe,
-    ) -> Result<(Probe, Option<Target>), Error> {
-        try_detect_riscv_chip(registry, &mut probe).map(|found_target| (probe, found_target))
+    fn try_detect_riscv_chip_wrapper(registry: Arc<Registry>, mut probe: Probe) -> DetectFuture {
+        Box::pin(async move {
+            try_detect_riscv_chip(&registry, &mut probe)
+                .await
+                .map(|found_target| (probe, found_target))
+        })
     }
 
-    fn try_detect_xtensa_chip_wrapper(
-        registry: &Registry,
-        mut probe: Probe,
-    ) -> Result<(Probe, Option<Target>), Error> {
-        try_detect_xtensa_chip(registry, &mut probe).map(|found_target| (probe, found_target))
+    fn try_detect_xtensa_chip_wrapper(registry: Arc<Registry>, mut probe: Probe) -> DetectFuture {
+        Box::pin(async move {
+            try_detect_xtensa_chip(&registry, &mut probe)
+                .await
+                .map(|found_target| (probe, found_target))
+        })
     }
 
-    type DetectFn = fn(&Registry, Probe) -> Result<(Probe, Option<Target>), Error>;
+    type DetectFn = fn(
+        Arc<Registry>,
+        Probe,
+    )
+        -> Pin<Box<dyn Future<Output = Result<(Probe, Option<Target>), Error>>>>;
     const ARCHITECTURES: &[DetectFn] = &[
         try_detect_arm_chip,
         try_detect_riscv_chip_wrapper,
@@ -307,7 +333,7 @@ pub(crate) fn auto_determine_target(
     ];
 
     for architecture in ARCHITECTURES {
-        let (returned_probe, target) = architecture(registry, probe)?;
+        let (returned_probe, target) = architecture(registry.clone(), probe).await?;
 
         probe = returned_probe;
         if let Some(target) = target {
@@ -317,7 +343,7 @@ pub(crate) fn auto_determine_target(
         }
     }
 
-    probe.detach()?;
+    probe.detach().await?;
 
     Ok((probe, found_target))
 }

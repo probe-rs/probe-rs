@@ -19,7 +19,7 @@ pub async fn reset(
     request: ResetCoreRequest,
 ) -> NoResponse {
     let mut session = ctx.session(request.sessid).await;
-    let mut core = session.core(request.core as usize)?;
-    core.reset()?;
+    let mut core = session.core(request.core as usize).await?;
+    core.reset().await?;
     Ok(())
 }

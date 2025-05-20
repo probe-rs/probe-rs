@@ -53,19 +53,19 @@ impl SifliUartArmDebug {
     }
 }
 
-#[allow(unused)]
+#[async_trait::async_trait(?Send)]
 impl SwdSequence for UninitializedSifliUartArmProbe {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+    async fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "swj_sequence",
         })
     }
 
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "swj_pins",
@@ -73,9 +73,10 @@ impl SwdSequence for UninitializedSifliUartArmProbe {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl UninitializedArmProbe for UninitializedSifliUartArmProbe {
     #[tracing::instrument(level = "trace", skip(self, sequence))]
-    fn initialize(
+    async fn initialize(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
         dp: DpAddress,
@@ -91,33 +92,34 @@ impl UninitializedArmProbe for UninitializedSifliUartArmProbe {
         Ok(Box::new(interface))
     }
 
-    fn close(self: Box<Self>) -> Probe {
+    async fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
 }
 
-#[allow(unused)]
+#[async_trait::async_trait(?Send)]
+
 impl DapAccess for SifliUartArmDebug {
-    fn read_raw_dp_register(
+    async fn read_raw_dp_register(
         &mut self,
-        dp: DpAddress,
-        addr: DpRegisterAddress,
+        _dp: DpAddress,
+        _addr: DpRegisterAddress,
     ) -> Result<u32, ArmError> {
         Err(ArmError::NotImplemented("dp register read not implemented"))
     }
 
-    fn write_raw_dp_register(
+    async fn write_raw_dp_register(
         &mut self,
-        dp: DpAddress,
-        addr: DpRegisterAddress,
-        value: u32,
+        _dp: DpAddress,
+        _addr: DpRegisterAddress,
+        _value: u32,
     ) -> Result<(), ArmError> {
         Ok(())
     }
 
-    fn read_raw_ap_register(
+    async fn read_raw_ap_register(
         &mut self,
-        ap: &FullyQualifiedApAddress,
+        _ap: &FullyQualifiedApAddress,
         addr: u64,
     ) -> Result<u32, ArmError> {
         // Fake a MEM-AP's IDR registers
@@ -132,11 +134,11 @@ impl DapAccess for SifliUartArmDebug {
         Err(ArmError::NotImplemented("ap register read not implemented"))
     }
 
-    fn write_raw_ap_register(
+    async fn write_raw_ap_register(
         &mut self,
-        ap: &FullyQualifiedApAddress,
-        addr: u64,
-        value: u32,
+        _ap: &FullyQualifiedApAddress,
+        _addr: u64,
+        _value: u32,
     ) -> Result<(), ArmError> {
         Ok(())
     }
@@ -150,19 +152,19 @@ impl DapAccess for SifliUartArmDebug {
     }
 }
 
-#[allow(unused)]
+#[async_trait::async_trait(?Send)]
 impl SwdSequence for SifliUartArmDebug {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+    async fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "swj_sequence",
         })
     }
 
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
         Err(DebugProbeError::NotImplemented {
             function_name: "swj_pins",
@@ -170,27 +172,29 @@ impl SwdSequence for SifliUartArmDebug {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl SwoAccess for SifliUartArmDebug {
-    fn enable_swo(&mut self, _config: &SwoConfig) -> Result<(), ArmError> {
+    async fn enable_swo(&mut self, _config: &SwoConfig) -> Result<(), ArmError> {
         Err(ArmError::NotImplemented("swo not implemented"))
     }
 
-    fn disable_swo(&mut self) -> Result<(), ArmError> {
+    async fn disable_swo(&mut self) -> Result<(), ArmError> {
         Err(ArmError::NotImplemented("swo not implemented"))
     }
 
-    fn read_swo_timeout(&mut self, _timeout: Duration) -> Result<Vec<u8>, ArmError> {
+    async fn read_swo_timeout(&mut self, _timeout: Duration) -> Result<Vec<u8>, ArmError> {
         Err(ArmError::NotImplemented("swo not implemented"))
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmMemoryInterface for SifliUartMemoryInterface<'_> {
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
         self.current_ap.ap_address().clone()
     }
 
-    fn base_address(&mut self) -> Result<u64, ArmError> {
-        self.current_ap.base_address(self.probe)
+    async fn base_address(&mut self) -> Result<u64, ArmError> {
+        self.current_ap.base_address(self.probe).await
     }
 
     fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
@@ -205,13 +209,13 @@ impl ArmMemoryInterface for SifliUartMemoryInterface<'_> {
         Ok(self.probe)
     }
 
-    fn generic_status(&mut self) -> Result<CSW, ArmError> {
+    async fn generic_status(&mut self) -> Result<CSW, ArmError> {
         Err(ArmError::Probe(DebugProbeError::InterfaceNotAvailable {
             interface_name: "ARM",
         }))
     }
 
-    fn update_core_status(&mut self, state: CoreStatus) {
+    async fn update_core_status(&mut self, state: CoreStatus) {
         // If the core status is unknown, we will enter debug mode.
         if state == CoreStatus::Unknown {
             self.probe.probe.command(SifliUartCommand::Enter).unwrap();
@@ -219,20 +223,20 @@ impl ArmMemoryInterface for SifliUartMemoryInterface<'_> {
     }
 }
 
-#[allow(unused)]
+#[async_trait::async_trait(?Send)]
 impl ArmProbeInterface for SifliUartArmDebug {
-    fn reinitialize(&mut self) -> Result<(), ArmError> {
+    async fn reinitialize(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
 
-    fn access_ports(
+    async fn access_ports(
         &mut self,
-        dp: DpAddress,
+        _dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
         Err(ArmError::NotImplemented("access_ports not implemented"))
     }
 
-    fn close(self: Box<Self>) -> Probe {
+    async fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
 
@@ -240,11 +244,11 @@ impl ArmProbeInterface for SifliUartArmDebug {
         DpAddress::Default
     }
 
-    fn memory_interface(
+    async fn memory_interface(
         &mut self,
         access_port: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
-        let memory_ap = MemoryAp::new(self, access_port)?;
+        let memory_ap = MemoryAp::new(self, access_port).await?;
         let interface = SifliUartMemoryInterface {
             probe: self,
             current_ap: memory_ap,
@@ -261,7 +265,7 @@ struct SifliUartMemoryInterface<'probe> {
 }
 
 impl SifliUartMemoryInterface<'_> {
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
+    async fn write(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
         let sifli_uart = &mut self.probe.probe;
 
         if data.is_empty() {
@@ -337,7 +341,7 @@ impl SifliUartMemoryInterface<'_> {
         Ok(())
     }
 
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+    async fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         let sifli_uart = &mut self.probe.probe;
 
         if data.is_empty() {
@@ -378,49 +382,49 @@ impl SifliUartMemoryInterface<'_> {
     }
 }
 
-#[allow(unused)]
+#[async_trait::async_trait(?Send)]
 impl MemoryInterface<ArmError> for SifliUartMemoryInterface<'_> {
-    fn supports_native_64bit_access(&mut self) -> bool {
+    async fn supports_native_64bit_access(&mut self) -> bool {
         true
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
-        self.read(address, data.as_mut_bytes())
+    async fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
+        self.read(address, data.as_mut_bytes()).await
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
-        self.read(address, data.as_mut_bytes())
+    async fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
+        self.read(address, data.as_mut_bytes()).await
     }
 
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
-        self.read(address, data.as_mut_bytes())
+    async fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
+        self.read(address, data.as_mut_bytes()).await
     }
 
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
-        self.read(address, data)
+    async fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+        self.read(address, data).await
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
-        self.write(address, data.as_bytes())
+    async fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
+        self.write(address, data.as_bytes()).await
     }
 
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
-        self.write(address, data.as_bytes())
+    async fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
+        self.write(address, data.as_bytes()).await
     }
 
-    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
-        self.write(address, data.as_bytes())
+    async fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
+        self.write(address, data.as_bytes()).await
     }
 
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
-        self.write(address, data)
+    async fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
+        self.write(address, data).await
     }
 
-    fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
+    async fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
         Ok(true)
     }
 
-    fn flush(&mut self) -> Result<(), ArmError> {
+    async fn flush(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
 }

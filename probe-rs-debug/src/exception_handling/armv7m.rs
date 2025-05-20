@@ -86,7 +86,7 @@ impl Cfsr {
     }
 
     /// Additional information about a Bus Fault, or Ok(None) if the fault was not a Bus Fault.
-    fn bus_fault_description(
+    async fn bus_fault_description(
         &self,
         memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
@@ -110,7 +110,7 @@ impl Cfsr {
         Ok(Some(if self.bf_address_register_valid() {
             format!(
                 "BusFault <Cause: {source} at location: {:#010x}>",
-                memory.read_word_32(Bfar::get_mmio_address())?
+                memory.read_word_32(Bfar::get_mmio_address()).await?
             )
         } else {
             format!("BusFault <Cause: {source}>")
@@ -118,7 +118,7 @@ impl Cfsr {
     }
 
     /// Additional information about a MemManage Fault, or Ok(None) if the fault was not a MemManage Fault.
-    fn memory_management_fault_description(
+    async fn memory_management_fault_description(
         &self,
         memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
@@ -140,7 +140,7 @@ impl Cfsr {
         Ok(Some(if self.mm_address_register_valid() {
             format!(
                 "MemManage Fault <Cause: {source} at location: {:#010x}>",
-                memory.read_word_32(Mmfar::get_mmio_address())?
+                memory.read_word_32(Mmfar::get_mmio_address()).await?
             )
         } else {
             format!("MemManage Fault <Cause: {source}>")
@@ -215,7 +215,7 @@ impl From<u32> for ExceptionReason {
 impl ExceptionReason {
     /// Expands the exception reason, by providing additional information about the exception from the
     /// HFSR and CFSR registers.
-    pub(crate) fn expanded_description(
+    pub(crate) async fn expanded_description(
         &self,
         memory: &mut dyn MemoryInterface,
     ) -> Result<String, Error> {
@@ -224,17 +224,17 @@ impl ExceptionReason {
             ExceptionReason::Reset => Ok("Reset".to_string()),
             ExceptionReason::NonMaskableInterrupt => Ok("NMI".to_string()),
             ExceptionReason::HardFault => {
-                let hfsr = Hfsr(memory.read_word_32(Hfsr::get_mmio_address())?);
+                let hfsr = Hfsr(memory.read_word_32(Hfsr::get_mmio_address()).await?);
                 let description = if hfsr.debug_event() {
                     "Debug fault".to_string()
                 } else if hfsr.escalation_forced() {
                     let description = "Escalated";
-                    let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
+                    let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address()).await?);
                     if let Some(source) = cfsr.usage_fault_description()? {
                         format!("{description} {source}")
-                    } else if let Some(source) = cfsr.bus_fault_description(memory)? {
+                    } else if let Some(source) = cfsr.bus_fault_description(memory).await? {
                         format!("{description} {source}")
-                    } else if let Some(source) = cfsr.memory_management_fault_description(memory)? {
+                    } else if let Some(source) = cfsr.memory_management_fault_description(memory).await? {
                         format!("{description} {source}")
                     } else {
                         format!("{description} from an unknown source")
@@ -247,7 +247,7 @@ impl ExceptionReason {
                 Ok(format!("HardFault <Cause: {description}>"))
             }
             ExceptionReason::MemoryManagementFault => {
-                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address()).await?)
                     .usage_fault_description()?
                 {
                     Ok(source)
@@ -256,8 +256,8 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::BusFault => {
-                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
-                    .bus_fault_description(memory)?
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address()).await?)
+                    .bus_fault_description(memory).await?
                 {
                     Ok(source)
                 } else {
@@ -265,7 +265,7 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::UsageFault => {
-                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address()).await?)
                     .usage_fault_description()?
                 {
                     Ok(source)
@@ -290,13 +290,13 @@ impl ExceptionReason {
     /// For other faults, or interrupts, the PC value in the stack frame will point to the next instruction to be executed.
     ///
     /// See Armv7-M Architecture Reference Manual, section B1.5.6.
-    pub(crate) fn is_precise_fault(&self, memory: &mut dyn MemoryInterface) -> Result<bool, Error> {
+    pub(crate) async fn is_precise_fault(&self, memory: &mut dyn MemoryInterface) -> Result<bool, Error> {
         let is_precise = match self {
             // Usage fault and memory management fault are always precise.
             ExceptionReason::UsageFault | ExceptionReason::MemoryManagementFault => true,
             ExceptionReason::HardFault | ExceptionReason::BusFault => {
                 // Same logic for direct and escalated faults.
-                let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
+                let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address()).await?);
                 cfsr.bf_precise_data_access_error()
                     || cfsr.bf_instruction_prefetch()
                     || cfsr.mem_manage_fault() > 0
@@ -316,17 +316,18 @@ impl ExceptionReason {
 /// Exception handling for cores based on the ARMv7-M and ARMv7-EM architectures.
 pub struct ArmV7MExceptionHandler;
 
+#[async_trait::async_trait(?Send)]
 impl ExceptionInterface for ArmV7MExceptionHandler {
-    fn exception_details(
+    async fn exception_details(
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
         _debug_info: &DebugInfo,
     ) -> Result<Option<ExceptionInfo>, DebugError> {
-        armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers)
+        armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers).await
     }
 
-    fn calling_frame_registers(
+    async fn calling_frame_registers(
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::DebugRegisters,
@@ -345,9 +346,10 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         let mut updated_registers = stackframe_registers.clone();
 
         updated_registers =
-            armv6m_armv7m_shared::calling_frame_registers(memory_interface, &updated_registers)?;
+            armv6m_armv7m_shared::calling_frame_registers(memory_interface, &updated_registers)
+                .await?;
 
-        if !exception_reason.is_precise_fault(memory_interface)? {
+        if !exception_reason.is_precise_fault(memory_interface).await? {
             // PC is always stored on the stack when unwinding an exception,
             // so we know that it exists, and that it has a value
             let pc = updated_registers.get_program_counter_mut().unwrap();
@@ -368,13 +370,13 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         Ok(value)
     }
 
-    fn exception_description(
+    async fn exception_description(
         &self,
         raw_exception: u32,
         memory_interface: &mut dyn MemoryInterface,
     ) -> Result<String, DebugError> {
         let description =
-            ExceptionReason::from(raw_exception).expanded_description(memory_interface)?;
+            ExceptionReason::from(raw_exception).expanded_description(memory_interface).await?;
         Ok(description)
     }
 }

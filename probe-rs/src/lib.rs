@@ -65,6 +65,7 @@
 //! [Target], [Session]  and [Core] structs.
 //!
 //! [Probe]: probe::Probe
+#![allow(async_fn_in_trait)]
 #![warn(missing_docs)]
 #![recursion_limit = "256"] // required by bitfield!
 #![cfg_attr(probers_docsrs, feature(doc_cfg))] // Used for docs.rs

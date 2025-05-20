@@ -1,6 +1,6 @@
 use anyhow::bail;
-use parking_lot::FairMutex;
 use probe_rs::{CoreType, Session};
+use tokio::sync::Mutex;
 
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::process::Child;
@@ -82,8 +82,8 @@ impl GdbInstanceConfiguration {
 /// # Remarks
 ///
 /// A default configuration can be created by calling [GdbInstanceConfiguration::from_session()]
-pub fn run<'a>(
-    session: &FairMutex<Session>,
+pub async fn run<'a>(
+    session: &Mutex<Session>,
     instances: impl Iterator<Item = &'a GdbInstanceConfiguration>,
     mut gdb_process: Option<Child>,
 ) -> anyhow::Result<()> {
@@ -114,7 +114,8 @@ pub fn run<'a>(
         let mut wait_time = Duration::MAX;
 
         for target in targets.iter_mut() {
-            wait_time = wait_time.min(target.process()?);
+            let wait_for = pollster::block_on(target.process())?;
+            wait_time = wait_time.min(wait_for);
         }
 
         // Wait until we were asked to check again

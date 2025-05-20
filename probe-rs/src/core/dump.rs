@@ -156,27 +156,27 @@ impl CoreDump {
     /// # Arguments
     /// * `core`: The core to dump.
     /// * `ranges`: Memory ranges that should be dumped.
-    pub fn dump_core(core: &mut Core, ranges: Vec<Range<u64>>) -> Result<Self, Error> {
+    pub async fn dump_core(core: &mut Core<'_>, ranges: Vec<Range<u64>>) -> Result<Self, Error> {
         let mut registers = HashMap::new();
         for register in core.registers().all_registers() {
-            let value = core.read_core_reg(register.id())?;
+            let value = core.read_core_reg(register.id()).await?;
             registers.insert(register.id(), value);
         }
 
         let mut data = Vec::new();
         for range in ranges {
             let mut values = vec![0; (range.end - range.start) as usize];
-            core.read(range.start, &mut values)?;
+            core.read(range.start, &mut values).await?;
             data.push((range, values));
         }
 
         Ok(CoreDump {
             registers,
             data,
-            instruction_set: core.instruction_set()?,
-            supports_native_64bit_access: core.supports_native_64bit_access(),
+            instruction_set: core.instruction_set().await?,
+            supports_native_64bit_access: core.supports_native_64bit_access().await,
             core_type: core.core_type(),
-            fpu_support: core.fpu_support()?,
+            fpu_support: core.fpu_support().await?,
             floating_point_register_count: Some(core.floating_point_register_count()?),
         })
     }
@@ -343,92 +343,93 @@ impl CoreDump {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl MemoryInterface for CoreDump {
-    fn supports_native_64bit_access(&mut self) -> bool {
+    async fn supports_native_64bit_access(&mut self) -> bool {
         self.supports_native_64bit_access
     }
 
-    fn read_word_64(&mut self, address: u64) -> Result<u64, crate::Error> {
+    async fn read_word_64(&mut self, address: u64) -> Result<u64, crate::Error> {
         let mut data = [0u64; 1];
         self.read_memory_range(address, &mut data)?;
         Ok(data[0])
     }
 
-    fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
+    async fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
         let mut data = [0u32; 1];
         self.read_memory_range(address, &mut data)?;
         Ok(data[0])
     }
 
-    fn read_word_16(&mut self, address: u64) -> Result<u16, crate::Error> {
+    async fn read_word_16(&mut self, address: u64) -> Result<u16, crate::Error> {
         let mut data = [0u16; 1];
         self.read_memory_range(address, &mut data)?;
         Ok(data[0])
     }
 
-    fn read_word_8(&mut self, address: u64) -> Result<u8, crate::Error> {
+    async fn read_word_8(&mut self, address: u64) -> Result<u8, crate::Error> {
         let mut data = [0u8; 1];
         self.read_memory_range(address, &mut data)?;
         Ok(data[0])
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::Error> {
+    async fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::Error> {
         self.read_memory_range(address, data)?;
         Ok(())
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
+    async fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
         self.read_memory_range(address, data)?;
         Ok(())
     }
 
-    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
+    async fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
         self.read_memory_range(address, data)?;
         Ok(())
     }
 
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
+    async fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
         self.read_memory_range(address, data)?;
         Ok(())
     }
 
-    fn write_word_64(&mut self, _address: u64, _data: u64) -> Result<(), crate::Error> {
+    async fn write_word_64(&mut self, _address: u64, _data: u64) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_word_32(&mut self, _address: u64, _data: u32) -> Result<(), crate::Error> {
+    async fn write_word_32(&mut self, _address: u64, _data: u32) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_word_16(&mut self, _address: u64, _data: u16) -> Result<(), crate::Error> {
+    async fn write_word_16(&mut self, _address: u64, _data: u16) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_word_8(&mut self, _address: u64, _data: u8) -> Result<(), crate::Error> {
+    async fn write_word_8(&mut self, _address: u64, _data: u8) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), crate::Error> {
+    async fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), crate::Error> {
+    async fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), crate::Error> {
+    async fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), crate::Error> {
+    async fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), crate::Error> {
         todo!()
     }
 
-    fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
+    async fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
         todo!()
     }
 
-    fn flush(&mut self) -> Result<(), crate::Error> {
+    async fn flush(&mut self) -> Result<(), crate::Error> {
         todo!()
     }
 }

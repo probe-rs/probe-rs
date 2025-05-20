@@ -9,8 +9,9 @@ use probe_rs::{MemoryInterface, RegisterRole, RegisterValue};
 
 pub struct RiscvExceptionHandler;
 
+#[async_trait::async_trait(?Send)]
 impl ExceptionInterface for RiscvExceptionHandler {
-    fn unwind_without_debuginfo(
+    async fn unwind_without_debuginfo(
         &self,
         unwind_registers: &mut DebugRegisters,
         frame_pc: u64,
@@ -32,7 +33,7 @@ impl ExceptionInterface for RiscvExceptionHandler {
         }
 
         let mut stack_frame = [0; 2];
-        if let Err(e) = memory.read_32(sp - 8, &mut stack_frame) {
+        if let Err(e) = memory.read_32(sp - 8, &mut stack_frame).await {
             // FP points at something we can't read.
             return ControlFlow::Break(Some(e.into()));
         }

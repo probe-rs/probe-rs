@@ -142,7 +142,7 @@ async fn main() -> Result<()> {
 
     let options = TargetGen::parse();
 
-    let t = std::time::Instant::now();
+    let t = web_time::Instant::now();
 
     match options {
         TargetGen::Pack { input, output_dir } => cmd_pack(&input, &output_dir)?,

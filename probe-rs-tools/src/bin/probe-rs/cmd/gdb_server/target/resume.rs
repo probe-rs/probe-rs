@@ -5,23 +5,25 @@ use gdbstub::target::ext::base::multithread::{MultiThreadResume, MultiThreadSing
 
 impl MultiThreadResume for RuntimeTarget<'_> {
     fn resume(&mut self) -> Result<(), Self::Error> {
-        let mut session = self.session.lock();
+        pollster::block_on(async move {
+            let mut session = self.session.lock().await;
 
-        match self.resume_action {
-            (_, ResumeAction::Resume) => {
-                for core_id in self.cores.iter() {
-                    let mut core = session.core(*core_id)?;
-                    core.run()?;
+            match self.resume_action {
+                (_, ResumeAction::Resume) => {
+                    for core_id in self.cores.iter() {
+                        let mut core = session.core(*core_id).await?;
+                        core.run().await?;
+                    }
                 }
+                (core_id, ResumeAction::Step) => {
+                    let mut core = session.core(core_id).await?;
+                    core.step().await?;
+                }
+                (_, ResumeAction::Unchanged) => {}
             }
-            (core_id, ResumeAction::Step) => {
-                let mut core = session.core(core_id)?;
-                core.step()?;
-            }
-            (_, ResumeAction::Unchanged) => {}
-        }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn clear_resume_actions(&mut self) -> Result<(), Self::Error> {

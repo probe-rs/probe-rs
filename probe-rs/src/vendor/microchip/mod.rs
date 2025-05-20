@@ -21,6 +21,7 @@ pub mod sequences;
 #[derive(docsplay::Display)]
 pub struct Microchip;
 
+#[async_trait::async_trait(?Send)]
 impl Vendor for Microchip {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
         let sequence = if chip.name.starts_with("ATSAMD1")
@@ -39,7 +40,7 @@ impl Vendor for Microchip {
         Some(sequence)
     }
 
-    fn try_detect_arm_chip(
+    async fn try_detect_arm_chip(
         &self,
         registry: &Registry,
         interface: &mut dyn ArmProbeInterface,
@@ -54,8 +55,10 @@ impl Vendor for Microchip {
         // This device has an Atmel DSU - Read and parse the DSU DID register
         let did = DsuDid(
             interface
-                .memory_interface(access_port)?
-                .read_word_32(DsuDid::ADDRESS)?,
+                .memory_interface(access_port)
+                .await?
+                .read_word_32(DsuDid::ADDRESS)
+                .await?,
         );
 
         for family in registry.families() {

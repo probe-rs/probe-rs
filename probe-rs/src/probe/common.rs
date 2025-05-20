@@ -393,7 +393,7 @@ impl JtagState {
     }
 }
 
-fn jtag_move_to_state(
+async fn jtag_move_to_state(
     protocol: &mut impl RawJtagIo,
     target: JtagState,
 ) -> Result<(), DebugProbeError> {
@@ -404,14 +404,14 @@ fn jtag_move_to_state(
     );
 
     while let Some(tms) = protocol.state().state.step_toward(target) {
-        protocol.shift_bit(tms, false, false)?;
+        protocol.shift_bit(tms, false, false).await?;
     }
 
     tracing::trace!("In state: {:?}", protocol.state_mut().state);
     Ok(())
 }
 
-fn shift_ir(
+async fn shift_ir(
     protocol: &mut impl RawJtagIo,
     data: &[u8],
     len: usize,
@@ -438,7 +438,7 @@ fn shift_ir(
     let tms_data = std::iter::repeat_n(false, len - 1);
 
     // Enter IR shift
-    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Shift))?;
+    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Shift)).await?;
 
     let tms = std::iter::repeat_n(false, pre_bits)
         .chain(tms_data)
@@ -456,13 +456,13 @@ fn shift_ir(
     tracing::trace!("tms: {:?}", tms.clone());
     tracing::trace!("tdi: {:?}", tdi.clone());
 
-    protocol.shift_bits(tms, tdi, capture)?;
-    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Update))?;
+    protocol.shift_bits(tms, tdi, capture).await?;
+    jtag_move_to_state(protocol, JtagState::Ir(RegisterState::Update)).await?;
 
     Ok(())
 }
 
-fn shift_dr(
+async fn shift_dr(
     protocol: &mut impl RawJtagIo,
     data: &[u8],
     register_bits: usize,
@@ -483,7 +483,7 @@ fn shift_dr(
     let tms_shift_out_value = std::iter::repeat_n(false, register_bits - 1);
 
     // Enter DR shift
-    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Shift))?;
+    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Shift)).await?;
 
     // dummy bits to account for bypasses
     let pre_bits = protocol.state().chain_params.drpre;
@@ -502,19 +502,19 @@ fn shift_dr(
         .chain(std::iter::repeat_n(capture_data, register_bits))
         .chain(iter::repeat(false));
 
-    protocol.shift_bits(tms, tdi, capture)?;
+    protocol.shift_bits(tms, tdi, capture).await?;
 
-    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Update))?;
+    jtag_move_to_state(protocol, JtagState::Dr(RegisterState::Update)).await?;
 
     let idle_cycles = protocol.state().jtag_idle_cycles;
     if idle_cycles > 0 {
-        jtag_move_to_state(protocol, JtagState::Idle)?;
+        jtag_move_to_state(protocol, JtagState::Idle).await?;
 
         // We need to stay in the idle cycle a bit
         let tms = std::iter::repeat_n(false, idle_cycles);
         let tdi = std::iter::repeat_n(false, idle_cycles);
 
-        protocol.shift_bits(tms, tdi, iter::repeat(false))?;
+        protocol.shift_bits(tms, tdi, iter::repeat(false)).await?;
     }
 
     if capture_data {
@@ -524,7 +524,7 @@ fn shift_dr(
     }
 }
 
-fn prepare_write_register(
+async fn prepare_write_register(
     protocol: &mut impl RawJtagIo,
     address: u32,
     data: &[u8],
@@ -539,20 +539,25 @@ fn prepare_write_register(
     }
 
     let ir_len = protocol.state().chain_params.irlen;
-    shift_ir(protocol, &address.to_le_bytes(), ir_len, false)?;
+    shift_ir(protocol, &address.to_le_bytes(), ir_len, false).await?;
 
     // read DR register by transfering len bits to the chain
-    shift_dr(protocol, data, len as usize, capture)
+    shift_dr(protocol, data, len as usize, capture).await
 }
 
+#[async_trait::async_trait(?Send)]
 impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
-    fn shift_raw_sequence(&mut self, sequence: JtagSequence) -> Result<BitVec, DebugProbeError> {
+    async fn shift_raw_sequence(
+        &mut self,
+        sequence: JtagSequence,
+    ) -> Result<BitVec, DebugProbeError> {
         self.shift_bits(
             std::iter::repeat(sequence.tms),
             sequence.data.into_iter(),
             std::iter::repeat(sequence.tdo_capture),
-        )?;
-        self.read_captured_bits()
+        )
+        .await?;
+        self.read_captured_bits().await
     }
 
     fn set_scan_chain(&mut self, scan_chain: &[ScanChainElement]) -> Result<(), DebugProbeError> {
@@ -561,9 +566,9 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
     }
 
     /// Configures the probe to address the given target.
-    fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError> {
+    async fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError> {
         if self.state().scan_chain.is_empty() {
-            self.scan_chain()?;
+            self.scan_chain().await?;
         }
 
         let state = self.state_mut();
@@ -580,21 +585,21 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
         Ok(())
     }
 
-    fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
+    async fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
         if !self.state().scan_chain.is_empty() {
             return Ok(self.state().scan_chain.as_slice());
         }
 
         const MAX_CHAIN: usize = 8;
 
-        self.reset_jtag_state_machine()?;
+        self.reset_jtag_state_machine().await?;
 
         self.state_mut().chain_params = ChainParams::default();
 
         let input = [0xFF; 4 * MAX_CHAIN];
 
-        shift_dr(self, &input, input.len() * 8, true)?;
-        let response = self.read_captured_bits()?;
+        shift_dr(self, &input, input.len() * 8, true).await?;
+        let response = self.read_captured_bits().await?;
 
         tracing::debug!("DR: {:?}", response);
 
@@ -610,19 +615,19 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
 
         // First shift out all ones
         let input = vec![0xff; idcodes.len()];
-        shift_ir(self, &input, input.len() * 8, true)?;
-        let response = self.read_captured_bits()?;
+        shift_ir(self, &input, input.len() * 8, true).await?;
+        let response = self.read_captured_bits().await?;
 
         tracing::debug!("IR scan: {}", response);
 
-        self.reset_jtag_state_machine()?;
+        self.reset_jtag_state_machine().await?;
 
         // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
         let input = std::iter::repeat_n(0, idcodes.len())
             .chain(input.iter().copied())
             .collect::<Vec<_>>();
-        shift_ir(self, &input, input.len() * 8, true)?;
-        let response_zeros = self.read_captured_bits()?;
+        shift_ir(self, &input, input.len() * 8, true).await?;
+        let response_zeros = self.read_captured_bits().await?;
 
         tracing::debug!("IR scan: {}", response_zeros);
 
@@ -664,8 +669,8 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
         Ok(self.state().scan_chain.as_slice())
     }
 
-    fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
-        self.reset_jtag_state_machine()
+    async fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_jtag_state_machine().await
     }
 
     fn set_idle_cycles(&mut self, idle_cycles: u8) -> Result<(), DebugProbeError> {
@@ -677,55 +682,58 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
         self.state().jtag_idle_cycles as u8
     }
 
-    fn read_register(&mut self, address: u32, len: u32) -> Result<BitVec, DebugProbeError> {
+    async fn read_register(&mut self, address: u32, len: u32) -> Result<BitVec, DebugProbeError> {
         let data = vec![0u8; len.div_ceil(8) as usize];
 
-        self.write_register(address, &data, len)
+        self.write_register(address, &data, len).await
     }
 
-    fn write_register(
+    async fn write_register(
         &mut self,
         address: u32,
         data: &[u8],
         len: u32,
     ) -> Result<BitVec, DebugProbeError> {
-        prepare_write_register(self, address, data, len, true)?;
+        prepare_write_register(self, address, data, len, true).await?;
 
-        let response = self.read_captured_bits()?;
+        let response = self.read_captured_bits().await?;
 
         tracing::trace!("recieve_write_dr result: {:?}", response);
         Ok(response)
     }
 
-    fn write_dr(&mut self, data: &[u8], len: u32) -> Result<BitVec, DebugProbeError> {
-        shift_dr(self, data, len as usize, true)?;
+    async fn write_dr(&mut self, data: &[u8], len: u32) -> Result<BitVec, DebugProbeError> {
+        shift_dr(self, data, len as usize, true).await?;
 
-        let response = self.read_captured_bits()?;
+        let response = self.read_captured_bits().await?;
 
         tracing::trace!("write_dr result: {:?}", response);
         Ok(response)
     }
 
     #[tracing::instrument(skip(self, writes))]
-    fn write_register_batch(
+    async fn write_register_batch(
         &mut self,
         writes: &JtagCommandQueue,
     ) -> Result<DeferredResultSet, BatchExecutionError> {
         let mut bits = Vec::with_capacity(writes.len());
-        let t1 = std::time::Instant::now();
+        let t1 = web_time::Instant::now();
         tracing::debug!("Preparing {} writes...", writes.len());
         for (idx, command) in writes.iter() {
             let result = match command {
-                JtagCommand::WriteRegister(write) => prepare_write_register(
-                    self,
-                    write.address,
-                    &write.data,
-                    write.len,
-                    idx.should_capture(),
-                ),
+                JtagCommand::WriteRegister(write) => {
+                    prepare_write_register(
+                        self,
+                        write.address,
+                        &write.data,
+                        write.len,
+                        idx.should_capture(),
+                    )
+                    .await
+                }
 
                 JtagCommand::ShiftDr(write) => {
-                    shift_dr(self, &write.data, write.len as usize, idx.should_capture())
+                    shift_dr(self, &write.data, write.len as usize, idx.should_capture()).await
                 }
             };
 
@@ -740,6 +748,7 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
         // If an error happens during the final flush, also retry whole operation
         let bitstream = self
             .read_captured_bits()
+            .await
             .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
 
         tracing::debug!("Got responses! Took {:?}! Processing...", t1.elapsed());

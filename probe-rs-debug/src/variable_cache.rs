@@ -418,7 +418,7 @@ impl VariableCache {
     /// Recursively process the deferred variables in the variable cache,
     /// and add their children to the cache.
     /// Enforce a max level, so that we don't recurse infinitely on circular references.
-    pub fn recurse_deferred_variables(
+    pub async fn recurse_deferred_variables(
         &mut self,
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
@@ -435,9 +435,10 @@ impl VariableCache {
             0,
             frame_info,
         )
+        .await
     }
 
-    fn recurse_deferred_variables_internal(
+    async fn recurse_deferred_variables_internal(
         &mut self,
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
@@ -452,6 +453,7 @@ impl VariableCache {
 
         if debug_info
             .cache_deferred_variables(self, memory, parent_variable, frame_info)
+            .await
             .is_err()
         {
             return;
@@ -463,14 +465,15 @@ impl VariableCache {
             .collect();
 
         for mut child in children {
-            self.recurse_deferred_variables_internal(
+            Box::pin(self.recurse_deferred_variables_internal(
                 debug_info,
                 memory,
                 &mut child,
                 max_recursion_depth,
                 current_recursion_depth + 1,
                 frame_info,
-            );
+            ))
+            .await;
         }
     }
 

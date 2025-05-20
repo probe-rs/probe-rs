@@ -1,9 +1,11 @@
 use crate::probe::DebugProbeInfo;
+use crate::probe::ProbeFactory;
 use crate::probe::stlink::StLinkFactory;
 
 use super::usb_interface::USB_PID_EP_MAP;
 use super::usb_interface::USB_VID;
 use std::fmt::Write;
+use std::sync::Arc;
 
 pub(super) fn is_stlink_device(device: &nusb::DeviceInfo) -> bool {
     // Check the VID/PID.
@@ -11,8 +13,8 @@ pub(super) fn is_stlink_device(device: &nusb::DeviceInfo) -> bool {
 }
 
 #[tracing::instrument(skip_all)]
-pub(super) fn list_stlink_devices() -> Vec<DebugProbeInfo> {
-    let devices = match nusb::list_devices() {
+pub(super) async fn list_stlink_devices() -> Vec<DebugProbeInfo> {
+    let devices = match crate::probe::list::list_devices().await {
         Ok(d) => d,
         Err(e) => {
             tracing::warn!("listing stlink devices failed: {:?}", e);
@@ -31,7 +33,7 @@ pub(super) fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                 device.vendor_id(),
                 device.product_id(),
                 read_serial_number(&device),
-                &StLinkFactory,
+                Arc::new(StLinkFactory) as Arc<dyn ProbeFactory>,
                 None,
             )
         })

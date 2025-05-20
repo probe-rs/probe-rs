@@ -19,6 +19,7 @@ impl Nrf9160 {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Nrf for Nrf9160 {
     fn core_aps(
         &self,
@@ -37,13 +38,15 @@ impl Nrf for Nrf9160 {
             .collect()
     }
 
-    fn is_core_unlocked(
+    async fn is_core_unlocked(
         &self,
         arm_interface: &mut dyn ArmProbeInterface,
         _ahb_ap_address: &FullyQualifiedApAddress,
         ctrl_ap_address: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
-        let approtect_status = arm_interface.read_raw_ap_register(ctrl_ap_address, 0x00C)?;
+        let approtect_status = arm_interface
+            .read_raw_ap_register(ctrl_ap_address, 0x00C)
+            .await?;
         Ok(approtect_status != 0)
     }
 

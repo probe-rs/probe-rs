@@ -188,7 +188,7 @@ pub enum CmsisDapDevice {
 
 impl CmsisDapDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
-    fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
+    async fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
         match self {
             CmsisDapDevice::V1 { handle, .. } => {
                 match handle.read_timeout(buf, USB_TIMEOUT.as_millis() as i32)? {
@@ -197,19 +197,23 @@ impl CmsisDapDevice {
                     n => Ok(n),
                 }
             }
-            CmsisDapDevice::V2 { handle, in_ep, .. } => {
-                Ok(handle.read_bulk(*in_ep, buf, USB_TIMEOUT)?)
-            }
+            CmsisDapDevice::V2 { handle, in_ep, .. } => handle
+                .read_bulk(*in_ep, buf, USB_TIMEOUT)
+                .await
+                .map_err(SendError::UsbError),
         }
     }
 
     /// Write `buf` to the probe, returning the number of bytes written on success.
-    fn write(&self, buf: &[u8]) -> Result<usize, SendError> {
+    async fn write(&self, buf: &[u8]) -> Result<usize, SendError> {
         match self {
             CmsisDapDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
             CmsisDapDevice::V2 { handle, out_ep, .. } => {
                 // Skip first byte as it's set to 0 for HID transfers
-                Ok(handle.write_bulk(*out_ep, &buf[1..], USB_TIMEOUT)?)
+                handle
+                    .write_bulk(*out_ep, &buf[1..], USB_TIMEOUT)
+                    .await
+                    .map_err(SendError::UsbError)
             }
         }
     }
@@ -217,7 +221,7 @@ impl CmsisDapDevice {
     /// Drain any pending data from the probe, ensuring future responses are
     /// synchronised to requests. Swallows any errors, which are expected if
     /// there is no pending data to read.
-    pub(super) fn drain(&self) {
+    pub(super) async fn drain(&self) {
         tracing::debug!("Draining probe of any pending data.");
 
         match self {
@@ -242,7 +246,7 @@ impl CmsisDapDevice {
                 let timeout = Duration::from_millis(1);
                 let mut discard = vec![0u8; *max_packet_size];
                 loop {
-                    match handle.read_bulk(*in_ep, &mut discard, timeout) {
+                    match handle.read_bulk(*in_ep, &mut discard, timeout).await {
                         Ok(n) if n != 0 => continue,
                         _ => break,
                     }
@@ -277,10 +281,10 @@ impl CmsisDapDevice {
     /// data that is before we get a response.
     ///
     /// The device is then configured to use the detected size, which is returned.
-    pub(super) fn find_packet_size(&mut self) -> Result<usize, CmsisDapError> {
+    pub(super) async fn find_packet_size(&mut self) -> Result<usize, CmsisDapError> {
         for repeat in 0..16 {
             tracing::debug!("Attempt {} to find packet size", repeat + 1);
-            match send_command(self, &PacketSizeCommand {}) {
+            match send_command(self, &PacketSizeCommand {}).await {
                 Ok(size) => {
                     tracing::debug!("Success: packet size is {}", size);
                     self.set_packet_size(size as usize);
@@ -315,13 +319,16 @@ impl CmsisDapDevice {
     /// Returns SWOModeNotAvailable if this device does not support SWO streaming.
     ///
     /// On timeout, returns a zero-length buffer.
-    pub(super) fn read_swo_stream(&self, timeout: Duration) -> Result<Vec<u8>, CmsisDapError> {
+    pub(super) async fn read_swo_stream(
+        &self,
+        timeout: Duration,
+    ) -> Result<Vec<u8>, CmsisDapError> {
         match self {
             CmsisDapDevice::V1 { .. } => Err(CmsisDapError::SwoModeNotAvailable),
             CmsisDapDevice::V2 { handle, swo_ep, .. } => match swo_ep {
                 Some((ep, len)) => {
                     let mut buf = vec![0u8; *len];
-                    match handle.read_bulk(*ep, &mut buf, timeout) {
+                    match handle.read_bulk(*ep, &mut buf, timeout).await {
                         Ok(n) => {
                             buf.truncate(n);
                             Ok(buf)
@@ -410,17 +417,19 @@ pub(crate) trait Request {
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError>;
 }
 
-pub(crate) fn send_command<Req: Request>(
+pub(crate) async fn send_command<Req: Request>(
     device: &mut CmsisDapDevice,
     request: &Req,
 ) -> Result<Req::Response, CmsisDapError> {
-    send_command_inner(device, request).map_err(|e| CmsisDapError::Send {
-        command_id: Req::COMMAND_ID,
-        source: e,
-    })
+    send_command_inner(device, request)
+        .await
+        .map_err(|e| CmsisDapError::Send {
+            command_id: Req::COMMAND_ID,
+            source: e,
+        })
 }
 
-fn send_command_inner<Req: Request>(
+async fn send_command_inner<Req: Request>(
     device: &mut CmsisDapDevice,
     request: &Req,
 ) -> Result<Req::Response, SendError> {
@@ -449,11 +458,11 @@ fn send_command_inner<Req: Request>(
     }
 
     // Send buffer to the device.
-    let _ = device.write(&buffer[..size])?;
+    let _ = device.write(&buffer[..size]).await?;
     trace_buffer("Transmit buffer", &buffer[..size]);
 
     // Read back response.
-    let bytes_read = device.read(&mut buffer)?;
+    let bytes_read = device.read(&mut buffer).await?;
     let response_data = &buffer[..bytes_read];
     trace_buffer("Receive buffer", response_data);
 

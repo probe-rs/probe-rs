@@ -37,9 +37,9 @@ impl MonitorMode {
         }
     }
 
-    pub fn prepare(&self, session: &mut Session, core_id: usize) -> anyhow::Result<()> {
+    pub async fn prepare(&self, session: &mut Session, core_id: usize) -> anyhow::Result<()> {
         match self {
-            MonitorMode::Run(boot_info) => boot_info.prepare(session, core_id),
+            MonitorMode::Run(boot_info) => boot_info.prepare(session, core_id).await,
             MonitorMode::AttachToRunning => Ok(()),
         }
     }
@@ -170,7 +170,7 @@ impl MultiTopicPublisher for MonitorPublisher {
     }
 }
 
-fn monitor_impl(
+async fn monitor_impl(
     ctx: RpcSpawnContext,
     request: MonitorRequest,
     sender: MonitorSender,
@@ -192,12 +192,12 @@ fn monitor_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    request.mode.prepare(&mut session, run_loop.core_id)?;
+    request.mode.prepare(&mut session, run_loop.core_id).await?;
 
-    let mut core = session.core(run_loop.core_id)?;
+    let mut core = session.core(run_loop.core_id).await?;
     if request.mode.should_clear_rtt_header() {
         if let Some(rtt_client) = rtt_client.as_mut() {
-            rtt_client.clear_control_block(&mut core)?;
+            rtt_client.clear_control_block(&mut core).await?;
         }
     }
 
@@ -210,14 +210,16 @@ fn monitor_impl(
         },
     });
 
-    let exit_reason = run_loop.run_until(
-        &mut core,
-        request.options.catch_hardfault,
-        request.options.catch_reset,
-        poller,
-        None,
-        |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
-    )?;
+    let exit_reason = run_loop
+        .run_until(
+            &mut core,
+            request.options.catch_hardfault,
+            request.options.catch_reset,
+            poller,
+            None,
+            async |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core).await,
+        )
+        .await?;
 
     match exit_reason {
         ReturnReason::Predicate(reason) => Ok(reason),
@@ -241,12 +243,14 @@ where
     S: FnMut(RttEvent) -> anyhow::Result<()>,
     S: 'c,
 {
-    fn start(&mut self, _core: &mut Core<'_>) -> anyhow::Result<()> {
+    async fn start(&mut self, _core: &mut Core<'_>) -> anyhow::Result<()> {
         Ok(())
     }
 
-    fn poll(&mut self, core: &mut Core<'_>) -> anyhow::Result<Duration> {
-        if !self.rtt_client.is_attached() && matches!(self.rtt_client.try_attach(core), Ok(true)) {
+    async fn poll(&mut self, core: &mut Core<'_>) -> anyhow::Result<Duration> {
+        if !self.rtt_client.is_attached()
+            && matches!(self.rtt_client.try_attach(core).await, Ok(true))
+        {
             tracing::debug!("Attached to RTT");
             let up_channels = self
                 .rtt_client
@@ -269,7 +273,7 @@ where
 
         let mut next_poll = Duration::from_millis(100);
         for channel in 0..self.rtt_client.up_channels().len() {
-            let bytes = self.rtt_client.poll_channel(core, channel as u32)?;
+            let bytes = self.rtt_client.poll_channel(core, channel as u32).await?;
             if !bytes.is_empty() {
                 // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
                 // Once we receive new data, we bump the frequency to 1kHz.
@@ -286,8 +290,8 @@ where
         Ok(next_poll)
     }
 
-    fn exit(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
-        self.rtt_client.clean_up(core)?;
+    async fn exit(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
+        self.rtt_client.clean_up(core).await?;
         Ok(())
     }
 }
@@ -305,7 +309,7 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
         }
     }
 
-    fn handle_halt(
+    async fn handle_halt(
         &mut self,
         halt_reason: HaltReason,
         core: &mut Core<'_>,
@@ -342,7 +346,7 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
             }
             SemihostingCommand::Errno(_) => Ok(None),
             other if SemihostingReader::is_io(other) => {
-                if let Some((stream, data)) = self.semihosting_reader.handle(other, core)? {
+                if let Some((stream, data)) = self.semihosting_reader.handle(other, core).await? {
                     (self.sender)(SemihostingEvent::Output { stream, data });
                 }
                 Ok(None)
@@ -381,23 +385,23 @@ impl SemihostingReader {
         )
     }
 
-    pub fn handle(
+    pub async fn handle(
         &mut self,
         command: SemihostingCommand,
         core: &mut Core<'_>,
     ) -> anyhow::Result<Option<(String, String)>> {
         let out = match command {
             SemihostingCommand::Open(request) => {
-                self.handle_open(core, request)?;
+                self.handle_open(core, request).await?;
                 None
             }
             SemihostingCommand::Close(request) => {
-                self.handle_close(core, request)?;
+                self.handle_close(core, request).await?;
                 None
             }
-            SemihostingCommand::Write(request) => self.handle_write(core, request)?,
+            SemihostingCommand::Write(request) => self.handle_write(core, request).await?,
             SemihostingCommand::WriteConsole(request) => {
-                let str = request.read(core)?;
+                let str = request.read(core).await?;
                 Some((String::from("stdout"), str))
             }
 
@@ -407,8 +411,12 @@ impl SemihostingReader {
         Ok(out)
     }
 
-    fn handle_open(&mut self, core: &mut Core<'_>, request: OpenRequest) -> anyhow::Result<()> {
-        let path = request.path(core)?;
+    async fn handle_open(
+        &mut self,
+        core: &mut Core<'_>,
+        request: OpenRequest,
+    ) -> anyhow::Result<()> {
+        let path = request.path(core).await?;
         if path != ":tt" {
             tracing::warn!(
                 "Target wanted to open file {path}, but probe-rs does not support this operation yet. Continuing..."
@@ -419,11 +427,11 @@ impl SemihostingReader {
         match request.mode().as_bytes()[0] {
             b'w' => {
                 self.stdout_open = true;
-                request.respond_with_handle(core, Self::STDOUT)?;
+                request.respond_with_handle(core, Self::STDOUT).await?;
             }
             b'a' => {
                 self.stderr_open = true;
-                request.respond_with_handle(core, Self::STDERR)?;
+                request.respond_with_handle(core, Self::STDERR).await?;
             }
             mode => tracing::warn!(
                 "Target wanted to open file {path} with mode {mode}, but probe-rs does not support this operation yet. Continuing..."
@@ -433,14 +441,18 @@ impl SemihostingReader {
         Ok(())
     }
 
-    fn handle_close(&mut self, core: &mut Core<'_>, request: CloseRequest) -> anyhow::Result<()> {
-        let handle = request.file_handle(core)?;
+    async fn handle_close(
+        &mut self,
+        core: &mut Core<'_>,
+        request: CloseRequest,
+    ) -> anyhow::Result<()> {
+        let handle = request.file_handle(core).await?;
         if handle == Self::STDOUT.get() {
             self.stdout_open = false;
-            request.success(core)?;
+            request.success(core).await?;
         } else if handle == Self::STDERR.get() {
             self.stderr_open = false;
-            request.success(core)?;
+            request.success(core).await?;
         } else {
             tracing::warn!(
                 "Target wanted to close file handle {handle}, but probe-rs does not support this operation yet. Continuing..."
@@ -450,7 +462,7 @@ impl SemihostingReader {
         Ok(())
     }
 
-    fn handle_write(
+    async fn handle_write(
         &mut self,
         core: &mut Core<'_>,
         request: WriteRequest,
@@ -458,13 +470,13 @@ impl SemihostingReader {
         match request.file_handle() {
             handle if handle == Self::STDOUT.get() => {
                 if self.stdout_open {
-                    let string = read_written_string(core, request)?;
+                    let string = read_written_string(core, request).await?;
                     return Ok(Some((String::from("stdout"), string)));
                 }
             }
             handle if handle == Self::STDERR.get() => {
                 if self.stderr_open {
-                    let string = read_written_string(core, request)?;
+                    let string = read_written_string(core, request).await?;
                     return Ok(Some((String::from("stderr"), string)));
                 }
             }
@@ -477,9 +489,9 @@ impl SemihostingReader {
     }
 }
 
-fn read_written_string(core: &mut Core<'_>, request: WriteRequest) -> anyhow::Result<String> {
-    let bytes = request.read(core)?;
+async fn read_written_string(core: &mut Core<'_>, request: WriteRequest) -> anyhow::Result<String> {
+    let bytes = request.read(core).await?;
     let str = String::from_utf8_lossy(&bytes);
-    request.write_status(core, 0)?;
+    request.write_status(core, 0).await?;
     Ok(str.to_string())
 }

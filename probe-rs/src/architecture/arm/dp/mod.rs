@@ -123,14 +123,14 @@ pub trait DpAccess {
     /// If the target device has multiple debug ports, this will change the active debug port if necessary.
     /// In this case all pending operations will be run, and errors returned by this function can also
     /// be from these operations.
-    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, ArmError>;
+    async fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, ArmError>;
 
     /// Write a debug port register.
     ///
     /// If the target device has multiple debug ports, this will change the active debug port if necessary.
     /// In this case all pending operations will be run, and errors returned by this function can also
     /// be from these operations.
-    fn write_dp_register<R: DpRegister>(
+    async fn write_dp_register<R: DpRegister>(
         &mut self,
         dp: DpAddress,
         register: R,
@@ -139,22 +139,25 @@ pub trait DpAccess {
 
 impl<T: ?Sized + DapAccess> DpAccess for T {
     #[tracing::instrument(skip(self))]
-    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, ArmError> {
+    async fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, ArmError> {
         tracing::debug!("Reading DP register {}", R::NAME);
-        let result = self.read_raw_dp_register(dp, R::ADDRESS)?.try_into()?;
+        let result = self
+            .read_raw_dp_register(dp, R::ADDRESS)
+            .await?
+            .try_into()?;
         tracing::debug!("Read    DP register {}, value=0x{:08x?}", R::NAME, result);
         Ok(result)
     }
 
     #[tracing::instrument(skip(self))]
-    fn write_dp_register<R: DpRegister>(
+    async fn write_dp_register<R: DpRegister>(
         &mut self,
         dp: DpAddress,
         register: R,
     ) -> Result<(), ArmError> {
         let value = register.into();
         tracing::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
-        self.write_raw_dp_register(dp, R::ADDRESS, value)?;
+        self.write_raw_dp_register(dp, R::ADDRESS, value).await?;
         Ok(())
     }
 }

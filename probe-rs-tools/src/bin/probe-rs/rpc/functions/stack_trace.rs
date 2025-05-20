@@ -41,14 +41,14 @@ pub async fn take_stack_trace(
     };
 
     session
-        .halted_access(|session| {
+        .halted_access(async |session| {
             let mut cores = Vec::new();
             for (idx, core_type) in session.list_cores() {
-                let mut core = session.core(idx)?;
+                let mut core = session.core(idx).await?;
 
-                let initial_registers = DebugRegisters::from_core(&mut core);
+                let initial_registers = DebugRegisters::from_core(&mut core).await;
                 let exception_interface = exception_handler_for_core(core_type);
-                let instruction_set = core.instruction_set().ok();
+                let instruction_set = core.instruction_set().await.ok();
                 let stack_frames = debug_info
                     .unwind(
                         &mut core,
@@ -56,6 +56,7 @@ pub async fn take_stack_trace(
                         exception_interface.as_ref(),
                         instruction_set,
                     )
+                    .await
                     .unwrap();
 
                 let mut frame_strings = vec![];
@@ -101,5 +102,6 @@ pub async fn take_stack_trace(
             }
             Ok(StackTraces { cores })
         })
+        .await
         .map_err(Into::into)
 }

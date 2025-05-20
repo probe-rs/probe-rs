@@ -8,8 +8,9 @@
 //! are ARMv8, or the STM32H7 which is ARMv7 but has a more complicated DBGMCU at a different
 //! address.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
+use async_mutex::Mutex;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
@@ -59,58 +60,61 @@ mod dbgmcu {
         const ADDRESS: u64 = 0x04;
 
         /// Read the control register from memory.
-        pub fn read(memory: &mut dyn ArmMemoryInterface) -> Result<Self, ArmError> {
-            let contents = memory.read_word_32(DBGMCU + Self::ADDRESS)?;
+        pub async fn read(memory: &mut dyn ArmMemoryInterface) -> Result<Self, ArmError> {
+            let contents = memory.read_word_32(DBGMCU + Self::ADDRESS).await?;
             Ok(Self(contents))
         }
 
         /// Write the control register to memory.
-        pub fn write(&mut self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
-            memory.write_word_32(DBGMCU + Self::ADDRESS, self.0)
+        pub async fn write(&mut self, memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+            memory.write_word_32(DBGMCU + Self::ADDRESS, self.0).await
         }
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl ArmDebugSequence for Stm32Armv7 {
-    fn debug_device_unlock(
+    async fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
         default_ap: &FullyQualifiedApAddress,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
-        let mut memory = interface.memory_interface(default_ap)?;
-        let mut cr = dbgmcu::Control::read(&mut *memory)?;
-        self.saved_cr_value.lock().unwrap().replace(cr.0);
+        let mut memory = interface.memory_interface(default_ap).await?;
+        let mut cr = dbgmcu::Control::read(&mut *memory).await?;
+        self.saved_cr_value.lock().await.replace(cr.0);
 
         cr.enable_standby_debug(true);
         cr.enable_sleep_debug(true);
         cr.enable_stop_debug(true);
-        cr.write(&mut *memory)?;
+        cr.write(&mut *memory).await?;
 
         Ok(())
     }
 
-    fn debug_core_stop(
+    async fn debug_core_stop(
         &self,
         memory: &mut dyn ArmMemoryInterface,
         _core_type: CoreType,
     ) -> Result<(), ArmError> {
-        let mut saved_cr_value = self.saved_cr_value.lock().unwrap();
+        let mut saved_cr_value = self.saved_cr_value.lock().await;
         if let Some(crv) = saved_cr_value.take() {
             let mut cr = dbgmcu::Control(crv);
-            cr.write(&mut *memory)?;
+            cr.write(&mut *memory).await?;
         }
         Ok(())
     }
 
-    fn trace_start(
+    async fn trace_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
         components: &[CoresightComponent],
         sink: &TraceSink,
     ) -> Result<(), ArmError> {
-        let mut memory = interface.memory_interface(&components[0].ap_address)?;
-        let mut cr = dbgmcu::Control::read(&mut *memory)?;
+        let mut memory = interface
+            .memory_interface(&components[0].ap_address)
+            .await?;
+        let mut cr = dbgmcu::Control::read(&mut *memory).await?;
 
         if matches!(sink, TraceSink::Tpiu(_) | TraceSink::Swo(_)) {
             cr.set_traceioen(true);
@@ -120,7 +124,7 @@ impl ArmDebugSequence for Stm32Armv7 {
             cr.set_tracemode(0);
         }
 
-        cr.write(&mut *memory)?;
+        cr.write(&mut *memory).await?;
         Ok(())
     }
 }

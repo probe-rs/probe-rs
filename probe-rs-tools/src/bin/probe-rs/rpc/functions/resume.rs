@@ -17,6 +17,6 @@ pub async fn resume_all_cores(
     _header: VarHeader,
     request: ResumeAllCoresRequest,
 ) -> NoResponse {
-    ctx.session(request.sessid).await.resume_all_cores()?;
+    ctx.session(request.sessid).await.resume_all_cores().await?;
     Ok(())
 }

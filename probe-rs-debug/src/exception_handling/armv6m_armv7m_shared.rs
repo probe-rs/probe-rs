@@ -63,7 +63,7 @@ bitfield! {
 }
 
 /// Decode the exception information.
-pub(crate) fn exception_details(
+pub(crate) async fn exception_details(
     exception_interface: &impl ExceptionInterface,
     memory_interface: &mut dyn MemoryInterface,
     stackframe_registers: &DebugRegisters,
@@ -105,12 +105,12 @@ pub(crate) fn exception_details(
         }));
     }
 
-    let mut registers = exception_interface.calling_frame_registers(
-        memory_interface,
-        stackframe_registers,
-        raw_exception,
-    )?;
-    let description = exception_interface.exception_description(raw_exception, memory_interface)?;
+    let mut registers = exception_interface
+        .calling_frame_registers(memory_interface, stackframe_registers, raw_exception)
+        .await?;
+    let description = exception_interface
+        .exception_description(raw_exception, memory_interface)
+        .await?;
 
     let exception_frame_pc = registers.get_register_mut_by_role(&RegisterRole::ProgramCounter)?;
 
@@ -205,7 +205,7 @@ pub(crate) fn raw_exception(stackframe_registers: &crate::DebugRegisters) -> Res
 /// The registers are stored in that list in the order they are defined in the `EXCEPTION_STACK_REGISTERS` array.
 /// This function will read the values of the registers from the stack and update the passed `stackframe_registers` with the new values.
 // TODO: probe-rs does not currently do anything with the floating point registers. When support is added, please note that the list of registers to read is different for cores that have the floating point extension.
-pub(crate) fn calling_frame_registers(
+pub(crate) async fn calling_frame_registers(
     memory: &mut dyn MemoryInterface,
     stackframe_registers: &crate::DebugRegisters,
 ) -> Result<crate::DebugRegisters, probe_rs::Error> {
@@ -214,10 +214,12 @@ pub(crate) fn calling_frame_registers(
 
     // Get the values of the registers pushed onto the stack.
     let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
-    memory.read_32(
-        (exception_context_address).into(),
-        &mut calling_stack_registers,
-    )?;
+    memory
+        .read_32(
+            (exception_context_address).into(),
+            &mut calling_stack_registers,
+        )
+        .await?;
 
     let mut calling_frame_registers = stackframe_registers.clone();
     for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {

@@ -114,8 +114,8 @@ impl JLink {
     /// Reads the probe's SWO capture speed information.
     ///
     /// This requires the probe to support [`Capability::Swo`].
-    pub fn read_swo_speeds(&self, mode: SwoMode) -> Result<SwoSpeedInfo> {
-        self.require_capability(Capability::Swo)?;
+    pub async fn read_swo_speeds(&self, mode: SwoMode) -> Result<SwoSpeedInfo> {
+        self.require_capability(Capability::Swo).await?;
 
         let mut buf = [0; 9];
         buf[0] = Command::Swo as u8;
@@ -125,9 +125,9 @@ impl JLink {
         buf[4..8].copy_from_slice(&(mode as u32).to_le_bytes());
         buf[8] = 0x00;
 
-        self.write_cmd(&buf)?;
+        self.write_cmd(&buf).await?;
 
-        let buf = self.read_n::<28>()?;
+        let buf = self.read_n::<28>().await?;
 
         let mut len = [0; 4];
         len.copy_from_slice(&buf[0..4]);
@@ -170,11 +170,11 @@ impl JLink {
     /// - `speed`: The data rate to capture at (when using [`SwoMode::Uart`], this is the UART baud
     ///   rate).
     /// - `buf_size`: The size (in Bytes) of the on-device buffer to allocate for the SWO data.
-    pub fn swo_start(&mut self, mode: SwoMode, speed: u32, buf_size: u32) -> Result<()> {
-        self.require_capability(Capability::Swo)?;
+    pub async fn swo_start(&mut self, mode: SwoMode, speed: u32, buf_size: u32) -> Result<()> {
+        self.require_capability(Capability::Swo).await?;
 
         // The probe must be in SWD mode for SWO capture to work.
-        self.require_interface_selected(Interface::Swd)?;
+        self.require_interface_selected(Interface::Swd).await?;
 
         let mut buf = [0; 21];
         buf[0] = Command::Swo as u8;
@@ -190,16 +190,16 @@ impl JLink {
         buf[16..20].copy_from_slice(&buf_size.to_le_bytes());
         buf[20] = 0x00;
 
-        self.write_cmd(&buf)?;
+        self.write_cmd(&buf).await?;
 
-        let _status = self.read_u32().map(SwoStatus::new)?;
+        let _status = self.read_u32().await.map(SwoStatus::new)?;
 
         Ok(())
     }
 
     /// Stops capturing SWO data.
-    pub fn swo_stop(&mut self) -> Result<()> {
-        self.require_capability(Capability::Swo)?;
+    pub async fn swo_stop(&mut self) -> Result<()> {
+        self.require_capability(Capability::Swo).await?;
 
         let buf = [
             Command::Swo as u8,
@@ -207,9 +207,9 @@ impl JLink {
             0x00, // no parameters
         ];
 
-        self.write_cmd(&buf)?;
+        self.write_cmd(&buf).await?;
 
-        let _status = self.read_u32().map(SwoStatus::new)?;
+        let _status = self.read_u32().await.map(SwoStatus::new)?;
         // FIXME: What to do with the status?
 
         Ok(())
@@ -224,7 +224,7 @@ impl JLink {
     /// **Note**: the probe firmware seems to dislike many short SWO reads (as in, the probe will
     /// *fall off the bus and reset*), so it is recommended to use a buffer that is the same size as
     /// the on-probe data buffer.
-    pub fn swo_read<'a>(&self, data: &'a mut [u8]) -> Result<SwoData<'a>> {
+    pub async fn swo_read<'a>(&self, data: &'a mut [u8]) -> Result<SwoData<'a>> {
         let mut cmd = [0; 9];
         cmd[0] = Command::Swo as u8;
         cmd[1] = SwoCommand::Read as u8;
@@ -233,9 +233,9 @@ impl JLink {
         cmd[4..8].copy_from_slice(&(data.len() as u32).to_le_bytes());
         cmd[8] = 0x00;
 
-        self.write_cmd(&cmd)?;
+        self.write_cmd(&cmd).await?;
 
-        let header = self.read_n::<8>()?;
+        let header = self.read_n::<8>().await?;
 
         let status = {
             let mut status = [0; 4];
@@ -254,7 +254,7 @@ impl JLink {
         }
 
         let buf = &mut data[..length];
-        self.read(buf)?;
+        self.read(buf).await?;
 
         Ok(SwoData { data: buf, status })
     }

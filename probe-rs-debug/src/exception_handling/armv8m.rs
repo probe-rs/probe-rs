@@ -108,7 +108,7 @@ impl Cfsr {
     }
 
     /// Additional information about a Bus Fault, or Ok(None) if the fault was not a Bus Fault.
-    fn bus_fault_description(
+    async fn bus_fault_description(
         &self,
         memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
@@ -132,7 +132,7 @@ impl Cfsr {
         Ok(Some(if self.bf_address_register_valid() {
             format!(
                 "BusFault ({source}) at location: {:#010x}",
-                memory.read_word_32(Bfar::get_mmio_address())?
+                memory.read_word_32(Bfar::get_mmio_address()).await?
             )
         } else {
             format!("BusFault ({source})")
@@ -140,7 +140,7 @@ impl Cfsr {
     }
 
     /// Additional information about a MemManage Fault, or Ok(None) if the fault was not a MemManage Fault.
-    fn memory_management_fault_description(
+    async fn memory_management_fault_description(
         &self,
         memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
@@ -162,7 +162,7 @@ impl Cfsr {
         Ok(Some(if self.mm_address_register_valid() {
             format!(
                 "MemManage Fault({source}) at location: {:#010x}",
-                memory.read_word_32(Mmfar::get_mmio_address())?
+                memory.read_word_32(Mmfar::get_mmio_address()).await?
             )
         } else {
             format!("MemManage Fault({source})")
@@ -198,7 +198,7 @@ impl Sfsr {
     ///
     /// This function will access the memory interface to determine the address of the fault,
     /// if necessary.
-    fn secure_fault_description(
+    async fn secure_fault_description(
         &self,
         memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
@@ -224,7 +224,7 @@ impl Sfsr {
         Ok(Some(if self.secure_fault_address_valid() {
             format!(
                 "SecureFault ({source}) at location: {:#010x}",
-                memory.read_word_32(Sfar::get_mmio_address())?
+                memory.read_word_32(Sfar::get_mmio_address()).await?
             )
         } else {
             format!("SecureFault ({source})")
@@ -310,23 +310,28 @@ impl From<u32> for ExceptionReason {
 impl ExceptionReason {
     /// Expands the exception reason, by providing additional information about the exception from the
     /// HFSR, CFSR, and SFSR registers.
-    fn expanded_description(&self, memory: &mut dyn MemoryInterface) -> Result<String, DebugError> {
+    async fn expanded_description(
+        &self,
+        memory: &mut dyn MemoryInterface,
+    ) -> Result<String, DebugError> {
         match self {
             ExceptionReason::ThreadMode => Ok("<No active exception>".to_string()),
             ExceptionReason::Reset => Ok("Reset".to_string()),
             ExceptionReason::NonMaskableInterrupt => Ok("NMI".to_string()),
             ExceptionReason::HardFault => {
-                let hfsr = Hfsr(memory.read_word_32(Hfsr::get_mmio_address())?);
+                let hfsr = Hfsr(memory.read_word_32(Hfsr::get_mmio_address()).await?);
                 let description = if hfsr.debug_event() {
                     "Synchronous debug fault.".to_string()
                 } else if hfsr.escalation_forced() {
                     let description = "Escalated ";
-                    let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
+                    let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address()).await?);
                     if let Some(source) = cfsr.usage_fault_description()? {
                         format!("{description}{source}")
-                    } else if let Some(source) = cfsr.bus_fault_description(memory)? {
+                    } else if let Some(source) = cfsr.bus_fault_description(memory).await? {
                         format!("{description}{source}")
-                    } else if let Some(source) = cfsr.memory_management_fault_description(memory)? {
+                    } else if let Some(source) =
+                        cfsr.memory_management_fault_description(memory).await?
+                    {
                         format!("{description}{source}")
                     } else {
                         format!("{description}from an unknown source")
@@ -339,7 +344,7 @@ impl ExceptionReason {
                 Ok(format!("HardFault <Cause: {description}>"))
             }
             ExceptionReason::MemoryManagementFault => {
-                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address()).await?)
                     .usage_fault_description()?
                 {
                     Ok(source)
@@ -348,8 +353,9 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::BusFault => {
-                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
-                    .bus_fault_description(memory)?
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address()).await?)
+                    .bus_fault_description(memory)
+                    .await?
                 {
                     Ok(source)
                 } else {
@@ -357,7 +363,7 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::UsageFault => {
-                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address()).await?)
                     .usage_fault_description()?
                 {
                     Ok(source)
@@ -366,8 +372,9 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::SecureFault => {
-                if let Some(source) = Sfsr(memory.read_word_32(Sfsr::get_mmio_address())?)
-                    .secure_fault_description(memory)?
+                if let Some(source) = Sfsr(memory.read_word_32(Sfsr::get_mmio_address()).await?)
+                    .secure_fault_description(memory)
+                    .await?
                 {
                     Ok(source)
                 } else {
@@ -387,8 +394,9 @@ impl ExceptionReason {
 }
 pub struct ArmV8MExceptionHandler;
 
+#[async_trait::async_trait(?Send)]
 impl ExceptionInterface for ArmV8MExceptionHandler {
-    fn calling_frame_registers(
+    async fn calling_frame_registers(
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
@@ -429,7 +437,9 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
             stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)?
         };
 
-        memory_interface.read_32(sp_value, &mut calling_stack_registers)?;
+        memory_interface
+            .read_32(sp_value, &mut calling_stack_registers)
+            .await?;
         let mut calling_frame_registers = stackframe_registers.clone();
         for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
             calling_frame_registers
@@ -449,15 +459,17 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         Ok(exception_number)
     }
 
-    fn exception_description(
+    async fn exception_description(
         &self,
         raw_exception: u32,
         memory_interface: &mut dyn MemoryInterface,
     ) -> Result<String, DebugError> {
-        ExceptionReason::from(raw_exception).expanded_description(memory_interface)
+        ExceptionReason::from(raw_exception)
+            .expanded_description(memory_interface)
+            .await
     }
 
-    fn exception_details(
+    async fn exception_details(
         &self,
         memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
@@ -468,12 +480,10 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
             // This is an exception frame.
 
             let raw_exception = self.raw_exception(stackframe_registers)?;
-            let description = self.exception_description(raw_exception, memory_interface)?;
-            let registers = self.calling_frame_registers(
-                memory_interface,
-                stackframe_registers,
-                raw_exception,
-            )?;
+            let description = self.exception_description(raw_exception, memory_interface).await?;
+            let registers = self
+                .calling_frame_registers(memory_interface, stackframe_registers, raw_exception)
+                .await?;
 
             let exception_frame_pc =
                 registers.get_register_value_by_role(&RegisterRole::ProgramCounter)?;

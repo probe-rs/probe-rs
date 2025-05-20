@@ -22,6 +22,7 @@ use probe_rs::{Target, probe::list::Lister};
 use report::Report;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, UtcOffset};
+use tokio::task::LocalSet;
 
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::RpcApp;
@@ -117,7 +118,7 @@ impl Cli {
             Subcommand::Serve(cmd) => cmd.run(_config.server).await,
             Subcommand::List(cmd) => cmd.run(client).await,
             Subcommand::Info(cmd) => cmd.run(client).await,
-            Subcommand::Gdb(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Gdb(cmd) => cmd.run(&mut *client.registry().await, &lister).await,
             Subcommand::Reset(cmd) => cmd.run(client).await,
             Subcommand::Debug(cmd) => {
                 cmd.run(&mut *client.registry().await, &lister, utc_offset)
@@ -128,15 +129,15 @@ impl Cli {
             Subcommand::Attach(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Verify(cmd) => cmd.run(client).await,
             Subcommand::Erase(cmd) => cmd.run(client).await,
-            Subcommand::Trace(cmd) => cmd.run(&mut *client.registry().await, &lister),
-            Subcommand::Itm(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Trace(cmd) => cmd.run(&mut *client.registry().await, &lister).await,
+            Subcommand::Itm(cmd) => cmd.run(&mut *client.registry().await, &lister).await,
             Subcommand::Chip(cmd) => cmd.run(client).await,
-            Subcommand::Benchmark(cmd) => cmd.run(&mut *client.registry().await, &lister),
-            Subcommand::Profile(cmd) => cmd.run(&mut *client.registry().await, &lister),
+            Subcommand::Benchmark(cmd) => cmd.run(&mut *client.registry().await, &lister).await,
+            Subcommand::Profile(cmd) => cmd.run(&mut *client.registry().await, &lister).await,
             Subcommand::Read(cmd) => cmd.run(client).await,
             Subcommand::Write(cmd) => cmd.run(client).await,
-            Subcommand::Complete(cmd) => cmd.run(&lister),
-            Subcommand::Mi(cmd) => cmd.run(),
+            Subcommand::Complete(cmd) => cmd.run(&lister).await,
+            Subcommand::Mi(cmd) => cmd.run().await,
         }
     }
 
@@ -161,8 +162,10 @@ enum Subcommand {
     Info(cmd::info::Cmd),
     /// Resets the target attached to the selected debug probe
     Reset(cmd::reset::Cmd),
+    #[cfg(not(target_arch = "wasm32"))]
     /// Run a GDB server
     Gdb(cmd::gdb_server::Cmd),
+    #[cfg(not(target_arch = "wasm32"))]
     /// Basic command line debugger
     Debug(cmd::debug::Cmd),
     /// Download memory to attached target
@@ -427,7 +430,7 @@ fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<&'list 
     None
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.
@@ -492,8 +495,12 @@ async fn main() -> Result<()> {
 
     #[cfg(feature = "remote")]
     if let Some(host) = cli.host.as_deref() {
+        let host = host.to_string();
+        let token = cli.token.clone();
         // Run the command remotely.
-        let client = rpc::client::connect(host, cli.token.clone()).await?;
+        let client =
+            tokio::task::spawn_local(async move { rpc::client::connect(&host, token).await })
+                .await??;
 
         anyhow::ensure!(
             cli.subcommand.is_remote_cmd(),
@@ -507,14 +514,14 @@ async fn main() -> Result<()> {
 
     // Create a local server to run commands against.
     let (mut local_server, tx, rx) = RpcApp::create_server(16, rpc::functions::ProbeAccess::All);
-    let handle = tokio::spawn(async move { local_server.run().await });
+    let handle = tokio::task::spawn_local(async move { local_server.run().await });
 
     // Run the command locally.
     let client = RpcClient::new_local_from_wire(tx, rx);
     let result = cli.run(client, config, utc_offset).await;
 
     // Wait for the server to shut down
-    _ = handle.await.unwrap();
+    handle.await?;
 
     compile_report(result, report_path, elf, log_path.as_deref())
 }

@@ -1,3 +1,5 @@
+#![cfg(not(target_arch = "wasm32"))]
+
 mod diagnostics;
 
 use clap::Parser;
@@ -58,7 +60,7 @@ struct CliOptions {
 
 pub fn main(args: &[OsString]) {
     let mut registry = Registry::from_builtin_families();
-    match main_try(&mut registry, args) {
+    match pollster::block_on(main_try(&mut registry, args)) {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling process::exit,
@@ -73,7 +75,7 @@ pub fn main(args: &[OsString]) {
     }
 }
 
-fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), OperationError> {
+async fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), OperationError> {
     // Parse the commandline options.
     let opt = CliOptions::parse_from(args);
 
@@ -128,11 +130,12 @@ fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), OperationE
     let lister = Lister::new();
 
     // Attach to specified probe
-    let (mut session, probe_options) = opt.probe_options.simple_attach(registry, &lister)?;
+    let (mut session, probe_options) = opt.probe_options.simple_attach(registry, &lister).await?;
 
     // Flash the binary
-    let loader =
-        flash::build_loader(&mut session, &path, opt.format_options, image_instr_set).unwrap();
+    let loader = flash::build_loader(&mut session, &path, opt.format_options, image_instr_set)
+        .await
+        .unwrap();
     flash::run_flash_download(
         &mut session,
         &path,
@@ -140,18 +143,23 @@ fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), OperationE
         &probe_options,
         loader,
         false,
-    )?;
+    )
+    .await?;
 
     // Reset target according to CLI options
     {
         let mut core = session
             .core(0)
+            .await
             .map_err(OperationError::AttachingToCoreFailed)?;
         if opt.reset_halt {
             core.reset_and_halt(std::time::Duration::from_millis(500))
+                .await
                 .map_err(OperationError::TargetResetHaltFailed)?;
         } else {
-            core.reset().map_err(OperationError::TargetResetFailed)?;
+            core.reset()
+                .await
+                .map_err(OperationError::TargetResetFailed)?;
         }
     }
 

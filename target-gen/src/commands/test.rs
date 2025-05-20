@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
-use std::time::Instant;
+use web_time::Instant;
 
 use anyhow::{Context, Result, anyhow};
 use colored::Colorize;

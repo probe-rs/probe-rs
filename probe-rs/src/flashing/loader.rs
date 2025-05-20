@@ -31,7 +31,7 @@ impl<T> ImageReader for T where T: Read + Seek {}
 /// Based on the image loader, probe-rs may apply certain transformations to the firmware.
 pub trait ImageLoader {
     /// Loads the given image.
-    fn load(
+    async fn load(
         &self,
         flash_loader: &mut FlashLoader,
         session: &mut Session,
@@ -40,18 +40,30 @@ pub trait ImageLoader {
 }
 
 impl ImageLoader for Format {
-    fn load(
+    async fn load(
         &self,
         flash_loader: &mut FlashLoader,
         session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
         match self {
-            Format::Bin(options) => BinLoader(options.clone()).load(flash_loader, session, file),
-            Format::Elf(options) => ElfLoader(options.clone()).load(flash_loader, session, file),
-            Format::Hex => HexLoader.load(flash_loader, session, file),
-            Format::Idf(options) => IdfLoader(options.clone()).load(flash_loader, session, file),
-            Format::Uf2 => Uf2Loader.load(flash_loader, session, file),
+            Format::Bin(options) => {
+                BinLoader(options.clone())
+                    .load(flash_loader, session, file)
+                    .await
+            }
+            Format::Elf(options) => {
+                ElfLoader(options.clone())
+                    .load(flash_loader, session, file)
+                    .await
+            }
+            Format::Hex => HexLoader.load(flash_loader, session, file).await,
+            Format::Idf(options) => {
+                IdfLoader(options.clone())
+                    .load(flash_loader, session, file)
+                    .await
+            }
+            Format::Uf2 => Uf2Loader.load(flash_loader, session, file).await,
         }
     }
 }
@@ -60,7 +72,7 @@ impl ImageLoader for Format {
 struct BinLoader(BinOptions);
 
 impl ImageLoader for BinLoader {
-    fn load(
+    async fn load(
         &self,
         flash_loader: &mut FlashLoader,
         _session: &mut Session,
@@ -88,7 +100,7 @@ impl ImageLoader for BinLoader {
 struct ElfLoader(ElfOptions);
 
 impl ImageLoader for ElfLoader {
-    fn load(
+    async fn load(
         &self,
         flash_loader: &mut FlashLoader,
         _session: &mut Session,
@@ -140,7 +152,7 @@ impl ImageLoader for ElfLoader {
 struct HexLoader;
 
 impl ImageLoader for HexLoader {
-    fn load(
+    async fn load(
         &self,
         flash_loader: &mut FlashLoader,
         _session: &mut Session,
@@ -178,7 +190,7 @@ impl ImageLoader for HexLoader {
 struct Uf2Loader;
 
 impl ImageLoader for Uf2Loader {
-    fn load(
+    async fn load(
         &self,
         flash_loader: &mut FlashLoader,
         _session: &mut Session,
@@ -214,7 +226,7 @@ impl ImageLoader for Uf2Loader {
 struct IdfLoader(IdfOptions);
 
 impl ImageLoader for IdfLoader {
-    fn load(
+    async fn load(
         &self,
         flash_loader: &mut FlashLoader,
         session: &mut Session,
@@ -239,14 +251,16 @@ impl ImageLoader for IdfLoader {
             XtalFrequency::_40Mhz
         };
 
-        let flash_size_result = session.halted_access(|session| {
-            // Figure out flash size from the memory map. We need a different bootloader for each size.
-            match session.target().debug_sequence.clone() {
-                DebugSequence::Riscv(sequence) => sequence.detect_flash_size(session),
-                DebugSequence::Xtensa(sequence) => sequence.detect_flash_size(session),
-                DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
-            }
-        });
+        // Figure out flash size from the memory map. We need a different bootloader for each size.
+        let flash_size_result = session
+            .halted_access(
+                async |session| match session.target().debug_sequence.clone() {
+                    DebugSequence::Riscv(sequence) => sequence.detect_flash_size(session).await,
+                    DebugSequence::Xtensa(sequence) => sequence.detect_flash_size(session).await,
+                    DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
+                },
+            )
+            .await;
 
         let flash_size = match flash_size_result.map_err(FileDownloadError::FlashSizeDetection)? {
             Some(0x40000) => Some(FlashSize::_256Kb),
@@ -400,7 +414,7 @@ impl FlashLoader {
     }
 
     /// Reads the image according to the file format and adds it to the loader.
-    pub fn load_image<T: Read + Seek>(
+    pub async fn load_image<T: Read + Seek>(
         &mut self,
         session: &mut Session,
         file: &mut T,
@@ -412,9 +426,9 @@ impl FlashLoader {
 
             // Get a unique list of core architectures
             for (core, _) in session.list_cores() {
-                match session.core(core) {
+                match session.core(core).await {
                     Ok(mut core) => {
-                        if let Ok(set) = core.instruction_set() {
+                        if let Ok(set) = core.instruction_set().await {
                             if !target_archs.contains(&set) {
                                 target_archs.push(set);
                             }
@@ -437,11 +451,15 @@ impl FlashLoader {
             }
         }
 
-        format.load(self, session, file)
+        format.load(self, session, file).await
     }
 
     /// Verifies data on the device.
-    pub fn verify(&self, session: &mut Session, progress: FlashProgress) -> Result<(), FlashError> {
+    pub async fn verify(
+        &self,
+        session: &mut Session,
+        progress: FlashProgress<'_>,
+    ) -> Result<(), FlashError> {
         let mut algos = self.prepare_plan(session, false)?;
 
         for flasher in algos.iter_mut() {
@@ -462,12 +480,12 @@ impl FlashLoader {
                 flasher.flash_algorithm.name
             );
 
-            if !flasher.verify(session, &progress, true)? {
+            if !flasher.verify(session, &progress, true).await? {
                 return Err(FlashError::Verify);
             }
         }
 
-        self.verify_ram(session)?;
+        self.verify_ram(session).await?;
 
         Ok(())
     }
@@ -475,10 +493,10 @@ impl FlashLoader {
     /// Writes all the stored data chunks to flash.
     ///
     /// Requires a session with an attached target that has a known flash algorithm.
-    pub fn commit(
+    pub async fn commit(
         &self,
         session: &mut Session,
-        mut options: DownloadOptions,
+        mut options: DownloadOptions<'_>,
     ) -> Result<(), FlashError> {
         tracing::debug!("Committing FlashLoader!");
         let mut algos = self.prepare_plan(session, options.keep_unwritten_bytes)?;
@@ -500,7 +518,8 @@ impl FlashLoader {
             .clone()
             .unwrap_or_else(FlashProgress::empty);
 
-        self.initialize(&mut algos, session, &progress, &mut options)?;
+        self.initialize(&mut algos, session, &progress, &mut options)
+            .await?;
 
         let mut do_chip_erase = options.do_chip_erase;
         let mut did_chip_erase = false;
@@ -511,7 +530,7 @@ impl FlashLoader {
 
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
-                flasher.run_erase_all(session, &progress)?;
+                flasher.run_erase_all(session, &progress).await?;
                 do_chip_erase = false;
                 did_chip_erase = true;
             }
@@ -525,14 +544,16 @@ impl FlashLoader {
             }
 
             // Program the data.
-            flasher.program(
-                session,
-                &progress,
-                options.keep_unwritten_bytes,
-                do_use_double_buffering,
-                options.skip_erase || did_chip_erase,
-                options.verify,
-            )?;
+            flasher
+                .program(
+                    session,
+                    &progress,
+                    options.keep_unwritten_bytes,
+                    do_use_double_buffering,
+                    options.skip_erase || did_chip_erase,
+                    options.verify,
+                )
+                .await?;
         }
 
         tracing::debug!("Committing RAM!");
@@ -553,7 +574,10 @@ impl FlashLoader {
             {
                 session
                     .core(core_to_reset_index)
-                    .and_then(|mut core| core.reset_and_halt(Duration::from_millis(500)))
+                    .await
+                    .map_err(FlashError::Core)?
+                    .reset_and_halt(Duration::from_millis(500))
+                    .await
                     .map_err(FlashError::Core)?;
             }
         }
@@ -587,16 +611,20 @@ impl FlashLoader {
                 .unwrap();
 
             // Attach to memory and core.
-            let mut core = session.core(region_core_index).map_err(FlashError::Core)?;
+            let mut core = session
+                .core(region_core_index)
+                .await
+                .map_err(FlashError::Core)?;
 
             // If this is a RAM only flash, the core might still be running. This can be
             // problematic if the instruction RAM is flashed while an application is running, so
             // the core is halted here in any case.
-            if !core.core_halted().map_err(FlashError::Core)? {
+            if !core.core_halted().await.map_err(FlashError::Core)? {
                 tracing::debug!(
                     "     -- action: core is not halted and RAM is being written, halting"
                 );
                 core.halt(Duration::from_millis(500))
+                    .await
                     .map_err(FlashError::Core)?;
             }
 
@@ -608,12 +636,12 @@ impl FlashLoader {
                     data.len()
                 );
                 // Write data to memory.
-                core.write(address, data).map_err(FlashError::Core)?;
+                core.write(address, data).await.map_err(FlashError::Core)?;
             }
         }
 
         if options.verify {
-            self.verify_ram(session)?;
+            self.verify_ram(session).await?;
         }
 
         Ok(())
@@ -712,19 +740,19 @@ impl FlashLoader {
         Ok(algos)
     }
 
-    fn initialize(
+    async fn initialize(
         &self,
         algos: &mut [Flasher],
         session: &mut Session,
-        progress: &FlashProgress,
-        options: &mut DownloadOptions,
+        progress: &FlashProgress<'_>,
+        options: &mut DownloadOptions<'_>,
     ) -> Result<(), FlashError> {
         let mut phases = vec![];
 
         for flasher in algos.iter() {
             // If the first flash algo doesn't support erase all, disable chip erase.
             // TODO: we could sort by support but it's unlikely to make a difference.
-            if options.do_chip_erase && !flasher.is_chip_erase_supported(session) {
+            if options.do_chip_erase && !flasher.is_chip_erase_supported(session).await {
                 options.do_chip_erase = false;
                 tracing::warn!(
                     "Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet)."
@@ -779,7 +807,7 @@ impl FlashLoader {
         Ok(())
     }
 
-    fn verify_ram(&self, session: &mut Session) -> Result<(), FlashError> {
+    async fn verify_ram(&self, session: &mut Session) -> Result<(), FlashError> {
         tracing::debug!("Verifying RAM!");
         for (&address, data) in &self.builder.data {
             tracing::debug!(
@@ -798,10 +826,11 @@ impl FlashLoader {
 
             let core_name = associated_region.cores().first().unwrap();
             let core_index = session.target().core_index_by_name(core_name).unwrap();
-            let mut core = session.core(core_index).map_err(FlashError::Core)?;
+            let mut core = session.core(core_index).await.map_err(FlashError::Core)?;
 
             let mut written_data = vec![0; data.len()];
             core.read(address, &mut written_data)
+                .await
                 .map_err(FlashError::Core)?;
 
             if data != &written_data {

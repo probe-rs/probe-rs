@@ -29,9 +29,9 @@ pub(super) struct EspFlashSizeDetector {
 }
 
 impl EspFlashSizeDetector {
-    fn attach_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
-        let mut core = session.core(0)?;
-        core.reset_and_halt(Duration::from_millis(500))?;
+    async fn attach_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
+        let mut core = session.core(0).await?;
+        core.reset_and_halt(Duration::from_millis(500)).await?;
 
         let regs = core.registers();
         let spi_config = match self.efuse_get_spiconfig_fn {
@@ -41,49 +41,56 @@ impl EspFlashSizeDetector {
                     self.stack_pointer,
                     self.load_address,
                     get_spiconfig_fn,
-                )?;
+                )
+                .await?;
 
-                core.read_core_reg::<u32>(regs.result_register(0))?;
+                core.read_core_reg::<u32>(regs.result_register(0)).await?;
                 0
             }
             None => 0,
         };
 
         // call esp_rom_spiflash_attach(spi_config, false)
-        core.write_core_reg(regs.argument_register(0), spi_config as u64)?;
-        core.write_core_reg(regs.argument_register(1), 0_u64)?;
+        core.write_core_reg(regs.argument_register(0), spi_config as u64)
+            .await?;
+        core.write_core_reg(regs.argument_register(1), 0_u64)
+            .await?;
 
         call_function(
             &mut core,
             self.stack_pointer,
             self.load_address,
             self.attach_fn,
-        )?;
+        )
+        .await?;
 
         Ok(())
     }
 
-    pub fn detect_flash_size_esp32(
+    pub async fn detect_flash_size_esp32(
         &self,
         session: &mut Session,
     ) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
-        self.attach_flash(session)?;
+        self.attach_flash(session).await?;
 
         tracing::info!("Flash attached");
-        detect_flash_size_esp32(session, self.spiflash_peripheral)
+        detect_flash_size_esp32(session, self.spiflash_peripheral).await
     }
 
-    pub fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
+    pub async fn detect_flash_size(
+        &self,
+        session: &mut Session,
+    ) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
-        self.attach_flash(session)?;
+        self.attach_flash(session).await?;
 
         tracing::info!("Flash attached");
-        detect_flash_size(session, self.spiflash_peripheral)
+        detect_flash_size(session, self.spiflash_peripheral).await
     }
 }
 
-fn call_function(
+async fn call_function(
     core: &mut Core<'_>,
     stack_pointer: u32,
     load_addr: u32,
@@ -101,28 +108,34 @@ fn call_function(
         ]);
 
         // Download code
-        core.write_8(load_addr as u64, &instructions)?;
+        core.write_8(load_addr as u64, &instructions).await?;
 
         // Set up processor state
-        core.write_core_reg(core.program_counter(), load_addr)?;
-        core.write_core_reg(CpuRegister::A4, fn_addr)?;
+        core.write_core_reg(core.program_counter(), load_addr)
+            .await?;
+        core.write_core_reg(CpuRegister::A4, fn_addr).await?;
     } else {
         use crate::architecture::riscv::assembly;
 
         // Return to a breakpoint
-        core.write_32(load_addr as u64, &[assembly::EBREAK, assembly::EBREAK])?;
+        core.write_32(load_addr as u64, &[assembly::EBREAK, assembly::EBREAK])
+            .await?;
 
-        core.write_core_reg(core.program_counter(), fn_addr as u64)?;
-        core.write_core_reg(core.return_address(), load_addr as u64)?;
+        core.write_core_reg(core.program_counter(), fn_addr as u64)
+            .await?;
+        core.write_core_reg(core.return_address(), load_addr as u64)
+            .await?;
 
-        core.debug_on_sw_breakpoint(true)?;
+        core.debug_on_sw_breakpoint(true).await?;
     }
 
-    core.write_core_reg(core.stack_pointer(), stack_pointer)?;
+    core.write_core_reg(core.stack_pointer(), stack_pointer)
+        .await?;
 
     // Let it run
-    core.run()?;
-    core.wait_for_core_halted(Duration::from_millis(500))?;
+    core.run().await?;
+    core.wait_for_core_halted(Duration::from_millis(500))
+        .await?;
 
     Ok(())
 }
@@ -173,16 +186,16 @@ impl SpiRegisters {
     }
 }
 
-fn execute_flash_command_generic(
+async fn execute_flash_command_generic(
     interface: &mut impl MemoryInterface,
     regs: &SpiRegisters,
     command: u8,
     miso_bits: u32,
 ) -> Result<u32, crate::Error> {
     // Save registers
-    let old_ctrl_reg = interface.read_word_32(regs.ctrl())?;
-    let old_user_reg = interface.read_word_32(regs.user())?;
-    let old_user1_reg = interface.read_word_32(regs.user1())?;
+    let old_ctrl_reg = interface.read_word_32(regs.ctrl()).await?;
+    let old_user_reg = interface.read_word_32(regs.user()).await?;
+    let old_user1_reg = interface.read_word_32(regs.user1()).await?;
 
     // ctrl register
     const CTRL_WP: u32 = 1 << 21;
@@ -200,40 +213,48 @@ fn execute_flash_command_generic(
     // cmd register
     const USER_CMD: u32 = 1 << 18;
 
-    interface.write_word_32(regs.ctrl(), old_ctrl_reg | CTRL_WP)?;
-    interface.write_word_32(regs.user(), old_user_reg | USER_COMMAND | USER_MISO)?;
-    interface.write_word_32(regs.user1(), 0)?;
-    interface.write_word_32(regs.user2(), (7 << USER_COMMAND_BITLEN) | command as u32)?;
-    interface.write_word_32(regs.addr(), 0)?;
-    interface.write_word_32(
-        regs.miso_dlen(),
-        (miso_bits.saturating_sub(1)) << MISO_BITLEN,
-    )?;
-    interface.write_word_32(regs.data_buf_0(), 0)?;
+    interface
+        .write_word_32(regs.ctrl(), old_ctrl_reg | CTRL_WP)
+        .await?;
+    interface
+        .write_word_32(regs.user(), old_user_reg | USER_COMMAND | USER_MISO)
+        .await?;
+    interface.write_word_32(regs.user1(), 0).await?;
+    interface
+        .write_word_32(regs.user2(), (7 << USER_COMMAND_BITLEN) | command as u32)
+        .await?;
+    interface.write_word_32(regs.addr(), 0).await?;
+    interface
+        .write_word_32(
+            regs.miso_dlen(),
+            (miso_bits.saturating_sub(1)) << MISO_BITLEN,
+        )
+        .await?;
+    interface.write_word_32(regs.data_buf_0(), 0).await?;
 
     // Execute read
-    interface.write_word_32(regs.cmd(), USER_CMD)?;
-    while interface.read_word_32(regs.cmd())? & USER_CMD != 0 {}
+    interface.write_word_32(regs.cmd(), USER_CMD).await?;
+    while interface.read_word_32(regs.cmd()).await? & USER_CMD != 0 {}
 
     // Read result
-    let value = interface.read_word_32(regs.data_buf_0())?;
+    let value = interface.read_word_32(regs.data_buf_0()).await?;
 
     // Restore registers
-    interface.write_word_32(regs.ctrl(), old_ctrl_reg)?;
-    interface.write_word_32(regs.user(), old_user_reg)?;
-    interface.write_word_32(regs.user1(), old_user1_reg)?;
+    interface.write_word_32(regs.ctrl(), old_ctrl_reg).await?;
+    interface.write_word_32(regs.user(), old_user_reg).await?;
+    interface.write_word_32(regs.user1(), old_user1_reg).await?;
 
     Ok(value)
 }
 
-fn detect_flash_size(
+async fn detect_flash_size(
     session: &mut Session,
     spiflash_addr: u32,
 ) -> Result<Option<usize>, crate::Error> {
     const RDID: u8 = 0x9F;
 
     let value = execute_flash_command_generic(
-        &mut session.core(0)?,
+        &mut session.core(0).await?,
         &SpiRegisters {
             base: spiflash_addr,
             cmd: 0x00,
@@ -247,19 +268,20 @@ fn detect_flash_size(
         },
         RDID,
         24,
-    )?;
+    )
+    .await?;
 
     Ok(decode_flash_size(value))
 }
 
-fn detect_flash_size_esp32(
+async fn detect_flash_size_esp32(
     session: &mut Session,
     spiflash_addr: u32,
 ) -> Result<Option<usize>, crate::Error> {
     const RDID: u8 = 0x9F;
 
     let value = execute_flash_command_generic(
-        &mut session.core(0)?,
+        &mut session.core(0).await?,
         &SpiRegisters {
             base: spiflash_addr,
             cmd: 0x00,
@@ -273,7 +295,8 @@ fn detect_flash_size_esp32(
         },
         RDID,
         24,
-    )?;
+    )
+    .await?;
 
     Ok(decode_flash_size(value))
 }
@@ -306,47 +329,49 @@ fn decode_flash_size(value: u32) -> Option<usize> {
 pub(super) struct EspBreakpointHandler {}
 
 impl EspBreakpointHandler {
-    pub fn handle_riscv_idf_semihosting(
-        arch: &mut Riscv32,
+    pub async fn handle_riscv_idf_semihosting(
+        arch: &mut Riscv32<'_>,
         details: UnknownCommandDetails,
     ) -> Result<Option<SemihostingCommand>, crate::Error> {
         match details.operation {
             0x103 => {
                 // ESP_SEMIHOSTING_SYS_BREAKPOINT_SET. Can be either set or clear breakpoint, and
                 // depending on the operation the parameter pointer points to 2 or 3 words.
-                let set_breakpoint = arch.read_word_32(details.parameter as u64)?;
+                let set_breakpoint = arch.read_word_32(details.parameter as u64).await?;
                 if set_breakpoint != 0 {
                     let mut breakpoint_data = [0; 2];
-                    arch.read_32(details.parameter as u64 + 4, &mut breakpoint_data)?;
+                    arch.read_32(details.parameter as u64 + 4, &mut breakpoint_data)
+                        .await?;
                     let [breakpoint_number, address] = breakpoint_data;
-                    arch.set_hw_breakpoint(breakpoint_number as usize, address as u64)?;
+                    arch.set_hw_breakpoint(breakpoint_number as usize, address as u64)
+                        .await?;
                 } else {
-                    let breakpoint_number = arch.read_word_32(details.parameter as u64 + 4)?;
-                    arch.clear_hw_breakpoint(breakpoint_number as usize)?;
+                    let breakpoint_number = arch.read_word_32(details.parameter as u64 + 4).await?;
+                    arch.clear_hw_breakpoint(breakpoint_number as usize).await?;
                 }
                 Ok(None)
             }
-            0x116 => Self::read_panic_reason(arch, details.parameter),
+            0x116 => Self::read_panic_reason(arch, details.parameter).await,
             _ => Ok(Some(SemihostingCommand::Unknown(details))),
         }
     }
-    pub fn handle_xtensa_idf_semihosting(
-        arch: &mut Xtensa,
+    pub async fn handle_xtensa_idf_semihosting(
+        arch: &mut Xtensa<'_>,
         details: UnknownCommandDetails,
     ) -> Result<Option<SemihostingCommand>, crate::Error> {
         match details.operation {
-            0x116 => Self::read_panic_reason(arch, details.parameter),
+            0x116 => Self::read_panic_reason(arch, details.parameter).await,
             _ => Ok(Some(SemihostingCommand::Unknown(details))),
         }
     }
 
     /// Handles ESP_SEMIHOSTING_SYS_PANIC_REASON by turning it into a `WriteConsoleRequest` command.
-    fn read_panic_reason(
+    async fn read_panic_reason(
         arch: &mut dyn CoreInterface,
         parameter: u32,
     ) -> Result<Option<SemihostingCommand>, crate::Error> {
         let mut buffer = [0; 2];
-        arch.read_32(parameter as u64, &mut buffer)?;
+        arch.read_32(parameter as u64, &mut buffer).await?;
 
         let [address, length] = buffer;
 

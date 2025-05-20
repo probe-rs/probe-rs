@@ -68,7 +68,7 @@ fn parse_jtag_response(data: &BitSlice) -> u64 {
 /// Perform a single JTAG transfer and parse the results
 ///
 /// Return is (value, status)
-fn perform_jtag_transfer<P: JtagAccess + RawSwdIo>(
+async fn perform_jtag_transfer<P: JtagAccess + RawSwdIo>(
     probe: &mut P,
     transfer: &DapTransfer,
 ) -> Result<(u32, TransferStatus), DebugProbeError> {
@@ -81,7 +81,9 @@ fn perform_jtag_transfer<P: JtagAccess + RawSwdIo>(
 
     // This is a bit confusing, but a read from any port is still
     // a JTAG write as we have to transmit the address
-    let result = probe.write_register(address, &data[..], JTAG_DR_BIT_LENGTH);
+    let result = probe
+        .write_register(address, &data[..], JTAG_DR_BIT_LENGTH)
+        .await;
 
     probe.set_idle_cycles(idle_cycles)?;
 
@@ -115,7 +117,7 @@ fn perform_jtag_transfer<P: JtagAccess + RawSwdIo>(
 /// Perform a batch of JTAG transfers.
 ///
 /// Each transfer is sent one at a time using the JtagAccess trait
-fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
+async fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
@@ -156,7 +158,7 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
     // Execute as much of the queue as we can. We'll handle the rest in a following iteration
     // if we can.
     let mut jtag_results;
-    match probe.write_register_batch(&queue) {
+    match probe.write_register_batch(&queue).await {
         Ok(r) => {
             status_responses.fill(TransferStatus::Ok);
             jtag_results = r;
@@ -227,7 +229,8 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
                 let (_, _) = perform_jtag_transfer(
                     probe,
                     &DapTransfer::write(Ctrl::ADDRESS, received_value),
-                )?;
+                )
+                .await?;
 
                 // Mark OK/FAULT transactions as failed. Since the error is sticky, we can assume that
                 // if we received a WAIT, the previous transactions were successful.
@@ -250,7 +253,7 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
 /// created and the resulting sequences are concatenated
 /// to a single sequence, so that it can be sent to
 /// to the probe.
-fn perform_swd_transfers<P: RawSwdIo>(
+async fn perform_swd_transfers<P: RawSwdIo>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
@@ -260,7 +263,7 @@ fn perform_swd_transfers<P: RawSwdIo>(
         io_sequence.extend(&transfer.io_sequence());
     }
 
-    let result = probe.swd_io(io_sequence.io_items())?;
+    let result = probe.swd_io(io_sequence.io_items()).await?;
 
     let mut result_bits = &result[..];
 
@@ -302,7 +305,7 @@ fn perform_swd_transfers<P: RawSwdIo>(
 ///
 /// Other errors are not handled, so the debug interface might be in an error state
 /// after this function returns.
-fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
+async fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), ArmError> {
@@ -408,7 +411,7 @@ fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
 
     probe.probe_statistics().record_transfers(num_transfers);
 
-    perform_raw_transfers_retry(probe, &mut final_transfers)?;
+    perform_raw_transfers_retry(probe, &mut final_transfers).await?;
 
     // Retrieve the results
     for (transfer, orig) in transfers.iter_mut().zip(result_indices) {
@@ -434,7 +437,7 @@ fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
 ///
 /// Other than that, the transfers are sent as-is. You might want to use `perform_transfers` instead, which
 /// does correction for delayed FAULT responses and other helpful stuff.
-fn perform_raw_transfers_retry<P: DebugProbe + RawSwdIo + JtagAccess>(
+async fn perform_raw_transfers_retry<P: DebugProbe + RawSwdIo + JtagAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), ArmError> {
@@ -447,7 +450,7 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawSwdIo + JtagAccess>(
         let chunk = &mut transfers[successful_transfers..];
         assert!(!chunk.is_empty());
 
-        perform_raw_transfers(probe, chunk)?;
+        perform_raw_transfers(probe, chunk).await?;
 
         for transfer in chunk.iter() {
             match transfer.status {
@@ -455,7 +458,7 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawSwdIo + JtagAccess>(
                 TransferStatus::Failed(DapError::WaitResponse) => {
                     tracing::debug!("got WAIT on transfer {}, retrying...", successful_transfers);
 
-                    clear_overrun_and_sticky_err(probe)?;
+                    clear_overrun_and_sticky_err(probe).await?;
 
                     // Increase idle cycles of the failed write transfer and the rest of the chunk
                     for transfer in &mut chunk[..] {
@@ -496,13 +499,14 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawSwdIo + JtagAccess>(
         let mut abort = Abort(0);
         abort.set_dapabort(true);
         abort
-    })?;
+    })
+    .await?;
 
     // Need to return Ok here, the caller will handle errors in transfer status.
     Ok(())
 }
 
-fn clear_overrun_and_sticky_err<P: DebugProbe + RawSwdIo + JtagAccess>(
+async fn clear_overrun_and_sticky_err<P: DebugProbe + RawSwdIo + JtagAccess>(
     probe: &mut P,
 ) -> Result<(), ArmError> {
     tracing::debug!("Clearing overrun and sticky error");
@@ -513,9 +517,10 @@ fn clear_overrun_and_sticky_err<P: DebugProbe + RawSwdIo + JtagAccess>(
         abort.set_stkerrclr(true);
         abort
     })
+    .await
 }
 
-fn write_dp_register<P: DebugProbe + RawSwdIo + JtagAccess, R: DpRegister>(
+async fn write_dp_register<P: DebugProbe + RawSwdIo + JtagAccess, R: DpRegister>(
     probe: &mut P,
     register: R,
 ) -> Result<(), ArmError> {
@@ -525,7 +530,7 @@ fn write_dp_register<P: DebugProbe + RawSwdIo + JtagAccess, R: DpRegister>(
         + probe.swd_settings().num_idle_cycles_between_writes;
 
     // Do it
-    perform_raw_transfers(probe, std::slice::from_mut(&mut transfer))?;
+    perform_raw_transfers(probe, std::slice::from_mut(&mut transfer)).await?;
 
     if let TransferStatus::Failed(e) = transfer.status {
         Err(e)?
@@ -538,13 +543,13 @@ fn write_dp_register<P: DebugProbe + RawSwdIo + JtagAccess, R: DpRegister>(
 ///
 /// This function will just send the transfers as-is, without handling WAIT or FAULT response.
 /// See [`perform_raw_transfers_retry`] for a version that handles WAIT responses
-fn perform_raw_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
+async fn perform_raw_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
     match probe.active_protocol().unwrap() {
-        WireProtocol::Swd => perform_swd_transfers(probe, transfers),
-        WireProtocol::Jtag => perform_jtag_transfers(probe, transfers),
+        WireProtocol::Swd => perform_swd_transfers(probe, transfers).await,
+        WireProtocol::Jtag => perform_jtag_transfers(probe, transfers).await,
     }
 }
 
@@ -909,10 +914,11 @@ fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32
 
 /// RawDapAccess implementation for probes that implement RawProtocolIo.
 // TODO: JTAG shouldn't be required, but an option - maybe via trait downcasting?
+#[async_trait::async_trait(?Send)]
 impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe {
-    fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
+    async fn raw_read_register(&mut self, address: RegisterAddress) -> Result<u32, ArmError> {
         let mut transfer = DapTransfer::read(address);
-        perform_transfers(self, std::slice::from_mut(&mut transfer))?;
+        perform_transfers(self, std::slice::from_mut(&mut transfer)).await?;
 
         match transfer.status {
             TransferStatus::Ok => Ok(transfer.value),
@@ -936,7 +942,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
                     // We still clear the sticky error, otherwise all future accesses will fail.
                     //
                     // We also assume that we use overrun detection, so we clear the overrun error as well.
-                    clear_overrun_and_sticky_err(self)?;
+                    clear_overrun_and_sticky_err(self).await?;
                 } else {
                     // Reading the CTRL/AP register depends on the dpbanksel register, but we don't know
                     // here what the value of it is. So this will fail if dpbanksel is not set to 0,
@@ -946,7 +952,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
                     // What might happen is that the read fails, but that would then trigger another fault handling,
                     // so it all ends up working.
                     tracing::debug!("Reading CTRL/AP register to determine reason for FAULT");
-                    let response = RawDapAccess::raw_read_register(self, CTRL_PORT)?;
+                    let response = RawDapAccess::raw_read_register(self, CTRL_PORT).await?;
                     let ctrl = Ctrl::try_from(response)?;
                     tracing::debug!(
                         "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
@@ -957,7 +963,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
                     // Other fault reasons than overrun or write error are not handled yet.
                     if ctrl.sticky_orun() || ctrl.sticky_err() {
                         // Clear the error state
-                        clear_overrun_and_sticky_err(self)?;
+                        clear_overrun_and_sticky_err(self).await?;
                     }
                 }
 
@@ -972,14 +978,14 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
         }
     }
 
-    fn raw_read_block(
+    async fn raw_read_block(
         &mut self,
         address: RegisterAddress,
         values: &mut [u32],
     ) -> Result<(), ArmError> {
         let mut transfers = vec![DapTransfer::read(address); values.len()];
 
-        perform_transfers(self, &mut transfers)?;
+        perform_transfers(self, &mut transfers).await?;
 
         for (i, result) in transfers.iter().enumerate() {
             match result.status {
@@ -995,7 +1001,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
                     // TODO: The error reason could be investigated by reading the CTRL/STAT register here,
 
                     if err == DapError::FaultResponse {
-                        clear_overrun_and_sticky_err(self)?;
+                        clear_overrun_and_sticky_err(self).await?;
                     }
 
                     return Err(err.into());
@@ -1009,10 +1015,14 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
         Ok(())
     }
 
-    fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError> {
+    async fn raw_write_register(
+        &mut self,
+        address: RegisterAddress,
+        value: u32,
+    ) -> Result<(), ArmError> {
         let mut transfer = DapTransfer::write(address, value);
 
-        perform_transfers(self, std::slice::from_mut(&mut transfer))?;
+        perform_transfers(self, std::slice::from_mut(&mut transfer)).await?;
 
         match transfer.status {
             TransferStatus::Ok => Ok(()),
@@ -1024,7 +1034,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
                 // which will have the fault status flags set.
 
                 // This read might fail because the dpbanksel register is not set to 0.
-                let response = RawDapAccess::raw_read_register(self, CTRL_PORT)?;
+                let response = RawDapAccess::raw_read_register(self, CTRL_PORT).await?;
 
                 let ctrl = Ctrl::try_from(response)?;
                 tracing::warn!(
@@ -1038,7 +1048,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
                     // We did not handle a WAIT state properly
 
                     // Because we use overrun detection, we now have to clear the overrun error
-                    clear_overrun_and_sticky_err(self)?;
+                    clear_overrun_and_sticky_err(self).await?;
                 }
 
                 Err(DapError::FaultResponse.into())
@@ -1052,7 +1062,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
         }
     }
 
-    fn raw_write_block(
+    async fn raw_write_block(
         &mut self,
         address: RegisterAddress,
         values: &[u32],
@@ -1062,7 +1072,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
             .map(|v| DapTransfer::write(address, *v))
             .collect::<Vec<_>>();
 
-        perform_transfers(self, &mut transfers)?;
+        perform_transfers(self, &mut transfers).await?;
 
         for (i, result) in transfers.iter().enumerate() {
             match result.status {
@@ -1077,7 +1087,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
 
                     // TODO: The error reason could be investigated by reading the CTRL/STAT register here,
                     if err == DapError::FaultResponse {
-                        clear_overrun_and_sticky_err(self)?;
+                        clear_overrun_and_sticky_err(self).await?;
                     }
 
                     return Err(err.into());
@@ -1091,20 +1101,25 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
         Ok(())
     }
 
-    fn swj_pins(
+    async fn swj_pins(
         &mut self,
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        RawSwdIo::swj_pins(self, pin_out, pin_select, pin_wait)
+        RawSwdIo::swj_pins(self, pin_out, pin_select, pin_wait).await
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
     }
 
-    fn jtag_sequence(&mut self, bit_len: u8, tms: bool, bits: u64) -> Result<(), DebugProbeError> {
+    async fn jtag_sequence(
+        &mut self,
+        bit_len: u8,
+        tms: bool,
+        bits: u64,
+    ) -> Result<(), DebugProbeError> {
         let mut data = BitVec::with_capacity(bit_len as usize);
 
         for i in 0..bit_len {
@@ -1115,24 +1130,28 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
             tms,
             data,
             tdo_capture: false,
-        })?;
+        })
+        .await?;
 
         Ok(())
     }
 
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+    async fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
         let protocol = self.active_protocol().unwrap();
 
         let io_sequence = IoSequence::from_bytes(&bits.to_le_bytes(), bit_len as usize);
-        send_sequence(self, protocol, &io_sequence)
+        send_sequence(self, protocol, &io_sequence).await
     }
 
-    fn core_status_notification(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
+    async fn core_status_notification(
+        &mut self,
+        _: crate::CoreStatus,
+    ) -> Result<(), DebugProbeError> {
         Ok(())
     }
 }
 
-fn send_sequence<P: RawSwdIo + JtagAccess>(
+async fn send_sequence<P: RawSwdIo + JtagAccess>(
     probe: &mut P,
     protocol: WireProtocol,
     sequence: &IoSequence,
@@ -1152,15 +1171,17 @@ fn send_sequence<P: RawSwdIo + JtagAccess>(
                     bits.next();
                 }
 
-                probe.shift_raw_sequence(JtagSequence {
-                    tms: first.into(),
-                    data: bitvec![0; count],
-                    tdo_capture: false,
-                })?;
+                probe
+                    .shift_raw_sequence(JtagSequence {
+                        tms: first.into(),
+                        data: bitvec![0; count],
+                        tdo_capture: false,
+                    })
+                    .await?;
             }
         }
         WireProtocol::Swd => {
-            probe.swd_io(sequence.io_items())?;
+            probe.swd_io(sequence.io_items()).await?;
         }
     }
 
@@ -1382,8 +1403,9 @@ mod test {
         }
     }
 
+    #[async_trait::async_trait(?Send)]
     impl JtagAccess for MockJaylink {
-        fn shift_raw_sequence(&mut self, _: JtagSequence) -> Result<BitVec, DebugProbeError> {
+        async fn shift_raw_sequence(&mut self, _: JtagSequence) -> Result<BitVec, DebugProbeError> {
             todo!()
         }
 
@@ -1391,15 +1413,19 @@ mod test {
             todo!()
         }
 
-        fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
+        async fn scan_chain(&mut self) -> Result<&[ScanChainElement], DebugProbeError> {
             todo!()
         }
 
-        fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
+        async fn tap_reset(&mut self) -> Result<(), DebugProbeError> {
             todo!()
         }
 
-        fn read_register(&mut self, _address: u32, _len: u32) -> Result<BitVec, DebugProbeError> {
+        async fn read_register(
+            &mut self,
+            _address: u32,
+            _len: u32,
+        ) -> Result<BitVec, DebugProbeError> {
             todo!()
         }
 
@@ -1412,7 +1438,7 @@ mod test {
             self.idle_cycles
         }
 
-        fn write_register(
+        async fn write_register(
             &mut self,
             address: u32,
             data: &[u8],
@@ -1452,13 +1478,14 @@ mod test {
             Ok(ret_vec)
         }
 
-        fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
+        async fn write_dr(&mut self, _data: &[u8], _len: u32) -> Result<BitVec, DebugProbeError> {
             unimplemented!()
         }
     }
 
+    #[async_trait::async_trait(?Send)]
     impl RawSwdIo for MockJaylink {
-        fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+        async fn swd_io<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
         where
             S: IntoIterator<Item = IoSequenceItem>,
         {
@@ -1482,7 +1509,7 @@ mod test {
             Ok(transfer_response)
         }
 
-        fn swj_pins(
+        async fn swj_pins(
             &mut self,
             _pin_out: u32,
             _pin_select: u32,
@@ -1504,6 +1531,7 @@ mod test {
 
     /// This is just a blanket impl that will crash if used (only relevant in tests,
     /// so no problem as we do not use it) to fulfill the marker requirement.
+    #[async_trait::async_trait(?Send)]
     impl DebugProbe for MockJaylink {
         fn get_name(&self) -> &str {
             todo!()
@@ -1513,31 +1541,31 @@ mod test {
             todo!()
         }
 
-        fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
+        async fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
             todo!()
         }
 
-        fn attach(&mut self) -> Result<(), DebugProbeError> {
+        async fn attach(&mut self) -> Result<(), DebugProbeError> {
             todo!()
         }
 
-        fn detach(&mut self) -> Result<(), Error> {
+        async fn detach(&mut self) -> Result<(), Error> {
             todo!()
         }
 
-        fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+        async fn target_reset(&mut self) -> Result<(), DebugProbeError> {
             todo!()
         }
 
-        fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        async fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
             todo!()
         }
 
-        fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        async fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
             todo!()
         }
 
-        fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+        async fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
             self.protocol = protocol;
 
             Ok(())
@@ -1552,8 +1580,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn read_register() {
+    #[pollster::test]
+    async fn read_register() {
         let read_value = 12;
 
         let mut mock = MockJaylink::new();
@@ -1562,18 +1590,21 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, read_value);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        let result = mock.raw_read_register(ApAddress::V1(4).into()).unwrap();
+        let result = mock
+            .raw_read_register(ApAddress::V1(4).into())
+            .await
+            .unwrap();
 
         assert_eq!(result, read_value);
     }
 
-    #[test]
-    fn read_register_jtag() {
+    #[pollster::test]
+    async fn read_register_jtag() {
         let read_value = 12;
 
         let mut mock = MockJaylink::new();
 
-        let result = mock.select_protocol(WireProtocol::Jtag);
+        let result = mock.select_protocol(WireProtocol::Jtag).await;
         assert!(result.is_ok());
 
         // Read request
@@ -1583,13 +1614,16 @@ mod test {
         mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
         mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
 
-        let result = mock.raw_read_register(ApAddress::V1(4).into()).unwrap();
+        let result = mock
+            .raw_read_register(ApAddress::V1(4).into())
+            .await
+            .unwrap();
 
         assert_eq!(result, read_value);
     }
 
-    #[test]
-    fn read_register_with_wait_response() {
+    #[pollster::test]
+    async fn read_register_with_wait_response() {
         let read_value = 47;
         let mut mock = MockJaylink::new();
 
@@ -1611,17 +1645,20 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, read_value);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        let result = mock.raw_read_register(ApAddress::V1(4).into()).unwrap();
+        let result = mock
+            .raw_read_register(ApAddress::V1(4).into())
+            .await
+            .unwrap();
 
         assert_eq!(result, read_value);
     }
 
-    #[test]
-    fn read_register_with_wait_response_jtag() {
+    #[pollster::test]
+    async fn read_register_with_wait_response_jtag() {
         let read_value = 47;
         let mut mock = MockJaylink::new();
 
-        let result = mock.select_protocol(WireProtocol::Jtag);
+        let result = mock.select_protocol(WireProtocol::Jtag).await;
         assert!(result.is_ok());
 
         // Read
@@ -1638,13 +1675,16 @@ mod test {
         mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
         mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
 
-        let result = mock.raw_read_register(ApAddress::V1(4).into()).unwrap();
+        let result = mock
+            .raw_read_register(ApAddress::V1(4).into())
+            .await
+            .unwrap();
 
         assert_eq!(result, read_value);
     }
 
-    #[test]
-    fn write_register() {
+    #[pollster::test]
+    async fn write_register() {
         let mut mock = MockJaylink::new();
 
         let idle_cycles = mock.swd_settings.num_idle_cycles_between_writes;
@@ -1655,14 +1695,15 @@ mod test {
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
         mock.raw_write_register(ApAddress::V1(4).into(), 0x123)
+            .await
             .expect("Failed to write register");
     }
 
-    #[test]
-    fn write_register_jtag() {
+    #[pollster::test]
+    async fn write_register_jtag() {
         let mut mock = MockJaylink::new();
 
-        let result = mock.select_protocol(WireProtocol::Jtag);
+        let result = mock.select_protocol(WireProtocol::Jtag).await;
         assert!(result.is_ok());
 
         mock.add_jtag_response(ApAddress::V1(4), false, DapAcknowledge::Ok, 0x0, 0x123);
@@ -1672,11 +1713,12 @@ mod test {
         mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
 
         mock.raw_write_register(ApAddress::V1(4).into(), 0x123)
+            .await
             .expect("Failed to write register");
     }
 
-    #[test]
-    fn write_register_with_wait_response() {
+    #[pollster::test]
+    async fn write_register_with_wait_response() {
         let mut mock = MockJaylink::new();
         let idle_cycles = mock.swd_settings.num_idle_cycles_between_writes;
 
@@ -1698,14 +1740,15 @@ mod test {
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
         mock.raw_write_register(ApAddress::V1(4).into(), 0x123)
+            .await
             .expect("Failed to write register");
     }
 
-    #[test]
-    fn write_register_with_wait_response_jtag() {
+    #[pollster::test]
+    async fn write_register_with_wait_response_jtag() {
         let mut mock = MockJaylink::new();
 
-        let result = mock.select_protocol(WireProtocol::Jtag);
+        let result = mock.select_protocol(WireProtocol::Jtag).await;
         assert!(result.is_ok());
 
         mock.add_jtag_response(ApAddress::V1(4), false, DapAcknowledge::Ok, 0x0, 0x123);
@@ -1722,6 +1765,7 @@ mod test {
         mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
 
         mock.raw_write_register(ApAddress::V1(4).into(), 0x123)
+            .await
             .expect("Failed to write register");
     }
 
@@ -1737,8 +1781,8 @@ mod test {
             dp::{Abort, Ctrl, DPIDR, DpRegister, DpRegisterAddress},
         };
 
-        #[test]
-        fn single_dp_register_read() {
+        #[pollster::test]
+        async fn single_dp_register_read() {
             let register_value = 32354;
 
             let mut transfers = vec![DapTransfer::read(DPIDR::ADDRESS)];
@@ -1748,7 +1792,9 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, register_value);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers)
+                .await
+                .expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
@@ -1756,8 +1802,8 @@ mod test {
             assert_eq!(transfer_result.value, register_value);
         }
 
-        #[test]
-        fn single_ap_register_read() {
+        #[pollster::test]
+        async fn single_ap_register_read() {
             let register_value = 0x11_22_33_44u32;
 
             let mut transfers = vec![DapTransfer::read(ApAddress::V1(0))];
@@ -1768,7 +1814,9 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, register_value);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers)
+                .await
+                .expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
@@ -1776,8 +1824,8 @@ mod test {
             assert_eq!(transfer_result.value, register_value);
         }
 
-        #[test]
-        fn ap_then_dp_register_read() {
+        #[pollster::test]
+        async fn ap_then_dp_register_read() {
             // When reading from the AP first, and then from the DP,
             // we need to insert an additional read from the RDBUFF register to
             // get the result for the AP read.
@@ -1800,7 +1848,9 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, dp_read_value);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers)
+                .await
+                .expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, ap_read_value);
@@ -1809,8 +1859,8 @@ mod test {
             assert_eq!(transfers[1].value, dp_read_value);
         }
 
-        #[test]
-        fn dp_then_ap_register_read() {
+        #[pollster::test]
+        async fn dp_then_ap_register_read() {
             // When reading from the DP first, and then from the AP,
             // we need to insert an additional read from the RDBUFF register at the end
             // to get the result for the AP read.
@@ -1833,7 +1883,9 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, ap_read_value);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers)
+                .await
+                .expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, dp_read_value);
@@ -1842,8 +1894,8 @@ mod test {
             assert_eq!(transfers[1].value, ap_read_value);
         }
 
-        #[test]
-        fn multiple_ap_read() {
+        #[pollster::test]
+        async fn multiple_ap_read() {
             // When reading from the AP twice, only a single additional read from the
             // RDBUFF register is necessary.
 
@@ -1861,7 +1913,9 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, ap_read_values[1]);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers)
+                .await
+                .expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, ap_read_values[0]);
@@ -1870,8 +1924,8 @@ mod test {
             assert_eq!(transfers[1].value, ap_read_values[1]);
         }
 
-        #[test]
-        fn multiple_dp_read() {
+        #[pollster::test]
+        async fn multiple_dp_read() {
             // When reading from the DP twice, no additional reads have to be inserted.
 
             let dp_read_values = [1, 2];
@@ -1887,7 +1941,9 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, dp_read_values[1]);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers)
+                .await
+                .expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, dp_read_values[0]);
@@ -1896,8 +1952,8 @@ mod test {
             assert_eq!(transfers[1].value, dp_read_values[1]);
         }
 
-        #[test]
-        fn single_dp_register_write() {
+        #[pollster::test]
+        async fn single_dp_register_write() {
             let mut transfers = vec![DapTransfer::write(Abort::ADDRESS, 0x1234_5678)];
 
             let mut mock = MockJaylink::new();
@@ -1910,15 +1966,17 @@ mod test {
             // To verify that the write was successful, an additional read is performed.
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers)
+                .await
+                .expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
             assert_eq!(transfer_result.status, TransferStatus::Ok);
         }
 
-        #[test]
-        fn single_ap_register_write() {
+        #[pollster::test]
+        async fn single_ap_register_write() {
             let mut transfers = vec![DapTransfer::write(ApAddress::V1(0), 0x1234_5678)];
 
             let mut mock = MockJaylink::new();
@@ -1933,15 +1991,17 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, 0);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers)
+                .await
+                .expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
             assert_eq!(transfer_result.status, TransferStatus::Ok);
         }
 
-        #[test]
-        fn multiple_ap_register_write() {
+        #[pollster::test]
+        async fn multiple_ap_register_write() {
             let mut transfers = vec![
                 DapTransfer::write(ApAddress::V1(0), 0x1234_5678),
                 DapTransfer::write(ApAddress::V1(0), 0xABABABAB),
@@ -1962,7 +2022,9 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, 0);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers)
+                .await
+                .expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[1].status, TransferStatus::Ok);

@@ -1,3 +1,5 @@
+use tracing::Instrument;
+
 use crate::{
     Core, CoreType, Error, Target,
     architecture::{
@@ -38,14 +40,16 @@ impl CombinedCoreState {
         self.core_state.core_access_options.interface_idx()
     }
 
-    pub(crate) fn attach_arm<'probe>(
+    pub(crate) async fn attach_arm<'probe>(
         &'probe mut self,
         target: &'probe Target,
         arm_interface: &'probe mut Box<dyn ArmProbeInterface>,
     ) -> Result<Core<'probe>, Error> {
         let name = &target.cores[self.id].name;
 
-        let memory = arm_interface.memory_interface(&self.arm_memory_ap())?;
+        let memory = arm_interface
+            .memory_interface(&self.arm_memory_ap())
+            .await?;
 
         let ResolvedCoreOptions::Arm { options, sequence } = &self.core_state.core_access_options
         else {
@@ -61,7 +65,7 @@ impl CombinedCoreState {
                 self.id,
                 name,
                 target,
-                crate::architecture::arm::armv6m::Armv6m::new(memory, s, debug_sequence)?,
+                crate::architecture::arm::armv6m::Armv6m::new(memory, s, debug_sequence).await?,
             ),
             SpecificCoreState::Armv7a(s) => Core::new(
                 self.id,
@@ -72,13 +76,14 @@ impl CombinedCoreState {
                     s,
                     options.debug_base.expect("base_address not specified"),
                     debug_sequence,
-                )?,
+                )
+                .await?,
             ),
             SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
                 self.id,
                 name,
                 target,
-                crate::architecture::arm::armv7m::Armv7m::new(memory, s, debug_sequence)?,
+                crate::architecture::arm::armv7m::Armv7m::new(memory, s, debug_sequence).await?,
             ),
             SpecificCoreState::Armv8a(s) => Core::new(
                 self.id,
@@ -90,13 +95,14 @@ impl CombinedCoreState {
                     options.debug_base.expect("base_address not specified"),
                     options.cti_base.expect("cti_address not specified"),
                     debug_sequence,
-                )?,
+                )
+                .await?,
             ),
             SpecificCoreState::Armv8m(s) => Core::new(
                 self.id,
                 name,
                 target,
-                crate::architecture::arm::armv8m::Armv8m::new(memory, s, debug_sequence)?,
+                crate::architecture::arm::armv8m::Armv8m::new(memory, s, debug_sequence).await?,
             ),
             _ => {
                 unreachable!(
@@ -107,7 +113,7 @@ impl CombinedCoreState {
         })
     }
 
-    pub(crate) fn enable_arm_debug(
+    pub(crate) async fn enable_arm_debug(
         &self,
         interface: &mut dyn ArmProbeInterface,
     ) -> Result<(), Error> {
@@ -119,21 +125,22 @@ impl CombinedCoreState {
             );
         };
 
-        tracing::debug_span!("debug_core_start", id = self.id()).in_scope(|| {
-            // Enable debug mode
-            sequence.debug_core_start(
+        // Enable debug mode
+        sequence
+            .debug_core_start(
                 interface,
                 &self.arm_memory_ap(),
                 self.core_type(),
                 options.debug_base,
                 options.cti_base,
             )
-        })?;
+            .instrument(tracing::debug_span!("debug_core_start", id = self.id()))
+            .await?;
 
         Ok(())
     }
 
-    pub(crate) fn arm_reset_catch_set(
+    pub(crate) async fn arm_reset_catch_set(
         &self,
         interface: &mut dyn ArmProbeInterface,
     ) -> Result<(), Error> {
@@ -145,17 +152,19 @@ impl CombinedCoreState {
             );
         };
 
-        let mut memory_interface = interface.memory_interface(&self.arm_memory_ap())?;
+        let mut memory_interface = interface.memory_interface(&self.arm_memory_ap()).await?;
 
         let reset_catch_span = tracing::debug_span!("reset_catch_set", id = self.id()).entered();
-        sequence.reset_catch_set(&mut *memory_interface, self.core_type(), options.debug_base)?;
+        sequence
+            .reset_catch_set(&mut *memory_interface, self.core_type(), options.debug_base)
+            .await?;
 
         drop(reset_catch_span);
 
         Ok(())
     }
 
-    pub(crate) fn attach_riscv<'probe>(
+    pub(crate) async fn attach_riscv<'probe>(
         &'probe mut self,
         target: &'probe Target,
         mut interface: RiscvCommunicationInterface<'probe>,
@@ -183,7 +192,7 @@ impl CombinedCoreState {
             return Err(RiscvError::HartUnavailable.into());
         }
 
-        interface.select_hart(hart)?;
+        interface.select_hart(hart).await?;
 
         Ok(Core::new(
             self.id,
@@ -193,7 +202,7 @@ impl CombinedCoreState {
         ))
     }
 
-    pub(crate) fn attach_xtensa<'probe>(
+    pub(crate) async fn attach_xtensa<'probe>(
         &'probe mut self,
         target: &'probe Target,
         interface: XtensaCommunicationInterface<'probe>,
@@ -220,7 +229,7 @@ impl CombinedCoreState {
             self.id,
             name,
             target,
-            crate::architecture::xtensa::Xtensa::new(interface, s, debug_sequence)?,
+            crate::architecture::xtensa::Xtensa::new(interface, s, debug_sequence).await?,
         ))
     }
 

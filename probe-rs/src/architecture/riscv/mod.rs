@@ -16,10 +16,7 @@ use crate::{
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
 use registers::{FP, RA, RISCV_CORE_REGISTERS, SP};
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{sync::Arc, time::Duration};
 
 #[macro_use]
 pub mod registers;
@@ -50,35 +47,39 @@ impl<'state> Riscv32<'state> {
         })
     }
 
-    fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
-        self.interface.read_csr(address)
+    async fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
+        self.interface.read_csr(address).await
     }
 
-    fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
+    async fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
         tracing::debug!("Writing CSR {:#x}", address);
 
-        match self.interface.abstract_cmd_register_write(address, value) {
+        match self
+            .interface
+            .abstract_cmd_register_write(address, value)
+            .await
+        {
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
                 tracing::debug!(
                     "Could not write core register {:#x} with abstract command, falling back to program buffer",
                     address
                 );
-                self.interface.write_csr_progbuf(address, value)
+                self.interface.write_csr_progbuf(address, value).await
             }
             other => other,
         }
     }
 
     /// Resume the core.
-    fn resume_core(&mut self) -> Result<(), crate::Error> {
+    async fn resume_core(&mut self) -> Result<(), crate::Error> {
         self.state.semihosting_command = None;
-        self.interface.resume_core()?;
+        self.interface.resume_core().await?;
 
         Ok(())
     }
 
     /// Check if the current breakpoint is a semihosting call
-    fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
+    async fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
         // The Riscv Semihosting Specification, specificies the following sequence of instructions,
         // to trigger a semihosting call:
         // <https://github.com/riscv-software-src/riscv-semihosting/blob/main/riscv-semihosting-spec.adoc>
@@ -94,11 +95,15 @@ impl<'state> Riscv32<'state> {
             return Ok(Some(command));
         }
 
-        let pc: u32 = self.read_core_reg(self.program_counter().id)?.try_into()?;
+        let pc: u32 = self
+            .read_core_reg(self.program_counter().id)
+            .await?
+            .try_into()?;
 
         // Read the actual instructions, starting at the instruction before the ebreak (PC-4)
         let mut actual_instructions = [0u32; 3];
-        self.read_32((pc - 4) as u64, &mut actual_instructions)?;
+        self.read_32((pc - 4) as u64, &mut actual_instructions)
+            .await?;
         let actual_instructions = actual_instructions.as_slice();
 
         tracing::debug!(
@@ -109,11 +114,12 @@ impl<'state> Riscv32<'state> {
         );
 
         let command = if TRAP_INSTRUCTIONS == actual_instructions {
-            let syscall = decode_semihosting_syscall(self)?;
+            let syscall = decode_semihosting_syscall(self).await?;
             if let SemihostingCommand::Unknown(details) = syscall {
                 self.sequence
                     .clone()
-                    .on_unknown_semihosting_command(self, details)?
+                    .on_unknown_semihosting_command(self, details)
+                    .await?
             } else {
                 Some(syscall)
             }
@@ -125,7 +131,7 @@ impl<'state> Riscv32<'state> {
         Ok(command)
     }
 
-    fn determine_number_of_hardware_breakpoints(&mut self) -> Result<u32, RiscvError> {
+    async fn determine_number_of_hardware_breakpoints(&mut self) -> Result<u32, RiscvError> {
         tracing::debug!("Determining number of HW breakpoints supported");
 
         let tselect = 0x7a0;
@@ -137,20 +143,20 @@ impl<'state> Riscv32<'state> {
         // These steps follow the debug specification 0.13, section 5.1 Enumeration
         loop {
             tracing::debug!("Trying tselect={}", tselect_index);
-            if let Err(e) = self.write_csr(tselect, tselect_index) {
+            if let Err(e) = self.write_csr(tselect, tselect_index).await {
                 match e {
                     RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception) => break,
                     other_error => return Err(other_error),
                 }
             }
 
-            let readback = self.read_csr(tselect)?;
+            let readback = self.read_csr(tselect).await?;
 
             if readback != tselect_index {
                 break;
             }
 
-            match self.read_csr(tinfo) {
+            match self.read_csr(tinfo).await {
                 Ok(tinfo_val) => {
                     if tinfo_val & 0xffff == 1 {
                         // Trigger doesn't exist, break the loop
@@ -165,10 +171,10 @@ impl<'state> Riscv32<'state> {
                 }
                 Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception)) => {
                     // An exception means we have to read tdata1 to discover the type
-                    let tdata_val = self.read_csr(tdata1)?;
+                    let tdata_val = self.read_csr(tdata1).await?;
 
                     // Read the mxl field from the misa register (see RISC-V Privileged Spec, 3.1.1)
-                    let misa_value = Misa(self.read_csr(0x301)?);
+                    let misa_value = Misa(self.read_csr(0x301).await?);
                     let xlen = u32::pow(2, misa_value.mxl() + 4);
 
                     let trigger_type = tdata_val >> (xlen - 4);
@@ -194,46 +200,51 @@ impl<'state> Riscv32<'state> {
         Ok(tselect_index)
     }
 
-    fn on_halted(&mut self) -> Result<(), Error> {
-        let status = self.status()?;
+    async fn on_halted(&mut self) -> Result<(), Error> {
+        let status = self.status().await?;
         tracing::debug!("Core halted: {:#?}", status);
 
         if status.is_halted() {
-            self.sequence.on_halt(&mut self.interface)?;
+            self.sequence.on_halt(&mut self.interface).await?;
         }
 
         Ok(())
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl CoreInterface for Riscv32<'_> {
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), crate::Error> {
-        self.interface.wait_for_core_halted(timeout)?;
-        self.on_halted()?;
+    async fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), crate::Error> {
+        self.interface.wait_for_core_halted(timeout).await?;
+        self.on_halted().await?;
         self.state.pc_written = false;
         Ok(())
     }
 
-    fn core_halted(&mut self) -> Result<bool, crate::Error> {
-        Ok(self.interface.core_halted()?)
+    async fn core_halted(&mut self) -> Result<bool, crate::Error> {
+        Ok(self.interface.core_halted().await?)
     }
 
-    fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
+    async fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
         // TODO: We should use hartsum to determine if any hart is halted
         //       quickly
 
-        let status: Dmstatus = self.interface.read_dm_register()?;
+        let status: Dmstatus = self.interface.read_dm_register().await?;
 
         if status.allhalted() {
             // determine reason for halt
-            let dcsr = Dcsr(self.read_core_reg(RegisterId::from(0x7b0))?.try_into()?);
+            let dcsr = Dcsr(
+                self.read_core_reg(RegisterId::from(0x7b0))
+                    .await?
+                    .try_into()?,
+            );
 
             let reason = match dcsr.cause() {
                 // An ebreak instruction was hit
                 1 => {
                     // The chip initiated this halt, therefore we need to update pc_written state
                     self.state.pc_written = false;
-                    if let Some(cmd) = self.check_for_semihosting()? {
+                    if let Some(cmd) = self.check_for_semihosting().await? {
                         HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd))
                     } else {
                         HaltReason::Breakpoint(BreakpointCause::Software)
@@ -262,43 +273,44 @@ impl CoreInterface for Riscv32<'_> {
         }
     }
 
-    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        self.interface.halt(timeout)?;
-        self.on_halted()?;
-        Ok(self.interface.core_info()?)
+    async fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+        self.interface.halt(timeout).await?;
+        self.on_halted().await?;
+        Ok(self.interface.core_info().await?)
     }
 
-    fn run(&mut self) -> Result<(), Error> {
+    async fn run(&mut self) -> Result<(), Error> {
         if !self.state.pc_written {
             // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
-            self.step()?;
+            self.step().await?;
         }
 
         // resume the core.
-        self.resume_core()?;
+        self.resume_core().await?;
 
         Ok(())
     }
 
-    fn reset(&mut self) -> Result<(), Error> {
-        self.reset_and_halt(Duration::from_secs(1))?;
-        self.resume_core()?;
+    async fn reset(&mut self) -> Result<(), Error> {
+        self.reset_and_halt(Duration::from_secs(1)).await?;
+        self.resume_core().await?;
 
         Ok(())
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+    async fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.sequence
-            .reset_system_and_halt(&mut self.interface, timeout)?;
+            .reset_system_and_halt(&mut self.interface, timeout)
+            .await?;
 
-        self.on_halted()?;
-        let pc = self.read_core_reg(RegisterId(0x7b1))?;
+        self.on_halted().await?;
+        let pc = self.read_core_reg(RegisterId(0x7b1)).await?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
-    fn step(&mut self) -> Result<CoreInformation, crate::Error> {
-        let halt_reason = self.status()?;
+    async fn step(&mut self) -> Result<CoreInformation, crate::Error> {
+        let halt_reason = self.status().await?;
         if matches!(
             halt_reason,
             CoreStatus::Halted(HaltReason::Breakpoint(
@@ -306,12 +318,12 @@ impl CoreInterface for Riscv32<'_> {
             ))
         ) {
             // If we are halted on a software breakpoint, we can skip the single step and manually advance the dpc.
-            let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
+            let mut debug_pc = self.read_core_reg(RegisterId(0x7b1)).await?;
             // Advance the dpc by the size of the EBREAK (ebreak or c.ebreak) instruction.
-            if matches!(self.instruction_set()?, InstructionSet::RV32C) {
+            if matches!(self.instruction_set().await?, InstructionSet::RV32C) {
                 // We may have been halted by either an EBREAK or a C.EBREAK instruction.
                 // We need to read back the instruction to determine how many bytes we need to skip.
-                let instruction = self.read_word_32(debug_pc.try_into().unwrap())?;
+                let instruction = self.read_word_32(debug_pc.try_into().unwrap()).await?;
                 if instruction & 0x3 != 0x3 {
                     // Compressed instruction.
                     debug_pc.increment_address(2)?;
@@ -322,7 +334,7 @@ impl CoreInterface for Riscv32<'_> {
                 debug_pc.increment_address(4)?;
             }
 
-            self.write_core_reg(RegisterId(0x7b1), debug_pc)?;
+            self.write_core_reg(RegisterId(0x7b1), debug_pc).await?;
             return Ok(CoreInformation {
                 pc: debug_pc.try_into()?,
             });
@@ -331,30 +343,31 @@ impl CoreInterface for Riscv32<'_> {
             CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware))
         ) {
             // If we are halted on a hardware breakpoint.
-            self.enable_breakpoints(false)?;
+            self.enable_breakpoints(false).await?;
         }
 
-        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
+        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0)).await?.try_into()?);
         // Set it up, so that the next `self.run()` will only do a single step
         dcsr.set_step(true);
         // Disable any interrupts during single step.
         dcsr.set_stepie(false);
         dcsr.set_stopcount(true);
-        self.write_csr(0x7b0, dcsr.0)?;
+        self.write_csr(0x7b0, dcsr.0).await?;
 
         // Now we can resume the core for the single step.
-        self.resume_core()?;
-        self.wait_for_core_halted(Duration::from_millis(100))?;
+        self.resume_core().await?;
+        self.wait_for_core_halted(Duration::from_millis(100))
+            .await?;
 
-        let pc = self.read_core_reg(RegisterId(0x7b1))?;
+        let pc = self.read_core_reg(RegisterId(0x7b1)).await?;
 
         // clear step request
-        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
+        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0)).await?.try_into()?);
         dcsr.set_step(false);
         //Re-enable interrupts for single step.
         dcsr.set_stepie(true);
         dcsr.set_stopcount(false);
-        self.write_csr(0x7b0, dcsr.0)?;
+        self.write_csr(0x7b0, dcsr.0).await?;
 
         // Re-enable breakpoints before we continue.
         if matches!(
@@ -362,21 +375,22 @@ impl CoreInterface for Riscv32<'_> {
             CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware))
         ) {
             // If we are halted on a hardware breakpoint.
-            self.enable_breakpoints(true)?;
+            self.enable_breakpoints(true).await?;
         }
 
-        self.on_halted()?;
+        self.on_halted().await?;
         self.state.pc_written = false;
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
-    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, crate::Error> {
+    async fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, crate::Error> {
         self.read_csr(address.0)
+            .await
             .map(|v| v.into())
             .map_err(|e| e.into())
     }
 
-    fn write_core_reg(
+    async fn write_core_reg(
         &mut self,
         address: RegisterId,
         value: RegisterValue,
@@ -387,14 +401,14 @@ impl CoreInterface for Riscv32<'_> {
             self.state.pc_written = true;
         }
 
-        self.write_csr(address.0, value).map_err(|e| e.into())
+        self.write_csr(address.0, value).await.map_err(|e| e.into())
     }
 
-    fn available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
+    async fn available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
         match self.state.hw_breakpoints {
             Some(bp) => Ok(bp),
             None => {
-                let bp = self.determine_number_of_hardware_breakpoints()?;
+                let bp = self.determine_number_of_hardware_breakpoints().await?;
                 self.state.hw_breakpoints = Some(bp);
                 Ok(bp)
             }
@@ -403,12 +417,12 @@ impl CoreInterface for Riscv32<'_> {
 
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait
     /// NOTE: For riscv, this assumes that only execution breakpoints are used.
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+    async fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
         // this can be called w/o halting the core via Session::new - temporarily halt if not halted
 
-        let was_running = !self.core_halted()?;
+        let was_running = !self.core_halted().await?;
         if was_running {
-            self.halt(Duration::from_millis(100))?;
+            self.halt(Duration::from_millis(100)).await?;
         }
 
         let tselect = 0x7a0;
@@ -416,13 +430,13 @@ impl CoreInterface for Riscv32<'_> {
         let tdata2 = 0x7a2;
 
         let mut breakpoints = vec![];
-        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
+        let num_hw_breakpoints = self.available_breakpoint_units().await? as usize;
         for bp_unit_index in 0..num_hw_breakpoints {
             // Select the trigger.
-            self.write_csr(tselect, bp_unit_index as u32)?;
+            self.write_csr(tselect, bp_unit_index as u32).await?;
 
             // Read the trigger "configuration" data.
-            let tdata_value = Mcontrol(self.read_csr(tdata1)?);
+            let tdata_value = Mcontrol(self.read_csr(tdata1).await?);
 
             tracing::debug!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
 
@@ -439,7 +453,7 @@ impl CoreInterface for Riscv32<'_> {
                 && trigger_any_mode_active
                 && trigger_any_action_enabled
             {
-                let breakpoint = self.read_csr(tdata2)?;
+                let breakpoint = self.read_csr(tdata2).await?;
                 breakpoints.push(Some(breakpoint as u64));
             } else {
                 breakpoints.push(None);
@@ -447,23 +461,23 @@ impl CoreInterface for Riscv32<'_> {
         }
 
         if was_running {
-            self.resume_core()?;
+            self.resume_core().await?;
         }
 
         Ok(breakpoints)
     }
 
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), crate::Error> {
+    async fn enable_breakpoints(&mut self, state: bool) -> Result<(), crate::Error> {
         // Loop through all triggers, and enable/disable them.
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
 
-        for bp_unit_index in 0..self.available_breakpoint_units()? as usize {
+        for bp_unit_index in 0..self.available_breakpoint_units().await? as usize {
             // Select the trigger.
-            self.write_csr(tselect, bp_unit_index as u32)?;
+            self.write_csr(tselect, bp_unit_index as u32).await?;
 
             // Read the trigger "configuration" data.
-            let mut tdata_value = Mcontrol(self.read_csr(tdata1)?);
+            let mut tdata_value = Mcontrol(self.read_csr(tdata1).await?);
 
             // Only modify the trigger if it is for an execution debug action in all modes(probe-rs enabled it) or no modes (we previously disabled it).
             if tdata_value.type_() == 2
@@ -480,7 +494,7 @@ impl CoreInterface for Riscv32<'_> {
                 );
                 tdata_value.set_m(state);
                 tdata_value.set_u(state);
-                self.write_csr(tdata1, tdata_value.0)?;
+                self.write_csr(tdata1, tdata_value.0).await?;
             }
         }
 
@@ -488,7 +502,11 @@ impl CoreInterface for Riscv32<'_> {
         Ok(())
     }
 
-    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), crate::Error> {
+    async fn set_hw_breakpoint(
+        &mut self,
+        bp_unit_index: usize,
+        addr: u64,
+    ) -> Result<(), crate::Error> {
         let addr = valid_32bit_address(addr)?;
 
         // select requested trigger
@@ -498,11 +516,11 @@ impl CoreInterface for Riscv32<'_> {
 
         tracing::info!("Setting breakpoint {}", bp_unit_index);
 
-        self.write_csr(tselect, bp_unit_index as u32)?;
+        self.write_csr(tselect, bp_unit_index as u32).await?;
 
         // verify the trigger has the correct type
 
-        let tdata_value = Mcontrol(self.read_csr(tdata1)?);
+        let tdata_value = Mcontrol(self.read_csr(tdata1).await?);
 
         // This should not happen
         let trigger_type = tdata_value.type_();
@@ -533,32 +551,32 @@ impl CoreInterface for Riscv32<'_> {
         // Match address
         instruction_breakpoint.set_select(false);
 
-        self.write_csr(tdata1, 0)?;
-        self.write_csr(tdata2, addr)?;
-        self.write_csr(tdata1, instruction_breakpoint.0)?;
+        self.write_csr(tdata1, 0).await?;
+        self.write_csr(tdata2, addr).await?;
+        self.write_csr(tdata1, instruction_breakpoint.0).await?;
 
         Ok(())
     }
 
-    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
+    async fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
         // this can be called w/o halting the core via Session::new - temporarily halt if not halted
         tracing::info!("Clearing breakpoint {}", unit_index);
 
-        let was_running = !self.core_halted()?;
+        let was_running = !self.core_halted().await?;
         if was_running {
-            self.halt(Duration::from_millis(100))?;
+            self.halt(Duration::from_millis(100)).await?;
         }
 
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
 
-        self.write_csr(tselect, unit_index as u32)?;
-        self.write_csr(tdata1, 0)?;
-        self.write_csr(tdata2, 0)?;
+        self.write_csr(tselect, unit_index as u32).await?;
+        self.write_csr(tdata1, 0).await?;
+        self.write_csr(tdata2, 0).await?;
 
         if was_running {
-            self.resume_core()?;
+            self.resume_core().await?;
         }
 
         Ok(())
@@ -588,8 +606,8 @@ impl CoreInterface for Riscv32<'_> {
         self.state.hw_breakpoints_enabled
     }
 
-    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), Error> {
-        self.interface.debug_on_sw_breakpoint(enabled)?;
+    async fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), Error> {
+        self.interface.debug_on_sw_breakpoint(enabled).await?;
         Ok(())
     }
 
@@ -601,8 +619,8 @@ impl CoreInterface for Riscv32<'_> {
         CoreType::Riscv
     }
 
-    fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
-        let misa_value = Misa(self.read_csr(0x301)?);
+    async fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+        let misa_value = Misa(self.read_csr(0x301).await?);
 
         // Check if the Bit at position 2 (signifies letter C, for compressed) is set.
         if misa_value.extensions() & (1 << 2) != 0 {
@@ -621,27 +639,27 @@ impl CoreInterface for Riscv32<'_> {
             .count())
     }
 
-    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
+    async fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         // Read the extensions from the Machine ISA regiseter.
         let isa_extensions =
-            Misa::from(self.read_csr(Misa::get_mmio_address() as u16)?).extensions();
+            Misa::from(self.read_csr(Misa::get_mmio_address() as u16).await?).extensions();
         // Mask for the D(double float), F(single float) and Q(quad float) extension bits.
         let mask = (1 << 3) | (1 << 5) | (1 << 16);
         Ok(isa_extensions & mask != 0)
     }
 
-    fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.sequence.reset_catch_set(&mut self.interface)?;
+    async fn reset_catch_set(&mut self) -> Result<(), Error> {
+        self.sequence.reset_catch_set(&mut self.interface).await?;
         Ok(())
     }
 
-    fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.sequence.reset_catch_clear(&mut self.interface)?;
+    async fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.sequence.reset_catch_clear(&mut self.interface).await?;
         Ok(())
     }
 
-    fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.interface.disable_debug_module()?;
+    async fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.interface.disable_debug_module().await?;
         Ok(())
     }
 }
