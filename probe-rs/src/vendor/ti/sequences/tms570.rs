@@ -6,7 +6,7 @@
 //! then clearing memory using platform-specific register writes.
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::architecture::arm::armv7a::{
     clear_hw_breakpoint, get_hw_breakpoint, read_word_32, request_halt, run, set_hw_breakpoint,
@@ -102,7 +102,11 @@ impl ArmDebugSequence for TMS570 {
         // this, writes to SRAM will trap, preventing execution from RAM.
         write_word_32(memory, base_address, 0xffff_ff5c, 0xa)?;
         write_word_32(memory, base_address, 0xffff_ff60, 1)?;
+        let start = Instant::now();
         while read_word_32(memory, base_address, 0xffff_ff68)? & (1 << 8) == 0 {
+            if start.elapsed() >= HALT_DELAY {
+                return Err(ArmError::Timeout);
+            }
             std::thread::sleep(Duration::from_millis(1));
         }
         write_word_32(memory, base_address, 0xffff_ff5c, 0x5)?;
