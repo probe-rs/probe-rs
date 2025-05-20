@@ -1,1 +1,0 @@
-Added outputting to binary/hex to the read command
