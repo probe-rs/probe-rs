@@ -111,7 +111,7 @@ fn main() -> Result<()> {
 
     let lister = Lister::new();
 
-    let probes = lister.list_all();
+    let probes = async_io::block_on(lister.list_all());
 
     if probes.is_empty() {
         bail!(

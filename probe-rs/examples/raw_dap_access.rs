@@ -7,42 +7,44 @@ use probe_rs::{
 };
 
 fn main() -> Result<()> {
-    env_logger::init();
+    async_io::block_on(async move {
+        env_logger::init();
 
-    let lister = Lister::new();
+        let lister = Lister::new();
 
-    // Get a list of all available debug probes.
-    let probes = lister.list_all();
+        // Get a list of all available debug probes.
+        let probes = lister.list_all().await;
 
-    // Use the first probe found.
-    let mut probe = probes[0].open()?;
+        // Use the first probe found.
+        let mut probe = probes[0].open()?;
 
-    probe.attach_to_unspecified()?;
-    let iface = probe.try_into_arm_interface().unwrap();
+        probe.attach_to_unspecified()?;
+        let iface = probe.try_into_arm_interface().unwrap();
 
-    let mut iface = iface
-        .initialize(DefaultArmSequence::create(), DpAddress::Default)
-        .map_err(|(_interface, e)| e)?;
+        let mut iface = iface
+            .initialize(DefaultArmSequence::create(), DpAddress::Default)
+            .map_err(|(_interface, e)| e)?;
 
-    let port = &FullyQualifiedApAddress::v1_with_default_dp(1);
+        let port = &FullyQualifiedApAddress::v1_with_default_dp(1);
 
-    const RESET: u64 = 0;
-    const ERASEALL: u64 = 4;
-    const ERASEALLSTATUS: u64 = 8;
+        const RESET: u64 = 0;
+        const ERASEALL: u64 = 4;
+        const ERASEALLSTATUS: u64 = 8;
 
-    // Reset
-    iface.write_raw_ap_register(port, RESET, 1)?;
-    iface.write_raw_ap_register(port, RESET, 0)?;
+        // Reset
+        iface.write_raw_ap_register(port, RESET, 1)?;
+        iface.write_raw_ap_register(port, RESET, 0)?;
 
-    // Start erase
-    iface.write_raw_ap_register(port, ERASEALL, 1)?;
+        // Start erase
+        iface.write_raw_ap_register(port, ERASEALL, 1)?;
 
-    // Wait for erase done
-    while iface.read_raw_ap_register(port, ERASEALLSTATUS)? != 0 {}
+        // Wait for erase done
+        while iface.read_raw_ap_register(port, ERASEALLSTATUS)? != 0 {}
 
-    // Reset again
-    iface.write_raw_ap_register(port, RESET, 1)?;
-    iface.write_raw_ap_register(port, RESET, 0)?;
+        // Reset again
+        iface.write_raw_ap_register(port, RESET, 1)?;
+        iface.write_raw_ap_register(port, RESET, 0)?;
 
-    Ok(())
+        Ok(())
+    })
 }

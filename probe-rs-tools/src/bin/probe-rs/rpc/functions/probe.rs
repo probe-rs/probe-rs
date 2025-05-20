@@ -79,13 +79,13 @@ impl ListProbesRequest {
 
 pub type ListProbesResponse = RpcResult<Vec<DebugProbeEntry>>;
 
-pub fn list_probes(
+pub async fn list_probes(
     ctx: &mut RpcContext,
     _header: VarHeader,
     _request: ListProbesRequest,
 ) -> ListProbesResponse {
     let lister = ctx.lister();
-    let probes = lister.list_all();
+    let probes = lister.list_all().await;
 
     Ok(probes
         .into_iter()
@@ -112,7 +112,9 @@ pub async fn select_probe(
     request: SelectProbeRequest,
 ) -> SelectProbeResponse {
     let lister = ctx.lister();
-    let mut list = lister.list(request.probe.map(|sel| sel.into()).as_ref());
+    let mut list = lister
+        .list(request.probe.map(|sel| sel.into()).as_ref())
+        .await;
 
     match list.len() {
         0 => Err(OperationError::NoProbesFound.into()),
@@ -227,7 +229,7 @@ pub async fn attach(
     let common_options = ProbeOptions::from(&request).load(&mut registry)?;
     let target = common_options.get_target_selector()?;
 
-    let Ok(probe) = common_options.attach_probe(&ctx.lister()) else {
+    let Ok(probe) = common_options.attach_probe(&ctx.lister()).await else {
         return Ok(AttachResult::ProbeNotFound);
     };
 

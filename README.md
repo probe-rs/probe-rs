@@ -64,7 +64,7 @@ fn main() -> Result<(), probe_rs::Error> {
     // Get a list of all available debug probes.
     let lister = Lister::new();
 
-    let probes = lister.list_all();
+    let probes = async_io::block_on(lister.list_all());
 
     // Use the first probe found.
     let mut probe = probes[0].open()?;
@@ -98,7 +98,7 @@ fn main() -> Result<(), probe_rs::Error> {
       ..Default::default()
     };
 
-    let mut session = Session::auto_attach("nRF52840_xxAA", session_config)?;
+    let mut session = async_io::block_on(Session::auto_attach("nRF52840_xxAA", session_config))?;
 
     // Select a core.
     let mut core = session.core(0)?;

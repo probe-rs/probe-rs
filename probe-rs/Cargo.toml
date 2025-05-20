@@ -30,6 +30,8 @@ test = []
 
 [dependencies]
 anyhow.workspace = true
+async-io.workspace = true
+async-trait.workspace = true
 docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
@@ -51,7 +53,6 @@ object = { version = "0.36", default-features = false, features = [
 ] }
 nusb = "0.1.12"
 futures-lite = { version = "2", default-features = false }
-async-io = "2"
 scroll = "0.12"
 serialport = { version = "4.6.0", default-features = false, features = [
     "usbportinfo-interface",
