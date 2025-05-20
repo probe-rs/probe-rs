@@ -1226,6 +1226,7 @@ mod test {
         ((address - TEST_BASE_ADDRESS) / 4) as u32
     }
 
+    #[derive(Debug)]
     pub struct ExpectedMemoryOp {
         read: bool,
         address: u64,
@@ -1570,6 +1571,14 @@ mod test {
         );
     }
 
+    impl Drop for MockProbe {
+        fn drop(&mut self) {
+            if !self.expected_ops.is_empty() {
+                panic!("self.expected_ops is not empty: {:?}", self.expected_ops);
+            }
+        }
+    }
+
     #[test]
     fn armv7a_new() {
         let mut probe = MockProbe::new();
@@ -1719,7 +1728,6 @@ mod test {
             Dbgdscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             dbgdscr.into(),
         );
-        add_read_fp_count_expectations(&mut probe);
 
         let mock_mem = Box::new(probe) as _;
 
