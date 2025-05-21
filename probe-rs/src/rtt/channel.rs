@@ -261,7 +261,7 @@ impl Channel {
         self.validate_core_id(core)?;
         let flags = self.info.read_flags(core, self.metadata_ptr)?;
 
-        ChannelMode::try_from(flags)
+        ChannelMode::try_from(flags & 0x3)
     }
 
     /// Changes the channel mode on the target to the specified mode.
