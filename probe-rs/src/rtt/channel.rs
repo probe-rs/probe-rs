@@ -261,13 +261,14 @@ impl Channel {
         self.validate_core_id(core)?;
         let flags = self.info.read_flags(core, self.metadata_ptr)?;
 
-        ChannelMode::try_from(flags & 0x3)
+        ChannelMode::try_from(flags & ChannelMode::MASK)
     }
 
     /// Changes the channel mode on the target to the specified mode.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
+        tracing::debug!("Setting RTT channel {} mode to {:?}", self.number, mode);
         self.validate_core_id(core)?;
         let flags = self.info.read_flags(core, self.metadata_ptr)?;
 
@@ -584,8 +585,10 @@ pub enum ChannelMode {
 }
 
 impl ChannelMode {
+    const MASK: u64 = 0x3;
+
     fn set(self, flags: u64) -> u64 {
-        (flags & !3) | (self as u64)
+        (flags & !Self::MASK) | (self as u64)
     }
 }
 
