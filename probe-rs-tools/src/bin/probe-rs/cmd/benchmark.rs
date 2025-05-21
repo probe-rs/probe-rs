@@ -83,7 +83,7 @@ struct TestData {
 }
 
 impl Cmd {
-    pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
+    pub async fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
         let speed = self.common.speed;
         let common_options = self.common.load(registry)?;
         let mut max_speed = self.max_speed;
@@ -96,7 +96,7 @@ impl Cmd {
             speeds.extend_from_slice(&PROBE_SPEEDS);
         };
         // if we can't print basic info, we're probably not going to succeed with testing so bubble up the error
-        Cmd::print_info(&common_options, lister)?;
+        Cmd::print_info(&common_options, lister).await?;
 
         for speed in speeds
             .iter()
@@ -111,7 +111,8 @@ impl Cmd {
                     self.address,
                     self.word_size,
                     self.iterations,
-                );
+                )
+                .await;
                 if let Err(e) = res {
                     println!(
                         "Test failed for speed {} size {} word_size {}bit - {}",
@@ -125,8 +126,11 @@ impl Cmd {
     }
 
     /// Print probe and target info
-    fn print_info(common_options: &LoadedProbeOptions, lister: &Lister) -> anyhow::Result<()> {
-        let probe = common_options.attach_probe(lister)?;
+    async fn print_info(
+        common_options: &LoadedProbeOptions<'_>,
+        lister: &Lister,
+    ) -> anyhow::Result<()> {
+        let probe = common_options.attach_probe(lister).await?;
         let protocol_name = probe
             .protocol()
             .map(|p| p.to_string())
@@ -144,8 +148,8 @@ impl Cmd {
     }
 
     /// Run a specific benchmark
-    fn benchmark(
-        common_options: &LoadedProbeOptions,
+    async fn benchmark(
+        common_options: &LoadedProbeOptions<'_>,
         lister: &Lister,
         speed: u32,
         size: usize,
@@ -153,7 +157,7 @@ impl Cmd {
         word_size: u32,
         iterations: usize,
     ) -> Result<(), anyhow::Error> {
-        let mut probe = common_options.attach_probe(lister)?;
+        let mut probe = common_options.attach_probe(lister).await?;
         let target = common_options.get_target_selector()?;
         if probe.set_speed(speed).is_ok() {
             let mut session = common_options.attach_session(probe, target)?;

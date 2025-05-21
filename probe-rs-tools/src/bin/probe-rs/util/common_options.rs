@@ -126,7 +126,7 @@ impl ProbeOptions {
 
     /// Convenience method that attaches to the specified probe, target,
     /// and target session.
-    pub fn simple_attach<'r>(
+    pub async fn simple_attach<'r>(
         self,
         registry: &'r mut Registry,
         lister: &Lister,
@@ -134,7 +134,7 @@ impl ProbeOptions {
         let common_options = self.load(registry)?;
 
         let target = common_options.get_target_selector()?;
-        let probe = common_options.attach_probe(lister)?;
+        let probe = common_options.attach_probe(lister).await?;
         let session = common_options.attach_session(probe, target)?;
 
         Ok((session, common_options))
@@ -228,27 +228,30 @@ impl<'r> LoadedProbeOptions<'r> {
     /// If there is only one probe, it will be selected automatically.
     /// If there are multiple probes, the user will be prompted to select one unless
     /// started in non-interactive mode.
-    fn select_probe(lister: &Lister, non_interactive: bool) -> Result<Probe, OperationError> {
-        let list = lister.list_all();
+    async fn select_probe(lister: &Lister, non_interactive: bool) -> Result<Probe, OperationError> {
+        let list = lister.list_all().await;
         let selected = match list.len() {
             0 | 1 => list.first().ok_or(OperationError::NoProbesFound),
             _ if non_interactive => Err(OperationError::MultipleProbesFound { list }),
             _ => Self::interactive_probe_select(&list),
         };
 
-        selected.and_then(|probe_info| Ok(lister.open(probe_info)?))
+        match selected {
+            Ok(probe_info) => Ok(lister.open(probe_info).await?),
+            Err(error) => Err(error),
+        }
     }
 
     /// Attaches to specified probe and configures it.
-    pub fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
+    pub async fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
         let mut probe = if self.0.dry_run {
             Probe::from_specific_probe(Box::new(FakeProbe::with_mocked_core()))
         } else {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
             match &self.0.probe {
-                Some(selector) => lister.open(selector)?,
-                None => Self::select_probe(lister, self.0.non_interactive)?,
+                Some(selector) => lister.open(selector).await?,
+                None => Self::select_probe(lister, self.0.non_interactive).await?,
             }
         };
 

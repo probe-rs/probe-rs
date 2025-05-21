@@ -71,12 +71,13 @@ impl std::fmt::Display for ProfileMethod {
 }
 
 impl ProfileCmd {
-    pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
+    pub async fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, probe_options) = self
             .run
             .shared_options
             .probe_options
-            .simple_attach(registry, lister)?;
+            .simple_attach(registry, lister)
+            .await?;
 
         let loader = build_loader(
             &mut session,

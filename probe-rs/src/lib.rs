@@ -14,10 +14,12 @@
 //! use probe_rs::probe::{list::Lister, Probe};
 //! use probe_rs::Permissions;
 //!
+//! # async_io::block_on(async {
+//!
 //! // Get a list of all available debug probes.
 //! let lister = Lister::new();
 //!
-//! let probes = lister.list_all();
+//! let probes = lister.list_all().await;
 //!
 //! // Use the first probe found.
 //! let mut probe = probes[0].open()?;
@@ -31,6 +33,7 @@
 //! // Halt the attached core.
 //! core.halt(std::time::Duration::from_millis(10))?;
 //! # Ok::<(), Error>(())
+//! # });
 //! ```
 //!
 //! ## Reading from RAM
@@ -39,8 +42,10 @@
 //! # use probe_rs::Error;
 //! use probe_rs::{Session, SessionConfig, MemoryInterface};
 //!
+//! # async_io::block_on(async {
+//!
 //! let session_config = SessionConfig::default();
-//! let mut session = Session::auto_attach("nrf52", session_config)?;
+//! let mut session = Session::auto_attach("nrf52", session_config).await?;
 //! let mut core = session.core(0)?;
 //!
 //! // Read a block of 50 32 bit words.
@@ -59,6 +64,7 @@
 //! core.write_8(0x2000_0000, &buff)?;
 //!
 //! # Ok::<(), Error>(())
+//! # });
 //! ```
 //!
 //! probe-rs is built around 4 main interfaces: the [Probe],

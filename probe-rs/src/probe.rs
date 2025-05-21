@@ -279,10 +279,13 @@ impl<T: ProbeError> From<T> for ProbeCreationError {
 /// ```no_run
 /// use probe_rs::probe::{Probe, list::Lister};
 ///
+/// # async_io::block_on(async {
+///
 /// let lister = Lister::new();
 ///
-/// let probe_list = lister.list_all();
+/// let probe_list = lister.list_all().await;
 /// let probe = probe_list[0].open();
+/// # });
 /// ```
 #[derive(Debug)]
 pub struct Probe {

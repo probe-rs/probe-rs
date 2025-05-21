@@ -131,7 +131,7 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
     let mut test_tracker = TestTracker::new(definitions);
 
     let result = test_tracker.run(|tracker, definition| {
-        let probe = definition.open_probe()?;
+        let probe = async_io::block_on(definition.open_probe())?;
 
         println_dut_status!(tracker, blue, "Probe: {:?}", probe.get_name());
         println_dut_status!(tracker, blue, "Chip:  {:?}", &definition.chip.name);
@@ -193,7 +193,7 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
         // Try attaching with hard reset
 
         if definition.reset_connected {
-            let probe = definition.open_probe()?;
+            let probe = async_io::block_on(definition.open_probe())?;
 
             let _session =
                 probe.attach_under_reset(definition.chip.clone(), Permissions::default())?;
