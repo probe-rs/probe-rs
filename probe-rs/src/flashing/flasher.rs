@@ -183,7 +183,7 @@ impl Flasher {
             .map_err(FlashError::Core)?;
 
         let mut data = vec![0; algo.instructions.len()];
-        core.read(algo.load_address, &mut data.as_mut_bytes())
+        core.read(algo.load_address, data.as_mut_bytes())
             .map_err(FlashError::Core)?;
 
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
