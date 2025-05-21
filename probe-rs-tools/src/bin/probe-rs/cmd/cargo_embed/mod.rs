@@ -169,11 +169,11 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 
     logging::println(format!(
         "      {} {}",
-        "Config".green().bold(),
+        "Profile".green().bold(),
         profile_name
     ));
     logging::println(format!(
-        "      {} {}",
+        "       {} {}",
         "Target".green().bold(),
         path.display()
     ));
@@ -349,7 +349,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
                 gdb_connection_string.as_deref().unwrap_or("127.0.0.1:1337");
 
             logging::println(format!(
-                "    {} listening at {}",
+                "     {} listening at {}",
                 "GDB stub".green().bold(),
                 gdb_connection_string,
             ));
@@ -384,7 +384,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     }
 
     logging::println(format!(
-        "        {} processing config {}",
+        "        {} processing config profile {}",
         "Done".green().bold(),
         profile_name,
     ));
