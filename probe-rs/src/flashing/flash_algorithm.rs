@@ -5,8 +5,8 @@ use crate::{
     core::Architecture,
 };
 use probe_rs_target::{
-    FlashProperties, MemoryRegion, PageInfo, RamRegion, RawFlashAlgorithm, RegionMergeIterator,
-    SectorInfo, TransferEncoding,
+    Endian, FlashProperties, MemoryRegion, PageInfo, RamRegion, RawFlashAlgorithm,
+    RegionMergeIterator, SectorInfo, TransferEncoding,
 };
 use std::mem::size_of_val;
 
@@ -180,7 +180,8 @@ impl FlashAlgorithm {
     // Header for RISC-V Flash Algorithms
     const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
 
-    const ARM_FLASH_BLOB_HEADER: [u32; 1] = [arm::assembly::BRKPT];
+    const ARM_FLASH_BLOB_HEADER_LE: [u32; 1] = [arm::assembly::BRKPT];
+    const ARM_FLASH_BLOB_HEADER_BE: [u32; 1] = [arm::assembly::BRKPT.swap_bytes()];
 
     const XTENSA_FLASH_BLOB_HEADER: [u32; 0] = [];
 
@@ -188,17 +189,22 @@ impl FlashAlgorithm {
     /// this function returns the maximum size of the header of supported architectures.
     pub fn get_max_algorithm_header_size() -> u64 {
         let algos = [
-            Self::algorithm_header(Architecture::Arm),
-            Self::algorithm_header(Architecture::Riscv),
-            Self::algorithm_header(Architecture::Xtensa),
+            Self::algorithm_header(Architecture::Arm, Endian::Big),
+            Self::algorithm_header(Architecture::Arm, Endian::Little),
+            Self::algorithm_header(Architecture::Riscv, Endian::Little),
+            Self::algorithm_header(Architecture::Xtensa, Endian::Big),
+            Self::algorithm_header(Architecture::Xtensa, Endian::Little),
         ];
 
         algos.iter().copied().map(size_of_val).max().unwrap() as u64
     }
 
-    fn algorithm_header(architecture: Architecture) -> &'static [u32] {
+    fn algorithm_header(architecture: Architecture, endian: Endian) -> &'static [u32] {
         match architecture {
-            Architecture::Arm => &Self::ARM_FLASH_BLOB_HEADER,
+            Architecture::Arm => match endian {
+                Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_LE,
+                Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_BE,
+            },
             Architecture::Riscv => &Self::RISCV_FLASH_BLOB_HEADER,
             Architecture::Xtensa => &Self::XTENSA_FLASH_BLOB_HEADER,
         }
@@ -250,14 +256,14 @@ impl FlashAlgorithm {
             None
         };
 
-        let mut header = Self::algorithm_header(target.architecture()).to_vec();
-
-        // If the ELF file is in Big Endian, we need to swap the contents of the header.
-        if raw.big_endian {
-            for word in header.iter_mut() {
-                *word = word.swap_bytes();
-            }
-        }
+        let header = Self::algorithm_header(
+            target.architecture(),
+            if raw.big_endian {
+                Endian::Big
+            } else {
+                Endian::Little
+            },
+        );
 
         let instructions: Vec<u32> = header
             .iter()
@@ -268,7 +274,7 @@ impl FlashAlgorithm {
             .chain(last_elem)
             .collect();
 
-        let header_size = size_of_val(header.as_slice()) as u64;
+        let header_size = size_of_val(header) as u64;
 
         // The start address where we try to load the flash algorithm.
         let addr_load = match raw.load_address {
