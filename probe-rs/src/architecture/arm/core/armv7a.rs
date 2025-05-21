@@ -18,7 +18,10 @@ use crate::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType, Endian,
     InstructionSet, MemoryInterface,
     architecture::arm::{
-        ArmError, core::armv7a_debug_regs::*, memory::ArmMemoryInterface,
+        ArmError,
+        ap::{ApRegister, BD0, BD1, BD2, BD3, TAR, TAR2},
+        core::armv7a_debug_regs::*,
+        memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
     },
     core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
@@ -30,7 +33,15 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use zerocopy::IntoBytes;
+use zerocopy::{FromBytes, IntoBytes};
+
+/// Addresses for accessing debug registers when in banked mode
+struct BankedAccess {
+    dtrtx: u64,
+    itr: u64,
+    dscr: u64,
+    dtrrx: u64,
+}
 
 /// Errors for the ARMv7-A state machine
 #[derive(thiserror::Error, Debug)]
@@ -304,6 +315,28 @@ impl<'probe> Armv7a<'probe> {
 
         result
     }
+
+    /// For greater performance, place DBGDTRTX, DBGDTRRX, DBGITR, and DBGDCSR
+    /// into the banked register window. This will allow us to directly access
+    /// these four values.
+    fn banked_dcc(&mut self) -> Result<BankedAccess, Error> {
+        let address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
+        let ap = self.memory.fully_qualified_address();
+        let is_64_bit = self.is_64_bit();
+        let interface = self.memory.get_dap_access()?;
+
+        if is_64_bit {
+            interface.write_raw_ap_register(&ap, TAR2::ADDRESS, (address >> 32) as u32)?;
+        }
+        interface.write_raw_ap_register(&ap, TAR::ADDRESS, address as u32)?;
+
+        Ok(BankedAccess {
+            dtrtx: BD0::ADDRESS,
+            itr: BD1::ADDRESS,
+            dscr: BD2::ADDRESS,
+            dtrrx: BD3::ADDRESS,
+        })
+    }
 }
 
 // These helper functions allow access to the ARMv7A core from Sequences.
@@ -433,6 +466,26 @@ pub(crate) fn get_hw_breakpoint(
     Ok(if bp_control.e() { Some(bp_value) } else { None })
 }
 
+fn check_and_clear_data_abort(
+    memory: &mut dyn ArmMemoryInterface,
+    base_address: u64,
+    dbgdscr: Dbgdscr,
+) -> Result<(), ArmError> {
+    // Check if we had any aborts, if so clear them and fail
+    if dbgdscr.adabort_l() || dbgdscr.sdabort_l() {
+        tracing::trace!("Data abort!");
+        let address = Dbgdrcr::get_mmio_address_from_base(base_address)?;
+        let mut dbgdrcr = Dbgdrcr(0);
+        dbgdrcr.set_cse(true);
+
+        memory.write_word_32(address, dbgdrcr.into())?;
+        return Err(ArmError::Armv7a(
+            crate::architecture::arm::armv7a::Armv7aError::DataAbort,
+        ));
+    }
+    Ok(())
+}
+
 /// Execute a single instruction.
 fn execute_instruction(
     memory: &mut dyn ArmMemoryInterface,
@@ -452,16 +505,7 @@ fn execute_instruction(
     }
 
     // Check if we had any aborts, if so clear them and fail
-    if dbgdscr.adabort_l() || dbgdscr.sdabort_l() {
-        let address = Dbgdrcr::get_mmio_address_from_base(base_address)?;
-        let mut dbgdrcr = Dbgdrcr(0);
-        dbgdrcr.set_cse(true);
-
-        memory.write_word_32(address, dbgdrcr.into())?;
-        return Err(ArmError::Armv7a(
-            crate::architecture::arm::armv7a::Armv7aError::DataAbort,
-        ));
-    }
+    check_and_clear_data_abort(memory, base_address, dbgdscr)?;
 
     Ok(dbgdscr)
 }
@@ -1110,8 +1154,51 @@ impl MemoryInterface for Armv7a<'_> {
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         self.halted_access(|core| {
-            for (i, word) in data.iter_mut().enumerate() {
-                *word = core.read_word_32(address + ((i as u64) * 4))?;
+            let count = data.len();
+            if count > 2 {
+                // Save r0
+                core.prepare_r0_for_clobber()?;
+                core.set_r0(valid_32bit_address(address)?)?;
+
+                let banked = core.banked_dcc()?;
+
+                let ap = core.memory.fully_qualified_address();
+                let interface = core.memory.get_dap_access()?;
+
+                // Place DSCR in FAST mode
+                let mut dscr: Dbgdscr = interface.read_raw_ap_register(&ap, banked.dscr)?.into();
+                dscr.set_extdccmode(2);
+                interface.write_raw_ap_register(&ap, banked.dscr, dscr.into())?;
+
+                // LDC p14, c5, [r0], #4
+                interface.write_raw_ap_register(&ap, banked.itr, build_ldc(14, 5, 0, 4))?;
+
+                // Throw away the first value, which is from a previous operation
+                let _ = interface.read_raw_ap_register(&ap, banked.dtrrx)?;
+
+                // Continually write the tx register, which will auto-increment.
+                // Don't load the final value -- we'll read it after we're done.
+                for word in data[0..count - 1].iter_mut() {
+                    *word = interface.read_raw_ap_register(&ap, banked.dtrrx)?;
+                }
+
+                // Return DSCR back to NON-BLOCKING mode
+                let mut dscr = Dbgdscr(interface.read_raw_ap_register(&ap, banked.dscr)?);
+                dscr.set_extdccmode(0);
+                interface
+                    .write_raw_ap_register(&ap, banked.dscr, dscr.into())
+                    .unwrap();
+
+                // Grab the last value
+                let last = interface.read_raw_ap_register(&ap, banked.dtrrx)?;
+                data.last_mut().map(|v| *v = last);
+
+                // Check if we had any aborts, if so clear them and fail
+                check_and_clear_data_abort(&mut *core.memory, core.base_address, dscr)?;
+            } else {
+                for (i, word) in data.iter_mut().enumerate() {
+                    *word = core.read_word_32(address + ((i as u64) * 4))?;
+                }
             }
 
             Ok(())
@@ -1129,20 +1216,24 @@ impl MemoryInterface for Armv7a<'_> {
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.halted_access(|core| {
-            for (i, byte) in data.iter_mut().enumerate() {
-                *byte = core.read_word_8(address + (i as u64))?;
-            }
-
-            Ok(())
-        })
+        self.read(address, data)
     }
 
     fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.halted_access(|core| {
             if address % 4 == 0 && data.len() % 4 == 0 {
                 // Avoid heap allocation and copy if we don't need it.
-                core.read_mem_32bit(address, data)?;
+                if let Ok((aligned_buffer, _)) =
+                    <[u32]>::mut_from_prefix_with_elems(data, data.len() / 4)
+                {
+                    core.read_32(address, aligned_buffer)?;
+                } else {
+                    let mut temporary_buffer = vec![0u32; data.len() / 4];
+                    core.read_32(address, &mut temporary_buffer)?;
+                    data.copy_from_slice(temporary_buffer.as_bytes());
+                }
+
+                // We used 32-bit accesses, so swap the 32-bit values if necessary.
                 if core.endianness()? == Endian::Big {
                     for word in data.chunks_exact_mut(4) {
                         word.reverse();
@@ -1259,8 +1350,44 @@ impl MemoryInterface for Armv7a<'_> {
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         self.halted_access(|core| {
-            for (i, word) in data.iter().enumerate() {
-                core.write_word_32(address + ((i as u64) * 4), *word)?;
+            if data.len() > 2 {
+                let ap = core.memory.fully_qualified_address();
+
+                // Save r0
+                core.prepare_r0_for_clobber()?;
+                core.set_r0(valid_32bit_address(address)?)?;
+
+                let banked = core.banked_dcc()?;
+
+                let interface = core.memory.get_dap_access()?;
+
+                // Place DSCR in FAST mode
+                let mut dscr: Dbgdscr = interface.read_raw_ap_register(&ap, banked.dscr)?.into();
+                dscr.set_extdccmode(2);
+                interface.write_raw_ap_register(&ap, banked.dscr, dscr.into())?;
+
+                // STC p14, c5, [r0], #4
+                interface.write_raw_ap_register(&ap, banked.itr, build_stc(14, 5, 0, 4))?;
+
+                // Continually write the tx register, which will auto-increment
+                for word in data.iter() {
+                    interface.write_raw_ap_register(&ap, banked.dtrtx, *word)?;
+                }
+
+                // Return DSCR back to NON-BLOCKING mode
+                let mut dscr = Dbgdscr(interface.read_raw_ap_register(&ap, banked.dscr)?);
+                dscr.set_extdccmode(0);
+                interface
+                    .write_raw_ap_register(&ap, banked.dscr, dscr.into())
+                    .unwrap();
+
+                // Check if we had any aborts, if so clear them and fail
+                check_and_clear_data_abort(&mut *core.memory, core.base_address, dscr)?;
+            } else {
+                // Slow path -- perform multiple writes
+                for (i, word) in data.iter().enumerate() {
+                    core.write_word_32(address + ((i as u64) * 4), *word)?;
+                }
             }
 
             Ok(())
