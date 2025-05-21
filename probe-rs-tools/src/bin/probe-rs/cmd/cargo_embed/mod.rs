@@ -305,7 +305,8 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             &probe_options,
             loader,
             config.flashing.do_chip_erase,
-        )?;
+        )
+        .await?;
 
         match boot_info {
             BootInfo::FromRam {

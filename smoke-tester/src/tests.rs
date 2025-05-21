@@ -2,7 +2,6 @@ use std::time::Instant;
 
 use anyhow::Context;
 use colored::Colorize;
-use linkme::distributed_slice;
 use probe_rs::{
     Architecture, Core, CoreInterface, MemoryInterface, Session,
     config::MemoryRegion,
@@ -11,10 +10,12 @@ use probe_rs::{
 
 pub mod stepping;
 
-use crate::{CORE_TESTS, SESSION_TESTS, TestFailure, TestResult, TestTracker, println_test_status};
+use crate::{TestFailure, TestResult, TestTracker, println_test_status};
 
-#[distributed_slice(CORE_TESTS)]
-pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> TestResult {
+pub(crate) async fn test_register_read(
+    tracker: &TestTracker<'_>,
+    core: &mut Core<'_>,
+) -> TestResult {
     println_test_status!(tracker, blue, "Testing register read...");
 
     let register = core.registers();
@@ -28,8 +29,10 @@ pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> TestResult 
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
+pub(crate) async fn test_register_write(
+    tracker: &TestTracker<'_>,
+    core: &mut Core<'_>,
+) -> TestResult {
     println_test_status!(tracker, blue, "Testing register write...");
 
     let register = core.registers();
@@ -69,10 +72,10 @@ fn test_register_write(tracker: &TestTracker, core: &mut Core) -> TestResult {
     Ok(())
 }
 
-fn test_write_read(
+async fn test_write_read(
     scenario: &str,
-    tracker: &TestTracker,
-    core: &mut Core,
+    tracker: &TestTracker<'_>,
+    core: &mut Core<'_>,
     address: u64,
     data: &[u8],
 ) -> TestResult {
@@ -101,8 +104,10 @@ fn test_write_read(
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
+pub(crate) async fn test_memory_access(
+    tracker: &TestTracker<'_>,
+    core: &mut Core<'_>,
+) -> TestResult {
     let memory_regions = core
         .memory_regions()
         .filter_map(MemoryRegion::as_ram_region)
@@ -184,28 +189,32 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
             address
         );
 
-        test_write_read("1 byte at RAM start", tracker, core, ram_start, &[0x56])?;
+        test_write_read("1 byte at RAM start", tracker, core, ram_start, &[0x56]).await?;
         test_write_read(
             "4 bytes at RAM start",
             tracker,
             core,
             ram_start,
             &[0x12, 0x34, 0x56, 0x78],
-        )?;
+        )
+        .await?;
         test_write_read(
             "4 bytes at RAM end",
             tracker,
             core,
             ram_start + ram_size - 4,
             &[0x12, 0x34, 0x56, 0x78],
-        )?;
+        )
+        .await?;
     }
 
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
+pub(crate) async fn test_hw_breakpoints(
+    tracker: &TestTracker<'_>,
+    core: &mut Core<'_>,
+) -> TestResult {
     println_test_status!(tracker, blue, "Testing HW breakpoints");
 
     let memory_regions: Vec<_> = core
@@ -297,8 +306,10 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
     Ok(())
 }
 
-#[distributed_slice(SESSION_TESTS)]
-pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(), TestFailure> {
+pub async fn test_flashing(
+    tracker: &TestTracker<'_>,
+    session: &mut Session,
+) -> Result<(), TestFailure> {
     let Some(test_binary) = tracker
         .current_dut_definition()
         .flash_test_binary
@@ -324,7 +335,7 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
 
     let format = FormatKind::from_optional(session.target().default_format.as_deref()).unwrap();
 
-    let result = download_file_with_options(session, test_binary, format, options);
+    let result = download_file_with_options(session, test_binary, format, options).await;
 
     println!();
 

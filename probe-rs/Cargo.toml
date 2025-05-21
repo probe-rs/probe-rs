@@ -33,8 +33,10 @@ anyhow.workspace = true
 async-io.workspace = true
 async-trait.workspace = true
 docsplay.workspace = true
+macro_rules_attribute.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
+smol-macros.workspace = true
 
 bincode = { version = "2", features = ["serde"], optional = true }
 bitfield = "0.19.0"

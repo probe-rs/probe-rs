@@ -21,11 +21,11 @@ use probe_rs::{
 
 /// Performs the flash download with the given loader. Ensure that the loader has the data to load already stored.
 /// This function also manages the update and display of progress bars.
-pub fn run_flash_download(
+pub async fn run_flash_download(
     session: &mut Session,
     path: impl AsRef<Path>,
     download_options: &BinaryDownloadOptions,
-    probe_options: &LoadedProbeOptions,
+    probe_options: &LoadedProbeOptions<'_>,
     loader: FlashLoader,
     do_chip_erase: bool,
 ) -> Result<(), OperationError> {
@@ -72,6 +72,7 @@ pub fn run_flash_download(
 
     loader
         .commit(session, options)
+        .await
         .map_err(|error| OperationError::FlashingFailed {
             source: Box::new(error),
             target: Box::new(session.target().clone()),

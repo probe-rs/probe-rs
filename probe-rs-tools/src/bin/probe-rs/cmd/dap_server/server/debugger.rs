@@ -458,7 +458,8 @@ impl Debugger {
                 debug_adapter,
                 launch_attach_request,
                 &mut session_data,
-            )?;
+            )
+            .await?;
         }
 
         // First, attach to the core
@@ -541,7 +542,8 @@ impl Debugger {
                     debug_adapter,
                     request,
                     session_data,
-                )?;
+                )
+                .await?;
             }
         }
 
@@ -575,7 +577,7 @@ impl Debugger {
     /// Flash the given binary, and report the progress to the
     /// debug adapter.
     // Note: This function consumes the 'debug_adapter', so all error reporting via that handle must be done before returning from this function.
-    fn flash<P: ProtocolAdapter + 'static>(
+    async fn flash<P: ProtocolAdapter + 'static>(
         config: &SessionConfig,
         path_to_elf: &Path,
         debug_adapter: &mut DebugAdapter<P>,
@@ -674,13 +676,16 @@ impl Debugger {
         ) {
             Ok(loader) => {
                 let do_flashing = if config.flashing_config.verify_before_flashing {
-                    match loader.verify(
-                        &mut session_data.session,
-                        download_options
-                            .progress
-                            .clone()
-                            .unwrap_or_else(FlashProgress::empty),
-                    ) {
+                    match loader
+                        .verify(
+                            &mut session_data.session,
+                            download_options
+                                .progress
+                                .clone()
+                                .unwrap_or_else(FlashProgress::empty),
+                        )
+                        .await
+                    {
                         Ok(_) => false,
                         Err(FlashError::Verify) => true,
                         Err(other) => {
@@ -705,6 +710,7 @@ impl Debugger {
                 if do_flashing {
                     loader
                         .commit(&mut session_data.session, download_options)
+                        .await
                         .map_err(FileDownloadError::Flash)
                 } else {
                     drop(download_options);

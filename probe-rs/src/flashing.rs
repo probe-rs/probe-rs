@@ -47,8 +47,6 @@
 //! # Ok::<(), anyhow::Error>(())
 //! # });
 //! ```
-//!
-//!
 
 mod builder;
 mod download;

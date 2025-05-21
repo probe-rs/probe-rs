@@ -400,7 +400,7 @@ impl FlashLoader {
     }
 
     /// Reads the image according to the file format and adds it to the loader.
-    pub fn load_image<T: Read + Seek>(
+    pub async fn load_image<T: Read + Seek>(
         &mut self,
         session: &mut Session,
         file: &mut T,
@@ -441,7 +441,11 @@ impl FlashLoader {
     }
 
     /// Verifies data on the device.
-    pub fn verify(&self, session: &mut Session, progress: FlashProgress) -> Result<(), FlashError> {
+    pub async fn verify(
+        &self,
+        session: &mut Session,
+        progress: FlashProgress<'_>,
+    ) -> Result<(), FlashError> {
         let mut algos = self.prepare_plan(session, false)?;
 
         for flasher in algos.iter_mut() {
@@ -462,7 +466,7 @@ impl FlashLoader {
                 flasher.flash_algorithm.name
             );
 
-            if !flasher.verify(session, &progress, true)? {
+            if !flasher.verify(session, &progress, true).await? {
                 return Err(FlashError::Verify);
             }
         }
@@ -475,10 +479,10 @@ impl FlashLoader {
     /// Writes all the stored data chunks to flash.
     ///
     /// Requires a session with an attached target that has a known flash algorithm.
-    pub fn commit(
+    pub async fn commit(
         &self,
         session: &mut Session,
-        mut options: DownloadOptions,
+        mut options: DownloadOptions<'_>,
     ) -> Result<(), FlashError> {
         tracing::debug!("Committing FlashLoader!");
         let mut algos = self.prepare_plan(session, options.keep_unwritten_bytes)?;
@@ -511,7 +515,7 @@ impl FlashLoader {
 
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
-                flasher.run_erase_all(session, &progress)?;
+                flasher.run_erase_all(session, &progress).await?;
                 do_chip_erase = false;
                 did_chip_erase = true;
             }
@@ -525,14 +529,16 @@ impl FlashLoader {
             }
 
             // Program the data.
-            flasher.program(
-                session,
-                &progress,
-                options.keep_unwritten_bytes,
-                do_use_double_buffering,
-                options.skip_erase || did_chip_erase,
-                options.verify,
-            )?;
+            flasher
+                .program(
+                    session,
+                    &progress,
+                    options.keep_unwritten_bytes,
+                    do_use_double_buffering,
+                    options.skip_erase || did_chip_erase,
+                    options.verify,
+                )
+                .await?;
         }
 
         tracing::debug!("Committing RAM!");

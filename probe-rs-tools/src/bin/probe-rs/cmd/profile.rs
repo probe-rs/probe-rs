@@ -106,7 +106,8 @@ impl ProfileCmd {
                 &probe_options,
                 loader,
                 self.run.shared_options.chip_erase,
-            )?;
+            )
+            .await?;
         }
 
         let start = Instant::now();
