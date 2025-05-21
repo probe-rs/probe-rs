@@ -1280,13 +1280,7 @@ impl MemoryInterface for Armv7a<'_> {
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.halted_access(|core| {
-            for (i, byte) in data.iter().enumerate() {
-                core.write_word_8(address + (i as u64), *byte)?;
-            }
-
-            Ok(())
-        })
+        self.write(address, data)
     }
 
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
@@ -1297,12 +1291,12 @@ impl MemoryInterface for Armv7a<'_> {
             assert!(start_extra_count < 4);
             assert!(end_extra_count < 4);
 
+            // Fall back to slower bytewise access if it's not aligned
             if start_extra_count != 0 || end_extra_count != 0 {
-                return Err(MemoryNotAlignedError {
-                    address,
-                    alignment: 4,
+                for (i, byte) in data.iter().enumerate() {
+                    core.write_word_8(address + (i as u64), *byte)?;
                 }
-                .into());
+                return Ok(());
             }
 
             // Make sure we don't try to do an empty but potentially unaligned write
