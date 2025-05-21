@@ -78,6 +78,7 @@ pub fn extract_flash_algo(
     algo.instructions = algorithm_binary.blob();
 
     // Flash algorithms are all little endian. Swap the algorithm if necessary.
+    // TODO: See if this is correct on systems where instructions are not 2 or 4 bytes.
     if !elf.little_endian {
         for instruction in algo.instructions.chunks_exact_mut(4) {
             instruction.reverse();
