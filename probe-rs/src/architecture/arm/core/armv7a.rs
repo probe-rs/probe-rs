@@ -1305,8 +1305,8 @@ impl MemoryInterface for Armv7a<'_> {
             let endianness = core.endianness()?;
             for (bytes, value) in data.chunks_exact(4).zip(buffer.iter_mut()) {
                 *value = match endianness {
-                    Endian::Little => u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
-                    Endian::Big => u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
+                    Endian::Little => u32::from_le_bytes(bytes.try_into().unwrap()),
+                    Endian::Big => u32::from_be_bytes(bytes.try_into().unwrap()),
                 }
             }
             core.write_32(address, &buffer)?;

@@ -179,11 +179,11 @@ impl Flasher {
         // Load flash algorithm code into target RAM.
         tracing::debug!("Downloading algorithm code to {:#010x}", algo.load_address);
 
-        core.write_32(algo.load_address, algo.instructions.as_slice())
+        core.write(algo.load_address, algo.instructions.as_bytes())
             .map_err(FlashError::Core)?;
 
         let mut data = vec![0; algo.instructions.len()];
-        core.read_32(algo.load_address, &mut data)
+        core.read(algo.load_address, &mut data.as_mut_bytes())
             .map_err(FlashError::Core)?;
 
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
