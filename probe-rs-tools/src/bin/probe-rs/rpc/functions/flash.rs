@@ -62,7 +62,7 @@ pub async fn build(
 ) -> BuildResponse {
     // build loader
     let mut session = ctx.session(request.sessid).await;
-    let loader = build_loader(&mut session, &request.path, request.format, None)?;
+    let loader = build_loader(&mut session, &request.path, request.format, None).await?;
 
     Ok(BuildResult {
         boot_info: loader.boot_info().into(),
@@ -335,11 +335,11 @@ impl From<probe_rs::flashing::BootInfo> for BootInfo {
 }
 
 pub async fn flash(ctx: &mut RpcContext, _header: VarHeader, request: FlashRequest) -> NoResponse {
-    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, flash_impl)
+    ctx.run::<ProgressEventTopic, _, _, _>(request, flash_impl)
         .await
 }
 
-fn flash_impl(
+async fn flash_impl(
     ctx: RpcSpawnContext,
     request: FlashRequest,
     sender: Sender<ProgressEvent>,
@@ -367,6 +367,7 @@ fn flash_impl(
     // run flash download
     loader
         .commit(&mut session, options)
+        .await
         .map_err(FileDownloadError::Flash)?;
 
     Ok(())
@@ -384,11 +385,11 @@ pub enum EraseCommand {
 }
 
 pub async fn erase(ctx: &mut RpcContext, _header: VarHeader, request: EraseRequest) -> NoResponse {
-    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, erase_impl)
+    ctx.run::<ProgressEventTopic, _, _, _>(request, erase_impl)
         .await
 }
 
-fn erase_impl(
+async fn erase_impl(
     ctx: RpcSpawnContext,
     request: EraseRequest,
     sender: Sender<ProgressEvent>,
@@ -405,7 +406,7 @@ fn erase_impl(
     });
 
     match request.command {
-        EraseCommand::All => flashing::erase_all(&mut session, progress)?,
+        EraseCommand::All => flashing::erase_all(&mut session, progress).await?,
     }
 
     Ok(())
@@ -430,11 +431,11 @@ pub async fn verify(
     _header: VarHeader,
     request: VerifyRequest,
 ) -> VerifyResponse {
-    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, verify_impl)
+    ctx.run::<ProgressEventTopic, _, _, _>(request, verify_impl)
         .await
 }
 
-fn verify_impl(
+async fn verify_impl(
     ctx: RpcSpawnContext,
     request: VerifyRequest,
     sender: Sender<ProgressEvent>,
@@ -451,7 +452,7 @@ fn verify_impl(
         });
     });
 
-    match loader.verify(&mut session, progress) {
+    match loader.verify(&mut session, progress).await {
         Ok(()) => Ok(VerifyResult::Ok),
         Err(flashing::FlashError::Verify) => Ok(VerifyResult::Mismatch),
         Err(other) => Err(other.into()),

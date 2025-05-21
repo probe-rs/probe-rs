@@ -249,6 +249,28 @@ impl RpcSpawnContext {
             }
         }
     }
+
+    pub async fn run<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
+    where
+        T: MultiTopicWriter,
+        F: AsyncFnOnce(RpcSpawnContext, REQ, T::Sender) -> RESP,
+        F: Send + 'static,
+        REQ: Send + 'static,
+        RESP: Send + 'static,
+    {
+        let token = self.cancellation_token();
+        let (sender, publisher) = T::create(token);
+
+        let ctx = self.clone();
+        let blocking = task(ctx, request, sender);
+
+        tokio::select! {
+            _ =  publisher.publish(&self.sender) => unreachable!(),
+            response = blocking => {
+                response
+            }
+        }
+    }
 }
 
 /// Struct to list all attached debug probes
@@ -405,6 +427,20 @@ impl RpcContext {
     {
         self.spawn_ctxt()
             .run_blocking::<T, F, REQ, RESP>(request, task)
+            .await
+    }
+
+    pub async fn run<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
+    where
+        T: Topic,
+        T::Message: Serialize + Schema + Sized + Send + 'static,
+        F: AsyncFnOnce(RpcSpawnContext, REQ, Sender<T::Message>) -> RESP,
+        F: Send + 'static,
+        REQ: Send + 'static,
+        RESP: Send + 'static,
+    {
+        self.spawn_ctxt()
+            .run::<T, F, REQ, RESP>(request, task)
             .await
     }
 }

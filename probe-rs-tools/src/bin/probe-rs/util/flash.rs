@@ -95,7 +95,7 @@ pub async fn run_flash_download(
 /// Builds a new flash loader for the given target and path. This
 /// will check the path for validity and check what pages have to be
 /// flashed etc.
-pub fn build_loader(
+pub async fn build_loader(
     session: &mut Session,
     path: impl AsRef<Path>,
     format_options: FormatOptions,
@@ -121,7 +121,7 @@ pub fn build_loader(
         }),
     };
 
-    probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
+    probe_rs::flashing::build_loader(session, path, format, image_instruction_set).await
 }
 
 #[derive(Default)]

@@ -38,6 +38,7 @@ thiserror.workspace = true
 probe-rs-target.workspace = true
 smol-macros.workspace = true
 
+async-stream = "0.3"
 bincode = { version = "2", features = ["serde"], optional = true }
 bitfield = "0.19.0"
 bitvec = "1"

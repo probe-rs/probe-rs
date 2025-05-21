@@ -1,5 +1,7 @@
+use async_stream::{stream, try_stream};
 use espflash::flasher::{FlashData, FlashSettings, FlashSize};
 use espflash::targets::XtalFrequency;
+use futures_lite::Stream;
 use ihex::Record;
 use probe_rs_target::{
     InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
@@ -13,12 +15,12 @@ use std::time::Duration;
 use super::builder::FlashBuilder;
 use super::{
     BinOptions, DownloadOptions, ElfOptions, FileDownloadError, FlashError, Flasher, IdfOptions,
-    extract_from_elf,
+    ProgressEvent, extract_from_elf,
 };
 use crate::Target;
 use crate::config::DebugSequence;
 use crate::flashing::progress::ProgressOperation;
-use crate::flashing::{FlashLayout, FlashProgress, Format};
+use crate::flashing::{FlashLayout, Format};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 
@@ -441,39 +443,40 @@ impl FlashLoader {
     }
 
     /// Verifies data on the device.
-    pub async fn verify(
+    pub fn verify(
         &self,
         session: &mut Session,
-        progress: FlashProgress<'_>,
-    ) -> Result<(), FlashError> {
-        let mut algos = self.prepare_plan(session, false)?;
+    ) -> impl Stream<Item = Result<ProgressEvent, FlashError>> {
+        try_stream! {
+            let mut algos = self.prepare_plan(session, false)?;
 
-        for flasher in algos.iter_mut() {
-            let mut program_size = 0;
-            for region in flasher.regions.iter_mut() {
-                program_size += region
-                    .data
-                    .encoder(flasher.flash_algorithm.transfer_encoding, true)
-                    .program_size();
+            for flasher in algos.iter_mut() {
+                let mut program_size = 0;
+                for region in flasher.regions.iter_mut() {
+                    program_size += region
+                        .data
+                        .encoder(flasher.flash_algorithm.transfer_encoding, true)
+                        .program_size();
+                }
+                yield Ok(ProgressEvent::add_progress_bar(ProgressOperation::Verify, Some(program_size)));
             }
-            progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
-        }
 
-        // Iterate all flash algorithms we need to use and do the flashing.
-        for mut flasher in algos {
-            tracing::debug!(
-                "Verifying ranges for algo: {}",
-                flasher.flash_algorithm.name
-            );
+            // Iterate all flash algorithms we need to use and do the flashing.
+            for mut flasher in algos {
+                tracing::debug!(
+                    "Verifying ranges for algo: {}",
+                    flasher.flash_algorithm.name
+                );
 
-            if !flasher.verify(session, &progress, true).await? {
-                return Err(FlashError::Verify);
+                if !flasher.verify(session, true).await? {
+                    yield Err(FlashError::Verify);
+                }
             }
+
+            self.verify_ram(session)?;
+
+            yield Ok(())
         }
-
-        self.verify_ram(session)?;
-
-        Ok(())
     }
 
     /// Writes all the stored data chunks to flash.

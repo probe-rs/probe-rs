@@ -673,7 +673,9 @@ impl Debugger {
             path_to_elf,
             config.flashing_config.format_options.clone(),
             None,
-        ) {
+        )
+        .await
+        {
             Ok(loader) => {
                 let do_flashing = if config.flashing_config.verify_before_flashing {
                     match loader

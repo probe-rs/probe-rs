@@ -84,7 +84,8 @@ impl ProfileCmd {
             &self.run.shared_options.path,
             self.run.shared_options.format_options,
             None,
-        )?;
+        )
+        .await?;
 
         let file_location = self.run.shared_options.path.as_path();
 
