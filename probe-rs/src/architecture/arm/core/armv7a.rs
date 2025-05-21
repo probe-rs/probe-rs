@@ -61,6 +61,8 @@ pub struct Armv7a<'probe> {
     num_breakpoints: Option<u32>,
 
     itr_enabled: bool,
+
+    endianness: Option<Endian>,
 }
 
 impl<'probe> Armv7a<'probe> {
@@ -97,6 +99,7 @@ impl<'probe> Armv7a<'probe> {
             sequence,
             num_breakpoints: None,
             itr_enabled: false,
+            endianness: None,
         };
 
         if !core.state.initialized() {
@@ -950,12 +953,21 @@ impl CoreInterface for Armv7a<'_> {
     }
 
     fn endianness(&mut self) -> Result<Endian, Error> {
-        let psr = TryInto::<u32>::try_into(self.read_core_reg(XPSR.id())?).unwrap();
-        if psr & 1 << 9 == 0 {
-            Ok(Endian::Little)
-        } else {
-            Ok(Endian::Big)
-        }
+        Ok(match self.endianness {
+            Some(endianness) => endianness,
+            None => {
+                let endianness = {
+                    let psr = TryInto::<u32>::try_into(self.read_core_reg(XPSR.id())?).unwrap();
+                    if psr & 1 << 9 == 0 {
+                        Endian::Little
+                    } else {
+                        Endian::Big
+                    }
+                };
+                self.endianness = Some(endianness);
+                endianness
+            }
+        })
     }
 
     fn fpu_support(&mut self) -> Result<bool, Error> {
