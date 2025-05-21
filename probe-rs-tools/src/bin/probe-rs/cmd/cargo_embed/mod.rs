@@ -45,7 +45,7 @@ use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
 struct CliOptions {
     /// Name of the configuration profile to use.
     #[arg()]
-    config: Option<String>,
+    config_profile: Option<String>,
     /// Path of a configuration file outside the default path.
     ///
     /// When this is set, the default path is still considered, but the given file is considered
@@ -123,7 +123,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     let work_dir = std::env::current_dir()?;
 
     // Get the config.
-    let config_name = opt.config.as_deref().unwrap_or("default");
+    let profile_name = opt.config_profile.as_deref().unwrap_or("default");
     let mut configs = config::Configs::new(work_dir.clone());
     if let Some(config_file) = opt.config_file {
         let config_file = PathBuf::from(config_file);
@@ -134,7 +134,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         }
         configs.merge(config_file)?;
     }
-    let config = configs.select_defined(config_name)?;
+    let config = configs.select_defined(profile_name)?;
 
     let _log_guard = setup_logging(None, config.general.log_level);
 
@@ -167,7 +167,11 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         )
     })?;
 
-    logging::println(format!("      {} {}", "Config".green().bold(), config_name));
+    logging::println(format!(
+        "      {} {}",
+        "Config".green().bold(),
+        profile_name
+    ));
     logging::println(format!(
         "      {} {}",
         "Target".green().bold(),
@@ -382,7 +386,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     logging::println(format!(
         "        {} processing config {}",
         "Done".green().bold(),
-        config_name
+        profile_name,
     ));
 
     Ok(())
