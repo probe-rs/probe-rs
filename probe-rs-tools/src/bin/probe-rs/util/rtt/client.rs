@@ -129,13 +129,14 @@ impl RttClient {
             Err(error) => return Err(error),
         };
 
+        self.need_configure = true;
         Ok(self.target.is_some())
     }
 
     pub fn try_attach(&mut self, core: &mut Core) -> Result<bool, Error> {
-        self.try_attach_impl(core)?;
+        let attached = self.try_attach_impl(core)?;
 
-        if self.need_configure {
+        if attached && self.need_configure {
             self.configure(core)?;
             self.need_configure = false;
         }
