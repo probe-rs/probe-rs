@@ -72,6 +72,24 @@ impl<'a> BankedAccess<'a> {
     fn dtrrx(&mut self) -> Result<u32, ArmError> {
         self.interface.read_raw_ap_register(&self.ap, self.dtrrx)
     }
+
+    fn with_fast_mode<R>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> Result<R, ArmError>,
+    ) -> Result<R, ArmError> {
+        // Place DSCR in FAST mode
+        let mut dscr = self.dscr()?;
+        dscr.set_extdccmode(2);
+        self.set_dscr(dscr)?;
+        let result = f(self);
+
+        // Return DSCR back to NON-BLOCKING mode
+        let mut dscr = self.dscr()?;
+        dscr.set_extdccmode(0);
+        self.set_dscr(dscr)?;
+
+        result
+    }
 }
 
 /// Errors for the ARMv7-A state machine
@@ -506,7 +524,6 @@ fn check_and_clear_data_abort(
 ) -> Result<(), ArmError> {
     // Check if we had any aborts, if so clear them and fail
     if dbgdscr.adabort_l() || dbgdscr.sdabort_l() {
-        tracing::trace!("Data abort!");
         let address = Dbgdrcr::get_mmio_address_from_base(base_address)?;
         let mut dbgdrcr = Dbgdrcr(0);
         dbgdrcr.set_cse(true);
@@ -1195,34 +1212,34 @@ impl MemoryInterface for Armv7a<'_> {
 
                 let mut banked = core.banked_access()?;
 
-                // Place DSCR in FAST mode
-                // TODO: Undo this if there's a failure.
-                let mut dscr = banked.dscr()?;
-                dscr.set_extdccmode(2);
-                banked.set_dscr(dscr)?;
+                // Ignore any errors encountered here -- they will set a Data Abort
+                // which we will pick up in `check_and_clear_data_abort()`
+                if banked
+                    .with_fast_mode(|banked| {
+                        // LDC p14, c5, [r0], #4
+                        banked.set_itr(build_ldc(14, 5, 0, 4))?;
 
-                // LDC p14, c5, [r0], #4
-                banked.set_itr(build_ldc(14, 5, 0, 4))?;
+                        // Throw away the first value, which is from a previous operation
+                        let _ = banked.dtrrx()?;
 
-                // Throw away the first value, which is from a previous operation
-                let _ = banked.dtrrx()?;
-
-                // Continually write the tx register, which will auto-increment.
-                // Don't load the final value -- we'll read it after we're done.
-                for word in data[0..count - 1].iter_mut() {
-                    *word = banked.dtrrx()?;
+                        // Continually write the tx register, which will auto-increment.
+                        // Don't load the final value -- we'll read it after we're done.
+                        for word in data[0..count - 1].iter_mut() {
+                            *word = banked.dtrrx()?;
+                        }
+                        Ok(())
+                    })
+                    .is_ok()
+                {
+                    // Grab the last value. Ignore any errors here since they will generate
+                    // an abort that will be caught below.
+                    if let Ok(last) = banked.dtrrx() {
+                        data.last_mut().map(|v| *v = last);
+                    }
                 }
 
-                // Return DSCR back to NON-BLOCKING mode
-                let mut dscr = banked.dscr()?;
-                dscr.set_extdccmode(0);
-                banked.set_dscr(dscr)?;
-
-                // Grab the last value
-                let last = banked.dtrrx()?;
-                data.last_mut().map(|v| *v = last);
-
                 // Check if we had any aborts, if so clear them and fail
+                let dscr = banked.dscr()?;
                 check_and_clear_data_abort(&mut *core.memory, core.base_address, dscr)?;
             } else {
                 for (i, word) in data.iter_mut().enumerate() {
@@ -1386,25 +1403,21 @@ impl MemoryInterface for Armv7a<'_> {
 
                 let mut banked = core.banked_access()?;
 
-                // Place DSCR in FAST mode
-                let mut dscr = banked.dscr()?;
-                dscr.set_extdccmode(2);
-                banked.set_dscr(dscr)?;
+                banked
+                    .with_fast_mode(|banked| {
+                        // STC p14, c5, [r0], #4
+                        banked.set_itr(build_stc(14, 5, 0, 4))?;
 
-                // STC p14, c5, [r0], #4
-                banked.set_itr(build_stc(14, 5, 0, 4))?;
-
-                // Continually write the tx register, which will auto-increment
-                for word in data.iter() {
-                    banked.set_dtrtx(*word)?;
-                }
-
-                // Return DSCR back to NON-BLOCKING mode
-                let mut dscr = banked.dscr()?;
-                dscr.set_extdccmode(0);
-                banked.set_dscr(dscr)?;
+                        // Continually write the tx register, which will auto-increment
+                        for word in data.iter() {
+                            banked.set_dtrtx(*word)?;
+                        }
+                        Ok(())
+                    })
+                    .ok();
 
                 // Check if we had any aborts, if so clear them and fail
+                let dscr = banked.dscr()?;
                 check_and_clear_data_abort(&mut *core.memory, core.base_address, dscr)?;
             } else {
                 // Slow path -- perform multiple writes
