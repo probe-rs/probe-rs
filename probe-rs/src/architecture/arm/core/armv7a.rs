@@ -1232,7 +1232,9 @@ impl MemoryInterface for Armv7a<'_> {
                         let _ = banked.dtrrx()?;
 
                         // Continually write the tx register, which will auto-increment.
-                        // Don't load the final value -- we'll read it after we're done.
+                        // Because reads lag by one instruction, we need to break before
+                        // we read the final value. If we don't we will end up reading one
+                        // extra word past the buffer, which may end up outside valid RAM.
                         for word in data[0..count - 1].iter_mut() {
                             *word = banked.dtrrx()?;
                         }
@@ -1240,8 +1242,9 @@ impl MemoryInterface for Armv7a<'_> {
                     })
                     .is_ok()
                 {
-                    // Grab the last value. Ignore any errors here since they will generate
-                    // an abort that will be caught below.
+                    // Grab the last value that we skipped during the main sequence.
+                    // Ignore any errors here since they will generate an abort that
+                    // will be caught below.
                     if let Ok(last) = banked.dtrrx() {
                         if let Some(v) = data.last_mut() {
                             *v = last;
