@@ -73,17 +73,26 @@ impl<'a> BankedAccess<'a> {
         self.interface.read_raw_ap_register(&self.ap, self.dtrrx)
     }
 
-    fn with_fast_mode<R>(
+    /// Operate the core in DCC Fast mode. For more information, see
+    /// ARM Architecture Reference Manual ARMv7-A and ARMv7-R edition
+    /// section C8.2.2.
+    ///
+    /// In this mode, writing to the ITR register does not immediately
+    /// trigger the instruction. Instead, it waits for a read from DTRRX
+    /// or a write to DTRTX. By placing an instruction with address-increment
+    /// in the pipeline this way, a load or store can be retriggered
+    /// repeatedly to quickly stream memory.
+    fn with_dcc_fast_mode<R>(
         &mut self,
         f: impl FnOnce(&mut Self) -> Result<R, ArmError>,
     ) -> Result<R, ArmError> {
-        // Place DSCR in FAST mode
+        // Place DSCR in DCC Fast mode
         let mut dscr = self.dscr()?;
         dscr.set_extdccmode(2);
         self.set_dscr(dscr)?;
         let result = f(self);
 
-        // Return DSCR back to NON-BLOCKING mode
+        // Return DSCR back to DCC Non Blocking mode
         let mut dscr = self.dscr()?;
         dscr.set_extdccmode(0);
         self.set_dscr(dscr)?;
@@ -1215,7 +1224,7 @@ impl MemoryInterface for Armv7a<'_> {
                 // Ignore any errors encountered here -- they will set a Data Abort
                 // which we will pick up in `check_and_clear_data_abort()`
                 if banked
-                    .with_fast_mode(|banked| {
+                    .with_dcc_fast_mode(|banked| {
                         // LDC p14, c5, [r0], #4
                         banked.set_itr(build_ldc(14, 5, 0, 4))?;
 
@@ -1406,7 +1415,7 @@ impl MemoryInterface for Armv7a<'_> {
                 let mut banked = core.banked_access()?;
 
                 banked
-                    .with_fast_mode(|banked| {
+                    .with_dcc_fast_mode(|banked| {
                         // STC p14, c5, [r0], #4
                         banked.set_itr(build_stc(14, 5, 0, 4))?;
 
