@@ -6,7 +6,7 @@
 use std::fmt;
 use std::time::Duration;
 
-use bitvec::{bitvec, order::Lsb0, vec::BitVec, view::BitView};
+use bitvec::{bitvec, field::BitField, order::Lsb0, vec::BitVec, view::BitView};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 
@@ -393,16 +393,19 @@ impl JtagAccess for WchLink {
         tracing::debug!("read register 0x{:08x}", address);
         assert_eq!(len, 32);
 
+        let mut ret = bitvec![0; len as usize];
         match address as u8 {
             REG_IDCODE_ADDRESS => {
                 // using hard coded idcode 0x00000001, the same as WCH's openocd fork
                 tracing::debug!("using hard coded idcode 0x00000001");
-                Ok(0x1_usize.view_bits().to_bitvec())
+                ret[0..8].store_le::<u8>(0x1);
+                Ok(ret)
             }
             REG_DTMCS_ADDRESS => {
                 // See: RISC-V Debug Specification, 6.1.4
                 // 0x71: abits=7, version=1(1.0)
-                Ok(0x71_usize.view_bits().to_bitvec())
+                ret[0..8].store_le::<u8>(0x71);
+                Ok(ret)
             }
             REG_BYPASS_ADDRESS => Ok(bitvec![0; 4]),
             _ => panic!("unknown read register address {address:08x}"),
@@ -436,7 +439,9 @@ impl JtagAccess for WchLink {
                     return Err(WchLinkError::UnsupportedOperation.into());
                 }
 
-                Ok(0x71_usize.view_bits().to_bitvec())
+                let mut ret = bitvec![0; len as usize];
+                ret[0..8].store_le::<u8>(0x71);
+                Ok(ret)
             }
             REG_DMI_ADDRESS => {
                 assert_eq!(
@@ -491,12 +496,12 @@ impl JtagAccess for WchLink {
                     | (op as u128);
 
                 let ret_bytes = ret.to_le_bytes();
-                let mut ret = bitvec![0;32];
-                for byte in ret_bytes.iter() {
-                    ret.extend_from_bitslice(byte.view_bits::<Lsb0>());
-                }
-
-                Ok(ret)
+                Ok(ret_bytes
+                    .iter()
+                    .fold(BitVec::with_capacity(128), |mut acc, s| {
+                        acc.extend_from_bitslice(s.view_bits::<Lsb0>());
+                        acc
+                    }))
             }
             _ => unreachable!("unknown register address 0x{:08x}", address),
         }
