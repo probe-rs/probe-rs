@@ -57,7 +57,7 @@ memory_mapped_bitfield_register! {
     /// Fast mode.
     ///
     /// The value 0b11 is reserved.
-    pub extdccmode, _: 21, 20;
+    pub extdccmode, set_extdccmode: 21, 20;
 
     /// Asynchronous Aborts Discarded. The possible values of this bit are:
     ///
