@@ -11,11 +11,11 @@ use super::{
             AARCH32_CORE_REGISTERS, AARCH32_WITH_FP_16_CORE_REGISTERS,
             AARCH32_WITH_FP_32_CORE_REGISTERS,
         },
-        cortex_m::{FP, PC, RA, SP},
+        cortex_m::{FP, PC, RA, SP, XPSR},
     },
 };
 use crate::{
-    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
+    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType, Endian,
     InstructionSet, MemoryInterface,
     architecture::arm::{
         ArmError, core::armv7a_debug_regs::*, memory::ArmMemoryInterface,
@@ -23,13 +23,14 @@ use crate::{
     },
     core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
     error::Error,
-    memory::valid_32bit_address,
+    memory::{MemoryNotAlignedError, valid_32bit_address},
 };
 use std::{
     mem::size_of,
     sync::Arc,
     time::{Duration, Instant},
 };
+use zerocopy::IntoBytes;
 
 /// Errors for the ARMv7-A state machine
 #[derive(thiserror::Error, Debug)]
@@ -60,6 +61,8 @@ pub struct Armv7a<'probe> {
     num_breakpoints: Option<u32>,
 
     itr_enabled: bool,
+
+    endianness: Option<Endian>,
 }
 
 impl<'probe> Armv7a<'probe> {
@@ -96,6 +99,7 @@ impl<'probe> Armv7a<'probe> {
             sequence,
             num_breakpoints: None,
             itr_enabled: false,
+            endianness: None,
         };
 
         if !core.state.initialized() {
@@ -939,13 +943,29 @@ impl CoreInterface for Armv7a<'_> {
     }
 
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
-        let cpsr: u32 = self.read_core_reg(RegisterId(16))?.try_into()?;
+        let cpsr: u32 = self.read_core_reg(XPSR.id())?.try_into()?;
 
         // CPSR bit 5 - T - Thumb mode
         match (cpsr >> 5) & 1 {
             1 => Ok(InstructionSet::Thumb2),
             _ => Ok(InstructionSet::A32),
         }
+    }
+
+    fn endianness(&mut self) -> Result<Endian, Error> {
+        if let Some(endianness) = self.endianness {
+            return Ok(endianness);
+        }
+        let endianness = {
+            let psr = TryInto::<u32>::try_into(self.read_core_reg(XPSR.id())?).unwrap();
+            if psr & 1 << 9 == 0 {
+                Endian::Little
+            } else {
+                Endian::Big
+            }
+        };
+        self.endianness = Some(endianness);
+        Ok(endianness)
     }
 
     fn fpu_support(&mut self) -> Result<bool, Error> {
@@ -1033,13 +1053,26 @@ impl MemoryInterface for Armv7a<'_> {
     fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
         self.halted_access(|core| {
             // Find the word this is in and its byte offset
-            let byte_offset = address % 4;
+            let mut byte_offset = address % 4;
             let word_start = address - byte_offset;
 
             // Read the word
             let data = core.read_word_32(word_start)?;
 
-            // Return the byte
+            // We do 32-bit reads, so we need to take a different field
+            // if we're running on a big endian device.
+            if Endian::Big == core.endianness()? {
+                // TODO: This doesn't work accessing 16-bit words that are not aligned.
+                if address & 1 != 0 {
+                    return Err(Error::MemoryNotAligned(MemoryNotAlignedError {
+                        address,
+                        alignment: 2,
+                    }));
+                }
+                byte_offset = 2 - byte_offset;
+            }
+
+            // Return the 16-bit word
             Ok((data >> (byte_offset * 8)) as u16)
         })
     }
@@ -1047,11 +1080,18 @@ impl MemoryInterface for Armv7a<'_> {
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.halted_access(|core| {
             // Find the word this is in and its byte offset
-            let byte_offset = address % 4;
+            let mut byte_offset = address % 4;
+
             let word_start = address - byte_offset;
 
             // Read the word
             let data = core.read_word_32(word_start)?;
+
+            // We do 32-bit reads, so we need to take a different field
+            // if we're running on a big endian device.
+            if Endian::Big == core.endianness()? {
+                byte_offset = 3 - byte_offset;
+            }
 
             // Return the byte
             Ok(data.to_le_bytes()[byte_offset as usize])
@@ -1098,6 +1138,36 @@ impl MemoryInterface for Armv7a<'_> {
         })
     }
 
+    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        self.halted_access(|core| {
+            if address % 4 == 0 && data.len() % 4 == 0 {
+                // Avoid heap allocation and copy if we don't need it.
+                core.read_mem_32bit(address, data)?;
+                if core.endianness()? == Endian::Big {
+                    for word in data.chunks_exact_mut(4) {
+                        word.reverse();
+                    }
+                }
+            } else {
+                let start_address = address & !3;
+                let end_address = address + (data.len() as u64);
+                let end_address = end_address + (4 - (end_address & 3));
+                let start_extra_count = address as usize % 4;
+                let mut buffer = vec![0u32; (end_address - start_address) as usize / 4];
+                core.read_32(start_address, &mut buffer)?;
+                if core.endianness()? == Endian::Big {
+                    for word in buffer.iter_mut() {
+                        *word = word.swap_bytes();
+                    }
+                }
+                data.copy_from_slice(
+                    &buffer.as_bytes()[start_extra_count..start_extra_count + data.len()],
+                );
+            }
+            Ok(())
+        })
+    }
+
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         self.halted_access(|core| {
             let data_low = data as u32;
@@ -1129,8 +1199,14 @@ impl MemoryInterface for Armv7a<'_> {
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         self.halted_access(|core| {
             // Find the word this is in and its byte offset
-            let byte_offset = address % 4;
+            let mut byte_offset = address % 4;
             let word_start = address - byte_offset;
+
+            // We do 32-bit reads and writes, so we need to take a different field
+            // if we're running on a big endian device.
+            if Endian::Big == core.endianness()? {
+                byte_offset = 3 - byte_offset;
+            }
 
             // Get the current word value
             let current_word = core.read_word_32(word_start)?;
@@ -1144,8 +1220,21 @@ impl MemoryInterface for Armv7a<'_> {
     fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
         self.halted_access(|core| {
             // Find the word this is in and its byte offset
-            let byte_offset = address % 4;
+            let mut byte_offset = address % 4;
             let word_start = address - byte_offset;
+
+            // We do 32-bit reads and writes, so we need to take a different field
+            // if we're running on a big endian device.
+            if Endian::Big == core.endianness()? {
+                // TODO: This doesn't work when accessing 16-bit words that are not aligned.
+                if address & 1 != 0 {
+                    return Err(Error::MemoryNotAligned(MemoryNotAlignedError {
+                        address,
+                        alignment: 2,
+                    }));
+                }
+                byte_offset = 2 - byte_offset;
+            }
 
             // Get the current word value
             let mut word = core.read_word_32(word_start)?;
@@ -1189,10 +1278,36 @@ impl MemoryInterface for Armv7a<'_> {
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.write(address, data)
+    }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.halted_access(|core| {
-            for (i, byte) in data.iter().enumerate() {
-                core.write_word_8(address + (i as u64), *byte)?;
+            let len = data.len();
+            let start_extra_count = ((4 - (address % 4) as usize) % 4).min(len);
+            let end_extra_count = (len - start_extra_count) % 4;
+            assert!(start_extra_count < 4);
+            assert!(end_extra_count < 4);
+
+            // Fall back to slower bytewise access if it's not aligned
+            if start_extra_count != 0 || end_extra_count != 0 {
+                for (i, byte) in data.iter().enumerate() {
+                    core.write_word_8(address + (i as u64), *byte)?;
+                }
+                return Ok(());
             }
+
+            // Make sure we don't try to do an empty but potentially unaligned write
+            // We do a 32 bit write of the remaining bytes that are 4 byte aligned.
+            let mut buffer = vec![0u32; data.len() / 4];
+            let endianness = core.endianness()?;
+            for (bytes, value) in data.chunks_exact(4).zip(buffer.iter_mut()) {
+                *value = match endianness {
+                    Endian::Little => u32::from_le_bytes(bytes.try_into().unwrap()),
+                    Endian::Big => u32::from_be_bytes(bytes.try_into().unwrap()),
+                }
+            }
+            core.write_32(address, &buffer)?;
 
             Ok(())
         })
@@ -1226,6 +1341,7 @@ mod test {
         ((address - TEST_BASE_ADDRESS) / 4) as u32
     }
 
+    #[derive(Debug)]
     pub struct ExpectedMemoryOp {
         read: bool,
         address: u64,
@@ -1570,6 +1686,14 @@ mod test {
         );
     }
 
+    impl Drop for MockProbe {
+        fn drop(&mut self) {
+            if !self.expected_ops.is_empty() {
+                panic!("self.expected_ops is not empty: {:?}", self.expected_ops);
+            }
+        }
+    }
+
     #[test]
     fn armv7a_new() {
         let mut probe = MockProbe::new();
@@ -1719,7 +1843,6 @@ mod test {
             Dbgdscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             dbgdscr.into(),
         );
-        add_read_fp_count_expectations(&mut probe);
 
         let mock_mem = Box::new(probe) as _;
 
@@ -1845,13 +1968,13 @@ mod test {
         // First read will hit expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(16)).unwrap()
+            armv7a.read_core_reg(XPSR.id()).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(16)).unwrap()
+            armv7a.read_core_reg(XPSR.id()).unwrap()
         );
     }
 
@@ -2150,12 +2273,7 @@ mod test {
         assert_eq!(MEMORY_VALUE, armv7a.read_word_32(MEMORY_ADDRESS).unwrap());
     }
 
-    #[test]
-    fn armv7a_read_word_8() {
-        const MEMORY_VALUE: u32 = 0xBA5EBA11;
-        const MEMORY_ADDRESS: u64 = 0x12345679;
-        const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
-
+    fn test_read_word(value: u32, address: u64, memory_word_address: u64, endian: Endian) -> u8 {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
@@ -2166,7 +2284,11 @@ mod test {
         add_read_fp_count_expectations(&mut probe);
 
         // Read memory
-        add_read_memory_expectations(&mut probe, MEMORY_WORD_ADDRESS, MEMORY_VALUE);
+        add_read_memory_expectations(&mut probe, memory_word_address, value);
+
+        // Set endianx
+        let cpsr = if endian == Endian::Big { 1 << 9 } else { 0 };
+        add_read_cpsr_expectations(&mut probe, cpsr);
 
         let mock_mem = Box::new(probe) as _;
 
@@ -2177,7 +2299,40 @@ mod test {
             DefaultArmSequence::create(),
         )
         .unwrap();
+        armv7a.read_word_8(address).unwrap()
+    }
 
-        assert_eq!(0xBA, armv7a.read_word_8(MEMORY_ADDRESS).unwrap());
+    #[test]
+    fn armv7a_read_word_8() {
+        const MEMORY_VALUE: u32 = 0xBA5EBB11;
+        const MEMORY_ADDRESS: u64 = 0x12345679;
+        const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
+
+        assert_eq!(
+            0xBB,
+            test_read_word(
+                MEMORY_VALUE,
+                MEMORY_ADDRESS,
+                MEMORY_WORD_ADDRESS,
+                Endian::Little
+            )
+        );
+    }
+
+    #[test]
+    fn armv7a_read_word_8_be() {
+        const MEMORY_VALUE: u32 = 0xBA5EBB11;
+        const MEMORY_ADDRESS: u64 = 0x12345679;
+        const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
+
+        assert_eq!(
+            0x5E,
+            test_read_word(
+                MEMORY_VALUE,
+                MEMORY_ADDRESS,
+                MEMORY_WORD_ADDRESS,
+                Endian::Big
+            )
+        );
     }
 }

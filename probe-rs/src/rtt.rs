@@ -55,7 +55,7 @@ use std::ops::Range;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
-use zerocopy::FromBytes;
+use zerocopy::{FromBytes, IntoBytes};
 
 /// The RTT interface.
 ///
@@ -244,10 +244,16 @@ impl Rtt {
     ) -> Result<Rtt, Error> {
         let is_64_bit = core.is_64_bit();
 
-        let mut mem = [0u8; RttControlBlockHeader::minimal_header_size(true)];
-        core.read(ptr, &mut mem)?;
+        let mut mem = [0u32; RttControlBlockHeader::minimal_header_size(true) / 4];
+        // Read the magic value first as unordered data, and read the subsequent pointers
+        // as ordered u32 values.
+        core.read(ptr, &mut mem.as_mut_bytes()[0..Self::RTT_ID.len()])?;
+        core.read_32(
+            ptr + Self::RTT_ID.len() as u64,
+            &mut mem[Self::RTT_ID.len() / 4..],
+        )?;
 
-        let rtt_header = RttControlBlockHeader::try_from_header(is_64_bit, &mem)
+        let rtt_header = RttControlBlockHeader::try_from_header(is_64_bit, mem.as_bytes())
             .ok_or(Error::ControlBlockNotFound)?;
 
         // Validate that the control block starts with the ID bytes
@@ -273,8 +279,8 @@ impl Rtt {
 
         // Read the rest of the control block
         let channel_buffer_len = rtt_header.total_rtt_buffer_size() - rtt_header.header_size();
-        let mut mem = vec![0; channel_buffer_len];
-        core.read(ptr + rtt_header.header_size() as u64, &mut mem)?;
+        let mut mem = vec![0; channel_buffer_len / 4];
+        core.read_32(ptr + rtt_header.header_size() as u64, &mut mem)?;
 
         let mut up_channels = Vec::new();
         let mut down_channels = Vec::new();
@@ -283,12 +289,12 @@ impl Rtt {
 
         let up_channels_start = 0;
         let up_channels_len = max_up_channels * channel_buffer_size;
-        let up_channels_raw_buffer = &mem[up_channels_start..][..up_channels_len];
+        let up_channels_raw_buffer = &mem.as_bytes()[up_channels_start..][..up_channels_len];
         let up_channels_buffer = rtt_header.parse_channel_buffers(up_channels_raw_buffer)?;
 
         let down_channels_start = up_channels_start + up_channels_len;
         let down_channels_len = max_down_channels * channel_buffer_size;
-        let down_channels_raw_buffer = &mem[down_channels_start..][..down_channels_len];
+        let down_channels_raw_buffer = &mem.as_bytes()[down_channels_start..][..down_channels_len];
         let down_channels_buffer = rtt_header.parse_channel_buffers(down_channels_raw_buffer)?;
 
         let mut offset = ptr + rtt_header.header_size() as u64 + up_channels_start as u64;
