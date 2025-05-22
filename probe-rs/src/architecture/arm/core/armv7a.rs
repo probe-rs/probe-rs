@@ -1234,7 +1234,9 @@ impl MemoryInterface for Armv7a<'_> {
                     // Grab the last value. Ignore any errors here since they will generate
                     // an abort that will be caught below.
                     if let Ok(last) = banked.dtrrx() {
-                        data.last_mut().map(|v| *v = last);
+                        if let Some(v) = data.last_mut() {
+                            *v = last;
+                        }
                     }
                 }
 
