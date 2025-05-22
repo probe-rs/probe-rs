@@ -99,12 +99,8 @@ pub struct RawFlashAlgorithm {
     pub transfer_encoding: Option<TransferEncoding>,
 
     /// `true` if the instructions are saved in Big Endian format
-    #[serde(default = "no")]
+    #[serde(default)]
     pub big_endian: bool,
-}
-
-fn no() -> bool {
-    false
 }
 
 impl RawFlashAlgorithm {
