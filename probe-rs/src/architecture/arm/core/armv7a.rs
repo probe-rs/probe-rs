@@ -56,7 +56,7 @@ impl<'a> BankedAccess<'a> {
     fn dscr(&mut self) -> Result<Dbgdscr, ArmError> {
         self.interface
             .read_raw_ap_register(&self.ap, self.dscr)
-            .map(|v| Dbgdscr::from(v))
+            .map(Dbgdscr::from)
     }
 
     fn set_dscr(&mut self, value: Dbgdscr) -> Result<(), ArmError> {
