@@ -131,8 +131,9 @@ async fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), Oper
     let (mut session, probe_options) = opt.probe_options.simple_attach(registry, &lister).await?;
 
     // Flash the binary
-    let loader =
-        flash::build_loader(&mut session, &path, opt.format_options, image_instr_set).unwrap();
+    let loader = flash::build_loader(&mut session, &path, opt.format_options, image_instr_set)
+        .await
+        .unwrap();
     flash::run_flash_download(
         &mut session,
         &path,

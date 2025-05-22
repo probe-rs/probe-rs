@@ -4,7 +4,7 @@ use probe_rs_target::TransferEncoding;
 
 use crate::flashing::{FlashLayout, FlashPage, FlashSector};
 
-trait EncoderAlgorithm {
+trait EncoderAlgorithm: Send + Sync {
     fn pages(&self) -> &[FlashPage];
     fn sectors(&self) -> &[FlashSector];
     fn layout(&self) -> &FlashLayout;

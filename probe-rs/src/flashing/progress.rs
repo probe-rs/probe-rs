@@ -16,12 +16,12 @@ use std::{sync::Arc, time::Duration};
 /// ```
 #[derive(Clone)]
 pub struct FlashProgress<'a> {
-    handler: Arc<dyn Fn(ProgressEvent) + 'a>,
+    handler: Arc<dyn Fn(ProgressEvent) + Send + Sync + 'a>,
 }
 
 impl<'a> FlashProgress<'a> {
     /// Create a new `FlashProgress` structure with a given `handler` to be called on events.
-    pub fn new(handler: impl Fn(ProgressEvent) + 'a) -> Self {
+    pub fn new(handler: impl Fn(ProgressEvent) + Send + Sync + 'a) -> Self {
         Self {
             handler: Arc::new(handler),
         }

@@ -55,6 +55,7 @@ tracing-subscriber = { version = "0.3.18", features = [
 ] }
 xshell = { version = "0.2", default-features = false }
 parse_int = "0.9"
+parking_lot = "0.12"
 zerocopy = { version = "0.8.0", features = ["derive"] }
 
 [dev-dependencies]

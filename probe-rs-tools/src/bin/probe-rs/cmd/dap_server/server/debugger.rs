@@ -25,6 +25,7 @@ use crate::{
     util::flash::build_loader,
 };
 use anyhow::{Context, anyhow};
+use parking_lot::Mutex;
 use probe_rs::{
     CoreStatus,
     config::Registry,
@@ -597,7 +598,7 @@ impl Debugger {
         download_options.do_chip_erase = config.flashing_config.full_chip_erase;
         download_options.verify = config.flashing_config.verify_after_flashing;
 
-        let ref_debug_adapter = RefCell::new(&mut *debug_adapter);
+        let ref_debug_adapter = Mutex::new(&mut *debug_adapter);
 
         #[derive(Default)]
         struct ProgressBarState {
@@ -607,7 +608,7 @@ impl Debugger {
 
         type ProgressState = HashMap<Operation, ProgressBarState>;
 
-        let progress_state = RefCell::new(ProgressState::default());
+        let progress_state = Mutex::new(ProgressState::default());
 
         download_options.progress = progress_id.map(|id| {
             let describe_op = |operation| match Operation::from(operation) {
@@ -618,8 +619,8 @@ impl Debugger {
             };
 
             FlashProgress::new(move |event| {
-                let mut flash_progress = progress_state.borrow_mut();
-                let mut debug_adapter = ref_debug_adapter.borrow_mut();
+                let mut flash_progress = progress_state.lock();
+                let mut debug_adapter = ref_debug_adapter.lock();
                 match event {
                     ProgressEvent::AddProgressBar { operation, total } => {
                         let pbar_state = flash_progress.entry(operation.into()).or_default();
@@ -673,7 +674,9 @@ impl Debugger {
             path_to_elf,
             config.flashing_config.format_options.clone(),
             None,
-        ) {
+        )
+        .await
+        {
             Ok(loader) => {
                 let do_flashing = if config.flashing_config.verify_before_flashing {
                     match loader
@@ -1276,7 +1279,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core_and_binary(program_binary().as_path());
+        let mut fake_probe = FakeProbe::with_mocked_core_and_binary(program_binary().as_path());
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {

@@ -1,10 +1,10 @@
-use std::cell::RefCell;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow};
 use colored::Colorize;
+use parking_lot::Mutex;
 use probe_rs::{
     MemoryInterface, Permissions, Session, SessionConfig,
     config::Registry,
@@ -124,27 +124,27 @@ pub async fn cmd_test(
         probe.attach_with_registry(target_name, session_config.permissions, &registry)?;
 
     // Register callback to update the progress.
-    let t = Rc::new(RefCell::new(Instant::now()));
+    let t = Arc::new(Mutex::new(Instant::now()));
     let progress = FlashProgress::new(move |event| match event {
         ProgressEvent::Started(ProgressOperation::Program) => {
-            let mut t = t.borrow_mut();
+            let mut t = t.lock();
             *t = Instant::now();
         }
         ProgressEvent::Started(ProgressOperation::Erase) => {
-            let mut t = t.borrow_mut();
+            let mut t = t.lock();
             *t = Instant::now();
         }
         ProgressEvent::Failed(ProgressOperation::Erase) => {
-            println!("Failed erasing in {:?}", t.borrow().elapsed());
+            println!("Failed erasing in {:?}", t.lock().elapsed());
         }
         ProgressEvent::Finished(ProgressOperation::Erase) => {
-            println!("Finished erasing in {:?}", t.borrow().elapsed());
+            println!("Finished erasing in {:?}", t.lock().elapsed());
         }
         ProgressEvent::Failed(ProgressOperation::Program) => {
-            println!("Failed programming in {:?}", t.borrow().elapsed());
+            println!("Failed programming in {:?}", t.lock().elapsed());
         }
         ProgressEvent::Finished(ProgressOperation::Program) => {
-            println!("Finished programming in {:?}", t.borrow().elapsed());
+            println!("Finished programming in {:?}", t.lock().elapsed());
         }
         ProgressEvent::DiagnosticMessage { message } => {
             let prefix = "Message".yellow();

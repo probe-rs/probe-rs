@@ -4179,6 +4179,7 @@ dependencies = [
  "jep106",
  "log",
  "macro_rules_attribute",
+ "parking_lot",
  "parse_int 0.9.0",
  "probe-rs",
  "probe-rs-target",
