@@ -953,21 +953,19 @@ impl CoreInterface for Armv7a<'_> {
     }
 
     fn endianness(&mut self) -> Result<Endian, Error> {
-        Ok(match self.endianness {
-            Some(endianness) => endianness,
-            None => {
-                let endianness = {
-                    let psr = TryInto::<u32>::try_into(self.read_core_reg(XPSR.id())?).unwrap();
-                    if psr & 1 << 9 == 0 {
-                        Endian::Little
-                    } else {
-                        Endian::Big
-                    }
-                };
-                self.endianness = Some(endianness);
-                endianness
+        if let Some(endianness) = self.endianness {
+            return Ok(endianness);
+        }
+        let endianness = {
+            let psr = TryInto::<u32>::try_into(self.read_core_reg(XPSR.id())?).unwrap();
+            if psr & 1 << 9 == 0 {
+                Endian::Little
+            } else {
+                Endian::Big
             }
-        })
+        };
+        self.endianness = Some(endianness);
+        Ok(endianness)
     }
 
     fn fpu_support(&mut self) -> Result<bool, Error> {
