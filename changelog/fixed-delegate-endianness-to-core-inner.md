@@ -1,0 +1,1 @@
+Fixed an issue where the endianness call on the core was not getting delegated to the inner core interface.

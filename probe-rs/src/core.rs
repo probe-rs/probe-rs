@@ -519,6 +519,12 @@ impl<'probe> Core<'probe> {
         self.inner.core_type()
     }
 
+    /// Returns the endianness of the current operating mode
+    /// of the core.
+    pub fn endianness(&mut self) -> Result<Endian, Error> {
+        self.inner.endianness()
+    }
+
     /// Determine the instruction set the core is operating in
     /// This must be queried while halted as this is a runtime
     /// decision for some core types
