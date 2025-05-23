@@ -1426,7 +1426,6 @@ mod test {
             exception_handler_for_core,
         },
         stack_frame::{StackFrameInfo, TestFormatter},
-        test::debug_registers,
     };
 
     use gimli::RegisterRule;
@@ -1940,7 +1939,7 @@ mod test {
         let mut adapter = CoreDump::load_raw(coredump).unwrap();
         let debug_info = DebugInfo::from_file(elf).unwrap();
 
-        let initial_registers = debug_registers(&adapter);
+        let initial_registers = DebugRegisters::from_coredump(&adapter);
         let exception_handler = exception_handler_for_core(adapter.core_type());
         let instruction_set = adapter.instruction_set();
 
@@ -1985,7 +1984,7 @@ mod test {
 
         let snapshot_name = test_name.to_string();
 
-        let initial_registers = debug_registers(&adapter);
+        let initial_registers = DebugRegisters::from_coredump(&adapter);
         let exception_handler = exception_handler_for_core(adapter.core_type());
         let instruction_set = adapter.instruction_set();
 
@@ -2037,7 +2036,7 @@ mod test {
         let coredump_path = coredump_path(format!("debug-unwind-tests/{chip_name}"));
         let mut adapter = CoreDump::load(&coredump_path).unwrap();
 
-        let initial_registers = debug_registers(&adapter);
+        let initial_registers = DebugRegisters::from_coredump(&adapter);
 
         let snapshot_name = format!("{chip_name}_static_variables");
 

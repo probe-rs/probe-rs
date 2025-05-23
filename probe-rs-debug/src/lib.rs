@@ -26,9 +26,6 @@ pub mod variable_cache;
 
 pub(crate) mod exception_handling;
 
-#[cfg(test)]
-mod test;
-
 pub use self::{
     debug_info::*, debug_step::SteppingMode, exception_handling::exception_handler_for_core,
     registers::*, source_instructions::SourceLocation, source_instructions::VerifiedBreakpoint,
