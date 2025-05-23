@@ -12,6 +12,7 @@ use crate::rtt::{self, Rtt, ScanRegion};
 use crate::{Core, InstructionSet, core::CoreRegisters, session::Session};
 use crate::{CoreStatus, Target};
 use std::marker::PhantomData;
+use std::pin::Pin;
 use std::{
     fmt::Debug,
     time::{Duration, Instant},
@@ -276,8 +277,8 @@ impl Flasher {
             // may have invalidated any previously invalid state
             self.load(session)
         } else {
-            self.run_erase(session, progress, async |active, _| {
-                active.erase_all().await
+            self.run_erase(session, progress, |active, _| {
+                Box::pin(async move { active.erase_all().await })
             })
             .await
         };
@@ -308,19 +309,21 @@ impl Flasher {
         Ok(r)
     }
 
-    pub(super) async fn run_erase<'p, T, F>(
+    pub(super) async fn run_erase<'p, T: Default, F>(
         &mut self,
         session: &mut Session,
         progress: &FlashProgress<'p>,
         f: F,
     ) -> Result<T, FlashError>
     where
-        F: AsyncFnOnce(
-            &mut ActiveFlasher<'_, 'p, Erase>,
-            &mut [LoadedRegion],
-        ) -> Result<T, FlashError>,
+        F: for<'f> FnOnce(
+            &'f mut ActiveFlasher<'_, 'p, Erase>,
+            &'f mut [LoadedRegion],
+        ) -> Pin<
+            Box<dyn Future<Output = Result<T, FlashError>> + Send + Sync + 'f>,
+        >,
     {
-        let (mut active, data) = self.init(session, progress, None).await?;
+        let (mut active, data) = self.init::<Erase>(session, progress, None).await?;
         let r = f(&mut active, data).await?;
         active.uninit().await?;
         Ok(r)
@@ -351,10 +354,12 @@ impl Flasher {
         f: F,
     ) -> Result<T, FlashError>
     where
-        F: AsyncFnOnce(
-            &mut ActiveFlasher<'_, 'p, Verify>,
-            &mut [LoadedRegion],
-        ) -> Result<T, FlashError>,
+        F: for<'f> FnOnce(
+            &'f mut ActiveFlasher<'_, 'p, Verify>,
+            &'f mut [LoadedRegion],
+        ) -> Pin<
+            Box<dyn Future<Output = Result<T, FlashError>> + Send + Sync + 'f>,
+        >,
     {
         let (mut active, data) = self.init(session, progress, None).await?;
         let r = f(&mut active, data).await?;
@@ -425,10 +430,17 @@ impl Flasher {
     ) -> Result<(), FlashError> {
         progress.started_filling();
 
-        async fn fill_pages(
+        async fn fill_pages<'p>(
+            active: &mut ActiveFlasher<'_, 'p, Verify>,
             regions: &mut [LoadedRegion],
             progress: &FlashProgress<'_>,
-            mut read: impl AsyncFnMut(u64, &mut [u8]) -> Result<(), FlashError>,
+            mut read: impl for<'f> FnMut(
+                &'f mut ActiveFlasher<'_, 'p, Verify>,
+                u64,
+                &'f mut [u8],
+            ) -> Pin<
+                Box<dyn Future<Output = Result<(), FlashError>> + Send + Sync + 'f>,
+            >,
         ) -> Result<(), FlashError> {
             for region in regions.iter_mut() {
                 let layout = region.data.layout_mut();
@@ -439,7 +451,7 @@ impl Flasher {
                     let page_offset = (fill.address() - page.address()) as usize;
                     let page_slice = &mut page.data_mut()[page_offset..][..fill.size() as usize];
 
-                    read(fill.address(), page_slice).await?;
+                    read(active, fill.address(), page_slice).await?;
 
                     progress.page_filled(fill.size(), t.elapsed());
                 }
@@ -449,19 +461,29 @@ impl Flasher {
         }
 
         let result = if self.flash_algorithm.pc_read.is_some() {
-            self.run_verify(session, progress, async |active, data| {
-                fill_pages(data, progress, async |address, data| {
-                    active.read_flash(address, data).await
+            self.run_verify(session, progress, |active, data| {
+                Box::pin(async move {
+                    fill_pages(active, data, progress, |active, address, data| {
+                        Box::pin(async move { active.read_flash(address, data).await })
+                    })
+                    .await
                 })
-                .await
             })
             .await
         } else {
+            // TODO: Currently we cannot capture outside names as we want because of typesystem
+            // restrictions. So we still need an active flasher. This has a tiny bit of overhead.
             // Not using a flash algorithm function, so there's no need to go
             // through ActiveFlasher.
-            let mut core = session.core(0).map_err(FlashError::Core)?;
-            fill_pages(&mut self.regions, progress, async |address, data| {
-                core.read(address, data).map_err(FlashError::Core)
+            self.run_verify(session, progress, |active, data| {
+                Box::pin(async move {
+                    fill_pages(active, data, progress, |active, address, data| {
+                        Box::pin(async move {
+                            active.core.read(address, data).map_err(FlashError::Core)
+                        })
+                    })
+                    .await
+                })
             })
             .await
         };
@@ -502,67 +524,78 @@ impl Flasher {
         let encoding = self.flash_algorithm.transfer_encoding;
         if let Some(verify) = self.flash_algorithm.pc_verify {
             // Try to use the verify function if available.
-            self.run_verify(session, progress, async |active, data| {
-                for region in data {
-                    tracing::debug!("Verify using CMSIS function");
+            self.run_verify(session, progress, |active, data| {
+                Box::pin(async move {
+                    {
+                        for region in data {
+                            tracing::debug!("Verify using CMSIS function");
 
-                    // Prefer Verify as we may use compression
-                    let flash_encoder = region.data.encoder(encoding, ignore_filled);
+                            // Prefer Verify as we may use compression
+                            let flash_encoder = region.data.encoder(encoding, ignore_filled);
 
-                    for page in flash_encoder.pages() {
-                        let start = Instant::now();
-                        let address = page.address();
-                        let bytes = page.data();
+                            for page in flash_encoder.pages() {
+                                let start = Instant::now();
+                                let address = page.address();
+                                let bytes = page.data();
 
-                        tracing::debug!(
-                            "Verifying page at address {:#010x} with size: {}",
-                            address,
-                            bytes.len()
-                        );
+                                tracing::debug!(
+                                    "Verifying page at address {:#010x} with size: {}",
+                                    address,
+                                    bytes.len()
+                                );
 
-                        // Transfer the bytes to RAM.
-                        let buffer_address = active.load_page_buffer(bytes, 0).await?;
+                                // Transfer the bytes to RAM.
+                                let buffer_address = active.load_page_buffer(bytes, 0).await?;
 
-                        let result = active
-                            .call_function_and_wait(
-                                &Registers {
-                                    pc: into_reg(verify)?,
-                                    r0: Some(into_reg(address)?),
-                                    r1: Some(into_reg(bytes.len() as u64)?),
-                                    r2: Some(into_reg(buffer_address)?),
-                                    r3: None,
-                                },
-                                false,
-                                Duration::from_secs(30),
-                            )
-                            .await?;
+                                let result = active
+                                    .call_function_and_wait(
+                                        &Registers {
+                                            pc: into_reg(verify)?,
+                                            r0: Some(into_reg(address)?),
+                                            r1: Some(into_reg(bytes.len() as u64)?),
+                                            r2: Some(into_reg(buffer_address)?),
+                                            r3: None,
+                                        },
+                                        false,
+                                        Duration::from_secs(30),
+                                    )
+                                    .await?;
 
-                        // Returns
-                        // status information:
-                        // the sum of (adr+sz) - on success.
-                        // any other number - on failure, and represents the failing address.
-                        if result as u64 != address + bytes.len() as u64 {
-                            tracing::debug!(
-                                "Verification failed for page at address {:#010x}",
-                                result
-                            );
-                            return Ok(false);
+                                // Returns
+                                // status information:
+                                // the sum of (adr+sz) - on success.
+                                // any other number - on failure, and represents the failing address.
+                                if result as u64 != address + bytes.len() as u64 {
+                                    tracing::debug!(
+                                        "Verification failed for page at address {:#010x}",
+                                        result
+                                    );
+                                    return Ok(false);
+                                }
+
+                                progress.page_verified(bytes.len() as u64, start.elapsed());
+                            }
                         }
-
-                        progress.page_verified(bytes.len() as u64, start.elapsed());
+                        Ok(true)
                     }
-                }
-                Ok(true)
+                })
             })
             .await
         } else {
             tracing::debug!("Verify by reading back flash contents");
 
-            async fn compare_flash(
+            async fn compare_flash<'p>(
+                active: &mut ActiveFlasher<'_, 'p, Verify>,
                 regions: &[LoadedRegion],
                 progress: &FlashProgress<'_>,
                 ignore_filled: bool,
-                mut read: impl AsyncFnMut(u64, &mut [u8]) -> Result<(), FlashError>,
+                mut read: impl for<'f> FnMut(
+                    &'f mut ActiveFlasher<'_, 'p, Verify>,
+                    u64,
+                    &'f mut [u8],
+                ) -> Pin<
+                    Box<dyn Future<Output = Result<(), FlashError>> + Send + Sync + 'f>,
+                >,
             ) -> Result<bool, FlashError> {
                 for region in regions {
                     let layout = region.data.layout();
@@ -572,7 +605,7 @@ impl Flasher {
                         let data = page.data();
 
                         let mut read_back = vec![0; data.len()];
-                        read(address, &mut read_back).await?;
+                        read(active, address, &mut read_back).await?;
 
                         if ignore_filled {
                             // "Unfill" fill regions. These don't get flashed, so their contents are
@@ -606,23 +639,42 @@ impl Flasher {
             }
 
             if self.flash_algorithm.pc_read.is_some() {
-                self.run_verify(session, progress, async |active, data| {
-                    compare_flash(data, progress, ignore_filled, async |address, data| {
-                        active.read_flash(address, data).await
+                self.run_verify(session, progress, |active, data| {
+                    Box::pin(async move {
+                        {
+                            compare_flash(
+                                active,
+                                data,
+                                progress,
+                                ignore_filled,
+                                |active, address, data| {
+                                    Box::pin(async move { active.read_flash(address, data).await })
+                                },
+                            )
+                            .await
+                        }
                     })
-                    .await
                 })
                 .await
             } else {
                 // Not using a flash algorithm function, so there's no need to go
                 // through ActiveFlasher.
-                let mut core = session.core(0).map_err(FlashError::Core)?;
-                compare_flash(
-                    &self.regions,
-                    progress,
-                    ignore_filled,
-                    async |address, data| core.read(address, data).map_err(FlashError::Core),
-                )
+                self.run_verify(session, progress, |active, data| {
+                    Box::pin(async move {
+                        compare_flash(
+                            active,
+                            data,
+                            progress,
+                            ignore_filled,
+                            |active, address, data| {
+                                Box::pin(async move {
+                                    active.core.read(address, data).map_err(FlashError::Core)
+                                })
+                            },
+                        )
+                        .await
+                    })
+                })
                 .await
             }
         }
@@ -639,19 +691,20 @@ impl Flasher {
         let encoding = self.flash_algorithm.transfer_encoding;
 
         let result = self
-            .run_erase(session, progress, async |active, data| {
-                for region in data.iter_mut() {
-                    for sector in region.data.encoder(encoding, false).sectors() {
-                        active
-                            .erase_sector(sector)
-                            .await
-                            .map_err(|e| FlashError::EraseFailed {
-                                sector_address: sector.address(),
-                                source: Box::new(e),
+            .run_erase(session, progress, |active, data| {
+                Box::pin(async move {
+                    for region in data.iter_mut() {
+                        for sector in region.data.encoder(encoding, false).sectors() {
+                            active.erase_sector(sector).await.map_err(|e| {
+                                FlashError::EraseFailed {
+                                    sector_address: sector.address(),
+                                    source: Box::new(e),
+                                }
                             })?;
+                        }
                     }
-                }
-                Ok(())
+                    Ok(())
+                })
             })
             .await;
 

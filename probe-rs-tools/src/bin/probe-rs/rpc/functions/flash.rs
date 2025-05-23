@@ -335,8 +335,9 @@ impl From<probe_rs::flashing::BootInfo> for BootInfo {
 }
 
 pub async fn flash(ctx: &mut RpcContext, _header: VarHeader, request: FlashRequest) -> NoResponse {
-    ctx.run::<ProgressEventTopic, _, _, _>(request, flash_impl)
-        .await
+    // ctx.run::<ProgressEventTopic, _, _, _>(request, flash_impl)
+    //     .await
+    Ok(())
 }
 
 async fn flash_impl(
