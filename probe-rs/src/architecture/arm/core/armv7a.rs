@@ -1332,8 +1332,7 @@ impl MemoryInterface for Armv7a<'_> {
                 Endian::Big => ((data >> 32) as u32, data as u32),
             };
 
-            core.write_word_32(address, data_low)?;
-            core.write_word_32(address + 4, data_high)
+            core.write_32(address, &[data_low, data_high])
         })
     }
 
