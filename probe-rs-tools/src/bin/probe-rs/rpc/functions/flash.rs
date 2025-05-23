@@ -345,14 +345,16 @@ async fn flash_impl(
     sender: Sender<ProgressEvent>,
 ) -> NoResponse {
     let dry_run = ctx.dry_run(request.sessid);
-    let mut session = ctx.session_blocking(request.sessid);
+    let mut session = ctx.session(request.sessid).await;
 
-    let mut rtt_client = request
-        .rtt_client
-        .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
+    let mut rtt_client = if let Some(rtt_client) = request.rtt_client {
+        Some(ctx.object_mut(rtt_client).await)
+    } else {
+        None
+    };
 
     // build loader
-    let loader = ctx.object_mut_blocking(request.loader);
+    let loader = ctx.object_mut(request.loader).await;
 
     if let Some(rtt_client) = rtt_client.as_mut() {
         rtt_client.configure_from_loader(&loader);
@@ -394,7 +396,7 @@ async fn erase_impl(
     request: EraseRequest,
     sender: Sender<ProgressEvent>,
 ) -> NoResponse {
-    let mut session = ctx.session_blocking(request.sessid);
+    let mut session = ctx.session(request.sessid).await;
 
     let progress = FlashProgress::new(move |event| {
         ProgressEvent::from_library_event(event, |event| {
@@ -440,8 +442,8 @@ async fn verify_impl(
     request: VerifyRequest,
     sender: Sender<ProgressEvent>,
 ) -> VerifyResponse {
-    let mut session = ctx.session_blocking(request.sessid);
-    let loader = ctx.object_mut_blocking(request.loader);
+    let mut session = ctx.session(request.sessid).await;
+    let loader = ctx.object_mut(request.loader).await;
 
     let progress = FlashProgress::new(move |event| {
         ProgressEvent::from_library_event(event, |event| {

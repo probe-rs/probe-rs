@@ -213,15 +213,15 @@ impl RpcSpawnContext {
         self.state.dry_run(sessid)
     }
 
-    fn session_blocking(&self, sessid: Key<Session>) -> impl DerefMut<Target = Session> + use<> {
-        self.state.session_blocking(sessid)
+    async fn session(&self, sessid: Key<Session>) -> impl DerefMut<Target = Session> + use<> {
+        self.state.session(sessid).await
     }
 
-    pub fn object_mut_blocking<T: Any + Send>(
+    pub async fn object_mut<T: Any + Send>(
         &self,
         key: Key<T>,
     ) -> impl DerefMut<Target = T> + Send + use<T> {
-        self.state.object_mut_blocking(key)
+        self.state.object_mut(key).await
     }
 
     pub fn cancellation_token(&self) -> CancellationToken {
