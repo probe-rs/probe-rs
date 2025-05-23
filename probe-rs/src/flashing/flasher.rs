@@ -336,10 +336,12 @@ impl Flasher {
         f: F,
     ) -> Result<T, FlashError>
     where
-        F: AsyncFnOnce(
-            &mut ActiveFlasher<'_, 'p, Program>,
-            &mut [LoadedRegion],
-        ) -> Result<T, FlashError>,
+        F: for<'f> FnOnce(
+            &'f mut ActiveFlasher<'_, 'p, Program>,
+            &'f mut [LoadedRegion],
+        ) -> Pin<
+            Box<dyn Future<Output = Result<T, FlashError>> + Send + Sync + 'f>,
+        >,
     {
         let (mut active, data) = self.init(session, progress, None).await?;
         let r = f(&mut active, data).await?;
@@ -744,25 +746,27 @@ impl Flasher {
         progress: &FlashProgress<'_>,
     ) -> Result<(), FlashError> {
         let encoding = self.flash_algorithm.transfer_encoding;
-        self.run_program(session, progress, async |active, data| {
-            for region in data.iter_mut() {
-                tracing::debug!(
-                    "    programming region: {:#010X?} ({} bytes)",
-                    region.region.range,
-                    region.region.range.end - region.region.range.start
-                );
-                let flash_encoder = region.data.encoder(encoding, false);
-                for page in flash_encoder.pages() {
-                    active
-                        .program_page(page)
-                        .await
-                        .map_err(|error| FlashError::PageWrite {
-                            page_address: page.address(),
-                            source: Box::new(error),
-                        })?;
+        self.run_program(session, progress, |active, data| {
+            Box::pin(async move {
+                for region in data.iter_mut() {
+                    tracing::debug!(
+                        "    programming region: {:#010X?} ({} bytes)",
+                        region.region.range,
+                        region.region.range.end - region.region.range.start
+                    );
+                    let flash_encoder = region.data.encoder(encoding, false);
+                    for page in flash_encoder.pages() {
+                        active
+                            .program_page(page)
+                            .await
+                            .map_err(|error| FlashError::PageWrite {
+                                page_address: page.address(),
+                                source: Box::new(error),
+                            })?;
+                    }
                 }
-            }
-            Ok(())
+                Ok(())
+            })
         })
         .await
     }
@@ -782,51 +786,54 @@ impl Flasher {
         progress: &FlashProgress<'_>,
     ) -> Result<(), FlashError> {
         let encoding = self.flash_algorithm.transfer_encoding;
-        self.run_program(session, progress, async |active, data| {
-            for region in data.iter_mut() {
-                tracing::debug!(
-                    "    programming region: {:#010X?} ({} bytes)",
-                    region.region.range,
-                    region.region.range.end - region.region.range.start
-                );
-                let flash_encoder = region.data.encoder(encoding, false);
+        self.run_program(session, progress, |active, data| {
+            Box::pin(async move {
+                for region in data.iter_mut() {
+                    tracing::debug!(
+                        "    programming region: {:#010X?} ({} bytes)",
+                        region.region.range,
+                        region.region.range.end - region.region.range.start
+                    );
+                    let flash_encoder = region.data.encoder(encoding, false);
 
-                let mut current_buf = 0;
-                let mut t = Instant::now();
-                let mut last_page_address = 0;
-                for page in flash_encoder.pages() {
-                    // At the start of each loop cycle load the next page buffer into RAM.
-                    let buffer_address = active.load_page_buffer(page.data(), current_buf).await?;
+                    let mut current_buf = 0;
+                    let mut t = Instant::now();
+                    let mut last_page_address = 0;
+                    for page in flash_encoder.pages() {
+                        // At the start of each loop cycle load the next page buffer into RAM.
+                        let buffer_address =
+                            active.load_page_buffer(page.data(), current_buf).await?;
 
-                    // Then wait for the active RAM -> Flash copy process to finish.
-                    // Also check if it finished properly. If it didn't, return an error.
-                    active.wait_for_write_end(last_page_address).await?;
+                        // Then wait for the active RAM -> Flash copy process to finish.
+                        // Also check if it finished properly. If it didn't, return an error.
+                        active.wait_for_write_end(last_page_address).await?;
 
-                    last_page_address = page.address();
-                    progress.page_programmed(page.size() as u64, t.elapsed());
+                        last_page_address = page.address();
+                        progress.page_programmed(page.size() as u64, t.elapsed());
 
-                    t = Instant::now();
+                        t = Instant::now();
 
-                    // Start the next copy process.
-                    active
-                        .start_program_page_with_buffer(
-                            buffer_address,
-                            page.address(),
-                            page.size() as u64,
-                        )
-                        .await?;
+                        // Start the next copy process.
+                        active
+                            .start_program_page_with_buffer(
+                                buffer_address,
+                                page.address(),
+                                page.size() as u64,
+                            )
+                            .await?;
 
-                    // Swap the buffers
-                    if current_buf == 1 {
-                        current_buf = 0;
-                    } else {
-                        current_buf = 1;
+                        // Swap the buffers
+                        if current_buf == 1 {
+                            current_buf = 0;
+                        } else {
+                            current_buf = 1;
+                        }
                     }
-                }
 
-                active.wait_for_write_end(last_page_address).await?;
-            }
-            Ok(())
+                    active.wait_for_write_end(last_page_address).await?;
+                }
+                Ok(())
+            })
         })
         .await
     }

@@ -33,7 +33,6 @@ use probe_rs::{
     probe::list::Lister,
 };
 use std::{
-    cell::RefCell,
     collections::HashMap,
     fs,
     path::Path,

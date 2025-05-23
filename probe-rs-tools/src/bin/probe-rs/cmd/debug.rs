@@ -1,9 +1,6 @@
-use std::cell::RefCell;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::Arc;
 
-use parking_lot::Mutex;
 use parking_lot::RwLock;
 use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
