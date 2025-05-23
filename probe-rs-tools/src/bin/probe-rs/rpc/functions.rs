@@ -416,20 +416,6 @@ impl RpcContext {
         self.state.registry.clone().lock_owned().await
     }
 
-    pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
-    where
-        T: Topic,
-        T::Message: Serialize + Schema + Sized + Send + 'static,
-        F: FnOnce(RpcSpawnContext, REQ, Sender<T::Message>) -> RESP,
-        F: Send + 'static,
-        REQ: Send + 'static,
-        RESP: Send + 'static,
-    {
-        self.spawn_ctxt()
-            .run_blocking::<T, F, REQ, RESP>(request, task)
-            .await
-    }
-
     pub async fn run<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
     where
         T: Topic,
