@@ -1,0 +1,1 @@
+Added `DebugRegisters::from_coredump`

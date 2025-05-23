@@ -1,7 +1,8 @@
 use std::ops::Range;
 
 use probe_rs::{
-    CoreInterface, CoreRegister, Error, RegisterDataType, RegisterId, RegisterRole, RegisterValue,
+    CoreDump, CoreInterface, CoreRegister, CoreRegisters, Error, RegisterDataType, RegisterId,
+    RegisterRole, RegisterValue,
 };
 use serde::Serialize;
 
@@ -81,11 +82,37 @@ impl DebugRegister {
 pub struct DebugRegisters(pub Vec<DebugRegister>);
 
 impl DebugRegisters {
-    /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
+    /// Read all registers defined in [`probe_rs::core::CoreRegisters`] from the given core.
     pub fn from_core(core: &mut impl CoreInterface) -> Self {
-        let mut debug_registers = Vec::<DebugRegister>::new();
+        Self::from_core_registers(core.registers(), |register_id| {
+            core.read_core_reg(*register_id)
+                .inspect_err(|error| {
+                    tracing::warn!(
+                        "Failed to read value for register {:?}: {error}",
+                        register_id
+                    )
+                })
+                .ok()
+        })
+    }
 
-        for (dwarf_id, core_register) in core.registers().core_registers().enumerate() {
+    /// Read all registers captured in the given [`CoreDump`].
+    pub fn from_coredump(core: &CoreDump) -> Self {
+        Self::from_core_registers(core.registers(), |register_id| {
+            let value = core.registers.get(register_id).cloned();
+            if value.is_none() {
+                tracing::warn!("Failed to read value for register {:?}", register_id);
+            }
+            value
+        })
+    }
+
+    fn from_core_registers(
+        regs: &'static CoreRegisters,
+        mut reg_value: impl FnMut(&RegisterId) -> Option<RegisterValue>,
+    ) -> Self {
+        let mut debug_registers = Vec::<DebugRegister>::new();
+        for (dwarf_id, core_register) in regs.core_registers().enumerate() {
             // Check to ensure the register type is compatible with u64.
             if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
             {
@@ -97,17 +124,7 @@ impl DebugRegisters {
                     } else {
                         None
                     },
-                    value: match core.read_core_reg(core_register.id()) {
-                        Ok::<RegisterValue, _>(register_value) => Some(register_value),
-                        Err(e) => {
-                            tracing::warn!(
-                                "Failed to read value for register {:?}: {}",
-                                core_register,
-                                e
-                            );
-                            None
-                        }
-                    },
+                    value: reg_value(&core_register.id()),
                 });
             } else {
                 tracing::trace!(
