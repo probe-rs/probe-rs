@@ -668,6 +668,12 @@ impl CoreInterface for Core<'_> {
         self.core_type()
     }
 
+    /// Returns the endianness of the current operating mode
+    /// of the core.
+    fn endianness(&mut self) -> Result<Endian, Error> {
+        self.inner.endianness()
+    }
+
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
         self.instruction_set()
     }
