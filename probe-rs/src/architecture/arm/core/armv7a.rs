@@ -1128,8 +1128,14 @@ impl MemoryInterface for Armv7a<'_> {
 
     fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
         self.halted_access(|core| {
-            let mut ret: u64 = core.read_word_32(address)? as u64;
-            ret |= (core.read_word_32(address + 4)? as u64) << 32;
+            #[repr(align(4))]
+            struct AlignedBytes([u8; 8]);
+            let mut bytes = AlignedBytes([0u8; 8]);
+            core.read(address, &mut bytes.0)?;
+            let ret = match core.endianness()? {
+                Endian::Little => u64::from_le_bytes(bytes.0),
+                Endian::Big => u64::from_be_bytes(bytes.0),
+            };
 
             Ok(ret)
         })
@@ -1321,11 +1327,12 @@ impl MemoryInterface for Armv7a<'_> {
 
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         self.halted_access(|core| {
-            let data_low = data as u32;
-            let data_high = (data >> 32) as u32;
+            let (data_low, data_high) = match core.endianness()? {
+                Endian::Little => (data as u32, (data >> 32) as u32),
+                Endian::Big => ((data >> 32) as u32, data as u32),
+            };
 
-            core.write_word_32(address, data_low)?;
-            core.write_word_32(address + 4, data_high)
+            core.write_32(address, &[data_low, data_high])
         })
     }
 
