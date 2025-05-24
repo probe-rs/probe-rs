@@ -285,23 +285,12 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
         })?;
 
         let mut content = vec![0u8; data_length];
-        let bytes_read = match self.input.read(&mut content) {
-            Ok(len) => len,
-            Err(error) => {
-                // There is no data available, so do something else (like checking the probe status) or try again.
-                return Err(DebuggerError::NonBlockingReadError {
-                    original_error: error,
-                });
-            }
-        };
-
-        if bytes_read == data_length {
-            Ok(content)
-        } else {
-            Err(DebuggerError::Other(anyhow!(
-                "Failed to read the expected {} bytes from incoming data",
+        match self.input.read_exact(&mut content) {
+            Ok(_) => Ok(content),
+            Err(error) => Err(DebuggerError::Other(anyhow!(
+                "Failed to read the expected {} bytes from incoming data: {error}",
                 data_length
-            )))
+            ))),
         }
     }
 

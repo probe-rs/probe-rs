@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::num::NonZeroU32;
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
@@ -20,6 +22,8 @@ use crate::{
     util::rtt::RttDecoder,
 };
 use anyhow::{Result, anyhow};
+use probe_rs::BreakpointCause;
+use probe_rs::semihosting::SemihostingCommand;
 use probe_rs::{Core, CoreStatus, HaltReason, rtt::ScanRegion};
 use probe_rs_debug::VerifiedBreakpoint;
 use probe_rs_debug::{
@@ -51,6 +55,15 @@ pub struct CoreData {
     pub rtt_client: Option<RttClient>,
     pub clear_rtt_header: bool,
     pub rtt_header_cleared: bool,
+    pub next_semihosting_handle: u32,
+    pub semihosting_handles: HashMap<u32, SemihostingFile>,
+}
+
+/// File descriptor for files opened by the target.
+pub struct SemihostingFile {
+    handle: NonZeroU32,
+    path: String,
+    mode: &'static str,
 }
 
 /// [CoreHandle] provides handles to various data structures required to debug a single instance of a core. The actual state is stored in [session_data::SessionData].
@@ -116,26 +129,20 @@ impl CoreHandle<'_> {
                 debug_adapter.send_event("continued", event_body)?;
                 tracing::trace!("Notified DAP client that the core continued: {:?}", status);
             }
-            CoreStatus::Halted(_) => {
+
+            CoreStatus::Halted(HaltReason::Step) => {
                 // HaltReason::Step is a special case, where we have to send a custome event to the client that the core halted.
                 // In this case, we don't re-send the "stopped" event, but further down, we will
                 // update the `last_known_status` to the actual HaltReason returned by the core.
-                if self.core_data.last_known_status != CoreStatus::Halted(HaltReason::Step) {
-                    let program_counter = self.core.read_core_reg(self.core.program_counter()).ok();
-                    let (reason, description) = status.short_long_status(program_counter);
-                    let event_body = Some(StoppedEventBody {
-                        reason: reason.to_string(),
-                        description: Some(description),
-                        thread_id: Some(self.core.id() as i64),
-                        preserve_focus_hint: Some(false),
-                        text: None,
-                        all_threads_stopped: Some(debug_adapter.all_cores_halted),
-                        hit_breakpoint_ids: None,
-                    });
-                    debug_adapter.send_event("stopped", event_body)?;
-                    tracing::trace!("Notified DAP client that the core halted: {:?}", status);
-                }
             }
+
+            CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(_))) => {
+                // We handle semihosting calls without sending a "stopped" event. The core will
+                // be resumed after the semihosting command is handled, unless the command
+                // is not handled or indicates that the core should halt.
+            }
+
+            CoreStatus::Halted(_) => self.notify_halted(debug_adapter, status)?,
             CoreStatus::LockedUp => {
                 let (_, description) = status.short_long_status(None);
                 debug_adapter.show_message(MessageSeverity::Error, &description);
@@ -486,6 +493,142 @@ impl CoreHandle<'_> {
         }
         // Consolidating all memory ranges that are withing 0x400 bytes of each other.
         consolidate_memory_ranges(all_discrete_memory_ranges, 0x400)
+    }
+
+    pub fn handle_semihosting<P: ProtocolAdapter>(
+        &mut self,
+        debug_adapter: &mut DebugAdapter<P>,
+        command: SemihostingCommand,
+    ) -> Result<CoreStatus, DebuggerError> {
+        match command {
+            SemihostingCommand::Open(request) => {
+                tracing::debug!("Semihosting request: open {request:?}");
+                let path = request.path(&mut self.core)?;
+                let mode = request.mode();
+
+                let is_write = mode.starts_with('w') || mode.starts_with('a');
+                let is_append = mode.starts_with('a');
+                let is_stdio = path == ":tt";
+
+                let path = if is_stdio {
+                    if is_append { "stderr" } else { "stdout" }
+                } else {
+                    &path
+                };
+
+                let is_binary = mode.ends_with('b');
+                let format = if is_binary {
+                    DataFormat::BinaryLE
+                } else {
+                    DataFormat::String
+                };
+
+                // We don't handle writing to the target.
+                if is_write {
+                    // Reuse handle based on path.
+                    if let Some(file) = self
+                        .core_data
+                        .semihosting_handles
+                        .values()
+                        .find(|f| f.path == path)
+                    {
+                        request.respond_with_handle(&mut self.core, file.handle)?;
+                    } else {
+                        // If the handle is not found, we create a new one.
+                        // The handle is a u32, starting from 1024.
+                        // We will use the path as the key to store the handle.
+                        // This way, we can reuse the same handle for the same path.
+                        let handle = self.core_data.next_semihosting_handle;
+                        #[allow(
+                            clippy::unwrap_used,
+                            reason = "Infallible because we start from 1024"
+                        )]
+                        let nz_handle = NonZeroU32::new(handle).unwrap();
+                        self.core_data.semihosting_handles.insert(
+                            handle,
+                            SemihostingFile {
+                                handle: nz_handle,
+                                path: path.to_string(),
+                                mode,
+                            },
+                        );
+                        self.core_data.next_semihosting_handle += 1;
+
+                        if debug_adapter.rtt_window(handle, path.to_string(), format) {
+                            request.respond_with_handle(&mut self.core, nz_handle)?;
+                        }
+                    }
+                }
+            }
+            SemihostingCommand::Close(request) => {
+                tracing::debug!("Semihosting request: close {request:?}");
+                request.success(&mut self.core)?;
+            }
+            SemihostingCommand::WriteConsole(request) => {
+                tracing::debug!("Semihosting request: write console {request:?}");
+                let string = request.read(&mut self.core)?;
+                debug_adapter.log_to_console(string);
+            }
+            SemihostingCommand::Write(request) => {
+                tracing::debug!("Semihosting request: write {request:?}");
+                let handle = request.file_handle();
+                let bytes = request.read(&mut self.core)?;
+
+                if let Some(file) = self.core_data.semihosting_handles.get(&handle) {
+                    let data = if file.mode.ends_with('b') {
+                        let mut string = String::new();
+                        for byte in bytes {
+                            if !string.is_empty() {
+                                string.push(' ');
+                            }
+                            string.push_str(&format!("{:02x}", byte));
+                        }
+                        string
+                    } else {
+                        String::from_utf8_lossy(&bytes).to_string()
+                    };
+
+                    debug_adapter.rtt_output(handle, data);
+                    request.write_status(&mut self.core, 0)?;
+                }
+            }
+            SemihostingCommand::Errno(request) => {
+                request.write_errno(&mut self.core, 0)?;
+            }
+
+            unhandled => {
+                tracing::warn!("Unhandled semihosting command: {:?}", unhandled);
+                // Turn unhandled semihosting commands into a breakpoint.
+                return Ok(CoreStatus::Halted(HaltReason::Breakpoint(
+                    BreakpointCause::Semihosting(unhandled),
+                )));
+            }
+        };
+
+        self.core.run()?;
+        Ok(CoreStatus::Running)
+    }
+
+    pub fn notify_halted<P: ProtocolAdapter>(
+        &mut self,
+        debug_adapter: &mut DebugAdapter<P>,
+        status: CoreStatus,
+    ) -> Result<(), DebuggerError> {
+        let program_counter = self.core.read_core_reg(self.core.program_counter()).ok();
+        let (reason, description) = status.short_long_status(program_counter);
+        let event_body = Some(StoppedEventBody {
+            reason: reason.to_string(),
+            description: Some(description),
+            thread_id: Some(self.core.id() as i64),
+            preserve_focus_hint: Some(false),
+            text: None,
+            all_threads_stopped: Some(debug_adapter.all_cores_halted),
+            hit_breakpoint_ids: None,
+        });
+        debug_adapter.send_event("stopped", event_body)?;
+        tracing::trace!("Notified DAP client that the core halted: {:?}", status);
+
+        Ok(())
     }
 }
 
