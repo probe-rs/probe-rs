@@ -25,6 +25,7 @@ use crate::{
     util::flash::build_loader,
 };
 use anyhow::{Context, anyhow};
+use parking_lot::Mutex;
 use probe_rs::{
     CoreStatus,
     config::Registry,
@@ -32,13 +33,14 @@ use probe_rs::{
     probe::list::Lister,
 };
 use std::{
-    cell::RefCell,
     collections::HashMap,
     fs,
     path::Path,
+    sync::Arc,
     time::{Duration, UNIX_EPOCH},
 };
 use time::UtcOffset;
+use tokio::sync::mpsc::channel;
 
 #[derive(Debug)]
 /// The `DebuggerStatus` is used to control how the Debugger::debug_session() decides if it should respond to
@@ -458,7 +460,8 @@ impl Debugger {
                 debug_adapter,
                 launch_attach_request,
                 &mut session_data,
-            )?;
+            )
+            .await?;
         }
 
         // First, attach to the core
@@ -541,7 +544,8 @@ impl Debugger {
                     debug_adapter,
                     request,
                     session_data,
-                )?;
+                )
+                .await?;
             }
         }
 
@@ -575,7 +579,7 @@ impl Debugger {
     /// Flash the given binary, and report the progress to the
     /// debug adapter.
     // Note: This function consumes the 'debug_adapter', so all error reporting via that handle must be done before returning from this function.
-    fn flash<P: ProtocolAdapter + 'static>(
+    async fn flash<P: ProtocolAdapter + 'static>(
         config: &SessionConfig,
         path_to_elf: &Path,
         debug_adapter: &mut DebugAdapter<P>,
@@ -595,7 +599,7 @@ impl Debugger {
         download_options.do_chip_erase = config.flashing_config.full_chip_erase;
         download_options.verify = config.flashing_config.verify_after_flashing;
 
-        let ref_debug_adapter = RefCell::new(&mut *debug_adapter);
+        let ref_debug_adapter = Arc::new(Mutex::new(&mut *debug_adapter));
 
         #[derive(Default)]
         struct ProgressBarState {
@@ -605,7 +609,7 @@ impl Debugger {
 
         type ProgressState = HashMap<Operation, ProgressBarState>;
 
-        let progress_state = RefCell::new(ProgressState::default());
+        let progress_state = Arc::new(Mutex::new(ProgressState::default()));
 
         download_options.progress = progress_id.map(|id| {
             let describe_op = |operation| match Operation::from(operation) {
@@ -615,55 +619,63 @@ impl Debugger {
                 Operation::Verify => "Verifying",
             };
 
-            FlashProgress::new(move |event| {
-                let mut flash_progress = progress_state.borrow_mut();
-                let mut debug_adapter = ref_debug_adapter.borrow_mut();
-                match event {
-                    ProgressEvent::AddProgressBar { operation, total } => {
-                        let pbar_state = flash_progress.entry(operation.into()).or_default();
-                        if let Some(total) = total {
-                            pbar_state.total_size += total; // should this be an assignment instead?
-                            pbar_state.size_done = 0;
-                        };
-                    }
-                    ProgressEvent::Started(operation) => {
-                        debug_adapter
-                            .update_progress(None, Some(describe_op(operation)), id)
-                            .ok();
-                    }
-                    ProgressEvent::Progress {
-                        operation, size, ..
-                    } => {
-                        let pbar_state = flash_progress.entry(operation.into()).or_default();
-                        pbar_state.size_done += size;
-                        let progress = pbar_state.size_done as f64 / pbar_state.total_size as f64;
+            let (sender, mut receiver) = channel(256);
+            tokio::spawn(async move {
+                while let Some(event) = receiver.recv().await {
+                    let progress_state = progress_state.clone();
+                    let ref_debug_adapter = ref_debug_adapter.clone();
 
-                        debug_adapter
-                            .update_progress(Some(progress), Some(describe_op(operation)), id)
-                            .ok();
+                    let mut flash_progress = progress_state.lock();
+                    let mut debug_adapter = ref_debug_adapter.lock();
+                    match event {
+                        ProgressEvent::AddProgressBar { operation, total } => {
+                            let pbar_state = flash_progress.entry(operation.into()).or_default();
+                            if let Some(total) = total {
+                                pbar_state.total_size += total; // should this be an assignment instead?
+                                pbar_state.size_done = 0;
+                            };
+                        }
+                        ProgressEvent::Started(operation) => {
+                            debug_adapter
+                                .update_progress(None, Some(describe_op(operation)), id)
+                                .ok();
+                        }
+                        ProgressEvent::Progress {
+                            operation, size, ..
+                        } => {
+                            let pbar_state = flash_progress.entry(operation.into()).or_default();
+                            pbar_state.size_done += size;
+                            let progress =
+                                pbar_state.size_done as f64 / pbar_state.total_size as f64;
+
+                            debug_adapter
+                                .update_progress(Some(progress), Some(describe_op(operation)), id)
+                                .ok();
+                        }
+                        ProgressEvent::Failed(operation) => {
+                            debug_adapter
+                                .update_progress(
+                                    Some(1.0),
+                                    Some(format!("{} Failed!", describe_op(operation))),
+                                    id,
+                                )
+                                .ok();
+                        }
+                        ProgressEvent::Finished(operation) => {
+                            debug_adapter
+                                .update_progress(
+                                    Some(1.0),
+                                    Some(format!("{} Complete!", describe_op(operation))),
+                                    id,
+                                )
+                                .ok();
+                        }
+                        ProgressEvent::FlashLayoutReady { .. } => {}
+                        ProgressEvent::DiagnosticMessage { .. } => {}
                     }
-                    ProgressEvent::Failed(operation) => {
-                        debug_adapter
-                            .update_progress(
-                                Some(1.0),
-                                Some(format!("{} Failed!", describe_op(operation))),
-                                id,
-                            )
-                            .ok();
-                    }
-                    ProgressEvent::Finished(operation) => {
-                        debug_adapter
-                            .update_progress(
-                                Some(1.0),
-                                Some(format!("{} Complete!", describe_op(operation))),
-                                id,
-                            )
-                            .ok();
-                    }
-                    ProgressEvent::FlashLayoutReady { .. } => {}
-                    ProgressEvent::DiagnosticMessage { .. } => {}
                 }
-            })
+            });
+            FlashProgress::new(sender)
         });
 
         let result = match build_loader(
@@ -671,16 +683,21 @@ impl Debugger {
             path_to_elf,
             config.flashing_config.format_options.clone(),
             None,
-        ) {
+        )
+        .await
+        {
             Ok(loader) => {
                 let do_flashing = if config.flashing_config.verify_before_flashing {
-                    match loader.verify(
-                        &mut session_data.session,
-                        download_options
-                            .progress
-                            .clone()
-                            .unwrap_or_else(FlashProgress::empty),
-                    ) {
+                    match loader
+                        .verify(
+                            &mut session_data.session,
+                            download_options
+                                .progress
+                                .clone()
+                                .unwrap_or_else(FlashProgress::empty),
+                        )
+                        .await
+                    {
                         Ok(_) => false,
                         Err(FlashError::Verify) => true,
                         Err(other) => {
@@ -705,6 +722,7 @@ impl Debugger {
                 if do_flashing {
                     loader
                         .commit(&mut session_data.session, download_options)
+                        .await
                         .map_err(FileDownloadError::Flash)
                 } else {
                     drop(download_options);
@@ -1270,7 +1288,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core_and_binary(program_binary().as_path());
+        let mut fake_probe = FakeProbe::with_mocked_core_and_binary(program_binary().as_path());
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(Operation::ReadRawApRegister {

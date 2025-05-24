@@ -174,17 +174,20 @@ async fn main() -> Result<()> {
             speed,
             protocol,
             probe,
-        } => cmd_test(
-            target_artifact.as_path(),
-            template_path.as_path(),
-            definition_export_path.as_path(),
-            test_start_sector_address,
-            chip,
-            name,
-            probe,
-            speed,
-            protocol,
-        )?,
+        } => {
+            cmd_test(
+                target_artifact.as_path(),
+                template_path.as_path(),
+                definition_export_path.as_path(),
+                test_start_sector_address,
+                chip,
+                name,
+                probe,
+                speed,
+                protocol,
+            )
+            .await?
+        }
         TargetGen::Reformat { yaml_path } => {
             if yaml_path.is_dir() {
                 let entries = std::fs::read_dir(&yaml_path).context(format!(

@@ -22,7 +22,6 @@ use object::{
 };
 use probe_rs_target::MemoryRange;
 use std::{
-    cell::RefCell,
     collections::{BTreeSet, VecDeque},
     fmt::Debug,
     path::Path,
@@ -35,12 +34,13 @@ pub struct FakeProbe {
     protocol: WireProtocol,
     speed: u32,
 
-    dap_register_read_handler: Option<Box<dyn Fn(RegisterAddress) -> Result<u32, ArmError> + Send>>,
+    dap_register_read_handler:
+        Option<Box<dyn Fn(RegisterAddress) -> Result<u32, ArmError> + Send + Sync>>,
 
     dap_register_write_handler:
-        Option<Box<dyn Fn(RegisterAddress, u32) -> Result<(), ArmError> + Send>>,
+        Option<Box<dyn Fn(RegisterAddress, u32) -> Result<(), ArmError> + Send + Sync>>,
 
-    operations: RefCell<VecDeque<Operation>>,
+    operations: VecDeque<Operation>,
 
     memory_ap: MockedAp,
 }
@@ -321,7 +321,7 @@ impl FakeProbe {
             dap_register_read_handler: None,
             dap_register_write_handler: None,
 
-            operations: RefCell::new(VecDeque::new()),
+            operations: VecDeque::new(),
 
             memory_ap: MockedAp::MemoryAp(MockMemoryAp::with_pattern()),
         }
@@ -366,7 +366,7 @@ impl FakeProbe {
     /// Can be used to hook into the read.
     pub fn set_dap_register_read_handler(
         &mut self,
-        handler: Box<dyn Fn(RegisterAddress) -> Result<u32, ArmError> + Send>,
+        handler: Box<dyn Fn(RegisterAddress) -> Result<u32, ArmError> + Send + Sync>,
     ) {
         self.dap_register_read_handler = Some(handler);
     }
@@ -375,7 +375,7 @@ impl FakeProbe {
     /// Can be used to hook into the write.
     pub fn set_dap_register_write_handler(
         &mut self,
-        handler: Box<dyn Fn(RegisterAddress, u32) -> Result<(), ArmError> + Send>,
+        handler: Box<dyn Fn(RegisterAddress, u32) -> Result<(), ArmError> + Send + Sync>,
     ) {
         self.dap_register_write_handler = Some(handler);
     }
@@ -385,8 +385,8 @@ impl FakeProbe {
         Probe::from_specific_probe(Box::new(self))
     }
 
-    fn next_operation(&self) -> Option<Operation> {
-        self.operations.borrow_mut().pop_front()
+    fn next_operation(&mut self) -> Option<Operation> {
+        self.operations.pop_front()
     }
 
     fn read_raw_ap_register(
@@ -414,8 +414,8 @@ impl FakeProbe {
         }
     }
 
-    pub fn expect_operation(&self, operation: Operation) {
-        self.operations.borrow_mut().push_back(operation);
+    pub fn expect_operation(&mut self, operation: Operation) {
+        self.operations.push_back(operation);
     }
 }
 

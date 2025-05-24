@@ -151,24 +151,17 @@ impl SessionState {
         self.object_storage.lock().await.object_mut(key).await
     }
 
-    pub fn object_mut_blocking<T: Any + Send>(
-        &self,
-        key: Key<T>,
-    ) -> impl DerefMut<Target = T> + Send + use<T> {
-        self.object_storage.blocking_lock().object_mut_blocking(key)
-    }
-
     pub async fn set_session(&mut self, session: Session, dry_run: bool) -> Key<Session> {
         let key = self.store_object(session).await;
         self.dry_run = dry_run;
         key
     }
 
-    pub fn session_blocking(
+    pub async fn session(
         &self,
         sid: Key<Session>,
     ) -> impl DerefMut<Target = Session> + Send + use<> {
-        self.object_mut_blocking(sid)
+        self.object_mut(sid).await
     }
 
     pub fn dry_run(&self, _sid: Key<Session>) -> bool {

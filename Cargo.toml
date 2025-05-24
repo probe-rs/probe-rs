@@ -34,6 +34,8 @@ thiserror = "2.0.11"
 anyhow = "1.0.82"
 async-trait = "0.1"
 async-io = "2"
+smol-macros = "0.1"
+macro_rules_attribute = "0.2"
 
 [workspace.metadata.release]
 shared-version = true

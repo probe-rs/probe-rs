@@ -52,7 +52,7 @@ impl<APA> ADIMemoryInterface<'_, APA> where APA: ApAccess {}
 
 impl<AP> MemoryInterface<ArmError> for ADIMemoryInterface<'_, AP>
 where
-    AP: FlushableArmAccess + ApAccess + DpAccess,
+    AP: FlushableArmAccess + ApAccess + DpAccess + Send + Sync,
 {
     /// Read a block of 64 bit words at `address`.
     ///
@@ -513,7 +513,7 @@ where
 
 impl<APA> ArmMemoryInterface for ADIMemoryInterface<'_, APA>
 where
-    APA: std::any::Any + FlushableArmAccess + ApAccess + DpAccess + ArmProbeInterface,
+    APA: std::any::Any + FlushableArmAccess + ApAccess + DpAccess + ArmProbeInterface + Send + Sync,
 {
     fn base_address(&mut self) -> Result<u64, ArmError> {
         self.memory_ap.base_address(self.interface)

@@ -5,6 +5,8 @@ pub mod swj;
 pub mod swo;
 pub mod transfer;
 
+use parking_lot::Mutex;
+
 use crate::probe::cmsisdap::commands::general::info::PacketSizeCommand;
 use crate::probe::usb_util::InterfaceExt;
 use crate::probe::{ProbeError, WireProtocol};
@@ -170,7 +172,7 @@ pub enum CmsisDapDevice {
     /// CMSIS-DAP v1 over HID.
     /// Stores a HID device handle and maximum HID report size.
     V1 {
-        handle: hidapi::HidDevice,
+        handle: Mutex<hidapi::HidDevice>,
         report_size: usize,
     },
 
@@ -191,7 +193,10 @@ impl CmsisDapDevice {
     fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
         match self {
             CmsisDapDevice::V1 { handle, .. } => {
-                match handle.read_timeout(buf, USB_TIMEOUT.as_millis() as i32)? {
+                match handle
+                    .lock()
+                    .read_timeout(buf, USB_TIMEOUT.as_millis() as i32)?
+                {
                     // Timeout is not indicated by error, but by returning 0 read bytes
                     0 => Err(SendError::Timeout),
                     n => Ok(n),
@@ -206,7 +211,7 @@ impl CmsisDapDevice {
     /// Write `buf` to the probe, returning the number of bytes written on success.
     fn write(&self, buf: &[u8]) -> Result<usize, SendError> {
         match self {
-            CmsisDapDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
+            CmsisDapDevice::V1 { handle, .. } => Ok(handle.lock().write(buf)?),
             CmsisDapDevice::V2 { handle, out_ep, .. } => {
                 // Skip first byte as it's set to 0 for HID transfers
                 Ok(handle.write_bulk(*out_ep, &buf[1..], USB_TIMEOUT)?)
@@ -227,7 +232,7 @@ impl CmsisDapDevice {
                 ..
             } => loop {
                 let mut discard = vec![0u8; report_size + 1];
-                match handle.read_timeout(&mut discard, 1) {
+                match handle.lock().read_timeout(&mut discard, 1) {
                     Ok(n) if n != 0 => continue,
                     _ => break,
                 }

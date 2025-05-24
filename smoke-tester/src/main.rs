@@ -10,8 +10,12 @@ use crate::dut_definition::{DefinitionSource, DutDefinition};
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use linkme::distributed_slice;
 use probe_rs::{Permissions, probe::WireProtocol};
+use tests::{
+    stepping::test_stepping, test_flashing, test_hw_breakpoints, test_memory_access,
+    test_register_read, test_register_write,
+};
+use tokio::{runtime::Runtime, task::LocalSet};
 
 mod dut_definition;
 mod macros;
@@ -90,7 +94,8 @@ struct Opt {
     single_dut: Option<PathBuf>,
 }
 
-fn main() -> Result<ExitCode> {
+#[tokio::main]
+async fn main() -> Result<ExitCode> {
     env_logger::init();
 
     let opt = Opt::parse();
@@ -123,88 +128,102 @@ fn main() -> Result<ExitCode> {
     }
 
     match opt.command {
-        Command::Test { markdown_summary } => run_test(&definitions, markdown_summary),
+        Command::Test { markdown_summary } => run_test(&definitions, markdown_summary).await,
     }
 }
 
-fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) -> Result<ExitCode> {
+async fn run_test(
+    definitions: &[DutDefinition],
+    markdown_summary: Option<PathBuf>,
+) -> Result<ExitCode> {
     let mut test_tracker = TestTracker::new(definitions);
 
-    let result = test_tracker.run(|tracker, definition| {
-        let probe = async_io::block_on(definition.open_probe())?;
+    let result = test_tracker
+        .run(async |tracker, definition| {
+            let probe = definition.open_probe().await?;
 
-        println_dut_status!(tracker, blue, "Probe: {:?}", probe.get_name());
-        println_dut_status!(tracker, blue, "Chip:  {:?}", &definition.chip.name);
+            println_dut_status!(tracker, blue, "Probe: {:?}", probe.get_name());
+            println_dut_status!(tracker, blue, "Chip:  {:?}", &definition.chip.name);
 
-        // We don't care about existing flash contents
-        let permissions = Permissions::default().allow_erase_all();
+            // We don't care about existing flash contents
+            let permissions = Permissions::default().allow_erase_all();
 
-        let mut fail_counter = 0;
+            let mut fail_counter = 0;
 
-        let mut session = probe
-            .attach(definition.chip.clone(), permissions)
-            .context("Failed to attach to chip")?;
-        let cores = session.list_cores();
+            let mut session = probe
+                .attach(definition.chip.clone(), permissions)
+                .context("Failed to attach to chip")?;
+            let cores = session.list_cores();
 
-        // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
-        //       some cores need additional setup so that they can be used, and this is not handled yet.
-        for (core_index, core_type) in cores.into_iter().take(1) {
-            println_dut_status!(tracker, blue, "Core {}: {:?}", core_index, core_type);
+            macro_rules! run_test {
+                (generic, $test_fn:ident, $tracker:ident, $($param:tt),* ) => {
+                    let result = $tracker
+                        .run_test(async |tracker| $test_fn(tracker, $($param),*).await)
+                        .await;
 
-            let mut core = session.core(core_index)?;
+                    if let Err(TestFailure::Fatal(error)) = result.result {
+                        return Err(error.context("Fatal error in test"));
+                    }
 
-            println_dut_status!(tracker, blue, "Halting core..");
+                    if result.failed() {
+                        fail_counter += 1;
+                    }
+                };
+                (core, $test_fn:ident, $tracker:ident, $core:ident ) => {
+                    let c = &mut $core;
+                    run_test!(generic, $test_fn, $tracker, c)
+                };
+                (session, $test_fn:ident, $tracker:ident, $session:ident ) => {
+                    let s = &mut $session;
+                    run_test!(generic, $test_fn, $tracker, s)
+                };
 
-            core.reset_and_halt(Duration::from_millis(500))?;
-
-            for test_fn in CORE_TESTS {
-                let result = tracker.run_test(|tracker| test_fn(tracker, &mut core));
-
-                if let Err(TestFailure::Fatal(error)) = result.result {
-                    return Err(error.context("Fatal error in test"));
-                }
-
-                if result.failed() {
-                    fail_counter += 1;
-                }
             }
 
-            // Ensure core is not running anymore.
-            core.reset_and_halt(Duration::from_millis(200))
-                .with_context(|| {
-                    format!("Failed to reset core with index {core_index} after test")
-                })?;
-        }
+            // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
+            //       some cores need additional setup so that they can be used, and this is not handled yet.
+            for (core_index, core_type) in cores.into_iter().take(1) {
+                println_dut_status!(tracker, blue, "Core {}: {:?}", core_index, core_type);
 
-        for test in SESSION_TESTS {
-            let result = tracker.run_test(|tracker| test(tracker, &mut session));
+                let mut core = session.core(core_index)?;
 
-            if let Err(TestFailure::Fatal(error)) = result.result {
-                return Err(error.context("Fatal error in test"));
+                println_dut_status!(tracker, blue, "Halting core..");
+
+                core.reset_and_halt(Duration::from_millis(500))?;
+
+                run_test!(core, test_register_read, tracker, core);
+                run_test!(core, test_register_write, tracker, core);
+                run_test!(core, test_memory_access, tracker, core);
+                run_test!(core, test_hw_breakpoints, tracker, core);
+                run_test!(core, test_stepping, tracker, core);
+
+                // Ensure core is not running anymore.
+                core.reset_and_halt(Duration::from_millis(200))
+                    .with_context(|| {
+                        format!("Failed to reset core with index {core_index} after test")
+                    })?;
             }
 
-            if result.failed() {
-                fail_counter += 1;
+            run_test!(session, test_flashing, tracker, session);
+
+            drop(session);
+
+            // Try attaching with hard reset
+
+            if definition.reset_connected {
+                let probe = definition.open_probe().await?;
+
+                let _session =
+                    probe.attach_under_reset(definition.chip.clone(), Permissions::default())?;
             }
-        }
 
-        drop(session);
-
-        // Try attaching with hard reset
-
-        if definition.reset_connected {
-            let probe = async_io::block_on(definition.open_probe())?;
-
-            let _session =
-                probe.attach_under_reset(definition.chip.clone(), Permissions::default())?;
-        }
-
-        match fail_counter {
-            0 => Ok(()),
-            1 => anyhow::bail!("1 test failed"),
-            count => anyhow::bail!("{count} tests failed"),
-        }
-    });
+            match fail_counter {
+                0 => Ok(()),
+                1 => anyhow::bail!("1 test failed"),
+                count => anyhow::bail!("{count} tests failed"),
+            }
+        })
+        .await;
 
     println!();
 
@@ -362,9 +381,9 @@ impl<'dut> TestTracker<'dut> {
     }
 
     #[must_use]
-    fn run(
+    async fn run(
         &mut self,
-        handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> anyhow::Result<()> + Sync + Send,
+        handle_dut: impl AsyncFn(&mut TestTracker, &DutDefinition) -> anyhow::Result<()> + Sync + Send,
     ) -> TestReport {
         let mut report = TestReport::new();
 
@@ -378,8 +397,14 @@ impl<'dut> TestTracker<'dut> {
             }
             println!();
 
-            let join_result =
-                std::thread::scope(|s| s.spawn(|| handle_dut(self, definition)).join());
+            let join_result = std::thread::scope(|s| {
+                s.spawn(|| {
+                    let rt = Runtime::new().unwrap();
+                    let local = LocalSet::new();
+                    local.block_on(&rt, handle_dut(self, definition))
+                })
+                .join()
+            });
 
             match join_result {
                 Ok(Ok(())) => {
@@ -427,13 +452,13 @@ impl<'dut> TestTracker<'dut> {
         report
     }
 
-    fn run_test(
+    async fn run_test(
         &mut self,
-        test: impl FnOnce(&TestTracker) -> Result<(), TestFailure>,
+        test: impl AsyncFnOnce(&TestTracker) -> Result<(), TestFailure>,
     ) -> SingleTestReport {
         let start_time = Instant::now();
 
-        let test_result = test(self);
+        let test_result = test(self).await;
 
         let duration = start_time.elapsed();
 
@@ -472,11 +497,3 @@ impl<'dut> TestTracker<'dut> {
         }
     }
 }
-
-/// A list of all tests which run on cores.
-#[distributed_slice]
-pub static CORE_TESTS: [fn(&TestTracker, &mut probe_rs::Core) -> TestResult];
-
-/// A list of all tests which run on `Session`.
-#[distributed_slice]
-pub static SESSION_TESTS: [fn(&TestTracker, &mut probe_rs::Session) -> TestResult];

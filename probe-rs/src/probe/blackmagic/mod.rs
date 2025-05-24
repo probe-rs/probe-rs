@@ -24,6 +24,7 @@ use crate::{
     },
 };
 use bitvec::vec::BitVec;
+use parking_lot::Mutex;
 use serialport::{SerialPortType, available_ports};
 
 const BLACK_MAGIC_PROBE_VID: u16 = 0x1d50;
@@ -607,8 +608,8 @@ impl From<IoSequenceItem> for SwdDirection {
 
 /// A Black Magic Probe.
 pub struct BlackMagicProbe {
-    reader: BufReader<Box<dyn Read + Send>>,
-    writer: BufWriter<Box<dyn Write + Send>>,
+    reader: Mutex<BufReader<Box<dyn Read + Send>>>,
+    writer: Mutex<BufWriter<Box<dyn Write + Send>>>,
     protocol: Option<WireProtocol>,
     version: String,
     remote_protocol: ProtocolVersion,
@@ -682,8 +683,8 @@ impl BlackMagicProbe {
         tracing::info!("Using BMP protocol {}", remote_protocol);
 
         let mut probe = Self {
-            reader,
-            writer,
+            reader: Mutex::new(reader),
+            writer: Mutex::new(writer),
             protocol: None,
             version,
             speed_khz: 0,
@@ -705,14 +706,18 @@ impl BlackMagicProbe {
     }
 
     fn command(&mut self, mut command: RemoteCommand) -> Result<RemoteResponse, RemoteError> {
-        let result = Self::send(&mut self.writer, &command);
+        let result = Self::send(&mut self.writer.lock(), &command);
         if let Err(e) = result {
             tracing::error!("Error sending command: {:?}", e);
             return Err(e);
         }
         let should_decode = command.decode_hex();
 
-        Self::recv(&mut self.reader, command.response_buffer(), should_decode)
+        Self::recv(
+            &mut self.reader.lock(),
+            command.response_buffer(),
+            should_decode,
+        )
     }
 
     fn send(

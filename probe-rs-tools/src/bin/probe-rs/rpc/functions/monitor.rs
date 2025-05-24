@@ -91,7 +91,7 @@ pub async fn monitor(
     sender: Sender<WireTxImpl>,
 ) {
     let resp = ctx
-        .run_blocking::<MonitorSender, _, _, _>(request, monitor_impl)
+        .run::<MonitorSender, _, _, _>(request, monitor_impl)
         .await
         .map_err(Into::into);
 
@@ -170,20 +170,21 @@ impl MultiTopicPublisher for MonitorPublisher {
     }
 }
 
-fn monitor_impl(
+async fn monitor_impl(
     ctx: RpcSpawnContext,
     request: MonitorRequest,
     sender: MonitorSender,
 ) -> anyhow::Result<MonitorExitReason> {
-    let mut session = ctx.session_blocking(request.sessid);
+    let mut session = ctx.session(request.sessid).await;
 
     let mut semihosting_sink =
         MonitorEventHandler::new(|event| sender.send_semihosting_event(event).unwrap());
 
-    let mut rtt_client = request
-        .options
-        .rtt_client
-        .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
+    let mut rtt_client = if let Some(rtt_client) = request.options.rtt_client {
+        Some(ctx.object_mut(rtt_client).await)
+    } else {
+        None
+    };
 
     let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
 

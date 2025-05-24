@@ -1,5 +1,7 @@
+use tokio::sync::mpsc::Sender;
+
 use super::FlashLayout;
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 /// A structure to manage the flashing procedure progress reporting.
 ///
@@ -15,153 +17,158 @@ use std::{sync::Arc, time::Duration};
 /// let progress = FlashProgress::new(|event| println!("Event: {:#?}", event));
 /// ```
 #[derive(Clone)]
-pub struct FlashProgress<'a> {
-    handler: Arc<dyn Fn(ProgressEvent) + 'a>,
+pub struct FlashProgress {
+    sender: Option<Sender<ProgressEvent>>,
 }
 
-impl<'a> FlashProgress<'a> {
+impl FlashProgress {
     /// Create a new `FlashProgress` structure with a given `handler` to be called on events.
-    pub fn new(handler: impl Fn(ProgressEvent) + 'a) -> Self {
+    pub fn new(sender: Sender<ProgressEvent>) -> Self {
         Self {
-            handler: Arc::new(handler),
+            sender: Some(sender),
         }
     }
 
     /// Create a new `FlashProgress` structure with an empty handler.
     pub fn empty() -> Self {
-        Self {
-            handler: Arc::new(|_| {}),
-        }
+        Self { sender: None }
     }
 
     /// Emit a flashing progress event.
-    pub fn emit(&self, event: ProgressEvent) {
-        (self.handler)(event);
+    pub async fn emit(&self, event: ProgressEvent) {
+        if let Some(sender) = &self.sender {
+            sender.send(event).await.unwrap()
+        }
     }
 
     // --- Methods for emitting specific kinds of events.
 
     /// Signal that the flashing algorithm was set up and is initialized.
-    pub(super) fn initialized(&self, phases: Vec<FlashLayout>) {
+    pub(super) async fn initialized(&self, phases: Vec<FlashLayout>) {
         self.emit(ProgressEvent::FlashLayoutReady {
             flash_layout: phases,
-        });
+        })
+        .await;
     }
 
     /// Signal that a new progress bar should be created.
-    pub(super) fn add_progress_bar(&self, operation: ProgressOperation, total: Option<u64>) {
-        self.emit(ProgressEvent::AddProgressBar { operation, total });
+    pub(super) async fn add_progress_bar(&self, operation: ProgressOperation, total: Option<u64>) {
+        self.emit(ProgressEvent::AddProgressBar { operation, total })
+            .await;
     }
 
     /// Signal that the procedure started.
-    pub(super) fn started(&self, operation: ProgressOperation) {
-        self.emit(ProgressEvent::Started(operation));
+    pub(super) async fn started(&self, operation: ProgressOperation) {
+        self.emit(ProgressEvent::Started(operation)).await;
     }
 
     /// Signal that the procedure has made progress.
-    pub(super) fn progressed(&self, operation: ProgressOperation, size: u64, time: Duration) {
+    pub(super) async fn progressed(&self, operation: ProgressOperation, size: u64, time: Duration) {
         self.emit(ProgressEvent::Progress {
             operation,
             size,
             time,
-        });
+        })
+        .await;
     }
 
     /// Signal that the procedure failed.
-    pub(super) fn failed(&self, operation: ProgressOperation) {
-        self.emit(ProgressEvent::Failed(operation));
+    pub(super) async fn failed(&self, operation: ProgressOperation) {
+        self.emit(ProgressEvent::Failed(operation)).await;
     }
 
     /// Signal that the procedure completed successfully.
-    pub(super) fn finished(&self, operation: ProgressOperation) {
-        self.emit(ProgressEvent::Finished(operation));
+    pub(super) async fn finished(&self, operation: ProgressOperation) {
+        self.emit(ProgressEvent::Finished(operation)).await;
     }
 
     /// Signal that a flashing algorithm produced a diagnostic message.
-    pub(super) fn message(&self, message: String) {
-        self.emit(ProgressEvent::DiagnosticMessage { message });
+    pub(super) async fn message(&self, message: String) {
+        self.emit(ProgressEvent::DiagnosticMessage { message })
+            .await;
     }
 
     // --- Methods for emitting events for a specific operation.
 
     /// Signal that the erasing procedure started.
-    pub(super) fn started_erasing(&self) {
-        self.started(ProgressOperation::Erase);
+    pub(super) async fn started_erasing(&self) {
+        self.started(ProgressOperation::Erase).await;
     }
 
     /// Signal that the filling procedure started.
-    pub(super) fn started_filling(&self) {
-        self.started(ProgressOperation::Fill);
+    pub(super) async fn started_filling(&self) {
+        self.started(ProgressOperation::Fill).await;
     }
 
     /// Signal that the programming procedure started.
-    pub(super) fn started_programming(&self) {
-        self.started(ProgressOperation::Program);
+    pub(super) async fn started_programming(&self) {
+        self.started(ProgressOperation::Program).await;
     }
 
     /// Signal that the verifying procedure started.
-    pub(crate) fn started_verifying(&self) {
-        self.started(ProgressOperation::Verify);
+    pub(crate) async fn started_verifying(&self) {
+        self.started(ProgressOperation::Verify).await;
     }
 
     /// Signal that the sector erasing procedure has made progress.
-    pub(super) fn sector_erased(&self, size: u64, time: Duration) {
-        self.progressed(ProgressOperation::Erase, size, time);
+    pub(super) async fn sector_erased(&self, size: u64, time: Duration) {
+        self.progressed(ProgressOperation::Erase, size, time).await;
     }
 
     /// Signal that the page filling procedure has made progress.
-    pub(super) fn page_filled(&self, size: u64, time: Duration) {
-        self.progressed(ProgressOperation::Fill, size, time);
+    pub(super) async fn page_filled(&self, size: u64, time: Duration) {
+        self.progressed(ProgressOperation::Fill, size, time).await;
     }
 
     /// Signal that the page programming procedure has made progress.
-    pub(super) fn page_programmed(&self, size: u64, time: Duration) {
-        self.progressed(ProgressOperation::Program, size, time);
+    pub(super) async fn page_programmed(&self, size: u64, time: Duration) {
+        self.progressed(ProgressOperation::Program, size, time)
+            .await;
     }
 
     /// Signal that the page filling procedure has made progress.
-    pub(super) fn page_verified(&self, size: u64, time: Duration) {
-        self.progressed(ProgressOperation::Verify, size, time);
+    pub(super) async fn page_verified(&self, size: u64, time: Duration) {
+        self.progressed(ProgressOperation::Verify, size, time).await;
     }
 
     /// Signal that the erasing procedure failed.
-    pub(super) fn failed_erasing(&self) {
-        self.failed(ProgressOperation::Erase);
+    pub(super) async fn failed_erasing(&self) {
+        self.failed(ProgressOperation::Erase).await;
     }
 
     /// Signal that the filling procedure failed.
-    pub(super) fn failed_filling(&self) {
-        self.failed(ProgressOperation::Fill);
+    pub(super) async fn failed_filling(&self) {
+        self.failed(ProgressOperation::Fill).await;
     }
 
     /// Signal that the programming procedure failed.
-    pub(super) fn failed_programming(&self) {
-        self.failed(ProgressOperation::Program);
+    pub(super) async fn failed_programming(&self) {
+        self.failed(ProgressOperation::Program).await;
     }
 
     /// Signal that the verifying procedure failed.
-    pub(super) fn failed_verifying(&self) {
-        self.failed(ProgressOperation::Verify);
+    pub(super) async fn failed_verifying(&self) {
+        self.failed(ProgressOperation::Verify).await;
     }
 
     /// Signal that the programming procedure completed successfully.
-    pub(super) fn finished_programming(&self) {
-        self.finished(ProgressOperation::Program);
+    pub(super) async fn finished_programming(&self) {
+        self.finished(ProgressOperation::Program).await;
     }
 
     /// Signal that the erasing procedure completed successfully.
-    pub(super) fn finished_erasing(&self) {
-        self.finished(ProgressOperation::Erase);
+    pub(super) async fn finished_erasing(&self) {
+        self.finished(ProgressOperation::Erase).await;
     }
 
     /// Signal that the filling procedure completed successfully.
-    pub(super) fn finished_filling(&self) {
-        self.finished(ProgressOperation::Fill);
+    pub(super) async fn finished_filling(&self) {
+        self.finished(ProgressOperation::Fill).await;
     }
 
     /// Signal that the verifying procedure completed successfully.
-    pub(super) fn finished_verifying(&self) {
-        self.finished(ProgressOperation::Verify);
+    pub(super) async fn finished_verifying(&self) {
+        self.finished(ProgressOperation::Verify).await;
     }
 }
 

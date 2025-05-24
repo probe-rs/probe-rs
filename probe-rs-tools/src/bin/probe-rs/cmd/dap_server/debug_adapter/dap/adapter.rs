@@ -34,9 +34,10 @@ use probe_rs_debug::{
     stack_frame::StackFrameInfo,
 };
 use serde::{Serialize, de::DeserializeOwned};
+use tokio::sync::Mutex;
 use typed_path::NativePathBuf;
 
-use std::{fmt::Display, str, time::Duration};
+use std::{fmt::Display, str, sync::Arc, time::Duration};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
@@ -73,7 +74,7 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     /// Flag to indicate that workarounds for VSCode-specific spec deviations etc. should be
     /// enabled.
     pub(crate) vscode_quirks: bool,
-    adapter: P,
+    adapter: Arc<Mutex<P>>,
 }
 
 impl<P: ProtocolAdapter> DebugAdapter<P> {
@@ -87,7 +88,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             supports_progress_reporting: false,
             lines_start_at_1: true,
             columns_start_at_1: true,
-            adapter,
+            adapter: Arc::new(Mutex::new(adapter)),
         }
     }
 
@@ -1719,16 +1720,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// DebuggerError. For the DAP Client, it forwards the response, while for
     /// the CLI, it will print the body for success, or the message for
     /// failure.
-    pub fn send_response<S: Serialize + std::fmt::Debug>(
+    pub async fn send_response<S: Serialize + std::fmt::Debug>(
         &mut self,
         request: &Request,
         response: Result<Option<S>, &DebuggerError>,
     ) -> Result<()> {
-        self.adapter.send_response(request, response)
+        self.adapter.lock().await.send_response(request, response)
     }
 
     /// Displays an error message to the user.
-    pub fn show_error_message(&mut self, response: &DebuggerError) -> Result<()> {
+    pub async fn show_error_message(&mut self, response: &DebuggerError) -> Result<()> {
         let expanded_error = {
             let mut response_message = response.to_string();
             let mut offset_iterations = 0;
@@ -1750,8 +1751,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             response_message
         };
         if self
-            .adapter
             .show_message(MessageSeverity::Error, expanded_error)
+            .await
         {
             Ok(())
         } else {
@@ -1759,24 +1760,28 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
+    pub async fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
+        self.adapter.lock().await.log_to_console(message)
+    }
+
+    /// Send a custom "probe-rs-show-message" event to the MS DAP Client.
+    /// The `severity` field can be one of `information`, `warning`, or `error`.
+    pub async fn show_message(
+        &mut self,
+        severity: MessageSeverity,
+        message: impl Into<String>,
+    ) -> bool {
+        self.adapter.lock().await.show_message(severity, message)
+    }
+
     #[tracing::instrument(level = "trace", skip_all)]
-    pub fn send_event<S: Serialize>(
+    pub async fn send_event<S: Serialize>(
         &mut self,
         event_type: &str,
         event_body: Option<S>,
     ) -> Result<()> {
         tracing::debug!("Sending event: {}", event_type);
-        self.adapter.send_event(event_type, event_body)
-    }
-
-    pub fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
-        self.adapter.log_to_console(message)
-    }
-
-    /// Send a custom "probe-rs-show-message" event to the MS DAP Client.
-    /// The `severity` field can be one of `information`, `warning`, or `error`.
-    pub fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
-        self.adapter.show_message(severity, message)
+        self.adapter.lock().await.send_event(event_type, event_body)
     }
 
     /// Send a custom `probe-rs-rtt-channel-config` event to the MS DAP Client, to create a window for a specific RTT channel.
@@ -1811,6 +1816,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .is_ok()
     }
 
+    pub(crate) async fn set_console_log_level(&mut self, error: ConsoleLog) {
+        self.adapter.lock().await.set_console_log_level(error)
+    }
+}
+
+pub struct ProgressUpdater<P: ProtocolAdapter> {
+    adapter: Arc<Mutex<P>>,
+}
+
+impl<P: ProtocolAdapter> ProgressUpdater<P> {
     fn new_progress_id(&mut self) -> ProgressId {
         let id = self.progress_id;
 
@@ -1863,7 +1878,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     /// Update the progress report in VSCode.
     /// The progress has the range [0..1].
-    pub fn update_progress(
+    pub async fn update_progress(
         &mut self,
         progress: Option<f64>,
         message: Option<impl Display>,
@@ -1876,7 +1891,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let percentage = progress.map(|progress| progress * 100.0);
 
-        self.send_event(
+        self.adapter.lock().await.send_event(
             "progressUpdate",
             Some(ProgressUpdateEventBody {
                 message: message.map(|msg| match percentage {
@@ -1890,10 +1905,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         )?;
 
         Ok(progress_id)
-    }
-
-    pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {
-        self.adapter.set_console_log_level(error)
     }
 }
 

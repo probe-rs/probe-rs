@@ -7,7 +7,7 @@ use probe_rs::{
     flashing::{self, FileDownloadError, FlashLoader, FlashProgress},
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Sender, channel};
 
 use crate::{
     FormatOptions,
@@ -62,7 +62,7 @@ pub async fn build(
 ) -> BuildResponse {
     // build loader
     let mut session = ctx.session(request.sessid).await;
-    let loader = build_loader(&mut session, &request.path, request.format, None)?;
+    let loader = build_loader(&mut session, &request.path, request.format, None).await?;
 
     Ok(BuildResult {
         boot_info: loader.boot_info().into(),
@@ -78,7 +78,7 @@ pub struct FlashRequest {
     pub rtt_client: Option<Key<RttClient>>,
 }
 impl FlashRequest {
-    fn download_options<'a>(&self) -> flashing::DownloadOptions<'a> {
+    fn download_options<'a>(&self) -> flashing::DownloadOptions {
         let mut options = probe_rs::flashing::DownloadOptions::default();
 
         options.keep_unwritten_bytes = self.options.keep_unwritten_bytes;
@@ -239,8 +239,8 @@ pub enum ProgressEvent {
     },
 }
 impl ProgressEvent {
-    pub fn from_library_event(event: flashing::ProgressEvent, mut cb: impl FnMut(ProgressEvent)) {
-        let event = match event {
+    pub fn from_library_event(event: flashing::ProgressEvent) -> Self {
+        match event {
             flashing::ProgressEvent::FlashLayoutReady { flash_layout } => {
                 ProgressEvent::FlashLayoutReady {
                     flash_layout: flash_layout.iter().map(Into::into).collect(),
@@ -266,9 +266,7 @@ impl ProgressEvent {
             flashing::ProgressEvent::DiagnosticMessage { message } => {
                 ProgressEvent::DiagnosticMessage { message }
             }
-        };
-
-        cb(event);
+        }
     }
 
     pub fn is_operation(&self, operation: Operation) -> bool {
@@ -335,24 +333,26 @@ impl From<probe_rs::flashing::BootInfo> for BootInfo {
 }
 
 pub async fn flash(ctx: &mut RpcContext, _header: VarHeader, request: FlashRequest) -> NoResponse {
-    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, flash_impl)
+    ctx.run::<ProgressEventTopic, _, _, _>(request, flash_impl)
         .await
 }
 
-fn flash_impl(
+async fn flash_impl(
     ctx: RpcSpawnContext,
     request: FlashRequest,
     sender: Sender<ProgressEvent>,
 ) -> NoResponse {
     let dry_run = ctx.dry_run(request.sessid);
-    let mut session = ctx.session_blocking(request.sessid);
+    let mut session = ctx.session(request.sessid).await;
 
-    let mut rtt_client = request
-        .rtt_client
-        .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
+    let mut rtt_client = if let Some(rtt_client) = request.rtt_client {
+        Some(ctx.object_mut(rtt_client).await)
+    } else {
+        None
+    };
 
     // build loader
-    let loader = ctx.object_mut_blocking(request.loader);
+    let loader = ctx.object_mut(request.loader).await;
 
     if let Some(rtt_client) = rtt_client.as_mut() {
         rtt_client.configure_from_loader(&loader);
@@ -360,13 +360,20 @@ fn flash_impl(
 
     let mut options = request.download_options();
     options.dry_run = dry_run;
-    options.progress = Some(FlashProgress::new(move |event| {
-        ProgressEvent::from_library_event(event, |event| sender.blocking_send(event).unwrap());
-    }));
+
+    let (first_sender, mut receiver) = channel::<flashing::ProgressEvent>(256);
+    tokio::spawn(async move {
+        while let Some(event) = receiver.recv().await {
+            let event = ProgressEvent::from_library_event(event);
+            sender.send(event).await.unwrap()
+        }
+    });
+    options.progress = Some(FlashProgress::new(first_sender));
 
     // run flash download
     loader
         .commit(&mut session, options)
+        .await
         .map_err(FileDownloadError::Flash)?;
 
     Ok(())
@@ -384,28 +391,30 @@ pub enum EraseCommand {
 }
 
 pub async fn erase(ctx: &mut RpcContext, _header: VarHeader, request: EraseRequest) -> NoResponse {
-    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, erase_impl)
+    ctx.run::<ProgressEventTopic, _, _, _>(request, erase_impl)
         .await
 }
 
-fn erase_impl(
+async fn erase_impl(
     ctx: RpcSpawnContext,
     request: EraseRequest,
     sender: Sender<ProgressEvent>,
 ) -> NoResponse {
-    let mut session = ctx.session_blocking(request.sessid);
+    let mut session = ctx.session(request.sessid).await;
 
-    let progress = FlashProgress::new(move |event| {
-        ProgressEvent::from_library_event(event, |event| {
-            // Only emit Erase-related events.
+    let (first_sender, mut receiver) = channel::<flashing::ProgressEvent>(256);
+    tokio::spawn(async move {
+        while let Some(event) = receiver.recv().await {
+            let event = ProgressEvent::from_library_event(event);
             if event.is_operation(Operation::Erase) {
-                sender.blocking_send(event).unwrap()
+                sender.send(event).await.unwrap()
             }
-        });
+        }
     });
+    let progress = FlashProgress::new(first_sender);
 
     match request.command {
-        EraseCommand::All => flashing::erase_all(&mut session, progress)?,
+        EraseCommand::All => flashing::erase_all(&mut session, progress).await?,
     }
 
     Ok(())
@@ -430,28 +439,30 @@ pub async fn verify(
     _header: VarHeader,
     request: VerifyRequest,
 ) -> VerifyResponse {
-    ctx.run_blocking::<ProgressEventTopic, _, _, _>(request, verify_impl)
+    ctx.run::<ProgressEventTopic, _, _, _>(request, verify_impl)
         .await
 }
 
-fn verify_impl(
+async fn verify_impl(
     ctx: RpcSpawnContext,
     request: VerifyRequest,
     sender: Sender<ProgressEvent>,
 ) -> VerifyResponse {
-    let mut session = ctx.session_blocking(request.sessid);
-    let loader = ctx.object_mut_blocking(request.loader);
+    let mut session = ctx.session(request.sessid).await;
+    let loader = ctx.object_mut(request.loader).await;
 
-    let progress = FlashProgress::new(move |event| {
-        ProgressEvent::from_library_event(event, |event| {
-            // Only emit Verify-related events.
+    let (first_sender, mut receiver) = channel::<flashing::ProgressEvent>(256);
+    tokio::spawn(async move {
+        while let Some(event) = receiver.recv().await {
+            let event = ProgressEvent::from_library_event(event);
             if event.is_operation(Operation::Verify) {
-                sender.blocking_send(event).unwrap()
+                sender.send(event).await.unwrap()
             }
-        });
+        }
     });
+    let progress = FlashProgress::new(first_sender);
 
-    match loader.verify(&mut session, progress) {
+    match loader.verify(&mut session, progress).await {
         Ok(()) => Ok(VerifyResult::Ok),
         Err(flashing::FlashError::Verify) => Ok(VerifyResult::Mismatch),
         Err(other) => Err(other.into()),

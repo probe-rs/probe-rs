@@ -1,18 +1,16 @@
 use std::time::Duration;
 
 use colored::Colorize;
-use linkme::distributed_slice;
 use probe_rs::{
     Architecture, BreakpointCause, Core, CoreStatus, Error, HaltReason, MemoryInterface,
     config::MemoryRegion, probe::DebugProbeError,
 };
 
-use crate::{CORE_TESTS, TestFailure, TestResult, TestTracker, println_test_status};
+use crate::{TestFailure, TestResult, TestTracker, println_test_status};
 
 const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
 
-#[distributed_slice(CORE_TESTS)]
-fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
+pub(crate) async fn test_stepping(tracker: &TestTracker<'_>, core: &mut Core<'_>) -> TestResult {
     println_test_status!(tracker, blue, "Testing stepping on core {}...", core.id());
 
     if core.architecture() != Architecture::Arm {
