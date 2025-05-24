@@ -69,12 +69,15 @@ impl Target {
         let mut memory_map = chip.memory_map.clone();
         let mut flash_algorithms = Vec::new();
         for algo_name in chip.flash_algorithms.iter() {
-            let algo = family
-                .get_algorithm_for_chip(algo_name, chip)
-                .expect(
-                    "The required flash algorithm was not found. This is a bug. Please report it.",
-                )
-                .clone();
+            let Some(algo) = family.get_algorithm_for_chip(algo_name, chip) else {
+                unreachable!(
+                    "The chip {chip_name} refers to a flash algorithm called {algo_name}, which is \
+                    not defined in the family {family_name}. The flash algorithms should have been \
+                    validated when the ChipFamily was loaded. This is a bug, please report it.",
+                    chip_name = chip.name,
+                    family_name = family.name,
+                );
+            };
 
             // If the flash algorithm addresses a range that is not covered by any memory region,
             // we add a new memory region for it. This is usually the case for option bytes and
