@@ -9,18 +9,12 @@ use probe_rs::{MemoryInterface, RegisterRole, RegisterValue};
 
 pub struct XtensaExceptionHandler;
 
-impl ExceptionInterface for XtensaExceptionHandler {
-    fn unwind_without_debuginfo(
+impl XtensaExceptionHandler {
+    fn unwind_registers(
         &self,
-        unwind_registers: &mut DebugRegisters,
-        frame_pc: u64,
-        _stack_frames: &[StackFrame],
-        instruction_set: Option<probe_rs::InstructionSet>,
         memory: &mut dyn MemoryInterface,
-    ) -> ControlFlow<Option<DebugError>> {
-        // Use the default method to unwind PC.
-        unwind_pc_without_debuginfo(unwind_registers, frame_pc, instruction_set)?;
-
+        unwind_registers: &mut DebugRegisters,
+    ) -> Result<(), DebugError> {
         // WindowUnderflow12:
         // // On entry here: a0-a11 are call[i].reg[0..11] and initially contain garbage, a12-a15 are call[i+1].reg[0..3],
         // // (in particular, a13 is call[i+1]’s stack pointer) and must be preserved
@@ -42,63 +36,47 @@ impl ExceptionInterface for XtensaExceptionHandler {
         // We can try and use FP to unwind SP and RA that allows us to continue unwinding.
 
         // Current register values.
-        let sp = unwind_registers
-            .get_register_value_by_role(&RegisterRole::StackPointer)
-            .unwrap();
+        let sp = unwind_registers.get_register_value_by_role(&RegisterRole::StackPointer)?;
 
         if sp < 16 {
             // Stack pointer is too low.
-            return ControlFlow::Break(None);
+            return Err(DebugError::Other(
+                "Stack pointer is too low to unwind".to_string(),
+            ));
         }
 
-        let ra = unwind_registers
-            .get_register_value_by_role(&RegisterRole::ReturnAddress)
-            .unwrap();
+        let ra = unwind_registers.get_register_value_by_role(&RegisterRole::ReturnAddress)?;
         let windowsize = (ra & 0xc000_0000) >> 30;
 
         // Read A0-A3 from current stack frame's Register-Spill Area.
         let mut stack_frame = [0; 4];
-        if let Err(e) = memory.read_32(sp - 16, &mut stack_frame) {
-            // FP points at something we can't read.
-            return ControlFlow::Break(Some(e.into()));
-        }
+        memory.read_32(sp - 16, &mut stack_frame)?;
 
         let [a0, caller_sp, a2, a3] = stack_frame;
 
+        // TODO: use an architecture-appropriate value?
         if (caller_sp as u64).saturating_sub(sp) > 0x1000_0000 {
             // Stack pointer is too far away from the current stack pointer.
-            return ControlFlow::Break(None);
+            return Err(DebugError::Other(
+                "Stack pointer is too far away to unwind".to_string(),
+            ));
         }
 
-        let unwound_ra = unwind_registers
-            .get_register_mut_by_role(&RegisterRole::ReturnAddress)
-            .unwrap();
-        unwound_ra.value = Some(RegisterValue::from(a0));
+        let regs_from_current_frame = [
+            (RegisterRole::ReturnAddress, a0),
+            (RegisterRole::StackPointer, caller_sp),
+            (RegisterRole::Core("a2"), a2),
+            (RegisterRole::Core("a3"), a3),
+        ];
 
-        let unwound_sp = unwind_registers
-            .get_register_mut_by_role(&RegisterRole::StackPointer)
-            .unwrap();
-        unwound_sp.value = Some(RegisterValue::from(caller_sp));
-
-        let unwound_a2 = unwind_registers
-            .get_register_mut_by_role(&RegisterRole::Core("a2"))
-            .unwrap();
-        unwound_a2.value = Some(RegisterValue::from(a2));
-
-        let unwound_a3 = unwind_registers
-            .get_register_mut_by_role(&RegisterRole::Core("a3"))
-            .unwrap();
-        unwound_a3.value = Some(RegisterValue::from(a3));
+        for (role, value) in regs_from_current_frame {
+            let reg = unwind_registers.get_register_mut_by_role(&role).unwrap();
+            reg.value = Some(RegisterValue::from(value));
+        }
 
         if windowsize > 1 {
             // The rest of the registers are in the previous stack frame.
-            let frame_sp = match memory.read_word_32(caller_sp as u64 - 12) {
-                Ok(sp) => sp,
-                Err(e) => {
-                    // FP points at something we can't read.
-                    return ControlFlow::Break(Some(e.into()));
-                }
-            };
+            let frame_sp = memory.read_word_32(caller_sp as u64 - 12)?;
 
             // We've already read 4 registers out of windowsize * 4.
             const AREGS: [&str; 8] = ["a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11"];
@@ -108,13 +86,10 @@ impl ExceptionInterface for XtensaExceptionHandler {
             let frame_to_read = &mut frame[..regs_to_read as usize];
 
             // For windowsize = 3(12 registers), the offset is -48
-            if let Err(e) = memory.read_32(
+            memory.read_32(
                 frame_sp as u64 - 16 - 4 * regs_to_read,
                 &mut frame_to_read[..],
-            ) {
-                // FP points at something we can't read.
-                return ControlFlow::Break(Some(e.into()));
-            }
+            )?;
 
             for (reg, reg_value) in AREGS.iter().zip(frame_to_read.iter().copied()) {
                 let reg = unwind_registers
@@ -124,10 +99,26 @@ impl ExceptionInterface for XtensaExceptionHandler {
             }
         }
 
-        if sp == caller_sp as u64 {
-            return ControlFlow::Break(None);
-        }
+        Ok(())
+    }
+}
 
-        ControlFlow::Continue(())
+impl ExceptionInterface for XtensaExceptionHandler {
+    fn unwind_without_debuginfo(
+        &self,
+        unwind_registers: &mut DebugRegisters,
+        frame_pc: u64,
+        _stack_frames: &[StackFrame],
+        instruction_set: Option<probe_rs::InstructionSet>,
+        memory: &mut dyn MemoryInterface,
+    ) -> ControlFlow<Option<DebugError>> {
+        // Use the default method to unwind PC.
+        unwind_pc_without_debuginfo(unwind_registers, frame_pc, instruction_set)?;
+
+        // TODO: this should be automatically handled by the caller.
+        match self.unwind_registers(memory, unwind_registers) {
+            Ok(_) => ControlFlow::Continue(()),
+            Err(error) => ControlFlow::Break(Some(error)),
+        }
     }
 }
