@@ -18,10 +18,7 @@ struct FlasherWithRegions {
 ///
 /// The optional progress will only be used to emit RTT messages.
 /// No actual indication for the state of the erase all operation will be given.
-pub async fn erase_all(
-    session: &mut Session,
-    progress: FlashProgress<'_>,
-) -> Result<(), FlashError> {
+pub async fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), FlashError> {
     tracing::debug!("Erasing all...");
 
     // TODO: this first loop is pretty much identical to FlashLoader::prepare_plan - can we simplify?
@@ -36,15 +33,19 @@ pub async fn erase_all(
     let phases = layout_flash(&algos, &mut do_chip_erase, session);
 
     if do_chip_erase {
-        progress.add_progress_bar(ProgressOperation::Erase, None);
+        progress
+            .add_progress_bar(ProgressOperation::Erase, None)
+            .await;
     } else {
         for phase in phases.iter() {
             let sector_size = phase.sectors().iter().map(|s| s.size()).sum::<u64>();
 
-            progress.add_progress_bar(ProgressOperation::Erase, Some(sector_size));
+            progress
+                .add_progress_bar(ProgressOperation::Erase, Some(sector_size))
+                .await;
         }
     }
-    progress.initialized(phases);
+    progress.initialized(phases).await;
 
     for el in algos {
         let mut flasher = el.flasher;
@@ -182,7 +183,7 @@ fn plan_erase(session: &Session) -> Result<Vec<FlasherWithRegions>, FlashError> 
 // TODO: currently no progress is reported by anything in this function.
 pub async fn erase_sectors(
     session: &mut Session,
-    progress: FlashProgress<'_>,
+    progress: FlashProgress,
     start_sector: usize,
     sectors: usize,
 ) -> Result<(), FlashError> {
@@ -276,7 +277,7 @@ pub async fn erase_sectors(
 /// Check that a memory range has been erased.
 pub async fn run_blank_check(
     session: &mut Session,
-    progress: FlashProgress<'_>,
+    progress: FlashProgress,
     start_sector: usize,
     sectors: usize,
 ) -> Result<(), FlashError> {

@@ -444,7 +444,7 @@ impl FlashLoader {
     pub async fn verify(
         &self,
         session: &mut Session,
-        progress: FlashProgress<'_>,
+        progress: FlashProgress,
     ) -> Result<(), FlashError> {
         let mut algos = self.prepare_plan(session, false)?;
 
@@ -456,7 +456,9 @@ impl FlashLoader {
                     .encoder(flasher.flash_algorithm.transfer_encoding, true)
                     .program_size();
             }
-            progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
+            progress
+                .add_progress_bar(ProgressOperation::Verify, Some(program_size))
+                .await;
         }
 
         // Iterate all flash algorithms we need to use and do the flashing.
@@ -482,7 +484,7 @@ impl FlashLoader {
     pub async fn commit(
         &self,
         session: &mut Session,
-        mut options: DownloadOptions<'_>,
+        mut options: DownloadOptions,
     ) -> Result<(), FlashError> {
         tracing::debug!("Committing FlashLoader!");
         let mut algos = self.prepare_plan(session, options.keep_unwritten_bytes)?;
@@ -491,9 +493,9 @@ impl FlashLoader {
             tracing::info!("Skipping programming, dry run!");
 
             if let Some(progress) = options.progress {
-                progress.failed_filling();
-                progress.failed_erasing();
-                progress.failed_programming();
+                progress.failed_filling().await;
+                progress.failed_erasing().await;
+                progress.failed_programming().await;
             }
 
             return Ok(());
@@ -504,7 +506,8 @@ impl FlashLoader {
             .clone()
             .unwrap_or_else(FlashProgress::empty);
 
-        self.initialize(&mut algos, session, &progress, &mut options)?;
+        self.initialize(&mut algos, session, &progress, &mut options)
+            .await?;
 
         let mut do_chip_erase = options.do_chip_erase;
         let mut did_chip_erase = false;
@@ -532,7 +535,7 @@ impl FlashLoader {
             flasher
                 .program(
                     session,
-                    &progress,
+                    progress.clone(),
                     options.keep_unwritten_bytes,
                     do_use_double_buffering,
                     options.skip_erase || did_chip_erase,
@@ -718,7 +721,7 @@ impl FlashLoader {
         Ok(algos)
     }
 
-    fn initialize(
+    async fn initialize(
         &self,
         algos: &mut [Flasher],
         session: &mut Session,
@@ -740,7 +743,9 @@ impl FlashLoader {
         }
 
         if options.do_chip_erase {
-            progress.add_progress_bar(ProgressOperation::Erase, None);
+            progress
+                .add_progress_bar(ProgressOperation::Erase, None)
+                .await;
         }
 
         // Iterate all flash algorithms to initialize a few things.
@@ -767,20 +772,28 @@ impl FlashLoader {
             }
 
             if options.keep_unwritten_bytes {
-                progress.add_progress_bar(ProgressOperation::Fill, Some(fill_size));
+                progress
+                    .add_progress_bar(ProgressOperation::Fill, Some(fill_size))
+                    .await;
             }
             if !options.do_chip_erase {
-                progress.add_progress_bar(ProgressOperation::Erase, Some(erase_size));
+                progress
+                    .add_progress_bar(ProgressOperation::Erase, Some(erase_size))
+                    .await;
             }
-            progress.add_progress_bar(ProgressOperation::Program, Some(program_size));
+            progress
+                .add_progress_bar(ProgressOperation::Program, Some(program_size))
+                .await;
             if options.verify {
-                progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
+                progress
+                    .add_progress_bar(ProgressOperation::Verify, Some(program_size))
+                    .await;
             }
 
             phases.push(phase_layout);
         }
 
-        progress.initialized(phases);
+        progress.initialized(phases).await;
 
         Ok(())
     }

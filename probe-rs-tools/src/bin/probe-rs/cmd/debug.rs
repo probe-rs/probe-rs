@@ -6,6 +6,7 @@ use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
 use rustyline::{DefaultEditor, error::ReadlineError};
 use time::UtcOffset;
+use tokio::sync::Mutex;
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::ErrorResponseBody;
@@ -252,8 +253,9 @@ impl Cmd {
         // A bit weird since we need the request to be removable,
         // but we also need to pass it directly.
         shared.write().next_request = Some(attach_request.clone());
+        let debug_adapter = Arc::new(Mutex::new(debug_adapter));
         let mut session_data = debugger
-            .handle_launch_attach(registry, &attach_request, &mut debug_adapter, lister)
+            .handle_launch_attach(registry, &attach_request, debug_adapter, lister)
             .await?;
 
         shared.write().next_request = Some(Request {
@@ -263,7 +265,7 @@ impl Cmd {
             type_: "request".to_string(),
         });
         debugger
-            .process_next_request(&mut session_data, &mut debug_adapter)
+            .process_next_request(&mut session_data, debug_adapter)
             .await?;
 
         let mut rl = DefaultEditor::new()?;

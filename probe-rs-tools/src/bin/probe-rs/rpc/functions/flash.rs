@@ -7,7 +7,7 @@ use probe_rs::{
     flashing::{self, FileDownloadError, FlashLoader, FlashProgress},
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Sender, channel};
 
 use crate::{
     FormatOptions,
@@ -78,7 +78,7 @@ pub struct FlashRequest {
     pub rtt_client: Option<Key<RttClient>>,
 }
 impl FlashRequest {
-    fn download_options<'a>(&self) -> flashing::DownloadOptions<'a> {
+    fn download_options<'a>(&self) -> flashing::DownloadOptions {
         let mut options = probe_rs::flashing::DownloadOptions::default();
 
         options.keep_unwritten_bytes = self.options.keep_unwritten_bytes;
@@ -239,8 +239,8 @@ pub enum ProgressEvent {
     },
 }
 impl ProgressEvent {
-    pub fn from_library_event(event: flashing::ProgressEvent, mut cb: impl FnMut(ProgressEvent)) {
-        let event = match event {
+    pub fn from_library_event(event: flashing::ProgressEvent) -> Self {
+        match event {
             flashing::ProgressEvent::FlashLayoutReady { flash_layout } => {
                 ProgressEvent::FlashLayoutReady {
                     flash_layout: flash_layout.iter().map(Into::into).collect(),
@@ -266,9 +266,7 @@ impl ProgressEvent {
             flashing::ProgressEvent::DiagnosticMessage { message } => {
                 ProgressEvent::DiagnosticMessage { message }
             }
-        };
-
-        cb(event);
+        }
     }
 
     pub fn is_operation(&self, operation: Operation) -> bool {
@@ -362,9 +360,15 @@ async fn flash_impl(
 
     let mut options = request.download_options();
     options.dry_run = dry_run;
-    options.progress = Some(FlashProgress::new(move |event| {
-        ProgressEvent::from_library_event(event, |event| sender.blocking_send(event).unwrap());
-    }));
+
+    let (first_sender, mut receiver) = channel::<flashing::ProgressEvent>(256);
+    tokio::spawn(async move {
+        while let Some(event) = receiver.recv().await {
+            let event = ProgressEvent::from_library_event(event);
+            sender.send(event).await.unwrap()
+        }
+    });
+    options.progress = Some(FlashProgress::new(first_sender));
 
     // run flash download
     loader
@@ -398,14 +402,16 @@ async fn erase_impl(
 ) -> NoResponse {
     let mut session = ctx.session(request.sessid).await;
 
-    let progress = FlashProgress::new(move |event| {
-        ProgressEvent::from_library_event(event, |event| {
-            // Only emit Erase-related events.
+    let (first_sender, mut receiver) = channel::<flashing::ProgressEvent>(256);
+    tokio::spawn(async move {
+        while let Some(event) = receiver.recv().await {
+            let event = ProgressEvent::from_library_event(event);
             if event.is_operation(Operation::Erase) {
-                sender.blocking_send(event).unwrap()
+                sender.send(event).await.unwrap()
             }
-        });
+        }
     });
+    let progress = FlashProgress::new(first_sender);
 
     match request.command {
         EraseCommand::All => flashing::erase_all(&mut session, progress).await?,
@@ -445,14 +451,16 @@ async fn verify_impl(
     let mut session = ctx.session(request.sessid).await;
     let loader = ctx.object_mut(request.loader).await;
 
-    let progress = FlashProgress::new(move |event| {
-        ProgressEvent::from_library_event(event, |event| {
-            // Only emit Verify-related events.
+    let (first_sender, mut receiver) = channel::<flashing::ProgressEvent>(256);
+    tokio::spawn(async move {
+        while let Some(event) = receiver.recv().await {
+            let event = ProgressEvent::from_library_event(event);
             if event.is_operation(Operation::Verify) {
-                sender.blocking_send(event).unwrap()
+                sender.send(event).await.unwrap()
             }
-        });
+        }
     });
+    let progress = FlashProgress::new(first_sender);
 
     match loader.verify(&mut session, progress).await {
         Ok(()) => Ok(VerifyResult::Ok),

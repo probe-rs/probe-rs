@@ -196,9 +196,9 @@ fn print_instr_sets(instr_sets: &[InstructionSet]) -> String {
 /// ```
 #[derive(Default)]
 #[non_exhaustive]
-pub struct DownloadOptions<'p> {
+pub struct DownloadOptions {
     /// An optional progress reporter which is used if this argument is set to `Some(...)`.
-    pub progress: Option<FlashProgress<'p>>,
+    pub progress: Option<FlashProgress>,
     /// If `keep_unwritten_bytes` is `true`, erased portions of the flash that are not overwritten by the ELF data
     /// are restored afterwards, such that the old contents are untouched.
     ///
@@ -223,7 +223,7 @@ pub struct DownloadOptions<'p> {
     pub disable_double_buffering: bool,
 }
 
-impl DownloadOptions<'_> {
+impl DownloadOptions {
     /// DownloadOptions with default values.
     pub fn new() -> Self {
         Self::default()
@@ -275,7 +275,7 @@ pub async fn download_file_with_options(
     session: &mut Session,
     path: impl AsRef<Path>,
     format: impl Into<Format>,
-    options: DownloadOptions<'_>,
+    options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
     let loader = build_loader(session, path, format.into(), None).await?;
 
