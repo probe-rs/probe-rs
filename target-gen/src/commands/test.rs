@@ -1,10 +1,10 @@
-use std::cell::RefCell;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow};
 use colored::Colorize;
+use parking_lot::Mutex;
 use probe_rs::{
     MemoryInterface, Permissions, Session, SessionConfig,
     config::Registry,
@@ -20,7 +20,7 @@ use xshell::{Shell, cmd};
 use crate::commands::elf::cmd_elf;
 
 #[allow(clippy::too_many_arguments)]
-pub fn cmd_test(
+pub async fn cmd_test(
     target_artifact: &Path,
     template_path: &Path,
     definition_export_path: &Path,
@@ -124,27 +124,27 @@ pub fn cmd_test(
         probe.attach_with_registry(target_name, session_config.permissions, &registry)?;
 
     // Register callback to update the progress.
-    let t = Rc::new(RefCell::new(Instant::now()));
+    let t = Arc::new(Mutex::new(Instant::now()));
     let progress = FlashProgress::new(move |event| match event {
         ProgressEvent::Started(ProgressOperation::Program) => {
-            let mut t = t.borrow_mut();
+            let mut t = t.lock();
             *t = Instant::now();
         }
         ProgressEvent::Started(ProgressOperation::Erase) => {
-            let mut t = t.borrow_mut();
+            let mut t = t.lock();
             *t = Instant::now();
         }
         ProgressEvent::Failed(ProgressOperation::Erase) => {
-            println!("Failed erasing in {:?}", t.borrow().elapsed());
+            println!("Failed erasing in {:?}", t.lock().elapsed());
         }
         ProgressEvent::Finished(ProgressOperation::Erase) => {
-            println!("Finished erasing in {:?}", t.borrow().elapsed());
+            println!("Finished erasing in {:?}", t.lock().elapsed());
         }
         ProgressEvent::Failed(ProgressOperation::Program) => {
-            println!("Failed programming in {:?}", t.borrow().elapsed());
+            println!("Failed programming in {:?}", t.lock().elapsed());
         }
         ProgressEvent::Finished(ProgressOperation::Program) => {
-            println!("Finished programming in {:?}", t.borrow().elapsed());
+            println!("Finished programming in {:?}", t.lock().elapsed());
         }
         ProgressEvent::DiagnosticMessage { message } => {
             let prefix = "Message".yellow();
@@ -196,18 +196,19 @@ pub fn cmd_test(
         &mut session,
         progress.clone(),
         EraseType::EraseSectors(test_start_sector_index, 2),
-    )?;
+    )
+    .await?;
 
     println!("{test}: Erase done");
 
-    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2)?;
+    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2).await?;
 
     println!("{test}: Writing two pages ...");
 
     let mut loader = session.target().flash_loader();
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
-    run_flash_download(&mut session, loader, progress.clone(), true)?;
+    run_flash_download(&mut session, loader, progress.clone(), true).await?;
 
     println!("{test}: Write done");
 
@@ -218,15 +219,15 @@ pub fn cmd_test(
     assert_eq!(readback, data);
 
     println!("{test}: Erasing the entire chip and writing two pages ...");
-    run_flash_erase(&mut session, progress.clone(), EraseType::EraseAll)?;
+    run_flash_erase(&mut session, progress.clone(), EraseType::EraseAll).await?;
     println!("{test}: Erase done");
-    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2)?;
+    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2).await?;
 
     println!("{test}: Writing two pages ...");
     let mut loader = session.target().flash_loader();
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
-    run_flash_download(&mut session, loader, progress.clone(), true)?;
+    run_flash_download(&mut session, loader, progress.clone(), true).await?;
 
     println!("{test}: Write done");
 
@@ -241,16 +242,17 @@ pub fn cmd_test(
         &mut session,
         progress.clone(),
         EraseType::EraseSectors(test_start_sector_index, 2),
-    )?;
+    )
+    .await?;
     println!("{test}: Erase done");
 
-    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2)?;
+    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2).await?;
 
     println!("{test}: Writing two pages ...");
     let mut loader = session.target().flash_loader();
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
-    run_flash_download(&mut session, loader, progress, false)?;
+    run_flash_download(&mut session, loader, progress, false).await?;
     println!("{test}: Write done");
 
     let mut readback = vec![0; data_size as usize];
@@ -274,10 +276,10 @@ fn ensure_is_file(file_path: &Path) -> Result<()> {
 
 /// Performs the flash download with the given loader. Ensure that the loader has the data to load already stored.
 /// This function also manages the update and display of progress bars.
-pub fn run_flash_download(
+pub async fn run_flash_download(
     session: &mut Session,
     loader: FlashLoader,
-    progress: FlashProgress,
+    progress: FlashProgress<'_>,
     disable_double_buffering: bool,
 ) -> Result<()> {
     let mut download_option = DownloadOptions::default();
@@ -287,7 +289,7 @@ pub fn run_flash_download(
     download_option.progress = Some(progress);
     download_option.skip_erase = true;
 
-    loader.commit(session, download_option)?;
+    loader.commit(session, download_option).await?;
 
     Ok(())
 }
@@ -298,15 +300,15 @@ pub enum EraseType {
 }
 
 /// Erases the entire flash or just the sectors specified.
-pub fn run_flash_erase(
+pub async fn run_flash_erase(
     session: &mut Session,
-    progress: FlashProgress,
+    progress: FlashProgress<'_>,
     erase_type: EraseType,
 ) -> Result<()> {
     if let EraseType::EraseSectors(start_sector, sectors) = erase_type {
-        erase_sectors(session, progress, start_sector, sectors)?;
+        erase_sectors(session, progress, start_sector, sectors).await?;
     } else {
-        erase_all(session, progress)?;
+        erase_all(session, progress).await?;
     }
 
     Ok(())

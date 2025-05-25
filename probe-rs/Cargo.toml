@@ -33,8 +33,10 @@ anyhow.workspace = true
 async-io.workspace = true
 async-trait.workspace = true
 docsplay.workspace = true
+macro_rules_attribute.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
+smol-macros.workspace = true
 
 bincode = { version = "2", features = ["serde"], optional = true }
 bitfield = "0.19.0"
@@ -57,6 +59,7 @@ scroll = "0.12"
 serialport = { version = "4.6.0", default-features = false, features = [
     "usbportinfo-interface",
 ] }
+tokio = { version = "1", features = ["sync"] }
 tracing = "0.1"
 uf2-decode = "0.2"
 espflash = { version = "3", default-features = false }

@@ -29,7 +29,7 @@ pub struct MemoryNotAlignedError {
 }
 
 /// An interface to be implemented for drivers that allow target memory access.
-pub trait MemoryInterface<ERR = Error>
+pub trait MemoryInterface<ERR = Error>: Send + Sync
 where
     ERR: std::error::Error + From<InvalidDataLengthError> + From<MemoryNotAlignedError>,
 {
@@ -353,7 +353,7 @@ pub trait CoreMemoryInterface {
     fn memory_mut(&mut self) -> &mut dyn MemoryInterface<Self::ErrorType>;
 }
 
-impl<T> MemoryInterface<Error> for T
+impl<T: Send + Sync> MemoryInterface<Error> for T
 where
     T: CoreMemoryInterface,
     Error: From<<T as CoreMemoryInterface>::ErrorType>,

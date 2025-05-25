@@ -296,7 +296,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             verify: config.flashing.verify,
         };
         let format_options = FormatOptions::default();
-        let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
+        let loader = build_loader(&mut session, &path, format_options, image_instr_set).await?;
 
         rtt_client.configure_from_loader(&loader);
 
@@ -309,7 +309,8 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             &probe_options,
             loader,
             config.flashing.do_chip_erase,
-        )?;
+        )
+        .await?;
 
         match boot_info {
             BootInfo::FromRam {

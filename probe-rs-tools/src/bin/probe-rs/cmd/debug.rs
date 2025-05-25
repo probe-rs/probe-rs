@@ -1,11 +1,12 @@
-use std::cell::RefCell;
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::sync::Arc;
 
+use parking_lot::RwLock;
 use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
 use rustyline::{DefaultEditor, error::ReadlineError};
 use time::UtcOffset;
+use tokio::sync::Mutex;
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::ErrorResponseBody;
@@ -32,12 +33,12 @@ struct Shared {
 
 /// A barebones adapter for the CLI "client".
 struct CliAdapter {
-    shared: Rc<RefCell<Shared>>,
+    shared: Arc<RwLock<Shared>>,
     console_log_level: ConsoleLog,
 }
 impl ProtocolAdapter for CliAdapter {
     fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
-        Ok(self.shared.borrow().next_request.clone())
+        Ok(self.shared.read().next_request.clone())
     }
 
     fn send_event<S: serde::Serialize>(
@@ -58,7 +59,7 @@ impl ProtocolAdapter for CliAdapter {
                 print!("{}", output.output);
             }
             "terminated" => {
-                self.shared.borrow_mut().stop = true;
+                self.shared.write().stop = true;
             }
             // Not interesting
             "memory" => {}
@@ -102,7 +103,7 @@ impl ProtocolAdapter for CliAdapter {
     }
 
     fn remove_pending_request(&mut self, request_seq: i64) -> Option<String> {
-        self.shared.borrow_mut().next_request.take().and_then(|r| {
+        self.shared.write().next_request.take().and_then(|r| {
             if request_seq == r.seq {
                 Some(r.command)
             } else {
@@ -183,7 +184,7 @@ impl Cmd {
         lister: &Lister,
         utc_offset: UtcOffset,
     ) -> anyhow::Result<()> {
-        let shared = Rc::new(RefCell::new(Shared {
+        let shared = Arc::new(RwLock::new(Shared {
             stop: false,
             next_request: None,
         }));
@@ -193,7 +194,7 @@ impl Cmd {
         });
         let mut debugger = Debugger::new(utc_offset, None)?;
 
-        shared.borrow_mut().next_request = Some(Request {
+        shared.write().next_request = Some(Request {
             command: "initialize".to_string(),
             arguments: serde_json::to_value(&InitializeRequestArguments {
                 adapter_id: "probe-rs-cli".to_string(),
@@ -251,25 +252,26 @@ impl Cmd {
 
         // A bit weird since we need the request to be removable,
         // but we also need to pass it directly.
-        shared.borrow_mut().next_request = Some(attach_request.clone());
+        shared.write().next_request = Some(attach_request.clone());
+        let debug_adapter = Arc::new(Mutex::new(debug_adapter));
         let mut session_data = debugger
-            .handle_launch_attach(registry, &attach_request, &mut debug_adapter, lister)
+            .handle_launch_attach(registry, &attach_request, debug_adapter, lister)
             .await?;
 
-        shared.borrow_mut().next_request = Some(Request {
+        shared.write().next_request = Some(Request {
             command: "configurationDone".to_string(),
             arguments: serde_json::to_value(()).ok(),
             seq: 2,
             type_: "request".to_string(),
         });
         debugger
-            .process_next_request(&mut session_data, &mut debug_adapter)
+            .process_next_request(&mut session_data, debug_adapter)
             .await?;
 
         let mut rl = DefaultEditor::new()?;
 
         let mut seq = 3;
-        while !shared.borrow().stop {
+        while !shared.read().stop {
             match rl.readline(">> ") {
                 Ok(line) => {
                     rl.add_history_entry(&line)?;
@@ -291,7 +293,7 @@ impl Cmd {
                         type_: "request".to_string(),
                     };
 
-                    shared.borrow_mut().next_request = Some(request);
+                    shared.write().next_request = Some(request);
                     debugger
                         .process_next_request(&mut session_data, &mut debug_adapter)
                         .await?;

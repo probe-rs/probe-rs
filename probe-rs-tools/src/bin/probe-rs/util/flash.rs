@@ -18,14 +18,15 @@ use probe_rs::{
     Session,
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},
 };
+use tokio::sync::mpsc::channel;
 
 /// Performs the flash download with the given loader. Ensure that the loader has the data to load already stored.
 /// This function also manages the update and display of progress bars.
-pub fn run_flash_download(
+pub async fn run_flash_download(
     session: &mut Session,
     path: impl AsRef<Path>,
     download_options: &BinaryDownloadOptions,
-    probe_options: &LoadedProbeOptions,
+    probe_options: &LoadedProbeOptions<'_>,
     loader: FlashLoader,
     do_chip_erase: bool,
 ) -> Result<(), OperationError> {
@@ -45,33 +46,38 @@ pub fn run_flash_download(
         Some(CliProgressBars::new())
     };
 
-    options.progress = Some(FlashProgress::new(move |event| {
-        if let Some(ref path) = flash_layout_output_path {
-            if let probe_rs::flashing::ProgressEvent::FlashLayoutReady {
-                flash_layout: ref phases,
-            } = event
-            {
-                let mut flash_layout = FlashLayout::default();
-                for phase_layout in phases {
-                    flash_layout.merge_from(phase_layout.into());
-                }
+    let (sender, mut receiver) = channel(256);
+    tokio::spawn(async move {
+        while let Some(event) = receiver.recv().await {
+            if let Some(ref path) = flash_layout_output_path {
+                if let probe_rs::flashing::ProgressEvent::FlashLayoutReady {
+                    flash_layout: ref phases,
+                } = event
+                {
+                    let mut flash_layout = FlashLayout::default();
+                    for phase_layout in phases {
+                        flash_layout.merge_from(phase_layout.into());
+                    }
 
-                // Visualise flash layout to file if requested.
-                let visualizer = flash_layout.visualize();
-                _ = visualizer.write_svg(path);
+                    // Visualise flash layout to file if requested.
+                    let visualizer = flash_layout.visualize();
+                    _ = visualizer.write_svg(path);
+                }
+            }
+
+            if let Some(ref pb) = pb {
+                pb.handle(ProgressEvent::from_library_event(event));
             }
         }
-
-        if let Some(ref pb) = pb {
-            ProgressEvent::from_library_event(event, |event| pb.handle(event));
-        }
-    }));
+    });
+    options.progress = Some(FlashProgress::new(sender));
 
     // Start timer.
     let flash_timer = Instant::now();
 
     loader
         .commit(session, options)
+        .await
         .map_err(|error| OperationError::FlashingFailed {
             source: Box::new(error),
             target: Box::new(session.target().clone()),
@@ -94,7 +100,7 @@ pub fn run_flash_download(
 /// Builds a new flash loader for the given target and path. This
 /// will check the path for validity and check what pages have to be
 /// flashed etc.
-pub fn build_loader(
+pub async fn build_loader(
     session: &mut Session,
     path: impl AsRef<Path>,
     format_options: FormatOptions,
@@ -120,7 +126,7 @@ pub fn build_loader(
         }),
     };
 
-    probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
+    probe_rs::flashing::build_loader(session, path, format, image_instruction_set).await
 }
 
 #[derive(Default)]

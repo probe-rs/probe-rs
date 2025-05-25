@@ -10,7 +10,8 @@ use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     ProbeFactory, WireProtocol,
 };
-use serialport::{SerialPort, SerialPortType, available_ports};
+use parking_lot::Mutex;
+use serialport::{SerialPortType, available_ports};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::time::{Duration, Instant};
 use std::{env, fmt};
@@ -103,9 +104,8 @@ impl fmt::Display for CommandError {
 
 /// SiFli UART Debug Probe, Only support SiFli chip.
 pub struct SifliUart {
-    reader: BufReader<Box<dyn Read + Send>>,
-    writer: BufWriter<Box<dyn Write + Send>>,
-    _serial_port: Box<dyn SerialPort>,
+    reader: Mutex<BufReader<Box<dyn Read + Send>>>,
+    writer: Mutex<BufWriter<Box<dyn Write + Send>>>,
     baud: u32,
 }
 
@@ -128,16 +128,14 @@ impl SifliUart {
     pub fn new(
         reader: Box<dyn Read + Send>,
         writer: Box<dyn Write + Send>,
-        port: Box<dyn SerialPort>,
     ) -> Result<Self, DebugProbeError> {
         let reader = BufReader::new(reader);
         let writer = BufWriter::new(writer);
 
         let probe = SifliUart {
-            reader,
-            writer,
+            reader: Mutex::new(reader),
+            writer: Mutex::new(writer),
             baud: DEFUALT_UART_BAUD,
-            _serial_port: port,
         };
         Ok(probe)
     }
@@ -277,7 +275,7 @@ impl SifliUart {
 
     fn command(&mut self, command: SifliUartCommand) -> Result<SifliUartResponse, CommandError> {
         tracing::info!("Command: {}", command);
-        let ret = Self::send(&mut self.writer, &command);
+        let ret = Self::send(&mut self.writer.lock(), &command);
         if let Err(e) = ret {
             tracing::error!("Command send error: {:?}", e);
             return Err(e);
@@ -285,7 +283,7 @@ impl SifliUart {
 
         match command {
             SifliUartCommand::Exit => Ok(SifliUartResponse::Exit),
-            _ => Self::recv(&mut self.reader),
+            _ => Self::recv(&mut self.reader.lock()),
         }
     }
 }
@@ -432,7 +430,7 @@ impl SifliUartFactory {
             DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
         })?;
 
-        SifliUart::new(Box::new(reader), Box::new(writer), port)
+        SifliUart::new(Box::new(reader), Box::new(writer))
             .map(|probe| Box::new(probe) as Box<dyn DebugProbe>)
     }
 }

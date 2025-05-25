@@ -7,6 +7,7 @@ use nusb::{
     DeviceInfo,
     transfer::{Direction, EndpointType},
 };
+use parking_lot::Mutex;
 
 const USB_CLASS_HID: u8 = 0x03;
 
@@ -314,7 +315,7 @@ pub fn open_device_from_selector(
     match device.get_product_string() {
         Ok(Some(s)) if is_cmsis_dap(&s) => {
             Ok(CmsisDapDevice::V1 {
-                handle: device,
+                handle: Mutex::new(device),
                 // Start with a default 64-byte report size, which is the most
                 // common size for CMSIS-DAPv1 HID devices. We'll request the
                 // actual size to use from the probe later.

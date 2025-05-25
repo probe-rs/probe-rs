@@ -21,7 +21,7 @@
 //! let session_config = SessionConfig::default();
 //! let mut session = Session::auto_attach("nrf51822", session_config).await?;
 //!
-//! flashing::download_file(&mut session, "binary.hex", flashing::Format::Hex)?;
+//! flashing::download_file(&mut session, "binary.hex", flashing::Format::Hex).await?;
 //!
 //! # Ok::<(), anyhow::Error>(())
 //! # });
@@ -42,13 +42,11 @@
 //! loader.add_data(0x1000_0000, &[0x1, 0x2, 0x3])?;
 //!
 //! // Finally, the data can be programmed:
-//! loader.commit(&mut session, DownloadOptions::default())?;
+//! loader.commit(&mut session, DownloadOptions::default()).await?;
 //!
 //! # Ok::<(), anyhow::Error>(())
 //! # });
 //! ```
-//!
-//!
 
 mod builder;
 mod download;

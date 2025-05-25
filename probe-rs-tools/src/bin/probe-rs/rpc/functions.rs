@@ -213,15 +213,15 @@ impl RpcSpawnContext {
         self.state.dry_run(sessid)
     }
 
-    fn session_blocking(&self, sessid: Key<Session>) -> impl DerefMut<Target = Session> + use<> {
-        self.state.session_blocking(sessid)
+    async fn session(&self, sessid: Key<Session>) -> impl DerefMut<Target = Session> + use<> {
+        self.state.session(sessid).await
     }
 
-    pub fn object_mut_blocking<T: Any + Send>(
+    pub async fn object_mut<T: Any + Send>(
         &self,
         key: Key<T>,
     ) -> impl DerefMut<Target = T> + Send + use<T> {
-        self.state.object_mut_blocking(key)
+        self.state.object_mut(key).await
     }
 
     pub fn cancellation_token(&self) -> CancellationToken {
@@ -246,6 +246,28 @@ impl RpcSpawnContext {
             _ =  publisher.publish(&self.sender) => unreachable!(),
             response = blocking => {
                 response.unwrap()
+            }
+        }
+    }
+
+    pub async fn run<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
+    where
+        T: MultiTopicWriter,
+        F: AsyncFnOnce(RpcSpawnContext, REQ, T::Sender) -> RESP,
+        F: Send + 'static,
+        REQ: Send + 'static,
+        RESP: Send + 'static,
+    {
+        let token = self.cancellation_token();
+        let (sender, publisher) = T::create(token);
+
+        let ctx = self.clone();
+        let blocking = task(ctx, request, sender);
+
+        tokio::select! {
+            _ =  publisher.publish(&self.sender) => unreachable!(),
+            response = blocking => {
+                response
             }
         }
     }
@@ -394,17 +416,17 @@ impl RpcContext {
         self.state.registry.clone().lock_owned().await
     }
 
-    pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
+    pub async fn run<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
     where
         T: Topic,
         T::Message: Serialize + Schema + Sized + Send + 'static,
-        F: FnOnce(RpcSpawnContext, REQ, Sender<T::Message>) -> RESP,
+        F: AsyncFnOnce(RpcSpawnContext, REQ, Sender<T::Message>) -> RESP,
         F: Send + 'static,
         REQ: Send + 'static,
         RESP: Send + 'static,
     {
         self.spawn_ctxt()
-            .run_blocking::<T, F, REQ, RESP>(request, task)
+            .run::<T, F, REQ, RESP>(request, task)
             .await
     }
 }

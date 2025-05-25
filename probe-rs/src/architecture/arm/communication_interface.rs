@@ -43,7 +43,7 @@ pub enum DapError {
 }
 
 /// To be implemented by debug probe drivers that support debugging ARM cores.
-pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
+pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send + Sync {
     /// Reinitialize the communication interface (in place).
     ///
     /// Some chip-specific reset sequences may disable the debug port. `reinitialize` allows

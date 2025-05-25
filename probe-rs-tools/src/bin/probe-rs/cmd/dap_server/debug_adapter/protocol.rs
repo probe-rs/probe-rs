@@ -15,7 +15,7 @@ use std::{
 };
 use tracing::instrument;
 
-pub trait ProtocolAdapter {
+pub trait ProtocolAdapter: Send + Sync {
     /// Listen for a request. This call should be non-blocking, and if not request is available, it should
     /// return None.
     fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>>;
@@ -195,7 +195,7 @@ where
     }
 }
 
-pub struct DapAdapter<R: Read, W: Write> {
+pub struct DapAdapter<R: Read + Send + Sync, W: Write + Send + Sync> {
     input: BufReader<R>,
     output: W,
     console_log_level: ConsoleLog,
@@ -204,7 +204,7 @@ pub struct DapAdapter<R: Read, W: Write> {
     pending_requests: HashMap<i64, String>,
 }
 
-impl<R: Read, W: Write> DapAdapter<R, W> {
+impl<R: Read + Send + Sync, W: Write + Send + Sync> DapAdapter<R, W> {
     pub(crate) fn new(reader: R, writer: W) -> Self {
         Self {
             input: BufReader::new(reader),
@@ -384,7 +384,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     }
 }
 
-impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
+impl<R: Read + Send + Sync, W: Write + Send + Sync> ProtocolAdapter for DapAdapter<R, W> {
     fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
         self.listen_for_request_and_respond()
     }

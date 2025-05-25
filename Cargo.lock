@@ -163,6 +163,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
+name = "async-executor"
+version = "1.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb812ffb58524bdd10860d7d974e2f01cc0950c2438a74ee5ec2e2280c6c4ffa"
+dependencies = [
+ "async-task",
+ "concurrent-queue",
+ "fastrand",
+ "futures-lite",
+ "pin-project-lite",
+ "slab",
+]
+
+[[package]]
 name = "async-io"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -191,6 +205,12 @@ dependencies = [
  "event-listener-strategy",
  "pin-project-lite",
 ]
+
+[[package]]
+name = "async-task"
+version = "4.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b75356056920673b02621b35afd0f7dda9306d03c79a30f5c56c44cf256e3de"
 
 [[package]]
 name = "async-trait"
@@ -1459,7 +1479,10 @@ version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5edaec856126859abb19ed65f39e90fea3a9574b9707f13539acf4abf7eb532"
 dependencies = [
+ "fastrand",
  "futures-core",
+ "futures-io",
+ "parking",
  "pin-project-lite",
 ]
 
@@ -2286,26 +2309,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "linkme"
-version = "0.3.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22d227772b5999ddc0690e733f734f95ca05387e329c4084fe65678c51198ffe"
-dependencies = [
- "linkme-impl",
-]
-
-[[package]]
-name = "linkme-impl"
-version = "0.3.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71a98813fa0073a317ed6a8055dcd4722a49d9b862af828ee68449adb799b6be"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.100",
-]
-
-[[package]]
 name = "linux-raw-sys"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2401,6 +2404,22 @@ checksum = "19b955cdeb2a02b9117f121ce63aa52d08ade45de53e48fe6a38b39c10f6f709"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "macro_rules_attribute"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a82271f7bc033d84bbca59a3ce3e4159938cb08a9c3aebbe54d215131518a13"
+dependencies = [
+ "macro_rules_attribute-proc_macro",
+ "paste",
+]
+
+[[package]]
+name = "macro_rules_attribute-proc_macro"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8dd856d451cc0da70e2ef2ce95a18e39a93b7558bedf10201ad28503f918568"
 
 [[package]]
 name = "maitake-sync"
@@ -2980,6 +2999,7 @@ dependencies = [
  "itertools 0.14.0",
  "itm",
  "jep106",
+ "macro_rules_attribute",
  "nusb",
  "object 0.36.7",
  "parking_lot",
@@ -2991,9 +3011,11 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "serialport",
+ "smol-macros",
  "test-case",
  "test-log",
  "thiserror 2.0.12",
+ "tokio",
  "tracing",
  "uf2-decode",
  "zerocopy",
@@ -3964,12 +3986,25 @@ dependencies = [
  "clap",
  "colored 3.0.0",
  "env_logger",
- "linkme",
  "log",
  "probe-rs",
  "serde",
  "thiserror 2.0.12",
+ "tokio",
  "toml",
+]
+
+[[package]]
+name = "smol-macros"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfcaedb62e0475a6898988138995ec7b1e5d116167a72bb12c7b59d0649fbbc2"
+dependencies = [
+ "async-executor",
+ "async-io",
+ "async-lock",
+ "event-listener",
+ "futures-lite",
 ]
 
 [[package]]
@@ -4144,12 +4179,15 @@ dependencies = [
  "insta",
  "jep106",
  "log",
+ "macro_rules_attribute",
+ "parking_lot",
  "parse_int 0.9.0",
  "probe-rs",
  "probe-rs-target",
  "reqwest",
  "scroll",
  "serde_yaml",
+ "smol-macros",
  "tempfile",
  "tokio",
  "tracing-subscriber",

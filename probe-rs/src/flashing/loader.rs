@@ -400,7 +400,7 @@ impl FlashLoader {
     }
 
     /// Reads the image according to the file format and adds it to the loader.
-    pub fn load_image<T: Read + Seek>(
+    pub async fn load_image<T: Read + Seek>(
         &mut self,
         session: &mut Session,
         file: &mut T,
@@ -441,7 +441,11 @@ impl FlashLoader {
     }
 
     /// Verifies data on the device.
-    pub fn verify(&self, session: &mut Session, progress: FlashProgress) -> Result<(), FlashError> {
+    pub async fn verify(
+        &self,
+        session: &mut Session,
+        progress: FlashProgress,
+    ) -> Result<(), FlashError> {
         let mut algos = self.prepare_plan(session, false)?;
 
         for flasher in algos.iter_mut() {
@@ -452,7 +456,9 @@ impl FlashLoader {
                     .encoder(flasher.flash_algorithm.transfer_encoding, true)
                     .program_size();
             }
-            progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
+            progress
+                .add_progress_bar(ProgressOperation::Verify, Some(program_size))
+                .await;
         }
 
         // Iterate all flash algorithms we need to use and do the flashing.
@@ -462,7 +468,7 @@ impl FlashLoader {
                 flasher.flash_algorithm.name
             );
 
-            if !flasher.verify(session, &progress, true)? {
+            if !flasher.verify(session, &progress, true).await? {
                 return Err(FlashError::Verify);
             }
         }
@@ -475,7 +481,7 @@ impl FlashLoader {
     /// Writes all the stored data chunks to flash.
     ///
     /// Requires a session with an attached target that has a known flash algorithm.
-    pub fn commit(
+    pub async fn commit(
         &self,
         session: &mut Session,
         mut options: DownloadOptions,
@@ -487,9 +493,9 @@ impl FlashLoader {
             tracing::info!("Skipping programming, dry run!");
 
             if let Some(progress) = options.progress {
-                progress.failed_filling();
-                progress.failed_erasing();
-                progress.failed_programming();
+                progress.failed_filling().await;
+                progress.failed_erasing().await;
+                progress.failed_programming().await;
             }
 
             return Ok(());
@@ -500,7 +506,8 @@ impl FlashLoader {
             .clone()
             .unwrap_or_else(FlashProgress::empty);
 
-        self.initialize(&mut algos, session, &progress, &mut options)?;
+        self.initialize(&mut algos, session, &progress, &mut options)
+            .await?;
 
         let mut do_chip_erase = options.do_chip_erase;
         let mut did_chip_erase = false;
@@ -511,7 +518,7 @@ impl FlashLoader {
 
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
-                flasher.run_erase_all(session, &progress)?;
+                flasher.run_erase_all(session, &progress).await?;
                 do_chip_erase = false;
                 did_chip_erase = true;
             }
@@ -525,14 +532,16 @@ impl FlashLoader {
             }
 
             // Program the data.
-            flasher.program(
-                session,
-                &progress,
-                options.keep_unwritten_bytes,
-                do_use_double_buffering,
-                options.skip_erase || did_chip_erase,
-                options.verify,
-            )?;
+            flasher
+                .program(
+                    session,
+                    progress.clone(),
+                    options.keep_unwritten_bytes,
+                    do_use_double_buffering,
+                    options.skip_erase || did_chip_erase,
+                    options.verify,
+                )
+                .await?;
         }
 
         tracing::debug!("Committing RAM!");
@@ -712,7 +721,7 @@ impl FlashLoader {
         Ok(algos)
     }
 
-    fn initialize(
+    async fn initialize(
         &self,
         algos: &mut [Flasher],
         session: &mut Session,
@@ -734,7 +743,9 @@ impl FlashLoader {
         }
 
         if options.do_chip_erase {
-            progress.add_progress_bar(ProgressOperation::Erase, None);
+            progress
+                .add_progress_bar(ProgressOperation::Erase, None)
+                .await;
         }
 
         // Iterate all flash algorithms to initialize a few things.
@@ -761,20 +772,28 @@ impl FlashLoader {
             }
 
             if options.keep_unwritten_bytes {
-                progress.add_progress_bar(ProgressOperation::Fill, Some(fill_size));
+                progress
+                    .add_progress_bar(ProgressOperation::Fill, Some(fill_size))
+                    .await;
             }
             if !options.do_chip_erase {
-                progress.add_progress_bar(ProgressOperation::Erase, Some(erase_size));
+                progress
+                    .add_progress_bar(ProgressOperation::Erase, Some(erase_size))
+                    .await;
             }
-            progress.add_progress_bar(ProgressOperation::Program, Some(program_size));
+            progress
+                .add_progress_bar(ProgressOperation::Program, Some(program_size))
+                .await;
             if options.verify {
-                progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
+                progress
+                    .add_progress_bar(ProgressOperation::Verify, Some(program_size))
+                    .await;
             }
 
             phases.push(phase_layout);
         }
 
-        progress.initialized(phases);
+        progress.initialized(phases).await;
 
         Ok(())
     }

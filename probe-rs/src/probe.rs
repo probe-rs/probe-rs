@@ -637,7 +637,7 @@ pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sy
 /// An abstraction over general debug probe.
 ///
 /// This trait has to be implemented by ever debug probe driver.
-pub trait DebugProbe: Any + Send + fmt::Debug {
+pub trait DebugProbe: Any + Send + Sync + fmt::Debug {
     /// Get human readable name for the probe.
     fn get_name(&self) -> &str;
 
