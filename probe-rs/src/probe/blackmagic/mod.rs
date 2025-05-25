@@ -9,12 +9,15 @@ use std::{
 use crate::{
     architecture::{
         arm::{
-            ArmCommunicationInterface,
+            ArmCommunicationInterface, ArmError,
             communication_interface::{DapProbe, UninitializedArmProbe},
         },
-        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
+        riscv::{
+            communication_interface::{RiscvError, RiscvInterfaceBuilder},
+            dtm::jtag_dtm::JtagDtmBuilder,
+        },
         xtensa::communication_interface::{
-            XtensaCommunicationInterface, XtensaDebugInterfaceState,
+            XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
         },
     },
     probe::{
@@ -1130,7 +1133,7 @@ impl DebugProbe for BlackMagicProbe {
 
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {
         Ok(Box::new(JtagDtmBuilder::new(self)))
     }
 
@@ -1145,8 +1148,7 @@ impl DebugProbe for BlackMagicProbe {
     /// Turn this probe into an ARM probe
     fn try_get_arm_interface<'probe>(
         mut self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let has_adiv5 = match self.remote_protocol {
             ProtocolVersion::V0 => false,
             ProtocolVersion::V0P
@@ -1176,7 +1178,7 @@ impl DebugProbe for BlackMagicProbe {
     fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
         state: &'probe mut XtensaDebugInterfaceState,
-    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+    ) -> Result<XtensaCommunicationInterface<'probe>, XtensaError> {
         Ok(XtensaCommunicationInterface::new(self, state))
     }
 

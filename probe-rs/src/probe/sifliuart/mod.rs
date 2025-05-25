@@ -4,6 +4,7 @@
 mod arm;
 
 use crate::Error;
+use crate::architecture::arm::ArmError;
 use crate::architecture::arm::communication_interface::UninitializedArmProbe;
 use crate::probe::sifliuart::arm::UninitializedSifliUartArmProbe;
 use crate::probe::{
@@ -355,8 +356,7 @@ impl DebugProbe for SifliUart {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Ok(Box::new(UninitializedSifliUartArmProbe { probe: self }))
     }
 

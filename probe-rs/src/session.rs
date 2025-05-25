@@ -124,7 +124,7 @@ impl ArchitectureInterface {
         match self {
             ArchitectureInterface::Arm(interface) => combined_state.attach_arm(target, interface),
             ArchitectureInterface::Jtag(probe, ifaces) => {
-                let idx = combined_state.interface_idx();
+                let idx = combined_state.jtag_tap_index();
                 if let Some(probe) = probe.try_as_jtag_probe() {
                     probe.select_target(idx)?;
                 }
@@ -236,7 +236,7 @@ impl Session {
                 if let Ok(chain) = probe.scan_chain() {
                     if !chain.is_empty() {
                         for core in &cores {
-                            probe.select_target(core.interface_idx())?;
+                            probe.select_target(core.jtag_tap_index())?;
                         }
                     }
                 }
@@ -351,7 +351,7 @@ impl Session {
 
         // FIXME: This is terribly JTAG-specific. Since we don't really support anything else yet,
         // it should be fine for now.
-        let highest_idx = cores.iter().map(|c| c.interface_idx()).max().unwrap_or(0);
+        let highest_idx = cores.iter().map(|c| c.jtag_tap_index()).max().unwrap_or(0);
         let tap_count = if let Some(probe) = probe.try_as_jtag_probe() {
             match probe.scan_chain() {
                 Ok(scan_chain) => scan_chain.len().max(highest_idx + 1),
@@ -367,7 +367,7 @@ impl Session {
         // Create a new interface by walking through the cores and initialising the TAPs that
         // we find mentioned.
         for core in cores.iter() {
-            let iface_idx = core.interface_idx();
+            let iface_idx = core.jtag_tap_index();
 
             let core_arch = core.core_type().architecture();
 
@@ -530,7 +530,7 @@ impl Session {
     fn interface_idx(&self, core: usize) -> Result<usize, Error> {
         self.cores
             .get(core)
-            .map(|c| c.interface_idx())
+            .map(|c| c.jtag_tap_index())
             .ok_or(Error::CoreNotFound(core))
     }
 

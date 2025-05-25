@@ -736,7 +736,7 @@ impl ResolvedCoreOptions {
         }
     }
 
-    fn interface_idx(&self) -> usize {
+    fn jtag_tap_index(&self) -> usize {
         match self {
             Self::Arm { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Riscv { options, .. } => options.jtag_tap.unwrap_or(0),

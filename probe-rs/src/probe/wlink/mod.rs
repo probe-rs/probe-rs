@@ -14,7 +14,8 @@ use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
 use super::JtagAccess;
 use crate::{
     architecture::riscv::{
-        communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder,
+        communication_interface::{RiscvError, RiscvInterfaceBuilder},
+        dtm::jtag_dtm::JtagDtmBuilder,
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagSequence, ProbeError,
@@ -370,7 +371,7 @@ impl DebugProbe for WchLink {
 
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {
         Ok(Box::new(JtagDtmBuilder::new(self)))
     }
 }

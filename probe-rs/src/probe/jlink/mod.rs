@@ -25,8 +25,9 @@ use self::interface::{Interface, Interfaces};
 use self::speed::SpeedConfig;
 use self::swo::SwoMode;
 use crate::architecture::arm::{ArmError, Pins};
+use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::{
-    XtensaCommunicationInterface, XtensaDebugInterfaceState,
+    XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
 };
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
@@ -1088,14 +1089,15 @@ impl DebugProbe for JLink {
 
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
             self.select_protocol(WireProtocol::Jtag)?;
             Ok(Box::new(JtagDtmBuilder::new(self)))
         } else {
             Err(DebugProbeError::InterfaceNotAvailable {
                 interface_name: "JTAG",
-            })
+            }
+            .into())
         }
     }
 
@@ -1125,11 +1127,8 @@ impl DebugProbe for JLink {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
-        let uninitialized_interface = ArmCommunicationInterface::new(self, true);
-
-        Ok(Box::new(uninitialized_interface))
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+        Ok(Box::new(ArmCommunicationInterface::new(self, true)))
     }
 
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
@@ -1140,14 +1139,15 @@ impl DebugProbe for JLink {
     fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
         state: &'probe mut XtensaDebugInterfaceState,
-    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+    ) -> Result<XtensaCommunicationInterface<'probe>, XtensaError> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
             self.select_protocol(WireProtocol::Jtag)?;
             Ok(XtensaCommunicationInterface::new(self, state))
         } else {
             Err(DebugProbeError::InterfaceNotAvailable {
                 interface_name: "JTAG",
-            })
+            }
+            .into())
         }
     }
 
