@@ -1,0 +1,1 @@
+The debugger now handles some semihosting calls
