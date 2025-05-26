@@ -59,8 +59,6 @@ pub enum DebuggerError {
     UserMessage(String),
     #[error("Serialization error")]
     SerdeError(#[from] serde_json::Error),
-    #[error("IO error: '{original_error}'.")]
-    NonBlockingReadError { original_error: std::io::Error },
     #[error(transparent)]
     StdIO(#[from] std::io::Error),
     #[error("Unable to open probe{}", .0.map(|s| format!(": {s}")).as_deref().unwrap_or("."))]

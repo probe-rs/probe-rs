@@ -110,7 +110,7 @@ svg = "0.18"
 
 # Server-only
 tokio = { version = "1.0", features = ["full"] }
-tokio-util = "0.7"
+tokio-util = { version = "0.7", features = ["codec"] }
 futures-util = { version = "0.3" }
 rustls = { version = "0.23", default-features = false, features = [
     "std",
