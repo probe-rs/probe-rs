@@ -1,3 +1,4 @@
+pub(crate) mod backends;
 /// All the shared options that control the behaviour of the debugger.
 pub(crate) mod configuration;
 /// The data structures borrowed from the [`session_data::SessionData`], that applies to a specific core.
@@ -12,3 +13,4 @@ pub(crate) mod logger;
 pub(crate) mod session_data;
 /// This is where the primary processing for the debugger is driven from.
 pub(crate) mod startup;
+pub(crate) mod state;

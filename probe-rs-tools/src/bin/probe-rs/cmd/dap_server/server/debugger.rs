@@ -51,7 +51,7 @@ pub(crate) enum DebugSessionStatus {
     Restart(Request),
 }
 
-/// #Debugger Overview
+/// # Debugger Overview
 /// The DAP Server may either be managed automatically by the development tool (typically an IDE or
 /// editor the "DAP client") e.g. VSCode, or...
 /// The DAP Server can optionally be run from the command line as a "server" process, and the
@@ -807,12 +807,12 @@ impl Debugger {
 ///
 /// If the next request does *not* have the given command,
 /// the function returns an error.
-fn expect_request<P: ProtocolAdapter>(
+async fn expect_request<P: ProtocolAdapter>(
     debug_adapter: &mut DebugAdapter<P>,
     expected_command: &str,
 ) -> Result<Request, DebuggerError> {
     let next_request = loop {
-        if let Some(current_request) = debug_adapter.listen_for_request()? {
+        if let Some(current_request) = debug_adapter.adapter.subscribe_requests()? {
             break current_request;
         }
     };
@@ -898,6 +898,7 @@ mod test {
     };
     use test_case::test_case;
     use time::UtcOffset;
+    use tokio::sync::mpsc::Receiver;
 
     const TEST_CHIP_NAME: &str = "nRF52833_xxAA";
 
@@ -1130,14 +1131,7 @@ mod test {
     }
 
     impl ProtocolAdapter for MockProtocolAdapter {
-        fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
-            let next_request = self
-                .requests
-                .pop_front()
-                .ok_or_else(|| anyhow::anyhow!("No more responses to listen for."))?;
-
-            Ok(Some(next_request))
-        }
+        async fn subscribe_requests(&mut self) -> Receiver<Request> {}
 
         fn send_event<S: serde::Serialize>(
             &mut self,

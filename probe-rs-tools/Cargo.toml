@@ -111,6 +111,7 @@ svg = "0.18"
 # Server-only
 tokio = { version = "1.0", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec"] }
+tower = "*"
 futures-util = { version = "0.3" }
 rustls = { version = "0.23", default-features = false, features = [
     "std",
@@ -126,6 +127,7 @@ postcard = { version = "1.0", features = ["use-std"] }
 postcard-rpc = { version = "0.11.8", features = ["use-std"] }
 postcard-schema = { version = "0.2.0", features = ["use-std", "derive"] }
 sha2 = "0.10"
+dashmap = "6"
 
 # gdb server
 gdbstub = "0.7"

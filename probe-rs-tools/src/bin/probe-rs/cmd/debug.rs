@@ -6,6 +6,7 @@ use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
 use rustyline::{DefaultEditor, error::ReadlineError};
 use time::UtcOffset;
+use tokio::sync::mpsc::Receiver;
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::ErrorResponseBody;
@@ -36,10 +37,7 @@ struct CliAdapter {
     console_log_level: ConsoleLog,
 }
 impl ProtocolAdapter for CliAdapter {
-    fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
-        Ok(self.shared.borrow().next_request.clone())
-    }
-
+    async fn subscribe_requests(&mut self) -> Receiver<anyhow::Result<Request>> {}
     fn send_event<S: serde::Serialize>(
         &mut self,
         event_type: &str,

@@ -73,7 +73,7 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     /// Flag to indicate that workarounds for VSCode-specific spec deviations etc. should be
     /// enabled.
     pub(crate) vscode_quirks: bool,
-    adapter: P,
+    pub(crate) adapter: P,
 }
 
 impl<P: ProtocolAdapter> DebugAdapter<P> {
@@ -1707,12 +1707,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             self.send_event("stopped", event_body)?;
         }
         Ok(())
-    }
-
-    /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return.
-    /// When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
-    pub fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
-        self.adapter.listen_for_request()
     }
 
     /// Sends either the success response or an error response if passed a

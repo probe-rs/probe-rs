@@ -53,7 +53,7 @@ lto = "thin"
 # Keep stack trace data, but no other debug info by default.
 # See https://kobzol.github.io/rust/rustc/2025/05/20/disable-debuginfo-to-improve-rust-compile-times.html
 # If you have difficulty debugging probe-rs, remove this line temporarily.
-debug = "line-tables-only"
+# debug = "line-tables-only"
 
 [profile.release]
 # For release builds the default is no debuginfo. Let's instead keep the
