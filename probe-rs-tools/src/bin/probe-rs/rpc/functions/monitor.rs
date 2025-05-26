@@ -67,6 +67,7 @@ pub struct MonitorRequest {
 #[derive(Serialize, Deserialize, Schema)]
 pub enum MonitorExitReason {
     Success,
+    UserExit,
     SemihostingExit(Result<(), SemihostingExitError>),
     UnexpectedExit(String),
 }
@@ -222,7 +223,7 @@ fn monitor_impl(
     match exit_reason {
         ReturnReason::Predicate(reason) => Ok(reason),
         ReturnReason::Timeout => anyhow::bail!("Run loop exited due to an unexpected timeout"),
-        ReturnReason::Cancelled => anyhow::bail!("Exited due to user request"),
+        ReturnReason::Cancelled => Ok(MonitorExitReason::UserExit),
         ReturnReason::LockedUp => anyhow::bail!("Run loop exited due to a locked up core"),
     }
 }

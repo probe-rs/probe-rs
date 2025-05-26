@@ -447,7 +447,11 @@ pub async fn monitor(
     let print_stack_trace = match &result {
         Ok(MonitorExitReason::Success | MonitorExitReason::SemihostingExit(Ok(_))) => {
             println!("Firmware exited successfully");
-            print_stack_trace // On success, we only printi the user asked for it.
+            print_stack_trace // On success, we only print if the user asked for it.
+        }
+        Ok(MonitorExitReason::UserExit) => {
+            println!("Exited by user request");
+            print_stack_trace // On ctrl-c, we only print if the user asked for it.
         }
         Ok(MonitorExitReason::UnexpectedExit(reason)) => {
             println!("Firmware exited unexpectedly: {reason}");
