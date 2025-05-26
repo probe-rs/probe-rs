@@ -1,0 +1,10 @@
+---
+source: probe-rs-tools/src/bin/probe-rs/cmd/dap_server/debug_adapter/codec/decoder.rs
+expression: result
+---
+Err(
+    Error {
+        kind: InvalidData,
+        message: "stream did not contain valid UTF-8",
+    },
+)

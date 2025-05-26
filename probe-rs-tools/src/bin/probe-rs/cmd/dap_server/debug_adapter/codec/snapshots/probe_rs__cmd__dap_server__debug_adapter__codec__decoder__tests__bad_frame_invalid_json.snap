@@ -1,0 +1,10 @@
+---
+source: probe-rs-tools/src/bin/probe-rs/cmd/dap_server/debug_adapter/codec/decoder.rs
+expression: result
+---
+Err(
+    Custom {
+        kind: UnexpectedEof,
+        error: Error("EOF while parsing a string", line: 1, column: 8),
+    },
+)

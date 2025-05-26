@@ -1,0 +1,7 @@
+---
+source: probe-rs-tools/src/bin/probe-rs/cmd/dap_server/debug_adapter/codec/decoder.rs
+expression: result
+---
+Ok(
+    None,
+)
