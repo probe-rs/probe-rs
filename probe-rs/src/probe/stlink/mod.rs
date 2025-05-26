@@ -307,8 +307,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Ok(Box::new(UninitializedStLink { probe: self }))
     }
 

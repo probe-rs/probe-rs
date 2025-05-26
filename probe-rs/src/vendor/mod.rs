@@ -18,7 +18,7 @@ use crate::{
         },
     },
     config::{ChipInfo, DebugSequence, Registry},
-    probe::{DebugProbeError, Probe},
+    probe::Probe,
 };
 
 pub mod espressif;
@@ -180,6 +180,11 @@ fn try_detect_arm_chip(
 fn try_detect_riscv_chip(registry: &Registry, probe: &mut Probe) -> Result<Option<Target>, Error> {
     let mut found_target = None;
 
+    if !probe.has_riscv_interface() {
+        tracing::debug!("No RISC-V interface available, skipping detection.");
+        return Ok(None);
+    }
+
     if let Some(probe) = probe.try_as_jtag_probe() {
         _ = probe.select_target(0);
     }
@@ -215,10 +220,6 @@ fn try_detect_riscv_chip(registry: &Registry, probe: &mut Probe) -> Result<Optio
             // TODO: disable debug module
         }
 
-        Err(DebugProbeError::InterfaceNotAvailable { .. }) => {
-            tracing::debug!("No RISC-V interface available, skipping detection.");
-        }
-
         Err(error) => {
             tracing::debug!("Error during RISC-V chip detection: {error}");
         }
@@ -229,6 +230,11 @@ fn try_detect_riscv_chip(registry: &Registry, probe: &mut Probe) -> Result<Optio
 
 fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Option<Target>, Error> {
     let mut found_target = None;
+
+    if !probe.has_xtensa_interface() {
+        tracing::debug!("No Xtensa interface available, skipping detection.");
+        return Ok(None);
+    }
 
     if let Some(probe) = probe.try_as_jtag_probe() {
         _ = probe.select_target(0);
@@ -260,10 +266,6 @@ fn try_detect_xtensa_chip(registry: &Registry, probe: &mut Probe) -> Result<Opti
             }
 
             interface.leave_debug_mode()?;
-        }
-
-        Err(DebugProbeError::InterfaceNotAvailable { .. }) => {
-            tracing::debug!("No Xtensa interface available, skipping detection.");
         }
 
         Err(error) => {

@@ -515,9 +515,9 @@ impl Probe {
     pub fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
         state: &'probe mut XtensaDebugInterfaceState,
-    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+    ) -> Result<XtensaCommunicationInterface<'probe>, XtensaError> {
         if !self.attached {
-            Err(DebugProbeError::NotAttached)
+            Err(DebugProbeError::NotAttached.into())
         } else {
             Ok(self.inner.try_get_xtensa_interface(state)?)
         }
@@ -535,9 +535,9 @@ impl Probe {
     /// If an error occurs while trying to connect, the probe is returned.
     pub fn try_into_arm_interface<'probe>(
         self,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Self, DebugProbeError)> {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Self, ArmError)> {
         if !self.attached {
-            Err((self, DebugProbeError::NotAttached))
+            Err((self, DebugProbeError::NotAttached.into()))
         } else {
             self.inner
                 .try_get_arm_interface()
@@ -559,9 +559,9 @@ impl Probe {
     /// If an error occurs while trying to connect, the probe is returned.
     pub fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {
         if !self.attached {
-            Err(DebugProbeError::NotAttached)
+            Err(DebugProbeError::NotAttached.into())
         } else {
             self.inner.try_get_riscv_interface_builder()
         }
@@ -634,7 +634,7 @@ pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sy
     }
 }
 
-/// An abstraction over general debug probe.
+/// An abstraction over a general debug probe.
 ///
 /// This trait has to be implemented by ever debug probe driver.
 pub trait DebugProbe: Any + Send + fmt::Debug {
@@ -704,13 +704,13 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     /// probe actually supports this, call [DebugProbe::has_arm_interface] first.
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Err((
             self.into_probe(),
             DebugProbeError::InterfaceNotAvailable {
                 interface_name: "ARM",
-            },
+            }
+            .into(),
         ))
     }
 
@@ -721,10 +721,11 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     /// [DebugProbe::has_riscv_interface] first.
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {
         Err(DebugProbeError::InterfaceNotAvailable {
             interface_name: "RISC-V",
-        })
+        }
+        .into())
     }
 
     /// Check if the probe offers an interface to debug RISC-V chips.
@@ -737,10 +738,11 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
         _state: &'probe mut XtensaDebugInterfaceState,
-    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+    ) -> Result<XtensaCommunicationInterface<'probe>, XtensaError> {
         Err(DebugProbeError::InterfaceNotAvailable {
             interface_name: "Xtensa",
-        })
+        }
+        .into())
     }
 
     /// Check if the probe offers an interface to debug Xtensa chips.
@@ -1322,6 +1324,9 @@ pub trait JtagAccess: DebugProbe {
     fn idle_cycles(&self) -> u8;
 
     /// Selects the JTAG TAP to be used for communication.
+    ///
+    /// The index is the position of the TAP in the scan chain, which can
+    /// be configured using [`set_scan_chain()`](JtagAccess::set_scan_chain()).
     fn select_target(&mut self, index: usize) -> Result<(), DebugProbeError> {
         if index != 0 {
             return Err(DebugProbeError::NotImplemented {

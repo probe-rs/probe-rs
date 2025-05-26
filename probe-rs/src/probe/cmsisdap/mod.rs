@@ -12,9 +12,12 @@ use crate::{
             dp::{Abort, Ctrl, DpRegister},
             swo::poll_interval_from_buf_size,
         },
-        riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
+        riscv::{
+            communication_interface::{RiscvError, RiscvInterfaceBuilder},
+            dtm::jtag_dtm::JtagDtmBuilder,
+        },
         xtensa::communication_interface::{
-            XtensaCommunicationInterface, XtensaDebugInterfaceState,
+            XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
         },
     },
     probe::{
@@ -930,8 +933,7 @@ impl DebugProbe for CmsisDap {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
-    {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Ok(Box::new(ArmCommunicationInterface::new(self, false)))
     }
 
@@ -958,14 +960,14 @@ impl DebugProbe for CmsisDap {
 
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
-    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, DebugProbeError> {
+    ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {
         Ok(Box::new(JtagDtmBuilder::new(self)))
     }
 
     fn try_get_xtensa_interface<'probe>(
         &'probe mut self,
         state: &'probe mut XtensaDebugInterfaceState,
-    ) -> Result<XtensaCommunicationInterface<'probe>, DebugProbeError> {
+    ) -> Result<XtensaCommunicationInterface<'probe>, XtensaError> {
         Ok(XtensaCommunicationInterface::new(self, state))
     }
 
