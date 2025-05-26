@@ -39,16 +39,22 @@ variants:
     - network
     access:
       boot: true
-  - !Ram
+  - !Ram # First, single-cycle access RAM block
     range:
       start: 0x20000000
       end: 0x20040000
     cores:
     - application
+  - !Ram # Second RAM block (manually added missing memory region)
+    range:
+      start: 0x20040000
+      end: 0x20080000
+    cores:
+    - application
   - !Ram
     range:
       start: 0x21000000
-      end: 0x21020000
+      end: 0x21010000
     cores:
     - network
   flash_algorithms:
