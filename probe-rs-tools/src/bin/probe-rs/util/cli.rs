@@ -677,26 +677,27 @@ impl CliRttClient {
 
         // Apply our heuristics based on channel names.
         for channel in up_channels.iter() {
-            let decoder = if channel == "defmt" {
-                if let Some(defmt_data) = self.defmt_data.clone() {
-                    RttDecoder::Defmt {
-                        processor: DefmtProcessor::new(
-                            defmt_data,
-                            self.timestamp_offset.is_some(),
-                            self.show_location,
-                            self.log_format.as_deref(),
-                        ),
+            let decoder =
+                if channel == "defmt" || (self.defmt_data.is_some() && up_channels.len() == 1) {
+                    if let Some(defmt_data) = self.defmt_data.clone() {
+                        RttDecoder::Defmt {
+                            processor: DefmtProcessor::new(
+                                defmt_data,
+                                self.timestamp_offset.is_some(),
+                                self.show_location,
+                                self.log_format.as_deref(),
+                            ),
+                        }
+                    } else {
+                        // Not much we can do. Don't silently eat the data.
+                        RttDecoder::BinaryLE
                     }
                 } else {
-                    // Not much we can do. Don't silently eat the data.
-                    RttDecoder::BinaryLE
-                }
-            } else {
-                RttDecoder::String {
-                    timestamp_offset: self.timestamp_offset,
-                    last_line_done: false,
-                }
-            };
+                    RttDecoder::String {
+                        timestamp_offset: self.timestamp_offset,
+                        last_line_done: false,
+                    }
+                };
 
             self.channel_processors
                 .push(Channel::new(channel.clone(), decoder));
