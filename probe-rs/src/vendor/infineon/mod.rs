@@ -174,7 +174,8 @@ fn try_detect_psoc(
     }
 
     let tid = TARGETID(
-        interface.read_raw_dp_register(interface.current_debug_port(), TARGETID::ADDRESS)?,
+        interface
+            .read_raw_dp_register(interface.current_debug_port().unwrap(), TARGETID::ADDRESS)?,
     );
     let siid = tid.tpartno();
 

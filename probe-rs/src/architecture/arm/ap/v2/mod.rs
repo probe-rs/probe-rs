@@ -5,7 +5,6 @@ use std::collections::BTreeSet;
 use crate::architecture::arm::{
     ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, ArmProbeInterface,
     FullyQualifiedApAddress,
-    communication_interface::Initialized,
     dp::DpAddress,
     memory::{
         ADIMemoryInterface, ArmMemoryInterface, Component, PeripheralType,
@@ -87,7 +86,7 @@ fn process_root_component<API: ArmProbeInterface>(
 /// Returns a Memory Interface accessing the Memory AP at the given `address` through the `iface`
 /// Arm Communication Interface.
 pub fn new_memory_interface<'i>(
-    iface: &'i mut ArmCommunicationInterface<Initialized>,
+    iface: &'i mut ArmCommunicationInterface,
     address: &FullyQualifiedApAddress,
 ) -> Result<Box<dyn ArmMemoryInterface + 'i>, ArmError> {
     let ApAddress::V2(ap_address) = address.ap() else {

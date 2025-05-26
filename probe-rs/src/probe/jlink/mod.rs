@@ -10,6 +10,7 @@ mod speed;
 pub mod swo;
 
 use std::fmt;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use bitvec::prelude::*;
@@ -24,7 +25,8 @@ use self::error::JlinkError;
 use self::interface::{Interface, Interfaces};
 use self::speed::SpeedConfig;
 use self::swo::SwoMode;
-use crate::architecture::arm::{ArmError, Pins};
+use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::{ArmError, ArmProbeInterface, Pins};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
@@ -37,9 +39,7 @@ use crate::probe::{AutoImplementJtagAccess, JtagAccess};
 use crate::{
     architecture::{
         arm::{
-            ArmCommunicationInterface, SwoAccess,
-            communication_interface::{DapProbe, UninitializedArmProbe},
-            swo::SwoConfig,
+            ArmCommunicationInterface, SwoAccess, communication_interface::DapProbe, swo::SwoConfig,
         },
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
     },
@@ -1127,8 +1127,9 @@ impl DebugProbe for JLink {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(Box::new(ArmCommunicationInterface::new(self, true)))
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+        Ok(ArmCommunicationInterface::create(self, sequence, true))
     }
 
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {

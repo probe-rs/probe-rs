@@ -431,7 +431,7 @@ impl ArmDebugSequence for MCX {
             thread::sleep(Duration::from_millis(100));
         }
 
-        let ap = FullyQualifiedApAddress::v1_with_dp(probe.current_debug_port(), 0);
+        let ap = FullyQualifiedApAddress::v1_with_dp(probe.current_debug_port().unwrap(), 0);
         let mut interface = probe.memory_interface(&ap)?;
         self.wait_for_stop_after_reset(interface.as_mut())?;
 

@@ -6,10 +6,11 @@ use crate::{
     CoreStatus,
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmError, DapError, Pins, RawDapAccess, RegisterAddress,
-            SwoAccess, SwoConfig, SwoMode,
-            communication_interface::{DapProbe, UninitializedArmProbe},
+            ArmCommunicationInterface, ArmError, ArmProbeInterface, DapError, Pins, RawDapAccess,
+            RegisterAddress, SwoAccess, SwoConfig, SwoMode,
+            communication_interface::DapProbe,
             dp::{Abort, Ctrl, DpRegister},
+            sequences::ArmDebugSequence,
             swo::poll_interval_from_buf_size,
         },
         riscv::{
@@ -61,7 +62,7 @@ use commands::{
 };
 use probe_rs_target::ScanChainElement;
 
-use std::{fmt::Write, time::Duration};
+use std::{fmt::Write, sync::Arc, time::Duration};
 
 use bitvec::prelude::*;
 
@@ -933,8 +934,9 @@ impl DebugProbe for CmsisDap {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(Box::new(ArmCommunicationInterface::new(self, false)))
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+        Ok(ArmCommunicationInterface::create(self, sequence, false))
     }
 
     fn has_arm_interface(&self) -> bool {
