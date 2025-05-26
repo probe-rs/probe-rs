@@ -78,7 +78,7 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
 
     /// Return the currently connected debug port.
     ///
-    /// None if the interface is not connect to a DP.
+    /// None if the interface is not connected to a DP.
     fn current_debug_port(&self) -> Option<DpAddress>;
 
     /// Returns a memory interface to access the target's memory.
