@@ -1,0 +1,1 @@
+Removed typestate from `ArmCommunicationInterface`

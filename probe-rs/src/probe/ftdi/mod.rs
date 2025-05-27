@@ -2,8 +2,8 @@
 use crate::{
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmError,
-            communication_interface::{DapProbe, UninitializedArmProbe},
+            ArmCommunicationInterface, ArmError, ArmProbeInterface,
+            communication_interface::DapProbe, sequences::ArmDebugSequence,
         },
         riscv::{
             communication_interface::{RiscvError, RiscvInterfaceBuilder},
@@ -23,6 +23,7 @@ use bitvec::prelude::*;
 use nusb::DeviceInfo;
 use std::{
     io::{Read, Write},
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -394,8 +395,9 @@ impl DebugProbe for FtdiProbe {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(Box::new(ArmCommunicationInterface::new(self, true)))
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+        Ok(ArmCommunicationInterface::create(self, sequence, true))
     }
 
     fn has_arm_interface(&self) -> bool {

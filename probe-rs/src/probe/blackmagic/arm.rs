@@ -1,3 +1,4 @@
+use crate::MemoryInterface;
 use crate::architecture::arm::{
     ArmProbeInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
     ap::{
@@ -5,7 +6,7 @@ use crate::architecture::arm::{
         memory_ap::{MemoryAp, MemoryApType},
         v1::valid_access_ports,
     },
-    communication_interface::{DapProbe, DpState, SelectCache, SwdSequence, UninitializedArmProbe},
+    communication_interface::{DapProbe, DpState, SelectCache, SwdSequence},
     dp::{
         Ctrl, DPIDR, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, DpAddress,
         DpRegisterAddress, Select1, SelectV3,
@@ -15,16 +16,10 @@ use crate::architecture::arm::{
 };
 use crate::probe::blackmagic::{Align, BlackMagicProbe, ProtocolVersion, RemoteCommand};
 use crate::probe::{ArmError, DebugProbeError, Probe};
-use crate::{Error as ProbeRsError, MemoryInterface};
 use std::collections::BTreeSet;
 use std::collections::hash_map;
 use std::{collections::HashMap, sync::Arc};
 use zerocopy::IntoBytes;
-
-#[derive(Debug)]
-pub(crate) struct UninitializedBlackMagicArmProbe {
-    probe: Box<BlackMagicProbe>,
-}
 
 #[derive(Debug)]
 pub(crate) struct BlackMagicProbeArmDebug {
@@ -38,7 +33,7 @@ pub(crate) struct BlackMagicProbeArmDebug {
     sequence: Arc<dyn ArmDebugSequence>,
 
     /// The currently selected Debug Port. Used for multi-drop targets.
-    current_dp: DpAddress,
+    current_dp: Option<DpAddress>,
 
     /// A list of all discovered Debug Ports.
     dps: HashMap<DpAddress, DpState>,
@@ -56,80 +51,19 @@ pub(crate) struct BlackMagicProbeMemoryInterface<'probe> {
     csw: u32,
 }
 
-impl UninitializedBlackMagicArmProbe {
-    pub fn new(probe: Box<BlackMagicProbe>) -> Self {
-        Self { probe }
-    }
-}
-
-impl UninitializedArmProbe for UninitializedBlackMagicArmProbe {
-    fn initialize(
-        mut self: Box<Self>,
-        sequence: Arc<dyn ArmDebugSequence>,
-        dp: DpAddress,
-    ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
-        // Switch to the correct mode
-        if let Err(err) = tracing::debug_span!("debug_port_setup")
-            .in_scope(|| sequence.debug_port_setup(&mut *self.probe, dp))
-        {
-            return Err((self, err.into()));
-        }
-
-        let interface = BlackMagicProbeArmDebug::new(self.probe, dp, sequence)
-            .map_err(|(s, e)| (s as Box<_>, ProbeRsError::from(e)))?;
-
-        Ok(Box::new(interface))
-    }
-
-    fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe)
-    }
-}
-
-impl SwdSequence for UninitializedBlackMagicArmProbe {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.swj_sequence(bit_len, bits)
-    }
-
-    fn swj_pins(
-        &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
-    ) -> Result<u32, DebugProbeError> {
-        self.probe.swj_pins(pin_out, pin_select, pin_wait)
-    }
-}
-
 impl BlackMagicProbeArmDebug {
-    fn new(
+    pub fn new(
         probe: Box<BlackMagicProbe>,
-        dp: DpAddress,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Self, (Box<UninitializedBlackMagicArmProbe>, ArmError)> {
-        let mut interface = Self {
+    ) -> Result<Self, (Box<BlackMagicProbe>, ArmError)> {
+        Ok(Self {
             probe,
             access_ports: BTreeSet::new(),
             sequence,
-            current_dp: dp,
+            current_dp: None,
             dps: HashMap::new(),
             use_overrun_detect: true,
-        };
-
-        if let Err(e) = interface.select_dp(dp) {
-            return Err((
-                Box::new(UninitializedBlackMagicArmProbe {
-                    probe: interface.probe,
-                }),
-                e,
-            ));
-        }
-
-        interface.access_ports = valid_access_ports(&mut interface, dp)
-            .into_iter()
-            .inspect(|addr| tracing::debug!("AP {:#x?}", addr))
-            .collect();
-        Ok(interface)
+        })
     }
 
     /// Connect to the target debug port and power it up. This is based on the
@@ -145,22 +79,28 @@ impl BlackMagicProbeArmDebug {
 
         let sequence = self.sequence.clone();
 
-        if self.current_dp != dp {
+        if self.current_dp != Some(dp) {
             tracing::debug!("Selecting DP {:x?}", dp);
 
             switched_dp = true;
 
             self.probe.raw_flush()?;
 
-            // Try to switch to the new DP.
-            if let Err(e) = sequence.debug_port_connect(&mut *self.probe, dp) {
-                tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
-
-                // Try the more involved debug_port_setup sequence, which also handles dormant mode.
+            // We are not currently connected to any DP,
+            // so we need to run the debug_port_setup sequence.
+            if self.current_dp.is_none() {
                 sequence.debug_port_setup(&mut *self.probe, dp)?;
+            } else {
+                // Try to switch to the new DP.
+                if let Err(e) = sequence.debug_port_connect(&mut *self.probe, dp) {
+                    tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
+
+                    // Try the more involved debug_port_setup sequence, which also handles dormant mode.
+                    sequence.debug_port_setup(&mut *self.probe, dp)?;
+                }
             }
 
-            self.current_dp = dp;
+            self.current_dp = Some(dp);
         }
 
         // If we don't have  a state for this DP, this means that we haven't run the necessary init sequence yet.
@@ -281,8 +221,8 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
         Probe::from_attached_probe(self.probe)
     }
 
-    fn current_debug_port(&self) -> DpAddress {
-        DpAddress::Default
+    fn current_debug_port(&self) -> Option<DpAddress> {
+        self.current_dp
     }
 
     fn memory_interface(
@@ -411,7 +351,10 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
 
     fn reinitialize(&mut self) -> Result<(), ArmError> {
         let sequence = self.sequence.clone();
-        let dp = self.current_debug_port();
+        let Some(dp) = self.current_debug_port() else {
+            // Not connected to a DP, nothing to do.
+            return Ok(());
+        };
 
         // Switch to the correct mode
         sequence.debug_port_setup(&mut *self.probe, dp)?;
@@ -429,6 +372,32 @@ impl ArmProbeInterface for BlackMagicProbeArmDebug {
             .into_iter()
             .inspect(|addr| tracing::debug!("AP {:#x?}", addr))
             .collect();
+
+        Ok(())
+    }
+
+    fn select_debug_port(&mut self, dp: DpAddress) -> Result<(), ArmError> {
+        if dp != DpAddress::Default {
+            return Err(ArmError::NotImplemented("multidrop not yet implemented"));
+        }
+
+        if self.current_dp.is_none() {
+            // Set this first to prevent recursion, if this fucntion is called again
+            self.current_dp = Some(dp);
+
+            // Switch to the correct mode
+            self.sequence.debug_port_setup(self.probe.as_mut(), dp)?;
+
+            self.sequence.debug_port_connect(self.probe.as_mut(), dp)?;
+
+            self.debug_port_start(dp).unwrap();
+
+            self.access_ports = valid_access_ports(self, dp).into_iter().collect();
+
+            self.access_ports.iter().for_each(|addr| {
+                tracing::debug!("AP {:#x?}", addr);
+            });
+        }
 
         Ok(())
     }

@@ -120,6 +120,9 @@ fn try_detect_arm_chip(
         return Ok((probe, None));
     }
 
+    // We don't know what kind of chip it is, so we use the default sequence.
+    let sequence = DefaultArmSequence::create();
+
     // We have no information about the target, so we must assume it's using the default DP.
     // We cannot automatically detect DPs if SWD multi-drop is used.
     // TODO: collect known DP addresses for known targets.
@@ -127,18 +130,14 @@ fn try_detect_arm_chip(
 
     for dp_address in dp_addresses {
         // TODO: do not consume probe
-        match probe.try_into_arm_interface() {
-            Ok(interface) => {
-                let mut interface =
-                    match interface.initialize(DefaultArmSequence::create(), dp_address) {
-                        Ok(interface) => interface,
-                        Err((interface, error)) => {
-                            probe = interface.close();
-                            tracing::debug!("Error during ARM chip detection: {error}");
-                            // If we can't connect, assume this is not an ARM chip and not an error.
-                            return Ok((probe, None));
-                        }
-                    };
+        match probe.try_into_arm_interface(sequence.clone()) {
+            Ok(mut interface) => {
+                if let Err(error) = interface.select_debug_port(dp_address) {
+                    probe = interface.close();
+                    tracing::debug!("Error during ARM chip detection: {error}");
+                    // If we can't connect, assume this is not an ARM chip and not an error.
+                    return Ok((probe, None));
+                }
 
                 let found_arm_chip = read_chip_info_from_rom_table(interface.as_mut(), dp_address)
                     .unwrap_or_else(|error| {

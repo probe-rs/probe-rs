@@ -4,15 +4,16 @@
 mod arm;
 
 use crate::Error;
-use crate::architecture::arm::ArmError;
-use crate::architecture::arm::communication_interface::UninitializedArmProbe;
-use crate::probe::sifliuart::arm::UninitializedSifliUartArmProbe;
+use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::{ArmError, ArmProbeInterface};
+use crate::probe::sifliuart::arm::SifliUartArmDebug;
 use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     ProbeFactory, WireProtocol,
 };
 use serialport::{SerialPort, SerialPortType, available_ports};
 use std::io::{BufReader, BufWriter, Read, Write};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{env, fmt};
 
@@ -356,8 +357,9 @@ impl DebugProbe for SifliUart {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        Ok(Box::new(UninitializedSifliUartArmProbe { probe: self }))
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+        Ok(Box::new(SifliUartArmDebug::new(self, sequence)))
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {

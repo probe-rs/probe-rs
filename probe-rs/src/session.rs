@@ -243,11 +243,12 @@ impl Session {
             }
         }
 
-        let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
+        let mut interface = probe
+            .try_into_arm_interface(sequence_handle.clone())
+            .map_err(|(_, err)| err)?;
 
-        let mut interface = interface
-            .initialize(sequence_handle.clone(), default_dp)
-            .map_err(|(_interface, e)| e)?;
+        interface.select_debug_port(default_dp)?;
+
         let unlock_span = tracing::debug_span!("debug_device_unlock").entered();
 
         // Enable debug mode
@@ -557,16 +558,19 @@ impl Session {
             .get_mut(core_index)
             .ok_or(Error::CoreNotFound(core_index))?;
 
-        match self.interfaces.attach(&self.target, combined_state) {
-            Err(Error::Xtensa(XtensaError::CoreDisabled)) => {
-                // If the core is disabled, we can't attach to it.
-                // We can't do anything about it, so we just translate
-                // and return the error.
-                // We'll retry at the next call.
-                Err(Error::CoreDisabled(core_index))
-            }
-            other => other,
-        }
+        self.interfaces
+            .attach(&self.target, combined_state)
+            .map_err(|e| {
+                if matches!(e, Error::Xtensa(XtensaError::CoreDisabled)) {
+                    // If the core is disabled, we can't attach to it.
+                    // We can't do anything about it, so we just translate
+                    // and return the error.
+                    // We'll retry at the next call.
+                    Error::CoreDisabled(core_index)
+                } else {
+                    e
+                }
+            })
     }
 
     /// Read available trace data from the specified data sink.
@@ -669,9 +673,8 @@ impl Session {
         // but we only have &mut. We can work around that by first creating
         // an instance of a Dummy and then swapping it out for the real one.
         // perform the re-attach and then swap it back.
-        let tmp_interface = Box::<FakeProbe>::default().try_get_arm_interface().unwrap();
-        let mut tmp_interface = tmp_interface
-            .initialize(DefaultArmSequence::create(), DpAddress::Default)
+        let mut tmp_interface = Box::<FakeProbe>::default()
+            .try_get_arm_interface(DefaultArmSequence::create())
             .unwrap();
 
         std::mem::swap(interface, &mut tmp_interface);
@@ -681,13 +684,15 @@ impl Session {
         probe.detach()?;
         probe.attach_to_unspecified()?;
 
-        let new_interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
+        let mut new_interface = probe
+            .try_into_arm_interface(debug_sequence.clone())
+            .map_err(|(_, err)| err)?;
 
-        tmp_interface = new_interface
-            .initialize(debug_sequence.clone(), current_dp)
-            .map_err(|(_interface, e)| e)?;
+        if let Some(current_dp) = current_dp {
+            new_interface.select_debug_port(current_dp)?;
+        }
         // swap it back
-        std::mem::swap(interface, &mut tmp_interface);
+        std::mem::swap(interface, &mut new_interface);
 
         tracing::debug!("Probe re-attached");
         Ok(())

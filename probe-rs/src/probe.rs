@@ -14,11 +14,8 @@ pub mod stlink;
 pub mod wlink;
 
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::{ArmError, DapError};
-use crate::architecture::arm::{
-    RegisterAddress, SwoAccess,
-    communication_interface::{DapProbe, UninitializedArmProbe},
-};
+use crate::architecture::arm::{ArmError, ArmProbeInterface, DapError};
+use crate::architecture::arm::{RegisterAddress, SwoAccess, communication_interface::DapProbe};
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
@@ -523,8 +520,8 @@ impl Probe {
         }
     }
 
-    /// Check if the probe has an interface to
-    /// debug ARM chips.
+    /// Checks if the probe supports connecting to chips
+    /// using the Arm Debug Interface.
     pub fn has_arm_interface(&self) -> bool {
         self.inner.has_arm_interface()
     }
@@ -535,12 +532,13 @@ impl Probe {
     /// If an error occurs while trying to connect, the probe is returned.
     pub fn try_into_arm_interface<'probe>(
         self,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Self, ArmError)> {
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Self, ArmError)> {
         if !self.attached {
             Err((self, DebugProbeError::NotAttached.into()))
         } else {
             self.inner
-                .try_get_arm_interface()
+                .try_get_arm_interface(sequence)
                 .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
         }
     }
@@ -704,7 +702,8 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     /// probe actually supports this, call [DebugProbe::has_arm_interface] first.
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+        _sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Err((
             self.into_probe(),
             DebugProbeError::InterfaceNotAvailable {
