@@ -1,24 +1,9 @@
-use std::{io::BufRead, marker::PhantomData};
+use std::io::BufRead;
 
 use serde::{Deserialize, Serialize};
 use tokio_util::{bytes::BytesMut, codec::Decoder};
 
-use super::DapCodec;
-
-#[derive(Debug, PartialEq)]
-pub(crate) struct Frame<T: Serialize + for<'a> Deserialize<'a> + PartialEq> {
-    pub content: T,
-}
-
-impl<T: Serialize + for<'a> Deserialize<'a> + PartialEq> DapCodec<T> {
-    pub(crate) fn new() -> Self {
-        Self {
-            length: None,
-            header_received: false,
-            _pd: PhantomData,
-        }
-    }
-}
+use super::{DapCodec, Frame};
 
 impl<T: Serialize + for<'a> Deserialize<'a> + PartialEq> Decoder for DapCodec<T> {
     type Item = Frame<T>;

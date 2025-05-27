@@ -1,7 +1,7 @@
 use crate::cmd::dap_server::{
     DebuggerError,
     debug_adapter::dap::dap_types::{
-        ErrorResponseBody, Event, Message, MessageSeverity, OutputEventBody, Request, Response,
+        ErrorResponseBody, Event, MessageSeverity, OutputEventBody, Request, Response,
         ShowMessageEventBody,
     },
     server::configuration::ConsoleLog,
@@ -13,10 +13,13 @@ use std::{
     io::{BufRead, BufReader, ErrorKind, Read, Write},
     str,
 };
-use tokio_util::{bytes::BytesMut, codec::Decoder};
+use tokio_util::{
+    bytes::BytesMut,
+    codec::{Decoder, Encoder},
+};
 use tracing::instrument;
 
-use super::codec::{DapCodec, decoder::Frame};
+use super::codec::{DapCodec, Frame, Message};
 
 pub trait ProtocolAdapter {
     /// Listen for a request. This call should be non-blocking, and if not request is available, it should
@@ -29,13 +32,16 @@ pub trait ProtocolAdapter {
         event_body: Option<S>,
     ) -> anyhow::Result<()>;
 
-    fn send_raw_response(&mut self, response: &Response) -> anyhow::Result<()>;
+    fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()>;
 
     fn remove_pending_request(&mut self, request_seq: i64) -> Option<String>;
 
     fn set_console_log_level(&mut self, log_level: ConsoleLog);
 
     fn console_log_level(&self) -> ConsoleLog;
+
+    /// Increases the sequence number by 1 and returns it.
+    fn get_next_seq(&mut self) -> i64;
 }
 
 pub trait ProtocolHelper {
@@ -104,7 +110,7 @@ where
             Ok(value) => Response {
                 command: request.command.clone(),
                 request_seq: request.seq,
-                seq: request.seq,
+                seq: self.get_next_seq(),
                 success: true,
                 type_: "response".to_owned(),
                 message: None,
@@ -134,7 +140,7 @@ where
                 self.log_to_console(&response_message);
 
                 let response_body = ErrorResponseBody {
-                    error: Some(Message {
+                    error: Some(super::dap::dap_types::Message {
                         format: "{response_message}".to_string(),
                         variables: Some(BTreeMap::from([(
                             "response_message".to_string(),
@@ -152,7 +158,7 @@ where
                 Response {
                     command: request.command.clone(),
                     request_seq: request.seq,
-                    seq: request.seq,
+                    seq: self.get_next_seq(),
                     success: false,
                     type_: "response".to_owned(),
                     message: Some("cancelled".to_string()), // Predefined value in the MSDAP spec.
@@ -173,7 +179,7 @@ where
             );
         }
 
-        self.send_raw_response(&encoded_resp)
+        self.send_raw_response(encoded_resp.clone())
             .context("Unexpected Error while sending response.")?;
 
         if response_is_ok {
@@ -206,7 +212,7 @@ pub struct DapAdapter<R: Read, W: Write> {
 
     pending_requests: HashMap<i64, String>,
 
-    codec: DapCodec<Request>,
+    codec: DapCodec<Message>,
     input_buffer: BytesMut,
 }
 
@@ -215,7 +221,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
         Self {
             input: BufReader::new(reader),
             output: writer,
-            seq: 1,
+            seq: 0,
             console_log_level: ConsoleLog::Console,
             pending_requests: HashMap::new(),
 
@@ -225,43 +231,17 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     }
 
     #[instrument(level = "trace", skip_all)]
-    fn send_data(&mut self, raw_data: &[u8]) -> Result<(), std::io::Error> {
-        let mut response_body = raw_data;
-
-        let response_header = format!("Content-Length: {}\r\n\r\n", response_body.len());
-
-        self.output.write_all(response_header.as_bytes())?;
+    fn send_data(&mut self, item: Frame<Message>) -> Result<(), std::io::Error> {
+        let mut buf = BytesMut::with_capacity(4096);
+        self.codec.encode(item, &mut buf)?;
+        self.output.write_all(&buf)?;
         self.output.flush()?;
-
-        // NOTE: Sometimes when writing large response, the debugger will fail with an IO error (ErrorKind::WouldBlock == error.kind())
-        let mut bytes_remaining = response_body.len();
-        while bytes_remaining > 0 {
-            match self.output.write(response_body) {
-                Ok(bytes_written) => {
-                    bytes_remaining = bytes_remaining.saturating_sub(bytes_written);
-                    response_body = &response_body[bytes_written..];
-                }
-                Err(error) => {
-                    if error.kind() == std::io::ErrorKind::WouldBlock {
-                        // The client is not ready to receive data (probably still processing the last chunk we sent),
-                        // so we need to keep trying.
-                    } else {
-                        tracing::error!("Failed to send a response to the client: {}", error);
-                        return Err(error);
-                    }
-                }
-            }
-        }
-        self.output.flush()?;
-
-        self.seq += 1;
-
         Ok(())
     }
 
     /// Receive data from `self.input`. Data has to be in the format specified by the Debug Adapter Protocol (DAP).
     /// The returned data is the content part of the request, as raw bytes.
-    fn receive_data(&mut self) -> Result<Option<Frame<Request>>, DebuggerError> {
+    fn receive_data(&mut self) -> Result<Option<Frame<Message>>, DebuggerError> {
         match self.input.fill_buf() {
             Ok(data) => {
                 // New data is here. Shove it into the buffer.
@@ -323,12 +303,12 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
         match self.receive_data() {
             Ok(Some(frame)) => {
                 // Extract protocol message
-                if frame.content.type_ == "request" {
-                    Ok(Some(frame.content))
+                if let Message::Request(request) = frame.content {
+                    Ok(Some(request))
                 } else {
                     Err(DebuggerError::Other(anyhow!(
-                        "Received an unexpected message type: '{}'",
-                        frame.content.type_
+                        "Received an unexpected message type: '{:?}'",
+                        frame.content.kind()
                     )))
                 }
             }
@@ -353,24 +333,22 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         event_body: Option<S>,
     ) -> anyhow::Result<()> {
         let new_event = Event {
-            seq: self.seq,
+            seq: self.get_next_seq(),
             type_: "event".to_string(),
             event: event_type.to_string(),
             body: event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
         };
 
-        let encoded_event = serde_json::to_vec(&new_event)?;
-
         let result = self
-            .send_data(&encoded_event)
+            .send_data(Frame::new(new_event.clone().into()))
             .context("Unexpected Error while sending event.");
 
-        if new_event.event != "output" {
+        if event_type != "output" {
             // This would result in an endless loop.
             match self.console_log_level {
                 ConsoleLog::Console => {}
                 ConsoleLog::Info => {
-                    self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
+                    self.log_to_console(format!("\nTriggered DAP Event: {}", event_type));
                 }
                 ConsoleLog::Debug => {
                     self.log_to_console(format!("INFO: Triggered DAP Event: {new_event:#?}"));
@@ -393,12 +371,15 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         self.pending_requests.remove(&request_seq)
     }
 
-    fn send_raw_response(&mut self, response: &Response) -> anyhow::Result<()> {
-        let encoded_response = serde_json::to_vec(&response)?;
-
-        self.send_data(&encoded_response)?;
+    fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
+        self.send_data(Frame::new(Message::Response(response)))?;
 
         Ok(())
+    }
+
+    fn get_next_seq(&mut self) -> i64 {
+        self.seq += 1;
+        self.seq
     }
 }
 

@@ -1176,7 +1176,7 @@ mod test {
             self.console_log_level
         }
 
-        fn send_raw_response(&mut self, response: &Response) -> anyhow::Result<()> {
+        fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
             if self.response_index >= self.expected_responses.len() {
                 panic!("No more responses expected, but got {response:?}");
             }
@@ -1199,6 +1199,11 @@ mod test {
 
         fn remove_pending_request(&mut self, request_seq: i64) -> Option<String> {
             self.pending_requests.remove(&request_seq)
+        }
+
+        fn get_next_seq(&mut self) -> i64 {
+            self.sequence_number += 1;
+            self.sequence_number
         }
     }
 
