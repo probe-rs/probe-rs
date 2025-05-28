@@ -7,6 +7,7 @@ pub mod cmsisdap;
 pub mod espusbjtag;
 pub mod fake_probe;
 pub mod ftdi;
+pub mod glasgow;
 pub mod jlink;
 pub mod list;
 pub mod sifliuart;
