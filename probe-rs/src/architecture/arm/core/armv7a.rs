@@ -726,6 +726,10 @@ impl CoreInterface for Armv7a<'_> {
         // Reset our cached values
         self.reset_register_cache();
 
+        // Recompute / verify current state
+        self.set_core_status(CoreStatus::Running);
+        let _ = self.status()?;
+
         Ok(())
     }
 
