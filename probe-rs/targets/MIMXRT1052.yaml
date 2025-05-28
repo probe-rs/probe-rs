@@ -1,0 +1,177 @@
+name: MIMXRT1052
+manufacturer:
+  id: 0x15
+  cc: 0x0
+variants:
+- name: MIMXRT1052CVJ5B
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: SRAM_ITC
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Nvm
+    name: FlexSPI1
+    range:
+      start: 0x60000000
+      end: 0x60800000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    name: SRAM_DTC
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+    access:
+      execute: true
+  - !Ram
+    name: SRAM_OC
+    range:
+      start: 0x20200000
+      end: 0x20240000
+    cores:
+    - main
+    access:
+      execute: false
+- name: MIMXRT1052CVL5B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: SRAM_ITC
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Nvm
+    name: FlexSPI1
+    range:
+      start: 0x60000000
+      end: 0x60800000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    name: SRAM_DTC
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+    access:
+      execute: true
+  - !Ram
+    name: SRAM_OC
+    range:
+      start: 0x20200000
+      end: 0x20240000
+    cores:
+    - main
+    access:
+      execute: false
+- name: MIMXRT1052DVJ6B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: SRAM_ITC
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Nvm
+    name: FlexSPI1
+    range:
+      start: 0x60000000
+      end: 0x60800000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    name: SRAM_DTC
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+    access:
+      execute: true
+  - !Ram
+    name: SRAM_OC
+    range:
+      start: 0x20200000
+      end: 0x20240000
+    cores:
+    - main
+    access:
+      execute: false
+- name: MIMXRT1052DVL6B
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    name: SRAM_ITC
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Nvm
+    name: FlexSPI1
+    range:
+      start: 0x60000000
+      end: 0x60800000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    name: SRAM_DTC
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+    access:
+      execute: true
+  - !Ram
+    name: SRAM_OC
+    range:
+      start: 0x20200000
+      end: 0x20240000
+    cores:
+    - main
+    access:
+      execute: false
