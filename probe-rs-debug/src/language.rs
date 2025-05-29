@@ -60,7 +60,7 @@ pub trait ProgrammingLanguage {
         VariableValue::Error(format!("Error: Failed to decode {tag} type reference"))
     }
 
-    fn auto_resolve_children(&self, _name: &str) -> bool {
+    fn auto_resolve_children(&self, _name: &str, _parent_resolves_children: bool) -> bool {
         false
     }
 

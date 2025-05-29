@@ -1253,7 +1253,7 @@ impl UnitInfo {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn extract_struct(
+    pub(crate) fn extract_struct(
         &self,
         type_name: Option<String>,
         debug_info: &DebugInfo,
@@ -1281,7 +1281,14 @@ impl UnitInfo {
                 VariableNodeType::TypeOffset(self.debug_info_offset()?, node.offset());
             // In some cases, it really simplifies the UX if we can auto resolve the
             // children and derive a value that is visible at first glance to the user.
-            if self.language.auto_resolve_children(&type_name) {
+            let resolve_parents_children = match parent_variable.type_name {
+                VariableType::Struct(ref n) => self.language.auto_resolve_children(n, false),
+                _ => false,
+            };
+            if self
+                .language
+                .auto_resolve_children(&type_name, resolve_parents_children)
+            {
                 let temp_node_type = std::mem::replace(
                     &mut child_variable.variable_node_type,
                     VariableNodeType::RecurseToBaseType,
