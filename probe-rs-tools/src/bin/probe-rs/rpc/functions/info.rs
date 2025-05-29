@@ -56,7 +56,7 @@ impl From<&TargetInfoRequest> for ProbeOptions {
                 WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
             },
             non_interactive: true,
-            probe: Some(request.probe.selector().into()),
+            probe: Some(request.probe.selector()),
             speed: request.speed,
             connect_under_reset: request.connect_under_reset,
             dry_run: request.dry_run,

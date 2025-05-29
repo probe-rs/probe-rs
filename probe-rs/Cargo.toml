@@ -61,6 +61,8 @@ tracing = "0.1"
 uf2-decode = "0.2"
 espflash = { version = "3", default-features = false }
 parking_lot = "0.12.2"
+postcard-schema = { version = "0.2.0", features = ["use-std", "derive"] }
+
 zerocopy = { version = "0.8.0", features = ["derive"] }
 cobs = "0.3"
 

@@ -3060,6 +3060,7 @@ dependencies = [
  "nusb",
  "object 0.37.0",
  "parking_lot",
+ "postcard-schema",
  "pretty_assertions",
  "probe-rs-target",
  "rmp-serde",

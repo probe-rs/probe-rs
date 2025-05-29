@@ -9,8 +9,8 @@ use std::{
 };
 
 use crate::probe::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeError,
-    espusbjtag::EspUsbJtagFactory, usb_util::InterfaceExt,
+    DebugProbeError, DebugProbeInfo, DebugProbeKind, DebugProbeSelector, ProbeCreationError,
+    ProbeError, UsbFilters, espusbjtag::EspUsbJtagFactory, usb_util::InterfaceExt,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
@@ -542,11 +542,15 @@ pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
         .map(|device| {
             DebugProbeInfo::new(
                 "ESP JTAG".to_string(),
-                device.vendor_id(),
-                device.product_id(),
-                device.serial_number().map(Into::into),
+                DebugProbeKind::Usb {
+                    vendor_id: device.vendor_id(),
+                    product_id: device.product_id(),
+                    filters: UsbFilters {
+                        serial_number: device.serial_number().map(str::to_string),
+                        ..Default::default()
+                    },
+                },
                 &EspUsbJtagFactory,
-                None,
             )
         })
         .collect()
