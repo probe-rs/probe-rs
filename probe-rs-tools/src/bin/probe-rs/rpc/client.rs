@@ -12,7 +12,7 @@ use postcard_rpc::{
     host_client::{HostClient, HostClientConfig, HostErr, IoClosed, SubscribeError, Subscription},
 };
 use postcard_schema::Schema;
-use probe_rs::{Session, config::Registry, flashing::FlashLoader};
+use probe_rs::{Session, config::Registry, flashing::FlashLoader, probe::DebugProbeSelector};
 use serde::{Serialize, de::DeserializeOwned};
 use tokio::sync::{Mutex, MutexGuard};
 
@@ -47,8 +47,8 @@ use crate::{
             memory::{ReadMemoryRequest, WriteMemoryRequest},
             monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
             probe::{
-                AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
-                ListProbesRequest, SelectProbeRequest, SelectProbeResult,
+                AttachRequest, AttachResult, DebugProbeEntry, ListProbesRequest,
+                SelectProbeRequest, SelectProbeResult,
             },
             reset::ResetCoreRequest,
             resume::ResumeAllCoresRequest,
@@ -262,6 +262,7 @@ impl RpcClient {
         E::Request: Serialize + Schema,
         E::Response: DeserializeOwned + Schema,
     {
+        tracing::trace!("sending...");
         match self.client.send_resp::<E>(req).await {
             Ok(r) => Ok(r),
             Err(e) => match e {
@@ -279,6 +280,7 @@ impl RpcClient {
         E::Request: Serialize + Schema,
         E::Response: DeserializeOwned + Schema,
     {
+        tracing::trace!("sending request with schema: {:?}", E::Request::SCHEMA);
         match self.send::<E, RpcResult<T>>(req).await? {
             Ok(r) => Ok(r),
             Err(e) => anyhow::bail!("{}", e),
@@ -363,8 +365,11 @@ impl RpcClient {
         &self,
         selector: Option<DebugProbeSelector>,
     ) -> anyhow::Result<SelectProbeResult> {
-        self.send_resp::<SelectProbeEndpoint, _>(&SelectProbeRequest { probe: selector })
-            .await
+        tracing::trace!("RPC: selecting probe: {selector:?}");
+        self.send_resp::<SelectProbeEndpoint, _>(&SelectProbeRequest {
+            probe: selector.map(Into::into),
+        })
+        .await
     }
 
     pub async fn info(

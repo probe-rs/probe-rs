@@ -53,18 +53,10 @@ impl ProbeFactory for GlasgowFactory {
     fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
         // Return exactly the specified probe, if it has the option string (which is referred to
         // here as the serial number).
-        if let Some(DebugProbeSelector {
-            vendor_id: vendor_id @ 0x20b7,
-            product_id: product_id @ 0x9db1,
-            serial_number: serial_number @ Some(_),
-        }) = selector
-        {
+        if let Some(selector) = selector {
             vec![DebugProbeInfo {
                 identifier: "Glasgow".to_owned(),
-                vendor_id: *vendor_id,
-                product_id: *product_id,
-                serial_number: serial_number.clone(),
-                hid_interface: None,
+                kind: selector.into(),
                 probe_factory: &Self,
             }]
         } else {

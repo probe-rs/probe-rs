@@ -11,7 +11,7 @@ use std::{
 
 use postcard_schema::{
     Schema,
-    schema::{DataModelType, NamedType, NamedValue},
+    schema::{Data, DataModelType, NamedField},
 };
 use probe_rs::{Session, config::Registry};
 use serde::{Deserialize, Serialize};
@@ -32,21 +32,18 @@ unsafe impl<T> Send for Key<T> {}
 unsafe impl<T> Sync for Key<T> {}
 
 impl<T> Schema for Key<T> {
-    const SCHEMA: &'static NamedType = &NamedType {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
         name: "Key<T>",
-        ty: &DataModelType::Struct(&[
-            &NamedValue {
+        data: Data::Struct(&[
+            &NamedField {
                 name: "key",
-                ty: &NamedType {
-                    name: "u64",
-                    ty: &DataModelType::U64,
-                },
+                ty: u64::SCHEMA,
             },
-            &NamedValue {
+            &NamedField {
                 name: "marker",
-                ty: &NamedType {
+                ty: &DataModelType::Struct {
                     name: "PhantomData<T>",
-                    ty: &DataModelType::UnitStruct,
+                    data: Data::Unit,
                 },
             },
         ]),

@@ -49,13 +49,15 @@ fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
+        tracing::trace!("Executing `info` command.");
         let protocols = if let Some(protocol) = self.common.protocol {
             vec![protocol]
         } else {
             vec![WireProtocol::Jtag, WireProtocol::Swd]
         };
 
-        let probe = select_probe(&client, self.common.probe.map(Into::into)).await?;
+        tracing::trace!("Selecting probe: {:?}", self.common.probe);
+        let probe = select_probe(&client, self.common.probe).await?;
 
         for protocol in protocols {
             let msg = format!("Probing target via {protocol}");

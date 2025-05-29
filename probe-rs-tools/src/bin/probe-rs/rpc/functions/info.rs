@@ -252,14 +252,14 @@ pub struct ComponentTreeNode {
 }
 
 impl postcard_schema::Schema for ComponentTreeNode {
-    const SCHEMA: &'static schema::NamedType = &schema::NamedType {
+    const SCHEMA: &'static schema::DataModelType = &schema::DataModelType::Struct {
         name: "ComponentTreeNode",
-        ty: &schema::DataModelType::Struct(&[
-            &schema::NamedValue {
+        data: schema::Data::Struct(&[
+            &schema::NamedField {
                 name: "node",
                 ty: <String as ::postcard_schema::Schema>::SCHEMA,
             },
-            &schema::NamedValue {
+            &schema::NamedField {
                 name: "children",
                 ty: <Vec<()> as ::postcard_schema::Schema>::SCHEMA,
             },
