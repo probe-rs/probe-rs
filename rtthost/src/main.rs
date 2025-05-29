@@ -248,17 +248,7 @@ fn list_probes(mut stream: impl std::io::Write, probes: &[DebugProbeInfo]) {
     writeln!(stream, "Available probes:").unwrap();
 
     for (i, probe) in probes.iter().enumerate() {
-        writeln!(
-            stream,
-            "  {}: {} {}",
-            i,
-            probe.identifier,
-            probe
-                .serial_number
-                .as_deref()
-                .unwrap_or("(no serial number)")
-        )
-        .unwrap();
+        writeln!(stream, "  {}: {}{}", i, probe.identifier, probe.kind,).unwrap();
     }
 }
 

@@ -7,6 +7,7 @@ use colored::Colorize;
 use libtest_mimic::{Failed, Trial};
 use postcard_rpc::host_client::HostClient;
 use postcard_schema::Schema;
+use probe_rs::probe::DebugProbeSelector;
 use serde::de::DeserializeOwned;
 use time::UtcOffset;
 use tokio::io::AsyncWriteExt;
@@ -23,9 +24,7 @@ use crate::{
             CancelTopic, RttTopic, SemihostingTopic,
             flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
             monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent},
-            probe::{
-                AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
-            },
+            probe::{AttachRequest, AttachResult, DebugProbeEntry, SelectProbeResult},
             rtt_client::ScanRegion,
             stack_trace::StackTrace,
             test::{Test, TestResult},
@@ -67,7 +66,7 @@ pub async fn attach_probe(
         client.load_chip_family(file).await?;
     }
 
-    let probe = select_probe(client, probe_options.probe.map(Into::into)).await?;
+    let probe = select_probe(client, probe_options.probe).await?;
 
     let result = client
         .attach_probe(AttachRequest {
@@ -122,9 +121,13 @@ pub async fn select_probe(
                 .get(probe_idx)
                 .ok_or_else(|| anyhow::anyhow!("Probe not found"))?;
 
-            match client.select_probe(Some(probe.selector())).await? {
+            match client.select_probe(Some(probe.selector().into())).await? {
                 SelectProbeResult::Success(probe) => Ok(probe),
-                SelectProbeResult::MultipleProbes(_) => {
+                SelectProbeResult::MultipleProbes(prbs) => {
+                    tracing::warn!("Selection yielded {} probes", prbs.len());
+                    for prb in prbs {
+                        tracing::trace!("{prb:?}");
+                    }
                     anyhow::bail!("Did not expect multiple probes")
                 }
             }

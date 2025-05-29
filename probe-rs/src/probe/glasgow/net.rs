@@ -18,23 +18,17 @@ pub struct GlasgowNetDevice(Box<dyn ReadWrite + Send>);
 
 impl GlasgowNetDevice {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        let Some(qual_addr) = selector.serial_number.clone() else {
-            Err(ProbeCreationError::NotFound)?
-        };
-        let stream: Box<dyn ReadWrite + Send> = match *qual_addr.splitn(2, ":").collect::<Vec<_>>()
-        {
-            ["tcp", addr] => {
-                Box::new(TcpStream::connect(addr).map_err(DiscoveryError::ConnectionFailed)?)
+        let stream: Box<dyn ReadWrite + Send> = match selector {
+            DebugProbeSelector::Usb { .. } => Err(DiscoveryError::InvalidInterfaces)?,
+            DebugProbeSelector::SocketAddr(socket_addr) => Box::new(
+                TcpStream::connect(*socket_addr).map_err(DiscoveryError::ConnectionFailed)?,
+            ),
+            #[cfg(target_os = "linux")]
+            DebugProbeSelector::UnixSocketAddr(path) => {
+                Box::new(UnixStream::connect(path).map_err(DiscoveryError::ConnectionFailed)?)
             }
-            #[cfg(unix)]
-            ["unix", addr] => {
-                Box::new(UnixStream::connect(addr).map_err(DiscoveryError::ConnectionFailed)?)
-            }
-            #[cfg(not(unix))]
-            ["unix", _addr] => Err(ProbeCreationError::NotFound)?,
-            _ => Err(DiscoveryError::InvalidFormat)?,
         };
-        tracing::info!("opened Glasgow Interface Explorer ({qual_addr})");
+        tracing::info!("opened Glasgow Interface Explorer ({selector})");
         Ok(Self(stream))
     }
 

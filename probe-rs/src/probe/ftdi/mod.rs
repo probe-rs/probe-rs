@@ -14,9 +14,9 @@ use crate::{
         },
     },
     probe::{
-        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeFactory,
-        ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
+        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeKind,
+        DebugProbeSelector, IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError,
+        ProbeFactory, ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings, UsbFilters, WireProtocol,
     },
 };
 use bitvec::prelude::*;
@@ -273,7 +273,14 @@ impl ProbeFactory for FtdiProbeFactory {
         // Only open FTDI-compatible probes
         let Some(ftdi) = FTDI_COMPAT_DEVICES
             .iter()
-            .find(|ftdi| ftdi.id == (selector.vendor_id, selector.product_id))
+            .find(|ftdi| match selector {
+                DebugProbeSelector::Usb {
+                    vendor_id,
+                    product_id,
+                    ..
+                } => (*vendor_id, *product_id) == ftdi.id,
+                _ => false,
+            })
             .copied()
         else {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
@@ -599,11 +606,32 @@ fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
     FTDI_COMPAT_DEVICES.iter().find_map(|ftdi| {
         ftdi.matches(device).then(|| DebugProbeInfo {
             identifier: device.product_string().unwrap_or("FTDI").to_string(),
-            vendor_id: device.vendor_id(),
-            product_id: device.product_id(),
-            serial_number: device.serial_number().map(|s| s.to_string()),
+            kind: DebugProbeKind::Usb {
+                vendor_id: device.vendor_id(),
+                product_id: device.product_id(),
+                filters: UsbFilters {
+                    serial_number: device.serial_number().map(str::to_string),
+                    hid_interface: None,
+
+                    #[cfg(any(target_os = "linux", target_os = "android"))]
+                    sysfs_path: Some(device.sysfs_path().to_owned()),
+
+                    #[cfg(target_os = "windows")]
+                    instance_id: Some(device.instance_id().display().to_string()),
+                    #[cfg(target_os = "windows")]
+                    parent_instance_id: Some(device.parent_instance_id().display().to_string()),
+                    #[cfg(target_os = "windows")]
+                    port_number: Some(device.port_number()),
+                    #[cfg(target_os = "windows")]
+                    driver: device.driver().map(str::to_string),
+
+                    #[cfg(target_os = "macos")]
+                    registry_id: Some(device.registry_entry_id()),
+                    #[cfg(target_os = "macos")]
+                    location_id: Some(device.location_id()),
+                },
+            },
             probe_factory: &FtdiProbeFactory,
-            hid_interface: None,
         })
     })
 }

@@ -8,7 +8,7 @@ use nusb::{
 };
 
 use crate::probe::{
-    DebugProbeError, DebugProbeSelector, ProbeCreationError,
+    DebugProbeError, DebugProbeSelector, ProbeCreationError, UsbFilters,
     glasgow::mux::{DiscoveryError, hexdump},
 };
 
@@ -24,12 +24,22 @@ pub struct GlasgowUsbDevice {
 
 impl GlasgowUsbDevice {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        if selector.vendor_id != VID_QIHW && selector.product_id != PID_GLASGOW {
-            Err(ProbeCreationError::NotFound)?
-        }
-        let Some(serial) = selector.serial_number.as_ref() else {
+        let DebugProbeSelector::Usb {
+            vendor_id,
+            product_id,
+            filters:
+                filters @ UsbFilters {
+                    serial_number: Some(serial),
+                    ..
+                },
+            ..
+        } = selector
+        else {
             Err(ProbeCreationError::NotFound)?
         };
+        if *vendor_id != VID_QIHW || *product_id != PID_GLASGOW {
+            return Err(ProbeCreationError::NotFound);
+        }
         let parts = serial.split(":").collect::<Vec<_>>();
         let [serial, in_iface_num, out_iface_num] = parts[..] else {
             Err(DiscoveryError::InvalidFormat)?
@@ -41,9 +51,13 @@ impl GlasgowUsbDevice {
             .parse()
             .map_err(|_| DiscoveryError::InvalidFormat)?;
 
-        let selector = DebugProbeSelector {
-            serial_number: Some(serial.to_owned()),
-            ..selector.clone()
+        let selector = DebugProbeSelector::Usb {
+            filters: UsbFilters {
+                serial_number: Some(serial.to_owned()),
+                ..filters.clone()
+            },
+            vendor_id: *vendor_id,
+            product_id: *product_id,
         };
         let device_info = nusb::list_devices()
             .map_err(ProbeCreationError::Usb)?

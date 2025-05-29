@@ -20,11 +20,12 @@ impl TestLister {
 #[async_trait::async_trait]
 impl ProbeLister for TestLister {
     async fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
-        let probe_index = self.probes.lock().await.iter().position(|(info, _)| {
-            info.product_id == selector.product_id
-                && info.vendor_id == selector.vendor_id
-                && info.serial_number == selector.serial_number
-        });
+        let probe_index = self
+            .probes
+            .lock()
+            .await
+            .iter()
+            .position(|(info, _)| selector.matches_probe(info));
 
         if let Some(index) = probe_index {
             let (_info, probe) = self.probes.lock().await.swap_remove(index);

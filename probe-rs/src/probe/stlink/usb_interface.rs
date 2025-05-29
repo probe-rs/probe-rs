@@ -6,7 +6,7 @@ use crate::probe::{stlink::StlinkError, usb_util::InterfaceExt};
 use std::collections::HashMap;
 
 use super::tools::{is_stlink_device, read_serial_number};
-use crate::probe::{DebugProbeSelector, ProbeCreationError};
+use crate::probe::{DebugProbeSelector, ProbeCreationError, UsbFilters};
 
 /// The USB Command packet size.
 const CMD_LEN: usize = 16;
@@ -88,19 +88,32 @@ pub trait StLinkUsb: std::fmt::Debug {
 // Copy of `Selector::matches` except it uses the stlink-specific read_serial_number
 // to handle the broken stlink-v2 serial numbers that need hex-encoding.
 fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
-    info.vendor_id() == selector.vendor_id
-        && info.product_id() == selector.product_id
-        && selector
-            .serial_number
-            .as_ref()
-            .map(|s| {
-                if let Some(serial) = read_serial_number(info) {
-                    serial.as_str() == s
-                } else {
-                    s.is_empty()
-                }
-            })
-            .unwrap_or(true)
+    let info_selector = DebugProbeSelector::Usb {
+        vendor_id: info.vendor_id(),
+        product_id: info.product_id(),
+        filters: UsbFilters {
+            serial_number: read_serial_number(info),
+            hid_interface: None,
+
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            sysfs_path: Some(info.sysfs_path().to_owned()),
+
+            #[cfg(target_os = "windows")]
+            instance_id: Some(info.instance_id().display().to_string()),
+            #[cfg(target_os = "windows")]
+            parent_instance_id: Some(info.parent_instance_id().display().to_string()),
+            #[cfg(target_os = "windows")]
+            port_number: Some(info.port_number()),
+            #[cfg(target_os = "windows")]
+            driver: info.driver().map(str::to_string),
+
+            #[cfg(target_os = "macos")]
+            registry_id: Some(info.registry_entry_id()),
+            #[cfg(target_os = "macos")]
+            location_id: Some(info.location_id()),
+        },
+    };
+    selector.match_probe_selector(&info_selector)
 }
 
 impl StLinkUsbDevice {

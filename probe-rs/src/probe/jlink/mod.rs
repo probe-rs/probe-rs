@@ -44,9 +44,9 @@ use crate::{
         riscv::{communication_interface::RiscvInterfaceBuilder, dtm::jtag_dtm::JtagDtmBuilder},
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagDriverState, ProbeFactory, ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings,
-        WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeKind, DebugProbeSelector,
+        IoSequenceItem, JtagDriverState, ProbeFactory, ProbeStatistics, RawJtagIo, RawSwdIo,
+        SwdSettings, UsbFilters, WireProtocol,
     },
 };
 
@@ -254,11 +254,15 @@ impl ProbeFactory for JLinkFactory {
         // `read_max_mem_block`'s return value does not directly correspond to the
         // maximum transfer size when performing JTAG IO, and it's not clear how to get the actual value.
         // The number of *bits* is encoded as a u16, so the maximum value is 65535
-        this.jtag_chunk_size = match selector.product_id {
+        this.jtag_chunk_size = match selector {
             // 0x0101: J-Link EDU
-            0x0101 => 65535,
+            DebugProbeSelector::Usb {
+                product_id: 0x0101, ..
+            } => 65535,
             // 0x1051: J-Link OB-K22-SiFive: 504 bits
-            0x1051 => 504,
+            DebugProbeSelector::Usb {
+                product_id: 0x1051, ..
+            } => 504,
             // Assume the lowest value is a safe default
             _ => 504,
         };
@@ -282,14 +286,12 @@ fn requires_connection_handle(selector: &DebugProbeSelector) -> bool {
     // As some other devices can't handle the registration command, we only enable it for known
     // devices.
     let devices = [
-        (0x1366, 0x0101, Some("000000123456")), // Blue J-Link PRO clone
+        DebugProbeSelector::usb_vid_pid_sn(0x1366, 0x0101, "000000123456"), // Blue J-Link PRO clone
     ];
 
-    devices.contains(&(
-        selector.vendor_id,
-        selector.product_id,
-        selector.serial_number.as_deref(),
-    ))
+    devices
+        .iter()
+        .any(|device| device.match_probe_selector(selector))
 }
 
 impl Drop for JLink {
@@ -1280,11 +1282,32 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
         .map(|info| {
             DebugProbeInfo::new(
                 info.product_string().unwrap_or("J-Link").to_string(),
-                info.vendor_id(),
-                info.product_id(),
-                info.serial_number().map(|s| s.to_string()),
+                DebugProbeKind::Usb {
+                    vendor_id: info.vendor_id(),
+                    product_id: info.product_id(),
+                    filters: UsbFilters {
+                        serial_number: info.serial_number().map(str::to_string),
+                        hid_interface: None,
+
+                        #[cfg(any(target_os = "linux", target_os = "android"))]
+                        sysfs_path: Some(info.sysfs_path().to_owned()),
+
+                        #[cfg(target_os = "windows")]
+                        instance_id: Some(info.instance_id().display().to_string()),
+                        #[cfg(target_os = "windows")]
+                        parent_instance_id: Some(info.parent_instance_id().display().to_string()),
+                        #[cfg(target_os = "windows")]
+                        port_number: Some(info.port_number()),
+                        #[cfg(target_os = "windows")]
+                        driver: info.driver().map(str::to_string),
+
+                        #[cfg(target_os = "macos")]
+                        registry_id: Some(info.registry_entry_id()),
+                        #[cfg(target_os = "macos")]
+                        location_id: Some(info.location_id()),
+                    },
+                },
                 &JLinkFactory,
-                None,
             )
         })
         .collect()
