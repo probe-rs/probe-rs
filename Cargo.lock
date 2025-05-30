@@ -1502,8 +1502,7 @@ dependencies = [
 [[package]]
 name = "gdbstub"
 version = "0.7.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8062b93565ea9fe2e60a0dd3c252f0d48c27cf223dad7ead028e361181a2c1a5"
+source = "git+https://github.com/eulerdisk/gdbstub.git?branch=flash_commands#76cb4bebbd6e908fa6baada28b9ffed35d0be690"
 dependencies = [
  "bitflags 2.9.0",
  "cfg-if",
