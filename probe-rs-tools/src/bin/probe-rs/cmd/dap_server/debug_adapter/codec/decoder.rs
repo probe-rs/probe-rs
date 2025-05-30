@@ -3,10 +3,10 @@ use std::io::BufRead;
 use serde::{Deserialize, Serialize};
 use tokio_util::{bytes::BytesMut, codec::Decoder};
 
-use super::{DapCodec, Frame};
+use super::DapCodec;
 
 impl<T: Serialize + for<'a> Deserialize<'a> + PartialEq> Decoder for DapCodec<T> {
-    type Item = Frame<T>;
+    type Item = T;
     type Error = std::io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
@@ -62,9 +62,7 @@ impl<T: Serialize + for<'a> Deserialize<'a> + PartialEq> Decoder for DapCodec<T>
             self.length = None;
 
             // Finally parse and return the frame.
-            return Ok(Some(Frame {
-                content: serde_json::from_slice::<T>(&src.split_to(length))?,
-            }));
+            return Ok(Some(serde_json::from_slice::<T>(&src.split_to(length))?));
         }
 
         Ok(None)
@@ -117,8 +115,6 @@ mod tests {
     use serde_json::json;
     use tokio_util::{bytes::BytesMut, codec::Decoder};
 
-    use crate::cmd::dap_server::debug_adapter::codec::decoder::Frame;
-
     use super::DapCodec;
     use super::get_content_len;
 
@@ -135,7 +131,7 @@ mod tests {
 
         let result = decoder.decode(&mut buf);
 
-        assert_eq!(result.unwrap().unwrap(), Frame { content });
+        assert_eq!(result.unwrap().unwrap(), content);
         assert_eq!(buf.len(), 0)
     }
 
@@ -156,7 +152,7 @@ mod tests {
 
         // The frame should be ready now.
         let result = decoder.decode(&mut buf);
-        assert_eq!(result.unwrap().unwrap(), Frame { content });
+        assert_eq!(result.unwrap().unwrap(), content);
         assert_eq!(buf.len(), 0)
     }
 
@@ -177,7 +173,7 @@ mod tests {
 
         // The frame should be ready now.
         let result = decoder.decode(&mut buf);
-        assert_eq!(result.unwrap().unwrap(), Frame { content });
+        assert_eq!(result.unwrap().unwrap(), content);
         assert_eq!(buf.len(), 0)
     }
 
@@ -263,7 +259,7 @@ mod tests {
 
         let result = decoder.decode(&mut buf);
 
-        assert_eq!(result.unwrap().unwrap(), Frame { content });
+        assert_eq!(result.unwrap().unwrap(), content);
         assert_eq!(buf.len(), 0);
 
         let result = decoder.decode(&mut buf);
