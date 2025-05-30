@@ -999,6 +999,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
         address: u32,
         data: &mut [V],
     ) -> Result<(), RiscvError> {
+        if data.is_empty() {
+            return Ok(());
+        }
+
         let mut sbcs = Sbcs(0);
 
         sbcs.set_sbaccess(V::WIDTH as u32);
@@ -1091,6 +1095,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
         address: u32,
         data: &mut [V],
     ) -> Result<(), RiscvError> {
+        if data.is_empty() {
+            return Ok(());
+        }
+
         self.halted_access(|core| {
             // Backup registers s0 and s1
             let s0 = core.save_s0()?;
@@ -1171,6 +1179,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
         address: u32,
         data: &[V],
     ) -> Result<(), RiscvError> {
+        if data.is_empty() {
+            return Ok(());
+        }
         let mut sbcs = Sbcs(0);
 
         // Set correct access width
@@ -1266,6 +1277,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
         address: u32,
         data: &[V],
     ) -> Result<(), RiscvError> {
+        if data.is_empty() {
+            return Ok(());
+        }
         self.halted_access(|core| {
             let s0 = core.save_s0()?;
             let s1 = core.save_s1()?;
