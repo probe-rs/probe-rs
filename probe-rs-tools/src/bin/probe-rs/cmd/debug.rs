@@ -8,7 +8,6 @@ use rustyline::{DefaultEditor, error::ReadlineError};
 use time::UtcOffset;
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
-use crate::cmd::dap_server::debug_adapter::dap::dap_types::ErrorResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateArguments;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::InitializeRequestArguments;
@@ -22,8 +21,9 @@ use crate::cmd::dap_server::server::debugger::Debugger;
 use crate::util::rtt::RttConfig;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
 
+use super::dap_server::debug_adapter::dap::dap_types::ErrorResponse;
 use super::dap_server::debug_adapter::dap::dap_types::Request;
-use super::dap_server::debug_adapter::dap::dap_types::Response;
+use super::dap_server::protocol::response::ResponseKind;
 
 struct Shared {
     stop: bool,
@@ -79,11 +79,14 @@ impl ProtocolAdapter for CliAdapter {
         Ok(())
     }
 
-    fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
-        if !response.success {
-            print_error(&response)?;
-            return Ok(());
-        }
+    fn send_raw_response(&mut self, response: ResponseKind) -> anyhow::Result<()> {
+        let response = match response {
+            ResponseKind::Ok(response) => response,
+            ResponseKind::Error(error_response) => {
+                print_error(&error_response)?;
+                return Ok(());
+            }
+        };
 
         match response.command.as_str() {
             "evaluate" => {
@@ -126,7 +129,7 @@ impl ProtocolAdapter for CliAdapter {
     }
 }
 
-fn print_error(response: &Response) -> anyhow::Result<()> {
+fn print_error(response: &ErrorResponse) -> anyhow::Result<()> {
     if response.message.as_deref() != Some("cancelled") {
         // `ProtocolHelper::send_response` sets `cancelled` as the message.
         println!(
@@ -136,18 +139,7 @@ fn print_error(response: &Response) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let Some(body) = response.body.clone() else {
-        // `ProtocolHelper::send_response` sets an error body.
-        println!(
-            "Unspecified error while processing {} - response has no body",
-            response.command
-        );
-        return Ok(());
-    };
-
-    let response_body = serde_json::from_value::<ErrorResponseBody>(body)?;
-
-    let Some(error) = response_body.error else {
+    let Some(error) = &response.body.error else {
         // `ProtocolHelper::send_response` returns some error to us.
         println!(
             "Unspecified error while processing {} - response body has no error.",
