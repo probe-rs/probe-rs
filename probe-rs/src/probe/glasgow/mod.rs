@@ -73,28 +73,10 @@ impl ProbeFactory for GlasgowFactory {
     }
 }
 
-/// A Glasgow Interface Explorer device.
-pub struct Glasgow {
-    device: GlasgowDevice,
-    divisor: u16,
-}
-
-impl std::fmt::Debug for Glasgow {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Glasgow").finish()
-    }
-}
-
-impl Glasgow {
-    fn new_from_device(device: GlasgowDevice) -> Result<Self, DebugProbeError> {
-        Ok(Glasgow { device, divisor: 0 })
-    }
-
+impl GlasgowDevice {
     fn identify(&mut self) -> Result<(), DebugProbeError> {
-        self.device.send(Target::Root, &[proto::root::CMD_IDENTIFY]);
-        let identifier = self
-            .device
-            .recv(Target::Root, proto::root::IDENTIFIER.len())?;
+        self.send(Target::Root, &[proto::root::CMD_IDENTIFY]);
+        let identifier = self.recv(Target::Root, proto::root::IDENTIFIER.len())?;
         let utf8_identifier = String::from_utf8_lossy(&identifier);
         tracing::debug!("identify(): {utf8_identifier}");
         if identifier == proto::root::IDENTIFIER {
@@ -106,48 +88,51 @@ impl Glasgow {
         }
     }
 
+    fn get_ref_clock(&mut self) -> Result<u32, DebugProbeError> {
+        self.send(Target::Root, &[proto::root::CMD_GET_REF_CLOCK]);
+        Ok(u32::from_le_bytes(
+            self.recv(Target::Root, 4)?.try_into().unwrap(),
+        ))
+    }
+
     fn get_divisor(&mut self) -> Result<u16, DebugProbeError> {
-        self.device
-            .send(Target::Root, &[proto::root::CMD_GET_DIVISOR]);
+        self.send(Target::Root, &[proto::root::CMD_GET_DIVISOR]);
         Ok(u16::from_le_bytes(
-            self.device.recv(Target::Root, 2)?.try_into().unwrap(),
+            self.recv(Target::Root, 2)?.try_into().unwrap(),
         ))
     }
 
     fn set_divisor(&mut self, divisor: u16) -> Result<(), DebugProbeError> {
-        self.device
-            .send(Target::Root, &[proto::root::CMD_SET_DIVISOR]);
-        self.device.send(Target::Root, &u16::to_le_bytes(divisor));
+        self.send(Target::Root, &[proto::root::CMD_SET_DIVISOR]);
+        self.send(Target::Root, &u16::to_le_bytes(divisor));
         Ok(())
     }
 
     fn assert_reset(&mut self) -> Result<(), DebugProbeError> {
-        self.device
-            .send(Target::Root, &[proto::root::CMD_ASSERT_RESET]);
-        self.device.recv(Target::Root, 0)?;
+        self.send(Target::Root, &[proto::root::CMD_ASSERT_RESET]);
+        self.recv(Target::Root, 0)?;
         Ok(())
     }
 
     fn clear_reset(&mut self) -> Result<(), DebugProbeError> {
-        self.device
-            .send(Target::Root, &[proto::root::CMD_CLEAR_RESET]);
-        self.device.recv(Target::Root, 0)?;
+        self.send(Target::Root, &[proto::root::CMD_CLEAR_RESET]);
+        self.recv(Target::Root, 0)?;
         Ok(())
     }
 
     fn swd_sequence(&mut self, len: u8, bits: u32) -> Result<(), DebugProbeError> {
         assert!(len > 0 && len <= 32);
-        self.device.send(
+        self.send(
             Target::Swd,
             &[proto::swd::CMD_SEQUENCE | (len & proto::swd::SEQ_LEN_MASK)],
         );
-        self.device.send(Target::Swd, &bits.to_le_bytes()[..]);
-        self.device.recv(Target::Swd, 0)?;
+        self.send(Target::Swd, &bits.to_le_bytes()[..]);
+        self.recv(Target::Swd, 0)?;
         Ok(())
     }
 
     fn swd_batch_cmd(&mut self, addr: RegisterAddress, data: Option<u32>) -> Result<(), ArmError> {
-        self.device.send(
+        self.send(
             Target::Swd,
             &[proto::swd::CMD_TRANSFER
                 | (addr.is_ap() as u8)
@@ -155,16 +140,16 @@ impl Glasgow {
                 | (addr.lsb() & 0b1100)],
         );
         if let Some(data) = data {
-            self.device.send(Target::Swd, &data.to_le_bytes()[..]);
+            self.send(Target::Swd, &data.to_le_bytes()[..]);
         }
         Ok(())
     }
 
     fn swd_batch_ack(&mut self) -> Result<Option<u32>, ArmError> {
-        let response = self.device.recv(Target::Swd, 1)?[0];
+        let response = self.recv(Target::Swd, 1)?[0];
         if response & proto::swd::RSP_TYPE_MASK == proto::swd::RSP_TYPE_DATA {
             Ok(Some(u32::from_le_bytes(
-                self.device.recv(Target::Swd, 4)?.try_into().unwrap(),
+                self.recv(Target::Swd, 4)?.try_into().unwrap(),
             )))
         } else if response & proto::swd::RSP_TYPE_MASK == proto::swd::RSP_TYPE_NO_DATA {
             if response & proto::swd::RSP_ACK_MASK == proto::swd::RSP_ACK_OK {
@@ -184,26 +169,53 @@ impl Glasgow {
     }
 }
 
+/// A Glasgow Interface Explorer device.
+pub struct Glasgow {
+    device: GlasgowDevice,
+    ref_clock: u32,
+    divisor: u16,
+}
+
+impl std::fmt::Debug for Glasgow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Glasgow").finish()
+    }
+}
+
+impl Glasgow {
+    fn new_from_device(mut device: GlasgowDevice) -> Result<Self, DebugProbeError> {
+        device.identify()?;
+        let ref_clock = device.get_ref_clock()?;
+        Ok(Glasgow {
+            device,
+            ref_clock,
+            divisor: 0,
+        })
+    }
+}
+
 impl DebugProbe for Glasgow {
     fn get_name(&self) -> &str {
         "Glasgow Interface Explorer"
     }
 
     fn speed_khz(&self) -> u32 {
-        proto::root::divisor_to_frequency(self.divisor) / 1000
+        proto::root::divisor_to_frequency(self.ref_clock, self.divisor) / 1000
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         tracing::debug!("set_speed({speed_khz})");
-        let divisor = proto::root::frequency_to_divisor(speed_khz * 1000);
-        self.set_divisor(divisor)?;
-        self.divisor = self.get_divisor()?;
+        self.device.set_divisor(proto::root::frequency_to_divisor(
+            self.ref_clock,
+            speed_khz * 1000,
+        ))?;
+        self.divisor = self.device.get_divisor()?;
         Ok(self.speed_khz())
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("attach()");
-        self.identify()
+        Ok(())
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
@@ -220,12 +232,12 @@ impl DebugProbe for Glasgow {
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("target_reset_assert()");
-        self.assert_reset()
+        self.device.assert_reset()
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("target_reset_deassert()");
-        self.clear_reset()
+        self.device.clear_reset()
     }
 
     fn active_protocol(&self) -> Option<super::WireProtocol> {
@@ -272,8 +284,8 @@ impl RawDapAccess for Glasgow {
             self.raw_read_block(address, std::slice::from_mut(&mut value))?;
             Ok(value)
         } else {
-            self.swd_batch_cmd(address, None)?;
-            let value = self.swd_batch_ack()?.expect("expected data");
+            self.device.swd_batch_cmd(address, None)?;
+            let value = self.device.swd_batch_ack()?.expect("expected data");
             tracing::debug!("raw_read_register({address:x?}) -> {value:x}");
             Ok(value)
         }
@@ -286,12 +298,13 @@ impl RawDapAccess for Glasgow {
     ) -> Result<(), ArmError> {
         assert!(address.is_ap());
         for _ in 0..values.len() {
-            self.swd_batch_cmd(address, None)?;
+            self.device.swd_batch_cmd(address, None)?;
         }
-        self.swd_batch_cmd(RegisterAddress::DpRegister(RdBuff::ADDRESS), None)?;
-        let _ = self.swd_batch_ack()?.expect("expected data");
+        self.device
+            .swd_batch_cmd(RegisterAddress::DpRegister(RdBuff::ADDRESS), None)?;
+        let _ = self.device.swd_batch_ack()?.expect("expected data");
         for value in values.iter_mut() {
-            *value = self.swd_batch_ack()?.expect("expected data");
+            *value = self.device.swd_batch_ack()?.expect("expected data");
         }
         tracing::debug!(
             "raw_read_block({address:x?}, {}) -> {values:x?}",
@@ -302,8 +315,8 @@ impl RawDapAccess for Glasgow {
 
     fn raw_write_register(&mut self, address: RegisterAddress, value: u32) -> Result<(), ArmError> {
         tracing::debug!("raw_write_register({address:x?}, {value:x})");
-        self.swd_batch_cmd(address, Some(value))?;
-        let response = self.swd_batch_ack()?;
+        self.device.swd_batch_cmd(address, Some(value))?;
+        let response = self.device.swd_batch_ack()?;
         assert!(response.is_none(), "unexpected data");
         Ok(())
     }
@@ -316,10 +329,10 @@ impl RawDapAccess for Glasgow {
         tracing::debug!("raw_write_block({address:x?}, {values:x?})");
         assert!(address.is_ap());
         for value in values {
-            self.swd_batch_cmd(address, Some(*value))?;
+            self.device.swd_batch_cmd(address, Some(*value))?;
         }
         for _ in 0..values.len() {
-            let response = self.swd_batch_ack()?;
+            let response = self.device.swd_batch_ack()?;
             assert!(response.is_none(), "unexpected data");
         }
         Ok(())
@@ -335,10 +348,10 @@ impl RawDapAccess for Glasgow {
     fn swj_sequence(&mut self, len: u8, bits: u64) -> Result<(), DebugProbeError> {
         tracing::debug!("swj_sequence({len}, {bits:#x})");
         if len > 0 {
-            self.swd_sequence(len.min(32), bits as u32)?;
+            self.device.swd_sequence(len.min(32), bits as u32)?;
         }
         if len > 32 {
-            self.swd_sequence(len - 32, (bits >> 32) as u32)?;
+            self.device.swd_sequence(len - 32, (bits >> 32) as u32)?;
         }
         Ok(())
     }
@@ -357,9 +370,9 @@ impl RawDapAccess for Glasgow {
             })
         } else {
             if pin_out & PIN_NSRST == 0 {
-                self.assert_reset()?;
+                self.device.assert_reset()?;
             } else {
-                self.clear_reset()?;
+                self.device.clear_reset()?;
             }
             Ok(0)
         }
