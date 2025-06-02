@@ -18,22 +18,21 @@ pub enum Target {
 }
 
 pub mod root {
-    pub const IDENTIFIER: &[u8; 12] = b"probe-rs,v00";
+    pub const IDENTIFIER: &[u8; 12] = b"probe-rs,v01";
 
     pub const CMD_IDENTIFY: u8 = 0x00;
-    pub const CMD_GET_DIVISOR: u8 = 0x10;
-    pub const CMD_SET_DIVISOR: u8 = 0x20;
-    pub const CMD_ASSERT_RESET: u8 = 0x30;
-    pub const CMD_CLEAR_RESET: u8 = 0x31;
+    pub const CMD_GET_REF_CLOCK: u8 = 0x10;
+    pub const CMD_GET_DIVISOR: u8 = 0x11;
+    pub const CMD_SET_DIVISOR: u8 = 0x12;
+    pub const CMD_ASSERT_RESET: u8 = 0x20;
+    pub const CMD_CLEAR_RESET: u8 = 0x21;
 
-    pub const REF_CLK_FREQUENCY: u32 = 24_000_000;
-
-    pub fn divisor_to_frequency(divisor: u16) -> u32 {
-        REF_CLK_FREQUENCY / (divisor as u32 + 1)
+    pub fn divisor_to_frequency(reference_clock: u32, divisor: u16) -> u32 {
+        reference_clock / (divisor as u32 + 1)
     }
 
-    pub fn frequency_to_divisor(frequency: u32) -> u16 {
-        (REF_CLK_FREQUENCY.div_ceil(frequency) - 1) as u16
+    pub fn frequency_to_divisor(reference_clock: u32, frequency: u32) -> u16 {
+        (reference_clock.div_ceil(frequency) - 1) as u16
     }
 }
 
