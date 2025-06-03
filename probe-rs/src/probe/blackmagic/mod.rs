@@ -930,7 +930,7 @@ impl BlackMagicProbe {
             if dir != self.swd_direction
                 || accumulator_length >= core::mem::size_of_val(&accumulator) * 8
             {
-                // Inputs are off-by-one due to how J-Link is built. Remove one bit
+                // Inputs are off-by-one due to input latency. Remove one bit
                 // from the accumulator and store the turnaround bit at the end of
                 // the transaction.
                 if self.swd_direction == SwdDirection::Input && dir == SwdDirection::Output {
@@ -951,7 +951,7 @@ impl BlackMagicProbe {
                 accumulator_length = 0;
             }
             self.swd_direction = dir;
-            accumulator |= if swdio.try_into().unwrap_or(false) {
+            accumulator |= if let IoSequenceItem::Output(true) = swdio {
                 1 << accumulator_length
             } else {
                 0
