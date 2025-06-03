@@ -125,11 +125,19 @@ fn gdb_memory_map(session: &mut Session, primary_core_id: usize) -> Result<Strin
         for algo in session.target().flash_algorithms.iter() {
             let start = algo.flash_properties.address_range.start;
             // Use the region end address (if possible) because it seems more correct
-            // than the data in FlashProperties
+            // than the data in FlashProperties.
+            // We skip region for which we have access information and they are not executable.
             let end = if let Some(region) = session
                 .target()
                 .memory_region_by_address(algo.flash_properties.address_range.start)
             {
+                let access = match region {
+                    MemoryRegion::Nvm(nvm) => nvm.access(),
+                    _ => continue,
+                };
+                if !access.execute {
+                    continue;
+                }
                 region.address_range().end
             } else {
                 algo.flash_properties.address_range.end
