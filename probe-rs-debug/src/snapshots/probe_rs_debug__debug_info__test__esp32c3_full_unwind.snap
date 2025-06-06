@@ -1,6 +1,5 @@
 ---
 source: probe-rs-debug/src/debug_info.rs
-assertion_line: 1999
 expression: stack_frames
 ---
 - function_name: test_deep_stack
@@ -5205,16 +5204,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x3FC80DC0
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x3FC80DC0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "363"
+                                    Base: usize
+                                  value: "363"
                             - name:
                                 Named: read
                               type_name:
@@ -5222,16 +5215,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x3FC80DC4
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x3FC80DC4
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "363"
+                                    Base: usize
+                                  value: "363"
                             - name:
                                 Named: flags
                               type_name:
@@ -5239,16 +5226,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x3FC80DC8
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x3FC80DC8
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "1"
+                                    Base: usize
+                                  value: "1"
                 - name:
                     Named: __1
                   type_name:
@@ -5301,16 +5282,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x3FC80DD8
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x3FC80DD8
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "0"
+                                    Base: usize
+                                  value: "0"
                             - name:
                                 Named: read
                               type_name:
@@ -5318,16 +5293,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x3FC80DDC
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x3FC80DDC
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "0"
+                                    Base: usize
+                                  value: "0"
                             - name:
                                 Named: flags
                               type_name:
@@ -5335,16 +5304,10 @@ expression: stack_frames
                               value: AtomicUsize @ 0x3FC80DE0
                               children:
                                 - name:
-                                    Named: v
+                                    Named: value
                                   type_name:
-                                    Struct: UnsafeCell<usize>
-                                  value: UnsafeCell<usize> @ 0x3FC80DE0
-                                  children:
-                                    - name:
-                                        Named: value
-                                      type_name:
-                                        Base: usize
-                                      value: "1"
+                                    Base: usize
+                                  value: "1"
   canonical_frame_address: 1070399200
 - function_name: __risc_v_rt__main
   source_location:
