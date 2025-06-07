@@ -30,6 +30,7 @@ anyhow = { workspace = true }
 async-io.workspace = true
 async-trait.workspace = true
 async-codec-lite = "0.0.2"
+auto_impl = "1"
 base64 = "0.22"
 dashmap = "6"
 docsplay = { workspace = true }

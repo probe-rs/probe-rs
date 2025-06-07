@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::cmd::dap_server::protocol::response::ResponseKind;
 

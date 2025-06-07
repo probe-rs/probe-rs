@@ -2,9 +2,11 @@
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 pub(crate) mod client;
 pub(crate) mod debug_adapter;
+pub(crate) mod layers;
 mod peripherals;
 pub(crate) mod protocol;
 pub(crate) mod server;
+pub(crate) mod service;
 pub(crate) mod state;
 
 #[cfg(test)]

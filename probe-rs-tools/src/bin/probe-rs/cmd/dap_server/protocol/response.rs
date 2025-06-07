@@ -15,12 +15,14 @@ pub enum ResponseKind {
 
 impl ResponseKind {
     /// Creates a new successful response from a request ID and `Error` object.
-    pub fn from_ok(request: &Request, body: Value) -> Self {
+    pub fn from_ok(seq: i64, body: Value) -> Self {
         ResponseKind::Ok(super::Response {
             body: Some(body),
-            command: request.command.clone(),
+            // TODO: Return proper command?
+            command: "".to_string(),
             message: None,
-            request_seq: request.seq,
+            request_seq: seq,
+            // TODO: Do we need to populate this? If I read the spec right, no.
             seq: 0,
             success: true,
             type_: "response".into(),
@@ -28,16 +30,14 @@ impl ResponseKind {
     }
 
     /// Creates a new error response from a request ID and `Error` object.
-    pub fn error_from_request(
-        request: &Request,
-        message: Option<String>,
-        error: Option<super::Message>,
-    ) -> Self {
+    pub fn from_error(seq: i64, message: Option<String>, error: Option<super::Message>) -> Self {
         ResponseKind::Error(super::ErrorResponse {
             body: super::ErrorResponseBody { error },
-            command: request.command.clone(),
+            // TODO: Return proper command?
+            command: "".to_string(),
             message,
-            request_seq: request.seq,
+            request_seq: seq,
+            // TODO: Do we need to populate this? If I read the spec right, no.
             seq: 0,
             success: false,
             type_: "response".into(),

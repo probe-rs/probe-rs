@@ -1,6 +1,6 @@
 //! Types for sending data to and from the language client.
 
-mod pending;
+pub mod pending;
 // pub mod progress;
 mod socket;
 

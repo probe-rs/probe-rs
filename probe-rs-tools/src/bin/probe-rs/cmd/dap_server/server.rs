@@ -8,6 +8,8 @@ pub(crate) mod debug_rtt;
 pub(crate) mod debugger;
 /// Manage the logging/tracing associated with the debugger.
 pub(crate) mod logger;
+pub(crate) mod pending;
+pub(crate) mod router;
 /// The data structures needed to keep track of a session status in the debugger.
 pub(crate) mod session_data;
 /// This is where the primary processing for the debugger is driven from.
@@ -29,6 +31,14 @@ use super::protocol::response::ResponseKind;
 
 const DEFAULT_MAX_CONCURRENCY: usize = 4;
 const MESSAGE_QUEUE_SIZE: usize = 100;
+
+#[async_trait::async_trait]
+#[auto_impl::auto_impl(Arc, Box)]
+pub trait DapServer: Send + Sync + 'static {}
+
+pub struct Xyz {}
+
+impl DapServer for Xyz {}
 
 /// Trait implemented by client loopback sockets.
 ///
