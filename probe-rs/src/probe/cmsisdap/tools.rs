@@ -1,6 +1,7 @@
 use super::CmsisDapDevice;
 use crate::probe::{
-    DebugProbeInfo, DebugProbeSelector, ProbeCreationError, cmsisdap::CmsisDapFactory,
+    BoxedProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+    cmsisdap::{CmsisDapFactory, commands::CmsisDapError},
 };
 use hidapi::HidApi;
 use nusb::{
@@ -144,12 +145,16 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
 }
 
 /// Attempt to open the given device in CMSIS-DAP v2 mode
-pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
+pub fn open_v2_device(
+    device_info: &DeviceInfo,
+) -> Result<Option<CmsisDapDevice>, ProbeCreationError> {
     // Open device handle and read basic information
     let vid = device_info.vendor_id();
     let pid = device_info.product_id();
 
-    let device = device_info.open().ok()?;
+    let Some(device) = device_info.open().ok() else {
+        return Ok(None);
+    };
 
     // Go through interfaces to try and find a v2 interface.
     // The CMSIS-DAPv2 spec says that v2 interfaces should use a specific
@@ -157,7 +162,9 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
     // official DAPLink firmware doesn't use it. Instead, we scan for an
     // interface whose string like "CMSIS-DAP" and has two or three
     // endpoints of the correct type and direction.
-    let c_desc = device.configurations().next()?;
+    let Some(c_desc) = device.configurations().next() else {
+        return Ok(None);
+    };
     for interface in c_desc.interfaces() {
         for i_desc in interface.alt_settings() {
             // Skip interfaces without "CMSIS-DAP" like pattern in their string
@@ -205,13 +212,18 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
             match device.claim_interface(interface.interface_number()) {
                 Ok(handle) => {
                     tracing::debug!("Opening {:04x}:{:04x} in CMSIS-DAPv2 mode", vid, pid);
-                    return Some(CmsisDapDevice::V2 {
+                    reject_probe_by_version(
+                        device_info.vendor_id(),
+                        device_info.product_id(),
+                        device_info.device_version(),
+                    )?;
+                    return Ok(Some(CmsisDapDevice::V2 {
                         handle,
                         out_ep: eps[0].address(),
                         in_ep: eps[1].address(),
                         swo_ep,
                         max_packet_size: eps[1].max_packet_size(),
-                    });
+                    }));
                 }
                 Err(_) => continue,
             }
@@ -224,7 +236,33 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
         vid,
         pid
     );
-    None
+    Ok(None)
+}
+
+fn reject_probe_by_version(
+    vendor_id: u16,
+    product_id: u16,
+    device_version: u16,
+) -> Result<(), ProbeCreationError> {
+    let denylist = [
+        |vid, pid, version| (vid == 0x2e8a && pid == 0x000c && version < 0x0220).then_some("2.2.0"), // Old RPi debugprobe
+    ];
+
+    tracing::debug!(
+        "Checking against denylist: {:04x}:{:04x} v{:04x}",
+        vendor_id,
+        product_id,
+        device_version
+    );
+    for deny in denylist {
+        if let Some(min_version) = deny(vendor_id, product_id, device_version) {
+            return Err(ProbeCreationError::ProbeSpecific(BoxedProbeError::from(
+                CmsisDapError::ProbeFirmwareOutdated(min_version),
+            )));
+        }
+    }
+
+    Ok(())
 }
 
 /// Attempt to open the given DebugProbeInfo in CMSIS-DAP v2 mode if possible,
@@ -257,7 +295,7 @@ pub fn open_device_from_selector(
                     // If the VID, PID, and potentially SN all match,
                     // and the device is a valid CMSIS-DAP probe,
                     // attempt to open the device in v2 mode.
-                    if let Some(device) = open_v2_device(&device) {
+                    if let Some(device) = open_v2_device(&device)? {
                         return Ok(device);
                     }
                 }
@@ -313,6 +351,11 @@ pub fn open_device_from_selector(
 
     match device.get_product_string() {
         Ok(Some(s)) if is_cmsis_dap(&s) => {
+            reject_probe_by_version(
+                device_info.vendor_id(),
+                device_info.product_id(),
+                device_info.release_number(),
+            )?;
             Ok(CmsisDapDevice::V1 {
                 handle: device,
                 // Start with a default 64-byte report size, which is the most
