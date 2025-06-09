@@ -30,7 +30,7 @@ jobs:
         run: rustup target add aarch64-unknown-linux-gnu
 
       - name: Install cross
-        uses: taiki-e/install-action@v2.50.10
+        uses: taiki-e/install-action@v2.52.7
         with:
           tool: cross
 

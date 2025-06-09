@@ -33,7 +33,7 @@ base64 = "0.22"
 docsplay = { workspace = true }
 jep106 = "0.3"
 num-traits = "0.2"
-scroll = "0.12"
+scroll = "0.13"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 thiserror = { workspace = true }
@@ -47,14 +47,14 @@ itertools = "0.14"
 addr2line = "0.24"
 bytesize = "2"
 capstone = "0.13"
-cargo_metadata = "0.19"
+cargo_metadata = "0.20"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "3"
 defmt-decoder = "1.0"
 directories = "6"
 dunce = "1"
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
-goblin = { version = "0.9", default-features = false, features = [
+goblin = { version = "0.10", default-features = false, features = [
     "std",
     "elf32",
     "elf64",
