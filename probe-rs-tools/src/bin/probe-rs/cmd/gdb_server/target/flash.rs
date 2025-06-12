@@ -24,6 +24,9 @@ impl Flash for RuntimeTarget<'_> {
         _start_addr: <Self::Arch as Arch>::Usize,
         _length: <Self::Arch as Arch>::Usize,
     ) -> gdbstub::target::TargetResult<(), Self> {
+        // We drop the flash_loader to ensure a fresh start in case
+        // flash_write returns an error and flash_done is not called.
+        let _drop = self.flash_loader.take();
         Ok(())
     }
 
