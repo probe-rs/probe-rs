@@ -216,6 +216,7 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
             Architecture::Riscv => CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
                 hart_id: None,
                 jtag_tap: None,
+                dtm: None,
             }),
             Architecture::Xtensa => {
                 CoreAccessOptions::Xtensa(XtensaCoreAccessOptions { jtag_tap: None })

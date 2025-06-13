@@ -192,7 +192,7 @@ impl Default for ApAddress {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ArmCoreAccessOptions {
-    /// The access port number to access the core
+    /// The access port to access the core
     pub ap: ApAddress,
     /// The TARGETSEL value used to access the core
     #[serde(serialize_with = "hex_option")]
@@ -211,14 +211,34 @@ pub struct ArmCoreAccessOptions {
 }
 
 /// The data required to access a Risc-V core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RiscvCoreAccessOptions {
     /// The hart id
     pub hart_id: Option<u32>,
 
+    /// What kind of debug transport module is used
+    pub dtm: Option<RiscvDtm>,
+
     /// The JTAG TAP index of the core's debug module
     pub jtag_tap: Option<usize>,
 }
+
+/// RISCV Debug Transport Module
+///
+/// This is used to access the debug module
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
+pub enum RiscvDtm {
+    /// The JTAG debug transport module from the RISCV debug specification
+    #[default]
+    Jtag,
+    /// The ARM debug inteface is used to access the core
+    ArmDebug {
+        /// The access port to access the core
+        ap: ApAddress,
+    },
+}
+
 
 /// The data required to access an Xtensa core
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -13,9 +13,9 @@ use std::mem::size_of_val;
 /// A flash algorithm, which has been assembled for a specific
 /// chip.
 ///
-/// To create a [FlashAlgorithm], call the [`assemble_from_raw`] function.
+/// To create a [FlashAlgorithm], call the [`assemble_from_raw_with_core`] function.
 ///
-/// [`assemble_from_raw`]: FlashAlgorithm::assemble_from_raw
+/// [`assemble_from_raw_with_core`]: FlashAlgorithm::assemble_from_raw_with_core
 #[derive(Debug, Default, Clone)]
 pub struct FlashAlgorithm {
     /// The name of the flash algorithm.
@@ -219,20 +219,11 @@ impl FlashAlgorithm {
     }
 
     /// Constructs a complete flash algorithm, tailored to the flash and RAM sizes given.
-    pub fn assemble_from_raw(
-        raw: &RawFlashAlgorithm,
-        ram_region: &RamRegion,
-        target: &Target,
-    ) -> Result<Self, FlashError> {
-        Self::assemble_from_raw_with_data(raw, ram_region, ram_region, target)
-    }
-
-    /// Constructs a complete flash algorithm, tailored to the flash and RAM sizes given.
-    pub fn assemble_from_raw_with_data(
+    fn assemble_from_raw_with_data(
         raw: &RawFlashAlgorithm,
         ram_region: &RamRegion,
         data_ram_region: &RamRegion,
-        target: &Target,
+        architecture: Architecture,
     ) -> Result<Self, FlashError> {
         use std::mem::size_of;
 
@@ -257,7 +248,7 @@ impl FlashAlgorithm {
         };
 
         let header = Self::algorithm_header(
-            target.architecture(),
+            architecture,
             if raw.big_endian {
                 Endian::Big
             } else {
@@ -307,7 +298,7 @@ impl FlashAlgorithm {
         let code_start = addr_load + header_size;
         let code_size_bytes = (instructions.len() * size_of::<u32>()) as u64;
 
-        let stack_align = Self::required_stack_alignment(target.architecture());
+        let stack_align = Self::required_stack_alignment(architecture);
         // Round up to align the stack (possibly placed immediately after the code blob).
         let code_end = (code_start + code_size_bytes).next_multiple_of(stack_align);
 
@@ -419,44 +410,45 @@ impl FlashAlgorithm {
     /// Constructs a complete flash algorithm, choosing a suitable RAM region to run the algorithm.
     pub(crate) fn assemble_from_raw_with_core(
         algo: &RawFlashAlgorithm,
-        core_name: &str,
+        core_index: usize,
         target: &Target,
     ) -> Result<FlashAlgorithm, FlashError> {
-        // Find a RAM region from which we can run the algo.
-        let mm = &target.memory_map;
+        let core_name = &target.cores[core_index].name;
+        let core_architecture = target.cores[core_index].core_type.architecture();
 
-        let ram_regions = mm
+        // Find a RAM region from which we can run the algo.
+        let ram_regions: Vec<_> = target
+            .memory_map
             .iter()
             .filter_map(MemoryRegion::as_ram_region)
             .filter(|ram| ram.accessible_by(core_name))
-            .merge_consecutive();
+            .merge_consecutive()
+            .collect();
 
         let ram = ram_regions
-            .clone()
+            .iter()
             .filter(|ram| is_ram_suitable_for_algo(ram, algo.load_address))
             .max_by_key(|region| region.range.end - region.range.start)
             .ok_or(FlashError::NoRamDefined {
                 name: target.name.clone(),
             })?;
+
         tracing::info!("Chosen RAM to run the algo: {:x?}", ram);
 
-        let data_ram;
         let data_ram = if let Some(data_load_address) = algo.data_load_address {
-            data_ram = ram_regions
-                .clone()
+            ram_regions
+                .iter()
                 .find(|ram| is_ram_suitable_for_data(ram, data_load_address))
                 .ok_or(FlashError::NoRamDefined {
                     name: target.name.clone(),
-                })?;
-
-            &data_ram
+                })?
         } else {
             // If not specified, use the same region as the flash algo.
-            &ram
+            ram
         };
         tracing::info!("Data will be loaded to: {:x?}", data_ram);
 
-        Self::assemble_from_raw_with_data(algo, &ram, data_ram, target)
+        Self::assemble_from_raw_with_data(algo, ram, data_ram, core_architecture)
     }
 }
 
