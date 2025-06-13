@@ -279,22 +279,9 @@ impl ChipFamily {
     // Check that there is at least one core.
     fn ensure_at_least_one_core(&self) -> Result<(), String> {
         for variant in &self.variants {
-            let Some(core) = variant.cores.first() else {
+            if variant.cores.is_empty() {
                 return Err(format!(
                     "variant `{}` does not contain any cores",
-                    variant.name
-                ));
-            };
-
-            // Make sure that the core types (architectures) are not mixed.
-            let architecture = core.core_type.architecture();
-            if variant
-                .cores
-                .iter()
-                .any(|core| core.core_type.architecture() != architecture)
-            {
-                return Err(format!(
-                    "variant `{}` contains mixed core architectures",
                     variant.name
                 ));
             }
