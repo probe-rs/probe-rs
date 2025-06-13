@@ -6,7 +6,7 @@ use probe_rs_target::CoreType;
 use crate::{
     MemoryMappedRegister,
     architecture::arm::{
-        ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+        ArmError, ArmDebugInterface, FullyQualifiedApAddress,
         armv7m::Demcr,
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, cortex_m_core_start},
@@ -31,7 +31,7 @@ impl ArmDebugSequence for Va416xx {
     /// disabling the ROM protection and the watchdog.
     fn debug_core_start(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         core_ap: &FullyQualifiedApAddress,
         _core_type: CoreType,
         _debug_base: Option<u64>,

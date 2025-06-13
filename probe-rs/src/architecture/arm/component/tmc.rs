@@ -6,7 +6,7 @@
 use crate::{
     Error,
     architecture::arm::{
-        ArmError, ArmProbeInterface, component::DebugComponentInterface, memory::CoresightComponent,
+        ArmDebugInterface, ArmError, component::DebugComponentInterface, memory::CoresightComponent,
     },
     memory_mapped_bitfield_register,
 };
@@ -35,13 +35,13 @@ pub enum Mode {
 /// The embedded trace memory controller.
 pub struct TraceMemoryController<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut dyn ArmProbeInterface,
+    interface: &'a mut dyn ArmDebugInterface,
 }
 
 impl<'a> TraceMemoryController<'a> {
     /// Construct a new embedded trace fifo controller.
     pub fn new(
-        interface: &'a mut dyn ArmProbeInterface,
+        interface: &'a mut dyn ArmDebugInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Self {

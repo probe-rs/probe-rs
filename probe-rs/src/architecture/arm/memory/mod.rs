@@ -8,7 +8,7 @@ pub(crate) use adi_memory_interface::ADIMemoryInterface;
 use crate::{CoreStatus, memory::MemoryInterface, probe::DebugProbeError};
 
 use super::{
-    ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
+    ArmError, ArmDebugInterface, DapAccess, FullyQualifiedApAddress,
     communication_interface::SwdSequence,
 };
 pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, RomTable};
@@ -25,7 +25,7 @@ pub trait ArmMemoryInterface: MemoryInterface<ArmError> {
     fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError>;
 
     /// Get this interface as a [`ArmProbeInterface`] object.
-    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError>;
+    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError>;
 
     /// Get this interface as a [`DapAccess`] object.
     fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError>;

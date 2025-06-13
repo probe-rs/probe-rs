@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use crate::architecture::arm::communication_interface::ArmProbeInterface;
+use crate::architecture::arm::communication_interface::ArmDebugInterface;
 
 use super::ArmError;
 
@@ -168,12 +168,12 @@ pub(crate) fn poll_interval_from_buf_size(config: &SwoConfig, buf_size: usize) -
 
 /// A reader interface to pull SWO data from the underlying driver.
 pub struct SwoReader<'a> {
-    interface: &'a mut dyn ArmProbeInterface,
+    interface: &'a mut dyn ArmDebugInterface,
     buf: Vec<u8>,
 }
 
 impl<'a> SwoReader<'a> {
-    pub(crate) fn new(interface: &'a mut dyn ArmProbeInterface) -> Self {
+    pub(crate) fn new(interface: &'a mut dyn ArmDebugInterface) -> Self {
         Self {
             interface,
             buf: Vec::new(),

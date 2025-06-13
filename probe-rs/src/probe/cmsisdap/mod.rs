@@ -6,7 +6,7 @@ use crate::{
     CoreStatus,
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmError, ArmProbeInterface, DapError, Pins, RawDapAccess,
+            ArmCommunicationInterface, ArmDebugInterface, ArmError, DapError, Pins, RawDapAccess,
             RegisterAddress, SwoAccess, SwoConfig, SwoMode,
             communication_interface::DapProbe,
             dp::{Abort, Ctrl, DpRegister},
@@ -932,10 +932,10 @@ impl DebugProbe for CmsisDap {
         Some(self as _)
     }
 
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Ok(ArmCommunicationInterface::create(self, sequence, false))
     }
 

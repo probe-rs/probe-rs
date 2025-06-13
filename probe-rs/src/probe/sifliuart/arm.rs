@@ -8,7 +8,7 @@ use crate::architecture::arm::dp::{DpAddress, DpRegisterAddress};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::{
-    ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, SwoAccess, SwoConfig,
+    ArmError, ArmDebugInterface, DapAccess, FullyQualifiedApAddress, SwoAccess, SwoConfig,
 };
 use crate::probe::sifliuart::{SifliUart, SifliUartCommand, SifliUartResponse};
 use crate::probe::{DebugProbeError, Probe};
@@ -144,7 +144,7 @@ impl ArmMemoryInterface for SifliUartMemoryInterface<'_> {
         Ok(self.probe)
     }
 
-    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
+    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError> {
         Ok(self.probe)
     }
 
@@ -166,7 +166,7 @@ impl ArmMemoryInterface for SifliUartMemoryInterface<'_> {
     }
 }
 
-impl ArmProbeInterface for SifliUartArmDebug {
+impl ArmDebugInterface for SifliUartArmDebug {
     fn reinitialize(&mut self) -> Result<(), ArmError> {
         Ok(())
     }

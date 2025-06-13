@@ -9,7 +9,7 @@ use crate::{
     Error, Target,
     architecture::{
         arm::{
-            ArmChipInfo, ArmProbeInterface, communication_interface::read_chip_info_from_rom_table,
+            ArmChipInfo, ArmDebugInterface, communication_interface::read_chip_info_from_rom_table,
             dp::DpAddress, sequences::DefaultArmSequence,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
@@ -41,7 +41,7 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
     fn try_detect_arm_chip(
         &self,
         _registry: &Registry,
-        _probe: &mut dyn ArmProbeInterface,
+        _probe: &mut dyn ArmDebugInterface,
         _chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
         Ok(None)
@@ -130,7 +130,7 @@ fn try_detect_arm_chip(
 
     for dp_address in dp_addresses {
         // TODO: do not consume probe
-        match probe.try_into_arm_interface(sequence.clone()) {
+        match probe.try_into_arm_debug_interface(sequence.clone()) {
             Ok(mut interface) => {
                 if let Err(error) = interface.select_debug_port(dp_address) {
                     probe = interface.close();

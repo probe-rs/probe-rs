@@ -11,7 +11,7 @@ use sequences::nrf54l::Nrf54L;
 use crate::{
     Error,
     architecture::arm::{
-        ArmChipInfo, ArmProbeInterface, FullyQualifiedApAddress, memory::ArmMemoryInterface,
+        ArmChipInfo, ArmDebugInterface, FullyQualifiedApAddress, memory::ArmMemoryInterface,
     },
     config::{DebugSequence, Registry},
     vendor::{
@@ -46,7 +46,7 @@ impl Vendor for NordicSemi {
     fn try_detect_arm_chip(
         &self,
         registry: &Registry,
-        probe: &mut dyn ArmProbeInterface,
+        probe: &mut dyn ArmDebugInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
         if chip_info.manufacturer.get() != Some("Nordic VLSI ASA") {

@@ -1,6 +1,6 @@
 use crate::MemoryInterface;
 use crate::architecture::arm::{
-    ArmProbeInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
+    ArmDebugInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess, SwoAccess,
     ap::{
         self, AccessPortType, AddressIncrement, CSW, DataSize,
         memory_ap::{MemoryAp, MemoryApType},
@@ -202,7 +202,7 @@ impl BlackMagicProbeArmDebug {
     }
 }
 
-impl ArmProbeInterface for BlackMagicProbeArmDebug {
+impl ArmDebugInterface for BlackMagicProbeArmDebug {
     fn access_ports(
         &mut self,
         dp: DpAddress,
@@ -642,7 +642,7 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
         Ok(self.probe)
     }
 
-    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
+    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError> {
         Ok(self.probe)
     }
 

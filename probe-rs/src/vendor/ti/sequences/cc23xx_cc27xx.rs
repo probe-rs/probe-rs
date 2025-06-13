@@ -7,7 +7,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::MemoryMappedRegister;
-use crate::architecture::arm::ArmProbeInterface;
+use crate::architecture::arm::ArmDebugInterface;
 use crate::architecture::arm::DapAccess;
 use crate::architecture::arm::armv6m::{Aircr, BpCtrl, Demcr, Dhcsr};
 use crate::architecture::arm::core::cortex_m;
@@ -341,7 +341,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
 
     fn debug_core_start(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         core_ap: &FullyQualifiedApAddress,
         _core_type: CoreType,
         _debug_base: Option<u64>,

@@ -4,7 +4,7 @@
 
 use super::super::memory::romtable::CoresightComponent;
 use super::DebugComponentInterface;
-use crate::architecture::arm::ArmProbeInterface;
+use crate::architecture::arm::ArmDebugInterface;
 use crate::{Error, MemoryMappedRegister};
 
 pub const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
@@ -26,7 +26,7 @@ pub const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
 ///   The same count value can be used to insert timestamps in the ETM trace stream, allowing coarse-grain correlation.
 pub struct Itm<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut dyn ArmProbeInterface,
+    interface: &'a mut dyn ArmDebugInterface,
 }
 
 const _REGISTER_OFFSET_ITM_TPR: u32 = 0xE40;
@@ -35,7 +35,7 @@ const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 impl<'a> Itm<'a> {
     /// Create a new ITM interface from a probe and a ROM table component.
     pub fn new(
-        interface: &'a mut dyn ArmProbeInterface,
+        interface: &'a mut dyn ArmDebugInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Itm {
@@ -149,7 +149,7 @@ impl<'a> Itm<'a> {
         Ok(())
     }
 
-    /// Enable synchronization packet transmission.  
+    /// Enable synchronization packet transmission.
     pub fn enable_sync_pulses(&mut self) -> Result<(), Error> {
         let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
         tcr.set_syncena(true);
@@ -158,7 +158,7 @@ impl<'a> Itm<'a> {
         Ok(())
     }
 
-    /// Disable synchronization packet transmission.  
+    /// Disable synchronization packet transmission.
     pub fn disable_sync_pulses(&mut self) -> Result<(), Error> {
         let mut tcr = register::ITM_TCR::load(self.component, self.interface)?;
         tcr.set_syncena(false);

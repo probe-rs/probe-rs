@@ -4,7 +4,7 @@ use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
     Error,
-    architecture::arm::{ArmChipInfo, ArmProbeInterface, FullyQualifiedApAddress},
+    architecture::arm::{ArmChipInfo, ArmDebugInterface, FullyQualifiedApAddress},
     config::{DebugSequence, Registry},
     vendor::{
         Vendor,
@@ -42,7 +42,7 @@ impl Vendor for Microchip {
     fn try_detect_arm_chip(
         &self,
         registry: &Registry,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
         if chip_info.manufacturer.get() != Some("Atmel") || chip_info.part != 0xCD0 {
