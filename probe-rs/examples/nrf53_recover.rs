@@ -25,7 +25,7 @@ fn main() -> Result<()> {
 
         probe.attach_to_unspecified()?;
         let mut iface = probe
-            .try_into_arm_interface(DefaultArmSequence::create())
+            .try_into_arm_debug_interface(DefaultArmSequence::create())
             .unwrap();
 
         iface.select_debug_port(DpAddress::Default).unwrap();

@@ -3,7 +3,7 @@
 use crate::{
     MemoryMappedRegister, Permissions,
     architecture::arm::{
-        ArmError, ArmProbeInterface, FullyQualifiedApAddress, Pins,
+        ArmError, ArmDebugInterface, FullyQualifiedApAddress, Pins,
         armv7m::Dhcsr,
         communication_interface::{DapProbe, SwdSequence},
         memory::ArmMemoryInterface,
@@ -460,7 +460,7 @@ impl AtSAM {
 impl ArmDebugSequence for AtSAM {
     fn debug_core_start(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         core_ap: &FullyQualifiedApAddress,
         _core_type: CoreType,
         _debug_base: Option<u64>,
@@ -488,7 +488,7 @@ impl ArmDebugSequence for AtSAM {
     /// the device is released from Reset Extension.
     fn reset_hardware_deassert(
         &self,
-        probe: &mut dyn ArmProbeInterface,
+        probe: &mut dyn ArmDebugInterface,
         default_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
         let mut pins = Pins(0);
@@ -519,7 +519,7 @@ impl ArmDebugSequence for AtSAM {
     ///   to signal that a probe re-attach is required before the new `unlocked` status takes effect.
     fn debug_device_unlock(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         default_ap: &FullyQualifiedApAddress,
         permissions: &Permissions,
     ) -> Result<(), ArmError> {
@@ -541,7 +541,7 @@ impl ArmDebugSequence for AtSAM {
 }
 
 impl DebugEraseSequence for AtSAM {
-    fn erase_all(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
+    fn erase_all(&self, interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
         let mem_ap = &FullyQualifiedApAddress::v1_with_default_dp(0);
 
         let mut memory = interface.memory_interface(mem_ap)?;

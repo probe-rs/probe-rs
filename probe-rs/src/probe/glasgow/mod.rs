@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use crate::architecture::arm::{
-    ArmCommunicationInterface, ArmError, ArmProbeInterface, DapError, RawDapAccess,
+    ArmCommunicationInterface, ArmDebugInterface, ArmError, DapError, RawDapAccess,
     RegisterAddress,
     communication_interface::DapProbe,
     dp::{DpRegister, RdBuff},
@@ -264,10 +264,10 @@ impl DebugProbe for Glasgow {
         true
     }
 
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         // The Glasgow applet handles FAULT/WAIT states promptly.
         Ok(ArmCommunicationInterface::create(
             self, sequence, /*use_overrun_detect=*/ false,

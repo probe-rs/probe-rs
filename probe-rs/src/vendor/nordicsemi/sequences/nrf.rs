@@ -2,7 +2,7 @@
 
 use crate::{
     architecture::arm::{
-        ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+        ArmError, ArmDebugInterface, FullyQualifiedApAddress,
         dp::DpAddress,
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
@@ -21,7 +21,7 @@ pub trait Nrf: Sync + Send + Debug {
     /// Returns true when the core is unlocked and false when it is locked.
     fn is_core_unlocked(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         ahb_ap_address: &FullyQualifiedApAddress,
         ctrl_ap_address: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError>;
@@ -43,7 +43,7 @@ const RELEASE_FORCEOFF: u32 = 0;
 /// Unlocks the core by performing an erase all procedure.
 /// The `ap_address` must be of the ctrl ap of the core.
 fn unlock_core(
-    arm_interface: &mut dyn ArmProbeInterface,
+    arm_interface: &mut dyn ArmDebugInterface,
     ap_address: &FullyQualifiedApAddress,
     permissions: &crate::Permissions,
 ) -> Result<(), ArmError> {
@@ -80,7 +80,7 @@ fn set_network_core_running(interface: &mut dyn ArmMemoryInterface) -> Result<()
 impl<T: Nrf> ArmDebugSequence for T {
     fn debug_device_unlock(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         default_ap: &FullyQualifiedApAddress,
         permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {

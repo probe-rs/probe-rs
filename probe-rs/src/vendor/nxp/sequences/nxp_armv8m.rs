@@ -9,7 +9,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, Pins,
+        ArmError, ArmDebugInterface, DapAccess, FullyQualifiedApAddress, Pins,
         ap::{AccessPortError, AccessPortType, ApRegister, GenericAp, IDR},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DPIDR, DpAccess, DpAddress, DpRegister, SelectV1},
@@ -702,7 +702,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
 
     fn reset_hardware_deassert(
         &self,
-        memory: &mut dyn ArmProbeInterface,
+        memory: &mut dyn ArmDebugInterface,
         _default_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
         tracing::trace!("MIMXRT5xxS reset hardware deassert");

@@ -77,6 +77,15 @@ impl CoreType {
                 | CoreType::Armv8m
         )
     }
+
+    /// Returns the parent architecture family of this core type.
+    pub fn architecture(&self) -> Architecture {
+        match self {
+            CoreType::Riscv => Architecture::Riscv,
+            CoreType::Xtensa => Architecture::Xtensa,
+            _ => Architecture::Arm,
+        }
+    }
 }
 
 /// The architecture family of a specific [`CoreType`].
@@ -88,17 +97,6 @@ pub enum Architecture {
     Riscv,
     /// An Xtensa core.
     Xtensa,
-}
-
-impl CoreType {
-    /// Returns the parent architecture family of this core type.
-    pub fn architecture(&self) -> Architecture {
-        match self {
-            CoreType::Riscv => Architecture::Riscv,
-            CoreType::Xtensa => Architecture::Xtensa,
-            _ => Architecture::Arm,
-        }
-    }
 }
 
 /// Instruction set used by a core
@@ -281,22 +279,9 @@ impl ChipFamily {
     // Check that there is at least one core.
     fn ensure_at_least_one_core(&self) -> Result<(), String> {
         for variant in &self.variants {
-            let Some(core) = variant.cores.first() else {
+            if variant.cores.is_empty() {
                 return Err(format!(
                     "variant `{}` does not contain any cores",
-                    variant.name
-                ));
-            };
-
-            // Make sure that the core types (architectures) are not mixed.
-            let architecture = core.core_type.architecture();
-            if variant
-                .cores
-                .iter()
-                .any(|core| core.core_type.architecture() != architecture)
-            {
-                return Err(format!(
-                    "variant `{}` contains mixed core architectures",
                     variant.name
                 ));
             }

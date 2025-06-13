@@ -5,7 +5,7 @@ use zerocopy::IntoBytes;
 use crate::{
     CoreStatus, MemoryInterface,
     architecture::arm::{
-        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
+        ArmCommunicationInterface, ArmError, ArmDebugInterface, DapAccess, FullyQualifiedApAddress,
         ap::{
             AccessPortType, ApAccess, CSW, DataSize,
             memory_ap::{MemoryAp, MemoryApType},
@@ -513,7 +513,7 @@ where
 
 impl<APA> ArmMemoryInterface for ADIMemoryInterface<'_, APA>
 where
-    APA: std::any::Any + FlushableArmAccess + ApAccess + DpAccess + ArmProbeInterface,
+    APA: std::any::Any + FlushableArmAccess + ApAccess + DpAccess + ArmDebugInterface,
 {
     fn base_address(&mut self) -> Result<u64, ArmError> {
         self.memory_ap.base_address(self.interface)
@@ -534,7 +534,7 @@ where
 
     fn get_arm_probe_interface(
         &mut self,
-    ) -> Result<&mut dyn crate::architecture::arm::ArmProbeInterface, DebugProbeError> {
+    ) -> Result<&mut dyn crate::architecture::arm::ArmDebugInterface, DebugProbeError> {
         Ok(self.interface)
     }
 

@@ -5,7 +5,7 @@ use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
     architecture::arm::{
-        ArmChipInfo, ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+        ArmChipInfo, ArmError, ArmDebugInterface, FullyQualifiedApAddress,
         dp::{DpRegister, TARGETID},
         memory::ArmMemoryInterface,
     },
@@ -37,7 +37,7 @@ impl Vendor for Infineon {
     fn try_detect_arm_chip(
         &self,
         registry: &Registry,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
         if let Some(psoc) = try_detect_psoc(registry, interface, &chip_info)? {
@@ -50,7 +50,7 @@ impl Vendor for Infineon {
 
 fn try_detect_xmc4xxx(
     registry: &Registry,
-    interface: &mut dyn ArmProbeInterface,
+    interface: &mut dyn ArmDebugInterface,
     chip_info: &ArmChipInfo,
 ) -> Result<Option<String>, Error> {
     if chip_info.manufacturer != INFINEON {
@@ -153,7 +153,7 @@ fn probe_xmc4xxx_flash_size(start_addr: u32, memory: &mut dyn ArmMemoryInterface
 
 fn try_detect_psoc(
     registry: &Registry,
-    interface: &mut dyn ArmProbeInterface,
+    interface: &mut dyn ArmDebugInterface,
     chip_info: &ArmChipInfo,
 ) -> Result<Option<String>, Error> {
     if chip_info.manufacturer != INFINEON && chip_info.manufacturer != CYPRESS {

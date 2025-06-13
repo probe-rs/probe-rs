@@ -13,7 +13,7 @@ use probe_rs_target::CoreType;
 use crate::{
     MemoryMappedRegister,
     architecture::arm::{
-        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, Pins,
+        ArmError, ArmDebugInterface, DapAccess, FullyQualifiedApAddress, Pins,
         ap::ApRegister,
         dp::{DpAccess, DpAddress, DpRegister},
         memory::ArmMemoryInterface,
@@ -410,7 +410,7 @@ impl ArmDebugSequence for MCX {
 
     fn reset_hardware_deassert(
         &self,
-        probe: &mut dyn ArmProbeInterface,
+        probe: &mut dyn ArmDebugInterface,
         _default_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
         tracing::info!("reset hardware deassert");

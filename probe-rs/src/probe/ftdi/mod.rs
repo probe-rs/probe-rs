@@ -2,7 +2,7 @@
 use crate::{
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmError, ArmProbeInterface,
+            ArmCommunicationInterface, ArmDebugInterface, ArmError,
             communication_interface::DapProbe, sequences::ArmDebugSequence,
         },
         riscv::{
@@ -393,10 +393,10 @@ impl DebugProbe for FtdiProbe {
         self
     }
 
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Ok(ArmCommunicationInterface::create(self, sequence, true))
     }
 

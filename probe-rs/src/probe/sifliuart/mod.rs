@@ -5,7 +5,7 @@ mod arm;
 
 use crate::Error;
 use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::{ArmError, ArmProbeInterface};
+use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::probe::sifliuart::arm::SifliUartArmDebug;
 use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
@@ -355,10 +355,10 @@ impl DebugProbe for SifliUart {
         true
     }
 
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Ok(Box::new(SifliUartArmDebug::new(self, sequence)))
     }
 
