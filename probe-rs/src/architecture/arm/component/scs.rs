@@ -7,19 +7,19 @@ use self::register::CPUID;
 use super::super::memory::romtable::CoresightComponent;
 use crate::{
     MemoryMappedRegister,
-    architecture::arm::{ArmError, ArmProbeInterface},
+    architecture::arm::{ArmError, ArmDebugInterface},
 };
 
 /// An interface to control the SCS (System Control Space) of a MCU.
 pub struct Scs<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut dyn ArmProbeInterface,
+    interface: &'a mut dyn ArmDebugInterface,
 }
 
 impl<'a> Scs<'a> {
     /// Create a new SCS interface from a probe and a ROM table component.
     pub fn new(
-        interface: &'a mut dyn ArmProbeInterface,
+        interface: &'a mut dyn ArmDebugInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Scs {

@@ -13,7 +13,7 @@ use crate::{
             memory_ap::{MemoryAp, MemoryApType},
             v1::valid_access_ports,
         },
-        communication_interface::{ArmProbeInterface, DapProbe, SwdSequence},
+        communication_interface::{ArmDebugInterface, DapProbe, SwdSequence},
         dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
@@ -303,10 +303,10 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         self
     }
 
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         _sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let interface = StlinkArmDebug::new(self);
 
         Ok(Box::new(interface))
@@ -1406,7 +1406,7 @@ impl DapAccess for StlinkArmDebug {
     }
 }
 
-impl ArmProbeInterface for StlinkArmDebug {
+impl ArmDebugInterface for StlinkArmDebug {
     fn memory_interface(
         &mut self,
         access_port: &FullyQualifiedApAddress,
@@ -1788,7 +1788,7 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
         Ok(self)
     }
 
-    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
+    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError> {
         Ok(self.probe)
     }
 

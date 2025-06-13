@@ -8,19 +8,19 @@
 
 use super::super::memory::romtable::CoresightComponent;
 use super::DebugComponentInterface;
-use crate::architecture::arm::{ArmError, ArmProbeInterface};
+use crate::architecture::arm::{ArmError, ArmDebugInterface};
 use crate::{Error, memory_mapped_bitfield_register};
 
 /// A struct representing a DWT unit on target.
 pub struct Dwt<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut dyn ArmProbeInterface,
+    interface: &'a mut dyn ArmDebugInterface,
 }
 
 impl<'a> Dwt<'a> {
     /// Creates a new DWT component representation.
     pub fn new(
-        interface: &'a mut dyn ArmProbeInterface,
+        interface: &'a mut dyn ArmDebugInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Dwt {

@@ -1690,7 +1690,7 @@ mod test {
 
         fn get_arm_probe_interface(
             &mut self,
-        ) -> Result<&mut dyn crate::architecture::arm::ArmProbeInterface, DebugProbeError> {
+        ) -> Result<&mut dyn crate::architecture::arm::ArmDebugInterface, DebugProbeError> {
             Err(DebugProbeError::NotImplemented {
                 function_name: "get_arm_probe_interface",
             })

@@ -1,6 +1,6 @@
 use super::super::memory::romtable::CoresightComponent;
 use crate::Error;
-use crate::architecture::arm::ArmProbeInterface;
+use crate::architecture::arm::ArmDebugInterface;
 
 pub const _TPIU_PID: [u8; 8] = [0xA1, 0xB9, 0x0B, 0x0, 0x4, 0x0, 0x0, 0x0];
 
@@ -15,13 +15,13 @@ const REGISTER_OFFSET_TPIU_FFCR: u32 = 0x304;
 /// Trace port interface unit unit.
 pub struct Tpiu<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut dyn ArmProbeInterface,
+    interface: &'a mut dyn ArmDebugInterface,
 }
 
 impl<'a> Tpiu<'a> {
     /// Create a new TPIU interface from a probe and a ROM table component.
     pub fn new(
-        interface: &'a mut dyn ArmProbeInterface,
+        interface: &'a mut dyn ArmDebugInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Tpiu {

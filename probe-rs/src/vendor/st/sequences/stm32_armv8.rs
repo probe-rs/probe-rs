@@ -9,7 +9,7 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+    ArmError, ArmDebugInterface, FullyQualifiedApAddress,
     component::TraceSink,
     memory::{ArmMemoryInterface, CoresightComponent},
     sequences::ArmDebugSequence,
@@ -66,7 +66,7 @@ mod dbgmcu {
 impl ArmDebugSequence for Stm32Armv8 {
     fn debug_device_unlock(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         default_ap: &FullyQualifiedApAddress,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
@@ -94,7 +94,7 @@ impl ArmDebugSequence for Stm32Armv8 {
 
     fn trace_start(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         components: &[CoresightComponent],
         sink: &TraceSink,
     ) -> Result<(), ArmError> {

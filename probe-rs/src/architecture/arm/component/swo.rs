@@ -4,7 +4,7 @@
 //! This module provides access and control of the SWO CoreSight component block.
 use super::super::memory::romtable::CoresightComponent;
 use crate::Error;
-use crate::architecture::arm::ArmProbeInterface;
+use crate::architecture::arm::ArmDebugInterface;
 
 const REGISTER_OFFSET_SWO_CODR: u32 = 0x10;
 const REGISTER_OFFSET_SWO_SPPR: u32 = 0xF0;
@@ -15,13 +15,13 @@ const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 /// Serial Wire Output unit.
 pub struct Swo<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut dyn ArmProbeInterface,
+    interface: &'a mut dyn ArmDebugInterface,
 }
 
 impl<'a> Swo<'a> {
     /// Construct a new SWO component.
     pub fn new(
-        interface: &'a mut dyn ArmProbeInterface,
+        interface: &'a mut dyn ArmDebugInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Swo {
