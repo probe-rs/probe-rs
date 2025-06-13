@@ -95,6 +95,9 @@ pub trait MemoryApType:
     /// The base address of this AP which is used to then access all relative control registers.
     fn base_address<I: ApAccess>(&self, interface: &mut I) -> Result<u64, ArmError> {
         let base_register: BASE = interface.read_ap_register(self)?;
+        if !base_register.present {
+            return Err(ArmError::Other("debug entry not present".to_string()));
+        }
 
         let mut base_address = if BaseAddrFormat::ADIv5 == base_register.Format {
             let base2: BASE2 = interface.read_ap_register(self)?;
