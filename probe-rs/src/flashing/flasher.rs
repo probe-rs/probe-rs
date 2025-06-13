@@ -131,11 +131,8 @@ impl Flasher {
         core_index: usize,
         raw_flash_algorithm: &RawFlashAlgorithm,
     ) -> Result<Self, FlashError> {
-        let flash_algorithm = FlashAlgorithm::assemble_from_raw_with_core(
-            raw_flash_algorithm,
-            &target.cores[core_index].name,
-            target,
-        )?;
+        let flash_algorithm =
+            FlashAlgorithm::assemble_from_raw_with_core(raw_flash_algorithm, core_index, target)?;
 
         Ok(Self {
             core_index,

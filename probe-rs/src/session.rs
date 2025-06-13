@@ -16,7 +16,10 @@ use crate::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
         },
     },
-    config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector, registry::Registry},
+    config::{
+        CoreExt, DebugInterface, DebugSequence, RegistryError, Target, TargetSelector,
+        registry::Registry,
+    },
     core::{Architecture, CombinedCoreState},
     probe::{
         AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
@@ -173,10 +176,13 @@ impl Session {
             })
             .collect();
 
-        let mut session = if let Architecture::Arm = target.architecture() {
-            Self::attach_arm_debug_interface(probe, target, attach_method, permissions, cores)?
-        } else {
-            Self::attach_jtag(probe, target, attach_method, permissions, cores)?
+        let mut session = match target.debug_interface {
+            DebugInterface::ArmDebugInterface => {
+                Self::attach_arm_debug_interface(probe, target, attach_method, permissions, cores)?
+            }
+            DebugInterface::RiscvDtm | DebugInterface::Xtensa => {
+                Self::attach_jtag(probe, target, attach_method, permissions, cores)?
+            }
         };
 
         session.clear_all_hw_breakpoints()?;
