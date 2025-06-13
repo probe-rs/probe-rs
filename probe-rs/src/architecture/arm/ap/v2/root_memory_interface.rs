@@ -23,7 +23,7 @@ impl<'iface, ADI: ArmDebugInterface> RootMemoryInterface<'iface, ADI> {
     }
 }
 
-impl<ADI: ArmDebugInterface> MemoryInterface<ArmError> for RootMemoryInterface<'_, ADI> {
+impl<API: ArmDebugInterface> MemoryInterface<ArmError> for RootMemoryInterface<'_, API> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -82,7 +82,7 @@ impl<ADI: ArmDebugInterface> MemoryInterface<ArmError> for RootMemoryInterface<'
         Ok(())
     }
 }
-impl<ADI: ArmDebugInterface> ArmMemoryInterface for RootMemoryInterface<'_, ADI> {
+impl<API: ArmDebugInterface> ArmMemoryInterface for RootMemoryInterface<'_, API> {
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
         FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::root())
     }
