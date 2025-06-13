@@ -13,7 +13,7 @@ use crate::{
     rtt::ScanRegion,
 };
 use probe_rs_target::{
-    Architecture, Chip, ChipFamily, Jtag, MemoryAccess, MemoryRange as _, NvmRegion,
+    Architecture, Chip, ChipFamily, Jtag, MemoryAccess, MemoryRange as _, NvmRegion, RiscvDtm,
 };
 use std::sync::Arc;
 
@@ -24,6 +24,10 @@ pub struct Target {
     pub name: String,
     /// The cores of the target.
     pub cores: Vec<Core>,
+
+    /// The debug interface of the target.
+    pub debug_interface: DebugInterface,
+
     /// The name of the flash algorithm.
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
     /// The memory map of the target.
@@ -67,7 +71,9 @@ impl Target {
     /// The given chip must be a member of the given family.
     pub(super) fn new(family: &ChipFamily, chip: &Chip) -> Target {
         let mut memory_map = chip.memory_map.clone();
+
         let mut flash_algorithms = Vec::new();
+
         for algo_name in chip.flash_algorithms.iter() {
             let Some(algo) = family.get_algorithm_for_chip(algo_name, chip) else {
                 unreachable!(
@@ -129,9 +135,38 @@ impl Target {
             None => ScanRegion::Ram, // By default we use all of the RAM ranges from the memory map.
         };
 
+        // TODO: Make it possible to specify the debug interface
+
+        let debug_interface = match chip.cores[0].core_type.architecture() {
+            Architecture::Arm => DebugInterface::ArmDebugInterface,
+            Architecture::Riscv => DebugInterface::RiscvDtm,
+            Architecture::Xtensa => DebugInterface::Xtensa,
+        };
+
+        for core in &chip.cores {
+            let expected_debug_interface = match &core.core_access_options {
+                probe_rs_target::CoreAccessOptions::Arm(_) => DebugInterface::ArmDebugInterface,
+                probe_rs_target::CoreAccessOptions::Riscv(riscv_core_access_options) => {
+                    match riscv_core_access_options.dtm {
+                        Some(RiscvDtm::ArmDebug { .. }) => DebugInterface::ArmDebugInterface,
+                        _ => DebugInterface::RiscvDtm,
+                    }
+                }
+                probe_rs_target::CoreAccessOptions::Xtensa(_) => DebugInterface::Xtensa,
+            };
+
+            // TODO: Better check
+            assert_eq!(
+                debug_interface, expected_debug_interface,
+                "Core {} does not support debug interface {:?}",
+                core.name, debug_interface
+            )
+        }
+
         Target {
             name: chip.name.clone(),
             cores: chip.cores.clone(),
+            debug_interface,
             flash_algorithms,
             source: family.source.clone(),
             memory_map,
@@ -140,22 +175,6 @@ impl Target {
             jtag: chip.jtag.clone(),
             default_format: chip.default_binary_format.clone(),
         }
-    }
-
-    /// Get the architecture of the target
-    pub fn architecture(&self) -> Architecture {
-        let target_arch = self.cores[0].core_type.architecture();
-
-        // This should be ensured when a `ChipFamily` is loaded.
-        assert!(
-            self.cores
-                .iter()
-                .map(|core| core.core_type.architecture())
-                .all(|core_arch| core_arch == target_arch),
-            "Not all cores of the target are of the same architecture. Probe-rs doesn't support this (yet). If you see this, it is a bug. Please file an issue."
-        );
-
-        target_arch
     }
 
     /// Return the default core of the target, usually the first core.
@@ -188,7 +207,8 @@ impl Target {
         self.cores.iter().position(|c| c.name == name)
     }
 
-    /// Returns the core index from the core name
+    /// Returns the core index of a core which can access the memorz
+    /// at the given address
     pub fn core_index_by_address(&self, address: u64) -> Option<usize> {
         let target_memory = self.memory_region_by_address(address)?;
         let core_name = target_memory.cores().first()?;
@@ -296,4 +316,19 @@ impl CoreExt for Core {
             probe_rs_target::CoreAccessOptions::Xtensa(_) => None,
         }
     }
+}
+
+/// Debug Interface
+///
+/// Different architectures and vendors use different debug interfaces.
+/// The debug interface is the module on the chip which allows the debugger access to the chip.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DebugInterface {
+    /// ARM Debug Interface
+    ArmDebugInterface,
+    /// RISCV Debug Transport Module (DTM)
+    RiscvDtm,
+    /// Xtensa Debug Interface
+    Xtensa,
+    // TODO: This should have more variants for the vendor-specific debug interfaces
 }

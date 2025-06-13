@@ -33,7 +33,7 @@ pub use probe_rs_target::{
 };
 
 pub use registry::{Registry, RegistryError};
-pub use target::{DebugSequence, Target, TargetSelector};
+pub use target::{DebugInterface, DebugSequence, Target, TargetSelector};
 
 // Crate-internal API
 pub(crate) use chip_info::ChipInfo;

@@ -96,10 +96,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::Riscv,
-                    core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
-                        hart_id: None,
-                        jtag_tap: None,
-                    }),
+                    core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions::default()),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
@@ -489,14 +486,23 @@ mod tests {
             .for_each(|target| {
                 // Walk through the flash algorithms and cores and try to create each one.
                 for raw_flash_algo in target.flash_algorithms.iter() {
-                    for core in raw_flash_algo.cores.iter() {
-                        FlashAlgorithm::assemble_from_raw_with_core(raw_flash_algo, core, &target)
-                            .unwrap_or_else(|error| {
-                                panic!(
-                                    "Failed to initialize flash algorithm ({}, {}, {core}): {}",
-                                    &target.name, &raw_flash_algo.name, error
-                                )
+                    for core_name in raw_flash_algo.cores.iter() {
+                        let core_index =
+                            target.core_index_by_name(core_name).unwrap_or_else(|| {
+                                panic!("Core {} not found in target {}", core_name, target.name)
                             });
+
+                        FlashAlgorithm::assemble_from_raw_with_core(
+                            raw_flash_algo,
+                            core_index,
+                            &target,
+                        )
+                        .unwrap_or_else(|error| {
+                            panic!(
+                                "Failed to initialize flash algorithm ({}, {}, {core_name}): {}",
+                                &target.name, &raw_flash_algo.name, error
+                            )
+                        });
                     }
                 }
             });
