@@ -140,14 +140,9 @@ pub async fn list_probes(lister: &Lister, starts_with: &str) -> Result<String> {
         if probe.identifier.starts_with(starts_with) {
             writeln!(
                 &mut output,
-                "{vid:04x}\\:{pid:04x}{sn}B[{id}B]",
-                vid = probe.vendor_id,
-                pid = probe.product_id,
-                sn = probe
-                    .serial_number
-                    .clone()
-                    .map_or("".to_owned(), |v| format!("\\:{}", v)),
+                "{id}: {kind}",
                 id = probe.identifier,
+                kind = probe.kind,
             )?;
         }
     }

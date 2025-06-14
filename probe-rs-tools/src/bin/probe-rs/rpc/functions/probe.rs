@@ -1,6 +1,9 @@
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::{Session, probe::DebugProbeInfo};
+use probe_rs::{
+    Session,
+    probe::{DebugProbeInfo, DebugProbeKind, DebugProbeSelector},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -18,12 +21,8 @@ use std::fmt::Display;
 pub struct DebugProbeEntry {
     /// The name of the debug probe.
     pub identifier: String,
-    /// The USB vendor ID of the debug probe.
-    pub vendor_id: u16,
-    /// The USB product ID of the debug probe.
-    pub product_id: u16,
-    /// The serial number of the debug probe.
-    pub serial_number: String,
+    /// The kind of probe.
+    pub kind: DebugProbeKind,
 
     pub probe_type: String,
 }
@@ -32,8 +31,8 @@ impl Display for DebugProbeEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} -- {:04x}:{:04x}:{} ({})",
-            self.identifier, self.vendor_id, self.product_id, self.serial_number, self.probe_type,
+            "{} -- {} ({})",
+            self.identifier, self.kind, self.probe_type,
         )
     }
 }
@@ -43,20 +42,14 @@ impl From<DebugProbeInfo> for DebugProbeEntry {
         DebugProbeEntry {
             probe_type: probe.probe_type(),
             identifier: probe.identifier,
-            vendor_id: probe.vendor_id,
-            product_id: probe.product_id,
-            serial_number: probe.serial_number.unwrap_or_default(),
+            kind: probe.kind,
         }
     }
 }
 
 impl DebugProbeEntry {
     pub fn selector(&self) -> DebugProbeSelector {
-        DebugProbeSelector {
-            vendor_id: self.vendor_id,
-            product_id: self.product_id,
-            serial_number: Some(self.serial_number.clone()),
-        }
+        self.kind.clone().into()
     }
 }
 
@@ -112,9 +105,7 @@ pub async fn select_probe(
     request: SelectProbeRequest,
 ) -> SelectProbeResponse {
     let lister = ctx.lister();
-    let mut list = lister
-        .list(request.probe.map(|sel| sel.into()).as_ref())
-        .await;
+    let mut list = lister.list(request.probe.as_ref()).await;
 
     match list.len() {
         0 => Err(OperationError::NoProbesFound.into()),
@@ -160,36 +151,6 @@ impl From<probe_rs::probe::WireProtocol> for WireProtocol {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Schema)]
-pub struct DebugProbeSelector {
-    /// The the USB vendor id of the debug probe to be used.
-    pub vendor_id: u16,
-    /// The the USB product id of the debug probe to be used.
-    pub product_id: u16,
-    /// The the serial number of the debug probe to be used.
-    pub serial_number: Option<String>,
-}
-
-impl From<probe_rs::probe::DebugProbeSelector> for DebugProbeSelector {
-    fn from(selector: probe_rs::probe::DebugProbeSelector) -> Self {
-        Self {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number,
-        }
-    }
-}
-
-impl From<DebugProbeSelector> for probe_rs::probe::DebugProbeSelector {
-    fn from(selector: DebugProbeSelector) -> Self {
-        Self {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Schema)]
 pub struct AttachRequest {
     pub chip: Option<String>,
@@ -209,7 +170,7 @@ impl From<&AttachRequest> for ProbeOptions {
             chip_description_path: None,
             protocol: request.protocol.map(Into::into),
             non_interactive: true,
-            probe: Some(request.probe.selector().into()),
+            probe: Some(request.probe.selector()),
             speed: request.speed,
             connect_under_reset: request.connect_under_reset,
             dry_run: request.dry_run,
