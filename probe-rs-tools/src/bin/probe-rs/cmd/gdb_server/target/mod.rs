@@ -1,6 +1,7 @@
 mod base;
 mod breakpoints;
 mod desc;
+mod flash;
 mod monitor;
 mod resume;
 mod thread;
@@ -9,6 +10,7 @@ mod utils;
 
 use super::arch::RuntimeArch;
 use parking_lot::FairMutex;
+use probe_rs::flashing::FlashLoader;
 use probe_rs::{BreakpointCause, CoreStatus, Error, HaltReason, Session};
 
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -22,6 +24,7 @@ use gdbstub::stub::{GdbStub, MultiThreadStopReason};
 use gdbstub::target::Target;
 use gdbstub::target::ext::base::BaseOps;
 use gdbstub::target::ext::breakpoints::BreakpointsOps;
+use gdbstub::target::ext::flash::FlashOps;
 use gdbstub::target::ext::memory_map::MemoryMapOps;
 use gdbstub::target::ext::monitor_cmd::MonitorCmdOps;
 use gdbstub::target::ext::target_description_xml_override::TargetDescriptionXmlOverrideOps;
@@ -57,6 +60,10 @@ pub(crate) struct RuntimeTarget<'a> {
 
     /// Description of target's architecture and registers
     target_desc: TargetDescription,
+
+    /// The FlashLoader in reused between multiple flash write commands in
+    /// order to batch all erase and write operations.
+    flash_loader: Option<FlashLoader>,
 }
 
 impl<'a> RuntimeTarget<'a> {
@@ -76,6 +83,7 @@ impl<'a> RuntimeTarget<'a> {
             gdb: None,
             resume_action: (0, ResumeAction::Unchanged),
             target_desc: TargetDescription::default(),
+            flash_loader: None,
         })
     }
 
@@ -257,6 +265,10 @@ impl Target for RuntimeTarget<'_> {
     }
 
     fn support_memory_map(&mut self) -> Option<MemoryMapOps<'_, Self>> {
+        Some(self)
+    }
+
+    fn support_flash_operations(&mut self) -> Option<FlashOps<'_, Self>> {
         Some(self)
     }
 
