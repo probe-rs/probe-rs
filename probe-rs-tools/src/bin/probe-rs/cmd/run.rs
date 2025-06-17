@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
-use crate::rpc::functions::test::TestDefinition;
+use crate::rpc::functions::test::{Test, TestDefinition};
 
 use crate::FormatOptions;
 use crate::util::cli::{self, connect_target_output_files, rtt_client};
@@ -215,6 +215,7 @@ impl Cmd {
             cli::test(
                 &session,
                 boot_info,
+                elf_info,
                 Arguments {
                     test_threads: Some(1), // Avoid parallel execution
                     list: self.test_options.list,
@@ -263,11 +264,11 @@ enum RunMode {
 }
 
 #[derive(Debug, PartialEq)]
-struct EmbeddedTestElfInfo {
+pub struct EmbeddedTestElfInfo {
     /// Protocol version used between embedded-test (on the target) and probe-rs
-    version: u32,
-    /// Test Definitions found in the elf.
-    tests: Vec<TestDefinition>,
+    pub version: u32,
+    /// Tests found in the elf.
+    pub tests: Vec<Test>,
 }
 
 impl EmbeddedTestElfInfo {
@@ -320,7 +321,8 @@ impl EmbeddedTestElfInfo {
                         if name == "EMBEDDED_TEST_VERSION" {
                             version = Some(read_u32(&sym)?)
                         } else {
-                            let mut def: TestDefinition = serde_json::from_str(name)?;
+                            let def: TestDefinition = serde_json::from_str(name)?;
+                            let mut def: Test = def.into();
                             def.address = Some(read_u32(&sym)?);
                             tests.push(def);
                         }
