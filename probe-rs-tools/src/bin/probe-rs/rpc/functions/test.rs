@@ -65,7 +65,7 @@ impl From<TestDefinition> for Test {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestDefinition {
     pub name: String,
     #[serde(
@@ -75,6 +75,7 @@ pub struct TestDefinition {
     pub expected_outcome: TestOutcome,
     pub ignored: bool,
     pub timeout: Option<u32>,
+    pub address: Option<u32>,
 }
 
 fn outcome_from_should_panic<'de, D>(deserializer: D) -> Result<TestOutcome, D::Error>
