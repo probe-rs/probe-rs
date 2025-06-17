@@ -264,11 +264,6 @@ impl Session {
             Err(e) => return Err(Error::Arm(e)),
         }
 
-        // For each core, setup debugging
-        for core in &cores {
-            core.enable_arm_debug(&mut *interface)?;
-        }
-
         if attach_method == AttachMethod::UnderReset {
             {
                 for core in &cores {
@@ -291,6 +286,12 @@ impl Session {
                     return Err(e.into());
                 }
                 drop(reset_hardware_deassert);
+            }
+
+            // Now that hardware reset is de-asserted, for each core, setup debugging.
+            // (Some chips keep cores in power-down under hardware-reset.)
+            for core in &cores {
+                core.enable_arm_debug(&mut *interface)?;
             }
 
             let mut session = Session {
@@ -316,6 +317,11 @@ impl Session {
 
             Ok(session)
         } else {
+            // For each core, setup debugging
+            for core in &cores {
+                core.enable_arm_debug(&mut *interface)?;
+            }
+
             Ok(Session {
                 target,
                 interfaces: ArchitectureInterface::Arm(interface),
