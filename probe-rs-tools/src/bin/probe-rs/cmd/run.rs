@@ -9,6 +9,8 @@ use crate::util::cli::{self, connect_target_output_files, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 
 use anyhow::anyhow;
+use goblin::elf::Elf;
+use goblin::elf::SectionHeader;
 use goblin::elf::Sym;
 use goblin::elf::sym::{STB_GLOBAL, STT_OBJECT};
 use libtest_mimic::{Arguments, FormatSetting};
@@ -300,6 +302,7 @@ impl EmbeddedTestElfInfo {
                         buffer[file_offset..file_offset + 4].try_into()?,
                     ))
                 };
+
                 let mut version = None;
                 let mut tests = vec![];
                 for sym in elf.syms.iter() {
@@ -307,24 +310,21 @@ impl EmbeddedTestElfInfo {
                         && sym.st_type() == STT_OBJECT
                         && sym.st_shndx == section_index
                     {
-                        if sym.st_size != 4 {
-                            tracing::debug!(
-                                "Skipping strange symbol in .embedded_test section: {:?}",
-                                sym
-                            );
-                            continue;
-                        }
                         let name = elf
                             .strtab
                             .get_at(sym.st_name)
                             .ok_or(anyhow!("No name for symbol {:?}", sym))?;
-                        if name == "EMBEDDED_TEST_VERSION" {
+
+                        if sym.st_size == 4 && name == "EMBEDDED_TEST_VERSION" {
                             version = Some(read_u32(&sym)?)
+                        } else if sym.st_size == 12 {
+                            // A testcase stored as tuple of type (fn()->!, &'static str)
+                            tests.push(decode_test(&sym, name, &buffer, &section, &elf)?);
                         } else {
-                            let def: TestDefinition = serde_json::from_str(name)?;
-                            let mut def: Test = def.into();
-                            def.address = Some(read_u32(&sym)?);
-                            tests.push(def);
+                            tracing::debug!(
+                                "Skipping strange symbol in .embedded_test section: {:?}",
+                                sym
+                            );
                         }
                     }
                 }
@@ -342,6 +342,40 @@ impl EmbeddedTestElfInfo {
             }
         }
     }
+}
+
+fn decode_test(
+    sym: &Sym,
+    name: &str,
+    buffer: &[u8],
+    et_section: &SectionHeader,
+    elf: &Elf<'_>,
+) -> anyhow::Result<Test> {
+    let file_offset = (et_section.sh_offset + (sym.st_value - et_section.sh_addr)) as usize;
+    let tuple_words: [u8; 12] = buffer[file_offset..file_offset + 12].try_into()?;
+    let fn_ptr = u32::from_le_bytes(tuple_words[0..=3].try_into()?);
+    let str_ptr = u32::from_le_bytes(tuple_words[4..=7].try_into()?);
+    let str_len = u32::from_le_bytes(tuple_words[8..=11].try_into()?);
+
+    let str_section = elf
+        .section_headers
+        .iter()
+        .find(|section| {
+            str_ptr >= section.sh_addr as u32
+                && str_ptr + str_len <= (section.sh_addr + section.sh_size) as u32
+        })
+        .ok_or(anyhow!("section not found for str {:x}", str_ptr))?;
+
+    let file_offset = (str_section.sh_offset + (str_ptr as u64 - str_section.sh_addr)) as usize;
+    let str = &buffer[file_offset..file_offset + str_len as usize];
+    let str = str::from_utf8(str)?;
+    let col = str.find("::").ok_or(anyhow!("Module path does not contain '::'"))?;
+    let str = &str[col+2..];
+    let def: TestDefinition = serde_json::from_str(name)?;
+    let mut def: Test = def.into();
+    def.name = format!("{}::{}", str, def.name);
+    def.address = Some(fn_ptr);
+    Ok(def)
 }
 
 fn detect_run_mode(cmd: &Cmd) -> anyhow::Result<RunMode> {

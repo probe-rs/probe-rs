@@ -528,7 +528,8 @@ pub async fn test(
             // In embedded test < 0.7, we have to query the tests from the target via semihosting
             session
                 .list_tests(boot_info, rtt_handle, async |msg| sender.send(msg).unwrap())
-                .await?.tests
+                .await?
+                .tests
         } else {
             // Recent embedded test versions report the tests directly via the elf file
             elf_info.tests
