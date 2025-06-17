@@ -872,13 +872,14 @@ mod test {
                 adapter::DebugAdapter,
                 dap_types::{
                     Capabilities, DisassembleArguments, DisassembleResponseBody,
-                    DisassembledInstruction, DisconnectArguments, ErrorResponseBody,
+                    DisassembledInstruction, DisconnectArguments, ErrorResponse, ErrorResponseBody,
                     InitializeRequestArguments, Message, Request, Response, Source, Thread,
                     ThreadsResponseBody,
                 },
             },
             protocol::ProtocolAdapter,
         },
+        protocol::response::ResponseKind,
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
         test::TestLister,
     };
@@ -1018,17 +1019,17 @@ mod test {
         fn and_error_response(self) -> ResponseBuilder<'r> {
             let req = self.adapter.requests.back_mut().unwrap();
 
-            let response = Response {
+            let response = ErrorResponse {
                 command: req.command.clone(),
                 request_seq: req.seq,
                 seq: 0, // response sequence number is not checked
                 success: false,
                 message: Some("cancelled".to_string()), // Currently always 'cancelled'
-                body: None,
+                body: ErrorResponseBody { error: None },
                 type_: "response".to_string(),
             };
 
-            self.adapter.expect_error_response(response)
+            self.adapter.expect_error_response(response.into())
         }
     }
 
@@ -1038,7 +1039,15 @@ mod test {
     impl ResponseBuilder<'_> {
         fn with_body(self, body: impl serde::Serialize) {
             let resp = self.adapter.expected_responses.last_mut().unwrap();
-            resp.body = Some(serde_json::to_value(body).unwrap());
+            match resp {
+                ResponseKind::Ok(response) => {
+                    response.body = Some(serde_json::to_value(body).unwrap())
+                }
+                ResponseKind::Error(error_response) => {
+                    error_response.body =
+                        serde_json::from_value(serde_json::to_value(body).unwrap()).unwrap()
+                }
+            }
         }
     }
 
@@ -1054,7 +1063,7 @@ mod test {
         console_log_level: ConsoleLog,
 
         response_index: usize,
-        expected_responses: Vec<Response>,
+        expected_responses: Vec<ResponseKind>,
 
         event_index: usize,
         expected_events: Vec<(String, Option<serde_json::Value>)>,
@@ -1097,16 +1106,16 @@ mod test {
                 response.success,
                 "success field must be true for succesful response"
             );
-            self.expected_responses.push(response);
+            self.expected_responses.push(response.into());
             ResponseBuilder { adapter: self }
         }
 
-        fn expect_error_response(&mut self, response: Response) -> ResponseBuilder {
+        fn expect_error_response(&mut self, response: ErrorResponse) -> ResponseBuilder {
             assert!(
                 !response.success,
                 "success field must be false for error response"
             );
-            self.expected_responses.push(response);
+            self.expected_responses.push(response.into());
             ResponseBuilder { adapter: self }
         }
 
@@ -1176,19 +1185,14 @@ mod test {
             self.console_log_level
         }
 
-        fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
+        fn send_raw_response(&mut self, mut response: ResponseKind) -> anyhow::Result<()> {
             if self.response_index >= self.expected_responses.len() {
                 panic!("No more responses expected, but got {response:?}");
             }
 
             let expected_response = &self.expected_responses[self.response_index];
 
-            // We don't check the sequence number of the response
-
-            let response = Response {
-                seq: expected_response.seq,
-                ..response.clone()
-            };
+            response.set_seq(0);
 
             pretty_assertions::assert_eq!(&response, expected_response);
 
