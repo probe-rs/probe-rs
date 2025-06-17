@@ -1,3 +1,6 @@
+# This file has been changed compared to the version as generated from the cmsispack.
+# * changed flash algorithm page_size to 4K to speed up flashing.
+
 name: MIMXRT685S Series
 manufacturer:
   id: 0x15
@@ -484,7 +487,7 @@ flash_algorithms:
     address_range:
       start: 0x8000000
       end: 0xc000000
-    page_size: 0x100
+    page_size: 0x1000 # Changed to 4K from 256 bytes to speed up flashing
     erased_byte_value: 0xff
     program_page_timeout: 3000
     erase_sector_timeout: 3000
@@ -506,7 +509,7 @@ flash_algorithms:
     address_range:
       start: 0x18000000
       end: 0x1c000000
-    page_size: 0x100
+    page_size: 0x1000 # Changed to 4K from 256 bytes to speed up flashing
     erased_byte_value: 0xff
     program_page_timeout: 300
     erase_sector_timeout: 3000
@@ -527,7 +530,7 @@ flash_algorithms:
     address_range:
       start: 0x8000000
       end: 0xc000000
-    page_size: 0x100
+    page_size: 0x1000 # Changed to 4K from 256 bytes to speed up flashing
     erased_byte_value: 0xff
     program_page_timeout: 3000
     erase_sector_timeout: 3000
@@ -548,7 +551,7 @@ flash_algorithms:
     address_range:
       start: 0x18000000
       end: 0x1c000000
-    page_size: 0x100
+    page_size: 0x1000 # Changed to 4K from 256 bytes to speed up flashing
     erased_byte_value: 0xff
     program_page_timeout: 300
     erase_sector_timeout: 3000
