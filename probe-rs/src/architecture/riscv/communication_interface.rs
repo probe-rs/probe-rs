@@ -405,12 +405,20 @@ pub trait RiscvInterfaceBuilder<'probe> {
 }
 
 /// A interface that implements controls for RISC-V cores.
-#[derive(Debug)]
 pub struct RiscvCommunicationInterface<'state> {
     /// The Debug Transport Module (DTM) is used to
     /// communicate with the Debug Module on the target chip.
     dtm: Box<dyn DtmAccess + 'state>,
     state: &'state mut RiscvCommunicationInterfaceState,
+}
+
+impl std::fmt::Debug for RiscvCommunicationInterface<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RiscvCommunicationInterface")
+            .field("dtm", &"Box<dyn DtmAccess>")
+            .field("state", &self.state)
+            .finish()
+    }
 }
 
 impl<'state> RiscvCommunicationInterface<'state> {

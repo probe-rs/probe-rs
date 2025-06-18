@@ -1,9 +1,8 @@
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::probe::{CommandResult, DebugProbeError, DeferredResultIndex};
-use std::fmt;
 use std::time::Duration;
 
-pub trait DtmAccess: Send + fmt::Debug {
+pub trait DtmAccess: Send {
     /// Perform interface-specific initialisation upon attaching.
     fn init(&mut self) -> Result<(), RiscvError> {
         Ok(())
