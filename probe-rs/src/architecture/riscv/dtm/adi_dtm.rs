@@ -5,38 +5,45 @@
 
 use crate::{
     architecture::{
-        arm::memory::ArmMemoryInterface,
+        arm::{ArmError, memory::ArmMemoryInterface},
         riscv::{
             communication_interface::{
                 RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
                 RiscvInterfaceBuilder,
             },
-            dtm::dtm_access::DtmAccess,
+            dtm::dtm_access::{DmAddress, DtmAccess},
         },
     },
-    probe::DeferredResultIndex,
+    probe::{CommandQueue, CommandResult, DeferredResultSet},
 };
 
-type DtmState = ();
+#[derive(Default)]
+pub struct DtmState {
+    queued_reads: CommandQueue<Command>,
+    result_set: DeferredResultSet<(DmAddress, Result<u32, ArmError>)>,
 
-// TODO: Should this be the ArmDebugInterface?
-pub struct AdiDtmBuilder<'probe>(Box<dyn ArmMemoryInterface + 'probe>);
-
-impl<'probe> AdiDtmBuilder<'probe> {
-    pub fn new(probe: Box<dyn ArmMemoryInterface + 'probe>) -> Self {
-        Self(probe)
-    }
+    offset: u64,
 }
 
-pub fn interface_state() -> RiscvDebugInterfaceState {
-    // We don't have any interface state currently
-    RiscvDebugInterfaceState::new(Box::new(()))
+// TODO: Should this be the ArmDebugInterface?
+pub struct AdiDtmBuilder<'probe> {
+    probe: Box<dyn ArmMemoryInterface + 'probe>,
+    offset: Option<u64>,
+}
+
+impl<'probe> AdiDtmBuilder<'probe> {
+    pub fn new(probe: Box<dyn ArmMemoryInterface + 'probe>, offset: Option<u64>) -> Self {
+        Self { probe, offset }
+    }
 }
 
 impl<'probe> RiscvInterfaceBuilder<'probe> for AdiDtmBuilder<'probe> {
     fn create_state(&self) -> RiscvDebugInterfaceState {
-        // We don't have any interface state currently
-        RiscvDebugInterfaceState::new(Box::new(()))
+        let mut state = DtmState::default();
+
+        state.offset = self.offset.unwrap_or(0);
+
+        RiscvDebugInterfaceState::new(Box::new(state))
     }
 
     fn attach<'state>(
@@ -46,31 +53,29 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for AdiDtmBuilder<'probe> {
     where
         'probe: 'state,
     {
+        let dtm_state = state.dtm_state.downcast_mut::<DtmState>().unwrap();
+
         Ok(RiscvCommunicationInterface::new(
-            Box::new(AdiDtm::new(self.0)),
+            Box::new(AdiDtm::new(self.probe, dtm_state)),
             &mut state.interface_state,
         ))
     }
 }
 
 enum Command {
-    Read(u32),
-    Write(u32, u32),
+    Read(DmAddress),
 }
 
 /// Access to the Debug Transport Module (DTM),
 /// which is used to communicate with the RISC-V debug module.
 pub struct AdiDtm<'probe> {
-    queued_reads: Vec<(DeferredResultIndex, u32)>,
     pub probe: Box<dyn ArmMemoryInterface + 'probe>,
+    state: &'probe mut DtmState,
 }
 
 impl<'probe> AdiDtm<'probe> {
-    pub fn new(probe: Box<dyn ArmMemoryInterface + 'probe>) -> Self {
-        Self {
-            probe,
-            queued_reads: Vec::new(),
-        }
+    pub fn new(probe: Box<dyn ArmMemoryInterface + 'probe>, state: &'probe mut DtmState) -> Self {
+        Self { probe, state }
     }
 }
 
@@ -84,26 +89,70 @@ impl DtmAccess for AdiDtm<'_> {
     }
 
     fn clear_error_state(&mut self) -> Result<(), RiscvError> {
-        todo!()
+        // TODO: The ARM debug interface has an error state,
+        // maybe this should be a reconnect?
+        Ok(())
     }
 
     fn read_deferred_result(
         &mut self,
         index: crate::probe::DeferredResultIndex,
     ) -> Result<crate::probe::CommandResult, RiscvError> {
-        todo!()
+        let (address, result) = match self.state.result_set.take(index) {
+            Ok(value) => value,
+            Err(index) => {
+                self.execute()?;
+
+                let value = self
+                    .state
+                    .result_set
+                    .take(index)
+                    .map_err(|_| RiscvError::BatchedResultNotAvailable)?;
+
+                value
+            }
+        };
+
+        let value = result.map_err(|e| RiscvError::DmReadFailed {
+            address: address.0,
+            source: Box::new(e),
+        })?;
+
+        Ok(CommandResult::U32(value))
     }
 
     fn execute(&mut self) -> Result<(), RiscvError> {
-        todo!()
+        let cmds = std::mem::take(&mut self.state.queued_reads);
+
+        for (index, cmd) in cmds.iter() {
+            match cmd {
+                Command::Read(address) => {
+                    let byte_address = u64::from(address.0 * 4) + self.state.offset;
+
+                    let result = self.probe.read_word_32(byte_address);
+
+                    self.state.result_set.push(index, (*address, result));
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn schedule_write(
         &mut self,
-        address: u64,
+        address: DmAddress,
         value: u32,
     ) -> Result<Option<crate::probe::DeferredResultIndex>, RiscvError> {
-        self.probe.write_word_32(address, value).unwrap();
+        // The ArmMemoryInterface is byte addressed, while the DmAddress is word addressed.
+        let mapped_address = u64::from(address.0 * 4) + self.state.offset;
+
+        self.probe
+            .write_word_32(mapped_address, value)
+            .map_err(|e| RiscvError::DmWriteFailed {
+                address: address.0,
+                source: Box::new(e),
+            })?;
 
         self.probe.flush().unwrap();
 
@@ -112,29 +161,38 @@ impl DtmAccess for AdiDtm<'_> {
 
     fn schedule_read(
         &mut self,
-        address: u64,
+        address: DmAddress,
     ) -> Result<crate::probe::DeferredResultIndex, RiscvError> {
-        todo!()
+        Ok(self.state.queued_reads.schedule(Command::Read(address)))
     }
 
     fn read_with_timeout(
         &mut self,
-        address: u64,
-        timeout: std::time::Duration,
+        _address: DmAddress,
+        _timeout: std::time::Duration,
     ) -> Result<u32, RiscvError> {
         todo!()
     }
 
     fn write_with_timeout(
         &mut self,
-        address: u64,
+        address: DmAddress,
         value: u32,
-        timeout: std::time::Duration,
+        _timeout: std::time::Duration,
     ) -> Result<Option<u32>, RiscvError> {
-        todo!()
+        let addr = u64::from(address.0 * 4) + self.state.offset;
+
+        self.probe
+            .write_word_32(addr, value)
+            .map_err(|e| RiscvError::DmWriteFailed {
+                address: address.0,
+                source: Box::new(e),
+            })?;
+
+        Ok(None)
     }
 
     fn read_idcode(&mut self) -> Result<Option<u32>, crate::probe::DebugProbeError> {
-        todo!()
+        Ok(None)
     }
 }

@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 use crate::architecture::riscv::communication_interface::{
     RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError, RiscvInterfaceBuilder,
 };
-use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+use crate::architecture::riscv::dtm::dtm_access::{DmAddress, DtmAccess};
 use crate::error::Error;
 use crate::probe::{
     CommandQueue, CommandResult, DeferredResultIndex, DeferredResultSet, JtagAccess, JtagCommand,
@@ -277,36 +277,49 @@ impl DtmAccess for JtagDtm<'_> {
 
     fn schedule_write(
         &mut self,
-        address: u64,
+        address: DmAddress,
         value: u32,
     ) -> Result<Option<DeferredResultIndex>, RiscvError> {
-        self.schedule_dmi_register_access(DmiOperation::Write { address, value })
-            .map(Some)
+        self.schedule_dmi_register_access(DmiOperation::Write {
+            address: address.0,
+            value,
+        })
+        .map(Some)
     }
 
-    fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError> {
+    fn schedule_read(&mut self, address: DmAddress) -> Result<DeferredResultIndex, RiscvError> {
         // Prepare the read by sending a read request with the register address
-        self.schedule_dmi_register_access(DmiOperation::Read { address })?;
+        self.schedule_dmi_register_access(DmiOperation::Read { address: address.0 })?;
 
         // Read back the response from the previous request.
         self.schedule_dmi_register_access(DmiOperation::NoOp)
     }
 
-    fn read_with_timeout(&mut self, address: u64, timeout: Duration) -> Result<u32, RiscvError> {
+    fn read_with_timeout(
+        &mut self,
+        address: DmAddress,
+        timeout: Duration,
+    ) -> Result<u32, RiscvError> {
         // Prepare the read by sending a read request with the register address
-        self.schedule_dmi_register_access(DmiOperation::Read { address })?;
+        self.schedule_dmi_register_access(DmiOperation::Read { address: address.0 })?;
 
         self.dmi_register_access_with_timeout(DmiOperation::NoOp, timeout)
     }
 
     fn write_with_timeout(
         &mut self,
-        address: u64,
+        address: DmAddress,
         value: u32,
         timeout: Duration,
     ) -> Result<Option<u32>, RiscvError> {
-        self.dmi_register_access_with_timeout(DmiOperation::Write { address, value }, timeout)
-            .map(Some)
+        self.dmi_register_access_with_timeout(
+            DmiOperation::Write {
+                address: address.0,
+                value,
+            },
+            timeout,
+        )
+        .map(Some)
     }
 
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
@@ -536,36 +549,49 @@ impl DtmAccess for TunneledJtagDtm<'_> {
 
     fn schedule_write(
         &mut self,
-        address: u64,
+        address: DmAddress,
         value: u32,
     ) -> Result<Option<DeferredResultIndex>, RiscvError> {
-        self.schedule_dmi_register_access(DmiOperation::Write { address, value })
-            .map(Some)
+        self.schedule_dmi_register_access(DmiOperation::Write {
+            address: address.0,
+            value,
+        })
+        .map(Some)
     }
 
-    fn schedule_read(&mut self, address: u64) -> Result<DeferredResultIndex, RiscvError> {
+    fn schedule_read(&mut self, address: DmAddress) -> Result<DeferredResultIndex, RiscvError> {
         // Prepare the read by sending a read request with the register address
-        self.schedule_dmi_register_access(DmiOperation::Read { address })?;
+        self.schedule_dmi_register_access(DmiOperation::Read { address: address.0 })?;
 
         // Read back the response from the previous request.
         self.schedule_dmi_register_access(DmiOperation::NoOp)
     }
 
-    fn read_with_timeout(&mut self, address: u64, timeout: Duration) -> Result<u32, RiscvError> {
+    fn read_with_timeout(
+        &mut self,
+        address: DmAddress,
+        timeout: Duration,
+    ) -> Result<u32, RiscvError> {
         // Prepare the read by sending a read request with the register address
-        self.schedule_dmi_register_access(DmiOperation::Read { address })?;
+        self.schedule_dmi_register_access(DmiOperation::Read { address: address.0 })?;
 
         self.dmi_register_access_with_timeout(DmiOperation::NoOp, timeout)
     }
 
     fn write_with_timeout(
         &mut self,
-        address: u64,
+        address: DmAddress,
         value: u32,
         timeout: Duration,
     ) -> Result<Option<u32>, RiscvError> {
-        self.dmi_register_access_with_timeout(DmiOperation::Write { address, value }, timeout)
-            .map(Some)
+        self.dmi_register_access_with_timeout(
+            DmiOperation::Write {
+                address: address.0,
+                value,
+            },
+            timeout,
+        )
+        .map(Some)
     }
 
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
@@ -607,8 +633,8 @@ fn tunnel_dtmcs_command(data: u32) -> ShiftDrCommand {
 #[derive(Copy, Clone, Debug)]
 pub enum DmiOperation {
     NoOp,
-    Read { address: u64 },
-    Write { address: u64, value: u32 },
+    Read { address: u32 },
+    Write { address: u32, value: u32 },
 }
 
 impl DmiOperation {

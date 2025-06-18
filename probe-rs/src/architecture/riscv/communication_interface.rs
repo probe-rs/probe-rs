@@ -4,7 +4,7 @@
 //! Debug Module, as described in the RISC-V debug
 //! specification v0.13.2 .
 
-use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+use crate::architecture::riscv::dtm::dtm_access::{DmAddress, DtmAccess};
 use crate::{
     Error as ProbeRsError, architecture::riscv::*, config::Target, memory_mapped_bitfield_register,
     probe::DeferredResultIndex,
@@ -18,6 +18,18 @@ pub enum RiscvError {
     /// An error occurred during transport
     #[error("Error during transport")]
     DtmOperationFailed,
+
+    #[error("Error reading from Debug Module at address {address:#04x}")]
+    DmReadFailed {
+        address: u32,
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    #[error("Error write from Debug Module at address {address:#04x}")]
+    DmWriteFailed {
+        address: u32,
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
     /// DMI operation is in progress
     #[error("Transport operation in progress")]
     DtmOperationInProcess,
@@ -859,7 +871,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             R::get_mmio_address()
         );
 
-        let register_value = self.read_dm_register_untyped(R::get_mmio_address())?.into();
+        let register_value = self
+            .read_dm_register_untyped(R::get_mmio_address() as u32)?
+            .into();
 
         tracing::debug!(
             "Read DM register '{}' at {:#010x} = {:x?}",
@@ -874,7 +888,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Schedules a DM register read, flushes the queue and returns the untyped result.
     ///
     /// Use the [`Self::read_dm_register()`] function if possible.
-    fn read_dm_register_untyped(&mut self, address: u64) -> Result<u32, RiscvError> {
+    fn read_dm_register_untyped(&mut self, address: u32) -> Result<u32, RiscvError> {
         let read_idx = self.schedule_read_dm_register_untyped(address)?;
         let register_value = self.dtm.read_deferred_result(read_idx)?.into_u32();
 
@@ -894,21 +908,22 @@ impl<'state> RiscvCommunicationInterface<'state> {
             register
         );
 
-        self.write_dm_register_untyped(R::get_mmio_address(), register.into())
+        self.write_dm_register_untyped(R::get_mmio_address() as u32, register.into())
     }
 
     /// Write to a DM register
     ///
     /// Use the [`Self::write_dm_register()`] function if possible.
-    fn write_dm_register_untyped(&mut self, address: u64, value: u32) -> Result<(), RiscvError> {
+    fn write_dm_register_untyped(&mut self, address: u32, value: u32) -> Result<(), RiscvError> {
         self.cache_write(address, value);
-        self.dtm.write_with_timeout(address, value, RISCV_TIMEOUT)?;
+        self.dtm
+            .write_with_timeout(DmAddress(address), value, RISCV_TIMEOUT)?;
 
         Ok(())
     }
 
-    fn cache_write(&mut self, address: u64, value: u32) {
-        if address == Dmcontrol::ADDRESS_OFFSET {
+    fn cache_write(&mut self, address: u32, value: u32) {
+        if address == Dmcontrol::ADDRESS_OFFSET as u32 {
             self.state.current_dmcontrol = Dmcontrol(value);
         }
     }
@@ -943,6 +958,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         };
 
         if required_len > self.state.progbuf_size as usize {
+            panic!("Unable to setup program buffer");
             return Err(RiscvError::ProgramBufferTooSmall {
                 required: required_len,
                 actual: self.state.progbuf_size as usize,
@@ -1683,7 +1699,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             register
         );
 
-        self.schedule_write_dm_register_untyped(R::get_mmio_address(), register.into())?;
+        self.schedule_write_dm_register_untyped(R::get_mmio_address() as u32, register.into())?;
         Ok(())
     }
 
@@ -1692,11 +1708,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Use the [`Self::schedule_write_dm_register()`] function if possible.
     fn schedule_write_dm_register_untyped(
         &mut self,
-        address: u64,
+        address: u32,
         value: u32,
     ) -> Result<Option<DeferredResultIndex>, RiscvError> {
         self.cache_write(address, value);
-        self.dtm.schedule_write(address, value)
+        self.dtm.schedule_write(DmAddress(address), value)
     }
 
     pub(super) fn schedule_read_dm_register<R: MemoryMappedRegister<u32>>(
@@ -1708,7 +1724,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             R::get_mmio_address()
         );
 
-        self.schedule_read_dm_register_untyped(R::get_mmio_address())
+        self.schedule_read_dm_register_untyped(R::get_mmio_address() as u32)
     }
 
     /// Read from a DM register
@@ -1716,10 +1732,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Use the [`Self::schedule_read_dm_register()`] function if possible.
     fn schedule_read_dm_register_untyped(
         &mut self,
-        address: u64,
+        address: u32,
     ) -> Result<DeferredResultIndex, RiscvError> {
         // Prepare the read by sending a read request with the register address
-        self.dtm.schedule_read(address)
+        self.dtm.schedule_read(DmAddress(address))
     }
 
     fn schedule_read_large_dtm_register<V, R>(
@@ -1958,7 +1974,7 @@ impl RiscvValue for u8 {
     where
         R: LargeRegister,
     {
-        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u32)?);
         Ok(())
     }
 
@@ -1978,7 +1994,7 @@ impl RiscvValue for u8 {
     where
         R: LargeRegister,
     {
-        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, value as u32)
+        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u32, value as u32)
     }
 }
 
@@ -1992,7 +2008,7 @@ impl RiscvValue for u16 {
     where
         R: LargeRegister,
     {
-        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u32)?);
         Ok(())
     }
 
@@ -2012,7 +2028,7 @@ impl RiscvValue for u16 {
     where
         R: LargeRegister,
     {
-        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, value as u32)
+        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u32, value as u32)
     }
 }
 
@@ -2026,7 +2042,7 @@ impl RiscvValue for u32 {
     where
         R: LargeRegister,
     {
-        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u32)?);
         Ok(())
     }
 
@@ -2046,7 +2062,7 @@ impl RiscvValue for u32 {
     where
         R: LargeRegister,
     {
-        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, value)
+        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u32, value)
     }
 }
 
@@ -2060,8 +2076,8 @@ impl RiscvValue for u64 {
     where
         R: LargeRegister,
     {
-        results.push(interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u64)?);
-        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u32)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u32)?);
         Ok(())
     }
 
@@ -2088,8 +2104,8 @@ impl RiscvValue for u64 {
         // R0 has to be written last, side effects are triggerd by writes from
         // this register.
 
-        interface.schedule_write_dm_register_untyped(R::R1_ADDRESS as u64, upper_bits)?;
-        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, lower_bits)
+        interface.schedule_write_dm_register_untyped(R::R1_ADDRESS as u32, upper_bits)?;
+        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u32, lower_bits)
     }
 }
 
@@ -2103,10 +2119,10 @@ impl RiscvValue for u128 {
     where
         R: LargeRegister,
     {
-        results.push(interface.schedule_read_dm_register_untyped(R::R3_ADDRESS as u64)?);
-        results.push(interface.schedule_read_dm_register_untyped(R::R2_ADDRESS as u64)?);
-        results.push(interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u64)?);
-        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R3_ADDRESS as u32)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R2_ADDRESS as u32)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u32)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u32)?);
         Ok(())
     }
 
@@ -2140,10 +2156,10 @@ impl RiscvValue for u128 {
         // R0 has to be written last, side effects are triggerd by writes from
         // this register.
 
-        interface.schedule_write_dm_register_untyped(R::R3_ADDRESS as u64, bits_3)?;
-        interface.schedule_write_dm_register_untyped(R::R2_ADDRESS as u64, bits_2)?;
-        interface.schedule_write_dm_register_untyped(R::R1_ADDRESS as u64, bits_1)?;
-        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, bits_0)
+        interface.schedule_write_dm_register_untyped(R::R3_ADDRESS as u32, bits_3)?;
+        interface.schedule_write_dm_register_untyped(R::R2_ADDRESS as u32, bits_2)?;
+        interface.schedule_write_dm_register_untyped(R::R1_ADDRESS as u32, bits_1)?;
+        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u32, bits_0)
     }
 }
 

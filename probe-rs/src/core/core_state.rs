@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     Core, CoreType, Error, Target,
     architecture::{
@@ -13,7 +15,7 @@ use crate::{
                 RiscvInterfaceBuilder,
             },
             dtm::adi_dtm::AdiDtmBuilder,
-            sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+            sequences::DefaultRiscvSequence,
         },
         xtensa::{XtensaCoreState, communication_interface::XtensaCommunicationInterface},
     },
@@ -48,7 +50,7 @@ impl CombinedCoreState {
         &'probe mut self,
         target: &'probe Target,
         arm_interface: &'probe mut Box<dyn ArmDebugInterface>,
-        riscv_state: &'probe mut Option<RiscvDebugInterfaceState>,
+        riscv_state: &'probe mut HashMap<FullyQualifiedApAddress, RiscvDebugInterfaceState>,
     ) -> Result<Core<'probe>, Error> {
         let name = &target.cores[self.id].name;
 
@@ -110,7 +112,8 @@ impl CombinedCoreState {
 
                 Ok(core)
             }
-            ResolvedCoreOptions::RiscvBehindArm { sequence, options } => {
+            ResolvedCoreOptions::RiscvBehindArm { options, .. } => {
+                let ap = self.arm_memory_ap();
                 let SpecificCoreState::Riscv(core_state) = &mut self.specific_state else {
                     unreachable!(
                         "The stored core state is not compatible with the RISCV architecture. \
@@ -119,12 +122,12 @@ impl CombinedCoreState {
                 };
 
                 // TODO: Error handling..
-                let riscv_state = riscv_state.as_mut().unwrap();
+                let riscv_state = riscv_state.get_mut(&ap).expect("Missing state");
 
                 // TODO: Proper sequence
                 let sequence = DefaultRiscvSequence::create();
 
-                let builder = Box::new(AdiDtmBuilder::new(memory));
+                let builder = Box::new(AdiDtmBuilder::new(memory, options.offset));
 
                 let comm_interface = builder.attach(riscv_state)?;
 
@@ -144,7 +147,7 @@ impl CombinedCoreState {
     pub(crate) fn enable_arm_debug(
         &self,
         interface: &mut dyn ArmDebugInterface,
-    ) -> Result<(), Error> {
+    ) -> Result<Option<RiscvDebugInterfaceState>, Error> {
         match &self.core_state.core_access_options {
             ResolvedCoreOptions::Arm { sequence, options } => {
                 tracing::debug_span!("debug_core_start", id = self.id()).in_scope(|| {
@@ -157,14 +160,25 @@ impl CombinedCoreState {
                         options.cti_base,
                     )
                 })?;
-                Ok(())
+                Ok(None)
             }
-            ResolvedCoreOptions::RiscvBehindArm { sequence, options } => {
-                tracing::warn!(
-                    "Enabling debug for the RISC-V core behind the ARM debug interface is not supported yet."
-                );
+            ResolvedCoreOptions::RiscvBehindArm { options, .. } => {
+                let ap = self.arm_memory_ap();
+
+                let memory = interface.memory_interface(&ap)?;
+
+                let builder = Box::new(AdiDtmBuilder::new(memory, options.offset));
+
+                let mut riscv_state = builder.create_state();
+
+                let mut communication_interface = builder.attach(&mut riscv_state)?;
+
+                communication_interface.enter_debug_mode()?;
+
+                drop(communication_interface);
+
                 // Just ignore this for now..
-                Ok(())
+                Ok(Some(riscv_state))
             }
             _ => {
                 unreachable!(
