@@ -9,8 +9,11 @@ use crate::{
             memory::CoresightComponent,
             sequences::{ArmDebugSequence, DefaultArmSequence},
         },
-        riscv::communication_interface::{
-            RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
+        riscv::{
+            communication_interface::{
+                RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
+            },
+            dtm::adi_dtm,
         },
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
@@ -101,14 +104,19 @@ impl fmt::Debug for JtagInterface {
 
 // TODO: this is somewhat messy because I omitted separating the Probe out of the ARM interface.
 enum ArchitectureInterface {
-    Arm(Box<dyn ArmDebugInterface + 'static>),
+    Arm(
+        Box<dyn ArmDebugInterface + 'static>,
+        // TODO: Figure out where to store this, workaround so we can get
+        // something to work for the DTM
+        Option<RiscvDebugInterfaceState>,
+    ),
     Jtag(Probe, Vec<JtagInterface>),
 }
 
 impl fmt::Debug for ArchitectureInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ArchitectureInterface::Arm(_) => f.write_str("ArchitectureInterface::Arm(..)"),
+            ArchitectureInterface::Arm(_, _) => f.write_str("ArchitectureInterface::Arm(..)"),
             ArchitectureInterface::Jtag(_, ifaces) => f
                 .debug_tuple("ArchitectureInterface::Jtag(..)")
                 .field(ifaces)
@@ -124,7 +132,9 @@ impl ArchitectureInterface {
         combined_state: &'probe mut CombinedCoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
-            ArchitectureInterface::Arm(interface) => combined_state.attach_arm(target, interface),
+            ArchitectureInterface::Arm(interface, riscv_state) => {
+                combined_state.attach_arm_debug(target, interface, riscv_state)
+            }
             ArchitectureInterface::Jtag(probe, ifaces) => {
                 let idx = combined_state.jtag_tap_index();
                 if let Some(probe) = probe.try_as_jtag_probe() {
@@ -198,6 +208,8 @@ impl Session {
         cores: Vec<CombinedCoreState>,
     ) -> Result<Self, Error> {
         let default_core = target.default_core();
+
+        let mut riscv_state = None;
 
         let default_memory_ap = default_core.memory_ap().ok_or_else(|| {
             Error::Other(format!(
@@ -273,6 +285,12 @@ impl Session {
         // For each core, setup debugging
         for core in &cores {
             core.enable_arm_debug(&mut *interface)?;
+
+            // TODO: Clean up,
+            if core.core_type().architecture() == Architecture::Riscv {
+                // TODO: Figure out DTM state handling here
+                riscv_state = Some(adi_dtm::interface_state());
+            }
         }
 
         if attach_method == AttachMethod::UnderReset {
@@ -301,7 +319,7 @@ impl Session {
 
             let mut session = Session {
                 target,
-                interfaces: ArchitectureInterface::Arm(interface),
+                interfaces: ArchitectureInterface::Arm(interface, riscv_state),
                 cores,
                 configured_trace_sink: None,
             };
@@ -324,7 +342,7 @@ impl Session {
         } else {
             Ok(Session {
                 target,
-                interfaces: ArchitectureInterface::Arm(interface),
+                interfaces: ArchitectureInterface::Arm(interface, riscv_state),
                 cores,
                 configured_trace_sink: None,
             })
@@ -366,17 +384,20 @@ impl Session {
         } else {
             highest_idx + 1
         };
+
         let mut interfaces = std::iter::repeat_with(|| JtagInterface::Unknown)
             .take(tap_count)
             .collect::<Vec<_>>();
 
         // Create a new interface by walking through the cores and initialising the TAPs that
         // we find mentioned.
-        for core in cores.iter() {
-            let iface_idx = core.jtag_tap_index();
+        for core_state in cores.iter() {
+            let iface_idx = core_state.jtag_tap_index();
 
-            let core_arch = core.core_type().architecture();
+            let core_arch = core_state.core_type().architecture();
 
+            // If the interface at the index is already initialized, check if it matches
+            // the expected architecture.
             if let Some(debug_arch) = interfaces[iface_idx].architecture() {
                 if core_arch == debug_arch {
                     // Already initialised.
@@ -623,7 +644,7 @@ impl Session {
     /// Get the Arm probe interface.
     pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, ArmError> {
         let interface = match &mut self.interfaces {
-            ArchitectureInterface::Arm(state) => state.deref_mut(),
+            ArchitectureInterface::Arm(state, _) => state.deref_mut(),
             _ => return Err(ArmError::NoArmTarget),
         };
 
@@ -733,7 +754,7 @@ impl Session {
     /// NotImplemented if no custom erase sequence exists
     /// Err(e) if the custom erase sequence failed
     pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
-        let ArchitectureInterface::Arm(ref mut interface) = self.interfaces else {
+        let ArchitectureInterface::Arm(ref mut interface, _) = self.interfaces else {
             return Err(Error::NotImplemented(
                 "Debug Erase Sequence is not implemented for non-ARM targets.",
             ));
@@ -852,7 +873,7 @@ impl Session {
     /// Return the `Architecture` of the currently connected chip.
     pub fn architecture(&self) -> Architecture {
         match &self.interfaces {
-            ArchitectureInterface::Arm(_) => Architecture::Arm,
+            ArchitectureInterface::Arm(_, _) => Architecture::Arm,
             ArchitectureInterface::Jtag(_, ifaces) => {
                 if let JtagInterface::Riscv(_) = &ifaces[0] {
                     Architecture::Riscv
