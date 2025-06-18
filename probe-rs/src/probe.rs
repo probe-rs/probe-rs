@@ -1366,7 +1366,7 @@ pub trait JtagAccess: DebugProbe {
     /// Executes a sequence of JTAG commands.
     fn write_register_batch(
         &mut self,
-        writes: &JtagCommandQueue,
+        writes: &CommandQueue<JtagCommand>,
     ) -> Result<DeferredResultSet, BatchExecutionError> {
         tracing::debug!(
             "Using default `JtagAccess::write_register_batch` hurts performance. Please implement proper batching for this probe."
@@ -1575,12 +1575,27 @@ impl CommandResult {
 ///
 /// This list maintains which commands' results can be read by the issuing code, which then
 /// can be used to skip capturing or processing certain parts of the response.
-#[derive(Default, Debug)]
-pub struct JtagCommandQueue {
-    commands: Vec<(DeferredResultIndex, JtagCommand)>,
+pub struct CommandQueue<T> {
+    commands: Vec<(DeferredResultIndex, T)>,
 }
 
-impl JtagCommandQueue {
+impl<T: std::fmt::Debug> std::fmt::Debug for CommandQueue<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CommandQueue")
+            .field("commands", &self.commands)
+            .finish()
+    }
+}
+
+impl<T> Default for CommandQueue<T> {
+    fn default() -> Self {
+        Self {
+            commands: Vec::new(),
+        }
+    }
+}
+
+impl<T> CommandQueue<T> {
     /// Creates a new empty queue.
     pub fn new() -> Self {
         Self::default()
@@ -1589,7 +1604,7 @@ impl JtagCommandQueue {
     /// Schedules a command for later execution.
     ///
     /// Returns a token value that can be used to retrieve the result of the command.
-    pub fn schedule(&mut self, command: impl Into<JtagCommand>) -> DeferredResultIndex {
+    pub fn schedule(&mut self, command: impl Into<T>) -> DeferredResultIndex {
         let index = DeferredResultIndex::new();
         self.commands.push((index.clone(), command.into()));
         index
@@ -1605,7 +1620,7 @@ impl JtagCommandQueue {
         self.commands.is_empty()
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, JtagCommand)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, T)> {
         self.commands.iter()
     }
 
