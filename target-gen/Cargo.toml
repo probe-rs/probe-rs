@@ -19,14 +19,14 @@ probe-rs = { path = "../probe-rs", version = "0.29.0" }
 probe-rs-target = { path = "../probe-rs-target", version = "0.29.0", default-features = false }
 cmsis-pack = "0.7.1"
 jep106 = "0.3.0"
-goblin = { version = "0.9.0", default-features = false, features = [
+goblin = { version = "0.10.0", default-features = false, features = [
     "elf32",
     "elf64",
     "endian_fd",
     "archive",
     "std",
 ] }
-scroll = "0.12.0"
+scroll = "0.13.0"
 serde_yaml = "0.9"
 log = "0.4.21"
 zip = { version = "4.0.0", default-features = false, features = [
