@@ -2,18 +2,15 @@ use crate::{
     Core, CoreType, Error,
     architecture::{
         arm::{
-            ArmError, SwoReader,
+            ArmError, FullyQualifiedApAddress, SwoReader,
             communication_interface::ArmDebugInterface,
             component::{TraceSink, get_arm_components},
             dp::DpAddress,
             memory::CoresightComponent,
             sequences::{ArmDebugSequence, DefaultArmSequence},
         },
-        riscv::{
-            communication_interface::{
-                RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
-            },
-            dtm::adi_dtm,
+        riscv::communication_interface::{
+            RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
         },
         xtensa::communication_interface::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
@@ -29,7 +26,7 @@ use crate::{
         fake_probe::FakeProbe, list::Lister,
     },
 };
-use std::ops::DerefMut;
+use std::{collections::HashMap, ops::DerefMut};
 use std::{fmt, sync::Arc, time::Duration};
 
 /// The `Session` struct represents an active debug session.
@@ -109,7 +106,7 @@ enum ArchitectureInterface {
         Box<dyn ArmDebugInterface + 'static>,
         // TODO: Figure out where to store this, workaround so we can get
         // something to work for the DTM
-        Option<RiscvDebugInterfaceState>,
+        HashMap<FullyQualifiedApAddress, RiscvDebugInterfaceState>,
     ),
     Jtag(Probe, Vec<JtagInterface>),
 }
@@ -210,7 +207,7 @@ impl Session {
     ) -> Result<Self, Error> {
         let default_core = target.default_core();
 
-        let mut riscv_state = None;
+        let mut riscv_state_map = HashMap::new();
 
         let default_memory_ap = default_core.memory_ap().ok_or_else(|| {
             Error::Other(format!(
@@ -285,12 +282,11 @@ impl Session {
 
         // For each core, setup debugging
         for core in &cores {
-            core.enable_arm_debug(&mut *interface)?;
+            tracing::info!("Enabling debug for core {}", core.id);
+            let riscv_state = core.enable_arm_debug(&mut *interface)?;
 
-            // TODO: Clean up,
-            if core.core_type().architecture() == Architecture::Riscv {
-                // TODO: Figure out DTM state handling here
-                riscv_state = Some(adi_dtm::interface_state());
+            if let Some(riscv_state) = riscv_state {
+                riscv_state_map.insert(core.arm_memory_ap(), riscv_state);
             }
         }
 
@@ -320,7 +316,7 @@ impl Session {
 
             let mut session = Session {
                 target,
-                interfaces: ArchitectureInterface::Arm(interface, riscv_state),
+                interfaces: ArchitectureInterface::Arm(interface, riscv_state_map),
                 cores,
                 configured_trace_sink: None,
             };
@@ -343,7 +339,7 @@ impl Session {
         } else {
             Ok(Session {
                 target,
-                interfaces: ArchitectureInterface::Arm(interface, riscv_state),
+                interfaces: ArchitectureInterface::Arm(interface, riscv_state_map),
                 cores,
                 configured_trace_sink: None,
             })
@@ -929,12 +925,12 @@ const _: fn() = || {
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
-        if let Err(err) = self.clear_all_hw_breakpoints() {
-            tracing::warn!(
-                "Could not clear all hardware breakpoints: {:?}",
-                anyhow::anyhow!(err)
-            );
-        }
+        //if let Err(err) = self.clear_all_hw_breakpoints() {
+        //    tracing::warn!(
+        //        "Could not clear all hardware breakpoints: {:?}",
+        //        anyhow::anyhow!(err)
+        //    );
+        //}
 
         // Call any necessary deconfiguration/shutdown hooks.
         if let Err(err) = { 0..self.cores.len() }.try_for_each(|core| match self.core(core) {
