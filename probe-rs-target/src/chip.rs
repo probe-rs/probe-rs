@@ -240,6 +240,15 @@ pub enum RiscvDtm {
 }
 
 
+impl RiscvDtm {
+    pub fn ap(&self) -> Option<&ApAddress> {
+        match self {
+            RiscvDtm::Jtag => None,
+            RiscvDtm::ArmDebug { ap } => Some(ap),
+        }
+    }
+}
+
 /// The data required to access an Xtensa core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XtensaCoreAccessOptions {

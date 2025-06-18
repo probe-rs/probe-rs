@@ -8,13 +8,13 @@ pub(crate) use adi_memory_interface::ADIMemoryInterface;
 use crate::{CoreStatus, memory::MemoryInterface, probe::DebugProbeError};
 
 use super::{
-    ArmError, ArmDebugInterface, DapAccess, FullyQualifiedApAddress,
+    ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress,
     communication_interface::SwdSequence,
 };
 pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, RomTable};
 
 /// An ArmMemoryInterface (ArmProbeInterface + MemoryAp)
-pub trait ArmMemoryInterface: MemoryInterface<ArmError> {
+pub trait ArmMemoryInterface: MemoryInterface<ArmError> + Send {
     /// The underlying MemoryAp address.
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress;
 
