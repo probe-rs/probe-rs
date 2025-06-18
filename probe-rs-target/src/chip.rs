@@ -219,6 +219,8 @@ pub struct RiscvCoreAccessOptions {
     /// What kind of debug transport module is used
     pub dtm: Option<RiscvDtm>,
 
+    pub offset: Option<u64>,
+
     /// The JTAG TAP index of the core's debug module
     pub jtag_tap: Option<usize>,
 }
@@ -241,6 +243,7 @@ pub enum RiscvDtm {
 
 
 impl RiscvDtm {
+    /// Get the optional AP address
     pub fn ap(&self) -> Option<&ApAddress> {
         match self {
             RiscvDtm::Jtag => None,

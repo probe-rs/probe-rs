@@ -88,7 +88,7 @@ impl DebugRegisters {
             core.read_core_reg(*register_id)
                 .inspect_err(|error| {
                     tracing::warn!(
-                        "Failed to read value for register {:?}: {error}",
+                        "Failed to read value for register {:?}: {error:#?}",
                         register_id
                     )
                 })
