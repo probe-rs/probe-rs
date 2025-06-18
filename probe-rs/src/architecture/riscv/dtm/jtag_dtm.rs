@@ -22,7 +22,7 @@ use crate::probe::{DebugProbeError, ShiftDrCommand};
 #[derive(Debug, Default)]
 struct DtmState {
     queued_commands: CommandQueue<JtagCommand>,
-    jtag_results: DeferredResultSet,
+    jtag_results: DeferredResultSet<CommandResult>,
 
     /// Number of address bits in the DMI register
     abits: u32,

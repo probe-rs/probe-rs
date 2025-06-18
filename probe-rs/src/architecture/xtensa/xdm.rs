@@ -134,7 +134,7 @@ pub struct XdmState {
     queue: CommandQueue<JtagCommand>,
 
     /// The results of the reads in the already executed batched JTAG commands.
-    jtag_results: DeferredResultSet,
+    jtag_results: DeferredResultSet<CommandResult>,
 
     /// Read handles for accesses that need to force capturing their bits.
     ///

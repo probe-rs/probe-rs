@@ -1367,7 +1367,7 @@ pub trait JtagAccess: DebugProbe {
     fn write_register_batch(
         &mut self,
         writes: &CommandQueue<JtagCommand>,
-    ) -> Result<DeferredResultSet, BatchExecutionError> {
+    ) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError> {
         tracing::debug!(
             "Using default `JtagAccess::write_register_batch` hurts performance. Please implement proper batching for this probe."
         );
@@ -1498,7 +1498,7 @@ impl ChainParams {
     }
 }
 
-/// An error that occurred during batched command execution.
+/// An error that occurred during batched command execution of JTAG commands.
 #[derive(thiserror::Error, Debug)]
 pub struct BatchExecutionError {
     /// The error that occurred during execution.
@@ -1506,11 +1506,14 @@ pub struct BatchExecutionError {
     pub error: crate::Error,
 
     /// The results of the commands that were executed before the error occurred.
-    pub results: DeferredResultSet,
+    pub results: DeferredResultSet<CommandResult>,
 }
 
 impl BatchExecutionError {
-    pub(crate) fn new(error: crate::Error, results: DeferredResultSet) -> BatchExecutionError {
+    pub(crate) fn new(
+        error: crate::Error,
+        results: DeferredResultSet<CommandResult>,
+    ) -> BatchExecutionError {
         BatchExecutionError { error, results }
     }
 }
@@ -1631,10 +1634,21 @@ impl<T> CommandQueue<T> {
 }
 
 /// The set of results returned by executing a batched command.
-#[derive(Debug, Default)]
-pub struct DeferredResultSet(HashMap<DeferredResultIndex, CommandResult>);
+pub struct DeferredResultSet<T>(HashMap<DeferredResultIndex, T>);
 
-impl DeferredResultSet {
+impl<T: std::fmt::Debug> std::fmt::Debug for DeferredResultSet<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("DeferredResultSet").field(&self.0).finish()
+    }
+}
+
+impl<T> Default for DeferredResultSet<T> {
+    fn default() -> Self {
+        Self(HashMap::default())
+    }
+}
+
+impl<T> DeferredResultSet<T> {
     /// Creates a new empty result set.
     pub fn new() -> Self {
         Self::default()
@@ -1645,7 +1659,7 @@ impl DeferredResultSet {
         Self(HashMap::with_capacity(capacity))
     }
 
-    pub(crate) fn push(&mut self, idx: &DeferredResultIndex, result: CommandResult) {
+    pub(crate) fn push(&mut self, idx: &DeferredResultIndex, result: T) {
         self.0.insert(idx.clone(), result);
     }
 
@@ -1659,16 +1673,13 @@ impl DeferredResultSet {
         self.0.is_empty()
     }
 
-    pub(crate) fn merge_from(&mut self, other: DeferredResultSet) {
+    pub(crate) fn merge_from(&mut self, other: DeferredResultSet<T>) {
         self.0.extend(other.0);
         self.0.retain(|k, _| k.should_capture());
     }
 
     /// Takes a result from the set.
-    pub fn take(
-        &mut self,
-        index: DeferredResultIndex,
-    ) -> Result<CommandResult, DeferredResultIndex> {
+    pub fn take(&mut self, index: DeferredResultIndex) -> Result<T, DeferredResultIndex> {
         self.0.remove(&index).ok_or(index)
     }
 }

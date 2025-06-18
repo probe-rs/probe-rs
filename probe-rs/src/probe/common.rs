@@ -710,7 +710,7 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
     fn write_register_batch(
         &mut self,
         writes: &CommandQueue<JtagCommand>,
-    ) -> Result<DeferredResultSet, BatchExecutionError> {
+    ) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError> {
         let mut bits = Vec::with_capacity(writes.len());
         let t1 = std::time::Instant::now();
         tracing::debug!("Preparing {} writes...", writes.len());
