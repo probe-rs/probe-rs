@@ -7,8 +7,8 @@ use bitvec::prelude::*;
 use probe_rs_target::ScanChainElement;
 
 use crate::probe::{
-    AutoImplementJtagAccess, BatchExecutionError, ChainParams, CommandResult, DebugProbeError,
-    DeferredResultSet, JtagAccess, JtagCommand, JtagCommandQueue, JtagSequence, RawJtagIo,
+    AutoImplementJtagAccess, BatchExecutionError, ChainParams, CommandQueue, CommandResult,
+    DebugProbeError, DeferredResultSet, JtagAccess, JtagCommand, JtagSequence, RawJtagIo,
 };
 
 pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
@@ -709,8 +709,8 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
     #[tracing::instrument(skip(self, writes))]
     fn write_register_batch(
         &mut self,
-        writes: &JtagCommandQueue,
-    ) -> Result<DeferredResultSet, BatchExecutionError> {
+        writes: &CommandQueue<JtagCommand>,
+    ) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError> {
         let mut bits = Vec::with_capacity(writes.len());
         let t1 = std::time::Instant::now();
         tracing::debug!("Preparing {} writes...", writes.len());

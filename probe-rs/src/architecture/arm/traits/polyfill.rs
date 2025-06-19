@@ -14,7 +14,7 @@ use crate::{
         dp::{Abort, Ctrl, DPIDR, DebugPortError, DpRegister, RdBuff},
     },
     probe::{
-        CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess, JtagCommandQueue,
+        CommandQueue, CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess,
         JtagSequence, JtagWriteCommand, RawSwdIo, WireProtocol, common::bits_to_byte,
     },
 };
@@ -120,7 +120,7 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
     // Set up the command queue.
-    let mut queue = JtagCommandQueue::new();
+    let mut queue = CommandQueue::new();
 
     let mut results = vec![];
 
