@@ -271,7 +271,7 @@ impl<'probe> Armv8a<'probe> {
                             self.execute_instruction_with_input_32(instruction, val.try_into()?)?;
 
                             // Write to DLR
-                            let instruction = build_mrc(15, 3, 0, 4, 5, 1);
+                            let instruction = build_mcr(15, 3, 0, 4, 5, 1);
                             self.execute_instruction(instruction)?;
                         }
                         17..=48 => {
