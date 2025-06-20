@@ -693,7 +693,7 @@ impl FlashLoader {
 
             let target = session.target();
             let core = target.core_index_by_name(core_name).unwrap();
-            let algo = Self::get_flash_algorithm_for_region(&region, target)?;
+            let algo = Self::get_flash_algorithm_for_region(&region, target, core_name)?;
 
             // We don't usually have more than a handful of regions, linear search should be fine.
             tracing::debug!("     -- using algorithm: {}", algo.name);
@@ -820,6 +820,7 @@ impl FlashLoader {
     pub(crate) fn get_flash_algorithm_for_region<'a>(
         region: &NvmRegion,
         target: &'a Target,
+        core_name: &String,
     ) -> Result<&'a RawFlashAlgorithm, FlashError> {
         let algorithms = target
             .flash_algorithms
@@ -829,6 +830,7 @@ impl FlashLoader {
                 fa.flash_properties
                     .address_range
                     .contains_range(&region.range)
+                    && (fa.cores.is_empty() || fa.cores.contains(core_name))
             })
             .collect::<Vec<_>>();
 
