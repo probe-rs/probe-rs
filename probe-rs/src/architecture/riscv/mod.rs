@@ -29,6 +29,8 @@ pub mod communication_interface;
 pub(crate) mod dtm;
 pub mod sequences;
 
+pub use dtm::jtag_dtm::JtagDtmBuilder;
+
 /// An interface to operate a RISC-V core.
 pub struct Riscv32<'state> {
     interface: RiscvCommunicationInterface<'state>,

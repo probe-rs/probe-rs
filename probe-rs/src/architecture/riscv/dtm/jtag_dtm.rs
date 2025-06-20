@@ -28,9 +28,12 @@ struct DtmState {
     abits: u32,
 }
 
+/// Object that can be used to build a RISC-V DTM interface
+/// from a JTAG transport.
 pub struct JtagDtmBuilder<'f>(&'f mut dyn JtagAccess);
 
 impl<'f> JtagDtmBuilder<'f> {
+    /// Create a new DTM Builder via a JTAG transport.
     pub fn new(probe: &'f mut dyn JtagAccess) -> Self {
         Self(probe)
     }
