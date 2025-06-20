@@ -492,12 +492,6 @@ impl ArmCommunicationInterface {
     }
 }
 
-impl FlushableArmAccess for ArmCommunicationInterface {
-    fn flush(&mut self) -> Result<(), ArmError> {
-        self.probe_mut().raw_flush()
-    }
-}
-
 impl SwoAccess for ArmCommunicationInterface {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         match self.probe_mut().get_swo_interface_mut() {
@@ -638,10 +632,4 @@ impl std::fmt::Display for ArmChipInfo {
         };
         write!(f, "{} 0x{:04x}", manu, self.part)
     }
-}
-
-/// A helper trait to get more specific interfaces.
-pub trait FlushableArmAccess {
-    /// Flush all remaining commands if the target driver implements batching.
-    fn flush(&mut self) -> Result<(), ArmError>;
 }

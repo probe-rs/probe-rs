@@ -4,7 +4,7 @@ use crate::architecture::arm::{
         AddressIncrement, ApClass, ApRegister, ApType, CFG, DRW, DataSize, IDR, TAR,
         memory_ap::amba_ahb3::CSW,
     },
-    communication_interface::{DapProbe, FlushableArmAccess},
+    communication_interface::DapProbe,
     dp::{DpAddress, DpRegisterAddress},
 };
 use std::collections::HashMap;
@@ -48,12 +48,6 @@ impl MockMemoryAp {
             memory: std::iter::repeat(1..=255).flatten().take(size).collect(),
             store,
         }
-    }
-}
-
-impl FlushableArmAccess for MockMemoryAp {
-    fn flush(&mut self) -> Result<(), ArmError> {
-        Ok(())
     }
 }
 
