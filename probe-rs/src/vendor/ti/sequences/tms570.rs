@@ -120,8 +120,8 @@ impl ArmDebugSequence for TMS570 {
         _core_type: probe_rs_target::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        let arm_probe = interface.get_arm_probe_interface()?;
-        let probe = arm_probe.try_dap_probe_mut().ok_or(ArmError::NoArmTarget)?;
+        let arm_debug = interface.get_arm_debug_interface()?;
+        let probe = arm_debug.try_dap_probe_mut().ok_or(ArmError::NoArmTarget)?;
         let mut icepick = Icepick::initialized(probe)?;
         icepick.sysreset()?;
         icepick.bypass()?;

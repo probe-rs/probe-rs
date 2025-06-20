@@ -9,7 +9,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ArmError, ArmDebugInterface, DapAccess, FullyQualifiedApAddress, Pins,
+        ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress, Pins,
         ap::{AccessPortError, AccessPortType, ApRegister, GenericAp, IDR},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DPIDR, DpAccess, DpAddress, DpRegister, SelectV1},
@@ -264,7 +264,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryInterface) -> Result<(), 
 
     if memory.generic_status()?.DeviceEn {
         let dp = memory.fully_qualified_address().dp();
-        enable_debug_mailbox(memory.get_dap_access()?, dp)?;
+        enable_debug_mailbox(memory.get_arm_debug_interface()?, dp)?;
     }
 
     let start = Instant::now();
@@ -417,7 +417,7 @@ impl MIMXRT5xxS {
     /// this chip.
     fn wait_for_stop_after_reset(
         &self,
-        probe: &mut dyn ArmMemoryInterface,
+        memory: &mut dyn ArmMemoryInterface,
     ) -> Result<(), ArmError> {
         tracing::trace!("waiting for MIMXRT5xxS halt after reset");
 
@@ -431,15 +431,15 @@ impl MIMXRT5xxS {
         // Give bootloader time to do what it needs to do
         thread::sleep(Duration::from_millis(100));
 
-        let ap = probe.fully_qualified_address();
+        let ap = memory.fully_qualified_address();
         let dp = ap.dp();
         let start = Instant::now();
-        while !self.csw_debug_ready(probe.get_dap_access()?, &ap)?
-            && start.elapsed() < Duration::from_millis(300)
-        {
+        while !memory.generic_status()?.DeviceEn && start.elapsed() < Duration::from_millis(300) {
             // Wait for either condition
         }
-        let enabled_mailbox = self.enable_debug_mailbox(probe.get_dap_access()?, dp, &ap)?;
+
+        let enabled_mailbox =
+            self.enable_debug_mailbox(memory.get_arm_debug_interface()?, dp, &ap)?;
 
         // Halt the core in case it didn't stop at a breakpiont.
         tracing::trace!("halting MIMXRT5xxS Cortex-M33 core");
@@ -447,12 +447,12 @@ impl MIMXRT5xxS {
         dhcsr.set_c_halt(true);
         dhcsr.set_c_debugen(true);
         dhcsr.enable_write();
-        probe.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        probe.flush()?;
+        memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+        memory.flush()?;
 
         if enabled_mailbox {
             // We'll double-check now to make sure we're in a reasonable state.
-            if !self.csw_debug_ready(probe.get_dap_access()?, &ap)? {
+            if !memory.generic_status()?.DeviceEn {
                 tracing::warn!(
                     "MIMXRT5xxS is still not ready to debug, even after using DebugMailbox to activate session"
                 );
@@ -460,9 +460,9 @@ impl MIMXRT5xxS {
         }
 
         // Clear watch point
-        probe.write_word_32(Self::DWT_COMP0, 0x0)?;
-        probe.write_word_32(Self::DWT_FUNCTION0, 0x0)?;
-        probe.flush()?;
+        memory.write_word_32(Self::DWT_COMP0, 0x0)?;
+        memory.write_word_32(Self::DWT_FUNCTION0, 0x0)?;
+        memory.flush()?;
         tracing::trace!("cleared data watchpoint for MIMXRT5xxS reset");
 
         // As a heuristic for whether startup seems to have succeeded, we'll
@@ -471,7 +471,7 @@ impl MIMXRT5xxS {
         // This is just a logged warning rather than an error (as long as we
         // manage to read _something_) because the user might not actually be
         // intending to use the FlexSPI0 flash device for boot.
-        let probed = probe.read_word_32(Self::FLEXSPI_NOR_FLASH_HEADER_ADDR)?;
+        let probed = memory.read_word_32(Self::FLEXSPI_NOR_FLASH_HEADER_ADDR)?;
         if probed != Self::FLEXSPI_NOR_FLASH_HEADER_MAGIC {
             tracing::warn!(
                 "FlexSPI0 NOR flash config block starts with {:#010x} (valid blocks start with {:#010x})",

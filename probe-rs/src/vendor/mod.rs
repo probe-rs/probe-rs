@@ -114,7 +114,7 @@ fn try_detect_arm_chip(
 ) -> Result<(Probe, Option<Target>), Error> {
     let mut found_target = None;
 
-    if !probe.has_arm_interface() {
+    if !probe.has_arm_debug_interface() {
         // No ARM interface available.
         tracing::debug!("No ARM interface available, skipping detection.");
         return Ok((probe, None));

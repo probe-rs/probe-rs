@@ -638,15 +638,7 @@ impl ArmMemoryInterface for BlackMagicProbeMemoryInterface<'_> {
         self.current_ap.base_address(self.probe)
     }
 
-    fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
-        Ok(self.probe)
-    }
-
-    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError> {
-        Ok(self.probe)
-    }
-
-    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+    fn get_arm_debug_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError> {
         Ok(self.probe)
     }
 
