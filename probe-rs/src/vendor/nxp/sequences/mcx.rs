@@ -416,7 +416,7 @@ impl ArmDebugSequence for MCX {
         tracing::info!("reset hardware deassert");
         let n_reset = Pins(0x80).0 as u32;
 
-        let can_read_pins = probe.swj_pins(0, n_reset, 0)? != 0xFFFF_FFFF;
+        let can_read_pins = probe.swj_pins(n_reset, n_reset, 0)? != 0xFFFF_FFFF;
 
         thread::sleep(Duration::from_millis(50));
 
