@@ -608,12 +608,6 @@ impl SwdSequence for FakeArmInterface {
     }
 }
 
-impl crate::architecture::arm::communication_interface::FlushableArmAccess for FakeArmInterface {
-    fn flush(&mut self) -> Result<(), ArmError> {
-        todo!()
-    }
-}
-
 impl ArmDebugInterface for FakeArmInterface {
     fn memory_interface(
         &mut self,

@@ -17,13 +17,13 @@ pub struct RootMemoryInterface<'iface, API> {
     iface: &'iface mut API,
     dp: DpAddress,
 }
-impl<'iface, API: ArmDebugInterface> RootMemoryInterface<'iface, API> {
-    pub fn new(iface: &'iface mut API, dp: DpAddress) -> Result<Self, ArmError> {
+impl<'iface, ADI: ArmDebugInterface> RootMemoryInterface<'iface, ADI> {
+    pub fn new(iface: &'iface mut ADI, dp: DpAddress) -> Result<Self, ArmError> {
         Ok(Self { iface, dp })
     }
 }
 
-impl<API: ArmDebugInterface> MemoryInterface<ArmError> for RootMemoryInterface<'_, API> {
+impl<ADI: ArmDebugInterface> MemoryInterface<ArmError> for RootMemoryInterface<'_, ADI> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -82,7 +82,7 @@ impl<API: ArmDebugInterface> MemoryInterface<ArmError> for RootMemoryInterface<'
         Ok(())
     }
 }
-impl<API: ArmDebugInterface> ArmMemoryInterface for RootMemoryInterface<'_, API> {
+impl<ADI: ArmDebugInterface> ArmMemoryInterface for RootMemoryInterface<'_, ADI> {
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
         FullyQualifiedApAddress::v2_with_dp(self.dp, ApV2Address::root())
     }

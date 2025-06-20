@@ -16,8 +16,8 @@ mod root_memory_interface;
 use root_memory_interface::RootMemoryInterface;
 
 /// Deeply scans the debug port and returns a list of the addresses the memory access points discovered.
-pub fn enumerate_access_ports<API: ArmDebugInterface>(
-    probe: &mut API,
+pub fn enumerate_access_ports<ADI: ArmDebugInterface>(
+    probe: &mut ADI,
     dp: DpAddress,
 ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
     let mut root_interface = RootMemoryInterface::new(probe, dp)?;
@@ -36,8 +36,8 @@ pub fn enumerate_access_ports<API: ArmDebugInterface>(
         .collect())
 }
 
-fn process_root_component<API: ArmDebugInterface>(
-    iface: &mut RootMemoryInterface<API>,
+fn process_root_component<ADI: ArmDebugInterface>(
+    iface: &mut RootMemoryInterface<ADI>,
     component: &Component,
 ) -> Result<BTreeSet<ApV2Address>, ArmError> {
     let mut result = BTreeSet::new();
