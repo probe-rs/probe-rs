@@ -524,7 +524,7 @@ impl Probe {
 
     /// Checks if the probe supports connecting to chips
     /// using the Arm Debug Interface.
-    pub fn has_arm_interface(&self) -> bool {
+    pub fn has_arm_debug_interface(&self) -> bool {
         self.inner.has_arm_interface()
     }
 

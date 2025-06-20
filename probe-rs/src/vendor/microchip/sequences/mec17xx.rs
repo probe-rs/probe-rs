@@ -140,7 +140,7 @@ impl ArmDebugSequence for Mec172x {
         // The ARM communication interface knows how to re-initialize the debug port.
         // Re-initializing the core(s) is on us.
         let ap = memory.fully_qualified_address();
-        let interface = memory.get_arm_probe_interface()?;
+        let interface = memory.get_arm_debug_interface()?;
         interface.reinitialize()?;
 
         assert!(debug_base.is_none());

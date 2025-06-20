@@ -5,7 +5,7 @@ use zerocopy::IntoBytes;
 use crate::{
     CoreStatus, MemoryInterface,
     architecture::arm::{
-        ArmCommunicationInterface, ArmError, ArmDebugInterface, DapAccess, FullyQualifiedApAddress,
+        ArmCommunicationInterface, ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress,
         ap::{
             AccessPortType, ApAccess, CSW, DataSize,
             memory_ap::{MemoryAp, MemoryApType},
@@ -523,22 +523,9 @@ where
         self.memory_ap.ap_address().clone()
     }
 
-    fn get_swd_sequence(
-        &mut self,
-    ) -> Result<
-        &mut dyn crate::architecture::arm::communication_interface::SwdSequence,
-        DebugProbeError,
-    > {
-        Ok(self.interface)
-    }
-
-    fn get_arm_probe_interface(
+    fn get_arm_debug_interface(
         &mut self,
     ) -> Result<&mut dyn crate::architecture::arm::ArmDebugInterface, DebugProbeError> {
-        Ok(self.interface)
-    }
-
-    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
         Ok(self.interface)
     }
 

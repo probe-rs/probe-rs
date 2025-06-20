@@ -408,7 +408,7 @@ pub(crate) fn cortex_m_wait_for_reset(
                 {
                     // On PSOC 6, a system reset resets the SWD interface as well,
                     // so we have to reinitialize.
-                    if let Ok(probe) = interface.get_arm_probe_interface() {
+                    if let Ok(probe) = interface.get_arm_debug_interface() {
                         probe.reinitialize()?;
                     }
                 }

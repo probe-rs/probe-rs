@@ -301,7 +301,7 @@ async fn try_show_info(
         probe.attach_to_unspecified()?;
     }
 
-    if probe.has_arm_interface() {
+    if probe.has_arm_debug_interface() {
         let dp_addr = if let Some(target_sel) = target_sel {
             vec![dp::DpAddress::Multidrop(target_sel)]
         } else {

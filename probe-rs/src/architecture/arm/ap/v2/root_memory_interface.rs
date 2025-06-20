@@ -3,8 +3,7 @@
 use crate::{
     MemoryInterface,
     architecture::arm::{
-        ApV2Address, ArmError, ArmDebugInterface, DapAccess, FullyQualifiedApAddress,
-        communication_interface::SwdSequence,
+        ApV2Address, ArmDebugInterface, ArmError, FullyQualifiedApAddress,
         dp::{BASEPTR0, BASEPTR1, DpAccess, DpAddress},
         memory::ArmMemoryInterface,
     },
@@ -99,15 +98,7 @@ impl<API: ArmDebugInterface> ArmMemoryInterface for RootMemoryInterface<'_, API>
         Ok(base)
     }
 
-    fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
-        Ok(self.iface)
-    }
-
-    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError> {
-        Ok(self.iface)
-    }
-
-    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+    fn get_arm_debug_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError> {
         Ok(self.iface)
     }
 
