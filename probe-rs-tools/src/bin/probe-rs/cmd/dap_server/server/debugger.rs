@@ -11,8 +11,9 @@ use crate::{
             dap::{
                 adapter::{DebugAdapter, get_arguments},
                 dap_types::{
-                    Capabilities, Event, ExitedEventBody, InitializeRequestArguments,
-                    MessageSeverity, Request, RttWindowOpenedArguments, TerminatedEventBody,
+                    Capabilities, DisconnectResponse, Event, ExitedEventBody,
+                    InitializeRequestArguments, MessageSeverity, Request, RttWindowOpenedArguments,
+                    TerminatedEventBody,
                 },
                 request_helpers::halt_core,
             },
@@ -314,9 +315,8 @@ impl Debugger {
         // before entering the iterative loop that processes requests through the process_request method.
 
         // Initialize request
-        if let Err(err) = self.handle_initialize(&mut debug_adapter) {
+        if self.handle_initialize(&mut debug_adapter).is_err() {
             // The request handler has already reported this error to the user.
-            eprint!("Failed to handle the initialize request: {}", err);
             return Ok(());
         }
 
@@ -327,16 +327,17 @@ impl Debugger {
                 if expected_commands.contains(&request.command.as_str()) {
                     self.debug_logger.flush_to_dap(&mut debug_adapter)?;
                     break request;
-                } else {
-                    // Ignore unexpected commands here
-                    // Maybe we should consider handling cancel or disconnect requests.
+                } else if request.command == "disconnect" {
+                    debug_adapter.send_response::<DisconnectResponse>(&request, Ok(None))?;
 
+                    return Ok(());
+                } else {
                     debug_adapter.log_to_console(format!(
                         "Ignoring request with command '{}', we can only handle 'launch' and 'attach' commands.", request.command
                     ));
 
                     let err = DebuggerError::Other(anyhow!(
-                        "Unable to proces request with command {} before an attach or launch request is received",
+                        "Unable to process request with command {} before an attach or launch request is received",
                         request.command
                     ));
 
@@ -359,7 +360,6 @@ impl Debugger {
         {
             Ok(session_data) => session_data,
             Err(error) => {
-                eprintln!("Failed to handle launch/attach request: {error:?}");
                 debug_adapter.send_response::<()>(&launch_attach_request, Err(&error))?;
                 return Ok(());
             }
@@ -758,8 +758,6 @@ impl Debugger {
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<(), DebuggerError> {
-        println!("Handling initialize request");
-
         let initialize_request = loop {
             if let Some(current_request) = debug_adapter.listen_for_request()? {
                 if current_request.command == "initialize" {
@@ -776,10 +774,7 @@ impl Debugger {
         };
 
         let initialize_arguments =
-            get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)
-                .inspect_err(|err| {
-                    println!("Error parsing initialize arguments: {:?}", err);
-                })?;
+            get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
 
         // Enable quirks specific to particular DAP clients...
         if let Some(client_id) = initialize_arguments.client_id {
@@ -1377,13 +1372,17 @@ mod test {
     async fn wrong_request_after_init() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
-        let expected_error = "Expected request 'launch' or 'attach', but received 'threads'";
-        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
+        let expected_error = "Unable to process request with command threads before an attach or launch request is received";
+        protocol_adapter.expect_output_event("Ignoring request with command 'threads', we can only handle 'launch' and 'attach' commands.\n");
 
         protocol_adapter
             .add_request("threads")
             .and_error_response()
             .with_body(error_response_body(expected_error));
+
+        protocol_adapter.expect_output_event("Unable to process request with command threads before an attach or launch request is received\n");
+
+        disconnect_protocol_adapter(&mut protocol_adapter);
 
         execute_test(protocol_adapter, true).await.unwrap();
     }
