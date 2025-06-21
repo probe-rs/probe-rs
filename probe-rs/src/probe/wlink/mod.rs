@@ -18,8 +18,8 @@ use crate::{
         dtm::jtag_dtm::JtagDtmBuilder,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagSequence, ProbeError,
-        ProbeFactory, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeKind, DebugProbeSelector,
+        JtagSequence, ProbeError, ProbeFactory, UsbFilters, WireProtocol,
     },
 };
 
@@ -525,11 +525,15 @@ fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
     if matches!(device.product_string(), Some("WCH-Link") | Some("WCH_Link")) {
         Some(DebugProbeInfo::new(
             "WCH-Link",
-            VENDOR_ID,
-            PRODUCT_ID,
-            device.serial_number().map(|s| s.to_string()),
+            DebugProbeKind::Usb {
+                vendor_id: VENDOR_ID,
+                product_id: PRODUCT_ID,
+                filters: UsbFilters {
+                    serial_number: device.serial_number().map(str::to_string),
+                    ..Default::default()
+                },
+            },
             &WchLinkFactory,
-            None,
         ))
     } else {
         None

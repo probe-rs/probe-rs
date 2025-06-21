@@ -1,8 +1,5 @@
-use crate::probe::DebugProbeInfo;
-use crate::probe::stlink::StLinkFactory;
-
-use super::usb_interface::USB_PID_EP_MAP;
-use super::usb_interface::USB_VID;
+use super::usb_interface::{USB_PID_EP_MAP, USB_VID};
+use crate::probe::{DebugProbeInfo, DebugProbeKind, UsbFilters, stlink::StLinkFactory};
 use std::fmt::Write;
 
 pub(super) fn is_stlink_device(device: &nusb::DeviceInfo) -> bool {
@@ -28,11 +25,15 @@ pub(super) fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                     "STLink {}",
                     &USB_PID_EP_MAP[&device.product_id()].version_name
                 ),
-                device.vendor_id(),
-                device.product_id(),
-                read_serial_number(&device),
+                DebugProbeKind::Usb {
+                    vendor_id: device.vendor_id(),
+                    product_id: device.product_id(),
+                    filters: UsbFilters {
+                        serial_number: read_serial_number(&device),
+                        ..Default::default()
+                    },
+                },
                 &StLinkFactory,
-                None,
             )
         })
         .collect()

@@ -63,3 +63,12 @@ debug = "line-tables-only"
 [profile.dev.package.zip]
 # Set the default for zip in development mode so the creation of the zip does not take forever
 opt-level = 3
+
+[patch.crates-io.postcard-schema]
+git = "https://github.com/jamesmunns/postcard"
+features = ["use-std", "derive", "core-net"]
+
+[patch.crates-io.postcard-rpc]
+git = "https://github.com/rslawson/postcard-rpc"
+features = ["use-std"]
+

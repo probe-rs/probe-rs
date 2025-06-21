@@ -893,8 +893,8 @@ mod test {
         architecture::arm::FullyQualifiedApAddress,
         integration::{FakeProbe, Operation},
         probe::{
-            DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
-            list::Lister,
+            DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeKind, DebugProbeSelector,
+            ProbeFactory, UsbFilters, list::Lister,
         },
     };
     use serde_json::json;
@@ -1275,11 +1275,15 @@ mod test {
     fn fake_probe() -> (DebugProbeInfo, FakeProbe) {
         let probe_info = DebugProbeInfo::new(
             "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
+            DebugProbeKind::Usb {
+                vendor_id: 0x12,
+                product_id: 0x23,
+                filters: UsbFilters {
+                    serial_number: Some("mock_serial".to_owned()),
+                    ..Default::default()
+                },
+            },
             &MockProbeFactory,
-            None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core_and_binary(program_binary().as_path());
