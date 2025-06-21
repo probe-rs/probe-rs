@@ -7,3 +7,4 @@
 # IDE settings
 .vscode/settings.json
 .idea/
+.zed/

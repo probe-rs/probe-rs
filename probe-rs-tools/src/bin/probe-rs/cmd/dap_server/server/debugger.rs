@@ -314,15 +314,36 @@ impl Debugger {
         // before entering the iterative loop that processes requests through the process_request method.
 
         // Initialize request
-        if self.handle_initialize(&mut debug_adapter).is_err() {
+        if let Err(err) = self.handle_initialize(&mut debug_adapter) {
             // The request handler has already reported this error to the user.
+            eprint!("Failed to handle the initialize request: {}", err);
             return Ok(());
         }
 
+        let expected_commands = ["launch", "attach"];
+
         let launch_attach_request = loop {
             if let Some(request) = debug_adapter.listen_for_request()? {
-                self.debug_logger.flush_to_dap(&mut debug_adapter)?;
-                break request;
+                if expected_commands.contains(&request.command.as_str()) {
+                    self.debug_logger.flush_to_dap(&mut debug_adapter)?;
+                    break request;
+                } else {
+                    // Ignore unexpected commands here
+                    // Maybe we should consider handling cancel or disconnect requests.
+
+                    debug_adapter.log_to_console(format!(
+                        "Ignoring request with command '{}', we can only handle 'launch' and 'attach' commands.", request.command
+                    ));
+
+                    let err = DebuggerError::Other(anyhow!(
+                        "Unable to proces request with command {} before an attach or launch request is received",
+                        request.command
+                    ));
+
+                    debug_adapter.send_response::<()>(&request, Err(&err))?;
+
+                    // Continue listening for requests
+                }
             }
         };
 
@@ -338,6 +359,7 @@ impl Debugger {
         {
             Ok(session_data) => session_data,
             Err(error) => {
+                eprintln!("Failed to handle launch/attach request: {error:?}");
                 debug_adapter.send_response::<()>(&launch_attach_request, Err(&error))?;
                 return Ok(());
             }
@@ -736,10 +758,28 @@ impl Debugger {
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<(), DebuggerError> {
-        let initialize_request = expect_request(debug_adapter, "initialize")?;
+        println!("Handling initialize request");
+
+        let initialize_request = loop {
+            if let Some(current_request) = debug_adapter.listen_for_request()? {
+                if current_request.command == "initialize" {
+                    break current_request;
+                } else {
+                    let error = DebuggerError::Other(anyhow!(
+                        "Received request with command'{}', expected to receive the initialize command",
+                        current_request.command,
+                    ));
+                    debug_adapter.send_response::<()>(&current_request, Err(&error))?;
+                    return Err(error);
+                }
+            }
+        };
 
         let initialize_arguments =
-            get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
+            get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)
+                .inspect_err(|err| {
+                    println!("Error parsing initialize arguments: {:?}", err);
+                })?;
 
         // Enable quirks specific to particular DAP clients...
         if let Some(client_id) = initialize_arguments.client_id {
@@ -800,34 +840,6 @@ impl Debugger {
         self.debug_logger.flush_to_dap(debug_adapter)?;
 
         Ok(())
-    }
-}
-
-/// Wait for the next request with the given command.
-///
-/// If the next request does *not* have the given command,
-/// the function returns an error.
-fn expect_request<P: ProtocolAdapter>(
-    debug_adapter: &mut DebugAdapter<P>,
-    expected_command: &str,
-) -> Result<Request, DebuggerError> {
-    let next_request = loop {
-        if let Some(current_request) = debug_adapter.listen_for_request()? {
-            break current_request;
-        }
-    };
-
-    if next_request.command == expected_command {
-        Ok(next_request)
-    } else {
-        let error = DebuggerError::Other(anyhow!(
-            "Initial command was '{}', expected '{}'",
-            next_request.command,
-            expected_command
-        ));
-        debug_adapter.send_response::<()>(&next_request, Err(&error))?;
-
-        Err(error)
     }
 }
 
