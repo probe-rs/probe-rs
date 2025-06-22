@@ -455,7 +455,11 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawSwdIo + JtagAccess>(
                 TransferStatus::Failed(DapError::WaitResponse) => {
                     tracing::debug!("got WAIT on transfer {}, retrying...", successful_transfers);
 
-                    clear_overrun_and_sticky_err(probe)?;
+                    // Surface this error, because it indicates there's a low-level protocol problem going on.
+                    if let Err(e) = clear_overrun_and_sticky_err(probe) {
+                        tracing::error!("error clearing sticky overrun/error bits: {e}");
+                        return Err(e);
+                    }
 
                     // Increase idle cycles of the failed write transfer and the rest of the chunk
                     for transfer in &mut chunk[..] {

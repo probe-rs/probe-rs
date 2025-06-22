@@ -9,21 +9,27 @@ use crate::{
         armv6m::{Aircr, Demcr},
         dp::{Ctrl, DpAddress, DpRegister},
         memory::ArmMemoryInterface,
-        sequences::ArmDebugSequence,
+        sequences::{ArmDebugSequence, cortex_m_wait_for_reset},
     },
 };
 
 const SIO_CPUID_OFFSET: u64 = 0xd000_0000;
 const RESCUE_DP: DpAddress = DpAddress::Multidrop(0xf100_2927);
 
+// Performing a reset causes all cores to reset their SWD connections. The reset
+// takes place on core 0, however we still need to restore the core 1 protocol
+// characteristics such as overrun detection. To do this, we need to manually
+// specify the core 1 DP address.
+const CORE_1_DP: DpAddress = DpAddress::Multidrop(0x1100_2927);
+
 /// Debug implementation for RP2040
 #[derive(Debug)]
-pub struct Rp2040;
+pub struct Rp2040 {}
 
 impl Rp2040 {
     /// Create a debug sequencer for a Raspberry Pi RP2040
     pub fn create() -> Arc<Self> {
-        Arc::new(Rp2040)
+        Arc::new(Rp2040 {})
     }
 }
 
@@ -34,6 +40,7 @@ impl ArmDebugSequence for Rp2040 {
         core_type: crate::CoreType,
         debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
+        tracing::trace!("Starting reset of RP2040");
         // Only perform a system reset from core 0
         let core_id = core.read_word_32(SIO_CPUID_OFFSET)?;
         if core_id != 0 {
@@ -56,13 +63,28 @@ impl ArmDebugSequence for Rp2040 {
         let ap = core.fully_qualified_address();
         let arm_interface = core.get_arm_debug_interface()?;
 
+        // Take note of the existing values for CTRL. We will need to restore these after entering
+        // rescue mode.
+        let existing_core_0 = arm_interface.read_raw_dp_register(ap.dp(), Ctrl::ADDRESS)?;
+        let existing_core_1 = arm_interface.read_raw_dp_register(CORE_1_DP, Ctrl::ADDRESS)?;
+
+        // Perform the reset by poking the rescue DP
         arm_interface.write_raw_dp_register(RESCUE_DP, Ctrl::ADDRESS, 0)?;
+        tracing::trace!(
+            "Existing values core0: {existing_core_0:08x}  core1: {existing_core_1:08x}"
+        );
 
         // Start the debug core back up which brings it out of Rescue Mode
         self.debug_core_start(arm_interface, &ap, core_type, debug_base, None)?;
 
+        // Restore the ctrl values
+        tracing::trace!("Restoring ctrl values");
+        arm_interface.write_raw_dp_register(ap.dp(), Ctrl::ADDRESS, existing_core_0)?;
+        arm_interface.write_raw_dp_register(CORE_1_DP, Ctrl::ADDRESS, existing_core_1)?;
+
         // If we were set to catch the reset before, set it up again
         if should_catch_reset {
+            tracing::trace!("Re-setting reset catch");
             self.reset_catch_set(core, core_type, debug_base)?
         }
 
@@ -72,6 +94,10 @@ impl ArmDebugSequence for Rp2040 {
         aircr.set_sysresetreq(true);
         core.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
 
+        // Wait for the core to finish resetting
+        cortex_m_wait_for_reset(core)?;
+
+        tracing::trace!("Finished RP2040 reset sequence");
         Ok(())
     }
 }

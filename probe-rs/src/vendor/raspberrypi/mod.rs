@@ -5,7 +5,7 @@ use sequences::rp2040::Rp2040;
 
 pub mod sequences;
 
-/// NXP
+/// Raspberry Pi
 #[derive(docsplay::Display)]
 pub struct RaspberyPi;
 
