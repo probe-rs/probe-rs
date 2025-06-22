@@ -70,7 +70,7 @@ impl<T> Key<T> {
         }
     }
 
-    #[cfg_attr(not(feature = "remote"), expect(unused))]
+    #[cfg(feature = "remote")]
     pub unsafe fn cast<U>(&self) -> Key<U> {
         Key {
             key: self.key,
