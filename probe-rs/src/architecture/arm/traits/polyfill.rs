@@ -1153,7 +1153,7 @@ fn send_sequence<P: RawSwdIo + JtagAccess>(
                 }
 
                 probe.shift_raw_sequence(JtagSequence {
-                    tms: first.into(),
+                    tms: first.into_output().unwrap(),
                     data: bitvec![0; count],
                     tdo_capture: false,
                 })?;

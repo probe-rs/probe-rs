@@ -1119,20 +1119,11 @@ pub(crate) enum IoSequenceItem {
     Input,
 }
 
-impl From<IoSequenceItem> for bool {
-    fn from(item: IoSequenceItem) -> Self {
-        match item {
-            IoSequenceItem::Output(b) => b,
-            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
-        }
-    }
-}
-
-impl From<IoSequenceItem> for u8 {
-    fn from(value: IoSequenceItem) -> Self {
-        match value {
-            IoSequenceItem::Output(b) => b as u8,
-            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
+impl IoSequenceItem {
+    pub fn into_output(&self) -> Option<bool> {
+        match self {
+            IoSequenceItem::Output(b) => Some(*b),
+            IoSequenceItem::Input => None,
         }
     }
 }
