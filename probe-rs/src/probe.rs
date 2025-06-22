@@ -3,6 +3,7 @@ pub(crate) mod common;
 pub(crate) mod usb_util;
 
 pub mod blackmagic;
+pub mod ch347usbjtag;
 pub mod cmsisdap;
 pub mod espusbjtag;
 pub mod fake_probe;
