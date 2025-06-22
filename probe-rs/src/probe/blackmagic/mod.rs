@@ -10,7 +10,7 @@ use std::{
 use crate::{
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmError, ArmProbeInterface,
+            ArmCommunicationInterface, ArmDebugInterface, ArmError,
             communication_interface::DapProbe, sequences::ArmDebugSequence,
         },
         riscv::{
@@ -1143,10 +1143,10 @@ impl DebugProbe for BlackMagicProbe {
     }
 
     /// Turn this probe into an ARM probe
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         mut self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let has_adiv5 = match self.remote_protocol {
             ProtocolVersion::V0 => false,
             ProtocolVersion::V0P

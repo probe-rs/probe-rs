@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 
 use crate::architecture::arm::{
-    ApAddress, ApV2Address, ArmCommunicationInterface, ArmError, ArmProbeInterface,
+    ApAddress, ApV2Address, ArmCommunicationInterface, ArmDebugInterface, ArmError,
     FullyQualifiedApAddress,
     dp::DpAddress,
     memory::{
@@ -16,8 +16,8 @@ mod root_memory_interface;
 use root_memory_interface::RootMemoryInterface;
 
 /// Deeply scans the debug port and returns a list of the addresses the memory access points discovered.
-pub fn enumerate_access_ports<API: ArmProbeInterface>(
-    probe: &mut API,
+pub fn enumerate_access_ports<ADI: ArmDebugInterface>(
+    probe: &mut ADI,
     dp: DpAddress,
 ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
     let mut root_interface = RootMemoryInterface::new(probe, dp)?;
@@ -36,8 +36,8 @@ pub fn enumerate_access_ports<API: ArmProbeInterface>(
         .collect())
 }
 
-fn process_root_component<API: ArmProbeInterface>(
-    iface: &mut RootMemoryInterface<API>,
+fn process_root_component<ADI: ArmDebugInterface>(
+    iface: &mut RootMemoryInterface<ADI>,
     component: &Component,
 ) -> Result<BTreeSet<ApV2Address>, ArmError> {
     let mut result = BTreeSet::new();

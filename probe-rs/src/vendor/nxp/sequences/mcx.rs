@@ -13,7 +13,7 @@ use probe_rs_target::CoreType;
 use crate::{
     MemoryMappedRegister,
     architecture::arm::{
-        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, Pins,
+        ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress, Pins,
         ap::ApRegister,
         dp::{DpAccess, DpAddress, DpRegister},
         memory::ArmMemoryInterface,
@@ -92,7 +92,7 @@ impl MCX {
         v.into_iter().any(|s| self.variant.starts_with(s))
     }
 
-    fn is_ap_enable(
+    fn is_ap_enabled(
         &self,
         interface: &mut dyn DapAccess,
         mem_ap: &FullyQualifiedApAddress,
@@ -178,10 +178,11 @@ impl MCX {
         let ap = interface.fully_qualified_address();
         let dp = ap.dp();
         let start = Instant::now();
-        while self.is_ap_enable(interface.get_dap_access()?, &ap)?
+
+        while self.is_ap_enabled(interface.get_arm_debug_interface()?, &ap)?
             && start.elapsed() < Duration::from_millis(300)
         {}
-        self.enable_debug_mailbox(interface.get_dap_access()?, dp)?;
+        self.enable_debug_mailbox(interface.get_arm_debug_interface()?, dp)?;
 
         // Halt the core in case it didn't stop at a breakpoint
         let mut dhcsr = Dhcsr(0);
@@ -295,7 +296,7 @@ impl ArmDebugSequence for MCX {
             }
 
             let ap = FullyQualifiedApAddress::v1_with_dp(dp, 0);
-            if !self.is_ap_enable(interface, &ap)? {
+            if !self.is_ap_enabled(interface, &ap)? {
                 self.enable_debug_mailbox(interface, dp)?;
             }
         }
@@ -410,7 +411,7 @@ impl ArmDebugSequence for MCX {
 
     fn reset_hardware_deassert(
         &self,
-        probe: &mut dyn ArmProbeInterface,
+        probe: &mut dyn ArmDebugInterface,
         _default_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
         tracing::info!("reset hardware deassert");

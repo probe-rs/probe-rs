@@ -2,7 +2,7 @@
 
 use crate::architecture::arm::{
     ArmError, FullyQualifiedApAddress, ap::AccessPortError,
-    communication_interface::ArmProbeInterface, memory::ArmMemoryInterface,
+    communication_interface::ArmDebugInterface, memory::ArmMemoryInterface,
 };
 
 /// The ARCHID associated with all CoreSight ROM tables.
@@ -529,7 +529,7 @@ impl CoresightComponent {
     /// Reads a register of the component pointed to by this romtable entry.
     pub fn read_reg(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         offset: u32,
     ) -> Result<u32, ArmError> {
         let mut memory = interface.memory_interface(&self.ap_address)?;
@@ -540,7 +540,7 @@ impl CoresightComponent {
     /// Writes a register of the component pointed to by this romtable entry.
     pub fn write_reg(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         offset: u32,
         value: u32,
     ) -> Result<(), ArmError> {

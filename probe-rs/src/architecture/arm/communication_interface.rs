@@ -42,8 +42,8 @@ pub enum DapError {
     IncorrectParity,
 }
 
-/// To be implemented by debug probe drivers that support debugging ARM cores.
-pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
+/// To be implemented by debug probe drivers that support the ARM debug interface.
+pub trait ArmDebugInterface: DapAccess + SwdSequence + SwoAccess + Send {
     /// Reinitialize the communication interface (in place).
     ///
     /// Some chip-specific reset sequences may disable the debug port. `reinitialize` allows
@@ -90,7 +90,7 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
 
 /// Read chip information from the ROM tables
 pub fn read_chip_info_from_rom_table(
-    probe: &mut dyn ArmProbeInterface,
+    probe: &mut dyn ArmDebugInterface,
     dp: DpAddress,
 ) -> Result<Option<ArmChipInfo>, ArmError> {
     for ap in probe.access_ports(dp)? {
@@ -237,7 +237,7 @@ impl ArmCommunicationInterface {
 /// struct itself.
 pub trait DapProbe: RawDapAccess + DebugProbe {}
 
-impl ArmProbeInterface for ArmCommunicationInterface {
+impl ArmDebugInterface for ArmCommunicationInterface {
     fn reinitialize(&mut self) -> Result<(), ArmError> {
         let current_dp = self.current_dp;
 
@@ -318,7 +318,7 @@ impl ArmCommunicationInterface {
         probe: Box<dyn DapProbe>,
         sequence: Arc<dyn ArmDebugSequence>,
         use_overrun_detect: bool,
-    ) -> Box<dyn ArmProbeInterface> {
+    ) -> Box<dyn ArmDebugInterface> {
         let interface = ArmCommunicationInterface {
             probe: Some(probe),
             current_dp: None,
@@ -492,12 +492,6 @@ impl ArmCommunicationInterface {
     }
 }
 
-impl FlushableArmAccess for ArmCommunicationInterface {
-    fn flush(&mut self) -> Result<(), ArmError> {
-        self.probe_mut().raw_flush()
-    }
-}
-
 impl SwoAccess for ArmCommunicationInterface {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         match self.probe_mut().get_swo_interface_mut() {
@@ -638,10 +632,4 @@ impl std::fmt::Display for ArmChipInfo {
         };
         write!(f, "{} 0x{:04x}", manu, self.part)
     }
-}
-
-/// A helper trait to get more specific interfaces.
-pub trait FlushableArmAccess {
-    /// Flush all remaining commands if the target driver implements batching.
-    fn flush(&mut self) -> Result<(), ArmError>;
 }

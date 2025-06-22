@@ -9,7 +9,7 @@ use probe_rs_target::CoreType;
 use crate::{
     Error,
     architecture::arm::{
-        ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+        ArmDebugInterface, ArmError, FullyQualifiedApAddress,
         armv8m::Aircr,
         core::armv8m::Dhcsr,
         memory::ArmMemoryInterface,
@@ -32,7 +32,7 @@ impl OL23D0 {
 impl ArmDebugSequence for OL23D0 {
     fn debug_core_start(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         core_ap: &FullyQualifiedApAddress,
         _core_type: CoreType,
         _debug_base: Option<u64>,

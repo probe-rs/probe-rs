@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use super::nrf::Nrf;
 use crate::architecture::arm::{
-    ArmError, ArmProbeInterface, FullyQualifiedApAddress, dp::DpAddress,
+    ArmDebugInterface, ArmError, FullyQualifiedApAddress, dp::DpAddress,
     sequences::ArmDebugSequence,
 };
 
@@ -39,7 +39,7 @@ impl Nrf for Nrf9160 {
 
     fn is_core_unlocked(
         &self,
-        arm_interface: &mut dyn ArmProbeInterface,
+        arm_interface: &mut dyn ArmDebugInterface,
         _ahb_ap_address: &FullyQualifiedApAddress,
         ctrl_ap_address: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {

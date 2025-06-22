@@ -381,7 +381,7 @@ impl<'probe> Armv7a<'probe> {
         let address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
         let ap = self.memory.fully_qualified_address();
         let is_64_bit = self.is_64_bit();
-        let interface = self.memory.get_dap_access()?;
+        let interface = self.memory.get_arm_debug_interface()?;
 
         if is_64_bit {
             interface.write_raw_ap_register(&ap, TAR2::ADDRESS, (address >> 32) as u32)?;
@@ -1682,25 +1682,11 @@ mod test {
             todo!()
         }
 
-        fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
-            Err(DebugProbeError::NotImplemented {
-                function_name: "get_swd_sequence",
-            })
-        }
-
-        fn get_arm_probe_interface(
+        fn get_arm_debug_interface(
             &mut self,
-        ) -> Result<&mut dyn crate::architecture::arm::ArmProbeInterface, DebugProbeError> {
+        ) -> Result<&mut dyn crate::architecture::arm::ArmDebugInterface, DebugProbeError> {
             Err(DebugProbeError::NotImplemented {
-                function_name: "get_arm_probe_interface",
-            })
-        }
-
-        fn get_dap_access(
-            &mut self,
-        ) -> Result<&mut dyn crate::architecture::arm::DapAccess, DebugProbeError> {
-            Err(DebugProbeError::NotImplemented {
-                function_name: "get_dap_access",
+                function_name: "get_arm_debug_interface",
             })
         }
 

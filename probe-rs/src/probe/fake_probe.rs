@@ -2,7 +2,7 @@
 use crate::{
     MemoryInterface, MemoryMappedRegister,
     architecture::arm::{
-        ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress, RawDapAccess,
+        ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress, RawDapAccess,
         RegisterAddress, SwoAccess,
         ap::memory_ap::mock::MockMemoryAp,
         armv8m::Dhcsr,
@@ -272,15 +272,7 @@ impl ArmMemoryInterface for &mut MockCore {
         todo!()
     }
 
-    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
-        todo!()
-    }
-
-    fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
-        todo!()
-    }
-
-    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+    fn get_arm_debug_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError> {
         todo!()
     }
 
@@ -529,10 +521,10 @@ impl DebugProbe for FakeProbe {
         self
     }
 
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Ok(Box::new(FakeArmInterface::new(self, sequence)))
     }
 
@@ -616,13 +608,7 @@ impl SwdSequence for FakeArmInterface {
     }
 }
 
-impl crate::architecture::arm::communication_interface::FlushableArmAccess for FakeArmInterface {
-    fn flush(&mut self) -> Result<(), ArmError> {
-        todo!()
-    }
-}
-
-impl ArmProbeInterface for FakeArmInterface {
+impl ArmDebugInterface for FakeArmInterface {
     fn memory_interface(
         &mut self,
         access_port_address: &FullyQualifiedApAddress,

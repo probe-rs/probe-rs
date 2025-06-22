@@ -187,11 +187,11 @@ impl DebugProbe for Ch347UsbJtag {
         true
     }
 
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         sequence: std::sync::Arc<dyn crate::architecture::arm::sequences::ArmDebugSequence>,
     ) -> Result<
-        Box<dyn crate::architecture::arm::ArmProbeInterface + 'probe>,
+        Box<dyn crate::architecture::arm::ArmDebugInterface + 'probe>,
         (Box<dyn DebugProbe>, crate::architecture::arm::ArmError),
     > {
         Ok(ArmCommunicationInterface::create(self, sequence, true))

@@ -79,7 +79,7 @@ impl ArmDebugSequence for CC13xxCC26xx {
 
         // Re-initializing the core(s) is on us.
         let ap = probe.fully_qualified_address();
-        let interface = probe.get_arm_probe_interface()?;
+        let interface = probe.get_arm_debug_interface()?;
         interface.reinitialize()?;
 
         assert!(debug_base.is_none());
