@@ -26,7 +26,7 @@ pub enum ChipType {
 }
 
 #[repr(C)]
-#[allow(unused)]
+#[expect(unused)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum BitMode {
     Reset = 0,
@@ -41,7 +41,7 @@ pub enum BitMode {
 }
 
 #[repr(C)]
-#[allow(unused)]
+#[expect(unused)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Interface {
     A = 1,

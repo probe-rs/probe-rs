@@ -347,7 +347,7 @@ impl SessionData {
                         suggest_delay_required = false;
                     }
                 } else {
-                    #[allow(clippy::unwrap_used)]
+                    #[expect(clippy::unwrap_used)]
                     if let Err(error) = target_core.attach_to_rtt(
                         debug_adapter,
                         core_config.program_binary.as_ref().unwrap(),

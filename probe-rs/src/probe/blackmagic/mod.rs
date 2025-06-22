@@ -79,7 +79,7 @@ impl core::fmt::Display for ProtocolVersion {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Debug)]
 enum RemoteCommand<'a> {
     Handshake(&'a mut [u8]),
@@ -281,7 +281,7 @@ impl RemoteCommand<'_> {
 
 // Implement `ToString` instead of `Display` as this is for generating
 // strings to send over the network, and is not meant for human consumption.
-#[allow(clippy::to_string_trait_impl)]
+#[expect(clippy::to_string_trait_impl)]
 impl std::string::ToString for RemoteCommand<'_> {
     fn to_string(&self) -> String {
         match self {

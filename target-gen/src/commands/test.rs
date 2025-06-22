@@ -19,7 +19,7 @@ use xshell::{Shell, cmd};
 
 use crate::commands::elf::cmd_elf;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub fn cmd_test(
     target_artifact: &Path,
     template_path: &Path,

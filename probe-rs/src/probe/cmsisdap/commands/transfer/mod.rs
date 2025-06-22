@@ -13,7 +13,7 @@ pub enum RW {
 }
 
 /// Contains information about requested access from host debugger.
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[derive(Clone, Debug)]
 struct InnerTransferRequest {
     /// 0 = Debug PortType (DP), 1 = Access PortType (AP).
@@ -80,7 +80,6 @@ impl InnerTransferRequest {
     }
 }
 /// Response to an InnerTransferRequest.
-#[allow(non_snake_case)]
 #[derive(Clone, Debug)]
 pub struct InnerTransferResponse {
     /// Test Domain Timestamp. Will be `Some` if `td_timestamp_request` was set on the request.
@@ -245,7 +244,7 @@ pub enum Ack {
     Ok = 1,
     Wait = 2,
     Fault = 4,
-    #[allow(clippy::enum_variant_names)]
+    #[expect(clippy::enum_variant_names)]
     NoAck = 7,
 }
 

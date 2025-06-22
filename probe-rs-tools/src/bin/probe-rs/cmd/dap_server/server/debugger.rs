@@ -869,8 +869,8 @@ pub(crate) fn is_file_newer(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)]
 mod test {
-    #![allow(clippy::unwrap_used, clippy::panic)]
 
     use crate::cmd::dap_server::{
         DebuggerError,

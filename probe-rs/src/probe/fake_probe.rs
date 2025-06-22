@@ -1,4 +1,4 @@
-#![allow(missing_docs)] // Don't require docs for test code
+#![expect(missing_docs)] // Don't require docs for test code
 use crate::{
     MemoryInterface, MemoryMappedRegister,
     architecture::arm::{
@@ -28,7 +28,7 @@ use std::{
 };
 
 /// This is a mock probe which can be used for mocking things in tests or for dry runs.
-#[allow(clippy::type_complexity)]
+#[expect(clippy::type_complexity)]
 pub struct FakeProbe {
     protocol: WireProtocol,
     speed: u32,
