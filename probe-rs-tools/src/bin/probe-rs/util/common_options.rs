@@ -455,7 +455,6 @@ pub enum OperationError {
     NoProbesFound,
 
     #[error("Failed to open the ELF file '{path}' for flashing.")]
-    #[allow(dead_code)]
     FailedToOpenElf {
         #[source]
         source: std::io::Error,
@@ -463,7 +462,6 @@ pub enum OperationError {
     },
 
     #[error("Failed to load the ELF data.")]
-    #[allow(dead_code)]
     FailedToLoadElfData(#[source] FileDownloadError),
 
     #[error("Failed to open the debug probe.")]

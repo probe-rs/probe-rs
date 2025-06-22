@@ -329,7 +329,6 @@ impl SifliUartMemoryInterface<'_> {
     }
 }
 
-#[allow(unused)]
 impl MemoryInterface<ArmError> for SifliUartMemoryInterface<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         true

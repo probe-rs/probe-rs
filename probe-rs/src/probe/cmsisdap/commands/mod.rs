@@ -360,7 +360,7 @@ impl Status {
 /// The command ID is always sent as the first byte for every command,
 /// and also is the first byte of every response.
 #[derive(Debug, Clone, Copy)]
-#[allow(unused)]
+#[expect(unused)]
 pub enum CommandId {
     Info = 0x00,
     HostStatus = 0x01,

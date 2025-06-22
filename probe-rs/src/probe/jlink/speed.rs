@@ -23,7 +23,7 @@ impl SpeedInfo {
     }
 
     /// Returns a `SpeedConfig` that configures the fastest supported speed.
-    #[allow(unused)]
+    #[expect(unused)]
     pub(crate) fn max_speed_config(&self) -> SpeedConfig {
         let khz = cmp::min(self.max_speed_hz() / 1000, 0xFFFE);
         // khz is guaranteed to be in the range 1..=0xFFFE, so let's skip the constructor

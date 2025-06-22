@@ -467,7 +467,7 @@ impl DebugInfo {
 
         // Handle last function, which contains no further inlined functions
         // `unwrap`: Checked at beginning of loop, functions must contain at least one value
-        #[allow(clippy::unwrap_used)]
+        #[expect(clippy::unwrap_used)]
         let last_function = functions.last().unwrap();
 
         let function_name = last_function

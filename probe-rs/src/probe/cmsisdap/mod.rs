@@ -713,7 +713,7 @@ impl CmsisDap {
     }
 
     /// Fetch current SWO trace status.
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn get_swo_status(&mut self) -> Result<swo::StatusResponse, DebugProbeError> {
         Ok(commands::send_command(
             &mut self.device,
@@ -726,7 +726,7 @@ impl CmsisDap {
     /// request.request_status: request trace status
     /// request.request_count: request remaining bytes in trace buffer
     /// request.request_index: request sequence number and timestamp of next trace sequence
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn get_swo_extended_status(
         &mut self,
         request: swo::ExtendedStatusRequest,

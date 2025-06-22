@@ -29,7 +29,6 @@ pub struct FlashProperties {
 }
 
 impl Default for FlashProperties {
-    #[allow(clippy::reversed_empty_ranges)]
     fn default() -> Self {
         FlashProperties {
             address_range: 0..0,

@@ -39,7 +39,7 @@ impl Artifact {
     }
 
     /// If `true`, then the artifact was unchanged during compilation.
-    #[allow(unused)]
+    #[expect(unused)]
     pub fn fresh(&self) -> bool {
         self.fresh
     }

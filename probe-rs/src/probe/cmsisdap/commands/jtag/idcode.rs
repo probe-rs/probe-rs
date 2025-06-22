@@ -6,7 +6,7 @@ pub struct IdCodeRequest {
 }
 
 impl IdCodeRequest {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(crate) fn new(index: u8) -> IdCodeRequest {
         IdCodeRequest { index }
     }
@@ -41,8 +41,8 @@ impl Request for IdCodeRequest {
 
 #[derive(Clone, Copy, Debug)]
 pub struct IDCODEResponse {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(crate) status: Status,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(crate) idcode: u32,
 }

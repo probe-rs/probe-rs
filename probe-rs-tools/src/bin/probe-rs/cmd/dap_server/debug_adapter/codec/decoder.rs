@@ -108,8 +108,8 @@ pub(crate) fn get_content_len(header: &str) -> Option<usize> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
     use std::io::ErrorKind;
 
     use pretty_assertions::assert_eq;

@@ -299,7 +299,7 @@ impl Drop for JLink {
 }
 
 #[repr(u8)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 enum Command {
     Version = 0x01,
     Register = 0x09,

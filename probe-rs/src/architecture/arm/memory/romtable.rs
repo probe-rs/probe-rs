@@ -289,7 +289,6 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
     ///
     /// This function does a direct memory access and is meant for internal use only.
     fn component_class(&mut self) -> Result<RawComponent, RomTableError> {
-        #![allow(clippy::verbose_bit_mask)]
         let mut cidr = [0u32; 4];
 
         self.memory
@@ -640,7 +639,7 @@ enum ComponentModification {
 /// Peripheral ID information for a CoreSight component.
 ///
 /// Described in section D1.2.2 of the ADIv5.2 spec.
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct PeripheralID {
     /// Indicates minor errata fixes by the component `designer`.

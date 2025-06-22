@@ -69,7 +69,6 @@ pub struct SessionConfig {
     pub protocol: Option<WireProtocol>,
 }
 
-#[allow(clippy::large_enum_variant)]
 enum JtagInterface {
     Riscv(RiscvDebugInterfaceState),
     Xtensa(XtensaDebugInterfaceState),

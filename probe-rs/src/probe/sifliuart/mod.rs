@@ -23,7 +23,6 @@ const DEFUALT_RECV_TIMEOUT: Duration = Duration::from_secs(3);
 
 const DEFUALT_UART_BAUD: u32 = 1000000;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum SifliUartCommand<'a> {
     Enter,
@@ -81,7 +80,6 @@ impl fmt::Display for SifliUartResponse {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, thiserror::Error)]
 enum CommandError {
     ParameterError(std::io::Error),
@@ -292,7 +290,6 @@ impl SifliUart {
     }
 }
 
-#[allow(unused)]
 impl DebugProbe for SifliUart {
     fn get_name(&self) -> &str {
         "Sifli UART Debug Probe"

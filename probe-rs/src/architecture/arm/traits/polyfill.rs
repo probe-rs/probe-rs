@@ -1228,7 +1228,7 @@ mod test {
 
     use bitvec::prelude::*;
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     enum DapAcknowledge {
         Ok,
         Wait,

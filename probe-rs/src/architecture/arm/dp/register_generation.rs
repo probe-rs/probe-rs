@@ -13,7 +13,7 @@ macro_rules! define_dp_register {
     )
     => {
         $(#[$outer])*
-        #[allow(non_snake_case)]
+        #[expect(non_snake_case)]
         #[derive(Debug, Default, Clone, Copy)]
         pub struct $name {
             $(pub $field: $type,)*
