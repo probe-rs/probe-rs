@@ -915,10 +915,6 @@ impl BlackMagicProbe {
     }
 
     /// Perform a single SWDIO command
-    ///
-    /// The caller needs to ensure that the given iterators are not longer than the maximum transfer size
-    /// allowed. It seems that the maximum transfer size is determined by [`self.max_mem_block_size`].
-    #[allow(clippy::unnecessary_fallible_conversions)] //  IoSequenceItem conversion may panic
     fn perform_swdio_transfer<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
