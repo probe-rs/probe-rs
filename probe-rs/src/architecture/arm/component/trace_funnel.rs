@@ -4,7 +4,7 @@
 //! This module provides access and control of the trace funnel CoreSight component block.
 use super::DebugComponentInterface;
 use crate::architecture::arm::memory::romtable::CoresightComponent;
-use crate::architecture::arm::{ArmError, ArmDebugInterface};
+use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::memory_mapped_bitfield_register;
 
 const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;

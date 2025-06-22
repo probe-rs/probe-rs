@@ -7,7 +7,7 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    ArmError, ArmDebugInterface, FullyQualifiedApAddress, memory::ArmMemoryInterface,
+    ArmDebugInterface, ArmError, FullyQualifiedApAddress, memory::ArmMemoryInterface,
     sequences::ArmDebugSequence,
 };
 

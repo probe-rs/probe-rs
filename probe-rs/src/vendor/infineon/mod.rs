@@ -5,7 +5,7 @@ use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
     architecture::arm::{
-        ArmChipInfo, ArmError, ArmDebugInterface, FullyQualifiedApAddress,
+        ArmChipInfo, ArmDebugInterface, ArmError, FullyQualifiedApAddress,
         dp::{DpRegister, TARGETID},
         memory::ArmMemoryInterface,
     },

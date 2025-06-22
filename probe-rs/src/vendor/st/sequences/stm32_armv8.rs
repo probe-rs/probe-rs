@@ -9,7 +9,7 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    ArmError, ArmDebugInterface, FullyQualifiedApAddress,
+    ArmDebugInterface, ArmError, FullyQualifiedApAddress,
     component::TraceSink,
     memory::{ArmMemoryInterface, CoresightComponent},
     sequences::ArmDebugSequence,

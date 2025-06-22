@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use crate::architecture::arm::{
-    ArmError, ArmDebugInterface, FullyQualifiedApAddress,
+    ArmDebugInterface, ArmError, FullyQualifiedApAddress,
     component::TraceSink,
     memory::CoresightComponent,
     sequences::{ArmDebugSequence, ArmDebugSequenceError},

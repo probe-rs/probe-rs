@@ -2,7 +2,7 @@
 
 use crate::{
     architecture::arm::{
-        ArmError, ArmDebugInterface, FullyQualifiedApAddress,
+        ArmDebugInterface, ArmError, FullyQualifiedApAddress,
         dp::DpAddress,
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},

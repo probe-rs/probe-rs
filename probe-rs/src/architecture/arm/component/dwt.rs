@@ -8,7 +8,7 @@
 
 use super::super::memory::romtable::CoresightComponent;
 use super::DebugComponentInterface;
-use crate::architecture::arm::{ArmError, ArmDebugInterface};
+use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::{Error, memory_mapped_bitfield_register};
 
 /// A struct representing a DWT unit on target.

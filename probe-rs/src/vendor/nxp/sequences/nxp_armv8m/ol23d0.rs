@@ -9,7 +9,7 @@ use probe_rs_target::CoreType;
 use crate::{
     Error,
     architecture::arm::{
-        ArmError, ArmDebugInterface, FullyQualifiedApAddress,
+        ArmDebugInterface, ArmError, FullyQualifiedApAddress,
         armv8m::Aircr,
         core::armv8m::Dhcsr,
         memory::ArmMemoryInterface,
