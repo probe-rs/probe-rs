@@ -504,10 +504,12 @@ impl<D: StLinkUsb> StLink<D> {
         // Make sure everything is okay with the firmware we use.
         if self.jtag_version == 0 {
             Err(StlinkError::JTAGNotSupportedOnProbe)
-        } else if (self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION)
-            || (self.hw_version == 3 && self.jtag_version < Self::MIN_JTAG_VERSION_V3)
-        {
-            Err(StlinkError::ProbeFirmwareOutdated)
+        } else if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION {
+            Err(StlinkError::ProbeFirmwareOutdated(Self::MIN_JTAG_VERSION))
+        } else if self.hw_version == 3 && self.jtag_version < Self::MIN_JTAG_VERSION_V3 {
+            Err(StlinkError::ProbeFirmwareOutdated(
+                Self::MIN_JTAG_VERSION_V3,
+            ))
         } else {
             Ok((self.hw_version, self.jtag_version))
         }
@@ -654,7 +656,9 @@ impl<D: StLinkUsb> StLink<D> {
         // Older versions of the ST-Link software don't support this.
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             if ap != 0 {
-                return Err(StlinkError::ProbeFirmwareOutdated.into());
+                return Err(
+                    StlinkError::ProbeFirmwareOutdated(Self::MIN_JTAG_VERSION_MULTI_AP).into(),
+                );
             }
         } else if !self.opened_aps.contains(&ap) {
             tracing::debug!("Opening AP {}", ap);
@@ -1237,9 +1241,9 @@ pub enum StlinkError {
     /// Attempted unaligned access.
     UnalignedAddress,
 
-    /// The firmware on the probe is outdated, and not supported by probe-rs.
+    /// The firmware on the probe is outdated, and not supported by probe-rs. The minimum supported firmware version is {0}.
     /// Use the ST-Link updater utility to update your probe firmware.
-    ProbeFirmwareOutdated,
+    ProbeFirmwareOutdated(u8),
 
     /// USB error.
     Usb(#[from] std::io::Error),
@@ -1927,7 +1931,7 @@ mod test {
         let init_result = probe.init();
 
         match init_result.unwrap_err() {
-            StlinkError::ProbeFirmwareOutdated => (),
+            StlinkError::ProbeFirmwareOutdated(_) => (),
             other => panic!("Expected firmware outdated error, got {other}"),
         }
     }
