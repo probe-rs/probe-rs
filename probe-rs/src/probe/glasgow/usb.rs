@@ -21,7 +21,10 @@ pub struct GlasgowUsbDevice {
 
 impl GlasgowUsbDevice {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        let Some(serial) = selector.serial_number.clone() else {
+        if selector.vendor_id != 0x20b7 && selector.product_id != 0x9db1 {
+            Err(ProbeCreationError::NotFound)?
+        }
+        let Some(serial) = selector.serial_number.as_ref() else {
             Err(ProbeCreationError::NotFound)?
         };
         let parts = serial.split(":").collect::<Vec<_>>();
