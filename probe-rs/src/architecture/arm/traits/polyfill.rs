@@ -456,7 +456,7 @@ fn perform_raw_transfers_retry<P: DebugProbe + RawSwdIo + JtagAccess>(
                     tracing::debug!("got WAIT on transfer {}, retrying...", successful_transfers);
 
                     // Surface this error, because it indicates there's a low-level protocol problem going on.
-                    clear_overrun_and_sticky_err(probe).inspect(|e| {
+                    clear_overrun_and_sticky_err(probe).inspect_err(|e| {
                         tracing::error!("error clearing sticky overrun/error bits: {e}");
                     })?;
 
