@@ -822,6 +822,18 @@ impl FlashLoader {
         target: &'a Target,
         core_name: &String,
     ) -> Result<&'a RawFlashAlgorithm, FlashError> {
+        let available = &target.flash_algorithms;
+        tracing::trace!("Available algorithms:");
+        for algorithm in available {
+            tracing::trace!(
+                "Algorithm: {} for {:?} @ 0x{:08x} - 0x{:08x}  default? {}",
+                algorithm.name,
+                algorithm.cores,
+                algorithm.flash_properties.address_range.start,
+                algorithm.flash_properties.address_range.end,
+                algorithm.default
+            );
+        }
         let algorithms = target
             .flash_algorithms
             .iter()

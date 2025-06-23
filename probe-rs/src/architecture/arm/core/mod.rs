@@ -77,7 +77,7 @@ impl Dfsr {
 
     /// This only returns the correct halt_reason for armv(x)-m variants. The armv(x)-a variants have their own implementation.
     // TODO: The different implementations between -m and -a can do with cleanup/refactoring.
-    fn halt_reason(&self) -> HaltReason {
+    pub(crate) fn halt_reason(&self) -> HaltReason {
         if self.0 == 0 {
             // No bit is set
             HaltReason::Unknown
