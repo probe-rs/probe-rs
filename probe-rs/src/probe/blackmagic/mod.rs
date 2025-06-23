@@ -695,7 +695,6 @@ impl BlackMagicProbe {
             swd_direction: SwdDirection::Output,
         };
 
-        probe.command(RemoteCommand::SetPower(false)).ok();
         probe.command(RemoteCommand::SetNrst(false)).ok();
         probe.command(RemoteCommand::GetVoltage).ok();
         probe.command(RemoteCommand::SetSpeedHz(400_0000)).ok();
