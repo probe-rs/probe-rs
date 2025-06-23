@@ -70,7 +70,7 @@ impl ArmDebugSequence for Rp2040 {
         // Only perform a system reset from core 0
         let core_id = core.read_word_32(SIO_CPUID_OFFSET)?;
         if core_id != 0 {
-            tracing::debug!("Skipping reset of core {core_id}");
+            tracing::error!("Skipping reset of core {core_id}");
             return Ok(());
         }
 
