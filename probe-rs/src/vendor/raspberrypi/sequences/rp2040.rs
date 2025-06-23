@@ -22,6 +22,12 @@ const RESCUE_DP: DpAddress = DpAddress::Multidrop(0xf100_2927);
 // specify the core 1 DP address.
 const CORE_1_DP: DpAddress = DpAddress::Multidrop(0x1100_2927);
 
+/// An empty struct that implements the default [ArmDebugSequence] methods
+/// to allow us to call default implementations from our derived function.
+#[derive(Debug)]
+struct DefaultArmDebugSequence;
+impl ArmDebugSequence for DefaultArmDebugSequence {}
+
 /// Debug implementation for RP2040
 #[derive(Debug)]
 pub struct Rp2040 {}
@@ -34,6 +40,26 @@ impl Rp2040 {
 }
 
 impl ArmDebugSequence for Rp2040 {
+    fn debug_port_setup(
+        &self,
+        interface: &mut dyn crate::architecture::arm::communication_interface::DapProbe,
+        dp: DpAddress,
+    ) -> Result<(), ArmError> {
+        // Before we set up the requested DP, start and then stop the Default DP.
+        // This works around an issue where the multidrop DP becomes unavailable.
+        if DefaultArmDebugSequence
+            .debug_port_setup(interface, DpAddress::Default)
+            .is_err()
+        {
+            tracing::error!("Unable to connect to default address");
+        }
+        self.debug_port_stop(interface, DpAddress::Default)?;
+
+        // Delegate actual debug port setup to the default implementation.
+        DefaultArmDebugSequence.debug_port_setup(interface, dp)?;
+        Ok(())
+    }
+
     fn reset_system(
         &self,
         core: &mut dyn ArmMemoryInterface,
@@ -73,6 +99,12 @@ impl ArmDebugSequence for Rp2040 {
         tracing::trace!(
             "Existing values core0: {existing_core_0:08x}  core1: {existing_core_1:08x}"
         );
+
+        // The debug port is reset as well. Set it up again by sending the attention sequence again
+        let dap_probe = arm_interface.try_dap_probe_mut().unwrap();
+
+        // Run the setup sequence again, which will reacquire the multidrop target.
+        self.debug_port_setup(dap_probe, ap.dp())?;
 
         // Start the debug core back up which brings it out of Rescue Mode
         self.debug_core_start(arm_interface, &ap, core_type, debug_base, None)?;
