@@ -689,6 +689,13 @@ variants:
       end: 0x20030000
     cores:
     - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20070000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - stm32wbax_1m_0800
 - name: STM32WBA64CI
@@ -947,6 +954,13 @@ variants:
       end: 0x20030000
     cores:
     - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20070000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - stm32wbax_1m_0800
 - name: STM32WBA65CG
@@ -983,6 +997,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20070000
+      end: 0x20080000
     cores:
     - main
   flash_algorithms:
@@ -1076,6 +1097,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20070000
+      end: 0x20080000
     cores:
     - main
   flash_algorithms:
@@ -1226,6 +1254,13 @@ variants:
       end: 0x20030000
     cores:
     - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20070000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - stm32wbax_1m_0800
 - name: STM32WBA65PG
@@ -1264,6 +1299,13 @@ variants:
       end: 0x20030000
     cores:
     - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20070000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - stm32wbax_1m_0800
 - name: STM32WBA62CG
@@ -1300,6 +1342,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20070000
+      end: 0x20080000
     cores:
     - main
   flash_algorithms:
@@ -1395,6 +1444,13 @@ variants:
       end: 0x20030000
     cores:
     - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20070000
+      end: 0x20080000
+    cores:
+    - main
   flash_algorithms:
   - stm32wbax_1m_0800
 - name: STM32WBA64CG
@@ -1431,6 +1487,13 @@ variants:
     range:
       start: 0x20000000
       end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20070000
+      end: 0x20080000
     cores:
     - main
   flash_algorithms:
