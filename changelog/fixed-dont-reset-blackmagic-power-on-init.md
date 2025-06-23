@@ -1,0 +1,1 @@
+Fixed an issue where the Black Magic Probe would always disable target power on reset rather than leaving it alone.

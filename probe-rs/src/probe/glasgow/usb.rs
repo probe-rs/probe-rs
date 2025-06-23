@@ -12,6 +12,9 @@ use crate::probe::{
     glasgow::mux::{DiscoveryError, hexdump},
 };
 
+pub(super) const VID_QIHW: u16 = 0x20b7;
+pub(super) const PID_GLASGOW: u16 = 0x9db1;
+
 pub struct GlasgowUsbDevice {
     out_iface: Interface,
     in_iface: Interface,
@@ -21,7 +24,10 @@ pub struct GlasgowUsbDevice {
 
 impl GlasgowUsbDevice {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        let Some(serial) = selector.serial_number.clone() else {
+        if selector.vendor_id != VID_QIHW && selector.product_id != PID_GLASGOW {
+            Err(ProbeCreationError::NotFound)?
+        }
+        let Some(serial) = selector.serial_number.as_ref() else {
             Err(ProbeCreationError::NotFound)?
         };
         let parts = serial.split(":").collect::<Vec<_>>();
