@@ -63,6 +63,7 @@ impl Display for GdbFormat {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum GdbUnit {
     Byte,
     HalfWord,
@@ -117,9 +118,18 @@ pub(crate) struct GdbNuf {
 
 impl GdbNuf {
     // TODO: If the format_specifier is `instruction` we should return the size of the instruction for the architecture.
-    pub(crate) fn get_size(&self) -> usize {
+    pub(crate) fn get_size_in_bytes(&self) -> usize {
         self.unit_count * self.unit_specifier.get_size()
     }
+
+    pub fn access_unit(&self) -> GdbUnit {
+        self.unit_specifier
+    }
+
+    pub fn unit_count(&self) -> usize {
+        self.unit_count
+    }
+
     // Validate that the format specifier is valid for a given range of supported formats
     pub(crate) fn check_supported_formats(
         &self,

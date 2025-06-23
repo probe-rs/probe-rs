@@ -250,6 +250,8 @@ pub struct RiscvCommunicationInterfaceState {
     /// Describes, which memory access method should be used for a given access width
     memory_access_info: HashMap<RiscvBusAccess, MemoryAccessMethod>,
 
+    memory_access_override: Option<MemoryAccessMethod>,
+
     /// describes, if the given register can be read / written with an
     /// abstract command
     abstract_cmd_register_info: HashMap<RegisterId, CoreRegisterAbstractCmdSupport>,
@@ -289,7 +291,7 @@ const RISCV_MAX_CSR_ADDR: u16 = 0xFFF;
 
 impl RiscvCommunicationInterfaceState {
     /// Create a new interface state.
-    pub fn new() -> Self {
+    fn new(memory_access_override: Option<MemoryAccessMethod>) -> Self {
         RiscvCommunicationInterfaceState {
             // Set to the minimum here, will be set to the correct value below
             progbuf_size: 0,
@@ -316,6 +318,7 @@ impl RiscvCommunicationInterfaceState {
             num_harts: 1,
 
             memory_access_info: HashMap::new(),
+            memory_access_override,
 
             abstract_cmd_register_info: HashMap::new(),
 
@@ -334,16 +337,14 @@ impl RiscvCommunicationInterfaceState {
     /// Get the memory access method which should be used for an
     /// access with the specified width.
     fn memory_access_method(&mut self, access_width: RiscvBusAccess) -> MemoryAccessMethod {
-        *self
-            .memory_access_info
-            .entry(access_width)
-            .or_insert(MemoryAccessMethod::ProgramBuffer)
-    }
-}
-
-impl Default for RiscvCommunicationInterfaceState {
-    fn default() -> Self {
-        Self::new()
+        if let Some(memory_access_override) = self.memory_access_override {
+            memory_access_override
+        } else {
+            *self
+                .memory_access_info
+                .entry(access_width)
+                .or_insert(MemoryAccessMethod::ProgramBuffer)
+        }
     }
 }
 
@@ -354,9 +355,12 @@ pub struct RiscvDebugInterfaceState {
 }
 
 impl RiscvDebugInterfaceState {
-    pub(super) fn new(dtm_state: Box<dyn Any + Send>) -> Self {
+    pub(super) fn new(
+        dtm_state: Box<dyn Any + Send>,
+        memory_access_override: Option<MemoryAccessMethod>,
+    ) -> Self {
         Self {
-            interface_state: RiscvCommunicationInterfaceState::new(),
+            interface_state: RiscvCommunicationInterfaceState::new(memory_access_override),
             dtm_state,
         }
     }
@@ -1612,6 +1616,13 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
             }
+            MemoryAccessMethod::Dtm => {
+                assert_eq!(V::WIDTH, RiscvBusAccess::A32);
+
+                let value = self.perform_memory_read_dtm(address)?;
+
+                V::from_register_value(value)
+            }
         };
 
         Ok(result)
@@ -1643,6 +1654,17 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
             }
+            MemoryAccessMethod::Dtm => {
+                assert_eq!(V::WIDTH, RiscvBusAccess::A32);
+
+                for (offset, i) in data.iter_mut().enumerate() {
+                    let address = address + 4 * (offset as u32);
+
+                    let value = self.perform_memory_read_dtm(address)?;
+
+                    *i = V::from_register_value(value);
+                }
+            }
         };
 
         Ok(())
@@ -1659,6 +1681,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
+            }
+            MemoryAccessMethod::Dtm => {
+                unimplemented!("Memory write using DTM is not implement yet")
             }
         };
 
@@ -1680,6 +1705,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
+            }
+            MemoryAccessMethod::Dtm => {
+                unimplemented!("Memory access using the dtm is not implemented")
             }
         }
 
@@ -1890,6 +1918,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     pub(crate) fn sysbus_requires_halting(&mut self, en: bool) {
         self.state.sysbus_requires_halting = en;
+    }
+
+    fn perform_memory_read_dtm(&mut self, address: u32) -> Result<u32, RiscvError> {
+        self.dtm.read_memory_32(u64::from(address))
     }
 }
 
@@ -2342,14 +2374,17 @@ impl From<RiscvBusAccess> for u8 {
 ///
 /// The `AbstractCommand` method for memory access is not implemented.
 #[derive(Debug, Copy, Clone)]
-#[expect(dead_code)]
-enum MemoryAccessMethod {
+pub enum MemoryAccessMethod {
     /// Memory access using the program buffer is supported
     ProgramBuffer,
     /// Memory access using an abstract command is supported
     AbstractCommand,
     /// Memory access using system bus access supported
     SystemBus,
+    /// Use the DTM itself to access memory
+    ///
+    /// Used by the AdiDtm
+    Dtm,
 }
 
 memory_mapped_bitfield_register! {

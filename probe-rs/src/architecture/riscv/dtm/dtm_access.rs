@@ -70,4 +70,9 @@ pub trait DtmAccess: Send {
 
     /// Returns an idcode used for chip detection
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError>;
+
+    // TODO: Figure out a nicer interface
+    // This is used to handle the case where the DTM can be used to access system memory,
+    // e.g. when a coresight memory access port is used.
+    fn read_memory_32(&mut self, address: u64) -> Result<u32, RiscvError>;
 }

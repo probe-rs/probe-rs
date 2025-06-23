@@ -41,7 +41,10 @@ impl<'f> JtagDtmBuilder<'f> {
 
 impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
     fn create_state(&self) -> RiscvDebugInterfaceState {
-        RiscvDebugInterfaceState::new(Box::<DtmState>::default())
+        let dtm_state = DtmState::default();
+
+        // We don't specify a memory access method here.
+        RiscvDebugInterfaceState::new(Box::new(dtm_state), None)
     }
 
     fn attach<'state>(
@@ -327,6 +330,10 @@ impl DtmAccess for JtagDtm<'_> {
 
         Ok(Some(value.load_le::<u32>()))
     }
+
+    fn read_memory_32(&mut self, address: u64) -> Result<u32, RiscvError> {
+        todo!()
+    }
 }
 
 /// Access to the tunneled Debug Transport Module (DTM),
@@ -597,6 +604,10 @@ impl DtmAccess for TunneledJtagDtm<'_> {
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
         let value = self.probe.read_register(0x1, 32)?;
         Ok(Some(value.load_le::<u32>()))
+    }
+
+    fn read_memory_32(&mut self, address: u64) -> Result<u32, RiscvError> {
+        todo!()
     }
 }
 
