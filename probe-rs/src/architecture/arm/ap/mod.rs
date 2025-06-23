@@ -327,7 +327,6 @@ impl ApClass {
 /// The type of AP defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 /// You can find the details in the table C1-2 on page C1-146.
 /// The different types correspond to the different access/memory buses of ARM cores.
-#[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ApType {
     /// This is the most basic AP that is included in most MCUs and uses SWD or JTAG as an access bus.

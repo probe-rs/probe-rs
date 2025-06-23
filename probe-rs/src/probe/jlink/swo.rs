@@ -95,11 +95,11 @@ impl Deref for SwoData<'_> {
 pub struct SwoSpeedInfo {
     base_freq: u32,
     min_div: u32,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     max_div: u32,
 
     min_presc: u32,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     max_presc: u32,
 }
 

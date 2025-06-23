@@ -26,7 +26,7 @@ use self::interface::{Interface, Interfaces};
 use self::speed::SpeedConfig;
 use self::swo::SwoMode;
 use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::{ArmError, ArmProbeInterface, Pins};
+use crate::architecture::arm::{ArmDebugInterface, ArmError, Pins};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
@@ -299,7 +299,7 @@ impl Drop for JLink {
 }
 
 #[repr(u8)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 enum Command {
     Version = 0x01,
     Register = 0x09,
@@ -1125,10 +1125,10 @@ impl DebugProbe for JLink {
         Some(self)
     }
 
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Ok(ArmCommunicationInterface::create(self, sequence, true))
     }
 

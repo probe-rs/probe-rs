@@ -3,6 +3,7 @@ pub(crate) mod common;
 pub(crate) mod usb_util;
 
 pub mod blackmagic;
+pub mod ch347usbjtag;
 pub mod cmsisdap;
 pub mod espusbjtag;
 pub mod fake_probe;
@@ -15,7 +16,7 @@ pub mod stlink;
 pub mod wlink;
 
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::{ArmError, ArmProbeInterface, DapError};
+use crate::architecture::arm::{ArmDebugInterface, ArmError, DapError};
 use crate::architecture::arm::{RegisterAddress, SwoAccess, communication_interface::DapProbe};
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
@@ -523,23 +524,23 @@ impl Probe {
 
     /// Checks if the probe supports connecting to chips
     /// using the Arm Debug Interface.
-    pub fn has_arm_interface(&self) -> bool {
+    pub fn has_arm_debug_interface(&self) -> bool {
         self.inner.has_arm_interface()
     }
 
-    /// Try to get a trait object implementing `UninitializedArmProbe`, which can
-    /// can be used to communicate with chips using the ARM architecture.
+    /// Try to get a trait object implementing [`ArmDebugInterface`], which can
+    /// can be used to communicate with chips using the ARM debug interface.
     ///
     /// If an error occurs while trying to connect, the probe is returned.
-    pub fn try_into_arm_interface<'probe>(
+    pub fn try_into_arm_debug_interface<'probe>(
         self,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Self, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Self, ArmError)> {
         if !self.attached {
             Err((self, DebugProbeError::NotAttached.into()))
         } else {
             self.inner
-                .try_get_arm_interface(sequence)
+                .try_get_arm_debug_interface(sequence)
                 .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
         }
     }
@@ -701,10 +702,10 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
 
     /// Get the dedicated interface to debug ARM chips. To check that the
     /// probe actually supports this, call [DebugProbe::has_arm_interface] first.
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         _sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Err((
             self.into_probe(),
             DebugProbeError::InterfaceNotAvailable {
@@ -1118,24 +1119,6 @@ pub(crate) enum IoSequenceItem {
     Input,
 }
 
-impl From<IoSequenceItem> for bool {
-    fn from(item: IoSequenceItem) -> Self {
-        match item {
-            IoSequenceItem::Output(b) => b,
-            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
-        }
-    }
-}
-
-impl From<IoSequenceItem> for u8 {
-    fn from(value: IoSequenceItem) -> Self {
-        match value {
-            IoSequenceItem::Output(b) => b as u8,
-            IoSequenceItem::Input => panic!("Input type is not supposed to hold a value!"),
-        }
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct SwdSettings {
     /// Initial number of idle cycles between consecutive writes.
@@ -1366,8 +1349,8 @@ pub trait JtagAccess: DebugProbe {
     /// Executes a sequence of JTAG commands.
     fn write_register_batch(
         &mut self,
-        writes: &JtagCommandQueue,
-    ) -> Result<DeferredResultSet, BatchExecutionError> {
+        writes: &CommandQueue<JtagCommand>,
+    ) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError> {
         tracing::debug!(
             "Using default `JtagAccess::write_register_batch` hurts performance. Please implement proper batching for this probe."
         );
@@ -1498,7 +1481,7 @@ impl ChainParams {
     }
 }
 
-/// An error that occurred during batched command execution.
+/// An error that occurred during batched command execution of JTAG commands.
 #[derive(thiserror::Error, Debug)]
 pub struct BatchExecutionError {
     /// The error that occurred during execution.
@@ -1506,11 +1489,14 @@ pub struct BatchExecutionError {
     pub error: crate::Error,
 
     /// The results of the commands that were executed before the error occurred.
-    pub results: DeferredResultSet,
+    pub results: DeferredResultSet<CommandResult>,
 }
 
 impl BatchExecutionError {
-    pub(crate) fn new(error: crate::Error, results: DeferredResultSet) -> BatchExecutionError {
+    pub(crate) fn new(
+        error: crate::Error,
+        results: DeferredResultSet<CommandResult>,
+    ) -> BatchExecutionError {
         BatchExecutionError { error, results }
     }
 }
@@ -1575,12 +1561,27 @@ impl CommandResult {
 ///
 /// This list maintains which commands' results can be read by the issuing code, which then
 /// can be used to skip capturing or processing certain parts of the response.
-#[derive(Default, Debug)]
-pub struct JtagCommandQueue {
-    commands: Vec<(DeferredResultIndex, JtagCommand)>,
+pub struct CommandQueue<T> {
+    commands: Vec<(DeferredResultIndex, T)>,
 }
 
-impl JtagCommandQueue {
+impl<T: std::fmt::Debug> std::fmt::Debug for CommandQueue<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CommandQueue")
+            .field("commands", &self.commands)
+            .finish()
+    }
+}
+
+impl<T> Default for CommandQueue<T> {
+    fn default() -> Self {
+        Self {
+            commands: Vec::new(),
+        }
+    }
+}
+
+impl<T> CommandQueue<T> {
     /// Creates a new empty queue.
     pub fn new() -> Self {
         Self::default()
@@ -1589,7 +1590,7 @@ impl JtagCommandQueue {
     /// Schedules a command for later execution.
     ///
     /// Returns a token value that can be used to retrieve the result of the command.
-    pub fn schedule(&mut self, command: impl Into<JtagCommand>) -> DeferredResultIndex {
+    pub fn schedule(&mut self, command: impl Into<T>) -> DeferredResultIndex {
         let index = DeferredResultIndex::new();
         self.commands.push((index.clone(), command.into()));
         index
@@ -1605,7 +1606,7 @@ impl JtagCommandQueue {
         self.commands.is_empty()
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, JtagCommand)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, T)> {
         self.commands.iter()
     }
 
@@ -1616,10 +1617,21 @@ impl JtagCommandQueue {
 }
 
 /// The set of results returned by executing a batched command.
-#[derive(Debug, Default)]
-pub struct DeferredResultSet(HashMap<DeferredResultIndex, CommandResult>);
+pub struct DeferredResultSet<T>(HashMap<DeferredResultIndex, T>);
 
-impl DeferredResultSet {
+impl<T: std::fmt::Debug> std::fmt::Debug for DeferredResultSet<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("DeferredResultSet").field(&self.0).finish()
+    }
+}
+
+impl<T> Default for DeferredResultSet<T> {
+    fn default() -> Self {
+        Self(HashMap::default())
+    }
+}
+
+impl<T> DeferredResultSet<T> {
     /// Creates a new empty result set.
     pub fn new() -> Self {
         Self::default()
@@ -1630,7 +1642,7 @@ impl DeferredResultSet {
         Self(HashMap::with_capacity(capacity))
     }
 
-    pub(crate) fn push(&mut self, idx: &DeferredResultIndex, result: CommandResult) {
+    pub(crate) fn push(&mut self, idx: &DeferredResultIndex, result: T) {
         self.0.insert(idx.clone(), result);
     }
 
@@ -1644,16 +1656,13 @@ impl DeferredResultSet {
         self.0.is_empty()
     }
 
-    pub(crate) fn merge_from(&mut self, other: DeferredResultSet) {
+    pub(crate) fn merge_from(&mut self, other: DeferredResultSet<T>) {
         self.0.extend(other.0);
         self.0.retain(|k, _| k.should_capture());
     }
 
     /// Takes a result from the set.
-    pub fn take(
-        &mut self,
-        index: DeferredResultIndex,
-    ) -> Result<CommandResult, DeferredResultIndex> {
+    pub fn take(&mut self, index: DeferredResultIndex) -> Result<T, DeferredResultIndex> {
         self.0.remove(&index).ok_or(index)
     }
 }

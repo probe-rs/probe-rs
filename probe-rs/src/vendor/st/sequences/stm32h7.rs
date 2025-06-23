@@ -5,7 +5,7 @@ use std::sync::Arc;
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
-    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+    ArmDebugInterface, ArmError, FullyQualifiedApAddress,
     component::{TraceFunnel, TraceSink},
     memory::{ArmMemoryInterface, CoresightComponent, PeripheralType, romtable::RomTableError},
     sequences::ArmDebugSequence,
@@ -172,7 +172,7 @@ fn find_trace_funnel(
 impl ArmDebugSequence for Stm32h7 {
     fn debug_device_unlock(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         _default_ap: &FullyQualifiedApAddress,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
@@ -199,7 +199,7 @@ impl ArmDebugSequence for Stm32h7 {
 
     fn trace_start(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         components: &[CoresightComponent],
         sink: &TraceSink,
     ) -> Result<(), ArmError> {

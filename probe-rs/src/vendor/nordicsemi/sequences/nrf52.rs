@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use crate::architecture::arm::{
-    ArmError, ArmProbeInterface, FullyQualifiedApAddress,
+    ArmDebugInterface, ArmError, FullyQualifiedApAddress,
     component::TraceSink,
     memory::CoresightComponent,
     sequences::{ArmDebugSequence, ArmDebugSequenceError},
@@ -39,7 +39,7 @@ impl Nrf52 {
 
     fn is_core_unlocked(
         &self,
-        iface: &mut dyn ArmProbeInterface,
+        iface: &mut dyn ArmDebugInterface,
         ctrl_ap: &FullyQualifiedApAddress,
     ) -> Result<bool, ArmError> {
         let status = iface.read_raw_ap_register(ctrl_ap, APPROTECTSTATUS)?;
@@ -85,7 +85,7 @@ mod clock {
 impl ArmDebugSequence for Nrf52 {
     fn debug_device_unlock(
         &self,
-        iface: &mut dyn ArmProbeInterface,
+        iface: &mut dyn ArmDebugInterface,
         _default_ap: &FullyQualifiedApAddress,
         permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
@@ -125,7 +125,7 @@ impl ArmDebugSequence for Nrf52 {
 
     fn trace_start(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         components: &[CoresightComponent],
         sink: &TraceSink,
     ) -> Result<(), ArmError> {

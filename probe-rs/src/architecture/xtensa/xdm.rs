@@ -9,8 +9,8 @@ use crate::{
     Error as ProbeRsError,
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
-        CommandResult, DeferredResultIndex, DeferredResultSet, JtagAccess, JtagCommandQueue,
-        JtagWriteCommand, ShiftDrCommand,
+        CommandQueue, CommandResult, DeferredResultIndex, DeferredResultSet, JtagAccess,
+        JtagCommand, JtagWriteCommand, ShiftDrCommand,
     },
 };
 
@@ -131,10 +131,10 @@ pub struct XdmState {
 
     /// The command queue for the current batch. JTAG accesses are batched to reduce the number of
     /// IO operations.
-    queue: JtagCommandQueue,
+    queue: CommandQueue<JtagCommand>,
 
     /// The results of the reads in the already executed batched JTAG commands.
-    jtag_results: DeferredResultSet,
+    jtag_results: DeferredResultSet<CommandResult>,
 
     /// Read handles for accesses that need to force capturing their bits.
     ///
@@ -166,7 +166,7 @@ impl<'probe> Xdm<'probe> {
 
     #[tracing::instrument(skip(self))]
     pub(crate) fn enter_debug_mode(&mut self) -> Result<(), XtensaError> {
-        self.state.queue = JtagCommandQueue::new();
+        self.state.queue = CommandQueue::new();
         self.state.jtag_results = DeferredResultSet::new();
 
         self.probe.tap_reset()?;

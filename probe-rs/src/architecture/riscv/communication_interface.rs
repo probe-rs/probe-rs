@@ -2318,7 +2318,7 @@ impl From<RiscvBusAccess> for u8 {
 ///
 /// The `AbstractCommand` method for memory access is not implemented.
 #[derive(Debug, Copy, Clone)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 enum MemoryAccessMethod {
     /// Memory access using the program buffer is supported
     ProgramBuffer,

@@ -1,4 +1,4 @@
-#![allow(clippy::unusual_byte_groupings)]
+#![expect(clippy::unusual_byte_groupings)]
 
 /// RISC-V breakpoint instruction
 pub const EBREAK: u32 = 0b000000000001_00000_000_00000_1110011;

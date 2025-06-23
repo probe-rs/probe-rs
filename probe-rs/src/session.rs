@@ -3,7 +3,7 @@ use crate::{
     architecture::{
         arm::{
             ArmError, SwoReader,
-            communication_interface::ArmProbeInterface,
+            communication_interface::ArmDebugInterface,
             component::{TraceSink, get_arm_components},
             dp::DpAddress,
             memory::CoresightComponent,
@@ -69,7 +69,6 @@ pub struct SessionConfig {
     pub protocol: Option<WireProtocol>,
 }
 
-#[allow(clippy::large_enum_variant)]
 enum JtagInterface {
     Riscv(RiscvDebugInterfaceState),
     Xtensa(XtensaDebugInterfaceState),
@@ -99,7 +98,7 @@ impl fmt::Debug for JtagInterface {
 
 // TODO: this is somewhat messy because I omitted separating the Probe out of the ARM interface.
 enum ArchitectureInterface {
-    Arm(Box<dyn ArmProbeInterface + 'static>),
+    Arm(Box<dyn ArmDebugInterface + 'static>),
     Jtag(Probe, Vec<JtagInterface>),
 }
 
@@ -175,7 +174,7 @@ impl Session {
             .collect();
 
         let mut session = if let Architecture::Arm = target.architecture() {
-            Self::attach_arm(probe, target, attach_method, permissions, cores)?
+            Self::attach_arm_debug_interface(probe, target, attach_method, permissions, cores)?
         } else {
             Self::attach_jtag(probe, target, attach_method, permissions, cores)?
         };
@@ -185,7 +184,7 @@ impl Session {
         Ok(session)
     }
 
-    fn attach_arm(
+    fn attach_arm_debug_interface(
         mut probe: Probe,
         target: Target,
         attach_method: AttachMethod,
@@ -244,7 +243,7 @@ impl Session {
         }
 
         let mut interface = probe
-            .try_into_arm_interface(sequence_handle.clone())
+            .try_into_arm_debug_interface(sequence_handle.clone())
             .map_err(|(_, err)| err)?;
 
         interface.select_debug_port(default_dp)?;
@@ -616,7 +615,7 @@ impl Session {
     }
 
     /// Get the Arm probe interface.
-    pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, ArmError> {
+    pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, ArmError> {
         let interface = match &mut self.interfaces {
             ArchitectureInterface::Arm(state) => state.deref_mut(),
             _ => return Err(ArmError::NoArmTarget),
@@ -662,7 +661,7 @@ impl Session {
 
     #[tracing::instrument(skip_all)]
     fn reattach_arm_interface(
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut Box<dyn ArmDebugInterface>,
         debug_sequence: &Arc<dyn ArmDebugSequence>,
     ) -> Result<(), Error> {
         use crate::probe::DebugProbe;
@@ -674,7 +673,7 @@ impl Session {
         // an instance of a Dummy and then swapping it out for the real one.
         // perform the re-attach and then swap it back.
         let mut tmp_interface = Box::<FakeProbe>::default()
-            .try_get_arm_interface(DefaultArmSequence::create())
+            .try_get_arm_debug_interface(DefaultArmSequence::create())
             .unwrap();
 
         std::mem::swap(interface, &mut tmp_interface);
@@ -685,7 +684,7 @@ impl Session {
         probe.attach_to_unspecified()?;
 
         let mut new_interface = probe
-            .try_into_arm_interface(debug_sequence.clone())
+            .try_into_arm_debug_interface(debug_sequence.clone())
             .map_err(|(_, err)| err)?;
 
         if let Some(current_dp) = current_dp {

@@ -70,7 +70,7 @@ impl<T> Key<T> {
         }
     }
 
-    #[allow(unused)]
+    #[cfg(feature = "remote")]
     pub unsafe fn cast<U>(&self) -> Key<U> {
         Key {
             key: self.key,
@@ -126,7 +126,6 @@ pub struct SessionState {
     registry: Arc<Mutex<Registry>>,
 }
 
-#[allow(unused)]
 impl SessionState {
     pub fn new() -> Self {
         Self {
@@ -138,10 +137,6 @@ impl SessionState {
 
     pub async fn store_object<T: Any + Send>(&mut self, obj: T) -> Key<T> {
         self.object_storage.lock().await.store_object(obj)
-    }
-
-    pub fn store_object_blocking<T: Any + Send>(&mut self, obj: T) -> Key<T> {
-        self.object_storage.blocking_lock().store_object(obj)
     }
 
     pub async fn object_mut<T: Any + Send>(

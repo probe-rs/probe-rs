@@ -1837,25 +1837,11 @@ mod test {
             todo!()
         }
 
-        fn get_arm_probe_interface(
+        fn get_arm_debug_interface(
             &mut self,
-        ) -> Result<&mut dyn crate::architecture::arm::ArmProbeInterface, DebugProbeError> {
+        ) -> Result<&mut dyn crate::architecture::arm::ArmDebugInterface, DebugProbeError> {
             Err(DebugProbeError::NotImplemented {
-                function_name: "get_arm_probe_interface",
-            })
-        }
-
-        fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
-            Err(DebugProbeError::NotImplemented {
-                function_name: "get_swd_sequence",
-            })
-        }
-
-        fn get_dap_access(
-            &mut self,
-        ) -> Result<&mut dyn crate::architecture::arm::DapAccess, DebugProbeError> {
-            Err(DebugProbeError::NotImplemented {
-                function_name: "get_dap_access",
+                function_name: "get_arm_debug_interface",
             })
         }
 

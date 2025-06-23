@@ -52,6 +52,9 @@ pub enum CmsisDapError {
 
     /// Error scanning IR lengths.
     InvalidIR,
+
+    /// The firmware on the probe is outdated, and not supported by probe-rs. The minimum supported firmware version is {0}.
+    ProbeFirmwareOutdated(&'static str),
 }
 
 impl ProbeError for CmsisDapError {}
@@ -360,7 +363,7 @@ impl Status {
 /// The command ID is always sent as the first byte for every command,
 /// and also is the first byte of every response.
 #[derive(Debug, Clone, Copy)]
-#[allow(unused)]
+#[expect(unused)]
 pub enum CommandId {
     Info = 0x00,
     HostStatus = 0x01,

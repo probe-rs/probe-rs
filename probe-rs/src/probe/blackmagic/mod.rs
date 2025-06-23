@@ -10,7 +10,7 @@ use std::{
 use crate::{
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmError, ArmProbeInterface,
+            ArmCommunicationInterface, ArmDebugInterface, ArmError,
             communication_interface::DapProbe, sequences::ArmDebugSequence,
         },
         riscv::{
@@ -79,7 +79,7 @@ impl core::fmt::Display for ProtocolVersion {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Debug)]
 enum RemoteCommand<'a> {
     Handshake(&'a mut [u8]),
@@ -281,7 +281,7 @@ impl RemoteCommand<'_> {
 
 // Implement `ToString` instead of `Display` as this is for generating
 // strings to send over the network, and is not meant for human consumption.
-#[allow(clippy::to_string_trait_impl)]
+#[expect(clippy::to_string_trait_impl)]
 impl std::string::ToString for RemoteCommand<'_> {
     fn to_string(&self) -> String {
         match self {
@@ -915,10 +915,6 @@ impl BlackMagicProbe {
     }
 
     /// Perform a single SWDIO command
-    ///
-    /// The caller needs to ensure that the given iterators are not longer than the maximum transfer size
-    /// allowed. It seems that the maximum transfer size is determined by [`self.max_mem_block_size`].
-    #[allow(clippy::unnecessary_fallible_conversions)] //  IoSequenceItem conversion may panic
     fn perform_swdio_transfer<S>(&mut self, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         S: IntoIterator<Item = IoSequenceItem>,
@@ -1147,10 +1143,10 @@ impl DebugProbe for BlackMagicProbe {
     }
 
     /// Turn this probe into an ARM probe
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         mut self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let has_adiv5 = match self.remote_protocol {
             ProtocolVersion::V0 => false,
             ProtocolVersion::V0P

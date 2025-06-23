@@ -29,19 +29,12 @@ pub enum ArtifactError {
 /// Represents compiled code that the compiler emitted during compilation.
 pub struct Artifact {
     path: PathBuf,
-    fresh: bool,
 }
 
 impl Artifact {
     /// Get the path of this output from the compiler.
     pub fn path(&self) -> &Path {
         &self.path
-    }
-
-    /// If `true`, then the artifact was unchanged during compilation.
-    #[allow(unused)]
-    pub fn fresh(&self) -> bool {
-        self.fresh
     }
 }
 
@@ -121,7 +114,6 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
         // Unwrap is safe, we only store artifacts with an executable.
         Ok(Artifact {
             path: PathBuf::from(artifact.executable.unwrap().as_path()),
-            fresh: artifact.fresh,
         })
     } else {
         // We did not find a binary, so we should return an error.

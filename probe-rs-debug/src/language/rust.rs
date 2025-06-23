@@ -46,7 +46,7 @@ impl Rust {
     /// Replaces *const data pointer with *const [data; len] in slices.
     ///
     /// This function may return `Ok(())` even if it does not modify the variable.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn expand_slice(
         &self,
         unit_info: &UnitInfo,

@@ -1,0 +1,17 @@
+// Project-local debug tasks
+//
+// For more documentation on how to configure debug tasks,
+// see: https://zed.dev/docs/debugger
+[
+  {
+    "label": "Debug DAP server",
+    "adapter": "CodeLLDB",
+    "program": "target/debug/probe-rs",
+    "request": "launch",
+    "args": ["dap-server", "--single-session", "--port", "50000"],
+    "build": {
+      "command": "cargo",
+      "args": ["build", "--bin", "probe-rs"]
+    }
+  }
+]

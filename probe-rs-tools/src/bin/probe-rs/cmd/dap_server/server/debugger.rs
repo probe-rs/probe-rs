@@ -11,8 +11,9 @@ use crate::{
             dap::{
                 adapter::{DebugAdapter, get_arguments},
                 dap_types::{
-                    Capabilities, Event, ExitedEventBody, InitializeRequestArguments,
-                    MessageSeverity, Request, RttWindowOpenedArguments, TerminatedEventBody,
+                    Capabilities, DisconnectResponse, Event, ExitedEventBody,
+                    InitializeRequestArguments, MessageSeverity, Request, RttWindowOpenedArguments,
+                    TerminatedEventBody,
                 },
                 request_helpers::halt_core,
             },
@@ -319,10 +320,31 @@ impl Debugger {
             return Ok(());
         }
 
+        let expected_commands = ["launch", "attach"];
+
         let launch_attach_request = loop {
             if let Some(request) = debug_adapter.listen_for_request()? {
-                self.debug_logger.flush_to_dap(&mut debug_adapter)?;
-                break request;
+                if expected_commands.contains(&request.command.as_str()) {
+                    self.debug_logger.flush_to_dap(&mut debug_adapter)?;
+                    break request;
+                } else if request.command == "disconnect" {
+                    debug_adapter.send_response::<DisconnectResponse>(&request, Ok(None))?;
+
+                    return Ok(());
+                } else {
+                    debug_adapter.log_to_console(format!(
+                        "Ignoring request with command '{}', we can only handle 'launch' and 'attach' commands.", request.command
+                    ));
+
+                    let err = DebuggerError::Other(anyhow!(
+                        "Unable to process request with command {} before an attach or launch request is received",
+                        request.command
+                    ));
+
+                    debug_adapter.send_response::<()>(&request, Err(&err))?;
+
+                    // Continue listening for requests
+                }
             }
         };
 
@@ -736,7 +758,20 @@ impl Debugger {
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<(), DebuggerError> {
-        let initialize_request = expect_request(debug_adapter, "initialize")?;
+        let initialize_request = loop {
+            if let Some(current_request) = debug_adapter.listen_for_request()? {
+                if current_request.command == "initialize" {
+                    break current_request;
+                } else {
+                    let error = DebuggerError::Other(anyhow!(
+                        "Received request with command'{}', expected to receive the initialize command",
+                        current_request.command,
+                    ));
+                    debug_adapter.send_response::<()>(&current_request, Err(&error))?;
+                    return Err(error);
+                }
+            }
+        };
 
         let initialize_arguments =
             get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
@@ -803,34 +838,6 @@ impl Debugger {
     }
 }
 
-/// Wait for the next request with the given command.
-///
-/// If the next request does *not* have the given command,
-/// the function returns an error.
-fn expect_request<P: ProtocolAdapter>(
-    debug_adapter: &mut DebugAdapter<P>,
-    expected_command: &str,
-) -> Result<Request, DebuggerError> {
-    let next_request = loop {
-        if let Some(current_request) = debug_adapter.listen_for_request()? {
-            break current_request;
-        }
-    };
-
-    if next_request.command == expected_command {
-        Ok(next_request)
-    } else {
-        let error = DebuggerError::Other(anyhow!(
-            "Initial command was '{}', expected '{}'",
-            next_request.command,
-            expected_command
-        ));
-        debug_adapter.send_response::<()>(&next_request, Err(&error))?;
-
-        Err(error)
-    }
-}
-
 pub(crate) fn is_file_newer(
     saved_binary_timestamp: &mut Option<Duration>,
     path_to_elf: &Path,
@@ -862,8 +869,8 @@ pub(crate) fn is_file_newer(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)]
 mod test {
-    #![allow(clippy::unwrap_used, clippy::panic)]
 
     use crate::cmd::dap_server::{
         DebuggerError,
@@ -1365,13 +1372,17 @@ mod test {
     async fn wrong_request_after_init() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
-        let expected_error = "Expected request 'launch' or 'attach', but received 'threads'";
-        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
+        let expected_error = "Unable to process request with command threads before an attach or launch request is received";
+        protocol_adapter.expect_output_event("Ignoring request with command 'threads', we can only handle 'launch' and 'attach' commands.\n");
 
         protocol_adapter
             .add_request("threads")
             .and_error_response()
             .with_body(error_response_body(expected_error));
+
+        protocol_adapter.expect_output_event("Unable to process request with command threads before an attach or launch request is received\n");
+
+        disconnect_protocol_adapter(&mut protocol_adapter);
 
         execute_test(protocol_adapter, true).await.unwrap();
     }

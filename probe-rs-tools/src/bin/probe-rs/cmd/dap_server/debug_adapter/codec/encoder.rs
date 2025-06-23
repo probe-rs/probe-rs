@@ -19,8 +19,8 @@ impl<T: Serialize + for<'a> Deserialize<'a> + PartialEq> Encoder<Frame<T>> for D
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
 
     use pretty_assertions::assert_eq;
     use serde_json::json;

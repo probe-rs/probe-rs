@@ -3,7 +3,7 @@
 use crate::architecture::arm::armv7m::{Aircr, Dhcsr, FpCtrl, FpRev1CompX, FpRev2CompX};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
-use crate::architecture::arm::{ArmError, ArmProbeInterface, FullyQualifiedApAddress};
+use crate::architecture::arm::{ArmDebugInterface, ArmError, FullyQualifiedApAddress};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
@@ -418,7 +418,7 @@ impl ArmDebugSequence for XMC4000 {
 
     fn reset_hardware_deassert(
         &self,
-        probe: &mut dyn ArmProbeInterface,
+        probe: &mut dyn ArmDebugInterface,
         default_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
         tracing::trace!("performing XMC4000 ResetHardwareDeassert");

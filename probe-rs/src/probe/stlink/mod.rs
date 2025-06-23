@@ -13,7 +13,7 @@ use crate::{
             memory_ap::{MemoryAp, MemoryApType},
             v1::valid_access_ports,
         },
-        communication_interface::{ArmProbeInterface, DapProbe, SwdSequence},
+        communication_interface::{ArmDebugInterface, DapProbe, SwdSequence},
         dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
@@ -303,10 +303,10 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         self
     }
 
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         _sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let interface = StlinkArmDebug::new(self);
 
         Ok(Box::new(interface))
@@ -504,10 +504,12 @@ impl<D: StLinkUsb> StLink<D> {
         // Make sure everything is okay with the firmware we use.
         if self.jtag_version == 0 {
             Err(StlinkError::JTAGNotSupportedOnProbe)
-        } else if (self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION)
-            || (self.hw_version == 3 && self.jtag_version < Self::MIN_JTAG_VERSION_V3)
-        {
-            Err(StlinkError::ProbeFirmwareOutdated)
+        } else if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION {
+            Err(StlinkError::ProbeFirmwareOutdated(Self::MIN_JTAG_VERSION))
+        } else if self.hw_version == 3 && self.jtag_version < Self::MIN_JTAG_VERSION_V3 {
+            Err(StlinkError::ProbeFirmwareOutdated(
+                Self::MIN_JTAG_VERSION_V3,
+            ))
         } else {
             Ok((self.hw_version, self.jtag_version))
         }
@@ -654,7 +656,9 @@ impl<D: StLinkUsb> StLink<D> {
         // Older versions of the ST-Link software don't support this.
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             if ap != 0 {
-                return Err(StlinkError::ProbeFirmwareOutdated.into());
+                return Err(
+                    StlinkError::ProbeFirmwareOutdated(Self::MIN_JTAG_VERSION_MULTI_AP).into(),
+                );
             }
         } else if !self.opened_aps.contains(&ap) {
             tracing::debug!("Opening AP {}", ap);
@@ -1237,9 +1241,9 @@ pub enum StlinkError {
     /// Attempted unaligned access.
     UnalignedAddress,
 
-    /// The firmware on the probe is outdated, and not supported by probe-rs.
+    /// The firmware on the probe is outdated, and not supported by probe-rs. The minimum supported firmware version is {0}.
     /// Use the ST-Link updater utility to update your probe firmware.
-    ProbeFirmwareOutdated,
+    ProbeFirmwareOutdated(u8),
 
     /// USB error.
     Usb(#[from] std::io::Error),
@@ -1406,7 +1410,7 @@ impl DapAccess for StlinkArmDebug {
     }
 }
 
-impl ArmProbeInterface for StlinkArmDebug {
+impl ArmDebugInterface for StlinkArmDebug {
     fn memory_interface(
         &mut self,
         access_port: &FullyQualifiedApAddress,
@@ -1784,15 +1788,7 @@ impl ArmMemoryInterface for StLinkMemoryInterface<'_> {
         self.current_ap.ap_address().clone()
     }
 
-    fn get_swd_sequence(&mut self) -> Result<&mut dyn SwdSequence, DebugProbeError> {
-        Ok(self)
-    }
-
-    fn get_arm_probe_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, DebugProbeError> {
-        Ok(self.probe)
-    }
-
-    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+    fn get_arm_debug_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError> {
         Ok(self.probe)
     }
 
@@ -1935,7 +1931,7 @@ mod test {
         let init_result = probe.init();
 
         match init_result.unwrap_err() {
-            StlinkError::ProbeFirmwareOutdated => (),
+            StlinkError::ProbeFirmwareOutdated(_) => (),
             other => panic!("Expected firmware outdated error, got {other}"),
         }
     }

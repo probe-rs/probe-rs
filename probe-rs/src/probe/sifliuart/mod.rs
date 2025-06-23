@@ -5,7 +5,7 @@ mod arm;
 
 use crate::Error;
 use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::{ArmError, ArmProbeInterface};
+use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::probe::sifliuart::arm::SifliUartArmDebug;
 use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
@@ -23,7 +23,6 @@ const DEFUALT_RECV_TIMEOUT: Duration = Duration::from_secs(3);
 
 const DEFUALT_UART_BAUD: u32 = 1000000;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum SifliUartCommand<'a> {
     Enter,
@@ -81,7 +80,6 @@ impl fmt::Display for SifliUartResponse {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, thiserror::Error)]
 enum CommandError {
     ParameterError(std::io::Error),
@@ -292,7 +290,6 @@ impl SifliUart {
     }
 }
 
-#[allow(unused)]
 impl DebugProbe for SifliUart {
     fn get_name(&self) -> &str {
         "Sifli UART Debug Probe"
@@ -355,10 +352,10 @@ impl DebugProbe for SifliUart {
         true
     }
 
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Ok(Box::new(SifliUartArmDebug::new(self, sequence)))
     }
 

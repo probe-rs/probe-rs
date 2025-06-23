@@ -149,7 +149,7 @@ impl UnitInfo {
 
     /// Recurse the ELF structure below the `tree_node`,
     /// and updates the `cache` with the updated value of the `child_variable`.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn process_tree_node_attributes(
         &self,
         debug_info: &DebugInfo,
@@ -417,7 +417,7 @@ impl UnitInfo {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn process_type_attribute(
         &self,
         attr: &gimli::Attribute<GimliReader>,
@@ -962,7 +962,7 @@ impl UnitInfo {
     ///
     /// [e]: Self::extract_type()
     /// [p]: Self::process_tree()
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn extract_type(
         &self,
         debug_info: &DebugInfo,
@@ -1252,7 +1252,7 @@ impl UnitInfo {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn extract_struct(
         &self,
         type_name: Option<String>,
@@ -1315,7 +1315,7 @@ impl UnitInfo {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn extract_array_type(
         &self,
         node: &DebuggingInformationEntry<GimliReader>,
@@ -1385,7 +1385,7 @@ impl UnitInfo {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn extract_enumeration_type(
         &self,
         child_variable: &mut Variable,
@@ -1500,7 +1500,7 @@ impl UnitInfo {
     }
 
     /// Create child variable entries to represent array members and their values.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn expand_array_members(
         &self,
         debug_info: &DebugInfo,
@@ -1598,7 +1598,6 @@ impl UnitInfo {
     }
 
     /// Process a memory location for a variable, by first evaluating the `byte_size`, and then calling the `self.extract_location`.
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn process_memory_location(
         &self,
         debug_info: &DebugInfo,

@@ -14,15 +14,15 @@ use crate::architecture::riscv::communication_interface::{
 use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
 use crate::error::Error;
 use crate::probe::{
-    CommandResult, DeferredResultIndex, DeferredResultSet, JtagAccess, JtagCommandQueue,
+    CommandQueue, CommandResult, DeferredResultIndex, DeferredResultSet, JtagAccess, JtagCommand,
     JtagWriteCommand,
 };
 use crate::probe::{DebugProbeError, ShiftDrCommand};
 
 #[derive(Debug, Default)]
 struct DtmState {
-    queued_commands: JtagCommandQueue,
-    jtag_results: DeferredResultSet,
+    queued_commands: CommandQueue<JtagCommand>,
+    jtag_results: DeferredResultSet<CommandResult>,
 
     /// Number of address bits in the DMI register
     abits: u32,

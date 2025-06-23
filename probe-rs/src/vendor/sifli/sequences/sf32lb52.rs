@@ -14,7 +14,7 @@ impl Sf32lb52 {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 mod pmuc {
     use crate::architecture::arm::{ArmError, memory::ArmMemoryInterface};
     use bitfield::bitfield;

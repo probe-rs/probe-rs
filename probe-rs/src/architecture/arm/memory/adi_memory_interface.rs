@@ -1,17 +1,13 @@
-use std::any::Any;
-
 use zerocopy::IntoBytes;
 
 use crate::{
     CoreStatus, MemoryInterface,
     architecture::arm::{
-        ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess, FullyQualifiedApAddress,
+        ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress,
         ap::{
             AccessPortType, ApAccess, CSW, DataSize,
             memory_ap::{MemoryAp, MemoryApType},
         },
-        communication_interface::FlushableArmAccess,
-        dp::DpAccess,
         memory::ArmMemoryInterface,
     },
     probe::DebugProbeError,
@@ -33,7 +29,7 @@ pub(crate) struct ADIMemoryInterface<'interface, APA> {
 
 impl<'interface, APA> ADIMemoryInterface<'interface, APA>
 where
-    APA: ApAccess + DapAccess,
+    APA: DapAccess,
 {
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(
@@ -48,11 +44,9 @@ where
     }
 }
 
-impl<APA> ADIMemoryInterface<'_, APA> where APA: ApAccess {}
-
 impl<AP> MemoryInterface<ArmError> for ADIMemoryInterface<'_, AP>
 where
-    AP: FlushableArmAccess + ApAccess + DpAccess,
+    AP: DapAccess,
 {
     /// Read a block of 64 bit words at `address`.
     ///
@@ -513,7 +507,7 @@ where
 
 impl<APA> ArmMemoryInterface for ADIMemoryInterface<'_, APA>
 where
-    APA: std::any::Any + FlushableArmAccess + ApAccess + DpAccess + ArmProbeInterface,
+    APA: ApAccess + ArmDebugInterface,
 {
     fn base_address(&mut self) -> Result<u64, ArmError> {
         self.memory_ap.base_address(self.interface)
@@ -523,49 +517,19 @@ where
         self.memory_ap.ap_address().clone()
     }
 
-    fn get_swd_sequence(
-        &mut self,
-    ) -> Result<
-        &mut dyn crate::architecture::arm::communication_interface::SwdSequence,
-        DebugProbeError,
-    > {
-        Ok(self.interface)
-    }
-
-    fn get_arm_probe_interface(
-        &mut self,
-    ) -> Result<&mut dyn crate::architecture::arm::ArmProbeInterface, DebugProbeError> {
-        Ok(self.interface)
-    }
-
-    fn get_dap_access(&mut self) -> Result<&mut dyn DapAccess, DebugProbeError> {
+    fn get_arm_debug_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, DebugProbeError> {
         Ok(self.interface)
     }
 
     fn generic_status(&mut self) -> Result<CSW, ArmError> {
-        // TODO: This assumes that the base type is `ArmCommunicationInterface`,
-        // which will fail if something else implements `ADIMemoryInterface`.
-        let Some(iface) =
-            (self.interface as &mut dyn Any).downcast_mut::<ArmCommunicationInterface>()
-        else {
-            return Err(ArmError::Probe(DebugProbeError::Other(
-                "Not an ArmCommunicationInterface".to_string(),
-            )));
-        };
-
-        self.memory_ap.generic_status(iface)
+        self.memory_ap.generic_status(self.interface)
     }
 
     fn update_core_status(&mut self, state: CoreStatus) {
-        // TODO: This assumes that the base type is `ArmCommunicationInterface`,
-        // which will fail if something else implements `ADIMemoryInterface`.
-        let Some(iface) =
-            (self.interface as &mut dyn Any).downcast_mut::<ArmCommunicationInterface>()
-        else {
-            return;
-        };
-
-        iface.probe_mut().core_status_notification(state).ok();
+        if let Some(probe) = self.interface.try_dap_probe_mut() {
+            // Ignore errors setting the core status
+            let _ = probe.core_status_notification(state);
+        }
     }
 }
 

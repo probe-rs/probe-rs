@@ -1,5 +1,5 @@
 #[derive(Default, Clone, Copy, Debug)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub struct JlinkConfig {
     pub usb_address: Option<u8>,
     pub kickstart_power: Option<bool>,

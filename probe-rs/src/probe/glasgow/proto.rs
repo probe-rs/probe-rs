@@ -8,7 +8,6 @@
 //! not aware of packet boundaries: two 1-byte and one 2-byte (with the same values) packets are
 //! processed exactly the same aside from timing.
 //!
-#![allow(unused)]
 
 /// Target address. The numeric values correspond to packet header bytes for that target.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

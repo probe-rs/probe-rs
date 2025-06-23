@@ -7,7 +7,7 @@ use std::fmt;
 /// Not many of these are actually used, and a lot of these have unknown meaning.
 #[non_exhaustive]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Capability {
     Reserved0 = 0, // Reserved, seems to be always set
     GetHwVersion = 1,

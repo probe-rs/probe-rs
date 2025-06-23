@@ -13,7 +13,7 @@ use probe_rs_target::CoreType;
 use crate::{
     MemoryInterface, MemoryMappedRegister, Session,
     architecture::arm::{
-        ArmProbeInterface, DapError, RegisterAddress,
+        ArmDebugInterface, DapError, RegisterAddress,
         core::registers::cortex_m::{PC, SP},
         dp::{Ctrl, DLPIDR, DebugPortError, DpRegister, TARGETID},
     },
@@ -408,7 +408,7 @@ pub(crate) fn cortex_m_wait_for_reset(
                 {
                     // On PSOC 6, a system reset resets the SWD interface as well,
                     // so we have to reinitialize.
-                    if let Ok(probe) = interface.get_arm_probe_interface() {
+                    if let Ok(probe) = interface.get_arm_debug_interface() {
                         probe.reinitialize()?;
                     }
                 }
@@ -456,7 +456,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     #[doc(alias = "ResetHardwareDeassert")]
     fn reset_hardware_deassert(
         &self,
-        probe: &mut dyn ArmProbeInterface,
+        probe: &mut dyn ArmDebugInterface,
         _default_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
         let mut n_reset = Pins(0);
@@ -721,7 +721,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     #[doc(alias = "DebugCoreStart")]
     fn debug_core_start(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         core_ap: &FullyQualifiedApAddress,
         core_type: CoreType,
         debug_base: Option<u64>,
@@ -797,7 +797,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#traceStart
     fn trace_start(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         components: &[CoresightComponent],
         _sink: &TraceSink,
     ) -> Result<(), ArmError> {
@@ -848,7 +848,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     #[doc(alias = "DebugDeviceUnlock")]
     fn debug_device_unlock(
         &self,
-        _interface: &mut dyn ArmProbeInterface,
+        _interface: &mut dyn ArmDebugInterface,
         _default_ap: &FullyQualifiedApAddress,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
@@ -1136,7 +1136,7 @@ pub trait DebugEraseSequence: Send + Sync {
     /// May fail if the device is e.g. permanently locked or due to communication issues with the device.
     /// Some devices require the probe to be disconnected and re-attached after a successful chip-erase in
     /// which case it will return `Error::Probe(DebugProbeError::ReAttachRequired)`
-    fn erase_all(&self, _interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
+    fn erase_all(&self, _interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
         Err(ArmError::NotImplemented("erase_all"))
     }
 }

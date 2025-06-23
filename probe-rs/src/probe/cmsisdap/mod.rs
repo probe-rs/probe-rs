@@ -6,7 +6,7 @@ use crate::{
     CoreStatus,
     architecture::{
         arm::{
-            ArmCommunicationInterface, ArmError, ArmProbeInterface, DapError, Pins, RawDapAccess,
+            ArmCommunicationInterface, ArmDebugInterface, ArmError, DapError, Pins, RawDapAccess,
             RegisterAddress, SwoAccess, SwoConfig, SwoMode,
             communication_interface::DapProbe,
             dp::{Abort, Ctrl, DpRegister},
@@ -713,7 +713,7 @@ impl CmsisDap {
     }
 
     /// Fetch current SWO trace status.
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn get_swo_status(&mut self) -> Result<swo::StatusResponse, DebugProbeError> {
         Ok(commands::send_command(
             &mut self.device,
@@ -726,7 +726,7 @@ impl CmsisDap {
     /// request.request_status: request trace status
     /// request.request_count: request remaining bytes in trace buffer
     /// request.request_index: request sequence number and timestamp of next trace sequence
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn get_swo_extended_status(
         &mut self,
         request: swo::ExtendedStatusRequest,
@@ -932,10 +932,10 @@ impl DebugProbe for CmsisDap {
         Some(self as _)
     }
 
-    fn try_get_arm_interface<'probe>(
+    fn try_get_arm_debug_interface<'probe>(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
+    ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         Ok(ArmCommunicationInterface::create(self, sequence, false))
     }
 

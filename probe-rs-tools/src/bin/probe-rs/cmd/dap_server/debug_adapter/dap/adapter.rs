@@ -1912,11 +1912,15 @@ pub fn get_arguments<T: DeserializeOwned, P: ProtocolAdapter>(
     match serde_json::from_value(raw_arguments.to_owned()) {
         Ok(value) => Ok(value),
         Err(e) => {
+            let err = anyhow!(
+                "Failed to deserialize {} arguments: {}, error: {}",
+                req.command,
+                raw_arguments,
+                e
+            );
+
             debug_adapter.send_response::<()>(req, Err(&e.into()))?;
-            Err(DebuggerError::Other(anyhow!(
-                "Failed to deserialize {} arguments",
-                req.command
-            )))
+            Err(DebuggerError::Other(err))
         }
     }
 }

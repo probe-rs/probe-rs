@@ -3,7 +3,7 @@ use scroll::{LE, Pread};
 use super::{CommandId, Request, SendError, Status};
 
 #[repr(u8)]
-#[allow(unused)]
+#[expect(unused)]
 #[derive(Copy, Clone, Debug)]
 pub enum TransportRequest {
     NoTransport = 0,
@@ -34,7 +34,7 @@ pub struct TransportResponse {
 }
 
 #[repr(u8)]
-#[allow(unused)]
+#[expect(unused)]
 #[derive(Copy, Clone, Debug)]
 pub enum ModeRequest {
     Off = 0,

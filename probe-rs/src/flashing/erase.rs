@@ -50,7 +50,7 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
 
         let target = session.target();
         let core = target.core_index_by_name(core_name).unwrap();
-        let algo = FlashLoader::get_flash_algorithm_for_region(&region, target)?;
+        let algo = FlashLoader::get_flash_algorithm_for_region(&region, target, core_name)?;
 
         tracing::debug!("     -- using algorithm: {}", algo.name);
         if let Some(entry) = algos.iter_mut().find(|entry| {
@@ -188,13 +188,14 @@ pub fn erase_sectors(
             region.range.end - region.range.start
         );
 
-        let algo = FlashLoader::get_flash_algorithm_for_region(region, session.target())?;
-
         // Get the first core that can access the region
         let core_name = region
             .cores
             .first()
             .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?;
+
+        let algo =
+            FlashLoader::get_flash_algorithm_for_region(region, session.target(), core_name)?;
 
         let entry = algos
             .entry((algo.name.clone(), core_name.clone()))
@@ -275,13 +276,14 @@ pub fn run_blank_check(
             region.range.end - region.range.start
         );
 
-        let algo = FlashLoader::get_flash_algorithm_for_region(region, session.target())?;
-
         // Get the first core that can access the region
         let core_name = region
             .cores
             .first()
             .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?;
+
+        let algo =
+            FlashLoader::get_flash_algorithm_for_region(region, session.target(), core_name)?;
 
         let entry = algos
             .entry((algo.name.clone(), core_name.clone()))

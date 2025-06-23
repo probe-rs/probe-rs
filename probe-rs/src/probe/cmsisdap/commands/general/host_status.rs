@@ -14,7 +14,6 @@ impl HostStatusRequest {
         }
     }
 
-    #[allow(dead_code)]
     pub fn running(running: bool) -> Self {
         HostStatusRequest {
             status_type: 1,

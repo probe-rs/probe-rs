@@ -4,7 +4,7 @@ use crate::architecture::arm::armv7m::Demcr;
 use crate::{
     MemoryMappedRegister,
     architecture::arm::{
-        ArmError, ArmProbeInterface, FullyQualifiedApAddress, armv7m::Dhcsr,
+        ArmDebugInterface, ArmError, FullyQualifiedApAddress, armv7m::Dhcsr,
         memory::ArmMemoryInterface, sequences::ArmDebugSequence,
     },
 };
@@ -108,7 +108,7 @@ impl Mec172x {
 impl ArmDebugSequence for Mec172x {
     fn debug_core_start(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
         core_ap: &FullyQualifiedApAddress,
         _core_type: CoreType,
         _debug_base: Option<u64>,
@@ -140,7 +140,7 @@ impl ArmDebugSequence for Mec172x {
         // The ARM communication interface knows how to re-initialize the debug port.
         // Re-initializing the core(s) is on us.
         let ap = memory.fully_qualified_address();
-        let interface = memory.get_arm_probe_interface()?;
+        let interface = memory.get_arm_debug_interface()?;
         interface.reinitialize()?;
 
         assert!(debug_base.is_none());

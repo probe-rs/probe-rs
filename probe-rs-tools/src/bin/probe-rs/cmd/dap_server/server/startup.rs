@@ -86,7 +86,10 @@ pub async fn debug(
                 let end_message = match debugger.debug_session(debug_adapter, lister).await {
                     // We no longer have a reference to the `debug_adapter`, so errors need
                     // special handling to ensure they are displayed to the user.
-                    Err(error) => format!("Session ended: {error}"),
+                    Err(error) => {
+                        eprintln!("Session ended with error: {error:?}");
+                        format!("Session ended: {error}")
+                    }
                     Ok(()) => format!("Closing debug session from: {addr}"),
                 };
                 debugger.debug_logger.log_to_console(&end_message)?;

@@ -2,7 +2,7 @@ use crate::{
     Core, CoreType, Error, Target,
     architecture::{
         arm::{
-            ApV2Address, ArmProbeInterface, FullyQualifiedApAddress,
+            ApV2Address, ArmDebugInterface, FullyQualifiedApAddress,
             core::{CortexAState, CortexMState},
             dp::DpAddress,
         },
@@ -41,7 +41,7 @@ impl CombinedCoreState {
     pub(crate) fn attach_arm<'probe>(
         &'probe mut self,
         target: &'probe Target,
-        arm_interface: &'probe mut Box<dyn ArmProbeInterface>,
+        arm_interface: &'probe mut Box<dyn ArmDebugInterface>,
     ) -> Result<Core<'probe>, Error> {
         let name = &target.cores[self.id].name;
 
@@ -109,7 +109,7 @@ impl CombinedCoreState {
 
     pub(crate) fn enable_arm_debug(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
     ) -> Result<(), Error> {
         let ResolvedCoreOptions::Arm { sequence, options } = &self.core_state.core_access_options
         else {
@@ -135,7 +135,7 @@ impl CombinedCoreState {
 
     pub(crate) fn arm_reset_catch_set(
         &self,
-        interface: &mut dyn ArmProbeInterface,
+        interface: &mut dyn ArmDebugInterface,
     ) -> Result<(), Error> {
         let ResolvedCoreOptions::Arm { sequence, options } = &self.core_state.core_access_options
         else {

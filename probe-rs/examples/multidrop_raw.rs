@@ -29,7 +29,7 @@ fn main() -> Result<()> {
         probe.set_speed(100)?;
         probe.attach_to_unspecified()?;
         let mut iface = probe
-            .try_into_arm_interface(DefaultArmSequence::create())
+            .try_into_arm_debug_interface(DefaultArmSequence::create())
             .map_err(|(_probe, err)| err)?;
 
         iface.select_debug_port(core0)?;
