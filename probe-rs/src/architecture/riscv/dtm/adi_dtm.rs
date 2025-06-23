@@ -8,10 +8,11 @@ use crate::{
         arm::{ArmError, memory::ArmMemoryInterface},
         riscv::{
             communication_interface::{
-                RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
-                RiscvInterfaceBuilder,
+                MemoryAccessMethod, RiscvCommunicationInterface, RiscvDebugInterfaceState,
+                RiscvError, RiscvInterfaceBuilder,
             },
             dtm::dtm_access::{DmAddress, DtmAccess},
+            sequences::DefaultRiscvSequence,
         },
     },
     probe::{CommandQueue, CommandResult, DeferredResultSet},
@@ -43,7 +44,7 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for AdiDtmBuilder<'probe> {
 
         state.offset = self.offset.unwrap_or(0);
 
-        RiscvDebugInterfaceState::new(Box::new(state))
+        RiscvDebugInterfaceState::new(Box::new(state), Some(MemoryAccessMethod::Dtm))
     }
 
     fn attach<'state>(
@@ -194,5 +195,11 @@ impl DtmAccess for AdiDtm<'_> {
 
     fn read_idcode(&mut self) -> Result<Option<u32>, crate::probe::DebugProbeError> {
         Ok(None)
+    }
+
+    fn read_memory_32(&mut self, address: u64) -> Result<u32, RiscvError> {
+        self.probe
+            .read_word_32(address)
+            .map_err(|_| RiscvError::DtmOperationFailed)
     }
 }
