@@ -1,3 +1,5 @@
+# Manual edit: removed flash algorithms where load address is outside of defined RAM
+---
 name: STM32WBA Series
 manufacturer:
   id: 0x20
@@ -5,15 +7,17 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 2.0.0
 variants:
-- name: STM32WBA50KEUx
+- name: STM32WBA50KE
+  package_variants:
+  - STM32WBA50KEUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -22,116 +26,18 @@ variants:
     access:
       write: false
       boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA50KEUxT
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
   - !Nvm
-    name: Flash
+    name: OTP
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0xbf90000
+      end: 0xbf90200
     cores:
     - main
     access:
       write: false
-      boot: true
+      execute: false
   - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA50KGUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA50KGUxT
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20010000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA52CEUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20018000
@@ -139,16 +45,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA52CGUx
+- name: STM32WBA50KG
+  package_variants:
+  - STM32WBA50KGUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -157,35 +64,18 @@ variants:
     access:
       write: false
       boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA52CGUxT
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
   - !Nvm
-    name: Flash
+    name: OTP
     range:
-      start: 0x8000000
-      end: 0x8100000
+      start: 0xbf90000
+      end: 0xbf90200
     cores:
     - main
     access:
       write: false
-      boot: true
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -193,43 +83,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA52CGUxU
+- name: STM32WBA52CE
+  package_variants:
+  - STM32WBA52CEUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA52KEUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -238,8 +102,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20018000
@@ -247,16 +121,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA52KGUx
+- name: STM32WBA52CG
+  package_variants:
+  - STM32WBA52CGUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -265,35 +140,18 @@ variants:
     access:
       write: false
       boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA52KGUxT
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
   - !Nvm
-    name: Flash
+    name: OTP
     range:
-      start: 0x8000000
-      end: 0x8100000
+      start: 0xbf90000
+      end: 0xbf90200
     cores:
     - main
     access:
       write: false
-      boot: true
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -301,16 +159,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA54CEUx
+- name: STM32WBA52KE
+  package_variants:
+  - STM32WBA52KEUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -319,8 +178,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20018000
@@ -328,16 +197,55 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA54CEUxT
+- name: STM32WBA52KG
+  package_variants:
+  - STM32WBA52KGUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wbax_1m_0800
+- name: STM32WBA54CE
+  package_variants:
+  - STM32WBA54CEUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -346,8 +254,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20018000
@@ -355,16 +273,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA54CGUx
+- name: STM32WBA54CG
+  package_variants:
+  - STM32WBA54CGUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -373,35 +292,18 @@ variants:
     access:
       write: false
       boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA54CGUxT
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
   - !Nvm
-    name: Flash
+    name: OTP
     range:
-      start: 0x8000000
-      end: 0x8100000
+      start: 0xbf90000
+      end: 0xbf90200
     cores:
     - main
     access:
       write: false
-      boot: true
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -409,16 +311,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA54KEUx
+- name: STM32WBA54KE
+  package_variants:
+  - STM32WBA54KEUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -427,8 +330,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20018000
@@ -436,16 +349,55 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA54KEUxT
+- name: STM32WBA54KG
+  package_variants:
+  - STM32WBA54KGUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wbax_1m_0800
+- name: STM32WBA55CE
+  package_variants:
+  - STM32WBA55CEUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -454,8 +406,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20018000
@@ -463,16 +425,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA54KGUx
+- name: STM32WBA55CG
+  package_variants:
+  - STM32WBA55CGUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -481,35 +444,18 @@ variants:
     access:
       write: false
       boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA54KGUxT
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
   - !Nvm
-    name: Flash
+    name: OTP
     range:
-      start: 0x8000000
-      end: 0x8100000
+      start: 0xbf90000
+      end: 0xbf90200
     cores:
     - main
     access:
       write: false
-      boot: true
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -517,16 +463,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA55CEUx
+- name: STM32WBA55HE
+  package_variants:
+  - STM32WBA55HEFx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -535,8 +482,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20018000
@@ -544,16 +501,55 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA55CEUxT
+- name: STM32WBA55HG
+  package_variants:
+  - STM32WBA55HGFx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wbax_1m_0800
+- name: STM32WBA55UE
+  package_variants:
+  - STM32WBA55UEIx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -562,8 +558,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20018000
@@ -571,16 +577,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA55CGUx
+- name: STM32WBA55UG
+  package_variants:
+  - STM32WBA55UGIx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -589,8 +596,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -598,16 +615,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA55CGUxT
+- name: STM32WBA5MJG
+  package_variants:
+  - STM32WBA5MJGHx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -616,8 +634,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbf90000
+      end: 0xbf90200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20020000
@@ -625,16 +653,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA55CGUxU
+- name: STM32WBA62CG
+  package_variants:
+  - STM32WBA62CGUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -643,251 +672,18 @@ variants:
     access:
       write: false
       boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA55HEFx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
   - !Nvm
-    name: Flash
+    name: OTP
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0xbfa0000
+      end: 0xbfa0200
     cores:
     - main
     access:
       write: false
-      boot: true
+      execute: false
   - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA55HGFx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA55UEIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA55UEIxT
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20018000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_512k_0c00
-- name: STM32WBA55UGIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA55UGIxT
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA5MJGHx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA5MJGHxU
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20020000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA62CGUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -895,16 +691,55 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA62CIUx
+- name: STM32WBA63CG
+  package_variants:
+  - STM32WBA63CGUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wbax_1m_0800
+- name: STM32WBA64CI
+  package_variants:
+  - STM32WBA64CIUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8200000
@@ -913,8 +748,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -922,43 +767,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_2m_0800
-  - stm32wbax_2m_0c00
-- name: STM32WBA62MGFx
+- name: STM32WBA62CI
+  package_variants:
+  - STM32WBA62CIUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA62MIFx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8200000
@@ -967,8 +786,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -976,43 +805,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_2m_0800
-  - stm32wbax_2m_0c00
-- name: STM32WBA62PGIx
+- name: STM32WBA65PI
+  package_variants:
+  - STM32WBA65PIIx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA62PIIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8200000
@@ -1021,8 +824,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -1030,43 +843,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_2m_0800
-  - stm32wbax_2m_0c00
-- name: STM32WBA63CGUx
+- name: STM32WBA65RI
+  package_variants:
+  - STM32WBA65RIVx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA63CIUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8200000
@@ -1075,8 +862,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -1084,16 +881,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_2m_0800
-  - stm32wbax_2m_0c00
-- name: STM32WBA64CGUx
+- name: STM32WBA62PG
+  package_variants:
+  - STM32WBA62PGIx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1102,8 +900,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -1111,43 +919,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA64CIUx
+- name: STM32WBA65CG
+  package_variants:
+  - STM32WBA65CGUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_2m_0800
-  - stm32wbax_2m_0c00
-- name: STM32WBA65CGUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1156,8 +938,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -1165,16 +957,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA65CIUx
+- name: STM32WBA65MI
+  package_variants:
+  - STM32WBA65MIFx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8200000
@@ -1183,8 +976,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -1192,16 +995,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_2m_0800
-  - stm32wbax_2m_0c00
-- name: STM32WBA65MGFx
+- name: STM32WBA62MG
+  package_variants:
+  - STM32WBA62MGFx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1210,8 +1014,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -1219,16 +1033,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA65MIFx
+- name: STM32WBA65CI
+  package_variants:
+  - STM32WBA65CIUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8200000
@@ -1237,8 +1052,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -1246,16 +1071,55 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_2m_0800
-  - stm32wbax_2m_0c00
-- name: STM32WBA65PGIx
+- name: STM32WBA62PI
+  package_variants:
+  - STM32WBA62PIIx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wbax_2m_0800
+- name: STM32WBA65RG
+  package_variants:
+  - STM32WBA65RGVx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1264,8 +1128,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -1273,43 +1147,17 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA65PIIx
+- name: STM32WBA65PG
+  package_variants:
+  - STM32WBA65PGIx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
-    range:
-      start: 0x8000000
-      end: 0x8200000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Ram
-    name: SRAM1_2
-    range:
-      start: 0x20000000
-      end: 0x20080000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32wbax_2m_0800
-  - stm32wbax_2m_0c00
-- name: STM32WBA65RGVx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8100000
@@ -1318,8 +1166,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -1327,16 +1185,55 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_1m_0800
-  - stm32wbax_1m_0c00
-- name: STM32WBA65RIVx
+- name: STM32WBA62CG
+  package_variants:
+  - STM32WBA62CGUx
   cores:
   - name: main
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 0
+      ap: !v1 1
   memory_map:
   - !Nvm
-    name: Flash
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wbax_1m_0800
+- name: STM32WBA62MI
+  package_variants:
+  - STM32WBA62MIFx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8200000
@@ -1345,8 +1242,18 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_2
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20080000
@@ -1354,13 +1261,126 @@ variants:
     - main
   flash_algorithms:
   - stm32wbax_2m_0800
-  - stm32wbax_2m_0c00
+- name: STM32WBA65MG
+  package_variants:
+  - STM32WBA65MGFx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wbax_1m_0800
+- name: STM32WBA64CG
+  package_variants:
+  - STM32WBA64CGUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wbax_1m_0800
+- name: STM32WBA63CI
+  package_variants:
+  - STM32WBA63CIUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20080000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wbax_2m_0800
 flash_algorithms:
 - name: stm32wbax_1m_0800
   description: STM32WBAxx 1M NSecure Flash
   default: true
   instructions: v/NPj3BH/kkJbMgPcEdwtQRGDUYWRnK2//f1/yCx+EgAbMCyVSgR0fVIgGoA8ABAILH0SPJJiGDzSIhgAL/wSABqAPSAMAAo+dEY4E/w/zDrSYAxCGDqScH4hADoSYgxCGAJHQhg50jlSchg5kjIYAC/40hAagD0gDAAKPnRACBwvRC1BEb/977/ILHcSABswLJVKAbR2kiAakDwAEDYSYhiBeDWSMBqQPAAQNRJyGL/96b/ACAQvRC1//ek/yCxz0gAbMCyVSgj0QC/zEhAagD0gDAAKPnRICDJSQhiCEaAakDwBACIYghGgGpA9IAwiGL/94X/AL/BSABqAPSAMAAo+dG+SIBqIPAEALxJiGIf4AC/ukhAagD0gDAAKPnRICC3SUhiBCDIYghGwGpA9IAwyGL/92T/AL+xSEBqAPSAMAAo+dGuSIBqIPAEAKxJiGIAIBC9cLUERrTxQG8B06TxgGT/90//ILGlSABswLJVKC3RICCiSQhiCEaAakDwAgCIYsTzRzUIRoBqIPR+cIhiCEaAakDqxQCIYghGgGpA9IAwiGIAv5VIAGoA9IAwACj50ZJIAGoA8AIACLEBIHC9j0iAaiDwAgCNSYhiLOAgIItJSGIIRsBqQPACAMhixPNHNQhGwGog9H5wyGIIRsBqQOrFAMhiCEbAakD0gDDIYgC/fkhAagD0gDAAKPnRe0hAagDwAgAIsQEg0Od4SMBqIPACAHZJyGIAIMjnLen8RwVGD0aQRgXwBwZP8AAKB/EPACDwDwf/993+ILFsSABswLJVKH3RQvL7AGhJCGIBIIhiheAIL0zTQPL/EGRJCGIALjLQpesGCgAkBuCa+AAADfgEAArxAQpkHLRC9tMAJAfgmPgAAKEZDfgBAAjxAQhkHMbxCACgQvPYpesGCgC/U0gAagD0gDAAKPnRAJjK+AAAAZjK+AQAAL8Av8bxCAA/GsbxCAAFRAAmAL9ISABqAPSAMAAo+dHY+AAAKGDY+AQAaGAI8QgICD8INQC/AL8h4AAkBuCY+AAADfgEAAjxAQhkHLxC9tMAJATg/yDhGQ34AQBkHMfxCACgQvbYAL8zSABqAPSAMAAo+dEAmChgAZhoYAAnAL8tSABqAPSAMADgFOAAKPfRKUgAakLy+wEIQCixCEYlSQhiASC96PyHAC9/9HevACAhSYhiluBC8vsAHklIYgEgyGKJ4AgvU9NA8v8QGklIYr6zpesGCgAkBuCa+AAADfgEAArxAQpkHLRC9tMAJAfgmPgAAKEZDfgBAAjxAQhkHMbxCACgQvPYpesGCgC/CUhAagD0gDAAKPnRAJjK+AAAAZjK+AQAAL8Av8bxCAA/GsbxCAAG4AAgAkAjAWdFq4nvzQHgBUQAJgC/J0hAagD0gDAAKPnR2PgAAChg2PgEAGhgCPEICAg/CDUAvwC/IeAAJAbgmPgAAA34BAAI8QEIZBy8QvbTACQE4P8g4RkN+AEAZBzH8QgAoEL22AC/EkhAagD0gDAAKPnRAJgoYAGYaGAAJwC/DEhAagD0gDAAKPnRCUhAakLy+wEIQCCxCEYGSUhiASBl5wAvf/RzrwAgAknIYgAgXecAAAAgAkAAAAAA
-  load_address: 0x20000008
+  load_address: 0x20000020
   pc_init: 0xf
   pc_uninit: 0x83
   pc_program_page: 0x22f
@@ -1371,50 +1391,6 @@ flash_algorithms:
     address_range:
       start: 0x8000000
       end: 0x8100000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32wbax_512k_0c00
-  description: STM32WBAxx 512K NSecure Flash
-  default: true
-  instructions: v/NPj3BH/kkJbMgPcEdwtQRGDUYWRnK2//f1/yCx+EgAbMCyVSgR0fVIgGoA8ABAILH0SPJJiGDzSIhgAL/wSABqAPSAMAAo+dEY4E/w/zDrSYAxCGDqScH4hADoSYgxCGAJHQhg50jlSchg5kjIYAC/40hAagD0gDAAKPnRACBwvRC1BEb/977/ILHcSABswLJVKAbR2kiAakDwAEDYSYhiBeDWSMBqQPAAQNRJyGL/96b/ACAQvRC1//ek/yCxz0gAbMCyVSgj0QC/zEhAagD0gDAAKPnRICDJSQhiCEaAakDwBACIYghGgGpA9IAwiGL/94X/AL/BSABqAPSAMAAo+dG+SIBqIPAEALxJiGIf4AC/ukhAagD0gDAAKPnRICC3SUhiBCDIYghGwGpA9IAwyGL/92T/AL+xSEBqAPSAMAAo+dGuSIBqIPAEAKxJiGIAIBC9cLUERrTxQG8B06TxgGT/90//ILGlSABswLJVKC3RICCiSQhiCEaAakDwAgCIYsTzRzUIRoBqIPR+cIhiCEaAakDqxQCIYghGgGpA9IAwiGIAv5VIAGoA9IAwACj50ZJIAGoA8AIACLEBIHC9j0iAaiDwAgCNSYhiLOAgIItJSGIIRsBqQPACAMhixPNHNQhGwGog9H5wyGIIRsBqQOrFAMhiCEbAakD0gDDIYgC/fkhAagD0gDAAKPnRe0hAagDwAgAIsQEg0Od4SMBqIPACAHZJyGIAIMjnLen8RwVGD0aQRgXwBwZP8AAKB/EPACDwDwf/993+ILFsSABswLJVKH3RQvL7AGhJCGIBIIhiheAIL0zTQPL/EGRJCGIALjLQpesGCgAkBuCa+AAADfgEAArxAQpkHLRC9tMAJAfgmPgAAKEZDfgBAAjxAQhkHMbxCACgQvPYpesGCgC/U0gAagD0gDAAKPnRAJjK+AAAAZjK+AQAAL8Av8bxCAA/GsbxCAAFRAAmAL9ISABqAPSAMAAo+dHY+AAAKGDY+AQAaGAI8QgICD8INQC/AL8h4AAkBuCY+AAADfgEAAjxAQhkHLxC9tMAJATg/yDhGQ34AQBkHMfxCACgQvbYAL8zSABqAPSAMAAo+dEAmChgAZhoYAAnAL8tSABqAPSAMADgFOAAKPfRKUgAakLy+wEIQCixCEYlSQhiASC96PyHAC9/9HevACAhSYhiluBC8vsAHklIYgEgyGKJ4AgvU9NA8v8QGklIYr6zpesGCgAkBuCa+AAADfgEAArxAQpkHLRC9tMAJAfgmPgAAKEZDfgBAAjxAQhkHMbxCACgQvPYpesGCgC/CUhAagD0gDAAKPnRAJjK+AAAAZjK+AQAAL8Av8bxCAA/GsbxCAAG4AAgAkAjAWdFq4nvzQHgBUQAJgC/J0hAagD0gDAAKPnR2PgAAChg2PgEAGhgCPEICAg/CDUAvwC/IeAAJAbgmPgAAA34BAAI8QEIZBy8QvbTACQE4P8g4RkN+AEAZBzH8QgAoEL22AC/EkhAagD0gDAAKPnRAJgoYAGYaGAAJwC/DEhAagD0gDAAKPnRCUhAakLy+wEIQCCxCEYGSUhiASBl5wAvf/RzrwAgAknIYgAgXecAAAAgAkAAAAAA
-  load_address: 0x20000008
-  pc_init: 0xf
-  pc_uninit: 0x83
-  pc_program_page: 0x22f
-  pc_erase_sector: 0x157
-  pc_erase_all: 0xb9
-  data_section_offset: 0x4b8
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc080000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32wbax_1m_0c00
-  description: STM32WBAxx 1M NSecure Flash
-  default: true
-  instructions: v/NPj3BH/kkJbMgPcEdwtQRGDUYWRnK2//f1/yCx+EgAbMCyVSgR0fVIgGoA8ABAILH0SPJJiGDzSIhgAL/wSABqAPSAMAAo+dEY4E/w/zDrSYAxCGDqScH4hADoSYgxCGAJHQhg50jlSchg5kjIYAC/40hAagD0gDAAKPnRACBwvRC1BEb/977/ILHcSABswLJVKAbR2kiAakDwAEDYSYhiBeDWSMBqQPAAQNRJyGL/96b/ACAQvRC1//ek/yCxz0gAbMCyVSgj0QC/zEhAagD0gDAAKPnRICDJSQhiCEaAakDwBACIYghGgGpA9IAwiGL/94X/AL/BSABqAPSAMAAo+dG+SIBqIPAEALxJiGIf4AC/ukhAagD0gDAAKPnRICC3SUhiBCDIYghGwGpA9IAwyGL/92T/AL+xSEBqAPSAMAAo+dGuSIBqIPAEAKxJiGIAIBC9cLUERrTxQG8B06TxgGT/90//ILGlSABswLJVKC3RICCiSQhiCEaAakDwAgCIYsTzRzUIRoBqIPR+cIhiCEaAakDqxQCIYghGgGpA9IAwiGIAv5VIAGoA9IAwACj50ZJIAGoA8AIACLEBIHC9j0iAaiDwAgCNSYhiLOAgIItJSGIIRsBqQPACAMhixPNHNQhGwGog9H5wyGIIRsBqQOrFAMhiCEbAakD0gDDIYgC/fkhAagD0gDAAKPnRe0hAagDwAgAIsQEg0Od4SMBqIPACAHZJyGIAIMjnLen8RwVGD0aQRgXwBwZP8AAKB/EPACDwDwf/993+ILFsSABswLJVKH3RQvL7AGhJCGIBIIhiheAIL0zTQPL/EGRJCGIALjLQpesGCgAkBuCa+AAADfgEAArxAQpkHLRC9tMAJAfgmPgAAKEZDfgBAAjxAQhkHMbxCACgQvPYpesGCgC/U0gAagD0gDAAKPnRAJjK+AAAAZjK+AQAAL8Av8bxCAA/GsbxCAAFRAAmAL9ISABqAPSAMAAo+dHY+AAAKGDY+AQAaGAI8QgICD8INQC/AL8h4AAkBuCY+AAADfgEAAjxAQhkHLxC9tMAJATg/yDhGQ34AQBkHMfxCACgQvbYAL8zSABqAPSAMAAo+dEAmChgAZhoYAAnAL8tSABqAPSAMADgFOAAKPfRKUgAakLy+wEIQCixCEYlSQhiASC96PyHAC9/9HevACAhSYhiluBC8vsAHklIYgEgyGKJ4AgvU9NA8v8QGklIYr6zpesGCgAkBuCa+AAADfgEAArxAQpkHLRC9tMAJAfgmPgAAKEZDfgBAAjxAQhkHMbxCACgQvPYpesGCgC/CUhAagD0gDAAKPnRAJjK+AAAAZjK+AQAAL8Av8bxCAA/GsbxCAAG4AAgAkAjAWdFq4nvzQHgBUQAJgC/J0hAagD0gDAAKPnR2PgAAChg2PgEAGhgCPEICAg/CDUAvwC/IeAAJAbgmPgAAA34BAAI8QEIZBy8QvbTACQE4P8g4RkN+AEAZBzH8QgAoEL22AC/EkhAagD0gDAAKPnRAJgoYAGYaGAAJwC/DEhAagD0gDAAKPnRCUhAakLy+wEIQCCxCEYGSUhiASBl5wAvf/RzrwAgAknIYgAgXecAAAAgAkAAAAAA
-  load_address: 0x20000008
-  pc_init: 0xf
-  pc_uninit: 0x83
-  pc_program_page: 0x22f
-  pc_erase_sector: 0x157
-  pc_erase_all: 0xb9
-  data_section_offset: 0x4b8
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc100000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400
@@ -1426,7 +1402,7 @@ flash_algorithms:
   description: STM32WBAxx 2M NSecure Flash
   default: true
   instructions: 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
-  load_address: 0x20000008
+  load_address: 0x20000020
   pc_init: 0x1
   pc_uninit: 0xc9
   pc_program_page: 0x4fd
@@ -1437,28 +1413,6 @@ flash_algorithms:
     address_range:
       start: 0x8000000
       end: 0x8200000
-    page_size: 0x400
-    erased_byte_value: 0xff
-    program_page_timeout: 400
-    erase_sector_timeout: 400
-    sectors:
-    - size: 0x2000
-      address: 0x0
-- name: stm32wbax_2m_0c00
-  description: STM32WBAxx 2M NSecure Flash
-  default: true
-  instructions: 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
-  load_address: 0x20000008
-  pc_init: 0x1
-  pc_uninit: 0xc9
-  pc_program_page: 0x4fd
-  pc_erase_sector: 0x20d
-  pc_erase_all: 0xfd
-  data_section_offset: 0x7dc
-  flash_properties:
-    address_range:
-      start: 0xc000000
-      end: 0xc200000
     page_size: 0x400
     erased_byte_value: 0xff
     program_page_timeout: 400
