@@ -1,11 +1,10 @@
 //! Sequences for STM32N6 devices
 
+use probe_rs_target::CoreType;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-
-use probe_rs_target::CoreType;
 
 use crate::{
     MemoryMappedRegister,
@@ -153,6 +152,25 @@ impl ArmDebugSequence for Stm32n6 {
 
         // Clear instruction cache by writing to ICIALLU.
         core.write_word_32(0xE000_EF50, 0)?;
+
+        // If the reset is being caught, then it might be the case that the user will want
+        // to load software into SRAM. Enable the SRAM blocks to allow for this.
+
+        // Enable AXISRAM3,4,5,6 which are all disabled after reset
+        const RCC_MEMENR: u64 = 0x4602_824C;
+        const RCC_MEMENR_AXISRAM3456_EN: u32 = 0xF;
+        core.read_word_32(RCC_MEMENR)
+            .and_then(|val| core.write_word_32(RCC_MEMENR, val | RCC_MEMENR_AXISRAM3456_EN))
+            .inspect_err(|_| tracing::error!("failed to enable axisram"))?;
+
+        // AXISRAM 3..6 are powered down by default; clear the SRAMSD bit.
+        for sram in 3..=6 {
+            const RAMCFG_BASE: u64 = 0x42023000;
+            const RAMCFG_AXISRAMXCR_BASE: u64 = RAMCFG_BASE;
+            let ramcfg_axisramncr = RAMCFG_AXISRAMXCR_BASE + 0x80 * (sram - 1);
+            core.write_word_32(ramcfg_axisramncr, 0)
+                .inspect_err(|_| tracing::error!("failed to power up AXISRAM"))?;
+        }
 
         Ok(())
     }
