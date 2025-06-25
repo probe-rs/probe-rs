@@ -1,0 +1,1 @@
+Added an export of `riscv::dtm::JtagDtmBuilder` so external software can implement `DebugProbe::try_get_riscv_interface_builder()`

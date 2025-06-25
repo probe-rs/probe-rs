@@ -1,0 +1,1 @@
+Added an export of `arm::communication_interface::DapProbe` so external software can implement `ArmDebugSequence` trait functions that require that type
