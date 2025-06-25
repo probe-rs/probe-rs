@@ -377,7 +377,7 @@ impl<'probe> Armv7a<'probe> {
     /// For greater performance, place DBGDTRTX, DBGDTRRX, DBGITR, and DBGDCSR
     /// into the banked register window. This will allow us to directly access
     /// these four values.
-    fn banked_access(&mut self) -> Result<BankedAccess, Error> {
+    fn banked_access(&mut self) -> Result<BankedAccess<'_>, Error> {
         let address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
         let ap = self.memory.fully_qualified_address();
         let is_64_bit = self.is_64_bit();

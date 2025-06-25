@@ -134,7 +134,7 @@ impl<'layout> FlashVisualizer<'layout> {
 impl FlashLayout {
     /// Get a visualizer for the flash layout, which can create
     /// a graphical representation of the layout.
-    pub fn visualize(&self) -> FlashVisualizer {
+    pub fn visualize(&self) -> FlashVisualizer<'_> {
         FlashVisualizer::new(self)
     }
 }

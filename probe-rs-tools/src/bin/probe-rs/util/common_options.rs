@@ -120,7 +120,7 @@ pub struct ProbeOptions {
 }
 
 impl ProbeOptions {
-    pub fn load(self, registry: &mut Registry) -> Result<LoadedProbeOptions, OperationError> {
+    pub fn load(self, registry: &mut Registry) -> Result<LoadedProbeOptions<'_>, OperationError> {
         LoadedProbeOptions::new(self, registry)
     }
 

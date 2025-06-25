@@ -80,7 +80,7 @@ impl DebugLogger {
         Ok(debug_logger)
     }
 
-    fn locked_buffer(&self) -> MutexGuard<Vec<u8>> {
+    fn locked_buffer(&self) -> MutexGuard<'_, Vec<u8>> {
         self.buffer.lock()
     }
 
@@ -111,7 +111,7 @@ impl DebugLogger {
 
     /// Flush the buffer to the stderr
     pub(crate) fn flush(&self) -> Result<(), DebuggerError> {
-        self.process_new_log_lines(|line| eprintln!("{}", line))
+        self.process_new_log_lines(|line| eprintln!("{line}"))
     }
 
     /// Setup logging, according to the following rules.

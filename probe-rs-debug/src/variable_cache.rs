@@ -39,7 +39,7 @@ impl Serialize for VariableCache {
             children: Vec<VariableTreeNode<'c>>,
         }
 
-        fn recurse_cache(variable_cache: &VariableCache) -> VariableTreeNode {
+        fn recurse_cache(variable_cache: &VariableCache) -> VariableTreeNode<'_> {
             let root_node = variable_cache.root_variable();
 
             VariableTreeNode {
@@ -56,7 +56,7 @@ impl Serialize for VariableCache {
             variable_cache: &VariableCache,
             parent_variable_key: ObjectRef,
             max_children: Option<usize>,
-        ) -> Vec<VariableTreeNode> {
+        ) -> Vec<VariableTreeNode<'_>> {
             let mut children = variable_cache.get_children(parent_variable_key);
 
             let mut out = Vec::new();

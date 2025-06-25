@@ -1,5 +1,4 @@
 mod config;
-mod error;
 mod rttui;
 
 use crate::cmd::gdb_server::GdbInstanceConfiguration;
