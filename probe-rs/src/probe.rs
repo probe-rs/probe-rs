@@ -35,7 +35,11 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
+use std::net::SocketAddr;
 use std::sync::Arc;
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
+use std::path::{Path, PathBuf};
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measurable.
@@ -795,21 +799,374 @@ impl PartialEq for dyn ProbeFactory {
     }
 }
 
+#[allow(clippy::derived_hash_with_manual_eq)]
+#[derive(Default, Debug, Clone, Eq, Hash, Serialize)]
+/// Filters for USB devices. Contains the most relevant things that should be unique per-device on
+/// a given operating system.
+pub struct UsbFilters {
+    /// The serial number for a USB device.
+    pub serial_number: Option<String>,
+    /// The USB HID interface number.
+    pub hid_interface: Option<u8>,
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    /// The path to the USB device in the filesystem.
+    pub sysfs_path: Option<PathBuf>,
+
+    #[cfg(target_os = "windows")]
+    /// The instance ID for a USB device.
+    pub instance_id: Option<String>,
+    #[cfg(target_os = "windows")]
+    /// The parent instance ID for a USB device.
+    pub parent_instance_id: Option<String>,
+    #[cfg(target_os = "windows")]
+    /// The port number for a USB device.
+    pub port_number: Option<u32>,
+    #[cfg(target_os = "windows")]
+    /// The driver for a USB device.
+    pub driver: Option<String>,
+
+    #[cfg(target_os = "macos")]
+    /// The registry ID for a USB device.
+    pub registry_id: Option<u64>,
+    #[cfg(target_os = "macos")]
+    /// The location ID for a USB device.
+    pub location_id: Option<u32>,
+}
+
+impl PartialEq for UsbFilters {
+    fn eq(&self, other: &Self) -> bool {
+        fn check_eq<T, U>(a: &Option<T>, b: &Option<U>) -> bool
+        where
+            T: PartialEq<U>,
+        {
+            match (a, b) {
+                (Some(a), Some(b)) => a == b,
+                (Some(_), None) => false,
+                _ => true,
+            }
+        }
+
+        if !check_eq(&self.serial_number, &other.serial_number) {
+            return false;
+        }
+
+        if !check_eq(&self.hid_interface, &other.hid_interface) {
+            return false;
+        }
+
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        if !check_eq(&self.sysfs_path, &other.sysfs_path) {
+            return false;
+        }
+
+        #[cfg(target_os = "windows")]
+        if !check_eq(&self.instance_id, &other.instance_id)
+            || !check_eq(&self.parent_instance_id, &other.parent_instance_id)
+            || !check_eq(&self.port_number, &other.port_number)
+            || !check_eq(&self.driver, &other.driver)
+        {
+            return false;
+        }
+
+        #[cfg(target_os = "macos")]
+        if !check_eq(&self.registry_id, &other.registry_id)
+            || !check_eq(&self.location_id, &other.location_id)
+        {
+            return false;
+        }
+
+        true
+    }
+}
+
+macro_rules! make_filter_impls {
+    (
+        $ty:ty: [
+            $(
+                $(#[$($meta:tt)+])?
+                $method:ident$([$($generics:tt)+])?($field:ident: $fieldty:tt$(, [$($do:tt)+])?)
+            ),+
+            $(,)?
+        ]
+    ) => {
+        impl $ty {
+            $(
+                make_filter_impls! {
+                    @method
+                    meta: [$($($meta)+)?],
+                    info: $method$([$($generics)+])?($field: $fieldty$(, [$($do)+])?),
+                }
+            )+
+        }
+    };
+    (
+        @method
+        meta: [cfg($($cfg:tt)+)],
+        info: $method:ident$([$($generics:tt)+])?($field:ident: $fieldty:tt$(, [$($do:tt)+])?),
+    ) => {
+        #[cfg($($cfg)+)]
+        #[cfg_attr(
+            $($cfg)+,
+            doc = concat!("Sets the `", stringify!($field), "` field of a `UsbFilters` instance."),
+        )]
+        pub fn $method$(<$($generics)+>)?(mut self, $field: $fieldty) -> Self {
+            self.$field = Some($field$($($do)+)?);
+            self
+        }
+    };
+    (
+        @method
+        meta: [$($($other:tt)+)?],
+        info: $method:ident$([$($generics:tt)+])?($field:ident: $fieldty:tt$(, [$($do:tt)+])?),
+    ) => {
+        $(#[$($other)+])?
+        #[doc = concat!("Sets the `", stringify!($field), "` field of a `UsbFilters` instance.")]
+        pub fn $method$(<$($generics)+>)?(mut self, $field: $fieldty) -> Self {
+            self.$field = Some($field$($($do)+)?);
+            self
+        }
+    };
+}
+
+make_filter_impls! {
+    UsbFilters: [
+        with_serial_number[S: Into<String>](serial_number: S, [.into()]),
+        with_hid_interface(hid_interface: u8),
+
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        with_sysfs_path[P: AsRef<Path>](sysfs_path: P, [.as_ref().to_path_buf()]),
+
+        #[cfg(target_os = "windows")]
+        with_instance_id[S: Into<String>](instance_id: S, [.into()]),
+        #[cfg(target_os = "windows")]
+        with_parent_instance_id[S: Into<String>](parent_instance_id: S, [.into()]),
+        #[cfg(target_os = "windows")]
+        with_port_number(port_number: u32),
+        #[cfg(target_os = "windows")]
+        with_driver[S: Into<String>](driver: S, [.into()]),
+
+        #[cfg(target_os = "macos")]
+        with_registry_id(registry_id: u64),
+        #[cfg(target_os = "macos")]
+        with_location_id(location_id: u32),
+    ]
+}
+
+trait OptionFilter<T> {
+    fn matches<U>(&self, val: U) -> bool
+    where
+        for<'a> &'a T: PartialEq<U>;
+    fn matches_optional<U>(&self, val: Option<U>) -> bool
+    where
+        for<'a> &'a T: PartialEq<U>;
+}
+
+impl<T> OptionFilter<T> for Option<T> {
+    fn matches<U>(&self, val: U) -> bool
+    where
+        for<'a> &'a T: PartialEq<U>,
+    {
+        self.as_ref().map(|fval| fval == val).unwrap_or(true)
+    }
+
+    fn matches_optional<U>(&self, val: Option<U>) -> bool
+    where
+        for<'a> &'a T: PartialEq<U>,
+    {
+        self.as_ref()
+            .map(|fval| val.map(|cval| fval == cval).unwrap_or(false))
+            .unwrap_or(true)
+    }
+}
+
+impl UsbFilters {
+    pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
+        if !self.serial_number.matches_optional(info.serial_number())
+            || !self
+                .hid_interface
+                .map(|ifnum| {
+                    info.interfaces()
+                        .any(|interface| interface.interface_number() == ifnum)
+                })
+                .unwrap_or(true)
+        {
+            return false;
+        }
+
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        if !self.sysfs_path.matches(info.sysfs_path()) {
+            return false;
+        }
+
+        #[cfg(target_os = "windows")]
+        if !self
+            .instance_id
+            .as_ref()
+            .map(AsRef::<std::ffi::OsStr>::as_ref)
+            .matches(&info.instance_id())
+            || !self
+                .parent_instance_id
+                .as_ref()
+                .map(AsRef::<std::ffi::OsStr>::as_ref)
+                .matches(&info.parent_instance_id())
+            || !self.port_number.matches(&info.port_number())
+            || !self.driver.matches_optional(info.driver())
+        {
+            return false;
+        }
+
+        #[cfg(target_os = "macos")]
+        if !self.registry_id.matches(&info.registry_entry_id())
+            || !self.location_id.matches(&info.location_id())
+        {
+            return false;
+        }
+
+        true
+    }
+}
+
+impl std::fmt::Display for UsbFilters {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(serial) = self.serial_number.as_ref() {
+            write!(f, ":{serial}")?;
+        }
+        if let Some(iface) = self.hid_interface {
+            write!(f, "[{iface}]")?;
+        }
+
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        if let Some(path) = self.sysfs_path.as_ref() {
+            write!(f, " @ {}", path.display())?;
+        }
+
+        #[cfg(any(target_os = "windows", target_os = "macos"))]
+        fn helper<T: std::fmt::Display>(
+            written: bool,
+            f: &mut fmt::Formatter<'_>,
+            pfx: &str,
+            val: Option<&T>,
+        ) -> Result<bool, std::fmt::Error> {
+            match val {
+                Some(val) => {
+                    if written {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{pfx}={val}")?;
+                    Ok(true)
+                }
+                None => Ok(written),
+            }
+        }
+
+        #[cfg(target_os = "windows")]
+        if self.instance_id.is_some()
+            || self.parent_instance_id.is_some()
+            || self.port_number.is_some()
+            || self.driver.is_some()
+        {
+            write!(f, "(")?;
+            let written = helper(false, f, "ID", self.instance_id.as_ref())?;
+            let written = helper(written, f, "PID", self.parent_instance_id.as_ref())?;
+            let written = helper(written, f, "PORT", self.port_number.as_ref())?;
+            helper(written, f, "DRIVER", self.driver.as_ref())?;
+            write!(f, ")")?;
+        }
+
+        #[cfg(target_os = "macos")]
+        if self.registry_id.is_some() || self.location_id.is_some() {
+            write!(f, "(")?;
+            let written = helper(false, f, "RID", self.registry_id.as_ref())?;
+            helper(written, f, "LID", self.location_id.as_ref())?;
+            write!(f, ")")?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+/// Represents what kind of probe is backing up a `DebugProbeInfo` instance.
+pub enum DebugProbeKind {
+    /// Physical USB device.
+    Usb {
+        /// The the USB vendor id of the debug probe to be used.
+        vendor_id: u16,
+        /// The the USB product id of the debug probe to be used.
+        product_id: u16,
+        /// USB filters.
+        filters: UsbFilters,
+    },
+    /// Network socket device.
+    SocketAddr(SocketAddr),
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    /// Unix socket device.
+    UnixSocketAddr(PathBuf),
+}
+
+impl std::fmt::Display for DebugProbeKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DebugProbeKind::Usb {
+                vendor_id,
+                product_id,
+                filters,
+            } => write!(f, "{vendor_id:04x}:{product_id:04x}{filters}"),
+            DebugProbeKind::SocketAddr(socket) => write!(f, "{socket}"),
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            DebugProbeKind::UnixSocketAddr(path) => write!(f, "{}", path.display()),
+        }
+    }
+}
+
+impl From<DebugProbeSelector> for DebugProbeKind {
+    fn from(selector: DebugProbeSelector) -> Self {
+        match selector {
+            DebugProbeSelector::Usb {
+                vendor_id,
+                product_id,
+                filters,
+                ..
+            } => Self::Usb {
+                vendor_id,
+                product_id,
+                filters,
+            },
+            DebugProbeSelector::SocketAddr(addr) => Self::SocketAddr(addr),
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            DebugProbeSelector::UnixSocketAddr(path) => Self::UnixSocketAddr(path),
+        }
+    }
+}
+
+impl From<&DebugProbeSelector> for DebugProbeKind {
+    fn from(selector: &DebugProbeSelector) -> Self {
+        match selector {
+            DebugProbeSelector::Usb {
+                vendor_id,
+                product_id,
+                filters,
+                ..
+            } => Self::Usb {
+                vendor_id: *vendor_id,
+                product_id: *product_id,
+                filters: filters.clone(),
+            },
+            DebugProbeSelector::SocketAddr(addr) => Self::SocketAddr(*addr),
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            DebugProbeSelector::UnixSocketAddr(path) => Self::UnixSocketAddr(path.clone()),
+        }
+    }
+}
+
 /// Gathers some information about a debug probe which was found during a scan.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DebugProbeInfo {
     /// The name of the debug probe.
     pub identifier: String,
-    /// The USB vendor ID of the debug probe.
-    pub vendor_id: u16,
-    /// The USB product ID of the debug probe.
-    pub product_id: u16,
-    /// The serial number of the debug probe.
-    pub serial_number: Option<String>,
-
-    /// The USB HID interface which should be used.
-    /// This is necessary for composite HID devices.
-    pub hid_interface: Option<u8>,
+    /// The kind of debug probe information
+    pub kind: DebugProbeKind,
 
     /// A reference to the [`ProbeFactory`] that created this info object.
     probe_factory: &'static dyn ProbeFactory,
@@ -817,15 +1174,34 @@ pub struct DebugProbeInfo {
 
 impl std::fmt::Display for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{} -- {:04x}:{:04x}:{} ({})",
-            self.identifier,
-            self.vendor_id,
-            self.product_id,
-            self.serial_number.as_deref().unwrap_or(""),
-            self.probe_factory,
-        )
+        match &self.kind {
+            DebugProbeKind::Usb {
+                vendor_id,
+                product_id,
+                filters,
+            } => {
+                write!(
+                    f,
+                    "{} -- {:04x}:{:04x}",
+                    self.identifier, vendor_id, product_id,
+                )?;
+                write!(f, "{filters}")?;
+                write!(f, " {}", self.probe_factory)
+            }
+            DebugProbeKind::SocketAddr(ip) => {
+                write!(f, "{} -- {ip} ({})", self.identifier, self.probe_factory)
+            }
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            DebugProbeKind::UnixSocketAddr(path) => {
+                write!(
+                    f,
+                    "{} -- {} ({})",
+                    self.identifier,
+                    path.display(),
+                    self.probe_factory
+                )
+            }
+        }
     }
 }
 
@@ -833,25 +1209,19 @@ impl DebugProbeInfo {
     /// Creates a new info struct that uniquely identifies a probe.
     pub fn new<S: Into<String>>(
         identifier: S,
-        vendor_id: u16,
-        product_id: u16,
-        serial_number: Option<String>,
+        kind: DebugProbeKind,
         probe_factory: &'static dyn ProbeFactory,
-        hid_interface: Option<u8>,
     ) -> Self {
         Self {
             identifier: identifier.into(),
-            vendor_id,
-            product_id,
-            serial_number,
+            kind,
             probe_factory,
-            hid_interface,
         }
     }
 
     /// Open the probe described by this `DebugProbeInfo`.
     pub fn open(&self) -> Result<Probe, DebugProbeError> {
-        let selector = DebugProbeSelector::from(self);
+        let selector = (&self.kind).into();
         self.probe_factory
             .open(&selector)
             .map(Probe::from_specific_probe)
@@ -876,94 +1246,305 @@ pub enum DebugProbeSelectorParseError {
     /// Could not parse VID or PID: {0}
     ParseInt(#[from] std::num::ParseIntError),
 
+    /// Could not parse IP address: {0}
+    ParseAddr(#[from] std::net::AddrParseError),
+
+    /// IO error while accessing USB devices.
+    IoError(#[from] std::io::Error),
+
+    /// Failed to parse input as a device. Reason: {0}
+    ParseDevice(String),
+
     /// The format of the selector is invalid. Please use a string in the form `VID:PID:<Serial>`, where Serial is optional.
     Format,
 }
 
-/// A struct to describe the way a probe should be selected.
+/// An enum to describe the way a probe should be selected.
 ///
 /// Construct this from a set of info or from a string. The
-/// string has to be in the format "VID:PID:SERIALNUMBER",
-/// where the serial number is optional, and VID and PID are
-/// parsed as hexadecimal numbers.
-///
-/// If SERIALNUMBER exists (i.e. the selector contains a second color) and is empty,
-/// probe-rs will select probes that have no serial number, or where the serial number is empty.
-///
-/// ## Example:
-///
+/// string has to be in one of the following formats:
+///   - `VID:PID:SERIALNUMBER` (corresponds to `DebugProbeSelector::Usb`)
+///   - `usb=VID:PID:SERIALNUMBER` (corresponds to `DebugProbeSelector::Usb`)
+///   - `net=ADDR` where `ADDR` is a IPv4 or IPv6 address with port number (corresponds to
+///     `DebugProbeSelector::SocketAddr`)
+#[cfg_attr(
+    any(target_os = "linux", target_os = "android"),
+    doc = concat!(
+        "  - `socket=/path/to/socket` (corresponds to `DebugProbeSelector::UnixSocketAddr`, ",
+        "available only on *nix family OSes)",
+    ),
+)]
+#[cfg_attr(
+    any(target_os = "linux", target_os = "android"),
+    doc = "  - `device=VID:PID:/path/to/device/file` (corresponds to `DebugProbeSelector::Usb`)"
+)]
+#[cfg_attr(
+    target_os = "windows",
+    doc = "  - `device=VID:PID:PID.ID.PORT.DRIVER` (corresponds to `DebugProbeSelector::Usb`)"
+)]
+#[cfg_attr(
+    target_os = "macos",
+    doc = "  - `device=VID:PID:RID,LID` (corresponds to `DebugProbeSelector::Usb`)"
+)]
 /// ```
-/// use std::convert::TryInto;
-/// let selector: probe_rs::probe::DebugProbeSelector = "1942:1337:SERIAL".try_into().unwrap();
+/// use probe_rs::probe::{DebugProbeSelector, UsbFilters};
 ///
-/// assert_eq!(selector.vendor_id, 0x1942);
-/// assert_eq!(selector.product_id, 0x1337);
+/// let selector: DebugProbeSelector = "1942:1337:SERIAL".try_into().unwrap();
+///
+/// assert_eq!(
+///     selector,
+///     DebugProbeSelector::Usb {
+///         vendor_id: 0x1942,
+///         product_id: 0x1337,
+///         filters: UsbFilters::default().with_serial_number("SERIAL"),
+///     },
+/// );
 /// ```
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash)]
-pub struct DebugProbeSelector {
-    /// The the USB vendor id of the debug probe to be used.
-    pub vendor_id: u16,
-    /// The the USB product id of the debug probe to be used.
-    pub product_id: u16,
-    /// The the serial number of the debug probe to be used.
-    pub serial_number: Option<String>,
+pub enum DebugProbeSelector {
+    /// Selects a USB device based on the inner criteria.
+    Usb {
+        /// The the USB vendor id of the debug probe to be used.
+        vendor_id: u16,
+        /// The the USB product id of the debug probe to be used.
+        product_id: u16,
+        /// Other USB filters.
+        filters: UsbFilters,
+    },
+    /// Selects a network device at the given socket address (IPv4+port, IPv6+port).
+    SocketAddr(SocketAddr),
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android"),
+        doc = "Selects a Unix socket device at the given path."
+    )]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    UnixSocketAddr(PathBuf),
 }
 
 impl DebugProbeSelector {
+    const USB_PFX: &str = "usb=";
+    const NET_PFX: &str = "net=";
+    const SKT_PFX: &str = "socket=";
+    const DEV_PFX: &str = "device=";
+
+    #[cfg(test)]
+    fn usb_vid_pid(vendor_id: u16, product_id: u16) -> Self {
+        DebugProbeSelector::Usb {
+            vendor_id,
+            product_id,
+            filters: UsbFilters::default(),
+        }
+    }
+
+    fn usb_vid_pid_sn<S: Into<String>>(vendor_id: u16, product_id: u16, serial_number: S) -> Self {
+        DebugProbeSelector::Usb {
+            vendor_id,
+            product_id,
+            filters: UsbFilters::default().with_serial_number(serial_number.into()),
+        }
+    }
+
     pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
-        self.match_probe_selector(info.vendor_id(), info.product_id(), info.serial_number())
+        match self {
+            Self::Usb {
+                vendor_id,
+                product_id,
+                filters,
+            } => {
+                info.vendor_id() == *vendor_id
+                    && info.product_id() == *product_id
+                    && filters.matches(info)
+            }
+            Self::SocketAddr(_) => false,
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            Self::UnixSocketAddr(_) => false,
+        }
     }
 
     /// Check if the given probe info matches this selector.
     pub fn matches_probe(&self, info: &DebugProbeInfo) -> bool {
-        self.match_probe_selector(
-            info.vendor_id,
-            info.product_id,
-            info.serial_number.as_deref(),
-        )
+        match (self, &info.kind) {
+            (
+                Self::Usb {
+                    vendor_id: vida,
+                    product_id: pida,
+                    filters: fa,
+                },
+                DebugProbeKind::Usb {
+                    vendor_id: vidb,
+                    product_id: pidb,
+                    filters: fb,
+                    ..
+                },
+            ) => vida == vidb && pida == pidb && fa == fb,
+            (Self::SocketAddr(ipa), DebugProbeKind::SocketAddr(ipb)) => ipa == ipb,
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            (Self::UnixSocketAddr(patha), DebugProbeKind::UnixSocketAddr(pathb)) => patha == pathb,
+            _ => false,
+        }
     }
 
-    fn match_probe_selector(
-        &self,
-        vendor_id: u16,
-        product_id: u16,
-        serial_number: Option<&str>,
-    ) -> bool {
-        vendor_id == self.vendor_id
-            && product_id == self.product_id
-            && self
-                .serial_number
-                .as_ref()
-                .map(|s| {
-                    if let Some(serial_number) = serial_number {
-                        serial_number == s
-                    } else {
-                        // Match probes without serial number when the
-                        // selector has a third, empty part ("VID:PID:")
-                        s.is_empty()
-                    }
-                })
-                .unwrap_or(true)
+    fn match_probe_selector(&self, selector: &DebugProbeSelector) -> bool {
+        match (self, selector) {
+            (
+                Self::Usb {
+                    vendor_id: vida,
+                    product_id: pida,
+                    filters: fa,
+                },
+                Self::Usb {
+                    vendor_id: vidb,
+                    product_id: pidb,
+                    filters: fb,
+                },
+            ) => vida == vidb && pida == pidb && *fa == *fb,
+            (Self::SocketAddr(ipa), Self::SocketAddr(ipb)) => ipa == ipb,
+            _ => false,
+        }
     }
 }
 
 impl TryFrom<&str> for DebugProbeSelector {
     type Error = DebugProbeSelectorParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        // Split into at most 3 parts: VID, PID, Serial.
-        // We limit the number of splits to allow for colons in the
-        // serial number (EspJtag uses MAC address)
-        let mut split = value.splitn(3, ':');
+        if let Some(rest) = value.strip_prefix(Self::NET_PFX) {
+            let net = rest.parse::<SocketAddr>()?;
+            Ok(DebugProbeSelector::SocketAddr(net))
+        } else if let Some(rest) = value.strip_prefix(Self::DEV_PFX) {
+            fn get_vid_pid(s: &str) -> Result<(u16, u16, &str), DebugProbeSelectorParseError> {
+                let mut iter = s.splitn(3, ':');
+                let vendor_id = iter
+                    .next()
+                    .ok_or(DebugProbeSelectorParseError::ParseDevice(format!(
+                        "vendor ID: expected format 'device=VID:PID:REST', instead found {s:?}",
+                    )))?;
+                let product_id = iter
+                    .next()
+                    .ok_or(DebugProbeSelectorParseError::ParseDevice(format!(
+                        "product ID: expected format 'device=VID:PID:REST', instead found {s:?}",
+                    )))?;
+                let rest = iter
+                    .next()
+                    .ok_or(DebugProbeSelectorParseError::ParseDevice(format!(
+                        "rest: expected format 'device=VID:PID:REST', instead found {s:?}",
+                    )))?;
+                Ok((
+                    u16::from_str_radix(vendor_id, 16)?,
+                    u16::from_str_radix(product_id, 16)?,
+                    rest,
+                ))
+            }
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            {
+                let (vendor_id, product_id, rest) = get_vid_pid(rest)?;
+                let path = PathBuf::from(rest);
+                let filters = UsbFilters::default().with_sysfs_path(path);
+                return Ok(DebugProbeSelector::Usb {
+                    vendor_id,
+                    product_id,
+                    filters,
+                });
+            }
+            #[cfg(target_os = "windows")]
+            {
+                let (vendor_id, product_id, rest) = get_vid_pid(rest)?;
+                let mut iter = rest.split('.');
+                let parent_instance_id = iter
+                    .next()
+                    .ok_or(DebugProbeSelectorParseError::ParseDevice(format!(
+                        "Missing parent instance ID! Expected PID.ID.PORT.DRIVER but found: {rest}",
+                    )))?
+                    .to_string();
+                let instance_id = iter
+                    .next()
+                    .ok_or(DebugProbeSelectorParseError::ParseDevice(format!(
+                        "Missing instance ID! Expected PID.ID.PORT.DRIVER but found: {rest}",
+                    )))?
+                    .to_string();
+                let port = iter
+                    .next()
+                    .ok_or(DebugProbeSelectorParseError::ParseDevice(format!(
+                        "Missing port number! Expected PID.ID.PORT.DRIVER but found: {rest}",
+                    )))?
+                    .parse()?;
+                let driver = iter.collect::<String>();
+                let mut filters = UsbFilters::default()
+                    .with_parent_instance_id(parent_instance_id.clone())
+                    .with_instance_id(instance_id.clone())
+                    .with_port_number(port);
+                if !driver.is_empty() {
+                    filters.driver = Some(driver.clone());
+                }
+                return Ok(DebugProbeSelector::Usb {
+                    vendor_id,
+                    product_id,
+                    filters,
+                });
+            }
+            #[cfg(target_os = "macos")]
+            {
+                let (vendor_id, product_id, rest) = get_vid_pid(rest)?;
+                let mut iter = rest.split(',');
+                let registry_id = iter
+                    .next()
+                    .ok_or(DebugProbeSelectorParseError::ParseDevice(format!(
+                        "Missing registry ID! Expected RID,LID but found: {rest}",
+                    )))?
+                    .parse()?;
+                let location_id = iter
+                    .next()
+                    .ok_or(DebugProbeSelectorParseError::ParseDevice(format!(
+                        "Missing location ID! Expected RID,LID but found: {rest}",
+                    )))?
+                    .parse()?;
+                if iter.next().is_some() {
+                    return Err(DebugProbeSelectorParseError::ParseDevice(format!(
+                        "Excessive input! Expected RID,LID but found: {rest}",
+                    )));
+                }
+                let filters = UsbFilters::default()
+                    .with_registry_id(registry_id)
+                    .with_location_id(location_id);
+                return Ok(DebugProbeSelector::Usb {
+                    vendor_id,
+                    product_id,
+                    filters,
+                });
+            }
+        } else if let Some(rest) = value.strip_prefix(Self::SKT_PFX) {
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            {
+                let path = PathBuf::from(rest);
+                Ok(DebugProbeSelector::UnixSocketAddr(path))
+            }
+            #[cfg(not(any(target_os = "linux", target_os = "android")))]
+            {
+                _ = rest;
+                tracing::warn!("Attempted to instantiate socket selector on non-Unix target!");
+                Err(DebugProbeSelectorParseError::Format)
+            }
+        } else {
+            let rest = value.trim_start_matches(Self::USB_PFX);
+            // Split into at most 3 parts: VID, PID, Serial.
+            // We limit the number of splits to allow for colons in the
+            // serial number (EspJtag uses MAC address)
+            let mut split = rest.splitn(3, ':');
 
-        let vendor_id = split.next().unwrap(); // First split is always successful
-        let product_id = split.next().ok_or(DebugProbeSelectorParseError::Format)?;
-        let serial_number = split.next().map(|s| s.to_string());
+            let vendor_id = split.next().unwrap(); // First split is always successful
+            let product_id = split.next().ok_or(DebugProbeSelectorParseError::Format)?;
+            let serial_number = split.next().map(|s| s.to_string());
 
-        Ok(DebugProbeSelector {
-            vendor_id: u16::from_str_radix(vendor_id, 16)?,
-            product_id: u16::from_str_radix(product_id, 16)?,
-            serial_number,
-        })
+            let filters = UsbFilters {
+                serial_number,
+                ..Default::default()
+            };
+
+            Ok(DebugProbeSelector::Usb {
+                vendor_id: u16::from_str_radix(vendor_id, 16)?,
+                product_id: u16::from_str_radix(product_id, 16)?,
+                filters,
+            })
+        }
     }
 }
 
@@ -981,22 +1562,42 @@ impl std::str::FromStr for DebugProbeSelector {
     }
 }
 
-impl From<DebugProbeInfo> for DebugProbeSelector {
-    fn from(selector: DebugProbeInfo) -> Self {
-        DebugProbeSelector {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number,
+impl From<DebugProbeKind> for DebugProbeSelector {
+    fn from(selector: DebugProbeKind) -> Self {
+        match selector {
+            DebugProbeKind::Usb {
+                vendor_id,
+                product_id,
+                filters,
+                ..
+            } => Self::Usb {
+                vendor_id,
+                product_id,
+                filters,
+            },
+            DebugProbeKind::SocketAddr(addr) => Self::SocketAddr(addr),
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            DebugProbeKind::UnixSocketAddr(path) => Self::UnixSocketAddr(path),
         }
     }
 }
 
-impl From<&DebugProbeInfo> for DebugProbeSelector {
-    fn from(selector: &DebugProbeInfo) -> Self {
-        DebugProbeSelector {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number.clone(),
+impl From<&DebugProbeKind> for DebugProbeSelector {
+    fn from(selector: &DebugProbeKind) -> Self {
+        match selector {
+            DebugProbeKind::Usb {
+                vendor_id,
+                product_id,
+                filters,
+                ..
+            } => Self::Usb {
+                vendor_id: *vendor_id,
+                product_id: *product_id,
+                filters: filters.clone(),
+            },
+            DebugProbeKind::SocketAddr(addr) => Self::SocketAddr(*addr),
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            DebugProbeKind::UnixSocketAddr(path) => Self::UnixSocketAddr(path.clone()),
         }
     }
 }
@@ -1007,13 +1608,24 @@ impl From<&DebugProbeSelector> for DebugProbeSelector {
     }
 }
 
+impl From<&DebugProbeInfo> for DebugProbeSelector {
+    fn from(info: &DebugProbeInfo) -> Self {
+        Self::from(&info.kind)
+    }
+}
+
 impl fmt::Display for DebugProbeSelector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:04x}:{:04x}", self.vendor_id, self.product_id)?;
-        if let Some(ref sn) = self.serial_number {
-            write!(f, ":{sn}")?;
+        match self {
+            Self::Usb {
+                vendor_id,
+                product_id,
+                filters,
+            } => write!(f, "{:04x}:{:04x}{filters}", vendor_id, product_id),
+            Self::SocketAddr(ip) => write!(f, "{ip}"),
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            Self::UnixSocketAddr(path) => write!(f, "{}", path.display()),
         }
-        Ok(())
     }
 }
 
@@ -1736,11 +2348,15 @@ mod test {
     fn test_is_probe_factory() {
         let probe_info = DebugProbeInfo::new(
             "Mock probe",
-            0x12,
-            0x23,
-            Some("mock_serial".to_owned()),
+            DebugProbeKind::Usb {
+                vendor_id: 0x12,
+                product_id: 0x23,
+                filters: UsbFilters {
+                    serial_number: Some("mock_serial".to_owned()),
+                    ..Default::default()
+                },
+            },
             &ftdi::FtdiProbeFactory,
-            None,
         );
 
         assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
@@ -1751,24 +2367,154 @@ mod test {
     fn test_parsing_many_colons() {
         let selector: DebugProbeSelector = "303a:1001:DC:DA:0C:D3:FE:D8".try_into().unwrap();
 
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
         assert_eq!(
-            selector.serial_number,
-            Some("DC:DA:0C:D3:FE:D8".to_string())
+            selector,
+            DebugProbeSelector::usb_vid_pid_sn(0x303a, 0x1001, "DC:DA:0C:D3:FE:D8"),
         );
+    }
+
+    #[test]
+    fn test_parsing_usb_pfx() {
+        let selector: DebugProbeSelector = "usb=303a:1001:DC:DA:0C:D3:FE:D8".try_into().unwrap();
+
+        assert_eq!(
+            selector,
+            DebugProbeSelector::usb_vid_pid_sn(0x303a, 0x1001, "DC:DA:0C:D3:FE:D8"),
+        );
+    }
+
+    #[cfg_attr(any(target_os = "linux", target_os = "android"), test)]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    fn test_parsing_device_pfx() {
+        let selector: DebugProbeSelector =
+            "device=303a:1001:/dev/bus/usb/003/003".try_into().unwrap();
+
+        assert_eq!(
+            selector,
+            DebugProbeSelector::Usb {
+                vendor_id: 0x303a,
+                product_id: 0x1001,
+                filters: UsbFilters::default().with_sysfs_path("/dev/bus/usb/003/003"),
+            },
+        )
+    }
+
+    #[cfg_attr(target_os = "windows", test)]
+    #[cfg(target_os = "windows")]
+    fn test_parsing_device_pfx() {
+        let selector: DebugProbeSelector = "device=303a:1001:parent.mine.1234.driver"
+            .try_into()
+            .unwrap();
+
+        assert_eq!(
+            selector,
+            DebugProbeSelector::Usb {
+                vendor_id: 0x303a,
+                product_id: 0x1001,
+                filters: UsbFilters::default()
+                    .with_parent_instance_id("parent")
+                    .with_instance_id("mine")
+                    .with_port_number(1234)
+                    .with_driver("driver"),
+            },
+        )
+    }
+
+    #[cfg_attr(target_os = "windows", test)]
+    #[cfg(target_os = "windows")]
+    fn test_parsing_device_pfx_no_driver() {
+        let selector: DebugProbeSelector = "device=303a:1001:parent.mine.1234".try_into().unwrap();
+
+        assert_eq!(
+            selector,
+            DebugProbeSelector::Usb {
+                vendor_id: 0x303a,
+                product_id: 0x1001,
+                filters: UsbFilters::default()
+                    .with_parent_instance_id("parent")
+                    .with_instance_id("mine")
+                    .with_port_number(1234),
+            },
+        )
+    }
+
+    #[cfg_attr(target_os = "macos", test)]
+    #[cfg(target_os = "macos")]
+    fn test_parsing_device_pfx() {
+        let selector: DebugProbeSelector = "device=303a:1001:12345,67890".try_into().unwrap();
+
+        assert_eq!(
+            selector,
+            DebugProbeSelector::Usb {
+                vendor_id: 0x303a,
+                product_id: 0x1001,
+                filters: UsbFilters::default()
+                    .with_registry_id(12345)
+                    .with_location_id(67890),
+            },
+        )
+    }
+
+    #[test]
+    fn test_parsing_net_pfx_v4() {
+        use std::{
+            net::{Ipv4Addr, SocketAddrV4},
+            str::FromStr,
+        };
+
+        let selector: DebugProbeSelector = "net=127.0.0.1:6666".try_into().unwrap();
+
+        assert_eq!(
+            selector,
+            DebugProbeSelector::SocketAddr(SocketAddr::V4(SocketAddrV4::new(
+                Ipv4Addr::from_str("127.0.0.1").unwrap(),
+                6666
+            ))),
+        )
+    }
+
+    #[test]
+    fn test_parsing_net_pfx_v6() {
+        use std::{
+            net::{Ipv6Addr, SocketAddrV6},
+            str::FromStr,
+        };
+
+        let selector: DebugProbeSelector = "net=[::1]:6666".try_into().unwrap();
+
+        assert_eq!(
+            selector,
+            DebugProbeSelector::SocketAddr(SocketAddr::V6(SocketAddrV6::new(
+                Ipv6Addr::from_str("::1").unwrap(),
+                6666,
+                0,
+                0,
+            ))),
+        )
+    }
+
+    #[cfg_attr(any(target_os = "linux", target_os = "android"), test)]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    fn test_parsing_socket_pfx() {
+        let selector: DebugProbeSelector = "socket=/my/unix/socket".try_into().unwrap();
+
+        assert_eq!(
+            selector,
+            DebugProbeSelector::UnixSocketAddr(PathBuf::from("/my/unix/socket")),
+        )
     }
 
     #[test]
     fn missing_serial_is_none() {
         let selector: DebugProbeSelector = "303a:1001".try_into().unwrap();
 
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
-        assert_eq!(selector.serial_number, None);
+        assert_eq!(selector, DebugProbeSelector::usb_vid_pid(0x303a, 0x1001));
 
-        let matches = selector.match_probe_selector(0x303a, 0x1001, None);
-        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, Some("serial"));
+        let matches =
+            selector.match_probe_selector(&DebugProbeSelector::usb_vid_pid(0x303a, 0x1001));
+        let matches_with_serial = selector.match_probe_selector(
+            &DebugProbeSelector::usb_vid_pid_sn(0x303a, 0x1001, "serial"),
+        );
         assert!(matches);
         assert!(matches_with_serial);
     }
@@ -1777,13 +2523,17 @@ mod test {
     fn empty_serial_is_some() {
         let selector: DebugProbeSelector = "303a:1001:".try_into().unwrap();
 
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
-        assert_eq!(selector.serial_number, Some(String::new()));
+        assert_eq!(
+            selector,
+            DebugProbeSelector::usb_vid_pid_sn(0x303a, 0x1001, "")
+        );
 
-        let matches = selector.match_probe_selector(0x303a, 0x1001, None);
-        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, Some("serial"));
-        assert!(matches);
+        let matches =
+            selector.match_probe_selector(&DebugProbeSelector::usb_vid_pid(0x303a, 0x1001));
+        let matches_with_serial = selector.match_probe_selector(
+            &DebugProbeSelector::usb_vid_pid_sn(0x303a, 0x1001, "serial"),
+        );
+        assert!(!matches);
         assert!(!matches_with_serial);
     }
 }

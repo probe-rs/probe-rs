@@ -12,7 +12,7 @@ use postcard_rpc::{
     host_client::{HostClient, HostClientConfig, HostErr, IoClosed, SubscribeError, Subscription},
 };
 use postcard_schema::Schema;
-use probe_rs::{Session, config::Registry, flashing::FlashLoader};
+use probe_rs::{Session, config::Registry, flashing::FlashLoader, probe::DebugProbeSelector};
 use serde::{Serialize, de::DeserializeOwned};
 use tokio::sync::{Mutex, MutexGuard};
 
@@ -47,8 +47,8 @@ use crate::{
             memory::{ReadMemoryRequest, WriteMemoryRequest},
             monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
             probe::{
-                AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
-                ListProbesRequest, SelectProbeRequest, SelectProbeResult,
+                AttachRequest, AttachResult, DebugProbeEntry, ListProbesRequest,
+                SelectProbeRequest, SelectProbeResult,
             },
             reset::ResetCoreRequest,
             resume::ResumeAllCoresRequest,
@@ -363,8 +363,10 @@ impl RpcClient {
         &self,
         selector: Option<DebugProbeSelector>,
     ) -> anyhow::Result<SelectProbeResult> {
-        self.send_resp::<SelectProbeEndpoint, _>(&SelectProbeRequest { probe: selector })
-            .await
+        self.send_resp::<SelectProbeEndpoint, _>(&SelectProbeRequest {
+            probe: selector.map(Into::into),
+        })
+        .await
     }
 
     pub async fn info(

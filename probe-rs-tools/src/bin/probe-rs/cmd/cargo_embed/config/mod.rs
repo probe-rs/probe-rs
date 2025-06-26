@@ -27,7 +27,7 @@ pub struct Config {
     pub general: General,
     pub flashing: Flashing,
     pub reset: Reset,
-    pub probe: Probe,
+    pub probe: Probe, // Should I replace this? I think yes, but I'm uncertain.
     pub rtt: Rtt,
     pub gdb: Gdb,
 }

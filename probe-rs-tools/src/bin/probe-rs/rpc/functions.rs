@@ -269,18 +269,35 @@ impl LimitedLister {
 
     fn is_allowed(&self, selector: &DebugProbeSelector) -> bool {
         // We aren't using `.to_string()` because it doesn't append an empty serial when missing.
-        let sel_without_serial = format!("{:04x}:{:04x}", selector.vendor_id, selector.product_id);
-        let mut sel_with_serial = format!("{sel_without_serial}:");
-        if let Some(sn) = selector.serial_number.as_deref() {
-            sel_with_serial.push_str(sn);
-        }
+        match selector {
+            DebugProbeSelector::Usb {
+                vendor_id,
+                product_id,
+                filters,
+            } => {
+                let sel_without_serial = format!("{:04x}:{:04x}", vendor_id, product_id);
+                let mut sel_with_serial = format!("{sel_without_serial}:");
+                if let Some(sn) = &filters.serial_number {
+                    sel_with_serial.push_str(sn);
+                }
 
-        let matching = |s: &String| s == &sel_with_serial || s == &sel_without_serial;
+                let matching = |s: &String| s == &sel_with_serial || s == &sel_without_serial;
 
-        match &self.probe_access {
-            ProbeAccess::All => true,
-            ProbeAccess::Allow(allow) => allow.iter().any(matching),
-            ProbeAccess::Deny(deny) => !deny.iter().any(matching),
+                match &self.probe_access {
+                    ProbeAccess::All => true,
+                    ProbeAccess::Allow(allow) => allow.iter().any(matching),
+                    ProbeAccess::Deny(deny) => !deny.iter().any(matching),
+                }
+            }
+            DebugProbeSelector::SocketAddr(_) => {
+                tracing::warn!("Network probes are not yet fully implemented!");
+                true
+            }
+            #[cfg(target_os = "linux")]
+            DebugProbeSelector::UnixSocketAddr(_) => {
+                tracing::warn!("Unix socket probes are not yet fully implemented!");
+                true
+            }
         }
     }
 }

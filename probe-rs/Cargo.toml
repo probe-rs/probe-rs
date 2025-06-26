@@ -39,6 +39,7 @@ probe-rs-target.workspace = true
 bincode = { version = "2", features = ["serde"], optional = true }
 bitfield = "0.19.0"
 bitvec = "1"
+cfg-if = "1.0"
 hidapi = { version = "2", default-features = false, features = [
     "linux-native",
 ] }
@@ -61,6 +62,7 @@ tracing = "0.1"
 uf2-decode = "0.2"
 espflash = { version = "3", default-features = false }
 parking_lot = "0.12.2"
+
 zerocopy = { version = "0.8.0", features = ["derive"] }
 cobs = "0.3"
 

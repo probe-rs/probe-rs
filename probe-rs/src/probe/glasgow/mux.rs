@@ -93,17 +93,17 @@ impl GlasgowDevice {
     }
 
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, DebugProbeError> {
-        let Some(ref serial) = selector.serial_number else {
-            unreachable!()
-        };
-        if serial.starts_with("tcp:") || serial.starts_with("unix:") {
-            Ok(Self::new(GlasgowDeviceInner::Net(
-                GlasgowNetDevice::new_from_selector(selector)?,
-            )))
-        } else {
-            Ok(Self::new(GlasgowDeviceInner::Usb(
+        match selector {
+            DebugProbeSelector::Usb { .. } => Ok(Self::new(GlasgowDeviceInner::Usb(
                 GlasgowUsbDevice::new_from_selector(selector)?,
-            )))
+            ))),
+            DebugProbeSelector::SocketAddr(_) => Ok(Self::new(GlasgowDeviceInner::Net(
+                GlasgowNetDevice::new_from_selector(selector)?,
+            ))),
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            DebugProbeSelector::UnixSocketAddr(_) => Ok(Self::new(GlasgowDeviceInner::Net(
+                GlasgowNetDevice::new_from_selector(selector)?,
+            ))),
         }
     }
 

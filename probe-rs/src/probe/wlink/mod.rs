@@ -18,8 +18,8 @@ use crate::{
         dtm::jtag_dtm::JtagDtmBuilder,
     },
     probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagSequence, ProbeError,
-        ProbeFactory, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeKind, DebugProbeSelector,
+        JtagSequence, ProbeError, ProbeFactory, UsbFilters, WireProtocol,
     },
 };
 
@@ -525,11 +525,32 @@ fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
     if matches!(device.product_string(), Some("WCH-Link") | Some("WCH_Link")) {
         Some(DebugProbeInfo::new(
             "WCH-Link",
-            VENDOR_ID,
-            PRODUCT_ID,
-            device.serial_number().map(|s| s.to_string()),
+            DebugProbeKind::Usb {
+                vendor_id: VENDOR_ID,
+                product_id: PRODUCT_ID,
+                filters: UsbFilters {
+                    serial_number: device.serial_number().map(str::to_string),
+                    hid_interface: None,
+
+                    #[cfg(any(target_os = "linux", target_os = "android"))]
+                    sysfs_path: Some(device.sysfs_path().to_owned()),
+
+                    #[cfg(target_os = "windows")]
+                    instance_id: Some(device.instance_id().display().to_string()),
+                    #[cfg(target_os = "windows")]
+                    parent_instance_id: Some(device.parent_instance_id().display().to_string()),
+                    #[cfg(target_os = "windows")]
+                    port_number: Some(device.port_number()),
+                    #[cfg(target_os = "windows")]
+                    driver: device.driver().map(str::to_string),
+
+                    #[cfg(target_os = "macos")]
+                    registry_id: Some(device.registry_entry_id()),
+                    #[cfg(target_os = "macos")]
+                    location_id: Some(device.location_id()),
+                },
+            },
             &WchLinkFactory,
-            None,
         ))
     } else {
         None

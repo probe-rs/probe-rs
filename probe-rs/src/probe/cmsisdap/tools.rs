@@ -1,6 +1,7 @@
 use super::CmsisDapDevice;
 use crate::probe::{
-    BoxedProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+    BoxedProbeError, DebugProbeInfo, DebugProbeKind, DebugProbeSelector, ProbeCreationError,
+    UsbFilters,
     cmsisdap::{CmsisDapFactory, commands::CmsisDapError},
 };
 use hidapi::HidApi;
@@ -38,11 +39,8 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
     if let Ok(api) = hidapi::HidApi::new() {
         for device in api.device_list() {
             if let Some(info) = get_cmsisdap_hid_info(device) {
-                if !probes.iter().any(|p| {
-                    p.vendor_id == info.vendor_id
-                        && p.product_id == info.product_id
-                        && p.serial_number == info.serial_number
-                }) {
+                let selector = DebugProbeSelector::from(&info.kind);
+                if !probes.iter().any(|p| selector.matches_probe(p)) {
                     tracing::trace!("Adding new HID-only probe {:?}", info);
                     probes.push(info)
                 } else {
@@ -108,17 +106,39 @@ fn get_cmsisdap_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
 
         Some(DebugProbeInfo::new(
             prod_str.to_string(),
-            device.vendor_id(),
-            device.product_id(),
-            sn_str.map(Into::into),
+            DebugProbeKind::Usb {
+                vendor_id: device.vendor_id(),
+                product_id: device.product_id(),
+                filters: UsbFilters {
+                    serial_number: sn_str.map(str::to_string),
+                    hid_interface: None,
+
+                    #[cfg(any(target_os = "linux", target_os = "android"))]
+                    sysfs_path: Some(device.sysfs_path().to_owned()),
+
+                    #[cfg(target_os = "windows")]
+                    instance_id: Some(device.instance_id().display().to_string()),
+                    #[cfg(target_os = "windows")]
+                    parent_instance_id: Some(device.parent_instance_id().display().to_string()),
+                    #[cfg(target_os = "windows")]
+                    port_number: Some(device.port_number()),
+                    #[cfg(target_os = "windows")]
+                    driver: device.driver().map(str::to_string),
+
+                    #[cfg(target_os = "macos")]
+                    registry_id: Some(device.registry_entry_id()),
+                    #[cfg(target_os = "macos")]
+                    location_id: Some(device.location_id()),
+                },
+            },
             &CmsisDapFactory,
-            hid_interface,
         ))
     } else {
         None
     }
 }
 
+#[allow(clippy::needless_update)]
 /// Checks if a given HID device is a CMSIS-DAP v1 probe, returning Some(DebugProbeInfo) if so.
 fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
     let prod_str = device.product_string().unwrap_or("");
@@ -131,13 +151,25 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
             device.interface_number()
         );
 
+        let filters = UsbFilters {
+            serial_number: device.serial_number().map(str::to_string),
+            hid_interface: Some(device.interface_number() as u8),
+
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            sysfs_path: device.path().to_str().ok().map(Into::into),
+
+            // Is it possible to pull out info for the other target OSes?
+            ..Default::default()
+        };
+
         Some(DebugProbeInfo::new(
             prod_str.to_owned(),
-            device.vendor_id(),
-            device.product_id(),
-            device.serial_number().map(|s| s.to_owned()),
+            DebugProbeKind::Usb {
+                vendor_id: device.vendor_id(),
+                product_id: device.product_id(),
+                filters,
+            },
             &CmsisDapFactory,
-            Some(device.interface_number() as u8),
         ))
     } else {
         None
@@ -306,9 +338,24 @@ pub fn open_device_from_selector(
     }
 
     // If nusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
-    let vid = selector.vendor_id;
-    let pid = selector.product_id;
-    let sn = selector.serial_number.as_deref();
+    let (vid, pid, sn) = match selector {
+        DebugProbeSelector::SocketAddr(_) => {
+            return Err(ProbeCreationError::Other(
+                "Cannot open CMSIS-DAP module on network target!",
+            ));
+        }
+        #[cfg(target_os = "linux")]
+        DebugProbeSelector::UnixSocketAddr(_) => {
+            return Err(ProbeCreationError::Other(
+                "Cannot open CMSIS-DAP module on Unix socket target!",
+            ));
+        }
+        DebugProbeSelector::Usb {
+            vendor_id,
+            product_id,
+            filters,
+        } => (*vendor_id, *product_id, filters.serial_number.as_deref()),
+    };
 
     tracing::debug!(
         "Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode",
@@ -335,10 +382,20 @@ pub fn open_device_from_selector(
                 device_match &= Some(sn) == info.serial_number();
             }
 
-            if let Some(hid_interface) =
-                hid_device_info.as_ref().and_then(|info| info.hid_interface)
+            if let Some(DebugProbeInfo {
+                kind:
+                    DebugProbeKind::Usb {
+                        filters:
+                            UsbFilters {
+                                hid_interface: Some(hid_interface),
+                                ..
+                            },
+                        ..
+                    },
+                ..
+            }) = hid_device_info.as_ref()
             {
-                device_match &= info.interface_number() == hid_interface as i32;
+                device_match &= info.interface_number() == *hid_interface as i32;
             }
 
             device_match

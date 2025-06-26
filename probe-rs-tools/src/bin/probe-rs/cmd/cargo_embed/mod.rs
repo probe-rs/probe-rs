@@ -9,6 +9,7 @@ use colored::Colorize;
 use parking_lot::FairMutex;
 use probe_rs::config::Registry;
 use probe_rs::flashing::{BootInfo, FormatKind};
+use probe_rs::probe::UsbFilters;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::ScanRegion;
 use probe_rs::{Session, probe::DebugProbeSelector};
@@ -183,10 +184,14 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         Some(selector)
     } else {
         match (config.probe.usb_vid.as_ref(), config.probe.usb_pid.as_ref()) {
-            (Some(vid), Some(pid)) => Some(DebugProbeSelector {
+            (Some(vid), Some(pid)) => Some(DebugProbeSelector::Usb {
                 vendor_id: u16::from_str_radix(vid, 16)?,
                 product_id: u16::from_str_radix(pid, 16)?,
-                serial_number: config.probe.serial.clone(),
+                filters: UsbFilters {
+                    // If `Probe` is replaced, then I can fix this up some.
+                    serial_number: config.probe.serial.clone(),
+                    ..Default::default()
+                },
             }),
             (vid, pid) => {
                 if vid.is_some() {

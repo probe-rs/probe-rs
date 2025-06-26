@@ -4,8 +4,8 @@ use bitvec::vec::BitVec;
 use nusb::{DeviceInfo, Interface};
 
 use crate::probe::{
-    self, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
-    usb_util::InterfaceExt,
+    self, DebugProbeError, DebugProbeInfo, DebugProbeKind, DebugProbeSelector, ProbeCreationError,
+    UsbFilters, usb_util::InterfaceExt,
 };
 
 use super::Ch347UsbJtagFactory;
@@ -286,11 +286,32 @@ pub(super) fn list_ch347usbjtag_devices() -> Vec<DebugProbeInfo> {
         .map(|device| {
             DebugProbeInfo::new(
                 "CH347 USB Jtag".to_string(),
-                device.vendor_id(),
-                device.product_id(),
-                device.serial_number().map(Into::into),
+                DebugProbeKind::Usb {
+                    vendor_id: device.vendor_id(),
+                    product_id: device.product_id(),
+                    filters: UsbFilters {
+                        serial_number: device.serial_number().map(Into::into),
+                        hid_interface: None,
+
+                        #[cfg(any(target_os = "linux", target_os = "android"))]
+                        sysfs_path: Some(device.sysfs_path().to_owned()),
+
+                        #[cfg(target_os = "windows")]
+                        instance_id: Some(device.instance_id().display().to_string()),
+                        #[cfg(target_os = "windows")]
+                        parent_instance_id: Some(device.parent_instance_id().display().to_string()),
+                        #[cfg(target_os = "windows")]
+                        port_number: Some(device.port_number()),
+                        #[cfg(target_os = "windows")]
+                        driver: device.driver().map(str::to_string),
+
+                        #[cfg(target_os = "macos")]
+                        registry_id: Some(device.registry_entry_id()),
+                        #[cfg(target_os = "macos")]
+                        location_id: Some(device.location_id()),
+                    },
+                },
                 &Ch347UsbJtagFactory,
-                None,
             )
         })
         .collect()

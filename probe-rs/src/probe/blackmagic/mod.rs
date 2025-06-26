@@ -22,10 +22,10 @@ use crate::{
         },
     },
     probe::{
-        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeError, ProbeFactory,
-        ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
-        blackmagic::arm::BlackMagicProbeArmDebug,
+        AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeKind,
+        DebugProbeSelector, IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError,
+        ProbeError, ProbeFactory, ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings, UsbFilters,
+        WireProtocol, blackmagic::arm::BlackMagicProbeArmDebug,
     },
 };
 use bitvec::vec::BitVec;
@@ -1392,11 +1392,16 @@ fn black_magic_debug_port_info(
     );
     Some(DebugProbeInfo {
         identifier,
-        vendor_id,
-        product_id,
-        serial_number,
+        kind: DebugProbeKind::Usb {
+            vendor_id,
+            product_id,
+            filters: UsbFilters {
+                serial_number,
+                hid_interface: interface,
+                ..Default::default()
+            },
+        },
         probe_factory: &BlackMagicProbeFactory,
-        hid_interface: interface,
     })
 }
 
@@ -1405,87 +1410,117 @@ impl ProbeFactory for BlackMagicProbeFactory {
         &self,
         selector: &super::DebugProbeSelector,
     ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        // Ensure the VID and PID match Black Magic Probes
-        if selector.vendor_id != BLACK_MAGIC_PROBE_VID
-            || selector.product_id != BLACK_MAGIC_PROBE_PID
-        {
-            tracing::trace!(
-                "{:04x}:{:04x} doesn't match BMP VID/PID {:04x}:{:04x}",
-                selector.vendor_id,
-                selector.product_id,
-                BLACK_MAGIC_PROBE_VID,
-                BLACK_MAGIC_PROBE_PID
-            );
-            return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                ProbeCreationError::NotFound,
-            ));
-        }
-
-        // If the serial number is a valid "address:port" string, attempt to
-        // connect to it via TCP.
-        if let Some(serial_number) = &selector.serial_number {
-            if let Ok(connection) = std::net::TcpStream::connect(serial_number) {
-                let reader = connection;
-                let writer = reader.try_clone().map_err(|e| {
-                    DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::Usb(e))
-                })?;
-                return BlackMagicProbe::new(Box::new(reader), Box::new(writer))
-                    .map(|p| Box::new(p) as Box<dyn DebugProbe>);
-            }
-        }
-
-        // Otherwise, treat it as a serial port and iterate through all ports.
-        let Ok(ports) = available_ports() else {
-            tracing::trace!("unable to get available serial ports");
-            return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                ProbeCreationError::CouldNotOpen,
-            ));
-        };
-
-        for port_description in ports {
-            let Some(info) = black_magic_debug_port_info(
-                port_description.port_type,
-                &port_description.port_name,
-            ) else {
-                continue;
-            };
-
-            if selector.serial_number.is_some() && selector.serial_number != info.serial_number {
-                tracing::trace!(
-                    "serial number {:?} doesn't match requested number {:?}",
-                    info.serial_number,
-                    selector.serial_number
-                );
-                continue;
-            }
-
-            // Open with the baud rate 115200. This baud rate is arbitrary, since it's
-            // a soft USB device and will run at the same speed regardless of the baud rate.
-            let mut port = serialport::new(port_description.port_name, 115200)
-                .timeout(std::time::Duration::from_secs(1))
-                .open()
-                .map_err(|_| {
+        match selector {
+            DebugProbeSelector::SocketAddr(socket) => {
+                let connection = std::net::TcpStream::connect(*socket).map_err(|err| {
+                    tracing::warn!(
+                        "error on opening TCP socket from debug probe with socket {}: {err}",
+                        socket
+                    );
                     DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
                 })?;
+                let reader = connection;
+                let writer = reader.try_clone().map_err(|err| {
+                    DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::Usb(err))
+                })?;
+                BlackMagicProbe::new(Box::new(reader), Box::new(writer))
+                    .map(|p| Box::new(p) as Box<dyn DebugProbe>)
+            }
+            DebugProbeSelector::Usb {
+                vendor_id,
+                product_id,
+                filters,
+            } if *vendor_id == BLACK_MAGIC_PROBE_VID && *product_id == BLACK_MAGIC_PROBE_PID => {
+                // If the serial number is a valid "address:port" string, attempt to
+                // connect to it via TCP.
+                if let UsbFilters {
+                    serial_number: Some(serial_number),
+                    ..
+                } = filters
+                {
+                    if let Ok(connection) = std::net::TcpStream::connect(serial_number) {
+                        let reader = connection;
+                        let writer = reader.try_clone().map_err(|e| {
+                            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::Usb(e))
+                        })?;
+                        return BlackMagicProbe::new(Box::new(reader), Box::new(writer))
+                            .map(|p| Box::new(p) as Box<dyn DebugProbe>);
+                    }
+                }
 
-            // Set DTR, indicating we're ready to communicate.
-            port.write_data_terminal_ready(true).map_err(|_| {
-                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
-            })?;
-            // A delay appears necessary to allow the BMP to recognize the DTR signal.
-            std::thread::sleep(Duration::from_millis(250));
-            let reader = port;
-            let writer = reader.try_clone().map_err(|_| {
-                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
-            })?;
-            return BlackMagicProbe::new(Box::new(reader), Box::new(writer))
-                .map(|p| Box::new(p) as Box<dyn DebugProbe>);
+                // Otherwise, treat it as a serial port and iterate through all ports.
+                let Ok(ports) = available_ports() else {
+                    tracing::trace!("unable to get available serial ports");
+                    return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                        ProbeCreationError::CouldNotOpen,
+                    ));
+                };
+
+                for port_description in ports {
+                    let Some(info) = black_magic_debug_port_info(
+                        port_description.port_type,
+                        &port_description.port_name,
+                    ) else {
+                        continue;
+                    };
+
+                    if let (
+                        UsbFilters {
+                            serial_number: Some(selector_sn),
+                            ..
+                        },
+                        DebugProbeKind::Usb {
+                            filters:
+                                UsbFilters {
+                                    serial_number: Some(info_sn),
+                                    ..
+                                },
+                            ..
+                        },
+                    ) = (filters, &info.kind)
+                    {
+                        tracing::trace!(
+                            "serial number {info_sn:?} doesn't match requested number {selector_sn:?}",
+                        );
+                        continue;
+                    };
+
+                    // Open with the baud rate 115200. This baud rate is arbitrary, since it's
+                    // a soft USB device and will run at the same speed regardless of the baud rate.
+                    let mut port = serialport::new(port_description.port_name, 115200)
+                        .timeout(std::time::Duration::from_secs(1))
+                        .open()
+                        .map_err(|_| {
+                            DebugProbeError::ProbeCouldNotBeCreated(
+                                ProbeCreationError::CouldNotOpen,
+                            )
+                        })?;
+
+                    // Set DTR, indicating we're ready to communicate.
+                    port.write_data_terminal_ready(true).map_err(|_| {
+                        DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+                    })?;
+                    // A delay appears necessary to allow the BMP to recognize the DTR signal.
+                    std::thread::sleep(Duration::from_millis(250));
+                    let reader = port;
+                    let writer = reader.try_clone().map_err(|_| {
+                        DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)
+                    })?;
+                    return BlackMagicProbe::new(Box::new(reader), Box::new(writer))
+                        .map(|p| Box::new(p) as Box<dyn DebugProbe>);
+                }
+                tracing::trace!("unable to find port {:?}", selector);
+                Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::NotFound,
+                ))
+            }
+            _ => {
+                tracing::trace!("unable to find port {:?}", selector);
+                Err(DebugProbeError::ProbeCouldNotBeCreated(
+                    ProbeCreationError::NotFound,
+                ))
+            }
         }
-
-        tracing::trace!("unable to find port {:?}", selector);
-        Err(DebugProbeError::ProbeCouldNotBeCreated(
-            ProbeCreationError::NotFound,
-        ))
     }
 
     fn list_probes(&self) -> Vec<super::DebugProbeInfo> {
@@ -1513,9 +1548,25 @@ impl ProbeFactory for BlackMagicProbeFactory {
             return self.list_probes();
         };
 
-        let vid_pid = (selector.vendor_id, selector.product_id);
+        let DebugProbeSelector::Usb {
+            vendor_id,
+            product_id,
+            ..
+        } = &selector
+        else {
+            return self.list_probes();
+        };
+        let vid_pid = (*vendor_id, *product_id);
 
-        let Some(serial) = selector.serial_number.as_deref() else {
+        let DebugProbeSelector::Usb {
+            filters:
+                UsbFilters {
+                    serial_number: Some(serial),
+                    ..
+                },
+            ..
+        } = &selector
+        else {
             if vid_pid != BLACK_MAGIC_PROBE {
                 // Filter is not for black magic probes, skip listing.
                 return vec![];
@@ -1544,13 +1595,18 @@ impl ProbeFactory for BlackMagicProbeFactory {
         }
 
         // Filter is a valid probe, and VID:PID is either a BMP or the "not specified" convention.
+        // Possibly in need of rework - should this have a `DebugProbeKind::SocketAddr`?
         vec![DebugProbeInfo {
             identifier: format!("{}:{}", ip_port.ip(), ip_port.port()),
-            vendor_id: BLACK_MAGIC_PROBE_VID,
-            product_id: BLACK_MAGIC_PROBE_PID,
-            serial_number: Some(ip_port.to_string()),
+            kind: DebugProbeKind::Usb {
+                vendor_id: BLACK_MAGIC_PROBE_VID,
+                product_id: BLACK_MAGIC_PROBE_PID,
+                filters: UsbFilters {
+                    serial_number: Some(ip_port.to_string()),
+                    ..Default::default()
+                },
+            },
             probe_factory: &BlackMagicProbeFactory,
-            hid_interface: None,
         }]
     }
 }

@@ -8,8 +8,8 @@ use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::probe::sifliuart::arm::SifliUartArmDebug;
 use crate::probe::{
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
-    ProbeFactory, WireProtocol,
+    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeKind, DebugProbeSelector,
+    ProbeCreationError, ProbeFactory, UsbFilters, WireProtocol,
 };
 use serialport::{SerialPort, SerialPortType, available_ports};
 use std::io::{BufReader, BufWriter, Read, Write};
@@ -399,13 +399,20 @@ impl SifliUartFactory {
         let hid_interface = usb_info.interface;
         let identifier = "Sifli uart debug probe".to_string();
 
+        let filters = UsbFilters {
+            serial_number,
+            hid_interface,
+            ..Default::default()
+        };
+
         Some(DebugProbeInfo {
             identifier,
-            vendor_id,
-            product_id,
-            serial_number,
+            kind: DebugProbeKind::Usb {
+                vendor_id,
+                product_id,
+                filters,
+            },
             probe_factory: &SifliUartFactory,
-            hid_interface,
         })
     }
 
@@ -450,8 +457,16 @@ impl ProbeFactory for SifliUartFactory {
             ));
         };
 
-        if selector.serial_number.is_some() {
-            return self.open_port(selector.serial_number.as_ref().unwrap());
+        if let DebugProbeSelector::Usb {
+            filters:
+                UsbFilters {
+                    serial_number: Some(sn),
+                    ..
+                },
+            ..
+        } = selector
+        {
+            return self.open_port(sn);
         }
 
         for port in ports {

@@ -55,7 +55,7 @@ impl Cmd {
             vec![WireProtocol::Jtag, WireProtocol::Swd]
         };
 
-        let probe = select_probe(&client, self.common.probe.map(Into::into)).await?;
+        let probe = select_probe(&client, self.common.probe).await?;
 
         for protocol in protocols {
             let msg = format!("Probing target via {protocol}");
