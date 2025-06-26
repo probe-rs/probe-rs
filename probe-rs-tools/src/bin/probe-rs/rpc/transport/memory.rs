@@ -180,7 +180,7 @@ impl<S: PostcardSender> server::WireTx for WireTx<S> {
         kkind: VarKeyKind,
         a: std::fmt::Arguments<'_>,
     ) -> Result<(), Self::Error> {
-        let s = format!("{}", a);
+        let s = format!("{a}");
         self.send_log_str(kkind, &s).await
     }
 }

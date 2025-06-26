@@ -19,5 +19,5 @@ fn generate_bin_versions() {
 
     println!("cargo:rustc-env=PROBE_RS_VERSION={CARGO_VERSION}");
     println!("cargo:rustc-env=PROBE_RS_LONG_VERSION={CARGO_VERSION} (git commit: {GIT_VERSION})");
-    println!("cargo:rustc-env=GIT_REV={}", git_rev);
+    println!("cargo:rustc-env=GIT_REV={git_rev}");
 }

@@ -97,7 +97,7 @@ impl AlgorithmBinary {
             );
 
             for section in suspicious_sections {
-                log::warn!("\t{}", section);
+                log::warn!("\t{section}");
             }
 
             log::warn!(

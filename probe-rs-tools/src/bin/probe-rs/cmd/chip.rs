@@ -57,7 +57,7 @@ pub async fn print_chip_info(
     mut output: impl Write,
     name: &str,
 ) -> anyhow::Result<()> {
-    writeln!(output, "{}", name)?;
+    writeln!(output, "{name}")?;
     let target = client.chip_info(name).await?;
     writeln!(output, "Cores ({}):", target.cores.len())?;
     for core in target.cores {

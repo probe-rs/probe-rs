@@ -112,7 +112,7 @@ impl MemoryInterface<ArmError> for &mut MockCore {
 
         for (offset, val) in data.iter_mut().enumerate() {
             let address = address + offset as u64;
-            println!("Read {:#010x} = 0", address);
+            println!("Read {address:#010x} = 0");
 
             match self.program_binary {
                 Some(ref program_binary) => {
@@ -161,11 +161,11 @@ impl MemoryInterface<ArmError> for &mut MockCore {
                     dhcsr |= 1 << 16;
 
                     *val = dhcsr;
-                    println!("Read  DHCSR: {:#x} = {:#x}", address, val);
+                    println!("Read  DHCSR: {address:#x} = {val:#x}");
                 }
 
                 address => {
-                    println!("Read {:#010x} = 0", address);
+                    println!("Read {address:#010x} = 0");
 
                     match self.program_binary {
                         Some(ref program_binary) => {
@@ -227,7 +227,7 @@ impl MemoryInterface<ArmError> for &mut MockCore {
                     if dbg_key == 0xa05f {
                         // Mask out dbg key
                         self.dhcsr = Dhcsr::from(*word & 0xffff);
-                        println!("Write DHCSR = {:#010x}", word);
+                        println!("Write DHCSR = {word:#010x}");
 
                         let request_halt = self.dhcsr.c_halt();
 
@@ -239,7 +239,7 @@ impl MemoryInterface<ArmError> for &mut MockCore {
                         }
                     }
                 }
-                _ => println!("Write {:#010x} = {:#010x}", address, word),
+                _ => println!("Write {address:#010x} = {word:#010x}"),
             }
         }
 

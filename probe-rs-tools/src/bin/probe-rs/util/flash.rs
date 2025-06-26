@@ -137,7 +137,7 @@ impl ProgressBars {
                 Operation::Program => "Programming",
                 Operation::Verify => "Verifying",
             };
-            ProgressBarGroup::new(format!("{:>13}", message))
+            ProgressBarGroup::new(format!("{message:>13}"))
         })
     }
 }

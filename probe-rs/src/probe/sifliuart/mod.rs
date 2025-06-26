@@ -44,15 +44,15 @@ impl fmt::Display for SifliUartCommand<'_> {
             SifliUartCommand::Enter => write!(f, "Enter"),
             SifliUartCommand::Exit => write!(f, "Exit"),
             SifliUartCommand::MEMRead { addr, len } => {
-                write!(f, "MEMRead {{ addr: {:#X}, len: {:#X} }}", addr, len)
+                write!(f, "MEMRead {{ addr: {addr:#X}, len: {len:#X} }}")
             }
             SifliUartCommand::MEMWrite { addr, data } => {
-                write!(f, "MEMWrite {{ addr: {:#X}, data: [", addr)?;
+                write!(f, "MEMWrite {{ addr: {addr:#X}, data: [")?;
                 for (i, d) in data.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{:#X}", d)?;
+                    write!(f, "{d:#X}")?;
                 }
                 write!(f, "] }}")
             }
@@ -71,7 +71,7 @@ impl fmt::Display for SifliUartResponse {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{:#04X}", byte)?;
+                    write!(f, "{byte:#04X}")?;
                 }
                 write!(f, "] }}")
             }
@@ -92,10 +92,10 @@ enum CommandError {
 impl fmt::Display for CommandError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CommandError::ParameterError(e) => write!(f, "ParameterError({})", e),
+            CommandError::ParameterError(e) => write!(f, "ParameterError({e})"),
             // CommandError::Error(e) => write!(f, "Error({})", e),
             // CommandError::Unsupported(e) => write!(f, "Unsupported({})", e),
-            CommandError::ProbeError(e) => write!(f, "ProbeError({})", e),
+            CommandError::ProbeError(e) => write!(f, "ProbeError({e})"),
             // CommandError::UnsupportedVersion(e) => write!(f, "UnsupportedVersion({})", e),
         }
     }

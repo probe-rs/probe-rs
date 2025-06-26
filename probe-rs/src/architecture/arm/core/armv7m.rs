@@ -1007,8 +1007,7 @@ impl CoreInterface for Armv7m<'_> {
         // First make sure they are asking for a breakpoint on a half-word boundary.
         if (addr & 0x1) > 0 {
             return Err(Error::Other(format!(
-                "The requested breakpoint address 0x{:08x} is not on a half-word boundary",
-                addr
+                "The requested breakpoint address 0x{addr:08x} is not on a half-word boundary"
             )));
         }
 

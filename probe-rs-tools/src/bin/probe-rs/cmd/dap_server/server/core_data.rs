@@ -581,7 +581,7 @@ impl CoreHandle<'_> {
                             if !string.is_empty() {
                                 string.push(' ');
                             }
-                            string.push_str(&format!("{:02x}", byte));
+                            string.push_str(&format!("{byte:02x}"));
                         }
                         string
                     } else {

@@ -517,8 +517,7 @@ impl DapAccess for BlackMagicProbeArmDebug {
             Ok(())
         } else {
             Err(ArmError::Probe(DebugProbeError::Other(format!(
-                "probe returned unexpected result: {}",
-                result
+                "probe returned unexpected result: {result}"
             ))))
         }
     }
@@ -614,8 +613,7 @@ impl DapAccess for BlackMagicProbeArmDebug {
             Ok(())
         } else {
             Err(ArmError::Probe(DebugProbeError::Other(format!(
-                "probe returned unexpected result: {}",
-                result
+                "probe returned unexpected result: {result}"
             ))))
         }
     }
@@ -795,8 +793,7 @@ impl BlackMagicProbeMemoryInterface<'_> {
             Ok(())
         } else {
             Err(ArmError::Probe(DebugProbeError::Other(format!(
-                "probe returned unexpected result: {}",
-                result
+                "probe returned unexpected result: {result}"
             ))))
         }
     }

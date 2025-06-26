@@ -139,7 +139,7 @@ where
                             "Failed to process flash algorithm {}.",
                             flash_algorithm.file_name.display()
                         );
-                        log::warn!("Reason: {:?}", e);
+                        log::warn!("Reason: {e:?}");
                         None
                     }
                 }
@@ -368,7 +368,7 @@ pub(crate) async fn visit_arm_file(
         }
     };
 
-    log::info!("Trying to open pack file: {}.", url);
+    log::info!("Trying to open pack file: {url}.");
     let zip = std::io::Cursor::new(bytes);
     let mut archive = match zip::ZipArchive::new(zip) {
         Ok(archive) => archive,

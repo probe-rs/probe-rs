@@ -111,7 +111,7 @@ impl DebugLogger {
 
     /// Flush the buffer to the stderr
     pub(crate) fn flush(&self) -> Result<(), DebuggerError> {
-        self.process_new_log_lines(|line| eprintln!("{}", line))
+        self.process_new_log_lines(|line| eprintln!("{line}"))
     }
 
     /// Setup logging, according to the following rules.

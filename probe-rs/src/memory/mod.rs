@@ -337,7 +337,7 @@ where
 pub(crate) fn valid_32bit_address(address: u64) -> Result<u32, Error> {
     let address: u32 = address
         .try_into()
-        .map_err(|_| Error::Other(format!("Address {:#08x} out of range", address)))?;
+        .map_err(|_| Error::Other(format!("Address {address:#08x} out of range")))?;
 
     Ok(address)
 }

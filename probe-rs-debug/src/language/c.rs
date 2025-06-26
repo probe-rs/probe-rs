@@ -167,7 +167,7 @@ impl Display for CChar {
         if c.is_ascii() {
             f.write_char(c as char)
         } else {
-            f.write_fmt(format_args!("\\x{:02x}", c))
+            f.write_fmt(format_args!("\\x{c:02x}"))
         }
     }
 }

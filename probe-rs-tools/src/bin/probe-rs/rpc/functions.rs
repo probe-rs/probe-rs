@@ -132,7 +132,7 @@ impl From<probe_rs::rtt::Error> for RpcError {
 
 impl From<WireTxErrorKind> for RpcError {
     fn from(e: WireTxErrorKind) -> Self {
-        Self(format!("{:?}", e))
+        Self(format!("{e:?}"))
     }
 }
 

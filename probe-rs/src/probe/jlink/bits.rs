@@ -57,7 +57,7 @@ impl fmt::Debug for BitIter<'_> {
             .clone()
             .map(|bit| if bit { '1' } else { '0' })
             .collect::<String>();
-        write!(f, "BitIter({})", s)
+        write!(f, "BitIter({s})")
     }
 }
 

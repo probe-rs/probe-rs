@@ -79,7 +79,7 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
     };
     use tokio_util::bytes::Bytes;
 
-    let uri = Uri::from_str(&format!("{}/worker", host)).context("Failed to parse server URI")?;
+    let uri = Uri::from_str(&format!("{host}/worker")).context("Failed to parse server URI")?;
 
     let is_localhost = uri
         .host()

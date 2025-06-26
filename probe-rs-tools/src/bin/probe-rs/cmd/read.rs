@@ -65,25 +65,25 @@ impl Cmd {
             ReadWriteBitWidth::B8 => {
                 let values = core.read_memory_8(address, nwords).await?;
                 for val in values {
-                    print!("{:02x} ", val);
+                    print!("{val:02x} ");
                 }
             }
             ReadWriteBitWidth::B16 => {
                 let values = core.read_memory_16(address, nwords).await?;
                 for val in values {
-                    print!("{:08x} ", val);
+                    print!("{val:08x} ");
                 }
             }
             ReadWriteBitWidth::B32 => {
                 let values = core.read_memory_32(address, nwords).await?;
                 for val in values {
-                    print!("{:08x} ", val);
+                    print!("{val:08x} ");
                 }
             }
             ReadWriteBitWidth::B64 => {
                 let values = core.read_memory_64(address, nwords).await?;
                 for val in values {
-                    print!("{:016x} ", val);
+                    print!("{val:016x} ");
                 }
             }
         }

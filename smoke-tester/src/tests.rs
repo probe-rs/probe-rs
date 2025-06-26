@@ -84,11 +84,11 @@ fn test_write_read(
     );
 
     core.write(address, data)
-        .with_context(|| format!("write to address {:#010X}", address))?;
+        .with_context(|| format!("write to address {address:#010X}"))?;
 
     let mut read_data = vec![0; data.len()];
     core.read(address, &mut read_data)
-        .with_context(|| format!("read from address {:#010X}", address))?;
+        .with_context(|| format!("read from address {address:#010X}"))?;
 
     assert_eq!(
         data,
@@ -128,8 +128,7 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         let value = core.read_word_32(ram_start)?;
         assert_eq!(
             value, 0xababab,
-            "Error reading back 4 bytes from address {:#010X}",
-            ram_start
+            "Error reading back 4 bytes from address {ram_start:#010X}"
         );
 
         println_test_status!(tracker, blue, "Test - RAM End 32");
@@ -139,8 +138,7 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         let value = core.read_word_32(addr)?;
         assert_eq!(
             value, 0xababac,
-            "Error reading back 4 bytes from address {:#010X}",
-            addr
+            "Error reading back 4 bytes from address {addr:#010X}"
         );
 
         println_test_status!(tracker, blue, "Test - RAM Start 8");
@@ -149,8 +147,7 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
         let value = core.read_word_8(ram_start)?;
         assert_eq!(
             value, 0xac,
-            "Error reading back 1 byte from address {:#010X}",
-            ram_start
+            "Error reading back 1 byte from address {ram_start:#010X}"
         );
 
         println_test_status!(tracker, blue, "Test - RAM 8 Unaligned");
@@ -165,8 +162,7 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
             .with_context(|| format!("read_word_8 from address {address:#010X}"))?;
         assert_eq!(
             value, data,
-            "Error reading back 1 byte from address {:#010X}",
-            address
+            "Error reading back 1 byte from address {address:#010X}"
         );
 
         println_test_status!(tracker, blue, "Test - RAM End 8");
@@ -180,8 +176,7 @@ fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> TestResult {
             .with_context(|| format!("read_word_8 from address {address:#010X}"))?;
         assert_eq!(
             value, 0xcd,
-            "Error reading back 1 byte from address {:#010X}",
-            address
+            "Error reading back 1 byte from address {address:#010X}"
         );
 
         test_write_read("1 byte at RAM start", tracker, core, ram_start, &[0x56])?;
@@ -310,7 +305,7 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
     };
 
     let progress = FlashProgress::new(|event| {
-        log::debug!("Flash Event: {:?}", event);
+        log::debug!("Flash Event: {event:?}");
         print!(".");
     });
 

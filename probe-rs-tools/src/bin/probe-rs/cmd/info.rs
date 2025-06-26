@@ -95,16 +95,16 @@ impl Cmd {
                 .await;
 
             if let Err(error) = result {
-                println!("Error while probing target: {}", error);
+                println!("Error while probing target: {error}");
             }
 
             if successes.is_empty() {
                 for message in errors {
-                    println!("{}", message);
+                    println!("{message}");
                 }
             } else {
                 for message in successes {
-                    println!("{}", message);
+                    println!("{message}");
                 }
             }
         }
@@ -234,7 +234,7 @@ impl Display for DebugPortInfoNode {
 
             let instance = dlpidr.tinstance();
 
-            write!(f, ", Instance: {:#04x}", instance)?;
+            write!(f, ", Instance: {instance:#04x}")?;
         } else {
             format_jep(f, self.dp_info.designer.into())?;
         }

@@ -65,7 +65,7 @@ pub enum ProfileMethod {
 
 impl std::fmt::Display for ProfileMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        let s = format!("{:?}", self);
+        let s = format!("{self:?}");
         write!(f, "{}", s.to_lowercase())
     }
 }
@@ -182,17 +182,17 @@ impl ProfileCmd {
         // sort by frequency
         v.sort_by(|&(_, a), &(_, b)| b.cmp(&a));
 
-        println!("Samples {}", reads);
+        println!("Samples {reads}");
 
         for (address, count) in v.into_iter().take(self.limit) {
             let name = symbols
                 .get_name(address as u64)
-                .unwrap_or(format!("UNKNOWN - {:08X}", address));
+                .unwrap_or(format!("UNKNOWN - {address:08X}"));
             if self.line_info {
                 let (file, num) = symbols
                     .get_location(address as u64)
                     .unwrap_or(("UNKNOWN", 0));
-                println!("{}:{}", file, num);
+                println!("{file}:{num}");
             }
             println!(
                 "{:>50} - {:.01}%",

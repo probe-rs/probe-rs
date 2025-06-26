@@ -654,7 +654,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
                     .state
                     .register_cache
                     .get_mut(register)
-                    .unwrap_or_else(|| panic!("Register {:?} is not in the cache", register));
+                    .unwrap_or_else(|| panic!("Register {register:?} is not in the cache"));
 
                 let value = entry.original_value();
                 self.schedule_write_register_untyped(register, value)?;

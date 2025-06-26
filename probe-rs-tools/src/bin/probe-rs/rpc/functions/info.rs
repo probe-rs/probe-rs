@@ -514,7 +514,7 @@ async fn show_arm_info(
 
     ctx.publish::<TargetInfoDataTopic>(
         VarSeq::Seq2(0),
-        &InfoEvent::Message(format!("ARM Chip with debug port {:x?}:", dp)),
+        &InfoEvent::Message(format!("ARM Chip with debug port {dp:x?}:")),
     )
     .await?;
 

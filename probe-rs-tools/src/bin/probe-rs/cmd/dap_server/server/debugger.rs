@@ -1155,8 +1155,7 @@ mod test {
 
             if self.event_index >= self.expected_events.len() {
                 panic!(
-                    "No more events expected, but got event_type={:?}, event_body={:?}",
-                    event_type, event_body
+                    "No more events expected, but got event_type={event_type:?}, event_body={event_body:?}"
                 );
             }
 
