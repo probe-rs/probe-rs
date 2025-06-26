@@ -13,7 +13,7 @@ use crate::{
                 dap_types::{
                     Capabilities, DisconnectResponse, Event, ExitedEventBody,
                     InitializeRequestArguments, MessageSeverity, Request, RttWindowOpenedArguments,
-                    TerminatedEventBody,
+                    TerminatedEventBody, ThreadsResponseBody,
                 },
                 request_helpers::halt_core,
             },
@@ -331,6 +331,11 @@ impl Debugger {
                     debug_adapter.send_response::<DisconnectResponse>(&request, Ok(None))?;
 
                     return Ok(());
+                } else if request.command == "threads" {
+                    // Just say that we don't have any threads yet
+                    let response = ThreadsResponseBody { threads: vec![] };
+
+                    debug_adapter.send_response(&request, Ok(Some(response)))?;
                 } else {
                     debug_adapter.log_to_console(format!(
                         "Ignoring request with command '{}', we can only handle 'launch' and 'attach' commands.", request.command
