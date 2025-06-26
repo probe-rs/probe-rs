@@ -273,6 +273,9 @@ impl Debugger {
             "continue" => debug_adapter.r#continue(&mut target_core, &request),
             "evaluate" => debug_adapter.evaluate(&mut target_core, &request),
             "completions" => debug_adapter.completions(&mut target_core, &request),
+            "setExceptionBreakpoints" => {
+                debug_adapter.set_exception_breakpoints(&mut target_core, &request)
+            }
             other_command => {
                 // Unimplemented command.
                 debug_adapter.send_response::<()>(
