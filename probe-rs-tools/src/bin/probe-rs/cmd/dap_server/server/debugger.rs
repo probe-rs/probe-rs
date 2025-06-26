@@ -982,17 +982,15 @@ mod test {
     }
 
     fn error_message(msg: &str) -> Message {
+        // TODO: Check this with vscode
         Message {
-            format: "{response_message}".to_string(),
+            format: msg.to_string(),
             id: 0,
             send_telemetry: Some(false),
             show_user: Some(true),
             url: Some("https://probe.rs/docs/tools/debugger/".to_string()),
             url_label: Some("Documentation".to_string()),
-            variables: Some(BTreeMap::from([(
-                "response_message".to_string(),
-                msg.to_string(),
-            )])),
+            variables: None,
         }
     }
 

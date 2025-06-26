@@ -142,11 +142,8 @@ where
 
                 let response_body = ErrorResponseBody {
                     error: Some(super::dap::dap_types::Message {
-                        format: "{response_message}".to_string(),
-                        variables: Some(BTreeMap::from([(
-                            "response_message".to_string(),
-                            response_message,
-                        )])),
+                        format: response_message.to_string(),
+                        variables: None,
                         // TODO: Implement unique error codes, that can index into the documentation for more information and suggested actions.
                         id: 0,
                         send_telemetry: Some(false),

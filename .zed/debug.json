@@ -13,5 +13,20 @@
       "command": "cargo",
       "args": ["build", "--bin", "probe-rs"]
     }
+  },
+  {
+    "adapter": "probe-rs",
+    "label": "blubb (probe-rs)",
+    "coreConfigs": [
+      {
+        "programBinary": "target/blubb"
+      }
+    ],
+    "cwd": "/home/dominik/code/probe-rs/probe-rs",
+    "flashingConfig": {
+      "flashingEnabled": true,
+      "haltAfterReset": false
+    },
+    "request": "launch"
   }
 ]
