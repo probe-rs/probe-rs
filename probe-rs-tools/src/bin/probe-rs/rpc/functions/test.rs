@@ -260,13 +260,11 @@ fn run_test_impl(
         |halt_reason, core| run_handler.handle_halt(halt_reason, core),
     )? {
         ReturnReason::Timeout => Ok(TestResult::Failed(format!(
-            "Test timed out after {:?}",
-            timeout
+            "Test timed out after {timeout:?}"
         ))),
         ReturnReason::Predicate(outcome) if outcome == expected_outcome => Ok(TestResult::Success),
         ReturnReason::Predicate(outcome) => Ok(TestResult::Failed(format!(
-            "Test should {:?} but it did {:?}",
-            expected_outcome, outcome
+            "Test should {expected_outcome:?} but it did {outcome:?}"
         ))),
         ReturnReason::Cancelled => Ok(TestResult::Cancelled),
         ReturnReason::LockedUp => {

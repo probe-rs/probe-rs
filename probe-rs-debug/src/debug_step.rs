@@ -380,8 +380,7 @@ fn run_to_address(
                 } else {
                     // Something else is wrong.
                     Err(DebugError::Other(format!(
-                        "Unexpected error while waiting for the core to halt after stepping to {:#010X}. Forced a halt at {:#010X}. {:?}.",
-                        program_counter, target_address, error
+                        "Unexpected error while waiting for the core to halt after stepping to {program_counter:#010X}. Forced a halt at {target_address:#010X}. {error:?}."
                     )))
                 }
             }
@@ -429,8 +428,7 @@ fn step_to_address(
             // This is not a recoverable error, and will result in the debug session ending (we have no predicatable way of successfully continuing the session)
             other_status => {
                 return Err(DebugError::Other(format!(
-                    "Target failed to reach the destination address of a step operation: {:?}",
-                    other_status
+                    "Target failed to reach the destination address of a step operation: {other_status:?}"
                 )));
             }
         }

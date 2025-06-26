@@ -12,7 +12,7 @@ pub(crate) fn read_elf_bin_data<'a>(
     address: u32,
     size: u32,
 ) -> Option<&'a [u8]> {
-    log::debug!("Trying to read {} bytes from {:#010x}.", size, address);
+    log::debug!("Trying to read {size} bytes from {address:#010x}.");
 
     let start = address as u64;
     let end = (address + size) as u64;
@@ -23,8 +23,8 @@ pub(crate) fn read_elf_bin_data<'a>(
         let segment_address = ph.p_paddr;
         let segment_size = ph.p_memsz.min(ph.p_filesz);
 
-        log::debug!("Segment address: {:#010x}", segment_address);
-        log::debug!("Segment size:    {} bytes", segment_size);
+        log::debug!("Segment address: {segment_address:#010x}");
+        log::debug!("Segment size:    {segment_size} bytes");
 
         let segment = segment_address..segment_address + segment_size;
         // If the requested data is not fully inside of the current segment, skip the segment.

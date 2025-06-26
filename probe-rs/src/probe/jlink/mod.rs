@@ -426,8 +426,7 @@ impl JLink {
             let real_caps = self.read_n::<32>().map(Capabilities::from_raw_ex)?;
             if !real_caps.contains_all(caps) {
                 return Err(JlinkError::Other(format!(
-                    "ext. caps are not a superset of legacy caps (legacy: {:?}, ex: {:?})",
-                    caps, real_caps
+                    "ext. caps are not a superset of legacy caps (legacy: {caps:?}, ex: {real_caps:?})"
                 )));
             }
             tracing::debug!("extended caps: {:?}", real_caps);
@@ -1346,7 +1345,7 @@ impl HardwareVersion {
 impl fmt::Display for HardwareVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(hw) = self.hardware_type() {
-            write!(f, "{} ", hw)?;
+            write!(f, "{hw} ")?;
         }
         write!(f, "{}.{}.{}", self.major(), self.minor(), self.revision())
     }

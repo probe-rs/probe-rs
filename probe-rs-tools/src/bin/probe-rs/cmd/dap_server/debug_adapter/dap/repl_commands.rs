@@ -676,9 +676,7 @@ fn reg_table(results: &[(String, String)], max_line_length: usize) -> String {
         // Format the line name and value
         write!(
             &mut response_message,
-            "{reg_name:<name_width$} {reg_value:>value_width$}",
-            value_width = max_value_width,
-            name_width = max_reg_name_width
+            "{reg_name:<max_reg_name_width$} {reg_value:>max_value_width$}"
         )
         .unwrap();
 

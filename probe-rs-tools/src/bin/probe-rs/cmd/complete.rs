@@ -146,7 +146,7 @@ pub async fn list_probes(lister: &Lister, starts_with: &str) -> Result<String> {
                 sn = probe
                     .serial_number
                     .clone()
-                    .map_or("".to_owned(), |v| format!("\\:{}", v)),
+                    .map_or("".to_owned(), |v| format!("\\:{v}")),
                 id = probe.identifier,
             )?;
         }
@@ -263,15 +263,15 @@ export FPATH="$HOME/.zfunc:$FPATH"
                 let result = std::fs::OpenOptions::new()
                     .append(true)
                     .open(&zshrc_path)
-                    .and_then(|mut file| writeln!(file, "{}", export_cmd))
+                    .and_then(|mut file| writeln!(file, "{export_cmd}"))
                     .context("Failed to update .zshrc with FPATH");
 
                 match result {
                     Ok(_) => eprintln!("Added .zfunc to FPATH in .zshrc. Please reload your zsh."),
                     Err(e) => {
-                        eprintln!("Error: {}", e);
+                        eprintln!("Error: {e}");
                         eprintln!("Please add the following line to your .zshrc manually:");
-                        eprintln!("{}", export_cmd);
+                        eprintln!("{export_cmd}");
                     }
                 }
             }
@@ -326,7 +326,7 @@ fn write_script(path: &Path, script: &str) -> Result<()> {
         if !parent.exists() {
             if let Err(e) = std::fs::create_dir_all(parent).context("Failed to create directory") {
                 println!("{script}");
-                eprintln!("Creating the parent directories failed: {}", e);
+                eprintln!("Creating the parent directories failed: {e}");
                 eprintln!(
                     "Please create the parent directories and write the above script to {} manually",
                     path.display()

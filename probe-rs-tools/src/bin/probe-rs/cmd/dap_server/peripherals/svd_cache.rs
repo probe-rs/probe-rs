@@ -179,13 +179,13 @@ impl Variable {
                 address,
                 restricted_read: false,
                 ..
-            } => Some(format!("{:#010X}", address)),
+            } => Some(format!("{address:#010X}")),
 
             SvdVariable::SvdField {
                 address,
                 restricted_read: false,
                 ..
-            } => Some(format!("{:#010X}", address)),
+            } => Some(format!("{address:#010X}")),
             _ => None,
         }
     }
@@ -254,10 +254,7 @@ impl SvdVariable {
                 ..
             } => {
                 if *restricted_read {
-                    format!(
-                        "Register cannot be read without side effects @ {:#010X}",
-                        address
-                    )
+                    format!("Register cannot be read without side effects @ {address:#010X}")
                 } else {
                     let size_bytes = (*size / 8).max(1);
                     let bits_alignment_offset = (*address % size_bytes as u64) as u32 * 8;
@@ -282,8 +279,7 @@ impl SvdVariable {
                     match value {
                         Ok(value) => value,
                         Err(error) => format!(
-                            "Unable to read peripheral register value @ {:#010X} : {:?}",
-                            address, error
+                            "Unable to read peripheral register value @ {address:#010X} : {error:?}"
                         ),
                     }
                 }
@@ -296,10 +292,7 @@ impl SvdVariable {
                 ..
             } => {
                 if *restricted_read {
-                    format!(
-                        "Field cannot be read without side effects @ {:#010X}",
-                        address
-                    )
+                    format!("Field cannot be read without side effects @ {address:#010X}")
                 } else {
                     let value = match *bit_range_upper_bound {
                         0..8 => memory.read_word_8(*address).map(u32::from),
@@ -323,8 +316,7 @@ impl SvdVariable {
                             )
                         }
                         Err(error) => format!(
-                            "Unable to read peripheral register field value @ {:#010X} : {:?}",
-                            address, error
+                            "Unable to read peripheral register field value @ {address:#010X} : {error:?}"
                         ),
                     }
                 }

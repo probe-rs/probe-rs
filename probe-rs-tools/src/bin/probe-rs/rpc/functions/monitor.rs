@@ -313,8 +313,7 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
     ) -> anyhow::Result<Option<MonitorExitReason>> {
         let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
             return Ok(Some(MonitorExitReason::UnexpectedExit(format!(
-                "{:?}",
-                halt_reason
+                "{halt_reason:?}"
             ))));
         };
 
@@ -349,8 +348,7 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
                 Ok(None)
             }
             other => Ok(Some(MonitorExitReason::UnexpectedExit(format!(
-                "Unexpected semihosting command {:?}",
-                other,
+                "Unexpected semihosting command {other:?}",
             )))),
         }
     }

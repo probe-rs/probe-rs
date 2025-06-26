@@ -213,7 +213,7 @@ impl ProgrammingLanguage for Rust {
             ptr_type.to_string()
         } else {
             // FIXME: we should track where the type name came from - the pointer node, or the pointee.
-            format!("*raw {}", ptr_type)
+            format!("*raw {ptr_type}")
         }
     }
 

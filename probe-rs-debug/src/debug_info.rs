@@ -1009,8 +1009,7 @@ pub fn get_unwind_info<'a>(
 ) -> Result<&'a gimli::UnwindTableRow<GimliReaderOffset>, DebugError> {
     let transform_error = |error| {
         DebugError::Other(format!(
-            "UNWIND: Error reading FrameDescriptorEntry at PC={:x} : {}",
-            frame_program_counter, error
+            "UNWIND: Error reading FrameDescriptorEntry at PC={frame_program_counter:x} : {error}"
         ))
     };
 
@@ -1289,8 +1288,7 @@ fn unwind_register_using_rule(
                 }
                 _ => {
                     return Err(Error::Other(format!(
-                        "UNWIND: Address size {} not supported.",
-                        address_size
+                        "UNWIND: Address size {address_size} not supported."
                     )));
                 }
             };
@@ -1410,8 +1408,7 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
         }
         _ => {
             panic!(
-                "UNWIND: Address size {} not supported.  Please report this as a bug.",
-                address_size_in_bytes
+                "UNWIND: Address size {address_size_in_bytes} not supported.  Please report this as a bug."
             );
         }
     }
@@ -2068,8 +2065,7 @@ mod test {
             .find(|path| path.exists())
             .unwrap_or_else(|| {
                 panic!(
-                    "No coredump found for chip {base}. Expected one of: {:?}",
-                    possible_coredump_paths
+                    "No coredump found for chip {base}. Expected one of: {possible_coredump_paths:?}"
                 )
             })
             .clone()

@@ -68,7 +68,7 @@ where
 
         let event_body = match serde_json::to_value(ShowMessageEventBody {
             severity,
-            message: format!("{}\n", msg),
+            message: format!("{msg}\n"),
         }) {
             Ok(event_body) => event_body,
             Err(_) => {
@@ -348,7 +348,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             match self.console_log_level {
                 ConsoleLog::Console => {}
                 ConsoleLog::Info => {
-                    self.log_to_console(format!("\nTriggered DAP Event: {}", event_type));
+                    self.log_to_console(format!("\nTriggered DAP Event: {event_type}"));
                 }
                 ConsoleLog::Debug => {
                     self.log_to_console(format!("INFO: Triggered DAP Event: {new_event:#?}"));

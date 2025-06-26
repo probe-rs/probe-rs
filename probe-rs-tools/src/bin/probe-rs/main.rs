@@ -535,7 +535,7 @@ fn apply_config_preset(
 
     let mut args_modified = false;
     for (arg, value) in preset {
-        let flag = format!("--{}", arg).into();
+        let flag = format!("--{arg}").into();
         if args.contains(&flag) {
             continue;
         }
@@ -553,11 +553,11 @@ fn apply_config_preset(
             Value::String(_, value) => args.push(value.into()),
             Value::Num(_, num) => {
                 if let Some(uint) = num.to_u128() {
-                    args.push(format!("{}", uint).into())
+                    args.push(format!("{uint}").into())
                 } else if let Some(int) = num.to_i128() {
-                    args.push(format!("{}", int).into())
+                    args.push(format!("{int}").into())
                 } else if let Some(float) = num.to_f64() {
-                    args.push(format!("{}", float).into())
+                    args.push(format!("{float}").into())
                 } else {
                     unreachable!()
                 }

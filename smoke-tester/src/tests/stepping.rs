@@ -58,7 +58,7 @@ fn test_stepping(tracker: &TestTracker, core: &mut Core) -> TestResult {
         expected_pc, core_information.pc, core_status
     );
     if core_status != CoreStatus::Halted(HaltReason::Step) {
-        log::warn!("Unexpected core status: {:?}!", core_status);
+        log::warn!("Unexpected core status: {core_status:?}!");
     }
 
     let r0_value: u64 = core.read_core_reg(registers.core_register(0))?;

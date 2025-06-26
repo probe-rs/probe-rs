@@ -58,10 +58,10 @@ impl std::fmt::Display for ExitErrorDetails {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "reason: {:#x}", self.reason)?;
         if let Some(exit_status) = self.exit_status {
-            write!(f, ", exit_status: {}", exit_status)?;
+            write!(f, ", exit_status: {exit_status}")?;
         }
         if let Some(subcode) = self.subcode {
-            write!(f, ", subcode: {:#x}", subcode)?;
+            write!(f, ", subcode: {subcode:#x}")?;
         }
         Ok(())
     }

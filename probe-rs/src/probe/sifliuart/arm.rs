@@ -251,7 +251,7 @@ impl SifliUartMemoryInterface<'_> {
                         addr: block_addr as u32,
                         len: 1,
                     })
-                    .map_err(|e| ArmError::Other(format!("{:?}", e)))?;
+                    .map_err(|e| ArmError::Other(format!("{e:?}")))?;
                 let mut block: [u8; 4] = match resp {
                     SifliUartResponse::MEMRead { data: d } if d.len() == 4 => {
                         [d[0], d[1], d[2], d[3]]
@@ -283,7 +283,7 @@ impl SifliUartMemoryInterface<'_> {
                 addr: start_aligned as u32,
                 data: &words,
             })
-            .map_err(|e| ArmError::Other(format!("{:?}", e)))?;
+            .map_err(|e| ArmError::Other(format!("{e:?}")))?;
 
         Ok(())
     }
@@ -314,7 +314,7 @@ impl SifliUartMemoryInterface<'_> {
                 addr: start_aligned as u32,
                 len: total_words as u16,
             })
-            .map_err(|e| ArmError::Other(format!("{:?}", e)))?;
+            .map_err(|e| ArmError::Other(format!("{e:?}")))?;
 
         let buf = match resp {
             SifliUartResponse::MEMRead { data } if data.len() == total_bytes => data,

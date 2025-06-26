@@ -784,8 +784,7 @@ impl CoreInterface for Armv6m<'_> {
         // be set at the address.
         if addr >= 0x2000_0000 {
             return Err(Error::Arm(ArmError::Other(format!(
-                "Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.",
-                addr
+                "Unsupported address {addr:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000."
             ))));
         }
 

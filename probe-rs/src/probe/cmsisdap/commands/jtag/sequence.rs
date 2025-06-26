@@ -35,8 +35,7 @@ impl Sequence {
     ) -> Result<Self, CmsisDapError> {
         assert!(
             tck_cycles > 0 && tck_cycles <= 64,
-            "tck_cycles = {}, but expected [1,64]",
-            tck_cycles
+            "tck_cycles = {tck_cycles}, but expected [1,64]"
         );
 
         Ok(Self {

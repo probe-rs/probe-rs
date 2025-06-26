@@ -130,8 +130,8 @@ impl std::fmt::Display for ApV2Address {
 impl std::fmt::Display for ApAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ApAddress::V1(v) => write!(f, "V1({})", v),
-            ApAddress::V2(v) => write!(f, "V2({})", v),
+            ApAddress::V1(v) => write!(f, "V1({v})"),
+            ApAddress::V2(v) => write!(f, "V2({v})"),
         }
     }
 }

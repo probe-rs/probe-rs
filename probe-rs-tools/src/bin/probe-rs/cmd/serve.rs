@@ -73,7 +73,7 @@ async fn server_info() -> Html<String> {
     } else {
         body.push_str("<ul>");
         for probe in probes {
-            write!(body, "<li>{}</li>", probe).unwrap();
+            write!(body, "<li>{probe}</li>").unwrap();
         }
     }
 
@@ -99,7 +99,7 @@ impl Cmd {
         let address = config.address.as_deref().unwrap_or("0.0.0.0");
         let port = config.port.unwrap_or(3000);
 
-        let listener = tokio::net::TcpListener::bind(format!("{}:{}", address, port))
+        let listener = tokio::net::TcpListener::bind(format!("{address}:{port}"))
             .await
             .unwrap();
 

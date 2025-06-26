@@ -134,8 +134,7 @@ impl JLink {
         let len = u32::from_le_bytes(len);
         if len != 28 {
             return Err(JlinkError::Other(format!(
-                "Unexpected response length {}, expected 28",
-                len
+                "Unexpected response length {len}, expected 28"
             )));
         }
 

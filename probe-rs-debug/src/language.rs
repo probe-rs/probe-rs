@@ -66,10 +66,10 @@ pub trait ProgrammingLanguage {
 
     fn modified_type_name(&self, modifier: &Modifier, name: &str) -> String {
         match modifier {
-            Modifier::Const => format!("const {}", name),
-            Modifier::Volatile => format!("volatile {}", name),
-            Modifier::Restrict => format!("restrict {}", name),
-            Modifier::Atomic => format!("_Atomic {}", name),
+            Modifier::Const => format!("const {name}"),
+            Modifier::Volatile => format!("volatile {name}"),
+            Modifier::Restrict => format!("restrict {name}"),
+            Modifier::Atomic => format!("_Atomic {name}"),
             Modifier::Typedef(ty) => ty.to_string(),
         }
     }

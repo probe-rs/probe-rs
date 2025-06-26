@@ -332,7 +332,7 @@ pub(crate) fn disassemble_target_memory(
                         instruction
                             .bytes()
                             .iter()
-                            .map(|b| format!("{:02X}", b))
+                            .map(|b| format!("{b:02X}"))
                             .join(" "),
                     ),
                     line,

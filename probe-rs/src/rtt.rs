@@ -504,7 +504,7 @@ pub enum Error {
 
 fn display_list(list: &[u64]) -> String {
     list.iter()
-        .map(|ptr| format!("{:#010x}", ptr))
+        .map(|ptr| format!("{ptr:#010x}"))
         .collect::<Vec<_>>()
         .join(", ")
 }

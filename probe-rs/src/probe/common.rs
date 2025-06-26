@@ -533,8 +533,7 @@ fn prepare_write_register(
 ) -> Result<usize, DebugProbeError> {
     if address > protocol.state().max_ir_address() {
         return Err(DebugProbeError::Other(format!(
-            "Invalid instruction register access: {}",
-            address
+            "Invalid instruction register access: {address}"
         )));
     }
 
@@ -781,10 +780,10 @@ mod tests {
 
     #[test]
     fn id_code_display() {
-        let debug_fmt = format!("{idcode}", idcode = ARM_TAP);
+        let debug_fmt = format!("{ARM_TAP}");
         assert_eq!(debug_fmt, "0x4BA00477 (ARM Ltd)");
 
-        let debug_fmt = format!("{idcode}", idcode = STM_BS_TAP);
+        let debug_fmt = format!("{STM_BS_TAP}");
         assert_eq!(debug_fmt, "0x06433041 (STMicroelectronics)");
     }
 

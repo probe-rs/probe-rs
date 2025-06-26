@@ -81,7 +81,7 @@ impl MockMemory {
     }
 
     fn missing_range(&self, start: u64, end: u64) -> ! {
-        panic!("No entry for range {:#010x} - {:#010x}", start, end);
+        panic!("No entry for range {start:#010x} - {end:#010x}");
     }
 }
 

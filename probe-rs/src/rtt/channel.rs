@@ -549,8 +549,7 @@ fn read_c_string(core: &mut Core, ptr: NonZeroU64) -> Result<Option<String>, Err
         .find_map(|r| r.contains(ptr).then_some(r.address_range()))
     else {
         return Err(Error::ControlBlockCorrupted(format!(
-            "The channel name pointer is not in a valid memory region: {:#X}",
-            ptr
+            "The channel name pointer is not in a valid memory region: {ptr:#X}"
         )));
     };
 
@@ -601,8 +600,7 @@ impl TryFrom<u64> for ChannelMode {
             1 => Ok(ChannelMode::NoBlockTrim),
             2 => Ok(ChannelMode::BlockIfFull),
             _ => Err(Error::ControlBlockCorrupted(format!(
-                "The channel mode flags are invalid: {}",
-                value
+                "The channel mode flags are invalid: {value}"
             ))),
         }
     }
