@@ -170,6 +170,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                     condition: None,
                     hit_condition: None,
                     offset: None,
+                    mode: None,
                 },
                 target_core,
             );
@@ -616,6 +617,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                         offset: None,
                         source: None,
                         verified: false,
+                        reason: None,
                     },
                     reason: "removed".to_string(),
                 })
