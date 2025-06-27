@@ -756,6 +756,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             all_threads_continued: Some(false), // TODO: Implement multi-core logic here
                             thread_id: target_core.core.id() as i64,
                         });
+                        eprintln!("Sending 'continued` event");
                         self.send_event("continued", event_body)?;
                         Ok(())
                     }
@@ -779,6 +780,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     all_threads_stopped: Some(self.all_cores_halted),
                     hit_breakpoint_ids: None,
                 });
+                eprintln!("Sending 'stopped` event");
                 self.send_event("stopped", event_body)?;
                 Ok(())
             }
