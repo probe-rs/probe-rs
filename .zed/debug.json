@@ -15,18 +15,17 @@
     }
   },
   {
-    "adapter": "probe-rs",
-    "label": "blubb (probe-rs)",
-    "coreConfigs": [
-      {
-        "programBinary": "target/blubb"
-      }
+    "label": "Run addr2line example",
+    "adapter": "CodeLLDB",
+    "program": "target/debug/examples/addr2line",
+    "request": "launch",
+    "args": [
+      "$ZED_WORKTREE_ROOT/../../nrf54l15_vpr_example/flpr-core/target/riscv32emc-unknown-none-elf/release/flpr-core",
+      "0x101f6"
     ],
-    "cwd": "/home/dominik/code/probe-rs/probe-rs",
-    "flashingConfig": {
-      "flashingEnabled": true,
-      "haltAfterReset": false
-    },
-    "request": "launch"
+    "build": {
+      "command": "cargo",
+      "args": ["build", "--example", "addr2line", "-p", "probe-rs-debug"]
+    }
   }
 ]

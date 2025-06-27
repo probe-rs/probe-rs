@@ -506,10 +506,10 @@ async fn main() -> Result<()> {
     // Create a local server to run commands against.
     let (mut local_server, tx, rx) = RpcApp::create_server(16, rpc::functions::ProbeAccess::All);
     let handle = tokio::spawn(async move {
-        println!("Local server started");
+        tracing::debug!("Local server started");
         let result = local_server.run().await;
 
-        println!("Local server done");
+        tracing::debug!("Local server done");
         result
     });
 
@@ -517,12 +517,8 @@ async fn main() -> Result<()> {
     let client = RpcClient::new_local_from_wire(tx, rx);
     let result = cli.run(client, config, utc_offset).await;
 
-    println!("Waiting for the server to shut down, result from client: {result:?}");
-
     // Wait for the server to shut down
     _ = handle.await.unwrap();
-
-    println!("Server shut down.");
 
     compile_report(result, report_path, elf, log_path.as_deref())
 }

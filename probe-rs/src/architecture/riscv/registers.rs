@@ -141,6 +141,8 @@ static RISCV_REGISTERS_SET: &[CoreRegister] = &[
         data_type: RegisterDataType::UnsignedInteger(32),
         unwind_rule: UnwindRule::Clear,
     },
+    // TODO: We need to know what kind for riscv chip it is
+    /*
     CoreRegister {
         roles: &[RegisterRole::Core("x16"), RegisterRole::Argument("a6")],
         id: RegisterId(0x1010),
@@ -237,6 +239,7 @@ static RISCV_REGISTERS_SET: &[CoreRegister] = &[
         data_type: RegisterDataType::UnsignedInteger(32),
         unwind_rule: UnwindRule::Clear,
     },
+    */
     PC,
     // TODO: Add FPU registers
 ];
