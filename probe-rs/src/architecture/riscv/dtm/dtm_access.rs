@@ -1,3 +1,5 @@
+use crate::MemoryInterface;
+use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::probe::{CommandResult, DebugProbeError, DeferredResultIndex};
 use std::time::Duration;
@@ -71,8 +73,8 @@ pub trait DtmAccess: Send {
     /// Returns an idcode used for chip detection
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError>;
 
-    // TODO: Figure out a nicer interface
-    // This is used to handle the case where the DTM can be used to access system memory,
-    // e.g. when a coresight memory access port is used.
-    fn read_memory_32(&mut self, address: u64) -> Result<u32, RiscvError>;
+    // TODO: Put in proper error type
+    fn memory_interface<'m>(
+        &'m mut self,
+    ) -> Result<&'m mut dyn MemoryInterface<ArmError>, DebugProbeError>;
 }

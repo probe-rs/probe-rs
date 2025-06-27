@@ -12,7 +12,6 @@ use crate::{
                 RiscvError, RiscvInterfaceBuilder,
             },
             dtm::dtm_access::{DmAddress, DtmAccess},
-            sequences::DefaultRiscvSequence,
         },
     },
     probe::{CommandQueue, CommandResult, DeferredResultSet},
@@ -197,9 +196,11 @@ impl DtmAccess for AdiDtm<'_> {
         Ok(None)
     }
 
-    fn read_memory_32(&mut self, address: u64) -> Result<u32, RiscvError> {
-        self.probe
-            .read_word_32(address)
-            .map_err(|_| RiscvError::DtmOperationFailed)
+    fn memory_interface<'m>(
+        &'m mut self,
+    ) -> Result<&'m mut dyn crate::MemoryInterface<ArmError>, crate::probe::DebugProbeError> {
+        let arm_interface: &mut dyn ArmMemoryInterface = self.probe.as_mut();
+
+        Ok(arm_interface)
     }
 }

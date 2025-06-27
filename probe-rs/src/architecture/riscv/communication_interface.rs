@@ -962,7 +962,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
         };
 
         if required_len > self.state.progbuf_size as usize {
-            panic!("Unable to setup program buffer");
             return Err(RiscvError::ProgramBufferTooSmall {
                 required: required_len,
                 actual: self.state.progbuf_size as usize,
@@ -1616,13 +1615,25 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
             }
-            MemoryAccessMethod::Dtm => {
-                assert_eq!(V::WIDTH, RiscvBusAccess::A32);
+            MemoryAccessMethod::Dtm => match V::WIDTH {
+                RiscvBusAccess::A8 => {
+                    let value = self
+                        .dtm
+                        .memory_interface()?
+                        .read_word_8(u64::from(address))?;
 
-                let value = self.perform_memory_read_dtm(address)?;
+                    V::from_register_value(u32::from(value))
+                }
+                RiscvBusAccess::A32 => {
+                    let value = self
+                        .dtm
+                        .memory_interface()?
+                        .read_word_32(u64::from(address))?;
 
-                V::from_register_value(value)
-            }
+                    V::from_register_value(value)
+                }
+                _ => unimplemented!("Memory access using DTM for 64-bit values is not implemented"),
+            },
         };
 
         Ok(result)
@@ -1654,17 +1665,33 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
             }
-            MemoryAccessMethod::Dtm => {
-                assert_eq!(V::WIDTH, RiscvBusAccess::A32);
+            MemoryAccessMethod::Dtm => match V::WIDTH {
+                RiscvBusAccess::A8 => {
+                    for (offset, i) in data.iter_mut().enumerate() {
+                        let address = address + 4 * (offset as u32);
 
-                for (offset, i) in data.iter_mut().enumerate() {
-                    let address = address + 4 * (offset as u32);
+                        let value = self
+                            .dtm
+                            .memory_interface()?
+                            .read_word_8(u64::from(address))?;
 
-                    let value = self.perform_memory_read_dtm(address)?;
-
-                    *i = V::from_register_value(value);
+                        *i = V::from_register_value(u32::from(value));
+                    }
                 }
-            }
+                RiscvBusAccess::A16 => todo!(),
+                RiscvBusAccess::A32 => {
+                    for (offset, i) in data.iter_mut().enumerate() {
+                        let value = self
+                            .dtm
+                            .memory_interface()?
+                            .read_word_8(u64::from(address))?;
+
+                        *i = V::from_register_value(u32::from(value));
+                    }
+                }
+                RiscvBusAccess::A64 => todo!(),
+                RiscvBusAccess::A128 => todo!(),
+            },
         };
 
         Ok(())
@@ -1918,10 +1945,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     pub(crate) fn sysbus_requires_halting(&mut self, en: bool) {
         self.state.sysbus_requires_halting = en;
-    }
-
-    fn perform_memory_read_dtm(&mut self, address: u32) -> Result<u32, RiscvError> {
-        self.dtm.read_memory_32(u64::from(address))
     }
 }
 

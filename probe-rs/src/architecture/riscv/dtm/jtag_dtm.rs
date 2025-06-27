@@ -8,6 +8,7 @@ use bitvec::field::BitField;
 use bitvec::slice::BitSlice;
 use std::time::{Duration, Instant};
 
+use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::{
     RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError, RiscvInterfaceBuilder,
 };
@@ -331,7 +332,9 @@ impl DtmAccess for JtagDtm<'_> {
         Ok(Some(value.load_le::<u32>()))
     }
 
-    fn read_memory_32(&mut self, address: u64) -> Result<u32, RiscvError> {
+    fn memory_interface<'m>(
+        &'m mut self,
+    ) -> Result<&'m mut dyn crate::MemoryInterface<ArmError>, DebugProbeError> {
         todo!()
     }
 }
@@ -606,7 +609,9 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         Ok(Some(value.load_le::<u32>()))
     }
 
-    fn read_memory_32(&mut self, address: u64) -> Result<u32, RiscvError> {
+    fn memory_interface<'m>(
+        &'m mut self,
+    ) -> Result<&'m mut dyn crate::MemoryInterface<ArmError>, DebugProbeError> {
         todo!()
     }
 }
