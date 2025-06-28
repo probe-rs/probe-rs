@@ -4,6 +4,7 @@ pub(crate) mod adapter;
 pub(crate) mod core_status;
 /// The MS DAP api (from json spec), and extensions (custom), for communicating with the MS DAP client.
 pub(crate) mod dap_types;
+pub(crate) mod error;
 /// Handle the various "gdb-like" commands that are sent to the debug adapter, from the Debug Console REPL window.
 /// These commands are not part of the DAP protocol, but are implemented by the debug adapter to provide a
 /// gdb-like experience to users who prefer that to the VS Code UX.

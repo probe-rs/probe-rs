@@ -1,8 +1,11 @@
 use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use super::dap::dap_types::{Event, Request, Response};
+use crate::cmd::dap_server::protocol::response::ResponseKind;
+
+use super::dap::dap_types::{Event, Request};
 
 pub mod decoder;
 pub mod encoder;
@@ -23,22 +26,17 @@ impl<T: Serialize + for<'a> Deserialize<'a> + PartialEq> DapCodec<T> {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub(crate) struct Frame<T: PartialEq> {
-    pub content: T,
-}
-
-impl<T: PartialEq> Frame<T> {
-    pub(crate) fn new(content: T) -> Self {
-        Self { content }
+impl<T: Serialize + for<'a> Deserialize<'a> + PartialEq> Default for DapCodec<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
-pub(crate) enum Message {
+pub enum Message {
     Request(Request),
-    Response(Response),
+    Response(ResponseKind),
     Event(Event),
 }
 
@@ -65,8 +63,8 @@ impl From<Event> for Message {
     }
 }
 
-impl From<Response> for Message {
-    fn from(value: Response) -> Self {
+impl From<ResponseKind> for Message {
+    fn from(value: ResponseKind) -> Self {
         Self::Response(value)
     }
 }
