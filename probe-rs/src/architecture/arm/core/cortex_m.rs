@@ -91,29 +91,6 @@ impl Mvfr0 {
     }
 }
 
-pub enum MProgrammersModel {
-    TwoStack,
-    Reserved,
-}
-
-impl From<u8> for MProgrammersModel {
-    fn from(value: u8) -> Self {
-        match value {
-            0b0010 => MProgrammersModel::TwoStack,
-            _ => MProgrammersModel::Reserved,
-        }
-    }
-}
-
-impl From<u32> for MProgrammersModel {
-    fn from(value: u32) -> Self {
-        match value {
-            0b0010 => MProgrammersModel::TwoStack,
-            _ => MProgrammersModel::Reserved,
-        }
-    }
-}
-
 pub enum SecurityExtension {
     NotImplemented,
     Implemented,
