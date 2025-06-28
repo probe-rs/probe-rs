@@ -971,6 +971,7 @@ mod test {
             supports_start_debugging_request: None,
             supports_variable_paging: None,
             supports_variable_type: None,
+            supports_ansi_styling: None,
         }
     }
 
@@ -1529,6 +1530,7 @@ mod test {
             line: None,
             location: None,
             symbol: None,
+            presentation_hint: None,
         };
 
         let default_source_fields = Source {

@@ -242,6 +242,7 @@ pub(crate) fn disassemble_target_memory(
                 line: None,
                 location: None,
                 symbol: None,
+                presentation_hint: None,
             });
             instruction_pointer += min_instruction_size;
             continue 'instruction_loop;
@@ -272,6 +273,7 @@ pub(crate) fn disassemble_target_memory(
                         line: None,
                         location: None,
                         symbol: None,
+                        presentation_hint: None,
                     });
                     code_buffer_le = code_buffer_le
                         .split_at(min_instruction_size as usize)
@@ -338,6 +340,7 @@ pub(crate) fn disassemble_target_memory(
                     line,
                     location,
                     symbol: None,
+                    presentation_hint: None,
                 });
 
                 code_buffer_le = code_buffer_le.split_at(instruction.len()).1.to_vec();
@@ -580,6 +583,7 @@ pub(crate) fn set_instruction_breakpoint(
         offset: None,
         source: None,
         verified: false,
+        reason: None,
     };
 
     if let Ok(MemoryAddress(memory_reference)) = requested_breakpoint

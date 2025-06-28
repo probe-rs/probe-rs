@@ -219,6 +219,7 @@ impl Cmd {
                 supports_start_debugging_request: None,
                 supports_variable_paging: None,
                 supports_variable_type: None,
+                supports_ansi_styling: None,
             })
             .ok(),
             seq: 0,
@@ -288,6 +289,9 @@ impl Cmd {
                             expression: line,
                             format: None,
                             frame_id: None,
+                            column: None,
+                            line: None,
+                            source: None,
                         })
                         .ok(),
                         seq: {
