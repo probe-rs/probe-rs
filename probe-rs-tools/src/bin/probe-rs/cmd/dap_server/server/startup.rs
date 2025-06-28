@@ -77,7 +77,7 @@ pub async fn debug(
                     .context("Failed to establish a bi-directional Tcp connection.")?;
                 let writer = socket;
 
-                let dap_adapter = DapAdapter::new(reader, writer);
+                let dap_adapter = DapAdapter::new(reader, writer)?;
                 let mut debug_adapter = DebugAdapter::new(dap_adapter);
 
                 // Flush any pending log messages to the debug adapter Console Log.

@@ -12,6 +12,11 @@ use std::{
     collections::{BTreeMap, HashMap},
     io::{BufRead, BufReader, ErrorKind, Read, Write},
     str,
+    sync::{
+        atomic::AtomicI64,
+        mpsc::{Receiver, Sender},
+    },
+    thread,
 };
 use tokio_util::{
     bytes::BytesMut,
@@ -20,6 +25,17 @@ use tokio_util::{
 use tracing::instrument;
 
 use super::codec::{DapCodec, Frame, Message};
+
+pub trait EventSender {
+    // Send an event
+    //
+    // This might fail if the connection to the client has been lost.
+    fn send_event(
+        &mut self,
+        event_type: &str,
+        event_body: Option<serde_json::Value>,
+    ) -> anyhow::Result<()>;
+}
 
 pub trait ProtocolAdapter {
     /// Listen for a request. This call should be non-blocking, and if not request is available, it should
@@ -31,6 +47,8 @@ pub trait ProtocolAdapter {
         event_type: &str,
         event_body: Option<S>,
     ) -> anyhow::Result<()>;
+
+    fn event_sender(&self) -> Box<dyn EventSender>;
 
     fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()>;
 
@@ -205,9 +223,17 @@ where
     }
 }
 
-pub struct DapAdapter<R: Read, W: Write> {
+enum TxMessage {
+    Frame(Frame<Message>),
+    Done,
+}
+
+pub struct DapAdapter<R> {
     input: BufReader<R>,
-    output: W,
+
+    output_tx: Sender<TxMessage>,
+    output_thread: Option<std::thread::JoinHandle<Result<(), std::io::Error>>>,
+
     console_log_level: ConsoleLog,
     seq: i64,
 
@@ -217,29 +243,79 @@ pub struct DapAdapter<R: Read, W: Write> {
     input_buffer: BytesMut,
 }
 
-impl<R: Read, W: Write> DapAdapter<R, W> {
-    pub(crate) fn new(reader: R, writer: W) -> Self {
-        Self {
+impl<R> Drop for DapAdapter<R> {
+    fn drop(&mut self) {
+        // Signal to the output thread that we're done
+        let _ = self.output_tx.send(TxMessage::Done);
+
+        if let Some(output_thread) = self.output_thread.take() {
+            tracing::debug!("Waiting for TX thread to join");
+            let _ = output_thread.join();
+        }
+    }
+}
+
+fn output_thread<W: Write>(mut write: W, rx: Receiver<TxMessage>) -> Result<(), std::io::Error> {
+    let mut buf = BytesMut::with_capacity(4096);
+
+    for msg in rx {
+        match msg {
+            TxMessage::Done => break,
+            TxMessage::Frame(frame) => {
+                DapCodec::new().encode(frame, &mut buf)?;
+                write.write_all(&buf)?;
+                write.flush()?;
+
+                buf.clear();
+            }
+        }
+    }
+
+    Ok(())
+}
+
+impl<R: Read> DapAdapter<R> {
+    /// Create a new DAP adapter.
+    ///
+    /// Can fail if the output thread fails to start.
+    pub(crate) fn new<W: Write + Send + 'static>(
+        reader: R,
+        writer: W,
+    ) -> Result<Self, std::io::Error> {
+        let (tx, rx) = std::sync::mpsc::channel();
+
+        let output_thread = thread::Builder::new()
+            .name("dap_tx".to_string())
+            .spawn(move || output_thread(writer, rx))?;
+
+        Ok(Self {
             input: BufReader::new(reader),
-            output: writer,
+            output_tx: tx,
+            output_thread: Some(output_thread),
             seq: 0,
             console_log_level: ConsoleLog::Console,
             pending_requests: HashMap::new(),
 
             codec: DapCodec::new(),
             input_buffer: BytesMut::with_capacity(4096),
-        }
+        })
     }
+}
 
+impl<R> DapAdapter<R> {
     #[instrument(level = "trace", skip_all)]
     fn send_data(&mut self, item: Frame<Message>) -> Result<(), std::io::Error> {
-        let mut buf = BytesMut::with_capacity(4096);
-        self.codec.encode(item, &mut buf)?;
-        self.output.write_all(&buf)?;
-        self.output.flush()?;
-        Ok(())
-    }
+        // TODO: Better error handling
+        //
+        // The only case where this would fail is if the connection to the client is closed.
 
+        self.output_tx
+            .send(TxMessage::Frame(item))
+            .map_err(|e| std::io::Error::other(e))
+    }
+}
+
+impl<R: Read> DapAdapter<R> {
     /// Receive data from `self.input`. Data has to be in the format specified by the Debug Adapter Protocol (DAP).
     /// The returned data is the content part of the request, as raw bytes.
     fn receive_data(&mut self) -> Result<Option<Frame<Message>>, DebuggerError> {
@@ -322,7 +398,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     }
 }
 
-impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
+impl<R: Read> ProtocolAdapter for DapAdapter<R> {
     fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
         self.listen_for_request_and_respond()
     }
@@ -379,20 +455,90 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
     }
 
     fn get_next_seq(&mut self) -> i64 {
-        self.seq += 1;
-        self.seq
+        get_next_seq()
+    }
+
+    fn event_sender(&self) -> Box<dyn EventSender> {
+        Box::new(EventSenderThingy::new(self.output_tx.clone()))
+    }
+}
+
+static SEQ: AtomicI64 = AtomicI64::new(1);
+
+fn get_next_seq() -> i64 {
+    // Ordering: We use Relaxed ordering because we don't care about the order of the sequence numbers,
+    // only that they are unique.
+    SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
+
+struct EventSenderThingy {
+    tx: Sender<TxMessage>,
+}
+
+impl EventSenderThingy {
+    fn new(tx: Sender<TxMessage>) -> Self {
+        Self { tx }
+    }
+}
+
+impl EventSender for EventSenderThingy {
+    fn send_event(
+        &mut self,
+        event_type: &str,
+        event_body: Option<serde_json::Value>,
+    ) -> anyhow::Result<()> {
+        let new_event = Event {
+            seq: get_next_seq(),
+            type_: "event".to_string(),
+            event: event_type.to_string(),
+            body: event_body,
+        };
+
+        self.tx
+            .send(TxMessage::Frame(Frame::new(Message::Event(new_event))))
+            .context("Failed to send event")
     }
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod test {
-    use std::io::{self, ErrorKind};
+    use std::{
+        io::{self, ErrorKind},
+        sync::{Arc, Mutex},
+    };
 
     use super::*;
 
     struct TestReader {
         response: Option<io::Result<usize>>,
+    }
+
+    #[derive(Clone)]
+    struct TestOutput {
+        data: Arc<Mutex<Vec<u8>>>,
+    }
+
+    impl Write for TestOutput {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.data.lock().unwrap().write(buf)
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            self.data.lock().unwrap().flush()
+        }
+    }
+
+    impl TestOutput {
+        fn new() -> Self {
+            Self {
+                data: Arc::new(Mutex::new(Vec::new())),
+            }
+        }
+
+        fn data(&self) -> Vec<u8> {
+            self.data.lock().unwrap().clone()
+        }
     }
 
     impl Read for TestReader {
@@ -411,14 +557,17 @@ mod test {
 
         let input = format!("Content-Length: {}\r\n\r\n{}", content.len(), content);
 
-        let mut output = Vec::new();
+        let output = TestOutput::new();
 
-        let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        let mut adapter = DapAdapter::new(input.as_bytes(), output.clone()).unwrap();
         adapter.console_log_level = super::ConsoleLog::Info;
 
         let request = adapter.listen_for_request().unwrap().unwrap();
 
-        let output_str = String::from_utf8(output).unwrap();
+        // Ensure that all the output is sent
+        drop(adapter);
+
+        let output_str = String::from_utf8(output.data()).unwrap();
 
         insta::assert_snapshot!(output_str);
 
@@ -432,14 +581,17 @@ mod test {
 
         let input = format!("Content-Length: {}\r\n\r\n{}", content.len(), content);
 
-        let mut output = Vec::new();
+        let output = TestOutput::new();
 
-        let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        let mut adapter = DapAdapter::new(input.as_bytes(), output.clone()).unwrap();
         adapter.console_log_level = super::ConsoleLog::Info;
 
         let _request = adapter.listen_for_request().unwrap_err();
 
-        let output_str = String::from_utf8(output).unwrap();
+        // Ensure that all the output is sent
+        drop(adapter);
+
+        let output_str = String::from_utf8(output.data()).unwrap();
 
         insta::assert_snapshot!(output_str);
     }
@@ -453,14 +605,14 @@ mod test {
             ))),
         };
 
-        let mut output = Vec::new();
+        let output = TestOutput::new();
 
-        let mut adapter = DapAdapter::new(input, &mut output);
+        let mut adapter = DapAdapter::new(input, output.clone()).unwrap();
         adapter.console_log_level = super::ConsoleLog::Info;
 
         let request = adapter.listen_for_request().unwrap();
 
-        let output_str = String::from_utf8(output).unwrap();
+        let output_str = String::from_utf8(output.data()).unwrap();
 
         insta::assert_snapshot!(output_str);
 
@@ -481,19 +633,25 @@ mod test {
 
     #[test]
     fn event_send_error() {
-        let mut adapter = DapAdapter::new(io::empty(), FailingWriter {});
+        let mut adapter = DapAdapter::new(io::empty(), FailingWriter {}).unwrap();
 
         let result = adapter.send_event("probe-rs-test", Some(()));
 
-        assert!(result.is_err());
+        // TODO: This now can't fail, because the actual send is done in a different thread
+        //
+        // Look into error reporting for that case
+        assert!(result.is_ok());
     }
 
     #[test]
     fn message_send_error() {
-        let mut adapter = DapAdapter::new(io::empty(), FailingWriter {});
+        let mut adapter = DapAdapter::new(io::empty(), FailingWriter {}).unwrap();
 
         let result = adapter.show_message(MessageSeverity::Error, "probe-rs-test");
 
-        assert!(!result);
+        // TODO: This now can't fail, because the actual send is done in a different thread
+        //
+        // Look into error reporting for that case
+        assert!(result);
     }
 }

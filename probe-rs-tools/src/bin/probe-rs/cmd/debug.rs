@@ -124,6 +124,10 @@ impl ProtocolAdapter for CliAdapter {
         self.shared.borrow_mut().seq += 1;
         self.shared.borrow().seq
     }
+
+    fn event_sender(&self) -> Box<dyn super::dap_server::debug_adapter::protocol::EventSender> {
+        todo!()
+    }
 }
 
 fn print_error(response: &Response) -> anyhow::Result<()> {
