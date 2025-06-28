@@ -9,7 +9,7 @@ use super::{
 };
 use crate::cmd::dap_server::{
     DebuggerError,
-    debug_adapter::protocol::{ProtocolAdapter, ProtocolHelper},
+    debug_adapter::protocol::{EventSender, ProtocolAdapter, ProtocolHelper},
     server::{
         configuration::ConsoleLog,
         core_data::CoreHandle,
@@ -1832,8 +1832,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub fn start_progress(
         &mut self,
         title: &str,
-        request_id: Option<ProgressId>,
-    ) -> Result<ProgressId> {
+        request_id: Option<i64>,
+    ) -> Result<ProgressHandle> {
         anyhow::ensure!(
             self.supports_progress_reporting,
             "Progress reporting is not supported by client."
@@ -1853,22 +1853,47 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }),
         )?;
 
-        Ok(progress_id)
+        let sender = self.adapter.event_sender();
+
+        Ok(ProgressHandle::new(progress_id.to_string(), sender))
     }
 
-    pub fn end_progress(&mut self, progress_id: ProgressId) -> Result<()> {
-        anyhow::ensure!(
-            self.supports_progress_reporting,
-            "Progress reporting is not supported by client."
-        );
+    pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {
+        self.adapter.set_console_log_level(error)
+    }
+}
 
-        self.send_event(
-            "progressEnd",
-            Some(ProgressEndEventBody {
-                message: None,
-                progress_id: progress_id.to_string(),
-            }),
-        )
+pub struct ProgressHandle {
+    progress_id: String,
+    sender: Box<dyn EventSender>,
+}
+
+impl std::fmt::Debug for ProgressHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProgressHandle")
+            .field("progress_id", &self.progress_id)
+            .field("sender", &"Box<dyn EventSender>")
+            .finish()
+    }
+}
+
+impl ProgressHandle {
+    fn new(progress_id: String, sender: Box<dyn EventSender>) -> Self {
+        // TODO: Check if client supports progress reporting
+        Self {
+            progress_id,
+            sender,
+        }
+    }
+
+    pub fn end_progress(mut self) -> Result<()> {
+        let value = serde_json::to_value(ProgressEndEventBody {
+            message: None,
+            progress_id: self.progress_id.to_string(),
+        })
+        .expect("Serializing this should never fail");
+
+        self.sender.send_event("progressEnd", Some(value))
     }
 
     /// Update the progress report in VSCode.
@@ -1877,33 +1902,22 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         &mut self,
         progress: Option<f64>,
         message: Option<impl Display>,
-        progress_id: i64,
-    ) -> Result<ProgressId> {
-        anyhow::ensure!(
-            self.supports_progress_reporting,
-            "Progress reporting is not supported by client."
-        );
-
+    ) -> Result<()> {
         let percentage = progress.map(|progress| progress * 100.0);
-
-        self.send_event(
-            "progressUpdate",
-            Some(ProgressUpdateEventBody {
-                message: message.map(|msg| match percentage {
-                    None => msg.to_string(),
-                    Some(100.0) => msg.to_string(),
-                    Some(percentage) => format!("{msg} ({percentage:02.0}%)"),
-                }),
-                percentage,
-                progress_id: progress_id.to_string(),
+        let body = serde_json::to_value(ProgressUpdateEventBody {
+            message: message.map(|msg| match percentage {
+                None => msg.to_string(),
+                Some(100.0) => msg.to_string(),
+                Some(percentage) => format!("{msg} ({percentage:02.0}%)"),
             }),
-        )?;
+            percentage,
+            progress_id: self.progress_id.to_string(),
+        })
+        .expect("Serializing this should never fail");
 
-        Ok(progress_id)
-    }
+        self.sender.send_event("progressUpdate", Some(body))?;
 
-    pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {
-        self.adapter.set_console_log_level(error)
+        Ok(())
     }
 }
 

@@ -29,11 +29,13 @@ use anyhow::{Context, anyhow};
 use probe_rs::{
     CoreStatus,
     config::Registry,
-    flashing::{DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent},
+    flashing::{
+        DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent,
+        ProgressOperation,
+    },
     probe::list::Lister,
 };
 use std::{
-    cell::RefCell,
     collections::HashMap,
     fs,
     path::Path,
@@ -608,16 +610,15 @@ impl Debugger {
             "FLASHING: Starting write of {:?} to device memory",
             &path_to_elf
         ));
-        let progress_id = debug_adapter
-            .start_progress("Flashing device", Some(launch_attach_request.seq))
-            .ok();
+        let mut progress_handle =
+            debug_adapter.start_progress("Flashing device", Some(launch_attach_request.seq))?;
+
+        let mut progress_state = ProgressState::default();
 
         let mut download_options = DownloadOptions::default();
         download_options.keep_unwritten_bytes = config.flashing_config.restore_unwritten_bytes;
         download_options.do_chip_erase = config.flashing_config.full_chip_erase;
         download_options.verify = config.flashing_config.verify_after_flashing;
-
-        let ref_debug_adapter = RefCell::new(&mut *debug_adapter);
 
         #[derive(Default)]
         struct ProgressBarState {
@@ -627,66 +628,51 @@ impl Debugger {
 
         type ProgressState = HashMap<Operation, ProgressBarState>;
 
-        let progress_state = RefCell::new(ProgressState::default());
-
-        download_options.progress = progress_id.map(|id| {
-            let describe_op = |operation| match Operation::from(operation) {
-                Operation::Fill => "Reading Old Pages",
-                Operation::Erase => "Erasing Sectors",
-                Operation::Program => "Programming Pages",
-                Operation::Verify => "Verifying",
-            };
-
-            FlashProgress::new(move |event| {
-                let mut flash_progress = progress_state.borrow_mut();
-                let mut debug_adapter = ref_debug_adapter.borrow_mut();
-                match event {
-                    ProgressEvent::AddProgressBar { operation, total } => {
-                        let pbar_state = flash_progress.entry(operation.into()).or_default();
-                        if let Some(total) = total {
-                            pbar_state.total_size += total; // should this be an assignment instead?
-                            pbar_state.size_done = 0;
-                        };
-                    }
-                    ProgressEvent::Started(operation) => {
-                        debug_adapter
-                            .update_progress(None, Some(describe_op(operation)), id)
-                            .ok();
-                    }
-                    ProgressEvent::Progress {
-                        operation, size, ..
-                    } => {
-                        let pbar_state = flash_progress.entry(operation.into()).or_default();
-                        pbar_state.size_done += size;
-                        let progress = pbar_state.size_done as f64 / pbar_state.total_size as f64;
-
-                        debug_adapter
-                            .update_progress(Some(progress), Some(describe_op(operation)), id)
-                            .ok();
-                    }
-                    ProgressEvent::Failed(operation) => {
-                        debug_adapter
-                            .update_progress(
-                                Some(1.0),
-                                Some(format!("{} Failed!", describe_op(operation))),
-                                id,
-                            )
-                            .ok();
-                    }
-                    ProgressEvent::Finished(operation) => {
-                        debug_adapter
-                            .update_progress(
-                                Some(1.0),
-                                Some(format!("{} Complete!", describe_op(operation))),
-                                id,
-                            )
-                            .ok();
-                    }
-                    ProgressEvent::FlashLayoutReady { .. } => {}
-                    ProgressEvent::DiagnosticMessage { .. } => {}
+        download_options.progress = Some(FlashProgress::new(|event| {
+            match event {
+                ProgressEvent::AddProgressBar { operation, total } => {
+                    let pbar_state = progress_state.entry(operation.into()).or_default();
+                    if let Some(total) = total {
+                        pbar_state.total_size += total; // should this be an assignment instead?
+                        pbar_state.size_done = 0;
+                    };
                 }
-            })
-        });
+                ProgressEvent::Started(operation) => {
+                    progress_handle
+                        .update_progress(None, Some(describe_op(operation)))
+                        .ok();
+                }
+                ProgressEvent::Progress {
+                    operation, size, ..
+                } => {
+                    let pbar_state = progress_state.entry(operation.into()).or_default();
+                    pbar_state.size_done += size;
+                    let progress = pbar_state.size_done as f64 / pbar_state.total_size as f64;
+
+                    progress_handle
+                        .update_progress(Some(progress), Some(describe_op(operation)))
+                        .ok();
+                }
+                ProgressEvent::Failed(operation) => {
+                    progress_handle
+                        .update_progress(
+                            Some(1.0),
+                            Some(format!("{} Failed!", describe_op(operation))),
+                        )
+                        .ok();
+                }
+                ProgressEvent::Finished(operation) => {
+                    progress_handle
+                        .update_progress(
+                            Some(1.0),
+                            Some(format!("{} Complete!", describe_op(operation))),
+                        )
+                        .ok();
+                }
+                ProgressEvent::FlashLayoutReady { .. } => {}
+                ProgressEvent::DiagnosticMessage { .. } => {}
+            }
+        }));
 
         let result = match build_loader(
             &mut session_data.session,
@@ -739,9 +725,7 @@ impl Debugger {
             }
         };
 
-        if let Some(id) = progress_id {
-            let _ = debug_adapter.end_progress(id);
-        }
+        let _ = progress_handle.end_progress();
 
         if result.is_ok() {
             debug_adapter.log_to_console(format!(
@@ -835,6 +819,15 @@ impl Debugger {
         self.debug_logger.flush_to_dap(debug_adapter)?;
 
         Ok(())
+    }
+}
+
+fn describe_op(operation: ProgressOperation) -> &'static str {
+    match Operation::from(operation) {
+        Operation::Fill => "Reading Old Pages",
+        Operation::Erase => "Erasing Sectors",
+        Operation::Program => "Programming Pages",
+        Operation::Verify => "Verifying",
     }
 }
 

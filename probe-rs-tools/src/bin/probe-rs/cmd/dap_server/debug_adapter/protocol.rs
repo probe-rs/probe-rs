@@ -235,7 +235,6 @@ pub struct DapAdapter<R> {
     output_thread: Option<std::thread::JoinHandle<Result<(), std::io::Error>>>,
 
     console_log_level: ConsoleLog,
-    seq: i64,
 
     pending_requests: HashMap<i64, String>,
 
@@ -292,7 +291,6 @@ impl<R: Read> DapAdapter<R> {
             input: BufReader::new(reader),
             output_tx: tx,
             output_thread: Some(output_thread),
-            seq: 0,
             console_log_level: ConsoleLog::Console,
             pending_requests: HashMap::new(),
 
