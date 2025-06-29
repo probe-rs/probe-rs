@@ -1,15 +1,15 @@
 use super::debugger::Debugger;
 use crate::cmd::dap_server::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use probe_rs::probe::list::Lister;
 use serde::Deserialize;
 use std::{
     fs,
-    net::TcpListener,
     path::Path,
     time::{Duration, UNIX_EPOCH},
 };
 use time::UtcOffset;
+use tokio::net::TcpListener;
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq)]
 pub(crate) enum TargetSessionType {
@@ -49,7 +49,7 @@ pub async fn debug(
     }));
 
     loop {
-        let listener = TcpListener::bind(addr)?;
+        let listener = TcpListener::bind(addr).await?;
 
         debugger
             .debug_logger
@@ -57,31 +57,25 @@ pub async fn debug(
 
         if !single_session {
             // When running as a server from the command line, we want startup logs to go to the stderr.
-            debugger.debug_logger.flush()?;
+            debugger.debug_logger.flush().await?;
         }
 
-        listener.set_nonblocking(false)?;
-
-        match listener.accept() {
+        match listener.accept().await {
             Ok((socket, addr)) => {
-                socket.set_nonblocking(true).with_context(|| {
-                    format!("Failed to negotiate non-blocking socket with request from: {addr}")
-                })?;
-
                 debugger
                     .debug_logger
                     .log_to_console(&format!("Starting debug session from: {addr}"))?;
 
-                let reader = socket
-                    .try_clone()
-                    .context("Failed to establish a bi-directional Tcp connection.")?;
-                let writer = socket;
+                let (read, write) = socket.into_split();
 
-                let dap_adapter = DapAdapter::new(reader, writer)?;
+                let dap_adapter = DapAdapter::new(read, write)?;
                 let mut debug_adapter = DebugAdapter::new(dap_adapter);
 
                 // Flush any pending log messages to the debug adapter Console Log.
-                debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
+                debugger
+                    .debug_logger
+                    .flush_to_dap(&mut debug_adapter)
+                    .await?;
 
                 let end_message = match debugger.debug_session(debug_adapter, lister).await {
                     // We no longer have a reference to the `debug_adapter`, so errors need
@@ -107,14 +101,14 @@ pub async fn debug(
                 );
             }
         }
-        debugger.debug_logger.flush()?;
+        debugger.debug_logger.flush().await?;
     }
 
     debugger
         .debug_logger
         .log_to_console("DAP Protocol server exiting")?;
 
-    debugger.debug_logger.flush()?;
+    debugger.debug_logger.flush().await?;
 
     Ok(())
 }

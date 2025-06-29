@@ -37,7 +37,7 @@ struct CliAdapter {
     console_log_level: ConsoleLog,
 }
 impl ProtocolAdapter for CliAdapter {
-    fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
+    async fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
         Ok(self.shared.borrow().next_request.clone())
     }
 
@@ -79,7 +79,7 @@ impl ProtocolAdapter for CliAdapter {
         Ok(())
     }
 
-    fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
+    async fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
         if !response.success {
             print_error(&response)?;
             return Ok(());
@@ -229,7 +229,7 @@ impl Cmd {
             seq: 0,
             type_: "request".to_string(),
         });
-        debugger.handle_initialize(&mut debug_adapter)?;
+        debugger.handle_initialize(&mut debug_adapter).await?;
 
         let attach_request = Request {
             command: "attach".to_string(),

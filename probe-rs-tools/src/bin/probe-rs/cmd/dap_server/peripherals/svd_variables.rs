@@ -22,7 +22,7 @@ pub struct SvdCache {
 
 impl SvdCache {
     /// Create the SVD cache for a specific core. This function loads the file, parses it, and then builds the VariableCache.
-    pub(crate) fn new<P: ProtocolAdapter>(
+    pub(crate) async fn new<P: ProtocolAdapter>(
         svd_file: &Path,
         debug_adapter: &mut DebugAdapter<P>,
         dap_request_id: i64,
@@ -38,7 +38,7 @@ impl SvdCache {
 
         let _ = svd_opened_file.read_to_string(svd_xml)?;
 
-        let svd_cache = match svd_parser::parse_with_config(
+        match svd_parser::parse_with_config(
             svd_xml,
             &Config::default().expand(true).ignore_enums(true),
         ) {
@@ -50,27 +50,17 @@ impl SvdCache {
                     )
                     .ok();
 
-                let cache = SvdCache {
-                    svd_variable_cache: variable_cache_from_svd(
-                        peripheral_device,
-                        &mut progress_handle,
-                    )?,
-                };
-                progress_handle.end_progress()?;
+                let svd_variable_cache =
+                    variable_cache_from_svd(peripheral_device, &mut progress_handle)?;
 
-                Ok(cache)
+                Ok(SvdCache { svd_variable_cache })
             }
-            Err(error) => {
-                progress_handle.end_progress()?;
-                Err(DebuggerError::Other(anyhow::anyhow!(
-                    "Unable to parse CMSIS-SVD file: {:?}. {:?}",
-                    svd_file,
-                    error,
-                )))
-            }
-        };
-
-        svd_cache
+            Err(error) => Err(DebuggerError::Other(anyhow::anyhow!(
+                "Unable to parse CMSIS-SVD file: {:?}. {:?}",
+                svd_file,
+                error,
+            ))),
+        }
     }
 }
 

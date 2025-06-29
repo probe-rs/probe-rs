@@ -90,7 +90,7 @@ impl CoreHandle<'_> {
     /// - Whenever we check the status, we compare it against `last_known_status` and send the appropriate event to the client.
     /// - If we cannot determine the core status, then there is no sense in continuing the debug session, so please propagate the error.
     /// - If the core status has changed, then we update `last_known_status` to the new value, and return `true` as part of the Result<>.
-    pub(crate) fn poll_core<P: ProtocolAdapter>(
+    pub(crate) async fn poll_core<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<CoreStatus, DebuggerError> {
@@ -172,7 +172,7 @@ impl CoreHandle<'_> {
     }
 
     /// Confirm RTT initialization on the target, and use the RTT channel configurations to initialize the output windows on the DAP Client.
-    pub fn attach_to_rtt<P: ProtocolAdapter>(
+    pub async fn attach_to_rtt<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
         program_binary: &Path,
@@ -275,11 +275,13 @@ impl CoreHandle<'_> {
                 channel_data_format,
             });
 
-            debug_adapter.rtt_window(
-                up_channel.number(),
-                up_channel.channel_name(),
-                channel_config.data_format,
-            );
+            debug_adapter
+                .rtt_window(
+                    up_channel.number(),
+                    up_channel.channel_name(),
+                    channel_config.data_format,
+                )
+                .await;
         }
 
         self.core_data.rtt_connection = Some(debug_rtt::RttConnection {
@@ -495,7 +497,7 @@ impl CoreHandle<'_> {
         consolidate_memory_ranges(all_discrete_memory_ranges, 0x400)
     }
 
-    pub fn handle_semihosting<P: ProtocolAdapter>(
+    pub async fn handle_semihosting<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
         command: SemihostingCommand,
@@ -554,7 +556,10 @@ impl CoreHandle<'_> {
                         );
                         self.core_data.next_semihosting_handle += 1;
 
-                        if debug_adapter.rtt_window(handle, path.to_string(), format) {
+                        if debug_adapter
+                            .rtt_window(handle, path.to_string(), format)
+                            .await
+                        {
                             request.respond_with_handle(&mut self.core, nz_handle)?;
                         }
                     }
@@ -588,7 +593,7 @@ impl CoreHandle<'_> {
                         String::from_utf8_lossy(&bytes).to_string()
                     };
 
-                    debug_adapter.rtt_output(handle, data);
+                    debug_adapter.rtt_output(handle, data).await;
                     request.write_status(&mut self.core, 0)?;
                 }
             }

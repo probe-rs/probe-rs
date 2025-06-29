@@ -332,9 +332,12 @@ impl SessionData {
 
             // We need to poll the core to determine its status.
             let mut current_core_status =
-                target_core.poll_core(debug_adapter).inspect_err(|error| {
-                    let _ = debug_adapter.show_error_message(error);
-                })?;
+                target_core
+                    .poll_core(debug_adapter)
+                    .await
+                    .inspect_err(|error| {
+                        let _ = debug_adapter.show_error_message(error);
+                    })?;
 
             // If appropriate, check for RTT data.
             if core_config.rtt_config.enabled {
@@ -348,12 +351,15 @@ impl SessionData {
                     }
                 } else {
                     #[expect(clippy::unwrap_used)]
-                    if let Err(error) = target_core.attach_to_rtt(
-                        debug_adapter,
-                        core_config.program_binary.as_ref().unwrap(),
-                        &core_config.rtt_config,
-                        timestamp_offset,
-                    ) {
+                    if let Err(error) = target_core
+                        .attach_to_rtt(
+                            debug_adapter,
+                            core_config.program_binary.as_ref().unwrap(),
+                            &core_config.rtt_config,
+                            timestamp_offset,
+                        )
+                        .await
+                    {
                         debug_adapter
                             .show_error_message(&DebuggerError::Other(error))
                             .ok();
@@ -370,7 +376,9 @@ impl SessionData {
                     command,
                 ))) = current_core_status
                 {
-                    current_core_status = target_core.handle_semihosting(debug_adapter, command)?;
+                    current_core_status = target_core
+                        .handle_semihosting(debug_adapter, command)
+                        .await?;
 
                     if current_core_status.is_halted() {
                         // poll_core did not notify about the halt, so we need to do it manually.

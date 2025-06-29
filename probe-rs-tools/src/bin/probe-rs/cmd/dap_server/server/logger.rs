@@ -84,7 +84,10 @@ impl DebugLogger {
         self.buffer.lock()
     }
 
-    fn process_new_log_lines(&self, mut callback: impl FnMut(&str)) -> Result<(), DebuggerError> {
+    async fn process_new_log_lines(
+        &self,
+        mut callback: impl AsyncFnMut(&str),
+    ) -> Result<(), DebuggerError> {
         let new_bytes = {
             let mut locked_log = self.buffer.lock();
             std::mem::take(&mut *locked_log)
@@ -93,25 +96,27 @@ impl DebugLogger {
 
         let buffer_lines = new.lines();
         for next_line in buffer_lines {
-            callback(next_line);
+            callback(next_line).await;
         }
 
         Ok(())
     }
 
     /// Flush the buffer to the DAP client's Debug Console
-    pub(crate) fn flush_to_dap(
+    pub(crate) async fn flush_to_dap(
         &self,
         debug_adapter: &mut DebugAdapter<impl ProtocolAdapter>,
     ) -> Result<(), DebuggerError> {
-        self.process_new_log_lines(|line| {
+        self.process_new_log_lines(async |line| {
             debug_adapter.log_to_console(line);
         })
+        .await
     }
 
     /// Flush the buffer to the stderr
-    pub(crate) fn flush(&self) -> Result<(), DebuggerError> {
-        self.process_new_log_lines(|line| eprintln!("{line}"))
+    pub(crate) async fn flush(&self) -> Result<(), DebuggerError> {
+        self.process_new_log_lines(async |line| eprintln!("{line}"))
+            .await
     }
 
     /// Setup logging, according to the following rules.
