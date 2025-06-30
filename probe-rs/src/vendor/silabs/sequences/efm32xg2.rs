@@ -2,6 +2,8 @@
 
 use std::sync::Arc;
 
+use probe_rs_target::Chip;
+
 use crate::{
     architecture::arm::{
         ArmError,
@@ -16,12 +18,20 @@ use crate::{
 ///
 /// Uses a breakpoint on the reset vector for the reset catch.
 #[derive(Debug)]
-pub struct EFM32xG2(());
+pub struct EFM32xG2 {
+    flash_base_addr: u64,
+}
 
 impl EFM32xG2 {
     /// Create a sequence handle for the EFM32xG2
-    pub fn create() -> Arc<dyn ArmDebugSequence> {
-        Arc::new(Self(()))
+    pub fn create(chip: &Chip) -> Arc<dyn ArmDebugSequence> {
+        let flash_base_addr = if chip.name.starts_with("EFR32MG24") {
+            0x0800_0000
+        } else {
+            0
+        };
+
+        Arc::new(Self { flash_base_addr })
     }
 }
 
@@ -32,7 +42,7 @@ impl ArmDebugSequence for EFM32xG2 {
         _core_type: probe_rs_target::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        let reset_vector = core.read_word_32(0x0000_0004)?;
+        let reset_vector = core.read_word_32(self.flash_base_addr + 0x4)?;
 
         if reset_vector != 0xffff_ffff {
             tracing::info!("Breakpoint on user application reset vector");
