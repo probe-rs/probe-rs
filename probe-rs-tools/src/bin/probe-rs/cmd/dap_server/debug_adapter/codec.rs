@@ -50,6 +50,14 @@ impl Message {
             Message::Event(_) => MessageKind::Event,
         }
     }
+
+    pub fn set_seq(&mut self, seq: i64) {
+        match self {
+            Message::Request(req) => req.seq = seq,
+            Message::Response(resp) => resp.seq = seq,
+            Message::Event(event) => event.seq = seq,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

@@ -58,9 +58,6 @@ pub trait ProtocolAdapter {
     fn set_console_log_level(&mut self, log_level: ConsoleLog);
 
     fn console_log_level(&self) -> ConsoleLog;
-
-    /// Increases the sequence number by 1 and returns it.
-    fn get_next_seq(&mut self) -> i64;
 }
 
 pub trait ProtocolHelper {
@@ -130,7 +127,7 @@ where
             Ok(value) => Response {
                 command: request.command.clone(),
                 request_seq: request.seq,
-                seq: self.get_next_seq(),
+                seq: 0, // This will get filled when it's sent
                 success: true,
                 type_: "response".to_owned(),
                 message: None,
@@ -178,7 +175,7 @@ where
                 Response {
                     command: request.command.clone(),
                     request_seq: request.seq,
-                    seq: self.get_next_seq(),
+                    seq: 0, // This will get filled when it's sent
                     success: false,
                     type_: "response".to_owned(),
                     message: Some("cancelled".to_string()), // Predefined value in the MSDAP spec.
@@ -227,12 +224,14 @@ where
 
 #[derive(Debug)]
 enum TxMessage {
-    Frame(Frame<Message>),
+    Frame(Message),
     Done,
 }
 
 pub struct DapAdapter<R> {
     input: Pin<Box<BufReader<R>>>,
+    codec: DapCodec<Message>,
+    input_buffer: BytesMut,
 
     output_tx: UnboundedSender<TxMessage>,
     output_task: Option<tokio::task::JoinHandle<Result<(), std::io::Error>>>,
@@ -240,9 +239,6 @@ pub struct DapAdapter<R> {
     console_log_level: ConsoleLog,
 
     pending_requests: HashMap<i64, String>,
-
-    codec: DapCodec<Message>,
-    input_buffer: BytesMut,
 }
 
 impl<R> Drop for DapAdapter<R> {
@@ -267,10 +263,17 @@ async fn output_task<W: AsyncWrite>(
 
     let mut buf = BytesMut::with_capacity(4096);
 
+    let mut seq = 1;
+
     while let Some(msg) = rx.recv().await {
         match msg {
             TxMessage::Done => break,
-            TxMessage::Frame(frame) => {
+            TxMessage::Frame(mut msg) => {
+                msg.set_seq(seq);
+                seq += 1;
+
+                let frame = Frame::new(msg);
+
                 DapCodec::new().encode(frame, &mut buf)?;
                 writer.write_all(&buf).await?;
                 writer.flush().await?;
@@ -326,7 +329,7 @@ impl<R: AsyncRead> DapAdapter<R> {
 
 impl<R> DapAdapter<R> {
     #[instrument(level = "trace", skip_all)]
-    fn send_data(&mut self, item: Frame<Message>) -> Result<(), std::io::Error> {
+    fn send_data(&mut self, item: Message) -> Result<(), std::io::Error> {
         // TODO: Better error handling
         //
         // The only case where this would fail is if the connection to the client is closed.
@@ -432,14 +435,14 @@ impl<R: AsyncRead> ProtocolAdapter for DapAdapter<R> {
         event_body: Option<S>,
     ) -> anyhow::Result<()> {
         let new_event = Event {
-            seq: self.get_next_seq(),
+            seq: 0, // This will get filled when it's sent
             type_: "event".to_string(),
             event: event_type.to_string(),
             body: event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
         };
 
         let result = self
-            .send_data(Frame::new(new_event.clone().into()))
+            .send_data(new_event.clone().into())
             .context("Unexpected Error while sending event.");
 
         if event_type != "output" {
@@ -471,13 +474,9 @@ impl<R: AsyncRead> ProtocolAdapter for DapAdapter<R> {
     }
 
     async fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
-        self.send_data(Frame::new(Message::Response(response)))?;
+        self.send_data(Message::Response(response))?;
 
         Ok(())
-    }
-
-    fn get_next_seq(&mut self) -> i64 {
-        get_next_seq()
     }
 
     fn event_sender(&self) -> Box<dyn EventSender> {
@@ -522,7 +521,7 @@ impl EventSender for EventSenderThingy {
             .ok_or_else(|| anyhow::anyhow!("Unable to send event, connection to client dropped"))?;
 
         sender
-            .send(TxMessage::Frame(Frame::new(Message::Event(new_event))))
+            .send(TxMessage::Frame(Message::Event(new_event)))
             .context("Failed to send event")
     }
 }

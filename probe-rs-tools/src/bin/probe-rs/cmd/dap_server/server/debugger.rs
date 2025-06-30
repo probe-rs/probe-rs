@@ -1240,11 +1240,6 @@ mod test {
             self.pending_requests.remove(&request_seq)
         }
 
-        fn get_next_seq(&mut self) -> i64 {
-            self.sequence_number += 1;
-            self.sequence_number
-        }
-
         fn event_sender(&self) -> Box<dyn EventSender> {
             todo!()
         }
