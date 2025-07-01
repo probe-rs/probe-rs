@@ -32,7 +32,7 @@ pub trait EventSender {
     //
     // This might fail if the connection to the client has been lost.
     fn send_event(
-        &mut self,
+        &self,
         event_type: &str,
         event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()>;
@@ -505,7 +505,7 @@ impl EventSenderThingy {
 
 impl EventSender for EventSenderThingy {
     fn send_event(
-        &mut self,
+        &self,
         event_type: &str,
         event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()> {

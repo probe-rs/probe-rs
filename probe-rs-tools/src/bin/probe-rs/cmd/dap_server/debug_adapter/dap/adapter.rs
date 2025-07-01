@@ -1907,7 +1907,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let progress_id = self.new_progress_id();
 
-        let mut sender = self.adapter.event_sender();
+        let sender = self.adapter.event_sender();
         let body = serde_json::to_value(ProgressStartEventBody {
             cancellable: Some(false),
             message: None,
@@ -1950,7 +1950,7 @@ impl ProgressHandle {
         }
     }
 
-    pub fn end_progress(mut self) -> Result<()> {
+    pub fn end_progress(self) -> Result<()> {
         let value = serde_json::to_value(ProgressEndEventBody {
             message: None,
             progress_id: self.progress_id.to_string(),
@@ -1963,7 +1963,7 @@ impl ProgressHandle {
     /// Update the progress report in VSCode.
     /// The progress has the range [0..1].
     pub fn update_progress(
-        &mut self,
+        &self,
         progress: Option<f64>,
         message: Option<impl Display>,
     ) -> Result<()> {

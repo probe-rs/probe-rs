@@ -1,5 +1,5 @@
 use super::FlashLayout;
-use std::{cell::RefCell, rc::Rc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 /// A structure to manage the flashing procedure progress reporting.
 ///
@@ -16,29 +16,27 @@ use std::{cell::RefCell, rc::Rc, time::Duration};
 /// ```
 #[derive(Clone)]
 pub struct FlashProgress<'a> {
-    // This is a `RefCell` due to the use of nested closures in the implementaion of the flashing code,
-    // which makes passing around a mutable reference to this struct cumbersome.
-    handler: Rc<RefCell<dyn FnMut(ProgressEvent) + 'a>>,
+    handler: Arc<dyn Fn(ProgressEvent) + 'a>,
 }
 
 impl<'a> FlashProgress<'a> {
     /// Create a new `FlashProgress` structure with a given `handler` to be called on events.
-    pub fn new(handler: impl FnMut(ProgressEvent) + 'a) -> Self {
+    pub fn new(handler: impl Fn(ProgressEvent) + 'a) -> Self {
         Self {
-            handler: Rc::new(RefCell::new(handler)),
+            handler: Arc::new(handler),
         }
     }
 
     /// Create a new `FlashProgress` structure with an empty handler.
     pub fn empty() -> Self {
         Self {
-            handler: Rc::new(RefCell::new(|_| {})),
+            handler: Arc::new(|_| {}),
         }
     }
 
     /// Emit a flashing progress event.
     pub fn emit(&self, event: ProgressEvent) {
-        (self.handler.borrow_mut())(event);
+        (self.handler)(event);
     }
 
     // --- Methods for emitting specific kinds of events.

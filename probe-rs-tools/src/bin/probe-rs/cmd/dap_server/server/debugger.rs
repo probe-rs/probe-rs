@@ -36,6 +36,7 @@ use probe_rs::{
     probe::list::Lister,
 };
 use std::{
+    cell::RefCell,
     collections::HashMap,
     fs,
     path::Path,
@@ -639,10 +640,10 @@ impl Debugger {
             "FLASHING: Starting write of {:?} to device memory",
             &path_to_elf
         ));
-        let mut progress_handle =
+        let progress_handle =
             debug_adapter.start_progress("Flashing device", Some(launch_attach_request.seq))?;
 
-        let mut progress_state = ProgressState::default();
+        let progress_state = RefCell::new(ProgressState::default());
 
         let mut download_options = DownloadOptions::default();
         download_options.keep_unwritten_bytes = config.flashing_config.restore_unwritten_bytes;
@@ -658,9 +659,11 @@ impl Debugger {
         type ProgressState = HashMap<Operation, ProgressBarState>;
 
         download_options.progress = Some(FlashProgress::new(|event| {
+            let mut flash_progress = progress_state.borrow_mut();
+
             match event {
                 ProgressEvent::AddProgressBar { operation, total } => {
-                    let pbar_state = progress_state.entry(operation.into()).or_default();
+                    let pbar_state = flash_progress.entry(operation.into()).or_default();
                     if let Some(total) = total {
                         pbar_state.total_size += total; // should this be an assignment instead?
                         pbar_state.size_done = 0;
@@ -674,7 +677,7 @@ impl Debugger {
                 ProgressEvent::Progress {
                     operation, size, ..
                 } => {
-                    let pbar_state = progress_state.entry(operation.into()).or_default();
+                    let pbar_state = flash_progress.entry(operation.into()).or_default();
                     pbar_state.size_done += size;
                     let progress = pbar_state.size_done as f64 / pbar_state.total_size as f64;
 
