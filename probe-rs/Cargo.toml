@@ -59,7 +59,7 @@ serialport = { version = "4.6.0", default-features = false, features = [
 ] }
 tracing = "0.1"
 uf2-decode = "0.2"
-espflash = { version = "3", default-features = false }
+espflash = { version = "4", default-features = false }
 parking_lot = "0.12.2"
 zerocopy = { version = "0.8.0", features = ["derive"] }
 cobs = "0.4"
