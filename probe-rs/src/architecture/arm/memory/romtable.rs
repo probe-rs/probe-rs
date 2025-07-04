@@ -560,7 +560,7 @@ impl CoresightComponent {
     }
 
     /// Turns this component into a component iterator which iterates all its children recursively.
-    pub fn iter(&self) -> CoresightComponentIter {
+    pub fn iter(&self) -> CoresightComponentIter<'_> {
         CoresightComponentIter::new(vec![self])
     }
 }

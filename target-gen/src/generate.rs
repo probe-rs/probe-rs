@@ -429,7 +429,7 @@ pub(crate) async fn visit_arm_file(
 /// Extracts the pdsc out of a ZIP archive.
 pub(crate) fn find_pdsc_in_archive<T>(
     archive: &mut zip::ZipArchive<T>,
-) -> Result<Option<zip::read::ZipFile<T>>>
+) -> Result<Option<zip::read::ZipFile<'_, T>>>
 where
     T: std::io::Seek + std::io::Read,
 {

@@ -267,7 +267,10 @@ impl SessionData {
     }
 
     /// Do a 'light weight'(just get references to existing data structures) attach to the core and return relevant debug data.
-    pub(crate) fn attach_core(&mut self, core_index: usize) -> Result<CoreHandle, DebuggerError> {
+    pub(crate) fn attach_core(
+        &mut self,
+        core_index: usize,
+    ) -> Result<CoreHandle<'_>, DebuggerError> {
         if let (Ok(target_core), Some(core_data)) = (
             self.session.core(core_index),
             self.core_data
