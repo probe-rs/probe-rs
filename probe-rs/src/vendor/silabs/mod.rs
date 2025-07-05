@@ -21,7 +21,7 @@ impl Vendor for SiliconLabs {
             || chip.name.starts_with("EFR32MG2")
             || chip.name.starts_with("EFR32ZG2")
         {
-            DebugSequence::Arm(EFM32xG2::create())
+            DebugSequence::Arm(EFM32xG2::create(chip))
         } else {
             return None;
         };

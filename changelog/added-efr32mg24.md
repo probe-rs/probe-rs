@@ -1,0 +1,1 @@
+Added support for EFR32MG24.

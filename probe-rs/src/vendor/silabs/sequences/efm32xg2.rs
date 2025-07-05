@@ -1,13 +1,20 @@
 //! Sequences for Silicon Labs EFM32 Series 2 chips
 
-use std::sync::Arc;
+use std::{
+    fmt::Debug,
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
+
+use probe_rs_target::Chip;
 
 use crate::{
     architecture::arm::{
-        ArmError,
+        ArmError, FullyQualifiedApAddress,
         core::armv8m::{Aircr, Demcr, Dhcsr},
         memory::ArmMemoryInterface,
-        sequences::{ArmDebugSequence, cortex_m_wait_for_reset},
+        sequences::{ArmDebugSequence, DebugEraseSequence, cortex_m_wait_for_reset},
     },
     core::MemoryMappedRegister,
 };
@@ -15,13 +22,23 @@ use crate::{
 /// The sequence handle for the EFM32 Series 2 family.
 ///
 /// Uses a breakpoint on the reset vector for the reset catch.
-#[derive(Debug)]
-pub struct EFM32xG2(());
+#[derive(Debug, Clone)]
+pub struct EFM32xG2 {
+    flash_base_addr: u64,
+    use_msc_erase: bool,
+}
 
 impl EFM32xG2 {
     /// Create a sequence handle for the EFM32xG2
-    pub fn create() -> Arc<dyn ArmDebugSequence> {
-        Arc::new(Self(()))
+    pub fn create(chip: &Chip) -> Arc<dyn ArmDebugSequence> {
+        let is_mg24 = chip.name.starts_with("EFR32MG24");
+
+        let flash_base_addr = if is_mg24 { 0x0800_0000 } else { 0 };
+
+        Arc::new(Self {
+            flash_base_addr,
+            use_msc_erase: is_mg24,
+        })
     }
 }
 
@@ -32,7 +49,7 @@ impl ArmDebugSequence for EFM32xG2 {
         _core_type: probe_rs_target::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        let reset_vector = core.read_word_32(0x0000_0004)?;
+        let reset_vector = core.read_word_32(self.flash_base_addr + 0x4)?;
 
         if reset_vector != 0xffff_ffff {
             tracing::info!("Breakpoint on user application reset vector");
@@ -113,6 +130,65 @@ impl ArmDebugSequence for EFM32xG2 {
 
             // We should no longer be in lokup state at this point. CoreInterface::status is going
             // to chek this soon.
+        }
+
+        Ok(())
+    }
+
+    fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
+        if self.use_msc_erase {
+            Some(Arc::new(MscEraseSequence {}))
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct MscEraseSequence;
+
+impl DebugEraseSequence for MscEraseSequence {
+    fn erase_all(
+        &self,
+        interface: &mut dyn crate::architecture::arm::ArmDebugInterface,
+    ) -> Result<(), ArmError> {
+        let mut mem =
+            interface.memory_interface(&FullyQualifiedApAddress::v1_with_default_dp(0))?;
+
+        const CMU_BASE: u64 = 0x4000_8000;
+        const CMU_CLKEN1_SET: u64 = CMU_BASE + 0x1068;
+        const CMU_CLKEN1_SET_MSC: u32 = 1 << 16;
+
+        // Enable MSC clock
+        mem.write_word_32(CMU_CLKEN1_SET, CMU_CLKEN1_SET_MSC)?;
+
+        const MSC_BASE: u64 = 0x4003_0000;
+        const MSC_WRITECTRL: u64 = MSC_BASE + 0x0C;
+        const MSC_WRITECTRL_WREN: u32 = 1;
+        const MSC_WRITECMD: u64 = MSC_BASE + 0x10;
+        const MSC_WRITECMD_ERASEMAIN0: u32 = 1 << 8;
+        const MSC_STATUS: u64 = MSC_BASE + 0x1C;
+        const MSC_STATUS_BUSY: u32 = 1;
+
+        // Enable flash write/erase
+        mem.write_word_32(MSC_WRITECTRL, MSC_WRITECTRL_WREN)?;
+
+        // Initiate mass erase
+        mem.write_word_32(MSC_WRITECMD, MSC_WRITECMD_ERASEMAIN0)?;
+
+        // Poll status until erase is complete
+        let start = Instant::now();
+        loop {
+            let status = mem.read_word_32(MSC_STATUS)?;
+            if status & MSC_STATUS_BUSY == 0 {
+                break;
+            }
+
+            if start.elapsed().as_millis() > 2000 {
+                Err(ArmError::Timeout)?;
+            }
+
+            thread::sleep(Duration::from_millis(10));
         }
 
         Ok(())
