@@ -148,7 +148,7 @@ pub enum FileDownloadError {
     Elf(#[from] object::read::Error),
 
     /// Failed to format as esp-idf binary
-    Idf(#[from] espflash::error::Error),
+    Idf(#[from] espflash::Error),
 
     /// Target {0} does not support the esp-idf format
     IdfUnsupported(String),
