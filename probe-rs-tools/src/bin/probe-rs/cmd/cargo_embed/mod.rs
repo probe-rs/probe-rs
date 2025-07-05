@@ -393,7 +393,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
 }
 
 fn should_resume_core(config: &config::Config) -> bool {
-    if config.flashing.enabled {
+    if config.flashing.enabled && !config.reset.halt_afterwards {
         true
     } else {
         !(config.reset.enabled && config.reset.halt_afterwards)
