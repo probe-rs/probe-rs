@@ -1516,6 +1516,12 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
+        // ST-Link V3 requires the data phase to be non-empty. For empty data,
+        // return success.
+        if data.is_empty() {
+            return Ok(());
+        }
+
         for (i, d) in data.iter_mut().enumerate() {
             let mut buff = vec![0u8; 8];
 
@@ -1533,6 +1539,12 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
+
+        // ST-Link V3 requires the data phase to be non-empty. For empty data,
+        // return success.
+        if data.is_empty() {
+            return Ok(());
+        }
 
         // Read needs to be chunked into chunks with appropiate max length (see STLINK_MAX_READ_LEN).
         for (index, chunk) in data.chunks_mut(STLINK_MAX_READ_LEN / 4).enumerate() {
@@ -1554,6 +1566,12 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
+
+        // ST-Link V3 requires the data phase to be non-empty. For empty data,
+        // return success.
+        if data.is_empty() {
+            return Ok(());
+        }
 
         // Read needs to be chunked into chunks of appropriate max length of the probe
         // use half the limits of 8bit accesses to be conservative. TODO can we increase this?
@@ -1582,6 +1600,12 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
+        // ST-Link V3 requires the data phase to be non-empty. For empty data,
+        // return success.
+        if data.is_empty() {
+            return Ok(());
+        }
+
         // Read needs to be chunked into chunks of appropriate max length of the probe
         let chunk_size = if self.probe.probe.hw_version < 3 {
             64
@@ -1607,6 +1631,12 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
+        // ST-Link V3 requires the data phase to be non-empty. For empty data,
+        // return success.
+        if data.is_empty() {
+            return Ok(());
+        }
+
         let mut tx_buffer = vec![0u8; data.len() * 8];
 
         let mut offset = 0;
@@ -1631,6 +1661,12 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
+        // ST-Link V3 requires the data phase to be non-empty. For empty data,
+        // return success.
+        if data.is_empty() {
+            return Ok(());
+        }
+
         let mut tx_buffer = vec![0u8; data.len() * 4];
 
         let mut offset = 0;
@@ -1654,6 +1690,12 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
+
+        // ST-Link V3 requires the data phase to be non-empty. For empty data,
+        // return success.
+        if data.is_empty() {
+            return Ok(());
+        }
 
         let mut tx_buffer = vec![0u8; data.len() * 2];
 
@@ -1685,6 +1727,12 @@ impl MemoryInterface<ArmError> for StLinkMemoryInterface<'_> {
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
+
+        // ST-Link V3 requires the data phase to be non-empty. For empty data,
+        // return success.
+        if data.is_empty() {
+            return Ok(());
+        }
 
         // The underlying STLink command is limited to a single USB frame at a time
         // so we must manually chunk it into multiple command if it exceeds
