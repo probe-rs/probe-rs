@@ -1,0 +1,1 @@
+Fixed cortex-m `step()` erroring with "Timeout" if the single-step causes a lock-up. This fixes "timeout" errors trying to attach to certain chips with blank flash(no firmware).

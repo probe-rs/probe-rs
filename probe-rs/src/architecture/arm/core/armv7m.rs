@@ -643,14 +643,15 @@ impl<'probe> Armv7m<'probe> {
     fn set_core_status(&mut self, new_status: CoreStatus) {
         super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
     }
-}
 
-impl CoreInterface for Armv7m<'_> {
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
-        // Wait until halted state is active again.
+    fn wait_for_status(
+        &mut self,
+        timeout: Duration,
+        predicate: impl Fn(CoreStatus) -> bool,
+    ) -> Result<(), Error> {
         let start = Instant::now();
 
-        while !self.core_halted()? {
+        while !predicate(self.status()?) {
             if start.elapsed() >= timeout {
                 return Err(Error::Arm(ArmError::Timeout));
             }
@@ -659,6 +660,13 @@ impl CoreInterface for Armv7m<'_> {
         }
 
         Ok(())
+    }
+}
+
+impl CoreInterface for Armv7m<'_> {
+    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
+        // Wait until halted state is active again.
+        self.wait_for_status(timeout, |s| s.is_halted())
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
@@ -887,7 +895,15 @@ impl CoreInterface for Armv7m<'_> {
             .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
         self.memory.flush()?;
 
-        self.wait_for_core_halted(Duration::from_millis(100))?;
+        // The single-step might put the core in lockup state. Lockup isn't considered "halted"
+        // so we can't use `wait_for_core_halted` here.
+        // So we wait for halted OR lockup, and if we entered lockup we halt.
+        self.wait_for_status(Duration::from_millis(100), |s| {
+            matches!(s, CoreStatus::Halted(_) | CoreStatus::LockedUp)
+        })?;
+        if self.status()? == CoreStatus::LockedUp {
+            self.halt(Duration::from_millis(100))?;
+        }
 
         // Try to read the new program counter.
         let mut pc_after_step = self.read_core_reg(self.program_counter().into())?;
