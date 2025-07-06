@@ -1,5 +1,5 @@
 use espflash::flasher::{FlashData, FlashSettings, FlashSize};
-use espflash::targets::XtalFrequency;
+use espflash::image_format::idf::IdfBootloaderFormat;
 use ihex::Record;
 use probe_rs_target::{
     InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
@@ -226,18 +226,8 @@ impl ImageLoader for IdfLoader {
             .split_once('-')
             .map(|(name, _)| name)
             .unwrap_or(target.name.as_str());
-        let chip = espflash::targets::Chip::from_str(target_name)
-            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.to_string()))?
-            .into_target();
-
-        // FIXME: Short-term hack until we can auto-detect the crystal frequency. ESP32 and ESP32-C2
-        // have 26MHz and 40MHz options, ESP32-H2 is 32MHz, the rest is 40MHz. We need to specify
-        // the frequency because different options require different bootloader images.
-        let xtal_frequency = if target_name.eq_ignore_ascii_case("esp32h2") {
-            XtalFrequency::_32Mhz
-        } else {
-            XtalFrequency::_40Mhz
-        };
+        let chip = espflash::target::Chip::from_str(target_name)
+            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.to_string()))?;
 
         let flash_size_result = session.halted_access(|session| {
             // Figure out flash size from the memory map. We need a different bootloader for each size.
@@ -263,15 +253,7 @@ impl ImageLoader for IdfLoader {
             _ => None,
         };
 
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-        let firmware = espflash::elf::ElfFirmwareImage::try_from(&buf[..])?;
-
         let flash_data = FlashData::new(
-            self.0.bootloader.as_deref(),
-            self.0.partition_table.as_deref(),
-            None,
-            self.0.target_app_partition.clone(),
             {
                 let mut settings = FlashSettings::default();
 
@@ -280,9 +262,22 @@ impl ImageLoader for IdfLoader {
                 settings
             },
             0,
-        )?;
+            None,
+            chip,
+            // TODO: auto-detect the crystal frequency.
+            chip.default_xtal_frequency(),
+        );
 
-        let image = chip.get_flash_image(&firmware, flash_data, None, xtal_frequency)?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        let image = IdfBootloaderFormat::new(
+            &buf,
+            &flash_data,
+            self.0.partition_table.as_deref(),
+            self.0.bootloader.as_deref(),
+            None,
+            self.0.target_app_partition.as_deref(),
+        )?;
 
         for data in image.flash_segments() {
             flash_loader.add_data(data.addr.into(), &data.data)?;
