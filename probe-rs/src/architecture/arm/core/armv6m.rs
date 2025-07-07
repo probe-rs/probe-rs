@@ -490,7 +490,7 @@ impl CoreInterface for Armv6m<'_> {
         let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
 
         if dhcsr.s_lockup() {
-            tracing::warn!(
+            tracing::debug!(
                 "The core is in locked up status as a result of an unrecoverable exception"
             );
 
