@@ -1,0 +1,1024 @@
+name: SAM L Series
+generated_from_pack: true
+pack_file_release: 1.2.3
+variants:
+- name: ATSAML21E15A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30000800
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_32
+- name: ATSAML21E15B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30000800
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_32
+- name: ATSAML21E16A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30001000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_64
+- name: ATSAML21E16B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30001000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_64
+- name: ATSAML21E17A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_128
+- name: ATSAML21E17B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_128
+- name: ATSAML21E18B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_256
+- name: ATSAML21G16A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30001000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_64
+- name: ATSAML21G16B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30001000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_64
+- name: ATSAML21G17A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_128
+- name: ATSAML21G17B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_128
+- name: ATSAML21G18A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_256
+- name: ATSAML21G18B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_256
+- name: ATSAML21J16A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30001000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_64
+- name: ATSAML21J16B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30001000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_64
+- name: ATSAML21J17A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_128
+- name: ATSAML21J17B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_128
+- name: ATSAML21J18A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_256
+- name: ATSAML21J18B
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x30000000
+      end: 0x30002000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - atsaml21_256
+- name: ATSAML22G16A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml21_64
+- name: ATSAML22G17A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml21_128
+- name: ATSAML22G18A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml21_256
+- name: ATSAML22J16A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml21_64
+- name: ATSAML22J17A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml21_128
+- name: ATSAML22J18A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml21_256
+- name: ATSAML22N16A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml21_64
+- name: ATSAML22N17A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml21_128
+- name: ATSAML22N18A
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - atsaml21_256
+flash_algorithms:
+- name: atsaml21_32
+  description: ATSAML21 32kB Flash
+  default: true
+  instructions: LUlKBxFgLkosSVFgLUlJRAhgACBwRwAgcEcPIckCAUBCCA8ggAICQBC1JUjCYSZKAoACfdIH/NAjTAEiPzzSAosYDOBKCMJhBIACfdIH/NACfZIHAdUBIBC9/zEBMZlC8NMAIBC98LXJHIkIFkuJABNN2xwrgCt92wf80BJOPT4AKRbQA0ZAKQHZQCQF4AxGA+CAygkfgMMkHwAs+dEugEAwK33bB/zQK32bB+jVASDwvQAg8L0AACIAAQCeAAQAAEAAQQQAAABBpQAAAAAAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x17
+  pc_program_page: 0x67
+  pc_erase_sector: 0x1b
+  data_section_offset: 0xcc
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x8000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x800
+      address: 0x0
+- name: atsaml21_32_eeprom
+  description: ATSAML21 1kB Data EEPROM
+  default: true
+  instructions: HElKBxFgHUobSVFgHElJRAhgACBwRwAgcEdBCBdIwWEYSQGAAX3JB/zQAH2ABwHVASBwRwAgcEcQtRJMD0sqNByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCkiAHBiAGH3AB/zQGH2ABwHVASAQvQAgEL0iAAEAngAEAABAAEEEAAAAGqUAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x17
+  pc_program_page: 0x39
+  pc_erase_sector: 0x1b
+  data_section_offset: 0x88
+  flash_properties:
+    address_range:
+      start: 0x400000
+      end: 0x400400
+    page_size: 0x40
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x100
+      address: 0x0
+- name: atsaml21_256_eeprom
+  description: ATSAML21 8kB Data EEPROM
+  default: true
+  instructions: HElKBxFgHUobSVFgHElJRAhgACBwRwAgcEdBCBdIwWEYSQGAAX3JB/zQAH2ABwHVASBwRwAgcEcQtRJMD0sqNByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCkiAHBiAGH3AB/zQGH2ABwHVASAQvQAgEL0iAAEAngAEAABAAEEEAAAAGqUAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x17
+  pc_program_page: 0x39
+  pc_erase_sector: 0x1b
+  data_section_offset: 0x88
+  flash_properties:
+    address_range:
+      start: 0x400000
+      end: 0x402000
+    page_size: 0x40
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x100
+      address: 0x0
+- name: atsaml21_64
+  description: ATSAML21 64kB Flash
+  default: true
+  instructions: LUlKBxFgLkosSVFgLUlJRAhgACBwRwAgcEcPIQkDAUBCCA8gwAICQBC1JUjCYSZKAoACfdIH/NAjTAEiPzwSA4sYDOBKCMJhBIACfdIH/NACfZIHAdUBIBC9/zEBMZlC8NMAIBC98LXJHIkIFkuJABNN2xwrgCt92wf80BJOPT4AKRbQA0ZAKQHZQCQF4AxGA+CAygkfgMMkHwAs+dEugEAwK33bB/zQK32bB+jVASDwvQAg8L0AACIAAQCeAAQAAEAAQQQAAABBpQAAAAAAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x17
+  pc_program_page: 0x67
+  pc_erase_sector: 0x1b
+  data_section_offset: 0xcc
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: atsaml21_128
+  description: ATSAML21 128kB Flash
+  default: true
+  instructions: LUlKBxFgLkosSVFgLUlJRAhgACBwRwAgcEcPIUkDAUBCCA8gAAMCQBC1JUjCYSZKAoACfdIH/NAjTAEiPzxSA4sYDOBKCMJhBIACfdIH/NACfZIHAdUBIBC9/zEBMZlC8NMAIBC98LXJHIkIFkuJABNN2xwrgCt92wf80BJOPT4AKRbQA0ZAKQHZQCQF4AxGA+CAygkfgMMkHwAs+dEugEAwK33bB/zQK32bB+jVASDwvQAg8L0AACIAAQCeAAQAAEAAQQQAAABBpQAAAAAAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x17
+  pc_program_page: 0x67
+  pc_erase_sector: 0x1b
+  data_section_offset: 0xcc
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: atsaml21_256
+  description: ATSAML21 256kB Flash
+  default: true
+  instructions: LUlKBxFgLkosSVFgLUlJRAhgACBwRwAgcEcPIYkDAUBCCA8gQAMCQBC1JUjCYSZKAoACfdIH/NAjTAEiPzySA4sYDOBKCMJhBIACfdIH/NACfZIHAdUBIBC9/zEBMZlC8NMAIBC98LXJHIkIFkuJABNN2xwrgCt92wf80BJOPT4AKRbQA0ZAKQHZQCQF4AxGA+CAygkfgMMkHwAs+dEugEAwK33bB/zQK32bB+jVASDwvQAg8L0AACIAAQCeAAQAAEAAQQQAAABBpQAAAAAAAAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x17
+  pc_program_page: 0x67
+  pc_erase_sector: 0x1b
+  data_section_offset: 0xcc
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x4000
+      address: 0x0
