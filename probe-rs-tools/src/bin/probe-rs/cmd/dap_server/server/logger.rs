@@ -80,7 +80,7 @@ impl DebugLogger {
         Ok(debug_logger)
     }
 
-    fn locked_buffer(&self) -> MutexGuard<Vec<u8>> {
+    fn locked_buffer(&self) -> MutexGuard<'_, Vec<u8>> {
         self.buffer.lock()
     }
 

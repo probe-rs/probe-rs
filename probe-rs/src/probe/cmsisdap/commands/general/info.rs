@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use super::super::{CommandId, Request, SendError};
 
 use scroll::{LE, Pread};

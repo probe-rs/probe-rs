@@ -609,7 +609,7 @@ impl Session {
     /// trace packets are lost.
     ///
     /// [SwoAccess::read_swo]: crate::architecture::arm::swo::SwoAccess
-    pub fn swo_reader(&mut self) -> Result<SwoReader, Error> {
+    pub fn swo_reader(&mut self) -> Result<SwoReader<'_>, Error> {
         let interface = self.get_arm_interface()?;
         Ok(SwoReader::new(interface))
     }
@@ -628,7 +628,7 @@ impl Session {
     pub fn get_riscv_interface(
         &mut self,
         core_id: usize,
-    ) -> Result<RiscvCommunicationInterface, Error> {
+    ) -> Result<RiscvCommunicationInterface<'_>, Error> {
         let tap_idx = self.interface_idx(core_id)?;
         if let ArchitectureInterface::Jtag(probe, ifaces) = &mut self.interfaces {
             if let Some(probe) = probe.try_as_jtag_probe() {
@@ -646,7 +646,7 @@ impl Session {
     pub fn get_xtensa_interface(
         &mut self,
         core_id: usize,
-    ) -> Result<XtensaCommunicationInterface, Error> {
+    ) -> Result<XtensaCommunicationInterface<'_>, Error> {
         let tap_idx = self.interface_idx(core_id)?;
         if let ArchitectureInterface::Jtag(probe, ifaces) = &mut self.interfaces {
             if let Some(probe) = probe.try_as_jtag_probe() {

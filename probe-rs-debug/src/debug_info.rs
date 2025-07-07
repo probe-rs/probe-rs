@@ -921,7 +921,7 @@ impl DebugInfo {
     pub(crate) fn get_function_dies(
         &self,
         address: u64,
-    ) -> Result<(&UnitInfo, Vec<FunctionDie>), DebugError> {
+    ) -> Result<(&UnitInfo, Vec<FunctionDie<'_>>), DebugError> {
         for unit_info in &self.unit_infos {
             let function_dies = unit_info.get_function_dies(self, address)?;
 

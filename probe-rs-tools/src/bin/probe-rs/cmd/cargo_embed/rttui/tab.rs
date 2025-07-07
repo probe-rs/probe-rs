@@ -199,7 +199,7 @@ impl Tab {
 
 /// Removes ANSI escape sequences from a string.
 fn strip_ansi(s: impl AsRef<str>) -> String {
-    fn text_block(output: ansi_parser::Output) -> Option<&str> {
+    fn text_block(output: ansi_parser::Output<'_>) -> Option<&str> {
         match output {
             ansi_parser::Output::TextBlock(text) => Some(text),
             _ => None,
