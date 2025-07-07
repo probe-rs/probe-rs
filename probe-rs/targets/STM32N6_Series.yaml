@@ -1,0 +1,206 @@
+name: STM32N6 Series
+manufacturer:
+  id: 0x20
+  cc: 0x0
+generated_from_pack: true
+pack_file_release: 1.0.0
+variants:
+- name: STM32N645
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Ram
+    name: ITCMRAM
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+  - !Ram
+    name: DTCMRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: AXISRAM1234
+    range:
+      start: 0x24000000
+      end: 0x243e0000
+    cores:
+    - main
+  - !Generic
+    name: SRAM_GFXMM
+    range:
+      start: 0x25000000
+      end: 0x26000000
+    cores:
+    - main
+  - !Ram
+    name: SRAMAHB12
+    range:
+      start: 0x28000000
+      end: 0x28008000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x34180400
+      end: 0x341c0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+- name: STM32N647
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Ram
+    name: ITCMRAM
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+  - !Ram
+    name: DTCMRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: AXISRAM1234
+    range:
+      start: 0x24000000
+      end: 0x243e0000
+    cores:
+    - main
+  - !Generic
+    name: SRAM_GFXMM
+    range:
+      start: 0x25000000
+      end: 0x26000000
+    cores:
+    - main
+  - !Ram
+    name: SRAMAHB12
+    range:
+      start: 0x28000000
+      end: 0x28008000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x34180400
+      end: 0x341c0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+- name: STM32N655
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Ram
+    name: ITCMRAM
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - main
+  - !Ram
+    name: DTCMRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Ram
+    name: AXISRAM1234
+    range:
+      start: 0x24000000
+      end: 0x243e0000
+    cores:
+    - main
+  - !Generic
+    name: SRAM_GFXMM
+    range:
+      start: 0x25000000
+      end: 0x26000000
+    cores:
+    - main
+  - !Ram
+    name: SRAMAHB12
+    range:
+      start: 0x28000000
+      end: 0x28008000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x34180400
+      end: 0x341c0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+- name: STM32N657
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 1
+  memory_map:
+  - !Ram
+    name: ITCMRAM
+    range:
+      start: 0x00000000
+      end: 0x00040000
+    cores: [main]
+  - !Ram
+    name: DTCMRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores: [main]
+  - !Ram
+    name: AXISRAM123456
+    range:
+      start: 0x24000000
+      end: 0x243c0000
+    cores: [main]
+  - !Ram
+    name: AHBSRAM12
+    range:
+      start: 0x28000000
+      end: 0x28008000
+    cores: [main]
+  - !Ram
+    name: AXISRAM123456_secure_alias
+    range:
+      start: 0x34000000
+      end: 0x343c0000
+    cores: [main]
+  - !Nvm
+    name: XSPI2NOR
+    range:
+      start: 0x70000000
+      end: 0x74000000
+    cores: [main]
