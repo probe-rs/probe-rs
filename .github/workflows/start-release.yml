@@ -90,7 +90,10 @@ jobs:
 
           - probe-rs
           - probe-rs-target
+          - rtthost
           - target-gen
-          - rtthost"
+          - probe-rs-tools
+          - probe-rs-mi
+          - probe-rs-debug
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
