@@ -1,13 +1,19 @@
 // Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
+pub(crate) mod client;
 pub(crate) mod debug_adapter;
+pub(crate) mod layers;
 mod peripherals;
+pub(crate) mod protocol;
 pub(crate) mod server;
+pub(crate) mod service;
+pub(crate) mod state;
 
 #[cfg(test)]
 mod test;
 
 use anyhow::Result;
+use debug_adapter::dap::dap_types::ErrorResponse;
 use probe_rs::{
     CoreDumpError, Error,
     architecture::arm::ap::AccessPortError,
@@ -17,6 +23,7 @@ use probe_rs::{
 use probe_rs_debug::DebugError;
 use server::startup::debug;
 use std::{
+    fmt::{self, Display, Formatter},
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
 };
@@ -65,6 +72,14 @@ pub enum DebuggerError {
     UnableToOpenProbe(Option<&'static str>),
     #[error("Request not implemented")]
     Unimplemented,
+    #[error("The server was expected to be initialized already but was not")]
+    UninitializedServer,
+    #[error("Failed to parse message")]
+    JsonParse(#[source] serde_json::Error),
+    #[error("Got an error response: {0:?}")]
+    ErrorResponse(ErrorResponse),
+    #[error("An unknown internal server error happened")]
+    Internal,
 }
 
 /// Open target in debug mode and accept debug commands.
@@ -97,4 +112,16 @@ pub async fn run(
 ) -> Result<()> {
     let addr = SocketAddr::new(cmd.ip, cmd.port);
     debug(lister, addr, cmd.single_session, log_file, time_offset).await
+}
+
+/// Error that occurs when attempting to call the language server after it has already exited.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ExitedError(());
+
+impl std::error::Error for ExitedError {}
+
+impl Display for ExitedError {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str("language server has exited")
+    }
 }
