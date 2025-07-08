@@ -3,7 +3,7 @@
 
 on:
   pull_request:
-    branches: [master]
+    branches: [master, release/**]
     types: [closed]
   workflow_dispatch:
 
