@@ -82,7 +82,16 @@ jobs:
 
       - name: create pull request
         run: |
-          gh pr create -B master -H "${BRANCH_NAME}"\
+          # PR patch version releases against the corresponding release/$version branch
+          # and all other versions against master
+          IFS='.' read -ra version <<< "${{ inputs.version }}"
+          if [[ "${version[2]}" == "0" ]]
+          then
+            branch="master"
+          else
+            branch="release/${version[0]}.${version[1]}"
+          fi
+          gh pr create -B $branch -H "${BRANCH_NAME}"\
             --title "Release ${{ inputs.version }}"\
             --label "release"\
             --label "changelog:skip"\
