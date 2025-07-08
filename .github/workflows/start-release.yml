@@ -15,7 +15,7 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     env:
-      BRANCH_NAME: release/${{ inputs.version }}
+      BRANCH_NAME: create-release/${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
