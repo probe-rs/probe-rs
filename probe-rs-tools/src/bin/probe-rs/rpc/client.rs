@@ -14,7 +14,10 @@ use postcard_rpc::{
 use postcard_schema::Schema;
 use probe_rs::{Session, config::Registry, flashing::FlashLoader};
 use serde::{Serialize, de::DeserializeOwned};
-use tokio::sync::{Mutex, MutexGuard};
+use tokio::{
+    sync::{Mutex, MutexGuard, Notify},
+    time::timeout,
+};
 
 use std::{
     collections::HashMap,
@@ -307,12 +310,18 @@ impl RpcClient {
             Ok(stream) => stream,
             Err(err) => anyhow::bail!("Failed to subscribe to '{}': {:?}", err.topic, err.error),
         };
+        let notify = Arc::new(Notify::new());
+        let req_fut = async {
+            let res = self.send_resp::<E, R>(req).await;
+            notify.notify_one();
+            res
+        };
 
-        tokio::select! {
-            biased;
-            _ = stream.stream(on_msg) => anyhow::bail!("Topic reader returned unexpectedly"),
-            r = self.send_resp::<E, R>(req) => r,
-        }
+        let (_, res) = tokio::join! {
+            stream.stream(on_msg, notify.clone()),
+            req_fut,
+        };
+        res
     }
 
     pub async fn upload_file(&self, src_path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
@@ -739,13 +748,44 @@ pub(crate) trait MultiSubscription {
     type Message;
 
     async fn next(&mut self) -> Option<Self::Message>;
-    async fn stream(&mut self, mut on_msg: impl AsyncFnMut(Self::Message)) -> anyhow::Result<()> {
-        while let Some(message) = self.next().await {
-            on_msg(message).await;
-        }
 
-        tracing::warn!("Failed to read topic");
-        futures_util::future::pending().await
+    /// Listen to the given stream until either:
+    ///
+    /// * The stream closes, returning a "closed" notification
+    /// * The `stopper` notification is fired, at which point we will continue processing
+    ///   messages until there is a time of 100ms between messages, at which point we will
+    ///   return.
+    ///
+    /// The latter case is intended to cover cases where there could still be enqueued messages
+    /// waiting to be processed.
+    async fn stream(
+        &mut self,
+        mut on_msg: impl AsyncFnMut(Self::Message),
+        stopper: Arc<Notify>,
+    ) -> anyhow::Result<()> {
+        let listen_fut = async {
+            while let Some(message) = self.next().await {
+                on_msg(message).await;
+            }
+        };
+
+        tokio::select! {
+            _ = listen_fut => {
+                tracing::warn!("Failed to read topic");
+                Ok(())
+            }
+            _ = stopper.notified() => {
+                tracing::info!("Received stop");
+
+                // We've received the stop event, now receive any pending messages.
+                loop {
+                    match timeout(Duration::from_millis(100), self.next()).await {
+                        Ok(Some(m)) => on_msg(m).await,
+                        Ok(None) | Err(_) => return Ok(()),
+                    }
+                }
+            }
+        }
     }
 }
 
