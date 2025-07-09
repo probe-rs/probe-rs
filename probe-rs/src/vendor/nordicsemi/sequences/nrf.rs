@@ -28,8 +28,16 @@ pub trait Nrf: Sync + Send + Debug {
 
     /// Returns true if a network core is present
     fn has_network_core(&self) -> bool;
+
+    /// Returns true if the chip must be soft-reset after an erase-all operation (ie to unlock APPROTECT).
+    ///
+    /// Defaults to false. For implementors, make sure to override this method if a reset is required.
+    fn reset_after_erase(&self) -> bool {
+        false
+    }
 }
 
+const RESET: u64 = 0x00;
 const ERASEALL: u64 = 0x04;
 const ERASEALLSTATUS: u64 = 0x08;
 
@@ -46,6 +54,7 @@ fn unlock_core(
     arm_interface: &mut dyn ArmDebugInterface,
     ap_address: &FullyQualifiedApAddress,
     permissions: &crate::Permissions,
+    reset_after_erase: bool,
 ) -> Result<(), ArmError> {
     permissions
         .erase_all()
@@ -54,6 +63,16 @@ fn unlock_core(
     arm_interface.write_raw_ap_register(ap_address, ERASEALL, 1)?;
 
     while arm_interface.read_raw_ap_register(ap_address, ERASEALLSTATUS)? != 0 {}
+
+    if reset_after_erase {
+        tracing::debug!("Performing a soft reset after erase operation");
+
+        arm_interface.write_raw_ap_register(ap_address, RESET, 1)?;
+        arm_interface.write_raw_ap_register(ap_address, RESET, 0)?;
+        std::thread::sleep(std::time::Duration::from_millis(20));
+
+        tracing::debug!("Soft reset complete");
+    }
 
     Ok(())
 }
@@ -101,7 +120,12 @@ impl<T: Nrf> ArmDebugSequence for T {
                 "Core {} is locked. Erase procedure will be started to unlock it.",
                 core_index
             );
-            unlock_core(interface, core_ctrl_ap_address, permissions)?;
+            unlock_core(
+                interface,
+                core_ctrl_ap_address,
+                permissions,
+                self.reset_after_erase(),
+            )?;
 
             if !self.is_core_unlocked(interface, core_ahb_ap_address, core_ctrl_ap_address)? {
                 return Err(ArmDebugSequenceError::custom(format!(
