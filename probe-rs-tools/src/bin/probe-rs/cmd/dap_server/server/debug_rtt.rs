@@ -77,7 +77,7 @@ impl DebuggerRttChannel {
         };
 
         match out.data {
-            Some(data) => debug_adapter.rtt_output(self.channel_number, data),
+            Some(data) => debug_adapter.rtt_output(self.channel_number, data).await,
             None => false,
         }
     }
