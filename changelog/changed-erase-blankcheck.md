@@ -1,0 +1,1 @@
+Changed `flashing::{erase,blank_check}` to work with address ranges instead of sector numbers. Renamed `erase_sectors` to `erase`.
