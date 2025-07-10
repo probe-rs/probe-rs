@@ -157,18 +157,17 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
     Ok(())
 }
 
-/// Erases `sectors` sectors starting from `start_sector` from flash.
+/// Erases flash address range `address_start..address_end`.
 // TODO: currently no progress is reported by anything in this function.
-pub fn erase_sectors(
+pub fn erase(
     session: &mut Session,
     progress: FlashProgress,
-    start_sector: usize,
-    sectors: usize,
+    address_start: u64,
+    address_end: u64,
 ) -> Result<(), FlashError> {
-    tracing::debug!(
-        "Erasing sectors {start_sector} trough {}",
-        start_sector + sectors
-    );
+    tracing::debug!("Erasing {address_start:08x}..{address_end:08x}");
+
+    let address_range = address_start..address_end;
 
     let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
     tracing::debug!("Regions:");
@@ -178,15 +177,20 @@ pub fn erase_sectors(
         .iter()
         .filter_map(MemoryRegion::as_nvm_region)
     {
-        if region.is_alias {
-            tracing::debug!("Skipping alias memory region {:#010x?}", region.range);
-            continue;
-        }
         tracing::debug!(
             "    region: {:#010x?} ({} bytes)",
             region.range,
             region.range.end - region.range.start
         );
+
+        // If we have nothing to do in this region, ignore it.
+        // This avoids uselessly initializing and deinitializing its flash algorithm.
+        // We do not check for alias regions here, as we'll work with them if the range explicitly
+        // targets them.
+        if !region.range.intersects_range(&address_range) {
+            tracing::debug!("     -- doesn't overlap, ignoring!");
+            continue;
+        }
 
         // Get the first core that can access the region
         let core_name = region
@@ -218,8 +222,7 @@ pub fn erase_sectors(
         let sectors = flasher
             .flash_algorithm()
             .iter_sectors()
-            .skip(start_sector)
-            .take(sectors)
+            .filter(|info| address_range.contains_range(&info.address_range()))
             .filter(|info| {
                 let range = info.base_address..info.base_address + info.size;
                 regions.iter().any(|r| r.range.contains_range(&range))
@@ -253,10 +256,12 @@ pub fn erase_sectors(
 pub fn run_blank_check(
     session: &mut Session,
     progress: FlashProgress,
-    start_sector: usize,
-    sectors: usize,
+    address_start: u64,
+    address_end: u64,
 ) -> Result<(), FlashError> {
-    tracing::debug!("Performing blank check...");
+    tracing::debug!("Blank-checking {address_start:08x}..{address_end:08x}");
+
+    let address_range = address_start..address_end;
 
     let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
     tracing::debug!("Regions:");
@@ -266,15 +271,20 @@ pub fn run_blank_check(
         .iter()
         .filter_map(MemoryRegion::as_nvm_region)
     {
-        if region.is_alias {
-            tracing::debug!("Skipping alias memory region {:#010x?}", region.range);
-            continue;
-        }
         tracing::debug!(
             "    region: {:#010x?} ({} bytes)",
             region.range,
             region.range.end - region.range.start
         );
+
+        // If we have nothing to do in this region, ignore it.
+        // This avoids uselessly initializing and deinitializing its flash algorithm.
+        // We do not check for alias regions here, as we'll work with them if the range explicitly
+        // targets them.
+        if !region.range.intersects_range(&address_range) {
+            tracing::debug!("     -- doesn't overlap, ignoring!");
+            continue;
+        }
 
         // Get the first core that can access the region
         let core_name = region
@@ -294,7 +304,7 @@ pub fn run_blank_check(
     }
 
     for ((algo_name, core_name), regions) in algos {
-        tracing::debug!("Checking for blank sector with algorithm: {}", algo_name);
+        tracing::debug!("Blank-checking with algorithm: {}", algo_name);
 
         // This can't fail, algo_name comes from the target.
         let algo = session.target().flash_algorithm_by_name(&algo_name);
@@ -306,8 +316,7 @@ pub fn run_blank_check(
         let sectors = flasher
             .flash_algorithm()
             .iter_sectors()
-            .skip(start_sector)
-            .take(sectors)
+            .filter(|info| address_range.contains_range(&info.address_range()))
             .filter(|info| {
                 let range = info.base_address..info.base_address + info.size;
                 regions.iter().any(|r| r.range.contains_range(&range))
