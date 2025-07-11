@@ -1,1 +1,0 @@
-Fixed an issue where RTT channel modes weren't configured properly

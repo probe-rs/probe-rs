@@ -1,1 +1,0 @@
-Fixed a crash affecting RISC-V devices.
