@@ -54,7 +54,7 @@ variants:
     name: RAM
     range:
       start: 0x20000000
-      end: 0x2003e000
+      end: 0x20040000
     cores:
     - main
   flash_algorithms:
@@ -91,7 +91,7 @@ variants:
     name: RAM
     range:
       start: 0x20000000
-      end: 0x2003e000
+      end: 0x20040000
     cores:
     - main
   flash_algorithms:
@@ -128,7 +128,7 @@ variants:
     name: RAM
     range:
       start: 0x20000000
-      end: 0x2003e000
+      end: 0x20040000
     cores:
     - main
   flash_algorithms:
