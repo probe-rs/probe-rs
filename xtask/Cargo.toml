@@ -11,6 +11,7 @@ clap = { version = "4", features = ["derive"] }
 anyhow.workspace = true
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
+regex = "1.11.1"
 
 [lints]
 workspace = true
