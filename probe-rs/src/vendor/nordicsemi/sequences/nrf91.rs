@@ -95,9 +95,9 @@ impl Nrf for Nrf9120 {
         false
     }
 
-    /// Return true. nRF9120-based chips require a reset after erase to unlock APPROTECT.
+    /// Return true. nRF91x1 chips require a soft reset after erase to unlock APPROTECT.
     /// See <https://docs.nordicsemi.com/bundle/nan_041/page/APP/nan_production_programming/unlocking_nrf91.html>
-    fn reset_after_erase(&self) -> bool {
+    fn requires_soft_reset_after_erase(&self) -> bool {
         true
     }
 }

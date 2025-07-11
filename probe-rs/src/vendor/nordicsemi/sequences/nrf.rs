@@ -32,7 +32,7 @@ pub trait Nrf: Sync + Send + Debug {
     /// Returns true if the chip must be soft-reset after an erase-all operation (ie to unlock APPROTECT).
     ///
     /// Defaults to false. For implementors, make sure to override this method if a reset is required.
-    fn reset_after_erase(&self) -> bool {
+    fn requires_soft_reset_after_erase(&self) -> bool {
         false
     }
 }
@@ -124,7 +124,7 @@ impl<T: Nrf> ArmDebugSequence for T {
                 interface,
                 core_ctrl_ap_address,
                 permissions,
-                self.reset_after_erase(),
+                self.requires_soft_reset_after_erase(),
             )?;
 
             if !self.is_core_unlocked(interface, core_ahb_ap_address, core_ctrl_ap_address)? {
