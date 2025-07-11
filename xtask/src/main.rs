@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Context, ensure};
+use anyhow::{Context, bail, ensure};
 use clap::Parser;
 use regex::Regex;
 use serde_json::Value;
@@ -89,10 +89,22 @@ fn fetch_prs() -> Result<()> {
 fn create_release_pr(version: String) -> Result<()> {
     let sh = Shell::new()?;
 
-    // Make sure we are on the master branch and we have the latest state pulled from our source of truth, GH.
+    // Make sure we are on the right branch and we have the latest state pulled from our source of truth, GH.
+
+    let branch = cmd!(sh, "git branch --show-current")
+        .read()?
+        .trim()
+        .to_string();
+
+    if branch != "master" && !branch.starts_with("release/") {
+        bail!(
+            "Invalid current branch '{branch}'. Make sure you're either on `master` or `release/x.y`."
+        )
+    }
+
     cmd!(
         sh,
-        "gh workflow run 'Open a release PR' --ref master -f version={version}"
+        "gh workflow run 'Open a release PR' --ref {branch} -f version={version}"
     )
     .run()?;
 
