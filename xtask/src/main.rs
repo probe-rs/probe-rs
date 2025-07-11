@@ -7,6 +7,8 @@ use std::{
 
 use anyhow::{Context, ensure};
 use clap::Parser;
+use regex::Regex;
+use serde_json::Value;
 use xshell::{Shell, cmd};
 
 use anyhow::Result;
@@ -244,13 +246,31 @@ fn check_local_changelog_fragments(list: &mut FragmentList, fragments_dir: &Path
         let sha = sha.split(' ').next().unwrap();
         println!("fetching PR info for sha: {sha}");
 
-        let response = cmd!(sh, "gh api -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' https://api.github.com/repos/probe-rs/probe-rs/commits/{sha}/pulls").read()?;
+        let commit_message = cmd!(
+            sh,
+            "git rev-list --max-count=1 --no-commit-header --format=%B {sha}"
+        )
+        .read()?;
+        let re = Regex::new(" \\(#(\\d+)\\)\n").unwrap();
 
-        let json = serde_json::from_str::<serde_json::Value>(&response).unwrap();
+        let mut pull = if let Some(m) = re.captures(&commit_message) {
+            let pull = m.get(1).unwrap().as_str();
+            let response = cmd!(sh, "gh api -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' https://api.github.com/repos/probe-rs/probe-rs/pulls/{pull}").read()?;
+            serde_json::from_str::<serde_json::Value>(&response).unwrap()
+        } else {
+            let response = cmd!(sh, "gh api -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' https://api.github.com/repos/probe-rs/probe-rs/commits/{sha}/pulls").read()?;
+            let mut json = serde_json::from_str::<serde_json::Value>(&response).unwrap();
+
+            json.get(0).cloned().unwrap_or(Value::Null)
+        };
+
+        if pull["user"]["login"].as_str() == Some("probe-rs-bot") {
+            pull = Value::Null
+        }
 
         fragments.push(Fragment {
-            pr_number: json[0]["number"].as_i64().map(|n| n.to_string()),
-            author: json[0]["user"]["login"].as_str().map(|s| s.to_string()),
+            pr_number: pull["number"].as_i64().map(|n| n.to_string()),
+            author: pull["user"]["login"].as_str().map(|s| s.to_string()),
             path,
         });
     }
