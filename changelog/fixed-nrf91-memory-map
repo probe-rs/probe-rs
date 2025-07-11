@@ -1,0 +1,1 @@
+Fixed nRF91xx memory map: set correct RAM size, added UICR memory region.
