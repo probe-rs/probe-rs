@@ -92,7 +92,7 @@ ratatui = { version = "0.29.0", default-features = false, features = [
 ] }
 ansi-parser = "0.9.0"
 
-probe-rs = { version = "0.29.0", path = "../probe-rs" }
+probe-rs = { version = "0.29.1", path = "../probe-rs" }
 parking_lot = "0.12.2"
 cargo-config2 = "0.1.26"
 clap_complete = "4.5.2"
@@ -102,7 +102,7 @@ zip = { version = "2.0.0", default-features = false, features = [
     "time",
 ] }
 urlencoding = "2"
-probe-rs-debug = { version = "0.29.0", path = "../probe-rs-debug" }
+probe-rs-debug = { version = "0.29.1", path = "../probe-rs-debug" }
 probe-rs-target = { workspace = true }
 svg = "0.18"
 
