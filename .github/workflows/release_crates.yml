@@ -68,7 +68,15 @@ jobs:
         # The tag prefix is set to an empty string, so that the tag is just the version number, and doesn't contain the crate name.
       - name: release to crates.io
         run: |
-          git checkout master
+          # Checkout appropriate branch based on trigger type
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # For PR merge, checkout the PR's target branch
+            echo "Checking out PR target branch: ${{ github.event.pull_request.base.ref }}"
+            git checkout ${{ github.event.pull_request.base.ref }}
+          else
+            # For workflow_dispatch, stay on current branch (let user choose)
+            echo "Running on current branch: $(git branch --show-current)"
+          fi
 
           echo "::group::Setup auth for crates.io"
           cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
