@@ -40,6 +40,9 @@ aarch64-unknown-linux-musl = "buildjet-2vcpu-ubuntu-2204-arm"
 # taken from <https://github.com/axodotdev/cargo-dist/issues/1760#issuecomment-2769218034>
 runner = "ubuntu-latest"
 
+[dist.github-custom-runners.x86_64-pc-windows-msvc]
+runner = "windows-2022"
+
 [dist.dependencies.apt]
 libudev-dev = '*'
 libudev1 = { stage = ["run"] }

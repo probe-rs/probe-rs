@@ -5540,6 +5540,7 @@ version = "0.29.0"
 dependencies = [
  "anyhow",
  "clap",
+ "regex",
  "serde",
  "serde_json",
  "xshell",

@@ -5,8 +5,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Context, ensure};
+use anyhow::{Context, bail, ensure};
 use clap::Parser;
+use regex::Regex;
+use serde_json::Value;
 use xshell::{Shell, cmd};
 
 use anyhow::Result;
@@ -87,10 +89,22 @@ fn fetch_prs() -> Result<()> {
 fn create_release_pr(version: String) -> Result<()> {
     let sh = Shell::new()?;
 
-    // Make sure we are on the master branch and we have the latest state pulled from our source of truth, GH.
+    // Make sure we are on the right branch and we have the latest state pulled from our source of truth, GH.
+
+    let branch = cmd!(sh, "git branch --show-current")
+        .read()?
+        .trim()
+        .to_string();
+
+    if branch != "master" && !branch.starts_with("release/") {
+        bail!(
+            "Invalid current branch '{branch}'. Make sure you're either on `master` or `release/x.y`."
+        )
+    }
+
     cmd!(
         sh,
-        "gh workflow run 'Open a release PR' --ref master -f version={version}"
+        "gh workflow run 'Open a release PR' --ref {branch} -f version={version}"
     )
     .run()?;
 
@@ -209,6 +223,8 @@ fn check_local_changelog_fragments(list: &mut FragmentList, fragments_dir: &Path
     let fragment_files = std::fs::read_dir(fragments_dir)
         .with_context(|| format!("Unable to read fragments from {}", fragments_dir.display()))?;
 
+    let pr_number_regex = Regex::new(" \\(#(\\d+)\\)\n").unwrap();
+
     for file in fragment_files {
         let file = file?;
         let path = file.path();
@@ -244,13 +260,30 @@ fn check_local_changelog_fragments(list: &mut FragmentList, fragments_dir: &Path
         let sha = sha.split(' ').next().unwrap();
         println!("fetching PR info for sha: {sha}");
 
-        let response = cmd!(sh, "gh api -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' https://api.github.com/repos/probe-rs/probe-rs/commits/{sha}/pulls").read()?;
+        let commit_message = cmd!(
+            sh,
+            "git rev-list --max-count=1 --no-commit-header --format=%B {sha}"
+        )
+        .read()?;
 
-        let json = serde_json::from_str::<serde_json::Value>(&response).unwrap();
+        let mut pull = if let Some(m) = pr_number_regex.captures(&commit_message) {
+            let pull = m.get(1).unwrap().as_str();
+            let response = cmd!(sh, "gh api -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' https://api.github.com/repos/probe-rs/probe-rs/pulls/{pull}").read()?;
+            serde_json::from_str::<serde_json::Value>(&response).unwrap()
+        } else {
+            let response = cmd!(sh, "gh api -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' https://api.github.com/repos/probe-rs/probe-rs/commits/{sha}/pulls").read()?;
+            let json = serde_json::from_str::<serde_json::Value>(&response).unwrap();
+
+            json.get(0).cloned().unwrap_or(Value::Null)
+        };
+
+        if pull["user"]["login"].as_str() == Some("probe-rs-bot") {
+            pull = Value::Null
+        }
 
         fragments.push(Fragment {
-            pr_number: json[0]["number"].as_i64().map(|n| n.to_string()),
-            author: json[0]["user"]["login"].as_str().map(|s| s.to_string()),
+            pr_number: pull["number"].as_i64().map(|n| n.to_string()),
+            author: pull["user"]["login"].as_str().map(|s| s.to_string()),
             path,
         });
     }

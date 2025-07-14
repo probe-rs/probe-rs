@@ -103,6 +103,6 @@ jobs:
           - target-gen
           - probe-rs-tools
           - probe-rs-mi
-          - probe-rs-debug
+          - probe-rs-debug"
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
