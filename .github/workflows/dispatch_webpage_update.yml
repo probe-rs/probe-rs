@@ -1,6 +1,8 @@
 name: Dispatch workflow in repo with submodule
 on:
   push:
+    branches:
+      - master
     paths:
       - probe-rs/targets/**
 
