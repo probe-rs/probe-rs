@@ -31,7 +31,7 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: FLASH
     range:
       start: 0x0
       end: 0x100000
@@ -40,11 +40,21 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: UICR
+    range:
+      start: 0x00FF8000
+      end: 0x00FF9000
+    cores:
+    - main
+    access:
+      write: false
+      boot: false
   - !Ram
-    name: IRAM1
+    name: RAM
     range:
       start: 0x20000000
-      end: 0x2003e000
+      end: 0x20040000
     cores:
     - main
   flash_algorithms:
@@ -58,7 +68,7 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: FLASH
     range:
       start: 0x0
       end: 0x100000
@@ -67,11 +77,21 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: UICR
+    range:
+      start: 0x00FF8000
+      end: 0x00FF9000
+    cores:
+    - main
+    access:
+      write: false
+      boot: false
   - !Ram
-    name: IRAM1
+    name: RAM
     range:
       start: 0x20000000
-      end: 0x2003e000
+      end: 0x20040000
     cores:
     - main
   flash_algorithms:
@@ -85,7 +105,7 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: IROM1
+    name: FLASH
     range:
       start: 0x0
       end: 0x100000
@@ -94,11 +114,21 @@ variants:
     access:
       write: false
       boot: true
+  - !Nvm
+    name: UICR
+    range:
+      start: 0x00FF8000
+      end: 0x00FF9000
+    cores:
+    - main
+    access:
+      write: false
+      boot: false
   - !Ram
-    name: IRAM1
+    name: RAM
     range:
       start: 0x20000000
-      end: 0x2003e000
+      end: 0x20040000
     cores:
     - main
   flash_algorithms:
@@ -144,7 +174,7 @@ flash_algorithms:
     address_range:
       start: 0xff8000
       end: 0xff9000
-    page_size: 0x1000
+    page_size: 4
     erased_byte_value: 0xff
     program_page_timeout: 1000
     erase_sector_timeout: 3000

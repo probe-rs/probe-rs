@@ -9,8 +9,8 @@ use probe_rs::{
     MemoryInterface, Permissions, Session, SessionConfig,
     config::Registry,
     flashing::{
-        DownloadOptions, FlashLoader, FlashProgress, ProgressEvent, ProgressOperation, erase_all,
-        erase_sectors, run_blank_check,
+        DownloadOptions, FlashLoader, FlashProgress, ProgressEvent, ProgressOperation, erase,
+        erase_all, run_blank_check,
     },
     probe::{DebugProbeSelector, WireProtocol, list::Lister},
 };
@@ -187,20 +187,26 @@ pub fn cmd_test(
             "test_start_sector_address must be sector aligned address pointing flash range"
         ));
     }
-    let test_start_sector_index =
-        ((test_start_sector_address - start_address) / sector_size) as usize;
 
     let test = "Test".green();
     println!("{test}: Erasing sectorwise and writing two pages ...");
     run_flash_erase(
         &mut session,
         progress.clone(),
-        EraseType::EraseSectors(test_start_sector_index, 2),
+        EraseType::EraseRange(
+            test_start_sector_address,
+            test_start_sector_address + sector_size * 2,
+        ),
     )?;
 
     println!("{test}: Erase done");
 
-    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2)?;
+    run_blank_check(
+        &mut session,
+        progress.clone(),
+        test_start_sector_address,
+        test_start_sector_address + sector_size * 2,
+    )?;
 
     println!("{test}: Writing two pages ...");
 
@@ -220,7 +226,12 @@ pub fn cmd_test(
     println!("{test}: Erasing the entire chip and writing two pages ...");
     run_flash_erase(&mut session, progress.clone(), EraseType::EraseAll)?;
     println!("{test}: Erase done");
-    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2)?;
+    run_blank_check(
+        &mut session,
+        progress.clone(),
+        test_start_sector_address,
+        test_start_sector_address + sector_size * 2,
+    )?;
 
     println!("{test}: Writing two pages ...");
     let mut loader = session.target().flash_loader();
@@ -240,11 +251,19 @@ pub fn cmd_test(
     run_flash_erase(
         &mut session,
         progress.clone(),
-        EraseType::EraseSectors(test_start_sector_index, 2),
+        EraseType::EraseRange(
+            test_start_sector_address,
+            test_start_sector_address + sector_size * 2,
+        ),
     )?;
     println!("{test}: Erase done");
 
-    run_blank_check(&mut session, progress.clone(), test_start_sector_index, 2)?;
+    run_blank_check(
+        &mut session,
+        progress.clone(),
+        test_start_sector_address,
+        test_start_sector_address + sector_size * 2,
+    )?;
 
     println!("{test}: Writing two pages ...");
     let mut loader = session.target().flash_loader();
@@ -294,7 +313,7 @@ pub fn run_flash_download(
 
 pub enum EraseType {
     EraseAll,
-    EraseSectors(usize, usize),
+    EraseRange(u64, u64),
 }
 
 /// Erases the entire flash or just the sectors specified.
@@ -303,8 +322,8 @@ pub fn run_flash_erase(
     progress: FlashProgress,
     erase_type: EraseType,
 ) -> Result<()> {
-    if let EraseType::EraseSectors(start_sector, sectors) = erase_type {
-        erase_sectors(session, progress, start_sector, sectors)?;
+    if let EraseType::EraseRange(start, end) = erase_type {
+        erase(session, progress, start, end)?;
     } else {
         erase_all(session, progress)?;
     }
