@@ -20,10 +20,11 @@ license.workspace = true
 exclude = ["tests/"]
 
 [features]
-default = ["builtin-targets"]
+default = ["builtin-targets", "cmsisdap_v1"]
 
 # Enable all built in targets.
 builtin-targets = ["dep:bincode", "dep:serde_yaml", "dep:probe-rs-target"]
+cmsisdap_v1 = ["dep:hidapi"]
 
 # Enable helpers for testing
 test = []
@@ -41,7 +42,7 @@ bitfield = "0.19.0"
 bitvec = "1"
 hidapi = { version = "2", default-features = false, features = [
     "linux-native",
-] }
+], optional = true }
 ihex = "3.0"
 itertools = "0.14"
 jep106 = "0.3"
