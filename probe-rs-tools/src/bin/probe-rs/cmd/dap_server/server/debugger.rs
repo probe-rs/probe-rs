@@ -29,7 +29,10 @@ use anyhow::{Context, anyhow};
 use probe_rs::{
     CoreStatus,
     config::Registry,
-    flashing::{DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent},
+    flashing::{
+        DownloadOptions, FileDownloadError, FlashError, FlashProgress, ProgressEvent,
+        ProgressOperation,
+    },
     probe::list::Lister,
 };
 use std::{
@@ -109,8 +112,9 @@ impl Debugger {
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<DebugSessionStatus, DebuggerError> {
-        self.debug_logger.flush_to_dap(debug_adapter)?;
-        let Some(request) = debug_adapter.listen_for_request()? else {
+        self.debug_logger.flush_to_dap(debug_adapter).await?;
+
+        let Some(request) = debug_adapter.listen_for_request().await? else {
             let _poll_span = tracing::trace_span!("Polling for core status").entered();
             let mut delay = Duration::ZERO;
             if debug_adapter.all_cores_halted {
@@ -199,7 +203,9 @@ impl Debugger {
                         Ok(_) => unhalt_me = true,
                         Err(error) => {
                             let err = DebuggerError::from(error);
-                            debug_adapter.send_response::<()>(&request, Err(&err))?;
+                            debug_adapter
+                                .send_response::<()>(&request, Err(&err))
+                                .await?;
                             return Err(err);
                         }
                     }
@@ -215,7 +221,7 @@ impl Debugger {
             "rttWindowOpened" => {
                 if let Some(debugger_rtt_target) = target_core.core_data.rtt_connection.as_mut() {
                     let arguments: RttWindowOpenedArguments =
-                        get_arguments(debug_adapter, &request)?;
+                        get_arguments(debug_adapter, &request).await?;
 
                     if let Some(rtt_channel) = debugger_rtt_target
                         .debugger_rtt_channels
@@ -229,6 +235,7 @@ impl Debugger {
 
                     debug_adapter
                         .send_response::<()>(&request, Ok(None))
+                        .await
                         .map_err(|error| {
                             DebuggerError::Other(anyhow!(
                                 "Could not deserialize arguments for RttWindowOpened : {:?}.",
@@ -239,19 +246,23 @@ impl Debugger {
                 Ok(())
             }
             "disconnect" => {
-                let result = debug_adapter.disconnect(&mut target_core, &request);
+                let result = debug_adapter.disconnect(&mut target_core, &request).await;
                 debug_session = DebugSessionStatus::Terminate;
                 result
             }
-            "next" => debug_adapter.next(&mut target_core, &request),
-            "stepIn" => debug_adapter.step_in(&mut target_core, &request),
-            "stepOut" => debug_adapter.step_out(&mut target_core, &request),
-            "pause" => debug_adapter.pause(&mut target_core, &request),
-            "readMemory" => debug_adapter.read_memory(&mut target_core, &request),
-            "writeMemory" => debug_adapter.write_memory(&mut target_core, &request),
-            "setVariable" => debug_adapter.set_variable(&mut target_core, &request),
-            "configurationDone" => debug_adapter.configuration_done(&mut target_core, &request),
-            "threads" => debug_adapter.threads(&mut target_core, &request),
+            "next" => debug_adapter.next(&mut target_core, &request).await,
+            "stepIn" => debug_adapter.step_in(&mut target_core, &request).await,
+            "stepOut" => debug_adapter.step_out(&mut target_core, &request).await,
+            "pause" => debug_adapter.pause(&mut target_core, &request).await,
+            "readMemory" => debug_adapter.read_memory(&mut target_core, &request).await,
+            "writeMemory" => debug_adapter.write_memory(&mut target_core, &request).await,
+            "setVariable" => debug_adapter.set_variable(&mut target_core, &request).await,
+            "configurationDone" => {
+                debug_adapter
+                    .configuration_done(&mut target_core, &request)
+                    .await
+            }
+            "threads" => debug_adapter.threads(&mut target_core, &request).await,
             "restart" => {
                 let result = target_core
                     .core
@@ -262,26 +273,34 @@ impl Debugger {
                 debug_session = DebugSessionStatus::Restart(request);
                 result
             }
-            "setBreakpoints" => debug_adapter.set_breakpoints(&mut target_core, &request),
-            "setInstructionBreakpoints" => {
-                debug_adapter.set_instruction_breakpoints(&mut target_core, &request)
+            "setBreakpoints" => {
+                debug_adapter
+                    .set_breakpoints(&mut target_core, &request)
+                    .await
             }
-            "stackTrace" => debug_adapter.stack_trace(&mut target_core, &request),
-            "scopes" => debug_adapter.scopes(&mut target_core, &request),
-            "disassemble" => debug_adapter.disassemble(&mut target_core, &request),
-            "variables" => debug_adapter.variables(&mut target_core, &request),
-            "continue" => debug_adapter.r#continue(&mut target_core, &request),
-            "evaluate" => debug_adapter.evaluate(&mut target_core, &request),
-            "completions" => debug_adapter.completions(&mut target_core, &request),
+            "setInstructionBreakpoints" => {
+                debug_adapter
+                    .set_instruction_breakpoints(&mut target_core, &request)
+                    .await
+            }
+            "stackTrace" => debug_adapter.stack_trace(&mut target_core, &request).await,
+            "scopes" => debug_adapter.scopes(&mut target_core, &request).await,
+            "disassemble" => debug_adapter.disassemble(&mut target_core, &request).await,
+            "variables" => debug_adapter.variables(&mut target_core, &request).await,
+            "continue" => debug_adapter.r#continue(&mut target_core, &request).await,
+            "evaluate" => debug_adapter.evaluate(&mut target_core, &request).await,
+            "completions" => debug_adapter.completions(&mut target_core, &request).await,
             other_command => {
                 // Unimplemented command.
-                debug_adapter.send_response::<()>(
-                    &request,
-                    Err(&DebuggerError::Other(anyhow!(
-                        "Received request '{}', which is not supported or not implemented yet",
-                        other_command
-                    ))),
-                )
+                debug_adapter
+                    .send_response::<()>(
+                        &request,
+                        Err(&DebuggerError::Other(anyhow!(
+                            "Received request '{}', which is not supported or not implemented yet",
+                            other_command
+                        ))),
+                    )
+                    .await
             }
         };
 
@@ -315,7 +334,7 @@ impl Debugger {
         // before entering the iterative loop that processes requests through the process_request method.
 
         // Initialize request
-        if self.handle_initialize(&mut debug_adapter).is_err() {
+        if self.handle_initialize(&mut debug_adapter).await.is_err() {
             // The request handler has already reported this error to the user.
             return Ok(());
         }
@@ -323,12 +342,14 @@ impl Debugger {
         let expected_commands = ["launch", "attach"];
 
         let launch_attach_request = loop {
-            if let Some(request) = debug_adapter.listen_for_request()? {
+            if let Some(request) = debug_adapter.listen_for_request().await? {
                 if expected_commands.contains(&request.command.as_str()) {
-                    self.debug_logger.flush_to_dap(&mut debug_adapter)?;
+                    self.debug_logger.flush_to_dap(&mut debug_adapter).await?;
                     break request;
                 } else if request.command == "disconnect" {
-                    debug_adapter.send_response::<DisconnectResponse>(&request, Ok(None))?;
+                    debug_adapter
+                        .send_response::<DisconnectResponse>(&request, Ok(None))
+                        .await?;
 
                     return Ok(());
                 } else {
@@ -341,7 +362,9 @@ impl Debugger {
                         request.command
                     ));
 
-                    debug_adapter.send_response::<()>(&request, Err(&err))?;
+                    debug_adapter
+                        .send_response::<()>(&request, Err(&err))
+                        .await?;
 
                     // Continue listening for requests
                 }
@@ -360,7 +383,9 @@ impl Debugger {
         {
             Ok(session_data) => session_data,
             Err(error) => {
-                debug_adapter.send_response::<()>(&launch_attach_request, Err(&error))?;
+                debug_adapter
+                    .send_response::<()>(&launch_attach_request, Err(&error))
+                    .await?;
                 return Ok(());
             }
         };
@@ -399,7 +424,9 @@ impl Debugger {
                         .restart(&mut debug_adapter, &mut session_data, &request)
                         .await
                     {
-                        debug_adapter.send_response::<()>(&request, Err(&error))?;
+                        debug_adapter
+                            .send_response::<()>(&request, Err(&error))
+                            .await?;
                         return Err(error);
                     }
                 }
@@ -443,7 +470,7 @@ impl Debugger {
             }
         };
 
-        self.config = get_arguments(debug_adapter, launch_attach_request)?;
+        self.config = get_arguments(debug_adapter, launch_attach_request).await?;
 
         self.config
             .validate_configuration_option_compatibility(requested_target_session_type)?;
@@ -480,7 +507,8 @@ impl Debugger {
                 debug_adapter,
                 launch_attach_request,
                 &mut session_data,
-            )?;
+            )
+            .await?;
         }
 
         // First, attach to the core
@@ -494,7 +522,7 @@ impl Debugger {
         // Configure the [CorePeripherals].
         if let Some(svd_file) = &target_core_config.svd_file {
             target_core.core_data.core_peripherals =
-                match SvdCache::new(svd_file, debug_adapter, launch_attach_request.seq) {
+                match SvdCache::new(svd_file, debug_adapter, launch_attach_request.seq).await {
                     Ok(core_peripherals) => Some(core_peripherals),
                     Err(error) => {
                         // This is not a fatal error. We can continue the debug session without the SVD file.
@@ -508,6 +536,7 @@ impl Debugger {
             // This will effectively do a `reset` and `halt` of the core, which is what we want until after the `configuration_done` request.
             debug_adapter
                 .restart(&mut target_core, None)
+                .await
                 .context("Failed to restart core")?;
         } else {
             // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
@@ -521,8 +550,10 @@ impl Debugger {
         // cleared even when haltAfterReset = false.
         session_data.poll_cores(&self.config, debug_adapter).await?;
 
-        debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
-        self.debug_logger.flush_to_dap(debug_adapter)?;
+        debug_adapter
+            .send_response::<()>(launch_attach_request, Ok(None))
+            .await?;
+        self.debug_logger.flush_to_dap(debug_adapter).await?;
 
         Ok(session_data)
     }
@@ -563,7 +594,8 @@ impl Debugger {
                     debug_adapter,
                     request,
                     session_data,
-                )?;
+                )
+                .await?;
             }
         }
 
@@ -589,6 +621,7 @@ impl Debugger {
         // After completing optional flashing and other config, we can run the debug adapter's restart logic.
         debug_adapter
             .restart(&mut target_core, Some(request))
+            .await
             .context("Failed to restart core")?;
 
         Ok(())
@@ -596,8 +629,7 @@ impl Debugger {
 
     /// Flash the given binary, and report the progress to the
     /// debug adapter.
-    // Note: This function consumes the 'debug_adapter', so all error reporting via that handle must be done before returning from this function.
-    fn flash<P: ProtocolAdapter + 'static>(
+    async fn flash<P: ProtocolAdapter + 'static>(
         config: &SessionConfig,
         path_to_elf: &Path,
         debug_adapter: &mut DebugAdapter<P>,
@@ -608,16 +640,15 @@ impl Debugger {
             "FLASHING: Starting write of {:?} to device memory",
             &path_to_elf
         ));
-        let progress_id = debug_adapter
-            .start_progress("Flashing device", Some(launch_attach_request.seq))
-            .ok();
+        let progress_handle =
+            debug_adapter.start_progress("Flashing device", Some(launch_attach_request.seq))?;
+
+        let progress_state = RefCell::new(ProgressState::default());
 
         let mut download_options = DownloadOptions::default();
         download_options.keep_unwritten_bytes = config.flashing_config.restore_unwritten_bytes;
         download_options.do_chip_erase = config.flashing_config.full_chip_erase;
         download_options.verify = config.flashing_config.verify_after_flashing;
-
-        let ref_debug_adapter = RefCell::new(&mut *debug_adapter);
 
         #[derive(Default)]
         struct ProgressBarState {
@@ -627,66 +658,53 @@ impl Debugger {
 
         type ProgressState = HashMap<Operation, ProgressBarState>;
 
-        let progress_state = RefCell::new(ProgressState::default());
+        download_options.progress = Some(FlashProgress::new(|event| {
+            let mut flash_progress = progress_state.borrow_mut();
 
-        download_options.progress = progress_id.map(|id| {
-            let describe_op = |operation| match Operation::from(operation) {
-                Operation::Fill => "Reading Old Pages",
-                Operation::Erase => "Erasing Sectors",
-                Operation::Program => "Programming Pages",
-                Operation::Verify => "Verifying",
-            };
-
-            FlashProgress::new(move |event| {
-                let mut flash_progress = progress_state.borrow_mut();
-                let mut debug_adapter = ref_debug_adapter.borrow_mut();
-                match event {
-                    ProgressEvent::AddProgressBar { operation, total } => {
-                        let pbar_state = flash_progress.entry(operation.into()).or_default();
-                        if let Some(total) = total {
-                            pbar_state.total_size += total; // should this be an assignment instead?
-                            pbar_state.size_done = 0;
-                        };
-                    }
-                    ProgressEvent::Started(operation) => {
-                        debug_adapter
-                            .update_progress(None, Some(describe_op(operation)), id)
-                            .ok();
-                    }
-                    ProgressEvent::Progress {
-                        operation, size, ..
-                    } => {
-                        let pbar_state = flash_progress.entry(operation.into()).or_default();
-                        pbar_state.size_done += size;
-                        let progress = pbar_state.size_done as f64 / pbar_state.total_size as f64;
-
-                        debug_adapter
-                            .update_progress(Some(progress), Some(describe_op(operation)), id)
-                            .ok();
-                    }
-                    ProgressEvent::Failed(operation) => {
-                        debug_adapter
-                            .update_progress(
-                                Some(1.0),
-                                Some(format!("{} Failed!", describe_op(operation))),
-                                id,
-                            )
-                            .ok();
-                    }
-                    ProgressEvent::Finished(operation) => {
-                        debug_adapter
-                            .update_progress(
-                                Some(1.0),
-                                Some(format!("{} Complete!", describe_op(operation))),
-                                id,
-                            )
-                            .ok();
-                    }
-                    ProgressEvent::FlashLayoutReady { .. } => {}
-                    ProgressEvent::DiagnosticMessage { .. } => {}
+            match event {
+                ProgressEvent::AddProgressBar { operation, total } => {
+                    let pbar_state = flash_progress.entry(operation.into()).or_default();
+                    if let Some(total) = total {
+                        pbar_state.total_size += total; // should this be an assignment instead?
+                        pbar_state.size_done = 0;
+                    };
                 }
-            })
-        });
+                ProgressEvent::Started(operation) => {
+                    progress_handle
+                        .update_progress(None, Some(describe_op(operation)))
+                        .ok();
+                }
+                ProgressEvent::Progress {
+                    operation, size, ..
+                } => {
+                    let pbar_state = flash_progress.entry(operation.into()).or_default();
+                    pbar_state.size_done += size;
+                    let progress = pbar_state.size_done as f64 / pbar_state.total_size as f64;
+
+                    progress_handle
+                        .update_progress(Some(progress), Some(describe_op(operation)))
+                        .ok();
+                }
+                ProgressEvent::Failed(operation) => {
+                    progress_handle
+                        .update_progress(
+                            Some(1.0),
+                            Some(format!("{} Failed!", describe_op(operation))),
+                        )
+                        .ok();
+                }
+                ProgressEvent::Finished(operation) => {
+                    progress_handle
+                        .update_progress(
+                            Some(1.0),
+                            Some(format!("{} Complete!", describe_op(operation))),
+                        )
+                        .ok();
+                }
+                ProgressEvent::FlashLayoutReady { .. } => {}
+                ProgressEvent::DiagnosticMessage { .. } => {}
+            }
+        }));
 
         let result = match build_loader(
             &mut session_data.session,
@@ -739,9 +757,7 @@ impl Debugger {
             }
         };
 
-        if let Some(id) = progress_id {
-            let _ = debug_adapter.end_progress(id);
-        }
+        let _ = progress_handle.end_progress();
 
         if result.is_ok() {
             debug_adapter.log_to_console(format!(
@@ -754,12 +770,12 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all, name = "Handling initialize request")]
-    pub(crate) fn handle_initialize<P: ProtocolAdapter>(
+    pub(crate) async fn handle_initialize<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<(), DebuggerError> {
         let initialize_request = loop {
-            if let Some(current_request) = debug_adapter.listen_for_request()? {
+            if let Some(current_request) = debug_adapter.listen_for_request().await? {
                 if current_request.command == "initialize" {
                     break current_request;
                 } else {
@@ -767,14 +783,17 @@ impl Debugger {
                         "Received request with command'{}', expected to receive the initialize command",
                         current_request.command,
                     ));
-                    debug_adapter.send_response::<()>(&current_request, Err(&error))?;
+                    debug_adapter
+                        .send_response::<()>(&current_request, Err(&error))
+                        .await?;
                     return Err(error);
                 }
             }
         };
 
         let initialize_arguments =
-            get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
+            get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)
+                .await?;
 
         // Enable quirks specific to particular DAP clients...
         if let Some(client_id) = initialize_arguments.client_id {
@@ -792,7 +811,9 @@ impl Debugger {
             let error = DebuggerError::Other(anyhow!(
                 "Unsupported Capability: Client requested column and row numbers start at 0."
             ));
-            debug_adapter.send_response::<()>(&initialize_request, Err(&error))?;
+            debug_adapter
+                .send_response::<()>(&initialize_request, Err(&error))
+                .await?;
             return Err(error);
         }
 
@@ -830,11 +851,22 @@ impl Debugger {
             // supports_exception_filter_options: Some (true),
             ..Default::default()
         };
-        debug_adapter.send_response(&initialize_request, Ok(Some(capabilities)))?;
+        debug_adapter
+            .send_response(&initialize_request, Ok(Some(capabilities)))
+            .await?;
 
-        self.debug_logger.flush_to_dap(debug_adapter)?;
+        self.debug_logger.flush_to_dap(debug_adapter).await?;
 
         Ok(())
+    }
+}
+
+fn describe_op(operation: ProgressOperation) -> &'static str {
+    match Operation::from(operation) {
+        Operation::Fill => "Reading Old Pages",
+        Operation::Erase => "Erasing Sectors",
+        Operation::Program => "Programming Pages",
+        Operation::Verify => "Verifying",
     }
 }
 
@@ -884,7 +916,7 @@ mod test {
                     ThreadsResponseBody,
                 },
             },
-            protocol::ProtocolAdapter,
+            protocol::{EventSender, ProtocolAdapter},
         },
         server::configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
         test::TestLister,
@@ -1138,7 +1170,7 @@ mod test {
     }
 
     impl ProtocolAdapter for MockProtocolAdapter {
-        fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
+        async fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
             let next_request = self
                 .requests
                 .pop_front()
@@ -1183,7 +1215,7 @@ mod test {
             self.console_log_level
         }
 
-        fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
+        async fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
             if self.response_index >= self.expected_responses.len() {
                 panic!("No more responses expected, but got {response:?}");
             }
@@ -1208,9 +1240,8 @@ mod test {
             self.pending_requests.remove(&request_seq)
         }
 
-        fn get_next_seq(&mut self) -> i64 {
-            self.sequence_number += 1;
-            self.sequence_number
+        fn event_sender(&self) -> Box<dyn EventSender> {
+            todo!()
         }
     }
 
