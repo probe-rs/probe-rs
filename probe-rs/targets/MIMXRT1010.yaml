@@ -11,10 +11,17 @@ variants:
       ap: !v1 0
   memory_map:
   - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Ram
     name: OCRAM
     range:
       start: 0x20200000
-      end: 0x20210000
+      end: 0x20220000
     cores:
     - main
   - !Nvm
