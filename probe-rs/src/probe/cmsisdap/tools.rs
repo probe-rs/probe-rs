@@ -3,6 +3,7 @@ use crate::probe::{
     BoxedProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     cmsisdap::{CmsisDapFactory, commands::CmsisDapError},
 };
+#[cfg(feature = "cmsisdap_v1")]
 use hidapi::HidApi;
 use nusb::{
     DeviceInfo,
@@ -20,6 +21,7 @@ const USB_CLASS_HID: u8 = 0x03;
 pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
     tracing::debug!("Searching for CMSIS-DAP probes using nusb");
 
+    #[cfg_attr(not(feature = "cmsisdap_v1"), expect(unused_mut))]
     let mut probes = match nusb::list_devices() {
         Ok(devices) => devices
             .filter_map(|device| get_cmsisdap_info(&device))
@@ -30,11 +32,13 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
         }
     };
 
+    #[cfg(feature = "cmsisdap_v1")]
     tracing::debug!(
         "Found {} CMSIS-DAP probes using nusb, searching HID",
         probes.len()
     );
 
+    #[cfg(feature = "cmsisdap_v1")]
     if let Ok(api) = hidapi::HidApi::new() {
         for device in api.device_list() {
             if let Some(info) = get_cmsisdap_hid_info(device) {
@@ -120,6 +124,7 @@ fn get_cmsisdap_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
 }
 
 /// Checks if a given HID device is a CMSIS-DAP v1 probe, returning Some(DebugProbeInfo) if so.
+#[cfg(feature = "cmsisdap_v1")]
 fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
     let prod_str = device.product_string().unwrap_or("");
     let path = device.path().to_str().unwrap_or("");
@@ -279,6 +284,7 @@ pub fn open_device_from_selector(
     //
     // If nusb cannot be used, we will just use the first HID interface and
     // try to open that.
+    #[cfg_attr(not(feature = "cmsisdap_v1"), expect(unused_assignments))]
     let mut hid_device_info = None;
 
     // Try using nusb to open a v2 device. This might fail if
@@ -305,70 +311,76 @@ pub fn open_device_from_selector(
         tracing::debug!("No devices matched using nusb");
     }
 
-    // If nusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
-    let vid = selector.vendor_id;
-    let pid = selector.product_id;
-    let sn = selector.serial_number.as_deref();
+    #[cfg(not(feature = "cmsisdap_v1"))]
+    return Err(ProbeCreationError::NotFound);
 
-    tracing::debug!(
-        "Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode",
-        vid,
-        pid
-    );
+    #[cfg(feature = "cmsisdap_v1")]
+    {
+        // If nusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
+        let vid = selector.vendor_id;
+        let pid = selector.product_id;
+        let sn = selector.serial_number.as_deref();
 
-    // Attempt to open provided VID/PID/SN with hidapi
+        tracing::debug!(
+            "Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode",
+            vid,
+            pid
+        );
 
-    let Ok(hid_api) = HidApi::new() else {
-        return Err(ProbeCreationError::NotFound);
-    };
+        // Attempt to open provided VID/PID/SN with hidapi
 
-    let mut device_list = hid_api.device_list();
+        let Ok(hid_api) = HidApi::new() else {
+            return Err(ProbeCreationError::NotFound);
+        };
 
-    // We have to filter manually so that we can check the correct HID interface number.
-    // Using HidApi::open() will return the first device which matches PID and VID,
-    // which is not always what we want.
-    let device_info = device_list
-        .find(|info| {
-            let mut device_match = info.vendor_id() == vid && info.product_id() == pid;
+        let mut device_list = hid_api.device_list();
 
-            if let Some(sn) = sn {
-                device_match &= Some(sn) == info.serial_number();
-            }
+        // We have to filter manually so that we can check the correct HID interface number.
+        // Using HidApi::open() will return the first device which matches PID and VID,
+        // which is not always what we want.
+        let device_info = device_list
+            .find(|info| {
+                let mut device_match = info.vendor_id() == vid && info.product_id() == pid;
 
-            if let Some(hid_interface) =
-                hid_device_info.as_ref().and_then(|info| info.hid_interface)
-            {
-                device_match &= info.interface_number() == hid_interface as i32;
-            }
+                if let Some(sn) = sn {
+                    device_match &= Some(sn) == info.serial_number();
+                }
 
-            device_match
-        })
-        .ok_or(ProbeCreationError::NotFound)?;
+                if let Some(hid_interface) =
+                    hid_device_info.as_ref().and_then(|info| info.hid_interface)
+                {
+                    device_match &= info.interface_number() == hid_interface as i32;
+                }
 
-    let Ok(device) = device_info.open_device(&hid_api) else {
-        return Err(ProbeCreationError::NotFound);
-    };
-
-    match device.get_product_string() {
-        Ok(Some(s)) if is_cmsis_dap(&s) => {
-            reject_probe_by_version(
-                device_info.vendor_id(),
-                device_info.product_id(),
-                device_info.release_number(),
-            )?;
-            Ok(CmsisDapDevice::V1 {
-                handle: device,
-                // Start with a default 64-byte report size, which is the most
-                // common size for CMSIS-DAPv1 HID devices. We'll request the
-                // actual size to use from the probe later.
-                report_size: 64,
+                device_match
             })
-        }
-        _ => {
-            // Return NotFound if this VID:PID was not a valid CMSIS-DAP probe,
-            // or if it couldn't be opened, so that other probe modules can
-            // attempt to open it instead.
-            Err(ProbeCreationError::NotFound)
+            .ok_or(ProbeCreationError::NotFound)?;
+
+        let Ok(device) = device_info.open_device(&hid_api) else {
+            return Err(ProbeCreationError::NotFound);
+        };
+
+        match device.get_product_string() {
+            Ok(Some(s)) if is_cmsis_dap(&s) => {
+                reject_probe_by_version(
+                    device_info.vendor_id(),
+                    device_info.product_id(),
+                    device_info.release_number(),
+                )?;
+                Ok(CmsisDapDevice::V1 {
+                    handle: device,
+                    // Start with a default 64-byte report size, which is the most
+                    // common size for CMSIS-DAPv1 HID devices. We'll request the
+                    // actual size to use from the probe later.
+                    report_size: 64,
+                })
+            }
+            _ => {
+                // Return NotFound if this VID:PID was not a valid CMSIS-DAP probe,
+                // or if it couldn't be opened, so that other probe modules can
+                // attempt to open it instead.
+                Err(ProbeCreationError::NotFound)
+            }
         }
     }
 }
