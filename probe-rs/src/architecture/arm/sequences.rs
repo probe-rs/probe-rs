@@ -1012,6 +1012,10 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         abort.set_wderrclr(true);
         abort.set_stkerrclr(true);
         abort.set_stkcmpclr(true);
+        // There might be a stuck AP access, which would hang the `RDBUFF` read
+        // on `.raw_flush` (reading `RDBUFF` would respond `Wait` forever.)
+        // Abort the current AP transaction (if there is any).
+        abort.set_dapabort(true);
 
         // DPBANKSEL does not matter for ABORT
         interface.raw_write_register(Abort::ADDRESS.into(), abort.0)?;
