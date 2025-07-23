@@ -38,6 +38,11 @@ pub struct BinaryDownloadOptions {
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub verify: bool,
+    /// Enable incremental sector-by-sector verification and programming.
+    /// Only sectors that differ from existing flash content will be erased and reprogrammed.
+    /// This can significantly speed up flashing when only small portions of flash have changed.
+    #[arg(short = 'i', long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub incremental: bool,
 }
 
 /// Supported bit-widths for read/write commands (not every device may support each width).

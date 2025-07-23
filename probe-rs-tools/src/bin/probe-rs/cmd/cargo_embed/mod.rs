@@ -293,6 +293,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             flash_layout_output_path: None,
             preverify: config.flashing.preverify,
             verify: config.flashing.verify,
+            incremental: false, // cargo-embed doesn't currently support incremental mode
         };
         let format_options = FormatOptions::default();
         let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
