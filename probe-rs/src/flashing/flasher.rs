@@ -387,6 +387,7 @@ impl Flasher {
         tracing::debug!("Incremental mode enabled: {:?}", incremental);
 
         if incremental {
+            tracing::debug!("Entering incremental mode - calling program_incremental");
             return self.program_incremental(
                 session,
                 progress,
@@ -754,8 +755,8 @@ impl Flasher {
             return Ok(CRC32_ALGO_ADDR);
         }
         
-        // Load the ARM Thumb CRC32 binary blob
-        let crc32_blob = self.get_crc32_algorithm_blob()?;
+        // Load the architecture-appropriate CRC32 binary blob
+        let crc32_blob = self.get_crc32_algorithm_blob(session)?;
         tracing::debug!("Loading CRC32 algorithm ({} bytes) to 0x{:08x}", crc32_blob.len(), CRC32_ALGO_ADDR);
         
         session.core(0)
@@ -781,12 +782,110 @@ impl Flasher {
     }
 
     /// Get the CRC32 algorithm binary blob for the target architecture
-    fn get_crc32_algorithm_blob(&self) -> Result<Vec<u8>, FlashError> {
-        // Use the optimized slicing-by-4 CRC32 algorithm for maximum performance
-        const ARM_THUMB_CRC32_BLOB: &[u8] = include_bytes!("../../../crc32-blobs/arm-thumb/crc32_slice4_optimized.bin");
+    fn get_crc32_algorithm_blob(&self, session: &mut Session) -> Result<Vec<u8>, FlashError> {
+        use probe_rs_target::Architecture;
         
-        tracing::debug!("Using ARM Thumb slicing-by-4 CRC32 blob ({} bytes)", ARM_THUMB_CRC32_BLOB.len());
-        Ok(ARM_THUMB_CRC32_BLOB.to_vec())
+        let (architecture, core_type) = {
+            let core = session.core(0).map_err(FlashError::Core)?;
+            (core.architecture(), core.core_type())
+        };
+        
+        // Detect target architecture and select appropriate CRC32 algorithm
+        match architecture {
+            Architecture::Arm => {
+                // ARM architecture - detect specific core for optimal performance
+                self.get_arm_crc32_blob(session, core_type)
+            }
+            Architecture::Riscv => {
+                // RISC-V architecture - use slicing-by-4 algorithm optimized for RISC-V
+                const RISCV_CRC32_BLOB: &[u8] = include_bytes!("../../../crc32-blobs/riscv/crc32.bin");
+                tracing::debug!("Using RISC-V slicing-by-4 CRC32 blob ({} bytes)", RISCV_CRC32_BLOB.len());
+                Ok(RISCV_CRC32_BLOB.to_vec())
+            }
+            Architecture::Xtensa => {
+                // Xtensa architecture - fallback to ARM M3/M4 slicing-by-4 for now
+                const ARM_THUMB_CRC32_SLICE4_BLOB: &[u8] = include_bytes!("../../../crc32-blobs/arm-thumb/crc32_slice4_optimized.bin");
+                tracing::debug!("Using ARM Thumb slicing-by-4 CRC32 blob for Xtensa ({} bytes)", ARM_THUMB_CRC32_SLICE4_BLOB.len());
+                Ok(ARM_THUMB_CRC32_SLICE4_BLOB.to_vec())
+            }
+        }
+    }
+
+    /// Get ARM-specific CRC32 blob optimized for the detected Cortex-M core
+    fn get_arm_crc32_blob(&self, session: &Session, core_type: probe_rs_target::CoreType) -> Result<Vec<u8>, FlashError> {
+        use probe_rs_target::CoreType;
+        
+        // Detect specific ARM Cortex-M variant for optimal CRC32 algorithm selection
+        match core_type {
+            CoreType::Armv6m => {
+                // Cortex-M0/M0+ - use M0+ compatible build
+                const ARM_M0PLUS_CRC32_BLOB: &[u8] = include_bytes!("../../../crc32-blobs/arm-thumb/crc32_slice4_m0plus.bin");
+                if ARM_M0PLUS_CRC32_BLOB.len() > 0 {
+                    tracing::debug!("Using ARM Cortex-M0+ optimized CRC32 blob ({} bytes)", ARM_M0PLUS_CRC32_BLOB.len());
+                    Ok(ARM_M0PLUS_CRC32_BLOB.to_vec())
+                } else {
+                    // Fallback to standard optimized version
+                    tracing::debug!("M0+ blob not available, falling back to standard ARM CRC32 blob");
+                    const ARM_THUMB_CRC32_SLICE4_BLOB: &[u8] = include_bytes!("../../../crc32-blobs/arm-thumb/crc32_slice4_optimized.bin");
+                    Ok(ARM_THUMB_CRC32_SLICE4_BLOB.to_vec())
+                }
+            }
+            CoreType::Armv7m => {
+                // Cortex-M3 - use standard performance build
+                const ARM_THUMB_CRC32_SLICE4_BLOB: &[u8] = include_bytes!("../../../crc32-blobs/arm-thumb/crc32_slice4_optimized.bin");
+                tracing::debug!("Using ARM Cortex-M3 optimized CRC32 blob ({} bytes)", ARM_THUMB_CRC32_SLICE4_BLOB.len());
+                Ok(ARM_THUMB_CRC32_SLICE4_BLOB.to_vec())
+            }
+            CoreType::Armv7em => {
+                // Cortex-M4/M7/M33 - try to detect M7 specifically for best performance
+                if self.is_cortex_m7_target(session) {
+                    const ARM_M7_CRC32_BLOB: &[u8] = include_bytes!("../../../crc32-blobs/arm-thumb/crc32_slice4_m7.bin");
+                    tracing::debug!("Using ARM Cortex-M7 optimized CRC32 blob ({} bytes)", ARM_M7_CRC32_BLOB.len());
+                    Ok(ARM_M7_CRC32_BLOB.to_vec())
+                } else {
+                    // Cortex-M4/M33 - use standard performance build
+                    const ARM_THUMB_CRC32_SLICE4_BLOB: &[u8] = include_bytes!("../../../crc32-blobs/arm-thumb/crc32_slice4_optimized.bin");
+                    tracing::debug!("Using ARM Cortex-M4/M33 optimized CRC32 blob ({} bytes)", ARM_THUMB_CRC32_SLICE4_BLOB.len());
+                    Ok(ARM_THUMB_CRC32_SLICE4_BLOB.to_vec())
+                }
+            }
+            CoreType::Armv8m => {
+                // Cortex-M23/M33 - use standard performance build  
+                const ARM_THUMB_CRC32_SLICE4_BLOB: &[u8] = include_bytes!("../../../crc32-blobs/arm-thumb/crc32_slice4_optimized.bin");
+                tracing::debug!("Using ARM Cortex-M23/M33 CRC32 blob ({} bytes)", ARM_THUMB_CRC32_SLICE4_BLOB.len());
+                Ok(ARM_THUMB_CRC32_SLICE4_BLOB.to_vec())
+            }
+            _ => {
+                // Unknown ARM core - use standard performance build as fallback
+                const ARM_THUMB_CRC32_SLICE4_BLOB: &[u8] = include_bytes!("../../../crc32-blobs/arm-thumb/crc32_slice4_optimized.bin");
+                tracing::debug!("Unknown ARM core type {:?}, using standard CRC32 blob ({} bytes)", core_type, ARM_THUMB_CRC32_SLICE4_BLOB.len());
+                Ok(ARM_THUMB_CRC32_SLICE4_BLOB.to_vec())
+            }
+        }
+    }
+
+    /// Detect if the target is Cortex-M7 for enhanced performance optimizations
+    fn is_cortex_m7_target(&self, session: &Session) -> bool {
+        // Check target name for common M7-based MCUs
+        let target_name = session.target().name.to_lowercase();
+        
+        // Common Cortex-M7 based MCU families
+        if target_name.contains("stm32f7") ||
+           target_name.contains("stm32h7") ||
+           target_name.contains("stm32u5") ||
+           target_name.contains("imxrt1") ||
+           target_name.contains("sam70") ||
+           target_name.contains("samv7") ||
+           target_name.contains("same70") ||
+           target_name.contains("mk82") ||
+           target_name.contains("mk28") {
+            tracing::debug!("Detected Cortex-M7 target: {}", target_name);
+            return true;
+        }
+        
+        // TODO: Future enhancement - read CPUID register for precise detection
+        // This would allow detection of M7 cores even in targets not listed above
+        false
     }
 
     /// Execute CRC32 calculation on target device
