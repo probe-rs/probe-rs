@@ -1,0 +1,1 @@
+On ARM DAP, abort AP transaction to un-stuck DP when there is a stuck AP transaction.
