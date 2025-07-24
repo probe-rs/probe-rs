@@ -37,6 +37,15 @@ CFLAGS_M0PLUS = -march=armv6-m -mcpu=cortex-m0plus -mthumb \
                 -fno-common -fno-builtin \
                 -Wall -Wextra -std=c11
 
+# Cortex-M7 specific optimizations for maximum performance
+CFLAGS_M7 = -march=armv7e-m -mtune=cortex-m7 -mthumb \
+            -O3 -flto \
+            -funroll-loops -finline-functions \
+            -fomit-frame-pointer -fno-stack-protector \
+            -ffunction-sections -fdata-sections \
+            -fno-common -fno-builtin \
+            -Wall -Wextra -std=c11
+
 # Memory optimization flags (for size-constrained targets)
 CFLAGS_SIZE = -march=armv6-m -mcpu=cortex-m0plus -mthumb \
               -Os -flto \
@@ -60,7 +69,7 @@ SRC = crc32_slice4_optimized.c
 SRC_COMPARE = crc32.c
 
 # Build all variants
-all: performance m0plus size compare analyze
+all: performance m0plus m7 size compare analyze
 
 # Performance-optimized build (default)
 performance: crc32_slice4_optimized.bin crc32_slice4_optimized.hex
@@ -73,6 +82,12 @@ m0plus: crc32_slice4_m0plus.bin crc32_slice4_m0plus.hex
 	@echo "=== CORTEX-M0+ BUILD COMPLETE ==="
 	@echo "Target: ARM Cortex-M0+ compatible"
 	@echo "Binary size: $$(stat -c%s crc32_slice4_m0plus.bin) bytes"
+
+# Cortex-M7 optimized build
+m7: crc32_slice4_m7.bin crc32_slice4_m7.hex
+	@echo "=== CORTEX-M7 BUILD COMPLETE ==="
+	@echo "Target: ARM Cortex-M7 optimized"
+	@echo "Binary size: $$(stat -c%s crc32_slice4_m7.bin) bytes"
 
 # Size-optimized build
 size: crc32_slice4_size.bin crc32_slice4_size.hex
@@ -110,6 +125,20 @@ crc32_slice4_m0plus.bin: crc32_slice4_m0plus.elf
 crc32_slice4_m0plus.hex: crc32_slice4_m0plus.elf
 	$(OBJCOPY) -O ihex $< $@
 
+# M7 optimized build
+crc32_slice4_m7.o: $(SRC) crc32.ld
+	$(CC) $(CFLAGS_M7) -c $< -o $@
+
+crc32_slice4_m7.elf: crc32_slice4_m7.o
+	$(CC) $(CFLAGS_M7) $(LDFLAGS_PERF) $< -o $@
+	$(SIZE) $@
+
+crc32_slice4_m7.bin: crc32_slice4_m7.elf
+	$(OBJCOPY) -O binary $< $@
+
+crc32_slice4_m7.hex: crc32_slice4_m7.elf
+	$(OBJCOPY) -O ihex $< $@
+
 # Size-optimized build
 crc32_slice4_size.o: $(SRC) crc32.ld
 	$(CC) $(CFLAGS_SIZE) -c $< -o $@
@@ -128,9 +157,10 @@ crc32_slice4_size.hex: crc32_slice4_size.elf
 compare: crc32_original.bin performance
 	@echo ""
 	@echo "=== PERFORMANCE COMPARISON ==="
-	@echo "Original CRC32:     $$(stat -c%s crc32_original.bin) bytes"
+	@echo "Original CRC32:      $$(stat -c%s crc32_original.bin) bytes"
 	@echo "Slicing-by-4 (perf): $$(stat -c%s crc32_slice4_optimized.bin) bytes"
-	@echo "Slicing-by-4 (M0+): $$(stat -c%s crc32_slice4_m0plus.bin || echo 'Not built') bytes"
+	@echo "Slicing-by-4 (M0+):  $$(stat -c%s crc32_slice4_m0plus.bin || echo 'Not built') bytes"
+	@echo "Slicing-by-4 (M7):   $$(stat -c%s crc32_slice4_m7.bin || echo 'Not built') bytes"
 	@echo "Slicing-by-4 (size): $$(stat -c%s crc32_slice4_size.bin || echo 'Not built') bytes"
 	@echo ""
 	@if [ -f crc32_slice4_optimized.bin ]; then \
@@ -164,7 +194,9 @@ analyze: performance
 	@echo ""
 	@echo "🎯 EXPECTED PERFORMANCE:"
 	@echo "  - Standard CRC32: ~111 KB/s baseline"
-	@echo "  - Slicing-by-4: ~600-800 KB/s (6-8x improvement)"
+	@echo "  - Slicing-by-4 (M0+): ~500-650 KB/s (5-6x improvement)"
+	@echo "  - Slicing-by-4 (M3/M4): ~600-800 KB/s (6-8x improvement)"
+	@echo "  - Slicing-by-4 (M7): ~1200-2400 KB/s (12-24x improvement)"
 	@echo "  - Memory usage: 4KB lookup tables"
 	@echo ""
 
