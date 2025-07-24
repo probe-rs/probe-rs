@@ -56,6 +56,10 @@ pub struct FlashAlgorithm {
     /// the list, then double buffered programming will be enabled.
     pub page_buffers: Vec<u64>,
 
+    /// Base address and size of persistent buffer for incremental flash optimization.
+    /// This buffer persists data between verify and program operations to avoid redundant USB transfers.
+    pub persistent_buffer: Option<(u64, u64)>, // (address, size)
+
     /// Location of optional RTT control block.
     ///
     /// If this is present, the flash algorithm supports debug output over RTT.
@@ -343,18 +347,45 @@ impl FlashAlgorithm {
         }
 
         // To determine the stack bottom, we need to know if the data is double buffered.
-        let double_buffering = if ram_for_data >= 2 * buffer_page_size {
-            // The data may be double buffered
+        // Also calculate space for persistent buffer for incremental flash optimization.
+        let max_sector_size = raw.flash_properties.sectors.iter()
+            .map(|s| s.size)
+            .max().unwrap_or(4096);
+        let persistent_buffer_size = max_sector_size as u64;
+        
+        let double_buffering = if ram_for_data >= 2 * buffer_page_size + persistent_buffer_size {
+            // The data may be double buffered AND we have space for persistent buffer
             // TODO: maybe allow disabling in the target description?
             true
+        } else if ram_for_data >= buffer_page_size + persistent_buffer_size {
+            // Single buffering + persistent buffer
+            false
+        } else if ram_for_data >= 2 * buffer_page_size {
+            // Double buffering without persistent buffer (fallback)
+            true
         } else if ram_for_data >= buffer_page_size {
-            // The data is not double buffered. Place the stack at the end of the RAM region.
+            // Single buffering without persistent buffer (fallback)
             false
         } else {
             // We can't place data and stack.
             // TODO: this should probably be done in the target validation.
             // TODO: make the errors a bit more meaningful.
             return Err(FlashError::InvalidFlashAlgorithmStackSize { size: stack_size });
+        };
+
+        // Calculate persistent buffer allocation (if we have enough space)
+        let has_persistent_buffer = if double_buffering {
+            ram_for_data >= 2 * buffer_page_size + persistent_buffer_size
+        } else {
+            ram_for_data >= buffer_page_size + persistent_buffer_size
+        };
+
+        let persistent_buffer = if has_persistent_buffer {
+            let page_count = if double_buffering { 2 } else { 1 };
+            let persistent_addr = data_load_addr + page_count * buffer_page_size;
+            Some((persistent_addr, persistent_buffer_size))
+        } else {
+            None
         };
 
         // We need to make sure the blocks don't overlap and we have enough memory.
@@ -367,9 +398,10 @@ impl FlashAlgorithm {
                 code_end // already a multiple of stack_align
             } else {
                 // The data and the stack are in the same region. There is not enough space
-                // for the stack below the data. Place the stack after the data.
+                // for the stack below the data. Place the stack after the data (and persistent buffer).
                 let page_count = if double_buffering { 2 } else { 1 };
-                (data_load_addr + page_count * buffer_page_size).next_multiple_of(stack_align)
+                let persistent_size = if has_persistent_buffer { persistent_buffer_size } else { 0 };
+                (data_load_addr + page_count * buffer_page_size + persistent_size).next_multiple_of(stack_align)
             };
 
         // Now we can place the stack.
@@ -389,6 +421,11 @@ impl FlashAlgorithm {
         };
 
         tracing::debug!("Page buffers: {:#010x?}", page_buffers);
+        if let Some((addr, size)) = persistent_buffer {
+            tracing::debug!("Persistent buffer: {:#010x} ({} bytes)", addr, size);
+        } else {
+            tracing::debug!("Persistent buffer: not available (insufficient RAM)");
+        }
 
         let name = raw.name.clone();
 
@@ -408,11 +445,12 @@ impl FlashAlgorithm {
             static_base: code_start + raw.data_section_offset,
             stack_top,
             stack_size,
+            stack_overflow_check: raw.stack_overflow_check(),
             page_buffers,
+            persistent_buffer,
             rtt_control_block: raw.rtt_location,
             flash_properties: raw.flash_properties.clone(),
             transfer_encoding: raw.transfer_encoding.unwrap_or_default(),
-            stack_overflow_check: raw.stack_overflow_check(),
         })
     }
 

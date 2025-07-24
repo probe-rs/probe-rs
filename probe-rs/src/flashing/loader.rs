@@ -476,7 +476,23 @@ impl FlashLoader {
         mut options: DownloadOptions,
     ) -> Result<(), FlashError> {
         tracing::debug!("Committing FlashLoader!");
+        tracing::debug!("DownloadOptions: incremental={}, do_chip_erase={}, skip_erase={}, verify={}", 
+            options.incremental, options.do_chip_erase, options.skip_erase, options.verify);
+        
+        // Debug builder contents
+        tracing::debug!("FlashLoader builder contents:");
+        for (&address, data) in &self.builder.data {
+            tracing::debug!("  Data chunk: {:#010X}..{:#010X} ({} bytes)", address, address + data.len() as u64, data.len());
+        }
+        if self.builder.data.is_empty() {
+            tracing::debug!("  Builder is EMPTY - no data to flash!");
+        }
         let mut algos = self.prepare_plan(session, options.keep_unwritten_bytes)?;
+        tracing::debug!("prepare_plan() returned {} flash algorithms", algos.len());
+        if algos.is_empty() {
+            tracing::debug!("No flash algorithms returned - no data to program!");
+            return Ok(());
+        }
 
         if options.dry_run {
             tracing::info!("Skipping programming, dry run!");
@@ -520,6 +536,7 @@ impl FlashLoader {
             }
 
             // Program the data.
+            tracing::debug!("Calling flasher.program with incremental={}", options.incremental);
             flasher.program(
                 session,
                 &progress,
@@ -527,6 +544,7 @@ impl FlashLoader {
                 do_use_double_buffering,
                 options.skip_erase || did_chip_erase,
                 options.verify,
+                options.incremental,
             )?;
         }
 
@@ -758,10 +776,12 @@ impl FlashLoader {
             if options.keep_unwritten_bytes {
                 progress.add_progress_bar(ProgressOperation::Fill, Some(fill_size));
             }
-            if !options.do_chip_erase {
+            if !options.do_chip_erase && !options.incremental {
                 progress.add_progress_bar(ProgressOperation::Erase, Some(erase_size));
             }
-            progress.add_progress_bar(ProgressOperation::Program, Some(program_size));
+            if !options.incremental {
+                progress.add_progress_bar(ProgressOperation::Program, Some(program_size));
+            }
             if options.verify {
                 progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
             }
