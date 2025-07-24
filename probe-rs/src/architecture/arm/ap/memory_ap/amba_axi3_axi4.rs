@@ -61,10 +61,34 @@ impl super::MemoryApType for AmbaAxi3Axi4 {
                 probe.write_ap_register(self, csw)?;
                 self.csw = csw;
             }
-            DataSize::U64 | DataSize::U128 | DataSize::U256 => {
-                return Err(ArmError::UnsupportedTransferWidth(
-                    data_size.to_byte_count() * 8,
-                ));
+            DataSize::U64 | DataSize::U128 | DataSize::U256 if data_size != self.csw.Size => {
+                if !self.has_large_data_extension() {
+                    return Err(ArmError::UnsupportedTransferWidth(
+                        data_size.to_byte_count() * 8,
+                    ));
+                }
+
+                let csw = CSW {
+                    Size: data_size,
+                    ..self.csw
+                };
+
+                probe.write_ap_register(self, csw)?;
+
+                // MEM-AP Large Data Extension:
+                // "If the CSW.Size field is written with a value corresponding to a size that is not
+                // supported, or with a reserved value:
+                // • A read of the field returns a value corresponding to a supported size."
+                //
+                // So read back CSW to see if the extended size is actually supported.
+
+                self.csw = probe.read_ap_register(self)?;
+
+                if csw.Size != self.csw.Size {
+                    return Err(ArmError::UnsupportedTransferWidth(
+                        data_size.to_byte_count() * 8,
+                    ));
+                }
             }
             _ => {}
         }
