@@ -4,7 +4,7 @@ members = ["cargo:."]
 # Config for 'dist'
 [dist]
 # The preferred dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.28.0"
+cargo-dist-version = "0.28.2"
 # CI backends to support
 ci = "github"
 # Target platforms to build apps for (Rust target-triple syntax)
@@ -35,13 +35,6 @@ github-attestations = true
 global = "ubuntu-22.04"
 aarch64-unknown-linux-gnu = "buildjet-2vcpu-ubuntu-2204-arm"
 aarch64-unknown-linux-musl = "buildjet-2vcpu-ubuntu-2204-arm"
-
-[dist.github-custom-runners.x86_64-unknown-linux-gnu]
-# taken from <https://github.com/axodotdev/cargo-dist/issues/1760#issuecomment-2769218034>
-runner = "ubuntu-latest"
-
-[dist.github-custom-runners.x86_64-pc-windows-msvc]
-runner = "windows-2022"
 
 [dist.dependencies.apt]
 libudev-dev = '*'
