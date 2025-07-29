@@ -560,7 +560,27 @@ impl CmsisDap {
 
             match response.last_transfer_response.ack {
                 Ack::Ok => {
-                    tracing::trace!("Transfer status: ACK");
+                    // If less transfers than expected were executed, this
+                    // is not the response to the latest command from the batch.
+                    //
+                    // According to the CMSIS-DAP specification, this shouldn't happen,
+                    // the only time when not all transfers were executed is when an error occured.
+                    // Still, this seems to happen in practice.
+
+                    if count < batch.len() {
+                        tracing::warn!(
+                            "CMSIS_DAP: Only {}/{} transfers were executed, but no error was reported.",
+                            count,
+                            batch.len()
+                        );
+                        return Err(ArmError::Other(format!(
+                            "Possible error in CMSIS-DAP probe: Only {}/{} transfers were executed, but no error was reported.",
+                            count,
+                            batch.len()
+                        )));
+                    }
+
+                    tracing::trace!("Last transfer status: ACK");
                     return Ok(response.transfers[count - 1].data);
                 }
                 Ack::NoAck => {
