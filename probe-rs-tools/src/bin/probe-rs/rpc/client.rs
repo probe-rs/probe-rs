@@ -327,7 +327,11 @@ impl RpcClient {
     pub async fn upload_file(&self, src_path: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
         use anyhow::Context as _;
 
-        let src_path = src_path.as_ref().canonicalize()?;
+        let src_path = src_path
+            .as_ref()
+            .canonicalize()
+            .unwrap_or_else(|_| src_path.as_ref().to_path_buf());
+
         if self.is_localhost {
             return Ok(src_path);
         }
