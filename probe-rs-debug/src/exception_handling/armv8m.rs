@@ -395,39 +395,9 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         _raw_exception: u32,
     ) -> Result<DebugRegisters, DebugError> {
         let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
-        let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
-        let exc_return = ExcReturn(stack_frame_return_address);
 
-        let sp_value = if exc_return.is_exception_flag() == 0xFF {
-            let stack_info = (
-                exc_return.use_secure_stack(),
-                exc_return.stack_pointer_selection(),
-            );
-
-            let sp_reg_id = match stack_info {
-                (false, false) => 0b00011000, // non-secure, main stack pointer
-                (false, true) => 0b00011001,  // non-secure, process stack pointer
-                (true, false) => 0b00011010,  // secure, main stack pointer
-                (true, true) => 0b00011011,   // secure, process stack pointer
-            };
-            stackframe_registers
-                .get_register(sp_reg_id.into())
-                .ok_or_else(|| {
-                    Error::Register(
-                        "No Stack Pointer register. Please report this as a bug.".to_string(),
-                    )
-                })?
-                .value
-                .ok_or_else(|| {
-                    Error::Register(
-                        "No value for Stack Pointer register. Please report this as a bug."
-                            .to_string(),
-                    )
-                })?
-                .try_into()?
-        } else {
-            stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)?
-        };
+        let sp_value =
+            stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)?;
 
         memory_interface.read_32(sp_value, &mut calling_stack_registers)?;
         let mut calling_frame_registers = stackframe_registers.clone();
