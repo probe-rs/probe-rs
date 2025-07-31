@@ -62,6 +62,7 @@ impl ProbeError for CmsisDapError {}
 #[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum SendError {
     /// Error in the USB HID access.
+    #[cfg(feature = "cmsisdap_v1")]
     HidApi(#[from] hidapi::HidError),
 
     /// Error in the USB access.
@@ -172,6 +173,7 @@ pub enum RequestError {
 pub enum CmsisDapDevice {
     /// CMSIS-DAP v1 over HID.
     /// Stores a HID device handle and maximum HID report size.
+    #[cfg(feature = "cmsisdap_v1")]
     V1 {
         handle: hidapi::HidDevice,
         report_size: usize,
@@ -193,6 +195,7 @@ impl CmsisDapDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
         match self {
+            #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { handle, .. } => {
                 match handle.read_timeout(buf, USB_TIMEOUT.as_millis() as i32)? {
                     // Timeout is not indicated by error, but by returning 0 read bytes
@@ -209,6 +212,7 @@ impl CmsisDapDevice {
     /// Write `buf` to the probe, returning the number of bytes written on success.
     fn write(&self, buf: &[u8]) -> Result<usize, SendError> {
         match self {
+            #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
             CmsisDapDevice::V2 { handle, out_ep, .. } => {
                 // Skip first byte as it's set to 0 for HID transfers
@@ -224,6 +228,7 @@ impl CmsisDapDevice {
         tracing::debug!("Draining probe of any pending data.");
 
         match self {
+            #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 {
                 handle,
                 report_size,
@@ -261,6 +266,7 @@ impl CmsisDapDevice {
     pub(super) fn set_packet_size(&mut self, packet_size: usize) {
         tracing::debug!("Configuring probe to use packet size {}", packet_size);
         match self {
+            #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { report_size, .. } => {
                 *report_size = packet_size;
             }
@@ -308,6 +314,7 @@ impl CmsisDapDevice {
     /// Check if SWO streaming is supported by this device.
     pub(super) fn swo_streaming_supported(&self) -> bool {
         match self {
+            #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { .. } => false,
             CmsisDapDevice::V2 { swo_ep, .. } => swo_ep.is_some(),
         }
@@ -320,6 +327,7 @@ impl CmsisDapDevice {
     /// On timeout, returns a zero-length buffer.
     pub(super) fn read_swo_stream(&self, timeout: Duration) -> Result<Vec<u8>, CmsisDapError> {
         match self {
+            #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { .. } => Err(CmsisDapError::SwoModeNotAvailable),
             CmsisDapDevice::V2 { handle, swo_ep, .. } => match swo_ep {
                 Some((ep, len)) => {
@@ -432,6 +440,7 @@ fn send_command_inner<Req: Request>(
     // on v2 we can truncate to just the required data.
     // Add one byte for HID report ID.
     let buffer_len: usize = match device {
+        #[cfg(feature = "cmsisdap_v1")]
         CmsisDapDevice::V1 { report_size, .. } => *report_size + 1,
         CmsisDapDevice::V2 {
             max_packet_size, ..
@@ -441,12 +450,14 @@ fn send_command_inner<Req: Request>(
 
     // Leave byte 0 as the HID report, and write the command and request to the buffer.
     buffer[1] = Req::COMMAND_ID as u8;
+    #[cfg_attr(not(feature = "cmsisdap_v1"), allow(unused_mut))]
     let mut size = request.to_bytes(&mut buffer[2..])? + 2;
 
     // For HID devices we must write a full report every time,
     // so set the transfer size to the report size, plus one
     // byte for the HID report ID. On v2 devices, we just
     // write the exact required size every time.
+    #[cfg(feature = "cmsisdap_v1")]
     if let CmsisDapDevice::V1 { report_size, .. } = device {
         size = *report_size + 1;
     }

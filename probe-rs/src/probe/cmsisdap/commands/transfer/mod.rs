@@ -212,8 +212,8 @@ impl Request for TransferRequest {
                 7 => Ack::NoAck,
                 _ => Ack::NoAck,
             },
-            protocol_error: buffer[1] & 0x8 != 0,
-            _value_mismatch: buffer[1] & 0x10 != 0,
+            protocol_error: buffer[1] & (1 << 3) != 0,
+            _value_mismatch: buffer[1] & (1 << 4) != 0,
         };
         let mut buffer = &buffer[2..];
 
