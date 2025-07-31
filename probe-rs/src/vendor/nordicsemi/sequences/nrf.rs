@@ -3,6 +3,7 @@
 use crate::{
     architecture::arm::{
         ArmDebugInterface, ArmError, FullyQualifiedApAddress,
+        ap::{self, ApRegister},
         dp::DpAddress,
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
@@ -48,9 +49,9 @@ const APPLICATION_RESET_S_NETWORK_FORCEOFF_REGISTER: u32 = 0x50005614;
 const APPLICATION_RESET_NS_NETWORK_FORCEOFF_REGISTER: u32 = 0x40005614;
 const RELEASE_FORCEOFF: u32 = 0;
 
-/// Unlocks the core by performing an erase all procedure.
+/// Performs an erase all operation on the core.
 /// The `ap_address` must be of the ctrl ap of the core.
-fn unlock_core(
+fn erase_all(
     arm_interface: &mut dyn ArmDebugInterface,
     ap_address: &FullyQualifiedApAddress,
     permissions: &crate::Permissions,
@@ -72,6 +73,28 @@ fn unlock_core(
         std::thread::sleep(std::time::Duration::from_millis(20));
 
         tracing::debug!("Soft reset complete");
+    }
+
+    Ok(())
+}
+
+/// Unlocks the core by performing an erase all procedure.
+/// If the operation fails, it will re-attempt the operation once.
+/// The `ap_address` must be of the ctrl ap of the core.
+fn unlock_core(
+    arm_interface: &mut dyn ArmDebugInterface,
+    ap_address: &FullyQualifiedApAddress,
+    permissions: &crate::Permissions,
+    reset_after_erase: bool,
+) -> Result<(), ArmError> {
+    erase_all(arm_interface, ap_address, permissions, reset_after_erase)?;
+
+    let csw = arm_interface.read_raw_ap_register(ap_address, ap::CSW::ADDRESS)?;
+    let debug_status = csw & (1 << 6); // DbgStatus bit [6]
+    if debug_status == 0 {
+        tracing::warn!("Core is still locked after erase operation. Retrying");
+
+        erase_all(arm_interface, ap_address, permissions, reset_after_erase)?;
     }
 
     Ok(())
