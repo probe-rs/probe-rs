@@ -10,7 +10,7 @@ use crate::{
 };
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
-    ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+    ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, RiscvDtm, XtensaCoreAccessOptions,
 };
 use std::{sync::Arc, time::Duration};
 
@@ -707,6 +707,10 @@ pub enum ResolvedCoreOptions {
         sequence: Arc<dyn ArmDebugSequence>,
         options: ArmCoreAccessOptions,
     },
+    RiscvBehindArm {
+        sequence: Arc<dyn ArmDebugSequence>,
+        options: RiscvCoreAccessOptions,
+    },
     Riscv {
         sequence: Arc<dyn RiscvDebugSequence>,
         options: RiscvCoreAccessOptions,
@@ -724,7 +728,20 @@ impl ResolvedCoreOptions {
                 Self::Arm { sequence, options }
             }
             (CoreAccessOptions::Riscv(options), DebugSequence::Riscv(sequence)) => {
+                if options
+                    .dtm
+                    .as_ref()
+                    .is_none_or(|dtm| matches!(dtm, RiscvDtm::Jtag))
+                {
+                    unreachable!("RISCV using JTAG needs a Riscv Debug sequence")
+                }
                 Self::Riscv { sequence, options }
+            }
+            (CoreAccessOptions::Riscv(options), DebugSequence::Arm(sequence)) => {
+                if !matches!(options.dtm, Some(RiscvDtm::ArmDebug { .. })) {
+                    unreachable!("RISCV behind ARM needs a ArmDebug sequence")
+                }
+                Self::RiscvBehindArm { sequence, options }
             }
             (CoreAccessOptions::Xtensa(options), DebugSequence::Xtensa(sequence)) => {
                 Self::Xtensa { sequence, options }
@@ -740,6 +757,7 @@ impl ResolvedCoreOptions {
             Self::Arm { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Riscv { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Xtensa { options, .. } => options.jtag_tap.unwrap_or(0),
+            Self::RiscvBehindArm { options, .. } => options.jtag_tap.unwrap_or(0),
         }
     }
 }
@@ -755,6 +773,11 @@ impl std::fmt::Debug for ResolvedCoreOptions {
             Self::Riscv { options, .. } => f
                 .debug_struct("Riscv")
                 .field("sequence", &"<RiscvDebugSequence>")
+                .field("options", options)
+                .finish(),
+            Self::RiscvBehindArm { options, .. } => f
+                .debug_struct("RiscvBehindArm")
+                .field("sequence", &"<ArmDebugSequence>")
                 .field("options", options)
                 .finish(),
             Self::Xtensa { options, .. } => f

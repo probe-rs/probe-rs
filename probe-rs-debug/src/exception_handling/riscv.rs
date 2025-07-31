@@ -20,9 +20,9 @@ impl RiscvExceptionHandler {
 
         if sp < 8 {
             // Stack pointer is too low, cannot unwind.
-            return Err(DebugError::Other(
-                "Stack pointer is too low to unwind".to_string(),
-            ));
+            return Err(DebugError::Other(format!(
+                "Stack pointer {sp:#010x} is too low to unwind",
+            )));
         }
 
         let mut stack_frame = [0; 2];

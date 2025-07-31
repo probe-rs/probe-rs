@@ -30,8 +30,10 @@ typed-path = "0.11.0"
 workspace = true
 
 [dev-dependencies]
+clap = { version = "4.5.40", features = ["derive"] }
 insta = { version = "1.41.1", features = ["yaml"] }
 pretty_assertions = "1.4.1"
 probe-rs = { workspace = true, features = ["test"] }
 termtree = "0.5.1"
 test-case = "3.3.1"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }

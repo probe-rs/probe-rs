@@ -136,6 +136,7 @@ git-version = "0.3"
 [dev-dependencies]
 pretty_assertions = "1.4.0"
 test-case = "3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Set the proper name for the homebrew formula
 [package.metadata.dist]

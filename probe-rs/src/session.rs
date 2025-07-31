@@ -2,7 +2,7 @@ use crate::{
     Core, CoreType, Error,
     architecture::{
         arm::{
-            ArmError, SwoReader,
+            ArmError, FullyQualifiedApAddress, SwoReader,
             communication_interface::ArmDebugInterface,
             component::{TraceSink, get_arm_components},
             dp::DpAddress,
@@ -16,14 +16,17 @@ use crate::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState, XtensaError,
         },
     },
-    config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector, registry::Registry},
+    config::{
+        CoreExt, DebugInterface, DebugSequence, RegistryError, Target, TargetSelector,
+        registry::Registry,
+    },
     core::{Architecture, CombinedCoreState},
     probe::{
         AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
         fake_probe::FakeProbe, list::Lister,
     },
 };
-use std::ops::DerefMut;
+use std::{collections::HashMap, ops::DerefMut};
 use std::{fmt, sync::Arc, time::Duration};
 
 /// The `Session` struct represents an active debug session.
@@ -98,14 +101,19 @@ impl fmt::Debug for JtagInterface {
 
 // TODO: this is somewhat messy because I omitted separating the Probe out of the ARM interface.
 enum ArchitectureInterface {
-    Arm(Box<dyn ArmDebugInterface + 'static>),
+    Arm(
+        Box<dyn ArmDebugInterface + 'static>,
+        // TODO: Figure out where to store this, workaround so we can get
+        // something to work for the DTM
+        HashMap<FullyQualifiedApAddress, RiscvDebugInterfaceState>,
+    ),
     Jtag(Probe, Vec<JtagInterface>),
 }
 
 impl fmt::Debug for ArchitectureInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ArchitectureInterface::Arm(_) => f.write_str("ArchitectureInterface::Arm(..)"),
+            ArchitectureInterface::Arm(_, _) => f.write_str("ArchitectureInterface::Arm(..)"),
             ArchitectureInterface::Jtag(_, ifaces) => f
                 .debug_tuple("ArchitectureInterface::Jtag(..)")
                 .field(ifaces)
@@ -121,7 +129,9 @@ impl ArchitectureInterface {
         combined_state: &'probe mut CombinedCoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
-            ArchitectureInterface::Arm(interface) => combined_state.attach_arm(target, interface),
+            ArchitectureInterface::Arm(interface, riscv_state) => {
+                combined_state.attach_arm_debug(target, interface, riscv_state)
+            }
             ArchitectureInterface::Jtag(probe, ifaces) => {
                 let idx = combined_state.jtag_tap_index();
                 if let Some(probe) = probe.try_as_jtag_probe() {
@@ -173,10 +183,13 @@ impl Session {
             })
             .collect();
 
-        let mut session = if let Architecture::Arm = target.architecture() {
-            Self::attach_arm_debug_interface(probe, target, attach_method, permissions, cores)?
-        } else {
-            Self::attach_jtag(probe, target, attach_method, permissions, cores)?
+        let mut session = match target.debug_interface {
+            DebugInterface::ArmDebugInterface => {
+                Self::attach_arm_debug_interface(probe, target, attach_method, permissions, cores)?
+            }
+            DebugInterface::RiscvDtm | DebugInterface::Xtensa => {
+                Self::attach_jtag(probe, target, attach_method, permissions, cores)?
+            }
         };
 
         session.clear_all_hw_breakpoints()?;
@@ -192,6 +205,8 @@ impl Session {
         cores: Vec<CombinedCoreState>,
     ) -> Result<Self, Error> {
         let default_core = target.default_core();
+
+        let mut riscv_state_map = HashMap::new();
 
         let default_memory_ap = default_core.memory_ap().ok_or_else(|| {
             Error::Other(format!(
@@ -266,7 +281,12 @@ impl Session {
 
         // For each core, setup debugging
         for core in &cores {
-            core.enable_arm_debug(&mut *interface)?;
+            tracing::info!("Enabling debug for core {}", core.id);
+            let riscv_state = core.enable_arm_debug(&mut *interface)?;
+
+            if let Some(riscv_state) = riscv_state {
+                riscv_state_map.insert(core.arm_memory_ap(), riscv_state);
+            }
         }
 
         if attach_method == AttachMethod::UnderReset {
@@ -295,7 +315,7 @@ impl Session {
 
             let mut session = Session {
                 target,
-                interfaces: ArchitectureInterface::Arm(interface),
+                interfaces: ArchitectureInterface::Arm(interface, riscv_state_map),
                 cores,
                 configured_trace_sink: None,
             };
@@ -318,7 +338,7 @@ impl Session {
         } else {
             Ok(Session {
                 target,
-                interfaces: ArchitectureInterface::Arm(interface),
+                interfaces: ArchitectureInterface::Arm(interface, riscv_state_map),
                 cores,
                 configured_trace_sink: None,
             })
@@ -360,17 +380,20 @@ impl Session {
         } else {
             highest_idx + 1
         };
+
         let mut interfaces = std::iter::repeat_with(|| JtagInterface::Unknown)
             .take(tap_count)
             .collect::<Vec<_>>();
 
         // Create a new interface by walking through the cores and initialising the TAPs that
         // we find mentioned.
-        for core in cores.iter() {
-            let iface_idx = core.jtag_tap_index();
+        for core_state in cores.iter() {
+            let iface_idx = core_state.jtag_tap_index();
 
-            let core_arch = core.core_type().architecture();
+            let core_arch = core_state.core_type().architecture();
 
+            // If the interface at the index is already initialized, check if it matches
+            // the expected architecture.
             if let Some(debug_arch) = interfaces[iface_idx].architecture() {
                 if core_arch == debug_arch {
                     // Already initialised.
@@ -617,7 +640,7 @@ impl Session {
     /// Get the Arm probe interface.
     pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmDebugInterface, ArmError> {
         let interface = match &mut self.interfaces {
-            ArchitectureInterface::Arm(state) => state.deref_mut(),
+            ArchitectureInterface::Arm(state, _) => state.deref_mut(),
             _ => return Err(ArmError::NoArmTarget),
         };
 
@@ -727,7 +750,7 @@ impl Session {
     /// NotImplemented if no custom erase sequence exists
     /// Err(e) if the custom erase sequence failed
     pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
-        let ArchitectureInterface::Arm(ref mut interface) = self.interfaces else {
+        let ArchitectureInterface::Arm(ref mut interface, _) = self.interfaces else {
             return Err(Error::NotImplemented(
                 "Debug Erase Sequence is not implemented for non-ARM targets.",
             ));
@@ -846,7 +869,7 @@ impl Session {
     /// Return the `Architecture` of the currently connected chip.
     pub fn architecture(&self) -> Architecture {
         match &self.interfaces {
-            ArchitectureInterface::Arm(_) => Architecture::Arm,
+            ArchitectureInterface::Arm(_, _) => Architecture::Arm,
             ArchitectureInterface::Jtag(_, ifaces) => {
                 if let JtagInterface::Riscv(_) = &ifaces[0] {
                     Architecture::Riscv
@@ -901,12 +924,12 @@ const _: fn() = || {
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
-        if let Err(err) = self.clear_all_hw_breakpoints() {
-            tracing::warn!(
-                "Could not clear all hardware breakpoints: {:?}",
-                anyhow::anyhow!(err)
-            );
-        }
+        //if let Err(err) = self.clear_all_hw_breakpoints() {
+        //    tracing::warn!(
+        //        "Could not clear all hardware breakpoints: {:?}",
+        //        anyhow::anyhow!(err)
+        //    );
+        //}
 
         // Call any necessary deconfiguration/shutdown hooks.
         if let Err(err) = { 0..self.cores.len() }.try_for_each(|core| match self.core(core) {

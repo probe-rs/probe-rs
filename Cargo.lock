@@ -3078,6 +3078,7 @@ version = "0.29.0"
 dependencies = [
  "addr2line 0.25.0",
  "bitfield",
+ "clap",
  "gimli 0.32.0",
  "insta",
  "itertools 0.14.0",
@@ -3091,6 +3092,7 @@ dependencies = [
  "test-case",
  "thiserror 2.0.12",
  "tracing",
+ "tracing-subscriber",
  "typed-path",
 ]
 

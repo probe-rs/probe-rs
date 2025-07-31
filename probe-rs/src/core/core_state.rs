@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     Core, CoreType, Error, Target,
     architecture::{
@@ -7,8 +9,13 @@ use crate::{
             dp::DpAddress,
         },
         riscv::{
-            RiscvCoreState,
-            communication_interface::{RiscvCommunicationInterface, RiscvError},
+            Riscv32, RiscvCoreState,
+            communication_interface::{
+                RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
+                RiscvInterfaceBuilder,
+            },
+            dtm::adi_dtm::AdiDtmBuilder,
+            sequences::DefaultRiscvSequence,
         },
         xtensa::{XtensaCoreState, communication_interface::XtensaCommunicationInterface},
     },
@@ -38,99 +45,148 @@ impl CombinedCoreState {
         self.core_state.core_access_options.jtag_tap_index()
     }
 
-    pub(crate) fn attach_arm<'probe>(
+    /// Attach to a target using the ARM debug interface
+    pub(crate) fn attach_arm_debug<'probe>(
         &'probe mut self,
         target: &'probe Target,
         arm_interface: &'probe mut Box<dyn ArmDebugInterface>,
+        riscv_state: &'probe mut HashMap<FullyQualifiedApAddress, RiscvDebugInterfaceState>,
     ) -> Result<Core<'probe>, Error> {
         let name = &target.cores[self.id].name;
 
         let memory = arm_interface.memory_interface(&self.arm_memory_ap())?;
 
-        let ResolvedCoreOptions::Arm { options, sequence } = &self.core_state.core_access_options
-        else {
-            unreachable!(
-                "The stored core state is not compatible with the ARM architecture. \
-                This should never happen. Please file a bug if it does."
-            );
-        };
-        let debug_sequence = sequence.clone();
+        match &self.core_state.core_access_options {
+            ResolvedCoreOptions::Arm { sequence, options } => {
+                let debug_sequence = sequence.clone();
 
-        Ok(match &mut self.specific_state {
-            SpecificCoreState::Armv6m(s) => Core::new(
-                self.id,
-                name,
-                target,
-                crate::architecture::arm::armv6m::Armv6m::new(memory, s, debug_sequence)?,
-            ),
-            SpecificCoreState::Armv7a(s) => Core::new(
-                self.id,
-                name,
-                target,
-                crate::architecture::arm::armv7a::Armv7a::new(
-                    memory,
-                    s,
-                    options.debug_base.expect("base_address not specified"),
-                    debug_sequence,
-                )?,
-            ),
-            SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
-                self.id,
-                name,
-                target,
-                crate::architecture::arm::armv7m::Armv7m::new(memory, s, debug_sequence)?,
-            ),
-            SpecificCoreState::Armv8a(s) => Core::new(
-                self.id,
-                name,
-                target,
-                crate::architecture::arm::armv8a::Armv8a::new(
-                    memory,
-                    s,
-                    options.debug_base.expect("base_address not specified"),
-                    options.cti_base.expect("cti_address not specified"),
-                    debug_sequence,
-                )?,
-            ),
-            SpecificCoreState::Armv8m(s) => Core::new(
-                self.id,
-                name,
-                target,
-                crate::architecture::arm::armv8m::Armv8m::new(memory, s, debug_sequence)?,
-            ),
+                let core = match &mut self.specific_state {
+                    SpecificCoreState::Armv6m(s) => Core::new(
+                        self.id,
+                        name,
+                        target,
+                        crate::architecture::arm::armv6m::Armv6m::new(memory, s, debug_sequence)?,
+                    ),
+                    SpecificCoreState::Armv7a(s) => Core::new(
+                        self.id,
+                        name,
+                        target,
+                        crate::architecture::arm::armv7a::Armv7a::new(
+                            memory,
+                            s,
+                            options.debug_base.expect("base_address not specified"),
+                            debug_sequence,
+                        )?,
+                    ),
+                    SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
+                        self.id,
+                        name,
+                        target,
+                        crate::architecture::arm::armv7m::Armv7m::new(memory, s, debug_sequence)?,
+                    ),
+                    SpecificCoreState::Armv8a(s) => Core::new(
+                        self.id,
+                        name,
+                        target,
+                        crate::architecture::arm::armv8a::Armv8a::new(
+                            memory,
+                            s,
+                            options.debug_base.expect("base_address not specified"),
+                            options.cti_base.expect("cti_address not specified"),
+                            debug_sequence,
+                        )?,
+                    ),
+                    SpecificCoreState::Armv8m(s) => Core::new(
+                        self.id,
+                        name,
+                        target,
+                        crate::architecture::arm::armv8m::Armv8m::new(memory, s, debug_sequence)?,
+                    ),
+                    _ => {
+                        unreachable!(
+                            "The stored core state is not compatible with the ARM architecture. \
+                                    This should never happen. Please file a bug if it does."
+                        );
+                    }
+                };
+
+                Ok(core)
+            }
+            ResolvedCoreOptions::RiscvBehindArm { options, .. } => {
+                let ap = self.arm_memory_ap();
+                let SpecificCoreState::Riscv(core_state) = &mut self.specific_state else {
+                    unreachable!(
+                        "The stored core state is not compatible with the RISCV architecture. \
+                                This should never happen. Please file a bug if it does."
+                    );
+                };
+
+                // TODO: Error handling..
+                let riscv_state = riscv_state.get_mut(&ap).expect("Missing state");
+
+                // TODO: Proper sequence
+                let sequence = DefaultRiscvSequence::create();
+
+                let builder = Box::new(AdiDtmBuilder::new(memory, options.offset));
+
+                let comm_interface = builder.attach(riscv_state)?;
+
+                let core_interface = Riscv32::new(comm_interface, core_state, sequence)?;
+
+                Ok(Core::new(self.id, name, target, core_interface))
+            }
             _ => {
                 unreachable!(
                     "The stored core state is not compatible with the ARM architecture. \
-                    This should never happen. Please file a bug if it does."
+                   This should never happen. Please file a bug if it does."
                 );
             }
-        })
+        }
     }
 
     pub(crate) fn enable_arm_debug(
         &self,
         interface: &mut dyn ArmDebugInterface,
-    ) -> Result<(), Error> {
-        let ResolvedCoreOptions::Arm { sequence, options } = &self.core_state.core_access_options
-        else {
-            unreachable!(
-                "The stored core state is not compatible with the ARM architecture. \
+    ) -> Result<Option<RiscvDebugInterfaceState>, Error> {
+        match &self.core_state.core_access_options {
+            ResolvedCoreOptions::Arm { sequence, options } => {
+                tracing::debug_span!("debug_core_start", id = self.id()).in_scope(|| {
+                    // Enable debug mode
+                    sequence.debug_core_start(
+                        interface,
+                        &self.arm_memory_ap(),
+                        self.core_type(),
+                        options.debug_base,
+                        options.cti_base,
+                    )
+                })?;
+                Ok(None)
+            }
+            ResolvedCoreOptions::RiscvBehindArm { options, .. } => {
+                let ap = self.arm_memory_ap();
+
+                let memory = interface.memory_interface(&ap)?;
+
+                let builder = Box::new(AdiDtmBuilder::new(memory, options.offset));
+
+                let mut riscv_state = builder.create_state();
+
+                let mut communication_interface = builder.attach(&mut riscv_state)?;
+
+                communication_interface.enter_debug_mode()?;
+
+                drop(communication_interface);
+
+                // Just ignore this for now..
+                Ok(Some(riscv_state))
+            }
+            _ => {
+                unreachable!(
+                    "The stored core state is not compatible with the ARM architecture. \
                 This should never happen. Please file a bug if it does."
-            );
-        };
-
-        tracing::debug_span!("debug_core_start", id = self.id()).in_scope(|| {
-            // Enable debug mode
-            sequence.debug_core_start(
-                interface,
-                &self.arm_memory_ap(),
-                self.core_type(),
-                options.debug_base,
-                options.cti_base,
-            )
-        })?;
-
-        Ok(())
+                );
+            }
+        }
     }
 
     pub(crate) fn arm_reset_catch_set(
@@ -250,11 +306,32 @@ impl CoreState {
     }
 
     pub(crate) fn memory_ap(&self) -> FullyQualifiedApAddress {
-        let ResolvedCoreOptions::Arm { options, .. } = &self.core_access_options else {
-            unreachable!(
-                "The stored core state is not compatible with the ARM architecture. \
+        let options = match &self.core_access_options {
+            ResolvedCoreOptions::Arm { options, .. } => options,
+            ResolvedCoreOptions::RiscvBehindArm { options, .. } => {
+                // TODO: Better type safety
+
+                let ap = options
+                    .dtm
+                    .as_ref()
+                    .and_then(|dtm| dtm.ap())
+                    .expect("Riscv behind ARM needs AP");
+
+                match ap {
+                    probe_rs_target::ApAddress::V1(ap) => {
+                        return FullyQualifiedApAddress::v1_with_default_dp(*ap);
+                    }
+                    probe_rs_target::ApAddress::V2(ap) => {
+                        return FullyQualifiedApAddress::v2_with_default_dp(ApV2Address(Some(*ap)));
+                    }
+                }
+            }
+            _ => {
+                unreachable!(
+                    "The stored core state is not compatible with the ARM architecture. \
                 This should never happen. Please file a bug if it does."
-            );
+                );
+            }
         };
 
         let dp = match options.targetsel {

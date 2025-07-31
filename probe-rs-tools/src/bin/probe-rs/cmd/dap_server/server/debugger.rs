@@ -13,9 +13,8 @@ use crate::{
                 dap_types::{
                     Capabilities, DisconnectResponse, Event, ExitedEventBody,
                     InitializeRequestArguments, MessageSeverity, Request, RttWindowOpenedArguments,
-                    TerminatedEventBody,
+                    TerminatedEventBody, Thread, ThreadsResponseBody,
                 },
-                request_helpers::halt_core,
             },
             protocol::ProtocolAdapter,
         },
@@ -273,6 +272,9 @@ impl Debugger {
             "continue" => debug_adapter.r#continue(&mut target_core, &request),
             "evaluate" => debug_adapter.evaluate(&mut target_core, &request),
             "completions" => debug_adapter.completions(&mut target_core, &request),
+            "setExceptionBreakpoints" => {
+                debug_adapter.set_exception_breakpoints(&mut target_core, &request)
+            }
             other_command => {
                 // Unimplemented command.
                 debug_adapter.send_response::<()>(
@@ -331,6 +333,17 @@ impl Debugger {
                     debug_adapter.send_response::<DisconnectResponse>(&request, Ok(None))?;
 
                     return Ok(());
+                } else if request.command == "threads" {
+                    // TODO: DO not hardcode this
+
+                    let response = ThreadsResponseBody {
+                        threads: vec![Thread {
+                            id: 0,
+                            name: "Main Thread".to_string(),
+                        }],
+                    };
+
+                    debug_adapter.send_response(&request, Ok(Some(response)))?;
                 } else {
                     debug_adapter.log_to_console(format!(
                         "Ignoring request with command '{}', we can only handle 'launch' and 'attach' commands.", request.command
@@ -376,6 +389,8 @@ impl Debugger {
 
             return Err(error);
         }
+
+        eprintln!("Initialized");
 
         // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
         let error = loop {
@@ -488,7 +503,7 @@ impl Debugger {
 
         // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
         // Depending on supplied `config`, the core will be restarted at the end of initialization in the `configuration_done` request.
-        halt_core(&mut target_core.core)?;
+        target_core.core.halt(Duration::from_millis(100))?;
 
         // Before we complete, load the (optional) CMSIS-SVD file and its variable cache.
         // Configure the [CorePeripherals].
@@ -571,7 +586,7 @@ impl Debugger {
         let mut target_core = session_data.attach_core(target_core_config.core_index)?;
 
         // Immediately after attaching, halt the core, so that we can finish restart logic without bumping into user code.
-        halt_core(&mut target_core.core)?;
+        target_core.core.halt(Duration::from_millis(100))?;
 
         // Reset RTT so that the link can be re-established and the control block cleared.
         target_core.core_data.rtt_connection = None;
@@ -899,7 +914,7 @@ mod test {
     };
     use serde_json::json;
     use std::{
-        collections::{BTreeMap, HashMap, VecDeque},
+        collections::{HashMap, VecDeque},
         fmt::Display,
         path::PathBuf,
     };
@@ -982,17 +997,15 @@ mod test {
     }
 
     fn error_message(msg: &str) -> Message {
+        // TODO: Check this with vscode
         Message {
-            format: "{response_message}".to_string(),
+            format: msg.to_string(),
             id: 0,
             send_telemetry: Some(false),
             show_user: Some(true),
             url: Some("https://probe.rs/docs/tools/debugger/".to_string()),
             url_label: Some("Documentation".to_string()),
-            variables: Some(BTreeMap::from([(
-                "response_message".to_string(),
-                msg.to_string(),
-            )])),
+            variables: None,
         }
     }
 

@@ -116,6 +116,12 @@ impl DebugInfo {
 
     /// Try get the [`SourceLocation`] for a given address.
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
+        if self.unit_infos.is_empty() {
+            tracing::warn!(
+                "No debug information about compile units available, unable to determine source location"
+            );
+        }
+
         for unit_info in &self.unit_infos {
             let unit = &unit_info.unit;
 
@@ -135,6 +141,9 @@ impl DebugInfo {
                 if !(range.begin <= address && address < range.end) {
                     continue;
                 }
+
+                tracing::debug!("Found source code range for address {}", address);
+
                 // Get the DWARF LineProgram.
                 let ilnp = unit.line_program.as_ref()?.clone();
 

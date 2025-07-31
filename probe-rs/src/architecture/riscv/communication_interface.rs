@@ -4,7 +4,7 @@
 //! Debug Module, as described in the RISC-V debug
 //! specification v0.13.2 .
 
-use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+use crate::architecture::riscv::dtm::dtm_access::{DmAddress, DtmAccess};
 use crate::{
     Error as ProbeRsError, architecture::riscv::*, config::Target, memory_mapped_bitfield_register,
     probe::DeferredResultIndex,
@@ -18,6 +18,18 @@ pub enum RiscvError {
     /// An error occurred during transport
     #[error("Error during transport")]
     DtmOperationFailed,
+
+    #[error("Error reading from Debug Module at address {address:#04x}")]
+    DmReadFailed {
+        address: u32,
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    #[error("Error write from Debug Module at address {address:#04x}")]
+    DmWriteFailed {
+        address: u32,
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
     /// DMI operation is in progress
     #[error("Transport operation in progress")]
     DtmOperationInProcess,
@@ -238,6 +250,8 @@ pub struct RiscvCommunicationInterfaceState {
     /// Describes, which memory access method should be used for a given access width
     memory_access_info: HashMap<RiscvBusAccess, MemoryAccessMethod>,
 
+    memory_access_override: Option<MemoryAccessMethod>,
+
     /// describes, if the given register can be read / written with an
     /// abstract command
     abstract_cmd_register_info: HashMap<RegisterId, CoreRegisterAbstractCmdSupport>,
@@ -277,7 +291,7 @@ const RISCV_MAX_CSR_ADDR: u16 = 0xFFF;
 
 impl RiscvCommunicationInterfaceState {
     /// Create a new interface state.
-    pub fn new() -> Self {
+    fn new(memory_access_override: Option<MemoryAccessMethod>) -> Self {
         RiscvCommunicationInterfaceState {
             // Set to the minimum here, will be set to the correct value below
             progbuf_size: 0,
@@ -304,6 +318,7 @@ impl RiscvCommunicationInterfaceState {
             num_harts: 1,
 
             memory_access_info: HashMap::new(),
+            memory_access_override,
 
             abstract_cmd_register_info: HashMap::new(),
 
@@ -322,16 +337,14 @@ impl RiscvCommunicationInterfaceState {
     /// Get the memory access method which should be used for an
     /// access with the specified width.
     fn memory_access_method(&mut self, access_width: RiscvBusAccess) -> MemoryAccessMethod {
-        *self
-            .memory_access_info
-            .entry(access_width)
-            .or_insert(MemoryAccessMethod::ProgramBuffer)
-    }
-}
-
-impl Default for RiscvCommunicationInterfaceState {
-    fn default() -> Self {
-        Self::new()
+        if let Some(memory_access_override) = self.memory_access_override {
+            memory_access_override
+        } else {
+            *self
+                .memory_access_info
+                .entry(access_width)
+                .or_insert(MemoryAccessMethod::ProgramBuffer)
+        }
     }
 }
 
@@ -342,9 +355,12 @@ pub struct RiscvDebugInterfaceState {
 }
 
 impl RiscvDebugInterfaceState {
-    pub(super) fn new(dtm_state: Box<dyn Any + Send>) -> Self {
+    pub(super) fn new(
+        dtm_state: Box<dyn Any + Send>,
+        memory_access_override: Option<MemoryAccessMethod>,
+    ) -> Self {
         Self {
-            interface_state: RiscvCommunicationInterfaceState::new(),
+            interface_state: RiscvCommunicationInterfaceState::new(memory_access_override),
             dtm_state,
         }
     }
@@ -405,12 +421,20 @@ pub trait RiscvInterfaceBuilder<'probe> {
 }
 
 /// A interface that implements controls for RISC-V cores.
-#[derive(Debug)]
 pub struct RiscvCommunicationInterface<'state> {
     /// The Debug Transport Module (DTM) is used to
     /// communicate with the Debug Module on the target chip.
     dtm: Box<dyn DtmAccess + 'state>,
     state: &'state mut RiscvCommunicationInterfaceState,
+}
+
+impl std::fmt::Debug for RiscvCommunicationInterface<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RiscvCommunicationInterface")
+            .field("dtm", &"Box<dyn DtmAccess>")
+            .field("state", &self.state)
+            .finish()
+    }
 }
 
 impl<'state> RiscvCommunicationInterface<'state> {
@@ -851,7 +875,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             R::get_mmio_address()
         );
 
-        let register_value = self.read_dm_register_untyped(R::get_mmio_address())?.into();
+        let register_value = self
+            .read_dm_register_untyped(R::get_mmio_address() as u32)?
+            .into();
 
         tracing::debug!(
             "Read DM register '{}' at {:#010x} = {:x?}",
@@ -866,7 +892,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Schedules a DM register read, flushes the queue and returns the untyped result.
     ///
     /// Use the [`Self::read_dm_register()`] function if possible.
-    fn read_dm_register_untyped(&mut self, address: u64) -> Result<u32, RiscvError> {
+    fn read_dm_register_untyped(&mut self, address: u32) -> Result<u32, RiscvError> {
         let read_idx = self.schedule_read_dm_register_untyped(address)?;
         let register_value = self.dtm.read_deferred_result(read_idx)?.into_u32();
 
@@ -886,21 +912,22 @@ impl<'state> RiscvCommunicationInterface<'state> {
             register
         );
 
-        self.write_dm_register_untyped(R::get_mmio_address(), register.into())
+        self.write_dm_register_untyped(R::get_mmio_address() as u32, register.into())
     }
 
     /// Write to a DM register
     ///
     /// Use the [`Self::write_dm_register()`] function if possible.
-    fn write_dm_register_untyped(&mut self, address: u64, value: u32) -> Result<(), RiscvError> {
+    fn write_dm_register_untyped(&mut self, address: u32, value: u32) -> Result<(), RiscvError> {
         self.cache_write(address, value);
-        self.dtm.write_with_timeout(address, value, RISCV_TIMEOUT)?;
+        self.dtm
+            .write_with_timeout(DmAddress(address), value, RISCV_TIMEOUT)?;
 
         Ok(())
     }
 
-    fn cache_write(&mut self, address: u64, value: u32) {
-        if address == Dmcontrol::ADDRESS_OFFSET {
+    fn cache_write(&mut self, address: u32, value: u32) {
+        if address == Dmcontrol::ADDRESS_OFFSET as u32 {
             self.state.current_dmcontrol = Dmcontrol(value);
         }
     }
@@ -1588,6 +1615,25 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
             }
+            MemoryAccessMethod::Dtm => match V::WIDTH {
+                RiscvBusAccess::A8 => {
+                    let value = self
+                        .dtm
+                        .memory_interface()?
+                        .read_word_8(u64::from(address))?;
+
+                    V::from_register_value(u32::from(value))
+                }
+                RiscvBusAccess::A32 => {
+                    let value = self
+                        .dtm
+                        .memory_interface()?
+                        .read_word_32(u64::from(address))?;
+
+                    V::from_register_value(value)
+                }
+                _ => unimplemented!("Memory access using DTM for 64-bit values is not implemented"),
+            },
         };
 
         Ok(result)
@@ -1619,6 +1665,33 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
             }
+            MemoryAccessMethod::Dtm => match V::WIDTH {
+                RiscvBusAccess::A8 => {
+                    for (offset, i) in data.iter_mut().enumerate() {
+                        let address = address + 4 * (offset as u32);
+
+                        let value = self
+                            .dtm
+                            .memory_interface()?
+                            .read_word_8(u64::from(address))?;
+
+                        *i = V::from_register_value(u32::from(value));
+                    }
+                }
+                RiscvBusAccess::A16 => todo!(),
+                RiscvBusAccess::A32 => {
+                    for (offset, i) in data.iter_mut().enumerate() {
+                        let value = self
+                            .dtm
+                            .memory_interface()?
+                            .read_word_8(u64::from(address))?;
+
+                        *i = V::from_register_value(u32::from(value));
+                    }
+                }
+                RiscvBusAccess::A64 => todo!(),
+                RiscvBusAccess::A128 => todo!(),
+            },
         };
 
         Ok(())
@@ -1635,6 +1708,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
+            }
+            MemoryAccessMethod::Dtm => {
+                unimplemented!("Memory write using DTM is not implement yet")
             }
         };
 
@@ -1657,6 +1733,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
             }
+            MemoryAccessMethod::Dtm => {
+                unimplemented!("Memory access using the dtm is not implemented")
+            }
         }
 
         Ok(())
@@ -1675,7 +1754,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             register
         );
 
-        self.schedule_write_dm_register_untyped(R::get_mmio_address(), register.into())?;
+        self.schedule_write_dm_register_untyped(R::get_mmio_address() as u32, register.into())?;
         Ok(())
     }
 
@@ -1684,11 +1763,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Use the [`Self::schedule_write_dm_register()`] function if possible.
     fn schedule_write_dm_register_untyped(
         &mut self,
-        address: u64,
+        address: u32,
         value: u32,
     ) -> Result<Option<DeferredResultIndex>, RiscvError> {
         self.cache_write(address, value);
-        self.dtm.schedule_write(address, value)
+        self.dtm.schedule_write(DmAddress(address), value)
     }
 
     pub(super) fn schedule_read_dm_register<R: MemoryMappedRegister<u32>>(
@@ -1700,7 +1779,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             R::get_mmio_address()
         );
 
-        self.schedule_read_dm_register_untyped(R::get_mmio_address())
+        self.schedule_read_dm_register_untyped(R::get_mmio_address() as u32)
     }
 
     /// Read from a DM register
@@ -1708,10 +1787,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Use the [`Self::schedule_read_dm_register()`] function if possible.
     fn schedule_read_dm_register_untyped(
         &mut self,
-        address: u64,
+        address: u32,
     ) -> Result<DeferredResultIndex, RiscvError> {
         // Prepare the read by sending a read request with the register address
-        self.dtm.schedule_read(address)
+        self.dtm.schedule_read(DmAddress(address))
     }
 
     fn schedule_read_large_dtm_register<V, R>(
@@ -1950,7 +2029,7 @@ impl RiscvValue for u8 {
     where
         R: LargeRegister,
     {
-        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u32)?);
         Ok(())
     }
 
@@ -1970,7 +2049,7 @@ impl RiscvValue for u8 {
     where
         R: LargeRegister,
     {
-        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, value as u32)
+        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u32, value as u32)
     }
 }
 
@@ -1984,7 +2063,7 @@ impl RiscvValue for u16 {
     where
         R: LargeRegister,
     {
-        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u32)?);
         Ok(())
     }
 
@@ -2004,7 +2083,7 @@ impl RiscvValue for u16 {
     where
         R: LargeRegister,
     {
-        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, value as u32)
+        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u32, value as u32)
     }
 }
 
@@ -2018,7 +2097,7 @@ impl RiscvValue for u32 {
     where
         R: LargeRegister,
     {
-        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u32)?);
         Ok(())
     }
 
@@ -2038,7 +2117,7 @@ impl RiscvValue for u32 {
     where
         R: LargeRegister,
     {
-        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, value)
+        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u32, value)
     }
 }
 
@@ -2052,8 +2131,8 @@ impl RiscvValue for u64 {
     where
         R: LargeRegister,
     {
-        results.push(interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u64)?);
-        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u32)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u32)?);
         Ok(())
     }
 
@@ -2080,8 +2159,8 @@ impl RiscvValue for u64 {
         // R0 has to be written last, side effects are triggerd by writes from
         // this register.
 
-        interface.schedule_write_dm_register_untyped(R::R1_ADDRESS as u64, upper_bits)?;
-        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, lower_bits)
+        interface.schedule_write_dm_register_untyped(R::R1_ADDRESS as u32, upper_bits)?;
+        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u32, lower_bits)
     }
 }
 
@@ -2095,10 +2174,10 @@ impl RiscvValue for u128 {
     where
         R: LargeRegister,
     {
-        results.push(interface.schedule_read_dm_register_untyped(R::R3_ADDRESS as u64)?);
-        results.push(interface.schedule_read_dm_register_untyped(R::R2_ADDRESS as u64)?);
-        results.push(interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u64)?);
-        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u64)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R3_ADDRESS as u32)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R2_ADDRESS as u32)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R1_ADDRESS as u32)?);
+        results.push(interface.schedule_read_dm_register_untyped(R::R0_ADDRESS as u32)?);
         Ok(())
     }
 
@@ -2132,10 +2211,10 @@ impl RiscvValue for u128 {
         // R0 has to be written last, side effects are triggerd by writes from
         // this register.
 
-        interface.schedule_write_dm_register_untyped(R::R3_ADDRESS as u64, bits_3)?;
-        interface.schedule_write_dm_register_untyped(R::R2_ADDRESS as u64, bits_2)?;
-        interface.schedule_write_dm_register_untyped(R::R1_ADDRESS as u64, bits_1)?;
-        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, bits_0)
+        interface.schedule_write_dm_register_untyped(R::R3_ADDRESS as u32, bits_3)?;
+        interface.schedule_write_dm_register_untyped(R::R2_ADDRESS as u32, bits_2)?;
+        interface.schedule_write_dm_register_untyped(R::R1_ADDRESS as u32, bits_1)?;
+        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u32, bits_0)
     }
 }
 
@@ -2318,14 +2397,17 @@ impl From<RiscvBusAccess> for u8 {
 ///
 /// The `AbstractCommand` method for memory access is not implemented.
 #[derive(Debug, Copy, Clone)]
-#[expect(dead_code)]
-enum MemoryAccessMethod {
+pub enum MemoryAccessMethod {
     /// Memory access using the program buffer is supported
     ProgramBuffer,
     /// Memory access using an abstract command is supported
     AbstractCommand,
     /// Memory access using system bus access supported
     SystemBus,
+    /// Use the DTM itself to access memory
+    ///
+    /// Used by the AdiDtm
+    Dtm,
 }
 
 memory_mapped_bitfield_register! {

@@ -548,6 +548,31 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(response_body)))
     }
 
+    pub(crate) fn set_exception_breakpoints(
+        &mut self,
+        _: &mut CoreHandle,
+        request: &Request,
+    ) -> Result<()> {
+        let args: SetExceptionBreakpointsArguments = get_arguments(self, request)?;
+
+        if args.filters.is_empty()
+            && args.filter_options.is_none()
+            && args.exception_options.is_none()
+        {
+            // We don't really support this, and client shouldn't send because we don't advertise it in the capabilities.
+            // But Zed (as of version 0.192.6) seems to send it anyways.If there is no actual filter set,
+            // we can still return success.
+            let response_body = SetExceptionBreakpointsResponseBody { breakpoints: None };
+
+            self.send_response(request, Ok(Some(response_body)))
+        } else {
+            let error = DebuggerError::UserMessage(format!(
+                "Unsupported exception breakpoint configuration "
+            ));
+            self.send_response::<()>(request, Err(&error))
+        }
+    }
+
     /// Set the variable with the given name in the variable container to a new value.
     pub(crate) fn set_variable(
         &mut self,
@@ -731,6 +756,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             all_threads_continued: Some(false), // TODO: Implement multi-core logic here
                             thread_id: target_core.core.id() as i64,
                         });
+                        eprintln!("Sending 'continued` event");
                         self.send_event("continued", event_body)?;
                         Ok(())
                     }
@@ -754,6 +780,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     all_threads_stopped: Some(self.all_cores_halted),
                     hit_breakpoint_ids: None,
                 });
+                eprintln!("Sending 'stopped` event");
                 self.send_event("stopped", event_body)?;
                 Ok(())
             }

@@ -68,6 +68,8 @@ pub async fn debug(
                     format!("Failed to negotiate non-blocking socket with request from: {addr}")
                 })?;
 
+                eprintln!("Starting debug session from {addr}");
+
                 debugger
                     .debug_logger
                     .log_to_console(&format!("Starting debug session from: {addr}"))?;

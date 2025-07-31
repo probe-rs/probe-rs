@@ -121,6 +121,7 @@ pub(crate) fn memory_read(
         seq: 0,
         body: None,
     };
+
     if gdb_nuf.format_specifier == GdbFormat::Instruction {
         let assembly_lines: Vec<DisassembledInstruction> = disassemble_target_memory(
             target_core,
@@ -140,21 +141,26 @@ pub(crate) fn memory_read(
         }
         response.message = Some(formatted_output);
     } else {
-        let mut memory_result = vec![0u8; gdb_nuf.get_size()];
-        match target_core.core.read_8(address, &mut memory_result) {
-            Ok(()) => {
-                let formatted_output = GdbNufMemoryResult {
-                    nuf: &gdb_nuf,
-                    memory: &memory_result,
+        match gdb_nuf.access_unit() {
+            GdbUnit::Word => {
+                let mut buf = vec![0u32; gdb_nuf.unit_count()];
+                match target_core.core.read_32(address, &mut buf) {
+                    Ok(()) => {
+                        let mut result = String::new();
+                        for word in &buf {
+                            result.push_str(&format!("{word:#010x}\n"));
+                        }
+
+                        response.message = Some(result);
+                    }
+                    Err(err) => {
+                        return Err(DebuggerError::UserMessage(format!(
+                            "Cannot read memory at address {address:#010x}: {err:?}"
+                        )));
+                    }
                 }
-                .to_string();
-                response.message = Some(formatted_output);
             }
-            Err(err) => {
-                return Err(DebuggerError::UserMessage(format!(
-                    "Cannot read memory at address {address:#010x}: {err:?}"
-                )));
-            }
+            _ => todo!("Fix for all sizes"),
         }
     }
     Ok(response)
