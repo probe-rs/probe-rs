@@ -303,11 +303,13 @@ pub async fn flash(
 
     let options = DownloadOptions {
         keep_unwritten_bytes: download_options.restore_unwritten,
-        do_chip_erase: chip_erase,
+        do_chip_erase: chip_erase && !download_options.incremental, // Disable chip erase in incremental mode
         skip_erase: false,
         verify: download_options.verify,
         disable_double_buffering: download_options.disable_double_buffering,
+        incremental: download_options.incremental,
     };
+    tracing::debug!("CLI flash() creating DownloadOptions with incremental={}", options.incremental);
 
     let loader = session
         .build_flash_loader(path.to_path_buf(), format)
@@ -339,13 +341,16 @@ pub async fn flash(
     } else {
         true
     };
+    tracing::debug!("CLI run_flash decision: preverify={}, run_flash={}", download_options.preverify, run_flash);
 
     if run_flash {
-        let pb = if download_options.disable_progressbars {
+        tracing::debug!("CLI entering run_flash block");
+        let pb: Option<CliProgressBars> = if download_options.disable_progressbars {
             None
         } else {
             Some(CliProgressBars::new())
         };
+        tracing::debug!("CLI calling session.flash() with incremental={}", options.incremental);
         session
             .flash(
                 options,
@@ -364,6 +369,7 @@ pub async fn flash(
                 },
             )
             .await?;
+        tracing::debug!("CLI session.flash() completed");
     }
 
     // Visualise flash layout to file if requested.
