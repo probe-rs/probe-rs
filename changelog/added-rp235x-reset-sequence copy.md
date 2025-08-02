@@ -1,0 +1,1 @@
+Added a Sequence to reset a Raspberry Pi RP235x using the Rescue DP.
