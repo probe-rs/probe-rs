@@ -11,6 +11,7 @@ use crate::memory::MemoryInterface;
 use crate::rtt::{self, Rtt, ScanRegion};
 use crate::{Core, InstructionSet, core::CoreRegisters, session::Session};
 use crate::{CoreStatus, Target};
+use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::{
     fmt::Debug,
@@ -1144,7 +1145,20 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             None
         };
 
-        self.core.write(address, bytes).map_err(FlashError::Core)?;
+        let word_size = if self.core.is_64_bit() { 8 } else { 4 };
+        let bytes = if bytes.len().is_multiple_of(word_size) {
+            Cow::Borrowed(bytes)
+        } else {
+            let mut bytes = bytes.to_vec();
+            // Pad the bytes to the next word size.
+            bytes.resize(
+                bytes.len().div_ceil(word_size) * word_size,
+                self.flash_algorithm.flash_properties.erased_byte_value,
+            );
+            Cow::Owned(bytes)
+        };
+
+        self.core.write(address, &bytes).map_err(FlashError::Core)?;
 
         if let Some(t1) = t1 {
             tracing::info!(
