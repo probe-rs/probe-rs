@@ -645,8 +645,19 @@ where
     I: Future,
 {
     let mut run = std::pin::pin!(f);
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
     tokio::select! {
         _ = tokio::signal::ctrl_c() => eprintln!("Received Ctrl+C, exiting"),
+        _ = terminate => eprintln!("Received SIGTERM, exiting"),
         result = &mut run => return result,
     };
 
