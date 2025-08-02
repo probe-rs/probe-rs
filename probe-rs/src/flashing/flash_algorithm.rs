@@ -5,7 +5,7 @@ use crate::{
     core::Architecture,
 };
 use probe_rs_target::{
-    Endian, FlashProperties, MemoryRegion, PageInfo, RamRegion, RawFlashAlgorithm,
+    CoreType, Endian, FlashProperties, MemoryRegion, PageInfo, RamRegion, RawFlashAlgorithm,
     RegionMergeIterator, SectorInfo, TransferEncoding,
 };
 use std::mem::size_of_val;
@@ -180,8 +180,13 @@ impl FlashAlgorithm {
     // Header for RISC-V Flash Algorithms
     const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
 
-    const ARM_FLASH_BLOB_HEADER_LE: [u32; 1] = [arm::assembly::BRKPT];
-    const ARM_FLASH_BLOB_HEADER_BE: [u32; 1] = [arm::assembly::BRKPT.swap_bytes()];
+    // On ARMv8-A and -R, `BKPT` does not enter debug state, but the debug exception,
+    // so use `HLT`.
+    // For ARMv7 and ARMv8-M, `HLT` does not exist.
+    const ARM_FLASH_BLOB_HEADER_BKPT_LE: [u32; 1] = [arm::assembly::BKPT];
+    const ARM_FLASH_BLOB_HEADER_BKPT_BE: [u32; 1] = [arm::assembly::BKPT.swap_bytes()];
+    const ARM_FLASH_BLOB_HEADER_HLT_LE: [u32; 1] = [arm::assembly::HLT];
+    const ARM_FLASH_BLOB_HEADER_HLT_BE: [u32; 1] = [arm::assembly::HLT.swap_bytes()];
 
     const XTENSA_FLASH_BLOB_HEADER: [u32; 0] = [];
 
@@ -189,24 +194,44 @@ impl FlashAlgorithm {
     /// this function returns the maximum size of the header of supported architectures.
     pub fn get_max_algorithm_header_size() -> u64 {
         let algos = [
-            Self::algorithm_header(Architecture::Arm, Endian::Big),
-            Self::algorithm_header(Architecture::Arm, Endian::Little),
-            Self::algorithm_header(Architecture::Riscv, Endian::Little),
-            Self::algorithm_header(Architecture::Xtensa, Endian::Big),
-            Self::algorithm_header(Architecture::Xtensa, Endian::Little),
+            Self::algorithm_header(CoreType::Armv6m, Endian::Big),
+            Self::algorithm_header(CoreType::Armv6m, Endian::Little),
+            Self::algorithm_header(CoreType::Armv7a, Endian::Big),
+            Self::algorithm_header(CoreType::Armv7a, Endian::Little),
+            Self::algorithm_header(CoreType::Armv7m, Endian::Big),
+            Self::algorithm_header(CoreType::Armv7m, Endian::Little),
+            Self::algorithm_header(CoreType::Armv7em, Endian::Big),
+            Self::algorithm_header(CoreType::Armv7em, Endian::Little),
+            Self::algorithm_header(CoreType::Armv8a, Endian::Big),
+            Self::algorithm_header(CoreType::Armv8a, Endian::Little),
+            Self::algorithm_header(CoreType::Armv8a, Endian::Big),
+            Self::algorithm_header(CoreType::Armv8a, Endian::Little),
+            Self::algorithm_header(CoreType::Armv8m, Endian::Big),
+            Self::algorithm_header(CoreType::Armv8m, Endian::Little),
+            Self::algorithm_header(CoreType::Riscv, Endian::Little),
+            Self::algorithm_header(CoreType::Xtensa, Endian::Big),
+            Self::algorithm_header(CoreType::Xtensa, Endian::Little),
         ];
 
         algos.iter().copied().map(size_of_val).max().unwrap() as u64
     }
 
-    fn algorithm_header(architecture: Architecture, endian: Endian) -> &'static [u32] {
-        match architecture {
-            Architecture::Arm => match endian {
-                Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_LE,
-                Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_BE,
+    fn algorithm_header(core_type: CoreType, endian: Endian) -> &'static [u32] {
+        match core_type {
+            CoreType::Armv6m
+            | CoreType::Armv7m
+            | CoreType::Armv7em
+            | CoreType::Armv8m
+            | CoreType::Armv7a => match endian {
+                Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_BKPT_LE,
+                Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_BKPT_BE,
             },
-            Architecture::Riscv => &Self::RISCV_FLASH_BLOB_HEADER,
-            Architecture::Xtensa => &Self::XTENSA_FLASH_BLOB_HEADER,
+            CoreType::Armv8a => match endian {
+                Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_HLT_LE,
+                Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_HLT_BE,
+            },
+            CoreType::Riscv => &Self::RISCV_FLASH_BLOB_HEADER,
+            CoreType::Xtensa => &Self::XTENSA_FLASH_BLOB_HEADER,
         }
     }
 
@@ -257,7 +282,7 @@ impl FlashAlgorithm {
         };
 
         let header = Self::algorithm_header(
-            target.architecture(),
+            target.default_core().core_type,
             if raw.big_endian {
                 Endian::Big
             } else {
