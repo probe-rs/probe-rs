@@ -2263,11 +2263,6 @@ impl MemoryInterface for RiscvCommunicationInterface<'_> {
         self.write_multiple(address, data)
     }
 
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
-        let address = valid_32bit_address(address)?;
-        self.write_multiple(address, data)
-    }
-
     fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
         Ok(true)
     }
