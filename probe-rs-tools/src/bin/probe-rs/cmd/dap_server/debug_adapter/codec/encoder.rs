@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 use tokio_util::{bytes::BytesMut, codec::Encoder};
 
-use super::{DapCodec, Frame};
+use super::DapCodec;
 
-impl<T: Serialize + for<'a> Deserialize<'a> + PartialEq> Encoder<Frame<T>> for DapCodec<T> {
+impl<T: Serialize + for<'a> Deserialize<'a> + PartialEq> Encoder<T> for DapCodec<T> {
     type Error = std::io::Error;
 
-    fn encode(&mut self, item: Frame<T>, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let response_body = serde_json::to_string(&item.content)?;
+    fn encode(&mut self, item: T, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        let response_body = serde_json::to_string(&item)?;
 
         let response_header = format!("Content-Length: {}\r\n\r\n", response_body.len());
 
@@ -27,8 +27,6 @@ mod tests {
     use tokio_util::bytes::BytesMut;
     use tokio_util::codec::Encoder;
 
-    use crate::cmd::dap_server::debug_adapter::codec::Frame;
-
     use super::DapCodec;
 
     #[test]
@@ -37,12 +35,7 @@ mod tests {
         let mut buf = BytesMut::new();
 
         codec
-            .encode(
-                Frame {
-                    content: json!({"frame": 3, "content": 6}),
-                },
-                &mut buf,
-            )
+            .encode(json!({"frame": 3, "content": 6}), &mut buf)
             .unwrap();
         assert_eq!(
             &*buf,
