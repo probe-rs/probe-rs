@@ -1,0 +1,1 @@
+Shutdown graceful when receiving SIGTERM
