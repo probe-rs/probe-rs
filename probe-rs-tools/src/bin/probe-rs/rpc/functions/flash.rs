@@ -38,6 +38,8 @@ pub struct DownloadOptions {
     pub verify: bool,
     /// Disable double buffering when loading flash.
     pub disable_double_buffering: bool,
+    /// Enable incremental sector-by-sector verification and programming
+    pub incremental: bool,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -82,11 +84,13 @@ impl FlashRequest {
         let mut options = probe_rs::flashing::DownloadOptions::default();
 
         options.keep_unwritten_bytes = self.options.keep_unwritten_bytes;
-        options.do_chip_erase = self.options.do_chip_erase;
+        options.do_chip_erase = self.options.do_chip_erase && !self.options.incremental; // Disable chip erase in incremental mode
         options.skip_erase = self.options.skip_erase;
         options.preverify = false;
         options.verify = self.options.verify;
         options.disable_double_buffering = self.options.disable_double_buffering;
+        options.incremental = self.options.incremental;
+        tracing::debug!("RPC Flash: setting incremental={} in DownloadOptions", options.incremental);
 
         options
     }
@@ -191,6 +195,12 @@ pub enum Operation {
 
     /// Checking flash contents.
     Verify,
+
+    /// Verifying flash contents using CRC32 (incremental mode).
+    Crc32Verify,
+
+    /// Selectively programming only changed sectors (incremental mode).
+    IncrementalProgram,
 }
 
 impl From<flashing::ProgressOperation> for Operation {
@@ -200,6 +210,8 @@ impl From<flashing::ProgressOperation> for Operation {
             flashing::ProgressOperation::Erase => Operation::Erase,
             flashing::ProgressOperation::Program => Operation::Program,
             flashing::ProgressOperation::Verify => Operation::Verify,
+            flashing::ProgressOperation::Crc32Verify => Operation::Crc32Verify,
+            flashing::ProgressOperation::IncrementalProgram => Operation::IncrementalProgram,
         }
     }
 }
