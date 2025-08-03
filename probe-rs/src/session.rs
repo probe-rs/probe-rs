@@ -410,19 +410,6 @@ impl Session {
             configured_trace_sink: None,
         };
 
-        // Wait for the cores to be halted.
-        for core_id in 0..session.cores.len() {
-            match session.core(core_id) {
-                Ok(mut core) => {
-                    if !core.core_halted()? {
-                        core.halt(Duration::from_millis(100))?;
-                    }
-                }
-                Err(Error::CoreDisabled(i)) => tracing::debug!("Core {i} is disabled"),
-                Err(error) => return Err(error),
-            }
-        }
-
         // Connect to the cores
         match session.target.debug_sequence.clone() {
             DebugSequence::Xtensa(_) => {}
