@@ -385,7 +385,7 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
         match cmd {
             SemihostingCommand::GetCommandLine(request) if !self.cmdline_requested => {
                 let cmdline = if let Some(address) = self.test.address {
-                    format!("run_addr {}", address)
+                    format!("run_addr {address}")
                 } else {
                     format!("run {}", self.test.name)
                 };
