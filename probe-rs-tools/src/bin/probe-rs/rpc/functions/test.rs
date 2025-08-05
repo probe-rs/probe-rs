@@ -46,12 +46,13 @@ pub enum TestOutcome {
     Pass,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Schema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Schema, PartialEq)]
 pub struct Test {
     pub name: String,
     pub expected_outcome: TestOutcome,
     pub ignored: bool,
     pub timeout: Option<u32>,
+    pub address: Option<u32>,
 }
 
 impl From<TestDefinition> for Test {
@@ -61,11 +62,12 @@ impl From<TestDefinition> for Test {
             expected_outcome: def.expected_outcome,
             ignored: def.ignored,
             timeout: def.timeout,
+            address: None,
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TestDefinition {
     pub name: String,
     #[serde(
@@ -382,7 +384,11 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
 
         match cmd {
             SemihostingCommand::GetCommandLine(request) if !self.cmdline_requested => {
-                let cmdline = format!("run {}", self.test.name);
+                let cmdline = if let Some(address) = self.test.address {
+                    format!("run_addr {address}")
+                } else {
+                    format!("run {}", self.test.name)
+                };
                 tracing::debug!("target asked for cmdline. send '{cmdline}'");
                 self.cmdline_requested = true;
                 request.write_command_line_to_target(core, &cmdline)?;

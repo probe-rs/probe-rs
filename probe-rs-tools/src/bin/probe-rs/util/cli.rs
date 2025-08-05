@@ -13,6 +13,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
+use crate::cmd::run::EmbeddedTestElfInfo;
 use crate::rpc::functions::monitor::MonitorExitReason;
 use crate::{
     FormatOptions,
@@ -506,9 +507,11 @@ pub async fn monitor(
     result.map(|_| ())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn test(
     session: &SessionInterface,
     boot_info: BootInfo,
+    elf_info: EmbeddedTestElfInfo,
     libtest_args: libtest_mimic::Arguments,
     print_stack_trace: bool,
     path: &Path,
@@ -522,16 +525,22 @@ pub async fn test(
 
     let rtt_handle = rtt_client.as_ref().map(|rtt| rtt.handle);
     let test = async {
-        let tests = session
-            .list_tests(boot_info, rtt_handle, async |msg| sender.send(msg).unwrap())
-            .await?;
+        let tests = if elf_info.version == 0 {
+            // In embedded test < 0.7, we have to query the tests from the target via semihosting
+            session
+                .list_tests(boot_info, rtt_handle, async |msg| sender.send(msg).unwrap())
+                .await?
+                .tests
+        } else {
+            // Recent embedded test versions report the tests directly via the elf file
+            elf_info.tests
+        };
 
         if token.is_cancelled() {
             return Ok(());
         }
 
         let tests = tests
-            .tests
             .into_iter()
             .map(|test| create_trial(session, path, rtt_handle, sender.clone(), &token, test))
             .collect::<Vec<_>>();

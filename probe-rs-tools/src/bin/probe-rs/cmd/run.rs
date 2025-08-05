@@ -2,11 +2,17 @@ use std::path::{Path, PathBuf};
 
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
+use crate::rpc::functions::test::{Test, TestDefinition};
 
 use crate::FormatOptions;
 use crate::util::cli::{self, connect_target_output_files, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 
+use anyhow::{Context, anyhow};
+use goblin::elf::Elf;
+use goblin::elf::SectionHeader;
+use goblin::elf::Sym;
+use goblin::elf::sym::{STB_GLOBAL, STT_OBJECT};
 use libtest_mimic::{Arguments, FormatSetting};
 use probe_rs::flashing::FileDownloadError;
 use std::fs::File;
@@ -175,6 +181,8 @@ impl Cmd {
         // Detect run mode based on ELF file
         let run_mode = detect_run_mode(&self)?;
 
+        // TODO: Skip attach_probe & flashing, if user only wants to list tests (only possible when using embedded_test with protocol version >= 1)
+
         let session = cli::attach_probe(&client, self.shared_options.probe_options, false).await?;
 
         let mut rtt_client = rtt_client(
@@ -207,10 +215,11 @@ impl Cmd {
         .await?;
 
         // Run firmware based on run mode
-        if run_mode == RunMode::Test {
+        if let RunMode::Test(elf_info) = run_mode {
             cli::test(
                 &session,
                 boot_info,
+                elf_info,
                 Arguments {
                     test_threads: Some(1), // Avoid parallel execution
                     list: self.test_options.list,
@@ -255,39 +264,173 @@ impl Cmd {
 #[derive(PartialEq)]
 enum RunMode {
     Normal,
-    Test,
+    Test(EmbeddedTestElfInfo),
 }
 
-fn elf_contains_test(path: &Path) -> anyhow::Result<bool> {
-    let mut file = File::open(path).map_err(FileDownloadError::IO)?;
+#[derive(Debug, PartialEq)]
+pub struct EmbeddedTestElfInfo {
+    /// Protocol version used between embedded-test (on the target) and probe-rs
+    pub version: u32,
+    /// Tests found in the elf.
+    pub tests: Vec<Test>,
+}
 
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer)?;
+struct ElfReader<'a> {
+    buffer: &'a [u8],
+    elf: Elf<'a>,
+}
 
-    let contains = match goblin::elf::Elf::parse(buffer.as_slice()) {
-        Ok(elf) if elf.syms.is_empty() => {
+impl<'a> ElfReader<'a> {
+    fn decode(&self) -> anyhow::Result<Option<EmbeddedTestElfInfo>> {
+        if self.elf.syms.is_empty() {
             tracing::debug!("No Symbols in ELF");
-            false
+            return Ok(None);
         }
-        Ok(elf) => elf
-            .syms
-            .iter()
-            .any(|sym| elf.strtab.get_at(sym.st_name) == Some("EMBEDDED_TEST_VERSION")),
-        Err(_) => {
-            tracing::debug!("Failed to parse ELF file");
-            false
-        }
-    };
 
-    Ok(contains)
+        // Find our custom .embedded_test section which contains version info and possibly testcases
+        let Some((et_section_index, et_section)) = self
+            .elf
+            .section_headers
+            .iter()
+            .enumerate()
+            .find(|(_idx, hdr)| self.elf.shdr_strtab.get_at(hdr.sh_name) == Some(".embedded_test"))
+        else {
+            tracing::debug!("No .embedded_test linker section in ELF");
+            return Ok(None);
+        };
+
+        let Some(version_sym) = self.elf.syms.iter().find(|sym| {
+            sym.st_bind() == STB_GLOBAL
+                && sym.st_type() == STT_OBJECT
+                && sym.st_shndx == et_section_index
+                && sym.st_size == 4 // sizeof( u32 )
+                && matches!(self.symbol_name_of(sym), Ok("EMBEDDED_TEST_VERSION"))
+        }) else {
+            tracing::debug!("No EMBEDDED_TEST_VERSION symbol in ELF");
+            return Ok(None);
+        };
+
+        let version =
+            self.read_u32_at_offset(self.file_offset_for(version_sym.st_value, et_section))?;
+
+        match version {
+            0 => {
+                // In embedded test < 0.7, we have to query the tests from the target via semihosting
+                Ok(Some(EmbeddedTestElfInfo {
+                    version,
+                    tests: vec![],
+                }))
+            }
+
+            1 => {
+                // Read testcases from symbols
+                let mut tests = vec![];
+                for sym in self.elf.syms.iter() {
+                    if sym.st_bind() == STB_GLOBAL
+                        && sym.st_type() == STT_OBJECT
+                        && sym.st_shndx == et_section_index
+                        && sym.st_size == 12
+                    // sizeof( (fn()->!, &'static str) )
+                    {
+                        tests.push(self.decode_testcase_sym(&sym, et_section)?);
+                    }
+                }
+
+                Ok(Some(EmbeddedTestElfInfo { version, tests }))
+            }
+
+            _ => Err(anyhow!(
+                "Found embedded_test protocol version {}, which is not yet supported by probe-rs. Update probe-rs?",
+                version
+            )),
+        }
+    }
+
+    fn decode_testcase_sym(&self, sym: &Sym, et_section: &SectionHeader) -> anyhow::Result<Test> {
+        // A testcase is stored as tuple of testfunc + module_path
+        // and has type (fn()->!, &'static str) which is 12 bytes.
+        // The symbol name is a escaped json object containing info about the test
+
+        let file_offset = self.file_offset_for(sym.st_value, et_section);
+        let test_fn_ptr = self.read_u32_at_offset(file_offset)?;
+        let mod_path_ptr = self.read_u32_at_offset(file_offset + 4)?;
+        let mod_path_len = self.read_u32_at_offset(file_offset + 8)?;
+
+        let mod_path = self.read_mod_path(mod_path_ptr, mod_path_len)?;
+        let sym_name = self.symbol_name_of(sym)?;
+        let def: TestDefinition = serde_json::from_str(sym_name)?;
+        let mut test: Test = def.into();
+        test.name = format!("{}::{}", mod_path, test.name); //prepend mod path to test name
+        test.address = Some(test_fn_ptr);
+        Ok(test)
+    }
+
+    fn symbol_name_of(&self, sym: &Sym) -> anyhow::Result<&'a str> {
+        self.elf
+            .strtab
+            .get_at(sym.st_name)
+            .ok_or(anyhow!("No name for symbol {:?}", sym))
+    }
+
+    #[inline]
+    fn file_offset_for(&self, addr: u64, section: &SectionHeader) -> usize {
+        (section.sh_offset + (addr - section.sh_addr)) as usize
+    }
+
+    #[inline]
+    fn read_u32_at_offset(&self, file_offset: usize) -> anyhow::Result<u32> {
+        Ok(u32::from_le_bytes(
+            self.buffer[file_offset..file_offset + 4].try_into()?,
+        ))
+    }
+
+    fn read_mod_path(&self, mod_path_ptr: u32, mod_path_len: u32) -> anyhow::Result<&'a str> {
+        let section = self
+            .elf
+            .section_headers
+            .iter()
+            .find(|section| {
+                mod_path_ptr >= section.sh_addr as u32
+                    && mod_path_ptr + mod_path_len <= (section.sh_addr + section.sh_size) as u32
+            })
+            .ok_or(anyhow!(
+                "section not found for mod path str {:x}",
+                mod_path_ptr
+            ))?;
+
+        let file_offset = self.file_offset_for(mod_path_ptr as u64, section);
+        let full_path = &self.buffer[file_offset..file_offset + mod_path_len as usize];
+        let full_path = str::from_utf8(full_path)?;
+        let first_col = full_path
+            .find("::")
+            .ok_or(anyhow!("Module path does not contain '::'"))?;
+        Ok(&full_path[first_col + 2..]) // strip the crate name from the module path
+    }
+}
+
+impl EmbeddedTestElfInfo {
+    fn from_elf(path: &Path) -> anyhow::Result<Option<Self>> {
+        let mut file = File::open(path).map_err(FileDownloadError::IO)?;
+
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer)?;
+        let buffer = buffer.as_slice();
+
+        let elf = goblin::elf::Elf::parse(buffer).context("Failed to parse ELF file")?;
+
+        ElfReader { buffer, elf }
+            .decode()
+            .context("Failed to read embedded_test testcases from provided ELF")
+    }
 }
 
 fn detect_run_mode(cmd: &Cmd) -> anyhow::Result<RunMode> {
-    if elf_contains_test(&cmd.shared_options.path)? {
+    if let Some(elf_info) = EmbeddedTestElfInfo::from_elf(&cmd.shared_options.path)? {
         // We tolerate the run options, even in test mode so that you can set
         // `probe-rs run --catch-hardfault` as cargo runner (used for both unit tests and normal binaries)
         tracing::info!("Detected embedded-test in ELF file. Running as test");
-        Ok(RunMode::Test)
+        tracing::debug!("Embedded Test Metadata: {:?}", elf_info);
+        Ok(RunMode::Test(elf_info))
     } else {
         let test_args_specified = cmd.test_options.list
             || cmd.test_options.exact
