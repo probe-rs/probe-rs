@@ -525,22 +525,15 @@ pub async fn test(
 
     let rtt_handle = rtt_client.as_ref().map(|rtt| rtt.handle);
     let test = async {
-        let tests = match elf_info.version {
-            0 => {
-                // In embedded test < 0.7, we have to query the tests from the target via semihosting
-                session
-                    .list_tests(boot_info, rtt_handle, async |msg| sender.send(msg).unwrap())
-                    .await?
-                    .tests
-            }
-            1 => {
-                // Recent embedded test versions report the tests directly via the elf file
-                elf_info.tests
-            }
-            v => anyhow::bail!(
-                "Found embedded_test protocol version {}, which is not yet supported by probe-rs. Update probe-rs?",
-                v
-            ),
+        let tests = if elf_info.version == 0 {
+            // In embedded test < 0.7, we have to query the tests from the target via semihosting
+            session
+                .list_tests(boot_info, rtt_handle, async |msg| sender.send(msg).unwrap())
+                .await?
+                .tests
+        } else {
+            // Recent embedded test versions report the tests directly via the elf file
+            elf_info.tests
         };
 
         if token.is_cancelled() {

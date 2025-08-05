@@ -287,7 +287,7 @@ impl<'a> ElfReader<'a> {
             return Ok(None);
         }
 
-        // Find our custom .embedded_test section which contains version info and the tests
+        // Find our custom .embedded_test section which contains version info and possibly testcases
         let Some((et_section_index, et_section)) = self
             .elf
             .section_headers
@@ -299,53 +299,54 @@ impl<'a> ElfReader<'a> {
             return Ok(None);
         };
 
-        // Iterate over all symbols of our section
-        // Symbols we look for:
-        // * Version Info: 4 byte symbol with name "EMBEDDED_TEST_VERSION"
-        // * Testcase: 12 byte symbol, where the name is an escaped json_object.
-
-        let mut version = None;
-        let mut tests = vec![];
-        for sym in self.elf.syms.iter() {
-            if sym.st_bind() == STB_GLOBAL
+        let Some(version_sym) = self.elf.syms.iter().find(|sym| {
+            sym.st_bind() == STB_GLOBAL
                 && sym.st_type() == STT_OBJECT
                 && sym.st_shndx == et_section_index
-            {
-                let sym_name = self
-                    .elf
-                    .strtab
-                    .get_at(sym.st_name)
-                    .ok_or(anyhow!("No name for symbol {:?}", sym))?;
-
-                if sym.st_size == 4 && sym_name == "EMBEDDED_TEST_VERSION" {
-                    version = Some(
-                        self.read_u32_at_offset(self.file_offset_for(sym.st_value, et_section))?,
-                    )
-                } else if sym.st_size == 12 {
-                    tests.push(self.decode_testcase_sym(&sym, sym_name, et_section)?);
-                } else {
-                    tracing::debug!(
-                        "Skipping strange symbol in .embedded_test section: {:?}",
-                        sym
-                    );
-                }
-            }
-        }
-
-        if let Some(version) = version {
-            Ok(Some(EmbeddedTestElfInfo { version, tests }))
-        } else {
+                && sym.st_size == 4 // sizeof( u32 )
+                && matches!(self.symbol_name_of(sym), Ok("EMBEDDED_TEST_VERSION"))
+        }) else {
             tracing::debug!("No EMBEDDED_TEST_VERSION symbol in ELF");
-            Ok(None)
+            return Ok(None);
+        };
+
+        let version =
+            self.read_u32_at_offset(self.file_offset_for(version_sym.st_value, et_section))?;
+
+        match version {
+            0 => {
+                // In embedded test < 0.7, we have to query the tests from the target via semihosting
+                Ok(Some(EmbeddedTestElfInfo {
+                    version,
+                    tests: vec![],
+                }))
+            }
+
+            1 => {
+                // Read testcases from symbols
+                let mut tests = vec![];
+                for sym in self.elf.syms.iter() {
+                    if sym.st_bind() == STB_GLOBAL
+                        && sym.st_type() == STT_OBJECT
+                        && sym.st_shndx == et_section_index
+                        && sym.st_size == 12
+                    // sizeof( (fn()->!, &'static str) )
+                    {
+                        tests.push(self.decode_testcase_sym(&sym, et_section)?);
+                    }
+                }
+
+                Ok(Some(EmbeddedTestElfInfo { version, tests }))
+            }
+
+            _ => Err(anyhow!(
+                "Found embedded_test protocol version {}, which is not yet supported by probe-rs. Update probe-rs?",
+                version
+            )),
         }
     }
 
-    fn decode_testcase_sym(
-        &self,
-        sym: &Sym,
-        sym_name: &str,
-        et_section: &SectionHeader,
-    ) -> anyhow::Result<Test> {
+    fn decode_testcase_sym(&self, sym: &Sym, et_section: &SectionHeader) -> anyhow::Result<Test> {
         // A testcase is stored as tuple of testfunc + module_path
         // and has type (fn()->!, &'static str) which is 12 bytes.
         // The symbol name is a escaped json object containing info about the test
@@ -356,11 +357,19 @@ impl<'a> ElfReader<'a> {
         let mod_path_len = self.read_u32_at_offset(file_offset + 8)?;
 
         let mod_path = self.read_mod_path(mod_path_ptr, mod_path_len)?;
+        let sym_name = self.symbol_name_of(sym)?;
         let def: TestDefinition = serde_json::from_str(sym_name)?;
         let mut test: Test = def.into();
         test.name = format!("{}::{}", mod_path, test.name); //prepend mod path to test name
         test.address = Some(test_fn_ptr);
         Ok(test)
+    }
+
+    fn symbol_name_of(&self, sym: &Sym) -> anyhow::Result<&'a str> {
+        self.elf
+            .strtab
+            .get_at(sym.st_name)
+            .ok_or(anyhow!("No name for symbol {:?}", sym))
     }
 
     #[inline]
