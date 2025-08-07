@@ -1,0 +1,1 @@
+Fixed support for mass-erase-unlock operations on nRF91x1 chips. probe-rs can now unlock a locked debug port on these devices.
