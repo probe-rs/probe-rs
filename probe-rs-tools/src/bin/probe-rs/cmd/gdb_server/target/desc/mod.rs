@@ -1,5 +1,6 @@
 use super::utils::copy_range_to_buf;
 use super::{GdbErrorExt, RuntimeTarget};
+use std::collections::BTreeSet;
 
 use anyhow::anyhow;
 
@@ -122,6 +123,14 @@ fn gdb_memory_map(session: &mut Session, primary_core_id: usize) -> Result<Strin
             xml_map.push_str(&region_entry);
         }
 
+        #[derive(Ord, PartialOrd, Eq, PartialEq)]
+        struct FlashRegion {
+            start: u64,
+            length: u64,
+            blocksize: u64,
+        }
+
+        let mut regions = BTreeSet::new();
         for algo in session.target().flash_algorithms.iter() {
             let start = algo.flash_properties.address_range.start;
             // Use the region end address (if possible) because it seems more correct
@@ -148,11 +157,26 @@ fn gdb_memory_map(session: &mut Session, primary_core_id: usize) -> Result<Strin
                 let start = current.address + start;
                 let length = next.address - current.address;
                 let blocksize = current.size;
-                let region_entry = format!(
-                    r#"<memory type="flash" start="{start:#x}" length="{length:#x}"><property name="blocksize">{blocksize:#x}</property></memory>\n"#
-                );
-                xml_map.push_str(&region_entry);
+                regions.insert(FlashRegion {
+                    start,
+                    length,
+                    blocksize,
+                });
             }
+        }
+
+        // Only print out a deduplicated list of flash regions to avoid GDB failing
+        // because of overlapping memory regions
+        for FlashRegion {
+            start,
+            length,
+            blocksize,
+        } in regions.iter()
+        {
+            let region_entry = format!(
+                r#"<memory type="flash" start="{start:#x}" length="{length:#x}"><property name="blocksize">{blocksize:#x}</property></memory>\n"#
+            );
+            xml_map.push_str(&region_entry);
         }
     }
 
