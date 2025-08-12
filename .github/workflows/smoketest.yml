@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install target for cross-compilation
         run: rustup target add aarch64-unknown-linux-gnu
