@@ -513,111 +513,120 @@ impl CmsisDap {
     /// raised if necessary.
     #[tracing::instrument(skip(self))]
     fn process_batch(&mut self) -> Result<Option<u32>, ArmError> {
-        let mut batch = std::mem::take(&mut self.batch);
+        let batch = std::mem::take(&mut self.batch);
         if batch.is_empty() {
             return Ok(None);
         }
 
         tracing::debug!("{} items in batch", batch.len());
 
-        for retry in (0..5).rev() {
-            tracing::debug!("Attempting batch of {} items", batch.len());
-            if batch.is_empty() {
-                break;
-            }
-
-            let mut transfers = TransferRequest::empty();
-            for command in batch.iter().cloned() {
-                match command {
-                    BatchCommand::Read(port) => {
-                        transfers.add_read(port);
-                    }
-                    BatchCommand::Write(port, value) => {
-                        transfers.add_write(port, value);
-                    }
+        let mut transfers = TransferRequest::empty();
+        for command in batch.iter().cloned() {
+            match command {
+                BatchCommand::Read(port) => {
+                    transfers.add_read(port);
                 }
-            }
-
-            let response = commands::send_command(&mut self.device, &transfers)
-                .map_err(DebugProbeError::from)?;
-
-            let count = response.transfers.len();
-
-            tracing::debug!("{} of batch of {} items executed", count, batch.len());
-
-            if response.last_transfer_response.protocol_error {
-                tracing::warn!(
-                    "Protocol error in response to command {}",
-                    batch[count.saturating_sub(1)]
-                );
-
-                return Err(DapError::Protocol(
-                    self.protocol
-                        .expect("A wire protocol should have been selected by now"),
-                )
-                .into());
-            }
-
-            match response.last_transfer_response.ack {
-                Ack::Ok => {
-                    tracing::trace!("Transfer status: ACK");
-                    return Ok(response.transfers[count - 1].data);
-                }
-                Ack::NoAck => {
-                    tracing::debug!(
-                        "Transfer status for batch item {}/{}: NACK",
-                        count,
-                        batch.len()
-                    );
-                    // TODO: Try a reset?
-                    return Err(DapError::NoAcknowledge.into());
-                }
-                Ack::Fault => {
-                    tracing::debug!(
-                        "Transfer status for batch item {}/{}: FAULT",
-                        count,
-                        batch.len()
-                    );
-
-                    // To avoid a potential endless recursion,
-                    // call a separate function to read the ctrl register,
-                    // which doesn't use the batch API.
-                    let ctrl = self.read_ctrl_register()?;
-
-                    tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
-
-                    if ctrl.sticky_err() {
-                        // Clear sticky error flags.
-                        self.write_abort({
-                            let mut abort = Abort(0);
-                            abort.set_stkerrclr(ctrl.sticky_err());
-                            abort
-                        })?;
-                    }
-
-                    let successful = count.saturating_sub(1);
-                    tracing::trace!("draining {:?} and retries left {:?}", successful, retry);
-                    batch.drain(0..successful);
-                }
-                Ack::Wait => {
-                    tracing::debug!(
-                        "Transfer status for batch item {}/{}: WAIT",
-                        count,
-                        batch.len()
-                    );
-
-                    self.write_abort({
-                        let mut abort = Abort(0);
-                        abort.set_dapabort(true);
-                        abort
-                    })?;
-
-                    return Err(DapError::WaitResponse.into());
+                BatchCommand::Write(port, value) => {
+                    transfers.add_write(port, value);
                 }
             }
         }
 
-        Err(DapError::FaultResponse.into())
+        let response =
+            commands::send_command(&mut self.device, &transfers).map_err(DebugProbeError::from)?;
+
+        let count = response.transfers.len();
+
+        tracing::debug!("{} of batch of {} items executed", count, batch.len());
+
+        if response.last_transfer_response.protocol_error {
+            tracing::warn!(
+                "Protocol error in response to command {}",
+                batch[count.saturating_sub(1)]
+            );
+
+            return Err(DapError::Protocol(
+                self.protocol
+                    .expect("A wire protocol should have been selected by now"),
+            )
+            .into());
+        }
+
+        match response.last_transfer_response.ack {
+            Ack::Ok => {
+                // If less transfers than expected were executed, this
+                // is not the response to the latest command from the batch.
+                //
+                // According to the CMSIS-DAP specification, this shouldn't happen,
+                // the only time when not all transfers were executed is when an error occured.
+                // Still, this seems to happen in practice.
+
+                if count < batch.len() {
+                    tracing::warn!(
+                        "CMSIS_DAP: Only {}/{} transfers were executed, but no error was reported.",
+                        count,
+                        batch.len()
+                    );
+                    return Err(ArmError::Other(format!(
+                        "Possible error in CMSIS-DAP probe: Only {}/{} transfers were executed, but no error was reported.",
+                        count,
+                        batch.len()
+                    )));
+                }
+
+                tracing::trace!("Last transfer status: ACK");
+                Ok(response.transfers[count - 1].data)
+            }
+            Ack::NoAck => {
+                tracing::debug!(
+                    "Transfer status for batch item {}/{}: NACK",
+                    count,
+                    batch.len()
+                );
+                // TODO: Try a reset?
+                Err(DapError::NoAcknowledge.into())
+            }
+            Ack::Fault => {
+                tracing::debug!(
+                    "Transfer status for batch item {}/{}: FAULT",
+                    count,
+                    batch.len()
+                );
+
+                // To avoid a potential endless recursion,
+                // call a separate function to read the ctrl register,
+                // which doesn't use the batch API.
+                let ctrl = self.read_ctrl_register()?;
+
+                tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+
+                if ctrl.sticky_err() {
+                    // Clear sticky error flags.
+                    self.write_abort({
+                        let mut abort = Abort(0);
+                        abort.set_stkerrclr(ctrl.sticky_err());
+                        abort
+                    })?;
+                }
+
+                Err(DapError::FaultResponse.into())
+            }
+            Ack::Wait => {
+                tracing::debug!(
+                    "Transfer status for batch item {}/{}: WAIT",
+                    count,
+                    batch.len()
+                );
+
+                self.write_abort({
+                    let mut abort = Abort(0);
+                    abort.set_dapabort(true);
+                    abort
+                })?;
+
+                Err(DapError::WaitResponse.into())
+            }
+        }
     }
 
     /// Add a BatchCommand to our current batch.

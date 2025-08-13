@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0 # This is a workaround for cargo-release, see https://github.com/crate-ci/cargo-release/issues/625
           # We need to manually set a token here to ensure that we can trigger the `cargo dist` workflow.
