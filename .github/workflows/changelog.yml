@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: swatinem/rust-cache@v2
         with:

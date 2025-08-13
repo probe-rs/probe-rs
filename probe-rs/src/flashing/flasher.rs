@@ -591,7 +591,7 @@ impl Flasher {
             } else {
                 // Not using a flash algorithm function, so there's no need to go
                 // through ActiveFlasher.
-                let mut core = session.core(0).map_err(FlashError::Core)?;
+                let mut core = session.core(self.core_index).map_err(FlashError::Core)?;
                 compare_flash(&self.regions, progress, ignore_filled, |address, data| {
                     core.read(address, data).map_err(FlashError::Core)
                 })
