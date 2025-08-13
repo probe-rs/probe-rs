@@ -5,8 +5,9 @@ use crate::{
     MemoryMappedRegister,
     architecture::arm::{
         ArmDebugInterface, ArmError, FullyQualifiedApAddress,
-        core::cortex_m::{Vtor, Dhcsr},
-        memory::ArmMemoryInterface, sequences::ArmDebugSequence,
+        core::cortex_m::{Dhcsr, Vtor},
+        memory::ArmMemoryInterface,
+        sequences::ArmDebugSequence,
     },
 };
 use probe_rs_target::CoreType;
@@ -142,8 +143,8 @@ impl ArmDebugSequence for Mec172x {
         // Set the vector table base address to point to the boot ROM's vector table
         memory.write_word_32(Vtor::get_mmio_address(), 0)?;
 
-        // Mask and clear all possible pending external interrupts.  This it to avoid the 
-        // problem where the boot ROM starts execution of code in SPI NOR which in turn 
+        // Mask and clear all possible pending external interrupts.  This it to avoid the
+        // problem where the boot ROM starts execution of code in SPI NOR which in turn
         // enables a timer or starts a DMA transaction which then later triggers an interrupt
         // during the SPI NOR flashing operation.
         //
@@ -152,8 +153,7 @@ impl ArmDebugSequence for Mec172x {
         const ICPR_OFFSET: u64 = 0x180;
 
         // Iterate over all possible 256 Arm IRQs
-        for index in (0..256).step_by(core::mem::size_of::<u32>())
-        {
+        for index in (0..256).step_by(core::mem::size_of::<u32>()) {
             memory.write_word_32(NVIC_BASE + ICER_OFFSET + index, 0xFFFF_FFFF)?;
             memory.write_word_32(NVIC_BASE + ICPR_OFFSET + index, 0xFFFF_FFFF)?;
         }
