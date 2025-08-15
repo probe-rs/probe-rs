@@ -11,6 +11,7 @@ use crate::memory::MemoryInterface;
 use crate::rtt::{self, Rtt, ScanRegion};
 use crate::{Core, InstructionSet, core::CoreRegisters, session::Session};
 use crate::{CoreStatus, Target};
+use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::{
     fmt::Debug,
@@ -1138,32 +1139,34 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         );
         // TODO: Prevent security settings from locking the device.
 
-        // In case some of the previous preprocessing forgets to pad the last page,
-        // we will fill the missing bytes with the erased byte value.
-        let empty = self.flash_algorithm.flash_properties.erased_byte_value;
-        let words: Vec<u32> = bytes
-            .chunks(std::mem::size_of::<u32>())
-            .map(|a| {
-                u32::from_le_bytes([
-                    a[0],
-                    a.get(1).copied().unwrap_or(empty),
-                    a.get(2).copied().unwrap_or(empty),
-                    a.get(3).copied().unwrap_or(empty),
-                ])
-            })
-            .collect();
+        let t1 = if tracing::enabled!(Level::INFO) {
+            Some(Instant::now())
+        } else {
+            None
+        };
 
-        let t1 = Instant::now();
+        let word_size = if self.core.is_64_bit() { 8 } else { 4 };
+        let bytes = if bytes.len().is_multiple_of(word_size) {
+            Cow::Borrowed(bytes)
+        } else {
+            let mut bytes = bytes.to_vec();
+            // Pad the bytes to the next word size.
+            bytes.resize(
+                bytes.len().div_ceil(word_size) * word_size,
+                self.flash_algorithm.flash_properties.erased_byte_value,
+            );
+            Cow::Owned(bytes)
+        };
 
-        self.core
-            .write(address, words.as_bytes())
-            .map_err(FlashError::Core)?;
+        self.core.write(address, &bytes).map_err(FlashError::Core)?;
 
-        tracing::info!(
-            "Took {:?} to download {} byte page into ram",
-            t1.elapsed(),
-            bytes.len()
-        );
+        if let Some(t1) = t1 {
+            tracing::info!(
+                "Took {:?} to download {} byte page into ram",
+                t1.elapsed(),
+                bytes.len()
+            );
+        };
 
         Ok(())
     }
