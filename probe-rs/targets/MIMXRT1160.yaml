@@ -15,9 +15,10 @@ variants:
     range:
       # OCRAM1 and OCRAM2 aliases when ECC is disabled,
       # plus the ECC region (usable as RAM when ECC is
-      # disabled).
+      # disabled), plus the FlexRAM region (assuming
+      # all FlexRAM is allocated.)
       start: 0x20340000
-      end:   0x20380000
+      end:   0x20800000
     cores:
     - cm7
   - !Nvm
@@ -31,14 +32,14 @@ variants:
     name: ITCM
     range:
       start: 0x00000000
-      end:   0x00040000
+      end:   0x00080000
     cores:
     - cm7
   - !Ram
     name: DTCM
     range:
       start: 0x20000000
-      end:   0x20040000
+      end:   0x20080000
     cores:
     - cm7
   flash_algorithms:
