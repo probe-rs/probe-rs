@@ -10,8 +10,14 @@ use anyhow::{Context, anyhow};
 use serde::Serialize;
 use std::{
     collections::{BTreeMap, HashMap},
-    io::{BufRead, BufReader, ErrorKind, Read, Write},
+    io::ErrorKind,
+    pin::Pin,
     str,
+    sync::atomic::AtomicI64,
+};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader},
+    sync::mpsc::{UnboundedReceiver, UnboundedSender, WeakUnboundedSender},
 };
 use tokio_util::{
     bytes::BytesMut,
@@ -21,10 +27,21 @@ use tracing::instrument;
 
 use super::codec::{DapCodec, Frame, Message};
 
+pub trait EventSender {
+    // Send an event
+    //
+    // This might fail if the connection to the client has been lost.
+    fn send_event(
+        &self,
+        event_type: &str,
+        event_body: Option<serde_json::Value>,
+    ) -> anyhow::Result<()>;
+}
+
 pub trait ProtocolAdapter {
     /// Listen for a request. This call should be non-blocking, and if not request is available, it should
     /// return None.
-    fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>>;
+    async fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>>;
 
     fn send_event<S: Serialize>(
         &mut self,
@@ -32,16 +49,15 @@ pub trait ProtocolAdapter {
         event_body: Option<S>,
     ) -> anyhow::Result<()>;
 
-    fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()>;
+    fn event_sender(&self) -> Box<dyn EventSender>;
+
+    async fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()>;
 
     fn remove_pending_request(&mut self, request_seq: i64) -> Option<String>;
 
     fn set_console_log_level(&mut self, log_level: ConsoleLog);
 
     fn console_log_level(&self) -> ConsoleLog;
-
-    /// Increases the sequence number by 1 and returns it.
-    fn get_next_seq(&mut self) -> i64;
 }
 
 pub trait ProtocolHelper {
@@ -50,7 +66,7 @@ pub trait ProtocolHelper {
     /// Log a message to the console. Returns false if logging the message failed.
     fn log_to_console(&mut self, message: impl AsRef<str>) -> bool;
 
-    fn send_response<S: Serialize + std::fmt::Debug>(
+    async fn send_response<S: Serialize + std::fmt::Debug>(
         &mut self,
         request: &Request,
         response: Result<Option<S>, &DebuggerError>,
@@ -99,7 +115,7 @@ where
         self.send_event("output", Some(event_body)).is_ok()
     }
 
-    fn send_response<S: Serialize + std::fmt::Debug>(
+    async fn send_response<S: Serialize + std::fmt::Debug>(
         &mut self,
         request: &Request,
         response: Result<Option<S>, &DebuggerError>,
@@ -111,7 +127,7 @@ where
             Ok(value) => Response {
                 command: request.command.clone(),
                 request_seq: request.seq,
-                seq: self.get_next_seq(),
+                seq: 0, // This will get filled when it's sent
                 success: true,
                 type_: "response".to_owned(),
                 message: None,
@@ -159,7 +175,7 @@ where
                 Response {
                     command: request.command.clone(),
                     request_seq: request.seq,
-                    seq: self.get_next_seq(),
+                    seq: 0, // This will get filled when it's sent
                     success: false,
                     type_: "response".to_owned(),
                     message: Some("cancelled".to_string()), // Predefined value in the MSDAP spec.
@@ -181,6 +197,7 @@ where
         }
 
         self.send_raw_response(encoded_resp.clone())
+            .await
             .context("Unexpected Error while sending response.")?;
 
         if response_is_ok {
@@ -205,45 +222,129 @@ where
     }
 }
 
-pub struct DapAdapter<R: Read, W: Write> {
-    input: BufReader<R>,
-    output: W,
-    console_log_level: ConsoleLog,
-    seq: i64,
-
-    pending_requests: HashMap<i64, String>,
-
-    codec: DapCodec<Message>,
-    input_buffer: BytesMut,
+#[derive(Debug)]
+enum TxMessage {
+    Frame(Message),
+    Done,
 }
 
-impl<R: Read, W: Write> DapAdapter<R, W> {
-    pub(crate) fn new(reader: R, writer: W) -> Self {
-        Self {
-            input: BufReader::new(reader),
-            output: writer,
-            seq: 0,
+pub struct DapAdapter<R> {
+    input: Pin<Box<BufReader<R>>>,
+    codec: DapCodec<Message>,
+    input_buffer: BytesMut,
+
+    output_tx: UnboundedSender<TxMessage>,
+    output_task: Option<tokio::task::JoinHandle<Result<(), std::io::Error>>>,
+
+    console_log_level: ConsoleLog,
+
+    pending_requests: HashMap<i64, String>,
+}
+
+impl<R> Drop for DapAdapter<R> {
+    fn drop(&mut self) {
+        // Signal to the output thread that we're done
+        let _ = self.output_tx.send(TxMessage::Done);
+
+        if let Some(output_thread) = self.output_task.take() {
+            // TODO: Do we actually need to abort here?
+
+            tracing::debug!("Waiting for TX thread to join");
+            output_thread.abort();
+        }
+    }
+}
+
+async fn output_task<W: AsyncWrite>(
+    write: W,
+    mut rx: UnboundedReceiver<TxMessage>,
+) -> Result<(), std::io::Error> {
+    let mut writer = Box::pin(write);
+
+    let mut buf = BytesMut::with_capacity(4096);
+
+    let mut seq = 1;
+
+    while let Some(msg) = rx.recv().await {
+        match msg {
+            TxMessage::Done => break,
+            TxMessage::Frame(mut msg) => {
+                msg.set_seq(seq);
+                seq += 1;
+
+                let frame = Frame::new(msg);
+
+                DapCodec::new().encode(frame, &mut buf)?;
+                writer.write_all(&buf).await?;
+                writer.flush().await?;
+
+                buf.clear();
+            }
+        }
+    }
+
+    Ok(())
+}
+
+impl<R: AsyncRead> DapAdapter<R> {
+    /// Create a new DAP adapter.
+    ///
+    /// Can fail if the output thread fails to start.
+    pub(crate) fn new<W: AsyncWrite + Send + 'static>(
+        reader: R,
+        writer: W,
+    ) -> Result<Self, std::io::Error> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let output_thread = tokio::spawn(output_task(writer, rx));
+
+        Ok(Self {
+            input: Box::pin(BufReader::new(reader)),
+            output_tx: tx,
+            output_task: Some(output_thread),
             console_log_level: ConsoleLog::Console,
             pending_requests: HashMap::new(),
 
             codec: DapCodec::new(),
             input_buffer: BytesMut::with_capacity(4096),
+        })
+    }
+
+    /// This is prefered to drop so that it is ensured that all data is sent
+    ///
+    /// Returns an error if the output thread fails to join,
+    /// of if there was an error sending all pending messages.
+    #[cfg(test)]
+    pub async fn close(mut self) -> Result<(), std::io::Error> {
+        // Signal to the output thread that we're done
+        let _ = self.output_tx.send(TxMessage::Done);
+
+        if let Some(output_thread) = self.output_task.take() {
+            output_thread.await?
+        } else {
+            Ok(())
         }
     }
+}
 
+impl<R> DapAdapter<R> {
     #[instrument(level = "trace", skip_all)]
-    fn send_data(&mut self, item: Frame<Message>) -> Result<(), std::io::Error> {
-        let mut buf = BytesMut::with_capacity(4096);
-        self.codec.encode(item, &mut buf)?;
-        self.output.write_all(&buf)?;
-        self.output.flush()?;
-        Ok(())
-    }
+    fn send_data(&mut self, item: Message) -> Result<(), std::io::Error> {
+        // TODO: Better error handling
+        //
+        // The only case where this would fail is if the connection to the client is closed.
 
+        self.output_tx
+            .send(TxMessage::Frame(item))
+            .map_err(std::io::Error::other)
+    }
+}
+
+impl<R: AsyncRead> DapAdapter<R> {
     /// Receive data from `self.input`. Data has to be in the format specified by the Debug Adapter Protocol (DAP).
     /// The returned data is the content part of the request, as raw bytes.
-    fn receive_data(&mut self) -> Result<Option<Frame<Message>>, DebuggerError> {
-        match self.input.fill_buf() {
+    async fn receive_data(&mut self) -> Result<Option<Frame<Message>>, DebuggerError> {
+        match self.input.fill_buf().await {
             Ok(data) => {
                 // New data is here. Shove it into the buffer.
                 self.input_buffer.extend_from_slice(data);
@@ -264,8 +365,8 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
         Ok(self.codec.decode(&mut self.input_buffer)?)
     }
 
-    fn listen_for_request_and_respond(&mut self) -> anyhow::Result<Option<Request>> {
-        match self.receive_msg_content() {
+    async fn listen_for_request_and_respond(&mut self) -> anyhow::Result<Option<Request>> {
+        match self.receive_msg_content().await {
             Ok(Some(request)) => {
                 tracing::debug!("Received request: {:?}", request);
 
@@ -300,8 +401,8 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
         }
     }
 
-    fn receive_msg_content(&mut self) -> Result<Option<Request>, DebuggerError> {
-        match self.receive_data() {
+    async fn receive_msg_content(&mut self) -> Result<Option<Request>, DebuggerError> {
+        match self.receive_data().await {
             Ok(Some(frame)) => {
                 // Extract protocol message
                 if let Message::Request(request) = frame.content {
@@ -322,9 +423,9 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     }
 }
 
-impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
-    fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
-        self.listen_for_request_and_respond()
+impl<R: AsyncRead> ProtocolAdapter for DapAdapter<R> {
+    async fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
+        self.listen_for_request_and_respond().await
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -334,14 +435,14 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         event_body: Option<S>,
     ) -> anyhow::Result<()> {
         let new_event = Event {
-            seq: self.get_next_seq(),
+            seq: 0, // This will get filled when it's sent
             type_: "event".to_string(),
             event: event_type.to_string(),
             body: event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
         };
 
         let result = self
-            .send_data(Frame::new(new_event.clone().into()))
+            .send_data(new_event.clone().into())
             .context("Unexpected Error while sending event.");
 
         if event_type != "output" {
@@ -372,53 +473,157 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         self.pending_requests.remove(&request_seq)
     }
 
-    fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
-        self.send_data(Frame::new(Message::Response(response)))?;
+    async fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
+        self.send_data(Message::Response(response))?;
 
         Ok(())
     }
 
-    fn get_next_seq(&mut self) -> i64 {
-        self.seq += 1;
-        self.seq
+    fn event_sender(&self) -> Box<dyn EventSender> {
+        Box::new(EventSenderThingy::new(self.output_tx.downgrade()))
+    }
+}
+
+static SEQ: AtomicI64 = AtomicI64::new(1);
+
+fn get_next_seq() -> i64 {
+    // Ordering: We use Relaxed ordering because we don't care about the order of the sequence numbers,
+    // only that they are unique.
+    SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
+
+struct EventSenderThingy {
+    tx: WeakUnboundedSender<TxMessage>,
+}
+
+impl EventSenderThingy {
+    fn new(tx: WeakUnboundedSender<TxMessage>) -> Self {
+        Self { tx }
+    }
+}
+
+impl EventSender for EventSenderThingy {
+    fn send_event(
+        &self,
+        event_type: &str,
+        event_body: Option<serde_json::Value>,
+    ) -> anyhow::Result<()> {
+        let new_event = Event {
+            seq: get_next_seq(),
+            type_: "event".to_string(),
+            event: event_type.to_string(),
+            body: event_body,
+        };
+
+        let sender = self
+            .tx
+            .upgrade()
+            .ok_or_else(|| anyhow::anyhow!("Unable to send event, connection to client dropped"))?;
+
+        sender
+            .send(TxMessage::Frame(Message::Event(new_event)))
+            .context("Failed to send event")
     }
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod test {
-    use std::io::{self, ErrorKind};
+    use std::{
+        io::{self, ErrorKind},
+        sync::{Arc, Mutex},
+    };
 
     use super::*;
 
     struct TestReader {
-        response: Option<io::Result<usize>>,
+        response: Option<io::Result<Vec<u8>>>,
     }
 
-    impl Read for TestReader {
-        fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+    #[derive(Clone)]
+    struct TestOutput {
+        data: Arc<Mutex<Vec<u8>>>,
+    }
+
+    impl AsyncWrite for TestOutput {
+        fn poll_write(
+            self: Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+            buf: &[u8],
+        ) -> std::task::Poll<Result<usize, io::Error>> {
+            self.data.lock().unwrap().extend_from_slice(buf);
+
+            let len = buf.len();
+            std::task::Poll::Ready(Ok(len))
+        }
+
+        fn poll_flush(
+            self: Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<Result<(), io::Error>> {
+            let buf: &mut Vec<u8> = &mut self.data.lock().unwrap();
+            let result = std::io::Write::flush(buf);
+
+            std::task::Poll::Ready(result)
+        }
+
+        fn poll_shutdown(
+            self: Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<Result<(), io::Error>> {
+            std::task::Poll::Ready(Ok(()))
+        }
+    }
+
+    impl TestOutput {
+        fn new() -> Self {
+            Self {
+                data: Arc::new(Mutex::new(Vec::new())),
+            }
+        }
+
+        fn data(&self) -> Vec<u8> {
+            self.data.lock().unwrap().clone()
+        }
+    }
+
+    impl AsyncRead for TestReader {
+        fn poll_read(
+            mut self: Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+            buf: &mut tokio::io::ReadBuf<'_>,
+        ) -> std::task::Poll<io::Result<()>> {
             if let Some(response) = self.response.take() {
-                response
+                match response {
+                    Ok(data) => {
+                        buf.put_slice(&data);
+                        std::task::Poll::Ready(Ok(()))
+                    }
+                    Err(err) => std::task::Poll::Ready(Err(err)),
+                }
             } else {
-                Err(io::Error::other("Repeated use of test reader"))
+                std::task::Poll::Ready(Err(io::Error::other("Repeated use of test reader")))
             }
         }
     }
 
-    #[test]
-    fn receive_valid_request() {
+    #[tokio::test]
+    async fn receive_valid_request() {
         let content = "{ \"seq\": 3, \"type\": \"request\", \"command\": \"test\" }";
 
         let input = format!("Content-Length: {}\r\n\r\n{}", content.len(), content);
 
-        let mut output = Vec::new();
+        let output = TestOutput::new();
 
-        let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        let mut adapter = DapAdapter::new(input.as_bytes(), output.clone()).unwrap();
         adapter.console_log_level = super::ConsoleLog::Info;
 
-        let request = adapter.listen_for_request().unwrap().unwrap();
+        let request = adapter.listen_for_request().await.unwrap().unwrap();
 
-        let output_str = String::from_utf8(output).unwrap();
+        // Ensure that all the output is sent
+        adapter.close().await.unwrap();
+
+        let output_str = String::from_utf8(output.data()).unwrap();
 
         insta::assert_snapshot!(output_str);
 
@@ -426,26 +631,29 @@ mod test {
         assert_eq!(request.seq, 3);
     }
 
-    #[test]
-    fn receive_request_with_invalid_json() {
+    #[tokio::test]
+    async fn receive_request_with_invalid_json() {
         let content = "{ \"seq\": 3, \"type\": \"request\", \"command\": \"test }";
 
         let input = format!("Content-Length: {}\r\n\r\n{}", content.len(), content);
 
-        let mut output = Vec::new();
+        let output = TestOutput::new();
 
-        let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        let mut adapter = DapAdapter::new(input.as_bytes(), output.clone()).unwrap();
         adapter.console_log_level = super::ConsoleLog::Info;
 
-        let _request = adapter.listen_for_request().unwrap_err();
+        let _request = adapter.listen_for_request().await.unwrap_err();
 
-        let output_str = String::from_utf8(output).unwrap();
+        // Ensure that all the output is sent
+        adapter.close().await.unwrap();
+
+        let output_str = String::from_utf8(output.data()).unwrap();
 
         insta::assert_snapshot!(output_str);
     }
 
-    #[test]
-    fn receive_request_would_block() {
+    #[tokio::test]
+    async fn receive_request_would_block() {
         let input = TestReader {
             response: Some(io::Result::Err(io::Error::new(
                 ErrorKind::WouldBlock,
@@ -453,14 +661,14 @@ mod test {
             ))),
         };
 
-        let mut output = Vec::new();
+        let output = TestOutput::new();
 
-        let mut adapter = DapAdapter::new(input, &mut output);
+        let mut adapter = DapAdapter::new(input, output.clone()).unwrap();
         adapter.console_log_level = super::ConsoleLog::Info;
 
-        let request = adapter.listen_for_request().unwrap();
+        let request = adapter.listen_for_request().await.unwrap();
 
-        let output_str = String::from_utf8(output).unwrap();
+        let output_str = String::from_utf8(output.data()).unwrap();
 
         insta::assert_snapshot!(output_str);
 
@@ -469,31 +677,59 @@ mod test {
 
     struct FailingWriter {}
 
-    impl std::io::Write for FailingWriter {
-        fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
-            Err(io::Error::other("FailingWriter"))
+    impl AsyncWrite for FailingWriter {
+        fn poll_write(
+            self: Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+            _buf: &[u8],
+        ) -> std::task::Poll<Result<usize, io::Error>> {
+            std::task::Poll::Ready(Err(io::Error::other("FailingWriter")))
         }
 
-        fn flush(&mut self) -> io::Result<()> {
-            Err(io::Error::other("FailingWriter"))
+        fn poll_flush(
+            self: Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<Result<(), io::Error>> {
+            std::task::Poll::Ready(Err(io::Error::other("FailingWriter")))
+        }
+
+        fn poll_shutdown(
+            self: Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<Result<(), io::Error>> {
+            std::task::Poll::Ready(Err(io::Error::other("FailingWriter")))
         }
     }
 
-    #[test]
-    fn event_send_error() {
-        let mut adapter = DapAdapter::new(io::empty(), FailingWriter {});
+    #[tokio::test]
+    async fn event_send_error() {
+        let mut adapter = DapAdapter::new(tokio::io::empty(), FailingWriter {}).unwrap();
 
         let result = adapter.send_event("probe-rs-test", Some(()));
 
-        assert!(result.is_err());
+        // This should fail because we get the result from the failing write here,
+        // which is reported back from the task
+        adapter.close().await.unwrap_err();
+
+        // TODO: This now can't fail, because the actual send is done in a different thread
+        //
+        // Look into error reporting for that case
+        assert!(result.is_ok());
     }
 
-    #[test]
-    fn message_send_error() {
-        let mut adapter = DapAdapter::new(io::empty(), FailingWriter {});
+    #[tokio::test]
+    async fn message_send_error() {
+        let mut adapter = DapAdapter::new(tokio::io::empty(), FailingWriter {}).unwrap();
 
         let result = adapter.show_message(MessageSeverity::Error, "probe-rs-test");
 
-        assert!(!result);
+        // This should fail because we get the result from the failing write here,
+        // which is reported back from the task
+        adapter.close().await.unwrap_err();
+
+        // TODO: This now can't fail, because the actual send is done in a different thread
+        //
+        // Look into error reporting for that case
+        assert!(result);
     }
 }
