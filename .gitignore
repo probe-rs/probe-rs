@@ -8,3 +8,10 @@
 .vscode/settings.json
 .idea/
 .zed/
+
+# Build artifacts in crc32-blobs
+crc32-blobs/**/*.o
+crc32-blobs/**/*.elf
+crc32-blobs/**/*.hex
+crc32-blobs/**/*.map
+crc32-blobs/**/*.s

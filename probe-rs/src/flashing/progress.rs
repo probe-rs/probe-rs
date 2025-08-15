@@ -104,6 +104,16 @@ impl<'a> FlashProgress<'a> {
         self.started(ProgressOperation::Verify);
     }
 
+    /// Signal that the CRC32 verification procedure started.
+    pub(super) fn started_crc32_verifying(&self) {
+        self.started(ProgressOperation::Crc32Verify);
+    }
+
+    /// Signal that the incremental programming procedure started.
+    pub(super) fn started_incremental_programming(&self) {
+        self.started(ProgressOperation::IncrementalProgram);
+    }
+
     /// Signal that the sector erasing procedure has made progress.
     pub(super) fn sector_erased(&self, size: u64, time: Duration) {
         self.progressed(ProgressOperation::Erase, size, time);
@@ -123,6 +133,17 @@ impl<'a> FlashProgress<'a> {
     pub(super) fn page_verified(&self, size: u64, time: Duration) {
         self.progressed(ProgressOperation::Verify, size, time);
     }
+
+    /// Signal that the CRC32 verification procedure has made progress.
+    pub(super) fn sector_crc32_verified(&self, size: u64, time: Duration) {
+        self.progressed(ProgressOperation::Crc32Verify, size, time);
+    }
+
+    /// Signal that the incremental programming procedure has made progress.
+    pub(super) fn page_incremental_programmed(&self, size: u64, time: Duration) {
+        self.progressed(ProgressOperation::IncrementalProgram, size, time);
+    }
+
 
     /// Signal that the erasing procedure failed.
     pub(super) fn failed_erasing(&self) {
@@ -144,6 +165,16 @@ impl<'a> FlashProgress<'a> {
         self.failed(ProgressOperation::Verify);
     }
 
+    /// Signal that the CRC32 verification procedure failed.
+    pub(super) fn failed_crc32_verifying(&self) {
+        self.failed(ProgressOperation::Crc32Verify);
+    }
+
+    /// Signal that the incremental programming procedure failed.
+    pub(super) fn failed_incremental_programming(&self) {
+        self.failed(ProgressOperation::IncrementalProgram);
+    }
+
     /// Signal that the programming procedure completed successfully.
     pub(super) fn finished_programming(&self) {
         self.finished(ProgressOperation::Program);
@@ -163,6 +194,16 @@ impl<'a> FlashProgress<'a> {
     pub(super) fn finished_verifying(&self) {
         self.finished(ProgressOperation::Verify);
     }
+
+    /// Signal that the CRC32 verification procedure completed successfully.
+    pub(super) fn finished_crc32_verifying(&self) {
+        self.finished(ProgressOperation::Crc32Verify);
+    }
+
+    /// Signal that the incremental programming procedure completed successfully.
+    pub(super) fn finished_incremental_programming(&self) {
+        self.finished(ProgressOperation::IncrementalProgram);
+    }
 }
 
 /// The operation that is currently in progress.
@@ -179,6 +220,12 @@ pub enum ProgressOperation {
 
     /// Checking flash contents.
     Verify,
+
+    /// Verifying flash contents using CRC32 (incremental mode).
+    Crc32Verify,
+
+    /// Selectively programming only changed sectors (incremental mode).
+    IncrementalProgram,
 }
 
 /// Possible events during the flashing process.

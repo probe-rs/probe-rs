@@ -221,6 +221,10 @@ pub struct DownloadOptions<'p> {
     pub verify: bool,
     /// Disable double buffering when loading flash.
     pub disable_double_buffering: bool,
+    /// Enable incremental sector-by-sector verification and programming.
+    /// When enabled, sectors are verified before erasing and only differing sectors are updated.
+    /// This requires disabling chip erase to preserve existing sector contents for verification.
+    pub incremental: bool,
 }
 
 impl DownloadOptions<'_> {
