@@ -2,7 +2,7 @@
 //!
 //! Specification: <https://github.com/ARM-software/abi-aa/blob/2024Q3/semihosting/semihosting.rst>
 
-use std::num::NonZeroU32;
+use std::{num::NonZeroU32, time::SystemTime};
 
 use crate::{CoreInterface, Error, MemoryInterface, RegisterValue};
 
@@ -31,6 +31,24 @@ pub enum SemihostingCommand {
 
     /// The target indicated that it would like to write to the console.
     Write(WriteRequest),
+
+    /// The target indicated that it would like to read from a file on the host.
+    Read(ReadRequest),
+
+    /// The target indicated that it would like to seek in a file on the host.
+    Seek(SeekRequest),
+
+    /// The target indicated that it would like to read the length of a file on the host.
+    FileLength(FileLengthRequest),
+
+    /// The target indicated that it would like to remove a file on the host.
+    Remove(RemoveRequest),
+
+    /// The target indicated that it would like to rename a file on the host.
+    Rename(RenameRequest),
+
+    /// The target indicated that it would like to read the current time.
+    Time(TimeRequest),
 
     /// The target indicated that it would like to read the value of errno.
     Errno(ErrnoRequest),
@@ -197,6 +215,149 @@ impl WriteRequest {
     }
 }
 
+/// A request to read from a file on the host
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct ReadRequest {
+    handle: u32,
+    bytes: u32,
+    len: u32,
+}
+
+impl ReadRequest {
+    /// Returns the handle of the file to read from
+    pub fn file_handle(&self) -> u32 {
+        self.handle
+    }
+
+    /// Returns the number of bytes to read
+    pub fn bytes_to_read(&self) -> u32 {
+        self.len
+    }
+
+    /// Writes the buffer to the target
+    pub fn write_buffer_to_target(
+        &self,
+        core: &mut crate::Core<'_>,
+        buf: &[u8],
+    ) -> Result<(), Error> {
+        assert!(buf.len() <= self.len as usize);
+
+        if !buf.is_empty() {
+            core.write(self.bytes as u64, buf)?;
+        }
+
+        let status = match buf.len() {
+            0 => self.len as i32,
+            len if len == self.len as usize => 0,
+            len => len as i32,
+        };
+
+        write_status(core, status)
+    }
+}
+
+/// A request to seek in a file on the host
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct SeekRequest {
+    handle: u32,
+    pos: u32,
+}
+
+impl SeekRequest {
+    /// Returns the handle of the file to seek in
+    pub fn file_handle(&self) -> u32 {
+        self.handle
+    }
+
+    /// Returns the absolute byte position to search to
+    pub fn position(&self) -> u32 {
+        self.pos
+    }
+
+    /// Responds with success to the target
+    pub fn success(&self, core: &mut dyn CoreInterface) -> Result<(), Error> {
+        write_status(core, 0)
+    }
+}
+
+/// A request to read the length of a file on the host
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct FileLengthRequest {
+    handle: u32,
+}
+
+impl FileLengthRequest {
+    /// Returns the handle of the file to seek in
+    pub fn file_handle(&self) -> u32 {
+        self.handle
+    }
+
+    /// Writes the file length to the target
+    pub fn write_length(&self, core: &mut dyn CoreInterface, len: i32) -> Result<(), Error> {
+        write_status(core, len)
+    }
+}
+
+/// A request to remove a file on the host
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct RemoveRequest {
+    path: ZeroTerminatedString,
+}
+
+impl RemoveRequest {
+    /// Reads the path from the target.
+    pub fn path(&self, core: &mut dyn CoreInterface) -> Result<String, Error> {
+        self.path.read(core)
+    }
+
+    /// Responds with success to the target
+    pub fn success(&self, core: &mut dyn CoreInterface) -> Result<(), Error> {
+        write_status(core, 0)
+    }
+}
+
+/// A request to rename a file on the host
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct RenameRequest {
+    from_path: ZeroTerminatedString,
+    to_path: ZeroTerminatedString,
+}
+
+impl RenameRequest {
+    /// Reads the path of the old file from the target.
+    pub fn from_path(&self, core: &mut dyn CoreInterface) -> Result<String, Error> {
+        self.from_path.read(core)
+    }
+
+    /// Reads the path for the new file from the target.
+    pub fn to_path(&self, core: &mut dyn CoreInterface) -> Result<String, Error> {
+        self.to_path.read(core)
+    }
+
+    /// Responds with success to the target
+    pub fn success(&self, core: &mut dyn CoreInterface) -> Result<(), Error> {
+        write_status(core, 0)
+    }
+}
+
+/// A request to read the current time
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct TimeRequest {}
+impl TimeRequest {
+    /// Writes the time to the target
+    pub fn write_time(&self, core: &mut dyn CoreInterface, value: u32) -> Result<(), Error> {
+        write_status(core, value as i32)
+    }
+
+    /// Writes the current time to the target
+    pub fn write_current_time(&self, core: &mut dyn CoreInterface) -> Result<(), Error> {
+        let duration = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("Failed to get system time");
+        self.write_time(core, duration.as_secs() as u32)
+    }
+}
+
 /// A request to read the errno
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct ErrnoRequest {}
@@ -323,6 +484,12 @@ pub fn decode_semihosting_syscall(
     const SYS_WRITEC: u32 = 0x03;
     const SYS_WRITE0: u32 = 0x04;
     const SYS_WRITE: u32 = 0x05;
+    const SYS_READ: u32 = 0x06;
+    const SYS_SEEK: u32 = 0x0a;
+    const SYS_FLEN: u32 = 0x0c;
+    const SYS_REMOVE: u32 = 0x0e;
+    const SYS_RENAME: u32 = 0x0f;
+    const SYS_TIME: u32 = 0x11;
     const SYS_ERRNO: u32 = 0x13;
 
     Ok(match (operation, parameter) {
@@ -425,6 +592,57 @@ pub fn decode_semihosting_syscall(
             write_status(core, -1)?;
             SemihostingCommand::Write(WriteRequest { handle, bytes, len })
         }
+
+        (SYS_READ, pointer) => {
+            let [handle, bytes, len] = param(core, pointer)?;
+            // signal to target: status = failure, in case the application does not answer this request
+            write_status(core, -1)?;
+            SemihostingCommand::Read(ReadRequest { handle, bytes, len })
+        }
+
+        (SYS_SEEK, pointer) => {
+            let [handle, pos] = param(core, pointer)?;
+            // signal to target: status = failure, in case the application does not answer this request
+            write_status(core, -1)?;
+            SemihostingCommand::Seek(SeekRequest { handle, pos })
+        }
+
+        (SYS_FLEN, pointer) => {
+            let [handle] = param(core, pointer)?;
+            // signal to target: status = failure, in case the application does not answer this request
+            write_status(core, -1)?;
+            SemihostingCommand::FileLength(FileLengthRequest { handle })
+        }
+
+        (SYS_REMOVE, pointer) => {
+            let [path, len] = param(core, pointer)?;
+            // signal to target: status = failure, in case the application does not answer this request
+            write_status(core, -1)?;
+            SemihostingCommand::Remove(RemoveRequest {
+                path: ZeroTerminatedString {
+                    address: path,
+                    length: Some(len),
+                },
+            })
+        }
+
+        (SYS_RENAME, pointer) => {
+            let [from_path, from_len, to_path, to_len] = param(core, pointer)?;
+            // signal to target: status = failure, in case the application does not answer this request
+            write_status(core, -1)?;
+            SemihostingCommand::Rename(RenameRequest {
+                from_path: ZeroTerminatedString {
+                    address: from_path,
+                    length: Some(from_len),
+                },
+                to_path: ZeroTerminatedString {
+                    address: to_path,
+                    length: Some(to_len),
+                },
+            })
+        }
+
+        (SYS_TIME, 0) => SemihostingCommand::Time(TimeRequest {}),
 
         (SYS_ERRNO, 0) => SemihostingCommand::Errno(ErrnoRequest {}),
 
