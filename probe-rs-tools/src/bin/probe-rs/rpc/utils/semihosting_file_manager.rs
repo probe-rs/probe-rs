@@ -6,11 +6,22 @@ use probe_rs::{
         SeekRequest, SemihostingCommand, WriteRequest,
     },
 };
-use std::num::NonZeroU32;
+#[cfg(target_family = "unix")]
+use std::os::unix::net::UnixStream;
+use std::{
+    fs::File,
+    io::{Read, Seek, SeekFrom, Write},
+    net::TcpStream,
+    num::NonZeroU32,
+};
 
 enum FileHandle {
     Stdout,
     Stderr,
+    File(File),
+    TcpStream(TcpStream),
+    #[cfg(target_family = "unix")]
+    UnixStream(UnixStream),
 }
 
 pub struct SemihostingFileManager {
@@ -84,12 +95,89 @@ impl SemihostingFileManager {
         }
     }
 
+    fn open_tcp_stream(&self, addr: &str) -> Option<FileHandle> {
+        TcpStream::connect(addr)
+            .inspect_err(|err| {
+                tracing::warn!(
+                    "Target wanted to open a TCP stream to {addr}, \
+                    but it failed with {err:?}. Continuing..."
+                )
+            })
+            .map(FileHandle::TcpStream)
+            .ok()
+    }
+
+    #[cfg(target_family = "unix")]
+    fn open_unix_stream(&self, path: &str) -> Option<FileHandle> {
+        UnixStream::connect(path)
+            .inspect_err(|err| {
+                tracing::warn!(
+                    "Target wanted to open an UNIX stream to {path}, \
+                    but it failed with {err:?}. Continuing..."
+                )
+            })
+            .map(FileHandle::UnixStream)
+            .ok()
+    }
+
+    #[cfg(not(target_family = "unix"))]
+    fn open_unix_stream(&self, path: &str) -> Option<FileHandle> {
+        tracing::error!(
+            "Target wanted to open an UNIX stream to {path}, \
+            but probe-rs does not support this on the current platform. Continuing..."
+        );
+        None
+    }
+
+    fn open_file(&self, path: &str, mode: &str) -> Option<FileHandle> {
+        let mut options = File::options();
+        match mode {
+            "r" | "rb" => options.read(true).write(false).truncate(true).create(false),
+            "r+" | "r+b" => options.read(true).write(true).truncate(true).create(false),
+            "w" | "wb" => options.read(false).write(true).truncate(true).create(true),
+            "w+" | "w+b" => options.read(true).write(true).truncate(true).create(true),
+            "a" | "ab" => options.read(false).write(true).truncate(false).create(true),
+            "a+" | "a+b" => options.read(true).write(false).truncate(false).create(true),
+            mode => {
+                tracing::error!(
+                    "Target wanted to open file {path} with invalid mode {mode}. Continuing..."
+                );
+                return None;
+            }
+        };
+
+        options
+            .open(path)
+            .inspect_err(|err| {
+                tracing::warn!(
+                    "Target wanted to open file {path} with mode {mode}, \
+                    but it failed with {err:?}. Continuing..."
+                )
+            })
+            .map(FileHandle::File)
+            .ok()
+    }
+
     fn handle_open(&mut self, core: &mut Core<'_>, request: OpenRequest) -> anyhow::Result<()> {
         let path = request.path(core)?;
 
+        // TODO: Add a more fine grained access control
+        const ALLOW_ACCESS_VARIABLE: &str = "PROBE_RS_SEMIHOSTING_ALLOW_FILE_ACCESS";
+        let allow_access = std::env::var(ALLOW_ACCESS_VARIABLE).is_ok();
+
         let f = if path == ":tt" {
             self.open_tt(request.mode())
+        } else if allow_access && let Some(addr) = path.strip_prefix("tcp://") {
+            self.open_tcp_stream(addr)
+        } else if allow_access && let Some(path) = path.strip_prefix("unix://") {
+            self.open_unix_stream(path)
+        } else if allow_access {
+            self.open_file(&path, request.mode())
         } else {
+            tracing::warn!(
+                "The environment variable {ALLOW_ACCESS_VARIABLE} is not set, \
+                which is required to allow access to files via semihosting."
+            );
             None
         };
 
@@ -136,8 +224,11 @@ impl SemihostingFileManager {
                 send_output("stderr", String::from_utf8_lossy(&buf).into());
                 Some(buf.len())
             }
+            FileHandle::File(file) => log.inspect(file.write(&buf)),
+            FileHandle::TcpStream(stream) => log.inspect(stream.write(&buf)),
+            #[cfg(target_family = "unix")]
+            FileHandle::UnixStream(stream) => log.inspect(stream.write(&buf)),
         };
-        let _ = log;
         if let Some(len) = len {
             request.write_status(core, (buf.len() - len) as i32)?;
         }
@@ -150,8 +241,20 @@ impl SemihostingFileManager {
             return Ok(());
         };
 
-        let _ = (f, core);
-        log.not_supported();
+        let mut buf = vec![0; request.bytes_to_read() as usize];
+        let len = match f {
+            FileHandle::File(file) => log.inspect(file.read(&mut buf)),
+            FileHandle::TcpStream(stream) => log.inspect(stream.read(&mut buf)),
+            #[cfg(target_family = "unix")]
+            FileHandle::UnixStream(stream) => log.inspect(stream.read(&mut buf)),
+            _ => {
+                log.not_supported();
+                None
+            }
+        };
+        if let Some(len) = len {
+            request.write_buffer_to_target(core, &buf[..len])?;
+        }
 
         Ok(())
     }
@@ -161,8 +264,14 @@ impl SemihostingFileManager {
             return Ok(());
         };
 
-        let _ = (f, core);
-        log.not_supported();
+        if let FileHandle::File(file) = f {
+            let pos = SeekFrom::Start(request.position() as u64);
+            if log.inspect(file.seek(pos)).is_some() {
+                request.success(core)?;
+            }
+        } else {
+            log.not_supported();
+        }
 
         Ok(())
     }
@@ -177,8 +286,13 @@ impl SemihostingFileManager {
             return Ok(());
         };
 
-        let _ = (f, core);
-        log.not_supported();
+        if let FileHandle::File(file) = f {
+            if let Some(meta) = log.inspect(file.metadata()) {
+                request.write_length(core, meta.len() as i32)?;
+            }
+        } else {
+            log.not_supported();
+        }
 
         Ok(())
     }
@@ -228,6 +342,10 @@ impl SemihostingFileManager {
         let variant = match file_handle {
             FileHandle::Stdout => "stdout",
             FileHandle::Stderr => "stderr",
+            FileHandle::File(_) => "file",
+            FileHandle::TcpStream(_) => "TCP stream",
+            #[cfg(target_family = "unix")]
+            FileHandle::UnixStream(_) => "UNIX stream",
         };
 
         Some((
@@ -256,6 +374,14 @@ struct FileHandleLog {
 impl FileHandleLog {
     fn not_supported(&self) {
         self.warn("probe-rs does not support this operation")
+    }
+
+    fn inspect<T>(&self, result: std::io::Result<T>) -> Option<T> {
+        result
+            .inspect_err(|err| {
+                self.warn(&format!("it failed with {err:?}"));
+            })
+            .ok()
     }
 
     fn warn(&self, reason: &str) {
