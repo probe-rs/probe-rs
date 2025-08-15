@@ -7,7 +7,7 @@ use std::{
 };
 
 use bitfield::BitMut;
-use debugmailbox::{DMCSW, DMREQUEST};
+use debugmailbox::{DMCSW, DMREQUEST, DMRETURN};
 use probe_rs_target::CoreType;
 
 use crate::{
@@ -63,6 +63,18 @@ mod debugmailbox {
         }),
         to: value => value.Request
     );
+
+    define_ap_register!(
+        name: DMRETURN,
+        address: 0x08,
+        fields: [
+            Return: u32
+        ],
+        from: value => Ok(DMRETURN {
+            Return: value
+        }),
+        to: value => value.Return
+    );
 }
 
 /// Debug sequences for MCX family MCUs.
@@ -84,6 +96,7 @@ impl MCX {
     ];
     // const VARIANT_A2: [&str; 3] = ["MCXA16", "MCXA17", "MCXA27"];
     const VARIANT_N: [&str; 1] = ["MCXN"];
+    const VARIANT_N0: [&str; 1] = ["MCXN947"];
 
     fn is_variant<'a, V>(&self, v: V) -> bool
     where
@@ -149,19 +162,85 @@ impl MCX {
             .try_into()?;
         tracing::info!("DPIDR: {:?}", dpidr);
 
-        tracing::info!("active DebugMailbox");
+        // Write RESYNCH_REQ + CHIP_RESET_REQ (0x21 = 0x20 | 0x01)
         interface.write_raw_ap_register(&ap, DMCSW::ADDRESS, 0x0000_0021)?;
-        thread::sleep(Duration::from_millis(30));
-        interface.read_raw_ap_register(&ap, 0x0)?;
-        interface.flush()?;
 
-        tracing::info!("DebugMailbox command: start debug session");
+        // Poll CSW register for zero return, indicating success
+        let start = Instant::now();
+        loop {
+            let csw_val = interface.read_raw_ap_register(&ap, DMCSW::ADDRESS)?;
+            if (csw_val & 0xFFFF) == 0 {
+                break;
+            }
+            if start.elapsed() > Duration::from_millis(1000) {
+                return Err(ArmError::Timeout);
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        tracing::info!("RESYNC_REQ + CHIP_RESET_REQ: success");
+
+        // Write START_DBG_SESSION to REQUEST register
+        tracing::info!("DebugMailbox command: start debug session (0x07)");
         interface.write_raw_ap_register(&ap, DMREQUEST::ADDRESS, 0x0000_0007)?;
-        thread::sleep(Duration::from_millis(30));
-        interface.read_raw_ap_register(&ap, 0x0)?;
+
+        // Poll RETURN register for zero return
+        let start = Instant::now();
+        loop {
+            let return_val = interface.read_raw_ap_register(&ap, DMRETURN::ADDRESS)? & 0xFFFF;
+            if return_val == 0 {
+                break;
+            }
+            if start.elapsed() > Duration::from_millis(1000) {
+                return Err(ArmError::Timeout);
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        tracing::info!("DEBUG_SESSION_REQ: success");
+
         interface.flush()?;
 
         Ok(true)
+    }
+
+    fn configure_trace_clock(
+        &self,
+        interface: &mut dyn ArmMemoryInterface,
+    ) -> Result<(), ArmError> {
+        tracing::info!("configuring trace clock");
+
+        if self.is_variant(Self::VARIANT_N0) {
+            // MCXN947 specific register addresses
+            const SYSCON_NS_BASE: u64 = 0x40000000;
+            const TRACECLKSEL_ADDR: u64 = SYSCON_NS_BASE + 0x268;
+            const TRACECLKDIV_ADDR: u64 = SYSCON_NS_BASE + 0x308;
+            const AHBCLKCTRLSET0_ADDR: u64 = SYSCON_NS_BASE + 0x220;
+
+            interface.write_word_32(TRACECLKSEL_ADDR, 0x0)?;
+            interface.write_word_32(TRACECLKDIV_ADDR, 0x2)?;
+
+            // Enable PORT0 clock for trace pins
+            interface.write_word_32(AHBCLKCTRLSET0_ADDR, 1 << 13)?;
+        } else if self.is_variant(Self::VARIANT_A0) {
+            const SYSCON_NS_BASE: u64 = 0x40091000;
+            const TRACECLKSEL_ADDR: u64 = SYSCON_NS_BASE + 0x138;
+            const TRACECLKDIV_ADDR: u64 = SYSCON_NS_BASE + 0x13C;
+            const AHBRESETSET0_ADDR: u64 = SYSCON_NS_BASE + 0x04;
+            const AHBCLKCTRLSET0_ADDR: u64 = SYSCON_NS_BASE + 0x44;
+
+            interface.write_word_32(TRACECLKSEL_ADDR, 0x0)?;
+
+            // Read current TRACECLKDIV value, preserve divider but clear rest to enable
+            let clkdiv = interface.read_word_32(TRACECLKDIV_ADDR)? & 0xFF;
+            interface.write_word_32(TRACECLKDIV_ADDR, clkdiv)?;
+
+            // Release Port0 from reset
+            interface.write_word_32(AHBRESETSET0_ADDR, 1 << 29)?;
+            // Enable Port0 clock
+            interface.write_word_32(AHBCLKCTRLSET0_ADDR, 1 << 29)?;
+        }
+
+        interface.flush()?;
+        Ok(())
     }
 
     fn wait_for_stop_after_reset(
@@ -173,16 +252,32 @@ impl MCX {
         tracing::info!("wait for stop after reset");
 
         // Give bootloader time to do what it needs to do
-        thread::sleep(Duration::from_millis(100));
+        if self.is_variant(Self::VARIANT_N0) {
+            thread::sleep(Duration::from_millis(1000));
+        } else {
+            thread::sleep(Duration::from_millis(100));
+        }
 
         let ap = interface.fully_qualified_address();
         let dp = ap.dp();
-        let start = Instant::now();
 
-        while self.is_ap_enabled(interface.get_arm_debug_interface()?, &ap)?
-            && start.elapsed() < Duration::from_millis(300)
-        {}
-        self.enable_debug_mailbox(interface.get_arm_debug_interface()?, dp)?;
+        let start = Instant::now();
+        let timeout = if self.is_variant(Self::VARIANT_N0) {
+            Duration::from_millis(500)
+        } else {
+            Duration::from_millis(300)
+        };
+
+        while !self.is_ap_enabled(interface.get_arm_debug_interface()?, &ap)?
+            && start.elapsed() < timeout
+        {
+            thread::sleep(Duration::from_millis(10));
+        }
+
+        // Try to enable debug mailbox if AP is still not enabled
+        if !self.is_ap_enabled(interface.get_arm_debug_interface()?, &ap)? {
+            self.enable_debug_mailbox(interface.get_arm_debug_interface()?, dp)?;
+        }
 
         // Halt the core in case it didn't stop at a breakpoint
         let mut dhcsr = Dhcsr(0);
@@ -192,7 +287,7 @@ impl MCX {
         interface.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
         interface.flush()?;
 
-        // Clear watch point
+        // Clear watch points
         interface.write_word_32(0xE000_1020, 0x0)?;
         interface.write_word_32(0xE000_1028, 0x0)?;
         interface.write_word_32(0xE000_1030, 0x0)?;
@@ -221,7 +316,10 @@ impl ArmDebugSequence for MCX {
     ) -> Result<(), ArmError> {
         use crate::architecture::arm::dp::{Abort, Ctrl, SelectV1};
 
-        tracing::info!("debug port start");
+        tracing::info!("debug port start for MCX variant: {}", self.variant);
+
+        // Switch to DP Register Bank 0
+        interface.write_dp_register(dp, SelectV1(0))?;
 
         // Clear WDATAERR, STICKYORUN, STICKYCMP, STICKYERR
         let mut abort = Abort(0);
@@ -231,41 +329,40 @@ impl ArmDebugSequence for MCX {
         abort.set_stkerrclr(true);
         interface.write_dp_register(dp, abort)?;
 
-        // Switch to DP Register Bank 0
-        interface.write_dp_register(dp, SelectV1(0))?;
-
         // Read DP CTRL/STAT Register and check if CSYSPWRUPACK and CDBGPWRUPACK bits are set
         let ctrl: Ctrl = interface.read_dp_register(dp)?;
         let powered_down = !ctrl.csyspwrupack() || !ctrl.cdbgpwrupack();
 
-        if !powered_down {
-            return Ok(());
-        }
+        if powered_down {
+            // Request Debug/System Power-Up
+            let mut ctrl = Ctrl(0);
+            ctrl.set_csyspwrupreq(true);
+            ctrl.set_cdbgpwrupreq(true);
+            interface.write_dp_register(dp, ctrl)?;
 
-        // Request Debug/System Power-Up
-        let mut ctrl = Ctrl(0);
-        ctrl.set_csyspwrupreq(true);
-        ctrl.set_cdbgpwrupreq(true);
-        interface.write_dp_register(dp, ctrl)?;
+            // Wait for Power-Up request to be acknowledged
+            let start = Instant::now();
+            let timeout = if self.is_variant(Self::VARIANT_N0) {
+                Duration::from_millis(1000)
+            } else {
+                Duration::from_millis(500)
+            };
 
-        // Wait for Power-Up request to be acknowledged
-        let start = Instant::now();
-        loop {
-            let ctrl: Ctrl = interface.read_dp_register(dp)?;
-            if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
-                break;
-            }
-            if start.elapsed() > Duration::from_millis(1000) {
-                return Err(ArmError::Timeout);
+            loop {
+                let ctrl: Ctrl = interface.read_dp_register(dp)?;
+                if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
+                    break;
+                }
+                if start.elapsed() > timeout {
+                    return Err(ArmError::Timeout);
+                }
+                thread::sleep(Duration::from_millis(10));
             }
         }
 
         if let Some(protocol) = interface.try_dap_probe().and_then(|f| f.active_protocol()) {
             match protocol {
                 WireProtocol::Jtag => {
-                    // Init AP Transfer Mode, Transaction Counter, and
-                    // Lane Mask (Normal Transfer Mode, Include  all Byte Lanes)
-                    // Additionally clear STICKYORUN, STICKCMP, and STICKYERR bits
                     let mut ctrl = Ctrl(0);
                     ctrl.set_csyspwrupreq(true);
                     ctrl.set_cdbgpwrupreq(true);
@@ -276,16 +373,12 @@ impl ArmDebugSequence for MCX {
                     interface.write_dp_register(dp, ctrl)?;
                 }
                 WireProtocol::Swd => {
-                    // Init AP Transfer Mode, Transaction Counter, and
-                    // Lane Mask (Normal Transfer Mode, Include  all Byte Lanes)
                     let mut ctrl = Ctrl(0);
                     ctrl.set_csyspwrupreq(true);
                     ctrl.set_cdbgpwrupreq(true);
                     ctrl.set_mask_lane(0b1111);
                     interface.write_dp_register(dp, ctrl)?;
 
-                    // Clear WDATAERR, STICKYORUN, STICKYCMP, and STICKYERR bits
-                    // of CTRL/STAT Register by write to ABORT register
                     let mut abort = Abort(0);
                     abort.set_wderrclr(true);
                     abort.set_orunerrclr(true);
@@ -294,11 +387,12 @@ impl ArmDebugSequence for MCX {
                     interface.write_dp_register(dp, abort)?;
                 }
             }
+        }
 
-            let ap = FullyQualifiedApAddress::v1_with_dp(dp, 0);
-            if !self.is_ap_enabled(interface, &ap)? {
-                self.enable_debug_mailbox(interface, dp)?;
-            }
+        // Check if AP0 is disabled and enable debug mailbox if needed
+        let ap = FullyQualifiedApAddress::v1_with_dp(dp, 0);
+        if !self.is_ap_enabled(interface, &ap)? {
+            self.enable_debug_mailbox(interface, dp)?;
         }
 
         Ok(())
@@ -312,7 +406,7 @@ impl ArmDebugSequence for MCX {
     ) -> Result<(), ArmError> {
         use crate::architecture::arm::core::armv8m::{Aircr, Demcr, Dhcsr};
 
-        tracing::info!("reset system");
+        tracing::info!("reset system for MCX variant: {}", self.variant);
 
         // Halt the core
         let mut dhcsr = Dhcsr(0);
@@ -328,14 +422,30 @@ impl ArmDebugSequence for MCX {
         interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         interface.flush()?;
 
-        // Set watch point
+        // Set watch points based on variant
         if self.is_variant(Self::VARIANT_A0) || self.is_variant(Self::VARIANT_A1) {
             interface.write_word_32(0xE000_1020, 0x4009_1036)?;
             interface.write_word_32(0xE000_1028, 0xF000_0412)?;
             interface.write_word_32(0xE000_1030, 0x4009_1040)?;
             interface.write_word_32(0xE000_1038, 0xF000_0403)?;
+        } else if self.is_variant(Self::VARIANT_N0) {
+            interface.write_word_32(0xE000_1020, 0x0000_0000)?;
+            interface.write_word_32(0xE000_1028, 0x0000_0412)?;
+            interface.write_word_32(0xE000_1030, 0x00FF_FFFF)?;
+            interface.write_word_32(0xE000_1038, 0x0000_0403)?;
+
+            interface.write_word_32(0xE000_1040, 0x8000_0000)?;
+            interface.write_word_32(0xE000_1048, 0x0000_0412)?;
+            interface.write_word_32(0xE000_1050, 0x8FFF_FFFF)?;
+            interface.write_word_32(0xE000_1058, 0x0000_0403)?;
+
+            // Reinit clock
+            interface.write_word_32(0x4000_0220, 0x401)?;
+            interface.write_word_32(0x4000_0140, 0x401)?;
+            interface.write_word_32(0x4000_0220, 0xE000)?;
+            interface.write_word_32(0x4000_0140, 0xE000)?;
         } else {
-            tracing::warn!("unknwon variant, try to set watch point");
+            tracing::warn!("unknown variant, using default watchpoint configuration");
             interface.write_word_32(0xE000_1020, 0x0000_0000)?;
             interface.write_word_32(0xE000_1028, 0x0000_0412)?;
             interface.write_word_32(0xE000_1030, 0x000F_FFFF)?;
@@ -343,11 +453,12 @@ impl ArmDebugSequence for MCX {
         }
         interface.flush()?;
 
-        // Execute SYSRESETREQ via AIRCR
         let mut aircr = Aircr(0);
         aircr.vectkey();
         aircr.set_sysresetreq(true);
         let _ = interface.write_word_32(Aircr::get_mmio_address(), aircr.into());
+
+        let _ = self.configure_trace_clock(interface);
 
         let _ = self.wait_for_stop_after_reset(interface);
 
@@ -362,28 +473,73 @@ impl ArmDebugSequence for MCX {
     ) -> Result<(), ArmError> {
         use crate::architecture::arm::armv8m::{Demcr, Dhcsr};
 
-        tracing::info!("reset catch set");
+        tracing::info!("reset catch set for MCX variant: {}", self.variant);
 
         let mut demcr: Demcr = core.read_word_32(Demcr::get_mmio_address())?.into();
         demcr.set_vc_corereset(false);
         core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         core.flush()?;
 
-        let reset_vector = core.read_word_32(0x0000_0004)?;
+        let reset_vector = if self.is_variant(Self::VARIANT_N0) {
+            tracing::info!("reading reset vector via flash controller");
+
+            // Flash controller addresses for MCXN947
+            const FLASH_BASE: u64 = 0x40034000;
+            const FLASH_STARTA: u64 = FLASH_BASE + 0x10;
+            const FLASH_STOPA: u64 = FLASH_BASE + 0x14;
+            const FLASH_DATAW0: u64 = FLASH_BASE + 0x80;
+            const FLASH_CMD: u64 = FLASH_BASE;
+            const FLASH_INT_CLR_STATUS: u64 = FLASH_BASE + 0xFE8;
+
+            // Program Flash Word Start/Stop Address to 0x0
+            core.write_word_32(FLASH_STARTA, 0x0)?;
+            core.write_word_32(FLASH_STOPA, 0x0)?;
+
+            // Clear data words
+            for i in 0..8 {
+                core.write_word_32(FLASH_DATAW0 + (i * 4), 0x0)?;
+            }
+
+            // Clear flash controller status
+            core.write_word_32(FLASH_INT_CLR_STATUS, 0x0000_000F)?;
+
+            // Read single flash word command
+            core.write_word_32(FLASH_CMD, 0x0000_0003)?;
+
+            core.flush()?;
+
+            // Try to read reset vector via AHB
+            let reset_vector = core.read_word_32(0x0000_0004)?;
+
+            // Check if we need to use secure address space
+            let enable_secure_check1 = core.read_word_32(0x4012_0FFC)? & 0xC;
+            let enable_secure_check2 = core.read_word_32(0x4012_0FF8)? & 0xC;
+
+            if enable_secure_check1 != 0x8 || enable_secure_check2 != 0x8 {
+                tracing::info!("reading reset vector from secure address space");
+                core.read_word_32(0x1000_0004)?
+            } else {
+                reset_vector
+            }
+        } else {
+            core.read_word_32(0x0000_0004)?
+        };
 
         // Breakpoint on user application reset vector
         if reset_vector != 0xFFFF_FFFF {
+            tracing::info!("setting breakpoint on reset vector: 0x{:08X}", reset_vector);
             core.write_word_32(0xE000_2008, reset_vector | 0x1)?;
             core.write_word_32(0xE000_2000, 0x0000_0003)?;
-        }
-        // Enable reset vector catch
-        if reset_vector == 0xFFFF_FFFF {
+        } else {
+            // Enable reset vector catch
+            tracing::info!("enabling reset vector catch");
             let mut demcr: Demcr = core.read_word_32(Demcr::get_mmio_address())?.into();
             demcr.set_vc_corereset(true);
             core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         }
         core.flush()?;
 
+        // Read DHCSR to clear potentially set DHCSR.S_RESET_ST bit
         core.read_word_32(Dhcsr::get_mmio_address())?;
 
         Ok(())
@@ -399,9 +555,13 @@ impl ArmDebugSequence for MCX {
 
         tracing::info!("reset catch clear");
 
+        // Clear FPB Comparators
         core.write_word_32(0xE000_2008, 0x0000_0000)?;
+
+        // Disable FPB
         core.write_word_32(0xE000_2000, 0x0000_0002)?;
 
+        // Clear reset vector catch
         let mut demcr: Demcr = core.read_word_32(Demcr::get_mmio_address())?.into();
         demcr.set_vc_corereset(false);
         core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
@@ -414,12 +574,17 @@ impl ArmDebugSequence for MCX {
         probe: &mut dyn ArmDebugInterface,
         _default_ap: &FullyQualifiedApAddress,
     ) -> Result<(), ArmError> {
-        tracing::info!("reset hardware deassert");
+        tracing::info!("reset hardware deassert for MCX variant: {}", self.variant);
         let n_reset = Pins(0x80).0 as u32;
 
         let can_read_pins = probe.swj_pins(0, n_reset, 0)? != 0xFFFF_FFFF;
 
-        thread::sleep(Duration::from_millis(50));
+        let reset_duration = if self.is_variant(Self::VARIANT_N0) {
+            Duration::from_millis(100)
+        } else {
+            Duration::from_millis(50)
+        };
+        thread::sleep(reset_duration);
 
         let mut assert_n_reset = || probe.swj_pins(n_reset, n_reset, 0);
         if can_read_pins {
@@ -429,7 +594,12 @@ impl ArmDebugSequence for MCX {
             while assert_n_reset()? & n_reset == 0 && !timeout_occured() {}
         } else {
             assert_n_reset()?;
-            thread::sleep(Duration::from_millis(100));
+            let recovery_time = if self.is_variant(Self::VARIANT_N0) {
+                Duration::from_millis(200)
+            } else {
+                Duration::from_millis(100)
+            };
+            thread::sleep(recovery_time);
         }
 
         let ap = FullyQualifiedApAddress::v1_with_dp(probe.current_debug_port().unwrap(), 0);
