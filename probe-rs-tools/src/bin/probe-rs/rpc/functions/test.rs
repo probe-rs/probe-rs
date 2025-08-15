@@ -12,9 +12,12 @@ use crate::{
         functions::{
             ListTestsEndpoint, RpcResult, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
             flash::BootInfo,
-            monitor::{MonitorSender, RttPoller, SemihostingEvent, SemihostingReader},
+            monitor::{MonitorSender, RttPoller, SemihostingEvent},
         },
-        utils::run_loop::{ReturnReason, RunLoop},
+        utils::{
+            run_loop::{ReturnReason, RunLoop},
+            semihosting_file_manager::SemihostingFileManager,
+        },
     },
     util::rtt::client::RttClient,
 };
@@ -276,7 +279,7 @@ fn run_test_impl(
 }
 
 struct ListEventHandler<F: FnMut(SemihostingEvent)> {
-    semihosting_reader: SemihostingReader,
+    semihosting_file_manager: SemihostingFileManager,
     cmdline_requested: bool,
     sender: F,
 }
@@ -286,7 +289,7 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
 
     fn new(sender: F) -> Self {
         Self {
-            semihosting_reader: SemihostingReader::new(),
+            semihosting_file_manager: SemihostingFileManager::new(),
             cmdline_requested: false,
             sender,
         }
@@ -322,10 +325,9 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
 
                 Ok(Some(list.into()))
             }
-            other if SemihostingReader::is_io(other) => {
-                if let Some((stream, data)) = self.semihosting_reader.handle(other, core)? {
-                    (self.sender)(SemihostingEvent::Output { stream, data });
-                }
+            other if SemihostingFileManager::can_handle(other) => {
+                self.semihosting_file_manager
+                    .handle(other, core, &mut self.sender)?;
                 Ok(None)
             }
             SemihostingCommand::Errno(_) => Ok(None),
@@ -353,7 +355,7 @@ fn read_test_list(
 }
 
 struct RunEventHandler<F: FnMut(SemihostingEvent)> {
-    semihosting_reader: SemihostingReader,
+    semihosting_file_manager: SemihostingFileManager,
     cmdline_requested: bool,
     test: Test,
     sender: F,
@@ -363,7 +365,7 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
     fn new(test: Test, sender: F) -> Self {
         Self {
             test,
-            semihosting_reader: SemihostingReader::new(),
+            semihosting_file_manager: SemihostingFileManager::new(),
             cmdline_requested: false,
             sender,
         }
@@ -401,10 +403,9 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
             SemihostingCommand::ExitError(_) if self.cmdline_requested => {
                 Ok(Some(TestOutcome::Panic))
             }
-            other if SemihostingReader::is_io(other) => {
-                if let Some((stream, data)) = self.semihosting_reader.handle(other, core)? {
-                    (self.sender)(SemihostingEvent::Output { stream, data });
-                }
+            other if SemihostingFileManager::can_handle(other) => {
+                self.semihosting_file_manager
+                    .handle(other, core, &mut self.sender)?;
                 Ok(None)
             }
             SemihostingCommand::Errno(_) => Ok(None),
