@@ -340,6 +340,10 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
                 );
                 Ok(None) // Continue running
             }
+            SemihostingCommand::Time(request) => {
+                request.write_current_time(core)?;
+                Ok(None)
+            }
             SemihostingCommand::Errno(_) => Ok(None),
             other if SemihostingFileManager::can_handle(other) => {
                 self.semihosting_file_manager

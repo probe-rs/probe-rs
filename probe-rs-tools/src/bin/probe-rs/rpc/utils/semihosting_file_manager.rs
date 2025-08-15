@@ -1,7 +1,10 @@
 use crate::rpc::functions::monitor::SemihostingEvent;
 use probe_rs::{
     Core,
-    semihosting::{CloseRequest, OpenRequest, SemihostingCommand, WriteRequest},
+    semihosting::{
+        CloseRequest, FileLengthRequest, OpenRequest, ReadRequest, RemoveRequest, RenameRequest,
+        SeekRequest, SemihostingCommand, WriteRequest,
+    },
 };
 use std::num::NonZeroU32;
 
@@ -28,6 +31,11 @@ impl SemihostingFileManager {
                 | SemihostingCommand::Close(_)
                 | SemihostingCommand::WriteConsole(_)
                 | SemihostingCommand::Write(_)
+                | SemihostingCommand::Read(_)
+                | SemihostingCommand::Seek(_)
+                | SemihostingCommand::FileLength(_)
+                | SemihostingCommand::Remove(_)
+                | SemihostingCommand::Rename(_)
         )
     }
 
@@ -52,6 +60,11 @@ impl SemihostingFileManager {
                 send_output("stdout", request.read(core)?);
                 Ok(())
             }
+            SemihostingCommand::Read(request) => self.handle_read(core, request),
+            SemihostingCommand::Seek(request) => self.handle_seek(core, request),
+            SemihostingCommand::FileLength(request) => self.handle_file_length(core, request),
+            SemihostingCommand::Remove(request) => self.handle_remove(core, request),
+            SemihostingCommand::Rename(request) => self.handle_rename(core, request),
 
             _ => Ok(()),
         }
@@ -109,7 +122,7 @@ impl SemihostingFileManager {
         request: WriteRequest,
         mut send_output: impl FnMut(&str, String),
     ) -> anyhow::Result<()> {
-        let Some(f) = self.get_file_handle("write to", request.file_handle()) else {
+        let Some((f, log)) = self.get_file_handle("write to", request.file_handle()) else {
             return Ok(());
         };
 
@@ -124,9 +137,71 @@ impl SemihostingFileManager {
                 Some(buf.len())
             }
         };
+        let _ = log;
         if let Some(len) = len {
             request.write_status(core, (buf.len() - len) as i32)?;
         }
+
+        Ok(())
+    }
+
+    fn handle_read(&mut self, core: &mut Core<'_>, request: ReadRequest) -> anyhow::Result<()> {
+        let Some((f, log)) = self.get_file_handle("read from", request.file_handle()) else {
+            return Ok(());
+        };
+
+        let _ = (f, core);
+        log.not_supported();
+
+        Ok(())
+    }
+
+    fn handle_seek(&mut self, core: &mut Core<'_>, request: SeekRequest) -> anyhow::Result<()> {
+        let Some((f, log)) = self.get_file_handle("seek in", request.file_handle()) else {
+            return Ok(());
+        };
+
+        let _ = (f, core);
+        log.not_supported();
+
+        Ok(())
+    }
+
+    fn handle_file_length(
+        &mut self,
+        core: &mut Core<'_>,
+        request: FileLengthRequest,
+    ) -> anyhow::Result<()> {
+        let action = "read the file length of";
+        let Some((f, log)) = self.get_file_handle(action, request.file_handle()) else {
+            return Ok(());
+        };
+
+        let _ = (f, core);
+        log.not_supported();
+
+        Ok(())
+    }
+
+    fn handle_remove(&mut self, core: &mut Core<'_>, request: RemoveRequest) -> anyhow::Result<()> {
+        let path = request.path(core)?;
+
+        tracing::warn!(
+            "Target wanted to remove file {path}, \
+            but probe-rs does not support this operation yet. Continuing..."
+        );
+
+        Ok(())
+    }
+
+    fn handle_rename(&mut self, core: &mut Core<'_>, request: RenameRequest) -> anyhow::Result<()> {
+        let from_path = request.from_path(core)?;
+        let to_path = request.to_path(core)?;
+
+        tracing::warn!(
+            "Target wanted to rename file {from_path} to {to_path}, \
+            but probe-rs does not support this operation yet. Continuing..."
+        );
 
         Ok(())
     }
@@ -140,18 +215,56 @@ impl SemihostingFileManager {
             .and_then(|inner| inner.take())
     }
 
-    fn get_file_handle(&mut self, action: &'static str, handle: u32) -> Option<&mut FileHandle> {
+    fn get_file_handle(
+        &mut self,
+        action: &'static str,
+        handle: u32,
+    ) -> Option<(&mut FileHandle, FileHandleLog)> {
         let Some(Some(file_handle)) = self.get_file_handle_entry(handle) else {
             tracing::warn!("Target wanted to {action} invalid file handle {handle}. Continuing...");
             return None;
         };
 
-        Some(file_handle)
+        let variant = match file_handle {
+            FileHandle::Stdout => "stdout",
+            FileHandle::Stderr => "stderr",
+        };
+
+        Some((
+            file_handle,
+            FileHandleLog {
+                action,
+                handle,
+                variant,
+            },
+        ))
     }
 
     fn trim_file_handles(&mut self) {
         while let Some(None) = self.file_handles.last() {
             self.file_handles.pop();
         }
+    }
+}
+
+struct FileHandleLog {
+    action: &'static str,
+    handle: u32,
+    variant: &'static str,
+}
+
+impl FileHandleLog {
+    fn not_supported(&self) {
+        self.warn("probe-rs does not support this operation")
+    }
+
+    fn warn(&self, reason: &str) {
+        tracing::warn!(
+            "Target wanted to {action} file handle {handle} ({variant}), \
+            but {reason}. Continuing...",
+            action = self.action,
+            handle = self.handle,
+            variant = self.variant,
+        );
     }
 }

@@ -330,6 +330,10 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
                     .handle(other, core, &mut self.sender)?;
                 Ok(None)
             }
+            SemihostingCommand::Time(request) => {
+                request.write_current_time(core)?;
+                Ok(None)
+            }
             SemihostingCommand::Errno(_) => Ok(None),
             other => anyhow::bail!(
                 "Unexpected semihosting command {:?} cmdline_requested: {:?}",
@@ -406,6 +410,10 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
             other if SemihostingFileManager::can_handle(other) => {
                 self.semihosting_file_manager
                     .handle(other, core, &mut self.sender)?;
+                Ok(None)
+            }
+            SemihostingCommand::Time(request) => {
+                request.write_current_time(core)?;
                 Ok(None)
             }
             SemihostingCommand::Errno(_) => Ok(None),
