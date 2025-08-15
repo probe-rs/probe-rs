@@ -146,13 +146,13 @@ impl OpenRequest {
 /// Note that this is not implemented by probe-rs yet.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct CloseRequest {
-    pointer: u32,
+    handle: u32,
 }
 
 impl CloseRequest {
     /// Returns the handle of the file to close
-    pub fn file_handle(&self, core: &mut dyn CoreInterface) -> Result<u32, Error> {
-        core.read_word_32(self.pointer as u64)
+    pub fn file_handle(&self) -> u32 {
+        self.handle
     }
 
     /// Responds with success to the target.
@@ -367,7 +367,7 @@ pub fn decode_semihosting_syscall(
         }
 
         (SYS_OPEN, pointer) => {
-            let [string, mode, str_len] = param3(core, pointer)?;
+            let [string, mode, str_len] = param(core, pointer)?;
 
             // signal to target: status = failure, in case the application does not answer this request
             // -1 is the error value for SYS_OPEN
@@ -396,10 +396,11 @@ pub fn decode_semihosting_syscall(
         }
 
         (SYS_CLOSE, pointer) => {
+            let [handle] = param(core, pointer)?;
             // signal to target: status = failure, in case the application does not answer this request
             // -1 is the error value for SYS_CLOSE
             write_status(core, -1)?;
-            SemihostingCommand::Close(CloseRequest { pointer })
+            SemihostingCommand::Close(CloseRequest { handle })
         }
 
         (SYS_WRITEC, pointer) => {
@@ -419,7 +420,7 @@ pub fn decode_semihosting_syscall(
         }
 
         (SYS_WRITE, pointer) => {
-            let [handle, bytes, len] = param3(core, pointer)?;
+            let [handle, bytes, len] = param(core, pointer)?;
             // signal to target: status = failure, in case the application does not answer this request
             write_status(core, -1)?;
             SemihostingCommand::Write(WriteRequest { handle, bytes, len })
@@ -443,8 +444,11 @@ pub fn decode_semihosting_syscall(
     })
 }
 
-fn param3(core: &mut dyn CoreInterface, pointer: u32) -> Result<[u32; 3], crate::Error> {
-    let mut buf = [0; 3];
+fn param<const N: usize>(
+    core: &mut dyn CoreInterface,
+    pointer: u32,
+) -> Result<[u32; N], crate::Error> {
+    let mut buf = [0; N];
     core.read_32(pointer as u64, &mut buf)?;
     Ok(buf)
 }

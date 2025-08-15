@@ -433,7 +433,7 @@ impl SemihostingReader {
     }
 
     fn handle_close(&mut self, core: &mut Core<'_>, request: CloseRequest) -> anyhow::Result<()> {
-        let handle = request.file_handle(core)?;
+        let handle = request.file_handle();
         if handle == Self::STDOUT.get() {
             self.stdout_open = false;
             request.success(core)?;
