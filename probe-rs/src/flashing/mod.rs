@@ -51,6 +51,8 @@
 //!
 
 mod builder;
+mod constants;
+mod crc_metadata;
 mod download;
 mod encoder;
 mod erase;

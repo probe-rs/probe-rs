@@ -3063,6 +3063,7 @@ dependencies = [
  "object 0.37.3",
  "parking_lot",
  "pretty_assertions",
+ "probe-rs-crc32-builder",
  "probe-rs-target",
  "rmp-serde",
  "scroll",
