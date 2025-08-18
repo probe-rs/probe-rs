@@ -38,14 +38,21 @@ pub struct BuildInfo {
 impl CrcBinaryMetadata {
     /// Load metadata for a specific target from the embedded TOML content
     pub fn load_for_target(target: &str) -> Result<Self, String> {
-        // Always use universal ARM binary metadata for all ARM targets
         let toml_content = match target {
+            // ARM targets
             "thumbv6m-none-eabi" => {
                 include_str!("../../../crc32_algorithms/thumbv6m-none-eabi.toml")
             }
             // Legacy support: map old targets to universal ARM binary
             "thumbv7em-none-eabi" | "thumbv7em-none-eabihf" => {
                 include_str!("../../../crc32_algorithms/thumbv6m-none-eabi.toml")
+            }
+            // RISC-V targets
+            "riscv32i-unknown-none-elf" => {
+                include_str!("../../../crc32_algorithms/riscv32i-unknown-none-elf.toml")
+            }
+            "riscv32imc-unknown-none-elf" => {
+                include_str!("../../../crc32_algorithms/riscv32imc-unknown-none-elf.toml")
             }
             _ => return Err(format!("No metadata available for target: {}", target)),
         };

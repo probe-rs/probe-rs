@@ -20,6 +20,13 @@ enum CortexCoreType {
     M33,       // Cortex-M33 (ARMv8-M Mainline)
 }
 
+/// RISC-V core type for optimal CRC32 algorithm selection
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RiscvCoreType {
+    RV32I,     // Base integer instruction set
+    RV32IMC,   // Integer + Multiply + Compressed extensions
+}
+
 /// A flash algorithm, which has been assembled for a specific
 /// chip.
 ///
@@ -803,24 +810,38 @@ mod test {
 impl FlashAlgorithm {
     /// Load CRC32 binary for the target architecture to integrate into flash algorithm
     fn load_crc32_binary_for_target(target: &Target) -> Result<Vec<u8>, FlashError> {
-        // Only support ARM targets for now
-        if target.architecture() != Architecture::Arm {
-            return Err(FlashError::Core(crate::Error::Other(
-                format!("CRC32 integration only supported for ARM targets, got {:?}", 
-                target.architecture())
-            )));
-        }
-
-        // Use same target detection logic as existing CRC32 code
-        let target_blob = match Self::determine_cortex_core_type(target) {
-            CortexCoreType::M0 | CortexCoreType::M0Plus => {
-                // Use thumbv6m-none-eabi for ARMv6-M cores
-                include_bytes!("../../../crc32_algorithms/thumbv6m-none-eabi.bin")
+        let target_blob: &[u8] = match target.architecture() {
+            Architecture::Arm => {
+                // Use same target detection logic as existing CRC32 code
+                match Self::determine_cortex_core_type(target) {
+                    CortexCoreType::M0 | CortexCoreType::M0Plus => {
+                        // Use thumbv6m-none-eabi for ARMv6-M cores
+                        include_bytes!("../../../crc32_algorithms/thumbv6m-none-eabi.bin")
+                    },
+                    CortexCoreType::M3 | CortexCoreType::M4 | CortexCoreType::M7 | CortexCoreType::M33 => {
+                        // Use thumbv6m-none-eabi for all ARM cores for now (universal compatibility)
+                        include_bytes!("../../../crc32_algorithms/thumbv6m-none-eabi.bin")
+                    },
+                }
             },
-            CortexCoreType::M3 | CortexCoreType::M4 | CortexCoreType::M7 | CortexCoreType::M33 => {
-                // Use thumbv6m-none-eabi for all ARM cores for now (universal compatibility)
-                include_bytes!("../../../crc32_algorithms/thumbv6m-none-eabi.bin")
+            Architecture::Riscv => {
+                match Self::determine_riscv_core_type(target) {
+                    RiscvCoreType::RV32IMC => {
+                        // Use RV32IMC for targets with compressed extension support
+                        include_bytes!("../../../crc32_algorithms/riscv32imc-unknown-none-elf.bin")
+                    },
+                    RiscvCoreType::RV32I => {
+                        // Use RV32I base for conservative compatibility
+                        include_bytes!("../../../crc32_algorithms/riscv32i-unknown-none-elf.bin")
+                    },
+                }
             },
+            _ => {
+                return Err(FlashError::Core(crate::Error::Other(
+                    format!("CRC32 integration not yet supported for {:?} targets", 
+                    target.architecture())
+                )));
+            }
         };
 
         tracing::debug!("Selected CRC32 binary for target {}: {} bytes", 
@@ -854,13 +875,41 @@ impl FlashAlgorithm {
         }
     }
 
+    /// Determine RISC-V core type from target information
+    fn determine_riscv_core_type(target: &Target) -> RiscvCoreType {
+        // Use target name patterns to determine core type and extensions
+        let target_name = target.name.to_lowercase();
+        
+        if target_name.contains("esp32c") || target_name.contains("ch32v") {
+            // Most modern embedded RISC-V targets support compressed instructions
+            RiscvCoreType::RV32IMC
+        } else if target_name.contains("rv32i") {
+            // Explicit RV32I base instruction set
+            RiscvCoreType::RV32I
+        } else {
+            // Conservative default - use RV32I for maximum compatibility
+            RiscvCoreType::RV32I
+        }
+    }
+
     /// Get CRC32 function offset from metadata for the target (from working work-rp-4 approach)
     fn get_crc32_function_offset_for_target(target: &Target, binary_size: usize) -> Result<u32, String> {
         // Determine which target architecture this binary is for
-        let rust_target = match Self::determine_cortex_core_type(target) {
-            CortexCoreType::M0 | CortexCoreType::M0Plus => "thumbv6m-none-eabi",
-            CortexCoreType::M3 | CortexCoreType::M4 => "thumbv7em-none-eabi", 
-            CortexCoreType::M7 | CortexCoreType::M33 => "thumbv7em-none-eabihf",
+        let rust_target = match target.architecture() {
+            Architecture::Arm => {
+                match Self::determine_cortex_core_type(target) {
+                    CortexCoreType::M0 | CortexCoreType::M0Plus => "thumbv6m-none-eabi",
+                    CortexCoreType::M3 | CortexCoreType::M4 => "thumbv7em-none-eabi", 
+                    CortexCoreType::M7 | CortexCoreType::M33 => "thumbv7em-none-eabihf",
+                }
+            },
+            Architecture::Riscv => {
+                match Self::determine_riscv_core_type(target) {
+                    RiscvCoreType::RV32IMC => "riscv32imc-unknown-none-elf",
+                    RiscvCoreType::RV32I => "riscv32i-unknown-none-elf",
+                }
+            },
+            _ => return Err("Unsupported architecture for CRC32 metadata".into()),
         };
 
         // Load metadata for the detected target
