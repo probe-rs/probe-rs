@@ -635,6 +635,8 @@ impl Debugger {
                 Operation::Erase => "Erasing Sectors",
                 Operation::Program => "Programming Pages",
                 Operation::Verify => "Verifying",
+                Operation::Crc32Verify => "Hash Check",
+                Operation::IncrementalProgram => "Incremental Programming",
             };
 
             FlashProgress::new(move |event| {

@@ -19,6 +19,7 @@ As of version 0.27.0 this library can:
 - Read and write arbitrary memory of the target.
 - Halt, run, step and step any core, operate breakpoints, enable trace functionality and much more.
 - Download ELF, BIN and IHEX binaries using standard CMSIS-Pack flash algorithms.
+- Optional pre-verification mode (`--preverify`) to only program modified sectors for faster iterative development.
 - Debug a target via the CLI, VSCode (MS-DAP) and GDB.
 
 To see what new functionality gets added every release, have a look at the [CHANGELOG](CHANGELOG.md)
@@ -167,6 +168,17 @@ STM32 memory region data has been proven unreliable on multiple occasions. We no
 
 If there is no CMSIS-Pack with a flash algorithm available, it is necessary to write a target definition and a flash algorithm by oneself.
 You can use our [template](https://github.com/probe-rs/flash-algorithm-template) for writing an algorithm. Please follow the instructions in the `README.md` in that repo.
+
+### CRC32 Flash Verification Algorithms
+
+The `crc32_algorithms/` directory contains embedded binaries for fast on-target CRC32 verification used by the `--preverify` mode. These position-independent binaries are pre-built for ARM and RISC-V architectures.
+
+To rebuild the CRC32 binaries (e.g., after modifying the algorithm):
+```console
+cargo xtask build-crc32
+```
+
+See `crc32_algorithms/README.md` for detailed build instructions and architecture support.
 
 ## Acknowledgements
 
