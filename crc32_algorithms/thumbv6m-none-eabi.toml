@@ -1,0 +1,22 @@
+# CRC32C Binary Metadata for thumbv6m-none-eabi (ARM)
+# Generated automatically by cargo xtask build-crc32
+
+[binary]
+target = "thumbv6m-none-eabi"
+architecture = "ARM"
+size_bytes = 1144
+crc32_function_offset = "0x00000008"
+algorithm = "CRC32_BZIP2/Standard"
+library = "crcxx v0.3.1"
+entry_point = "calculate_crc32"
+description = "Universal ARM Cortex-M (M0/M0+/M3/M4/M7)"
+
+[build_info]
+generated_by = "cargo xtask build-crc32"
+rust_target = "thumbv6m-none-eabi"
+compiler_flags = "-C relocation-model=pic -C code-model=small -C panic=abort"
+linker_script = "link_minimal.x"
+build_date = "2025-08-21"
+source_file = "src/bin/firmware_crcxx.rs"
+sha256 = "3366d728b5657c6def34b54f7df45713be35c6af684f1875c4f7b12862e4433a"
+objcopy_tool = "arm-none-eabi-objcopy"

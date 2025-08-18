@@ -1,0 +1,22 @@
+# CRC32C Binary Metadata for riscv32imc-unknown-none-elf (RISC-V)
+# Generated automatically by cargo xtask build-crc32
+
+[binary]
+target = "riscv32imc-unknown-none-elf"
+architecture = "RISC-V"
+size_bytes = 5228
+crc32_function_offset = "0x00000008"
+algorithm = "CRC32C/Castagnoli"
+library = "crcxx v0.3.1"
+entry_point = "calculate_crc32"
+description = "RISC-V RV32IMC (compressed - optimal for most modern cores)"
+
+[build_info]
+generated_by = "cargo xtask build-crc32"
+rust_target = "riscv32imc-unknown-none-elf"
+compiler_flags = "-C relocation-model=pic -C code-model=small -C panic=abort"
+linker_script = "link_minimal.x"
+build_date = "2025-08-05"
+source_file = "src/bin/firmware_crcxx.rs"
+sha256 = "526c139ecc181014de128edf415ec138efaae3f37788b50dde4e92b28e0c7c6e"
+objcopy_tool = "riscv64-unknown-elf-objcopy"

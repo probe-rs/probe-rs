@@ -1643,6 +1643,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glob"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
+
+[[package]]
 name = "goblin"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3070,6 +3076,13 @@ dependencies = [
  "tracing",
  "uf2-decode",
  "zerocopy",
+]
+
+[[package]]
+name = "probe-rs-crc32-builder"
+version = "0.1.0"
+dependencies = [
+ "crcxx",
 ]
 
 [[package]]
@@ -5549,6 +5562,8 @@ version = "0.29.0"
 dependencies = [
  "anyhow",
  "clap",
+ "glob",
+ "probe-rs-crc32-builder",
  "regex",
  "serde",
  "serde_json",

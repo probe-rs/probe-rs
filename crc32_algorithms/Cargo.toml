@@ -1,0 +1,19 @@
+[package]
+name = "probe-rs-crc32-builder"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "crc32_firmware_crcxx"
+path = "src/bin/firmware_crcxx.rs"
+
+[dependencies]
+crcxx = { version = "0.3", default-features = false }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = false
+overflow-checks = false
