@@ -7,12 +7,12 @@ use std::{
 };
 
 use anyhow::{Context, bail, ensure};
+use chrono::Utc;
 use clap::Parser;
 use regex::Regex;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use xshell::{Shell, cmd};
-use sha2::{Sha256, Digest};
-use chrono::Utc;
 
 use anyhow::Result;
 use probe_rs_crc32_builder::crc_config;
@@ -86,7 +86,11 @@ fn try_main() -> anyhow::Result<()> {
             commit,
         } => assemble_changelog(version, force, no_cleanup, commit)?,
         Cli::CheckChangelog { pr, comment_error } => check_changelog(pr, comment_error)?,
-        Cli::BuildCrc32 { arm_only, all_variants, force } => build_crc32(arm_only, all_variants, force)?,
+        Cli::BuildCrc32 {
+            arm_only,
+            all_variants,
+            force,
+        } => build_crc32(arm_only, all_variants, force)?,
         Cli::CleanCrc32 => clean_crc32()?,
     }
 
@@ -646,7 +650,9 @@ fn build_crc32(arm_only: bool, all_variants: bool, force: bool) -> Result<()> {
     // Change directory to crc32_algorithms
     let crc32_dir = Path::new("crc32_algorithms");
     if !crc32_dir.exists() {
-        bail!("crc32_algorithms directory not found. Please run this command from the probe-rs root directory.");
+        bail!(
+            "crc32_algorithms directory not found. Please run this command from the probe-rs root directory."
+        );
     }
 
     let _guard = sh.push_dir(crc32_dir);
@@ -718,7 +724,10 @@ fn check_dependencies(sh: &Shell, arm_only: bool, force: bool) -> Result<()> {
     }
 
     if !arm_only {
-        if cmd!(sh, "riscv64-unknown-elf-objcopy --version").run().is_err() {
+        if cmd!(sh, "riscv64-unknown-elf-objcopy --version")
+            .run()
+            .is_err()
+        {
             missing_tools.push("RISC-V toolchain (riscv64-unknown-elf-objcopy)");
         }
     }
@@ -730,7 +739,9 @@ fn check_dependencies(sh: &Shell, arm_only: bool, force: bool) -> Result<()> {
         }
         println!();
         println!("Install missing toolchains or use --force to skip unavailable targets.");
-        println!("ARM: sudo apt install gcc-arm-none-eabi (Ubuntu) or brew install gcc-arm-embedded (macOS)");
+        println!(
+            "ARM: sudo apt install gcc-arm-none-eabi (Ubuntu) or brew install gcc-arm-embedded (macOS)"
+        );
         println!("RISC-V: Install riscv64-unknown-elf-gcc toolchain");
         bail!("Missing required toolchains");
     }
@@ -771,7 +782,11 @@ fn get_minimal_targets(force: bool) -> Result<Vec<TargetInfo>> {
     }
 
     // Include minimal RISC-V set for universal compatibility
-    if force || cmd!(sh, "riscv64-unknown-elf-objcopy --version").run().is_ok() {
+    if force
+        || cmd!(sh, "riscv64-unknown-elf-objcopy --version")
+            .run()
+            .is_ok()
+    {
         targets.extend(vec![
             TargetInfo {
                 name: "riscv32i-unknown-none-elf".to_string(),
@@ -782,7 +797,8 @@ fn get_minimal_targets(force: bool) -> Result<Vec<TargetInfo>> {
             },
             TargetInfo {
                 name: "riscv32imc-unknown-none-elf".to_string(),
-                description: "RISC-V RV32IMC (compressed - optimal for most modern cores)".to_string(),
+                description: "RISC-V RV32IMC (compressed - optimal for most modern cores)"
+                    .to_string(),
                 objcopy_tool: "riscv64-unknown-elf-objcopy".to_string(),
                 objdump_tool: "riscv64-unknown-elf-objdump".to_string(),
                 architecture: "RISC-V".to_string(),
@@ -846,7 +862,11 @@ fn get_all_targets(force: bool) -> Result<Vec<TargetInfo>> {
     }
 
     // RISC-V targets (if toolchain available) - all variants for compatibility testing
-    if force || cmd!(sh, "riscv64-unknown-elf-objcopy --version").run().is_ok() {
+    if force
+        || cmd!(sh, "riscv64-unknown-elf-objcopy --version")
+            .run()
+            .is_ok()
+    {
         targets.extend(vec![
             TargetInfo {
                 name: "riscv32i-unknown-none-elf".to_string(),
@@ -919,8 +939,7 @@ strip = false             # Keep symbols for debugging
 overflow-checks = false   # Disable for smaller/faster code
 "#;
 
-    fs::write("Cargo.toml", cargo_toml_content)
-        .with_context(|| "Failed to create Cargo.toml")?;
+    fs::write("Cargo.toml", cargo_toml_content).with_context(|| "Failed to create Cargo.toml")?;
 
     println!("✅ Cargo.toml created");
     Ok(())
@@ -935,16 +954,20 @@ fn build_target(sh: &Shell, target: &TargetInfo) -> Result<Vec<String>> {
     if !installed_targets.contains(&target.name) {
         println!("   Installing Rust target...");
         let target_name = &target.name;
-        cmd!(sh, "rustup target add {target_name}").run()
+        cmd!(sh, "rustup target add {target_name}")
+            .run()
             .with_context(|| format!("Failed to install target {}", target.name))?;
     }
 
     // Build the binary
     println!("   Compiling...");
     let target_name = &target.name;
-    
+
     // Set environment variables for embedded build
-    let mut cmd = cmd!(sh, "cargo build --release --target {target_name} --bin crc32_firmware_crcxx --manifest-path=Cargo.toml");
+    let mut cmd = cmd!(
+        sh,
+        "cargo build --release --target {target_name} --bin crc32_firmware_crcxx --manifest-path=Cargo.toml"
+    );
     cmd = cmd.env("RUSTFLAGS", "-C link-arg=-Tlink_minimal.x -C panic=abort");
     cmd.run()
         .with_context(|| format!("Failed to compile for target {}", target.name))?;
@@ -959,15 +982,20 @@ fn build_target(sh: &Shell, target: &TargetInfo) -> Result<Vec<String>> {
         .run()
         .with_context(|| format!("Failed to extract binary for target {}", target.name))?;
 
-    // Get function offset from ELF file 
-    let function_offset = extract_function_offset(&elf_file, &target.objdump_tool)
-        .with_context(|| format!("Failed to extract function offset for target {}", target.name))?;
+    // Get function offset from ELF file
+    let function_offset =
+        extract_function_offset(&elf_file, &target.objdump_tool).with_context(|| {
+            format!(
+                "Failed to extract function offset for target {}",
+                target.name
+            )
+        })?;
 
     // Get binary size and checksum
     let binary_full_path = Path::new("crc32_algorithms").join(&bin_file);
     let binary_data = fs::read(&binary_full_path)
         .with_context(|| format!("Failed to read binary file {}", binary_full_path.display()))?;
-    
+
     let size = binary_data.len();
     let mut hasher = Sha256::new();
     hasher.update(&binary_data);
@@ -988,12 +1016,12 @@ fn build_target(sh: &Shell, target: &TargetInfo) -> Result<Vec<String>> {
 /// Extract the offset of the calculate_crc32 function from the ELF file
 fn extract_function_offset(elf_file: &str, objdump_tool: &str) -> Result<String> {
     let sh = Shell::new()?;
-    
+
     // Use objdump to get symbol table and find calculate_crc32 function
     let output = cmd!(sh, "{objdump_tool} -t {elf_file}")
         .read()
         .with_context(|| format!("Failed to run objdump on {}", elf_file))?;
-    
+
     // Look for the calculate_crc32 function in the symbol table
     for line in output.lines() {
         if line.contains("calculate_crc32") && line.contains(" F ") {
@@ -1009,7 +1037,7 @@ fn extract_function_offset(elf_file: &str, objdump_tool: &str) -> Result<String>
             }
         }
     }
-    
+
     bail!("Could not find calculate_crc32 function in symbol table");
 }
 
@@ -1090,13 +1118,19 @@ fn print_build_summary(built_files: &[String], failed_targets: &[&String]) -> Re
     println!("🔧 Usage Instructions:");
     println!("To use these binaries:");
     println!("  1. The probe-rs flash system automatically selects the appropriate binary");
-    println!("  2. ARM: thumbv6m-none-eabi.bin provides universal compatibility for ALL ARM Cortex-M variants");
+    println!(
+        "  2. ARM: thumbv6m-none-eabi.bin provides universal compatibility for ALL ARM Cortex-M variants"
+    );
     println!("  3. RISC-V: Two universal binaries provide complete coverage:");
     println!("      - riscv32i-unknown-none-elf.bin: Works on ALL RV32 cores (base ISA)");
-    println!("      - riscv32imc-unknown-none-elf.bin: Optimal for modern cores with compressed instructions");
+    println!(
+        "      - riscv32imc-unknown-none-elf.bin: Optimal for modern cores with compressed instructions"
+    );
     println!();
     println!("📝 Build Options:");
-    println!("  • cargo xtask build-crc32           : Build minimal universal set (default, recommended)");
+    println!(
+        "  • cargo xtask build-crc32           : Build minimal universal set (default, recommended)"
+    );
     println!("  • cargo xtask build-crc32 --arm-only: Build only ARM target");
     println!("  • cargo xtask build-crc32 --all-variants: Build all architecture variants");
     println!();
@@ -1117,13 +1151,15 @@ fn clean_crc32() -> Result<()> {
     // Change directory to crc32_algorithms
     let crc32_dir = Path::new("crc32_algorithms");
     if !crc32_dir.exists() {
-        bail!("crc32_algorithms directory not found. Please run this command from the probe-rs root directory.");
+        bail!(
+            "crc32_algorithms directory not found. Please run this command from the probe-rs root directory."
+        );
     }
 
     let _guard = sh.push_dir(crc32_dir);
 
     println!("🔍 Cleaning build artifacts...");
-    
+
     // Clean Cargo build artifacts
     if Path::new("target").exists() {
         println!("  - Removing target/ directory");
@@ -1133,7 +1169,7 @@ fn clean_crc32() -> Result<()> {
 
     // Remove generated binary files
     let mut cleaned_files = Vec::new();
-    
+
     // Remove generated binary files from crc32_algorithms directory
     if let Ok(entries) = std::fs::read_dir(crc32_dir) {
         for entry in entries {
@@ -1141,9 +1177,11 @@ fn clean_crc32() -> Result<()> {
                 let path = entry.path();
                 if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
                     // Check if it's a CRC binary or metadata file
-                    let is_target_file = (filename.ends_with(".bin") || filename.ends_with(".toml"))
-                        && (filename.starts_with("thumbv6m-none-eabi") || filename.starts_with("riscv32"));
-                    
+                    let is_target_file = (filename.ends_with(".bin")
+                        || filename.ends_with(".toml"))
+                        && (filename.starts_with("thumbv6m-none-eabi")
+                            || filename.starts_with("riscv32"));
+
                     if is_target_file {
                         println!("  - Removing {}", filename);
                         std::fs::remove_file(&path)
@@ -1158,7 +1196,7 @@ fn clean_crc32() -> Result<()> {
     println!();
     println!("📋 Clean Summary");
     println!("════════════════");
-    
+
     if cleaned_files.is_empty() {
         println!("✨ Already clean - no CRC32 binaries found");
     } else {
@@ -1167,11 +1205,11 @@ fn clean_crc32() -> Result<()> {
             println!("  - {}", file);
         }
     }
-    
+
     println!();
     println!("🔧 To rebuild binaries:");
     println!("  cargo xtask build-crc32           # Build minimal universal set");
     println!("  cargo xtask build-crc32 --arm-only # Build only ARM target");
-    
+
     Ok(())
 }

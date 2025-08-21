@@ -1,9 +1,8 @@
 /// Shared CRC32 algorithm configuration for probe-rs
-/// 
+///
 /// This file defines the CRC algorithm used by both the embedded firmware
 /// and the host-side verification. Keep this synchronized to ensure
 /// compatibility between target and host CRC calculations.
-
 pub use crcxx::crc32::catalog::CRC_32_BZIP2 as CRC_ALGORITHM;
 
 /// Human-readable name for the CRC algorithm (used in metadata)

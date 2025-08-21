@@ -36,7 +36,7 @@ impl VerificationResult {
     pub fn all_match(&self) -> bool {
         self.sectors_needing_update.is_empty()
     }
-    
+
     /// Get number of sectors needing update
     pub fn sectors_needing_update_count(&self) -> usize {
         self.sectors_needing_update.len()
@@ -162,7 +162,10 @@ impl Flasher {
 
         // CRC32 support determined by flash_algorithm.pc_crc32.is_some() at runtime
         if Self::target_supports_crc32(target) {
-            tracing::debug!("Target {} supports CRC32, will load during flash algorithm loading", target.name);
+            tracing::debug!(
+                "Target {} supports CRC32, will load during flash algorithm loading",
+                target.name
+            );
         } else {
             tracing::debug!("Target {} does not support CRC32 architecture", target.name);
         }
@@ -223,8 +226,11 @@ impl Flasher {
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
         // Load flash algorithm code into target RAM.
-        tracing::debug!("Downloading algorithm code to 0x{:08x} ({} bytes)", 
-            algo.load_address, algo.instructions.len() * 4);
+        tracing::debug!(
+            "Downloading algorithm code to 0x{:08x} ({} bytes)",
+            algo.load_address,
+            algo.instructions.len() * 4
+        );
 
         core.write(algo.load_address, algo.instructions.as_bytes())
             .map_err(FlashError::Core)?;
@@ -278,21 +284,38 @@ impl Flasher {
 
         // Load CRC32 binary immediately after flash algorithm if available (consolidated loading)
         if let Some((crc32_binary, crc32_address, crc32_size)) = &algo.crc32_binary {
-            tracing::info!("Loading CRC32 binary ({} bytes) to RAM at 0x{:08x} (consolidated with flash algorithm loading)", crc32_size, crc32_address);
-            core.write(*crc32_address, crc32_binary).map_err(FlashError::Core)?;
-            
+            tracing::info!(
+                "Loading CRC32 binary ({} bytes) to RAM at 0x{:08x} (consolidated with flash algorithm loading)",
+                crc32_size,
+                crc32_address
+            );
+            core.write(*crc32_address, crc32_binary)
+                .map_err(FlashError::Core)?;
+
             // Verify CRC32 binary was loaded correctly
             let mut readback = vec![0u8; crc32_binary.len()];
-            core.read(*crc32_address, &mut readback).map_err(FlashError::Core)?;
+            core.read(*crc32_address, &mut readback)
+                .map_err(FlashError::Core)?;
             if readback == *crc32_binary {
-                tracing::info!("CRC32 binary loaded and verified successfully at 0x{:08x}", crc32_address);
+                tracing::info!(
+                    "CRC32 binary loaded and verified successfully at 0x{:08x}",
+                    crc32_address
+                );
             } else {
-                tracing::error!("CRC32 binary verification failed at 0x{:08x}", crc32_address);
-                return Err(FlashError::Core(crate::Error::Other("CRC32 binary loading verification failed".to_string())));
+                tracing::error!(
+                    "CRC32 binary verification failed at 0x{:08x}",
+                    crc32_address
+                );
+                return Err(FlashError::Core(crate::Error::Other(
+                    "CRC32 binary loading verification failed".to_string(),
+                )));
             }
         } else if algo.pc_crc32.is_some() {
             // CRC32 defined in original algorithm - no separate loading needed
-            tracing::info!("CRC32 algorithm available at 0x{:08x} (integrated in flash algorithm)", algo.pc_crc32.unwrap());
+            tracing::info!(
+                "CRC32 algorithm available at 0x{:08x} (integrated in flash algorithm)",
+                algo.pc_crc32.unwrap()
+            );
         } else {
             tracing::debug!("CRC32 not available for this target/algorithm");
         }
@@ -312,7 +335,10 @@ impl Flasher {
         self.ensure_loaded(session)?;
 
         if self.crc32_supported() {
-            tracing::info!("Target {} uses CRC32 - consolidated loading during flash algorithm loading", session.target().name);
+            tracing::info!(
+                "Target {} uses CRC32 - consolidated loading during flash algorithm loading",
+                session.target().name
+            );
             return self.init_with_delayed_crc32(session, progress, clock);
         }
 
@@ -369,7 +395,9 @@ impl Flasher {
         }
 
         // CRC32 is now loaded during flash algorithm loading (consolidated approach)
-        tracing::info!("Flash algorithm Init() completed - CRC32 already loaded during algorithm loading");
+        tracing::info!(
+            "Flash algorithm Init() completed - CRC32 already loaded during algorithm loading"
+        );
 
         // Create final ActiveFlasher with CRC32 loaded
         let mut core = session.core(self.core_index).map_err(FlashError::Core)?;
@@ -526,57 +554,58 @@ impl Flasher {
     /// Calculate CRC32 on the host side using shared algorithm configuration
     /// This ensures perfect consistency with the embedded implementation
     fn calculate_crc32_host(data: &[u8]) -> u32 {
-        use crcxx::crc32::{LookupTable256, Crc};
+        use crcxx::crc32::{Crc, LookupTable256};
         use probe_rs_crc32_builder::crc_config;
-        
+
         const CRC32: Crc<LookupTable256> = Crc::<LookupTable256>::new(&crc_config::CRC_ALGORITHM);
         CRC32.compute(data)
     }
-    
+
     /// Get sector data from LoadedRegion for CRC32 calculation
     /// Builds expected sector data from pages, filling gaps with erased bytes
-    pub(super) fn get_sector_data(region: &LoadedRegion, sector: &crate::flashing::FlashSector) -> Vec<u8> {
+    pub(super) fn get_sector_data(
+        region: &LoadedRegion,
+        sector: &crate::flashing::FlashSector,
+    ) -> Vec<u8> {
         let sector_start = sector.address();
         let sector_end = sector_start + sector.size();
         let sector_size = sector.size() as usize;
-        
+
         // Initialize sector data with erased bytes (0xFF)
         let mut sector_data = vec![0xFF; sector_size];
-        
+
         // Find pages that overlap with this sector
         let layout = region.flash_layout();
         for page in layout.pages() {
             let page_start = page.address();
             let page_end = page_start + page.data().len() as u64;
-            
+
             // Check if page overlaps with sector
             if page_start < sector_end && page_end > sector_start {
                 // Calculate overlap range
                 let overlap_start = page_start.max(sector_start);
                 let overlap_end = page_end.min(sector_end);
-                
+
                 if overlap_start < overlap_end {
                     // Calculate offsets
                     let page_offset = (overlap_start - page_start) as usize;
                     let sector_offset = (overlap_start - sector_start) as usize;
                     let overlap_len = (overlap_end - overlap_start) as usize;
-                    
+
                     // Copy page data to sector data
                     let page_data = page.data();
-                    if page_offset + overlap_len <= page_data.len() && 
-                       sector_offset + overlap_len <= sector_data.len() {
+                    if page_offset + overlap_len <= page_data.len()
+                        && sector_offset + overlap_len <= sector_data.len()
+                    {
                         sector_data[sector_offset..sector_offset + overlap_len]
                             .copy_from_slice(&page_data[page_offset..page_offset + overlap_len]);
                     }
                 }
             }
         }
-        
+
         sector_data
     }
-
-
-
 
     /// Fills all the unwritten bytes in `layout`.
     ///
@@ -662,7 +691,7 @@ impl Flasher {
         ignore_filled: bool,
     ) -> Result<bool, FlashError> {
         let encoding = self.flash_algorithm.transfer_encoding;
-        
+
         // Check if CRC32 verification is available first (preferred)
         if self.flash_algorithm.pc_crc32.is_some() {
             tracing::info!("Using CRC32-based verification");
@@ -670,7 +699,7 @@ impl Flasher {
                 Self::verify_with_crc32(active, data, ignore_filled)
             });
         }
-        
+
         if let Some(verify) = self.flash_algorithm.pc_verify {
             // Try to use the verify function if available.
             self.run_verify(session, progress, |active, data| {
@@ -913,30 +942,34 @@ impl Flasher {
                 );
                 // Get layout and collect all needed sector info to avoid borrowing conflicts
                 let layout = region.data.layout();
-                let sectors_info: Vec<(u64, u64)> = layout.sectors().iter() // (address, size)
+                let sectors_info: Vec<(u64, u64)> = layout
+                    .sectors()
+                    .iter() // (address, size)
                     .filter_map(|sector| {
                         if sectors_to_update.contains(&sector.address()) {
                             Some((sector.address(), sector.size()))
                         } else {
                             None
                         }
-                    }).collect();
-                
+                    })
+                    .collect();
+
                 if sectors_info.is_empty() {
                     tracing::debug!("No erased sectors in this region, skipping");
                     continue;
                 }
-                
+
                 // Now we can safely borrow data mutably (layout reference is dropped)
                 let flash_encoder = region.data.encoder(encoding, false);
-                
+
                 for page in flash_encoder.pages() {
                     // Check if this page is in any of the erased sectors for this region
-                    let page_in_erased_sector = sectors_info.iter().any(|&(sector_addr, sector_size)| {
-                        page.address() >= sector_addr && 
-                        page.address() < (sector_addr + sector_size)
-                    });
-                    
+                    let page_in_erased_sector =
+                        sectors_info.iter().any(|&(sector_addr, sector_size)| {
+                            page.address() >= sector_addr
+                                && page.address() < (sector_addr + sector_size)
+                        });
+
                     if page_in_erased_sector {
                         tracing::debug!(
                             "Programming page at 0x{:08x} (in erased sector)",
@@ -978,30 +1011,37 @@ impl Flasher {
                 );
                 // Get layout and collect all needed sector info to avoid borrowing conflicts
                 let layout = region.data.layout();
-                let sectors_info: Vec<(u64, u64)> = layout.sectors().iter() // (address, size)
+                let sectors_info: Vec<(u64, u64)> = layout
+                    .sectors()
+                    .iter() // (address, size)
                     .filter_map(|sector| {
                         if sectors_to_update.contains(&sector.address()) {
                             Some((sector.address(), sector.size()))
                         } else {
                             None
                         }
-                    }).collect();
-                
+                    })
+                    .collect();
+
                 if sectors_info.is_empty() {
                     tracing::debug!("No erased sectors in this region (double-buffer), skipping");
                     continue;
                 }
-                
+
                 // Now we can safely borrow data mutably (layout reference is dropped)
                 let flash_encoder = region.data.encoder(encoding, false);
 
                 // Collect only pages that are in erased sectors
-                let pages_to_program: Vec<_> = flash_encoder.pages().iter().filter(|page| {
-                    sectors_info.iter().any(|&(sector_addr, sector_size)| {
-                        page.address() >= sector_addr && 
-                        page.address() < (sector_addr + sector_size)
+                let pages_to_program: Vec<_> = flash_encoder
+                    .pages()
+                    .iter()
+                    .filter(|page| {
+                        sectors_info.iter().any(|&(sector_addr, sector_size)| {
+                            page.address() >= sector_addr
+                                && page.address() < (sector_addr + sector_size)
+                        })
                     })
-                }).collect();
+                    .collect();
 
                 if pages_to_program.is_empty() {
                     continue;
@@ -1010,13 +1050,13 @@ impl Flasher {
                 let mut current_buf = 0;
                 let mut t = Instant::now();
                 let mut last_page_address = 0;
-                
+
                 for page in pages_to_program {
                     tracing::debug!(
                         "Programming page at 0x{:08x} (double-buffered, in erased sector)",
                         page.address()
                     );
-                    
+
                     // Load the page into the current buffer
                     let buffer_address = active.load_page_buffer(page.data(), current_buf)?;
 
@@ -1124,46 +1164,51 @@ impl Flasher {
         });
         Ok(())
     }
-    
+
     /// Verify flash data using CRC32 comparison
     fn verify_with_crc32(
-        active: &mut ActiveFlasher<'_, '_, Verify>, 
+        active: &mut ActiveFlasher<'_, '_, Verify>,
         data: &mut [LoadedRegion],
         ignore_filled: bool,
     ) -> Result<bool, FlashError> {
         for region in data {
             tracing::debug!("CRC32 verification for region");
-            
-            let flash_encoder = region.data.encoder(
-                active.flash_algorithm.transfer_encoding, 
-                ignore_filled
-            );
-            
+
+            let flash_encoder = region
+                .data
+                .encoder(active.flash_algorithm.transfer_encoding, ignore_filled);
+
             for page in flash_encoder.pages() {
                 let address = page.address();
                 let expected_data = page.data();
-                
+
                 // Calculate expected CRC32 on host
                 let expected_crc32 = Self::calculate_crc32_host(expected_data);
-                
+
                 // Calculate CRC32 on target using flash algorithm-owned sequencing
-                let target_crc32 = active.calculate_crc32_with_algorithm_ownership(address, expected_data.len() as u32)?;
-                
+                let target_crc32 = active.calculate_crc32_with_algorithm_ownership(
+                    address,
+                    expected_data.len() as u32,
+                )?;
+
                 if expected_crc32 != target_crc32 {
                     tracing::error!(
                         "CRC32 verification failed at address 0x{:08x}: expected 0x{:08x}, got 0x{:08x}",
-                        address, expected_crc32, target_crc32
+                        address,
+                        expected_crc32,
+                        target_crc32
                     );
                     return Ok(false);
                 }
-                
+
                 tracing::debug!(
                     "CRC32 verification passed at address 0x{:08x}: 0x{:08x}",
-                    address, expected_crc32
+                    address,
+                    expected_crc32
                 );
             }
         }
-        
+
         Ok(true)
     }
 }
@@ -1207,9 +1252,12 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
     #[tracing::instrument(name = "Call to flash algorithm init", skip(self, clock))]
     pub(super) fn init(&mut self, clock: Option<u32>) -> Result<(), FlashError> {
         let algo = &self.flash_algorithm;
-        
+
         tracing::debug!("🔧 FLASH-ALGO: Starting flash algorithm init");
-        tracing::debug!("🔧 Flash algorithm load_address: 0x{:08x}", algo.load_address);
+        tracing::debug!(
+            "🔧 Flash algorithm load_address: 0x{:08x}",
+            algo.load_address
+        );
         tracing::debug!("🔧 Flash algorithm stack_top: 0x{:08x}", algo.stack_top);
         tracing::debug!("🔧 Flash algorithm static_base: 0x{:08x}", algo.static_base);
 
@@ -1218,7 +1266,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             tracing::debug!("🔧 FLASH-ALGO: No init routine present, skipping");
             return Ok(());
         };
-        
+
         tracing::debug!("🔧 FLASH-ALGO: Init routine at PC: 0x{:08x}", pc_init);
 
         let address = self.flash_algorithm.flash_properties.address_range.start;
@@ -1237,7 +1285,10 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             )
             .map_err(|error| FlashError::Init(Box::new(error)))?;
 
-        tracing::debug!("🔧 FLASH-ALGO: Init completed with error_code: {}", error_code);
+        tracing::debug!(
+            "🔧 FLASH-ALGO: Init completed with error_code: {}",
+            error_code
+        );
         if error_code != 0 {
             tracing::error!("🔧 FLASH-ALGO: Init failed with error_code: {}", error_code);
             return Err(FlashError::RoutineCallFailed {
@@ -1288,13 +1339,15 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
     pub(super) fn init_for_reading(&mut self, _clock: Option<u32>) -> Result<(), FlashError> {
         tracing::info!("🔍 XIP-STATE: Starting reading mode initialization for flash reads");
         tracing::info!("🔍 READING-MODE: Initializing like work-rp-4 approach");
-        
+
         // Step 1: Set up minimal core state for ARM Thumb execution
         tracing::debug!("Setting up core for ARM Thumb execution...");
-        
+
         // Halt the core first
-        self.core.halt(Duration::from_millis(100)).map_err(FlashError::Core)?;
-        
+        self.core
+            .halt(Duration::from_millis(100))
+            .map_err(FlashError::Core)?;
+
         // Set up stack pointer for function execution
         // CRITICAL: The flash algorithm allocates CRC32 at stack_top, causing collision
         // We need to set stack pointer ABOVE the CRC32 binary to prevent stack overflow
@@ -1302,19 +1355,30 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         let stack_pointer = if let Some((_, crc32_address, crc32_size)) = &algo.crc32_binary {
             let crc32_end = crc32_address + crc32_size + 64; // CRC32 end + 64 byte gap
             let safe_stack = std::cmp::max(algo.stack_top, crc32_end);
-            tracing::info!("🧠 MEMORY-LAYOUT: Stack=0x{:08x}, CRC32=0x{:08x}-0x{:08x}, Gap=64 bytes", 
-                safe_stack, crc32_address, crc32_address + crc32_size);
-            tracing::info!("🧠 STACK-SAFETY: Stack collision avoided, stack moved from 0x{:08x} to 0x{:08x}", 
-                algo.stack_top, safe_stack);
+            tracing::info!(
+                "🧠 MEMORY-LAYOUT: Stack=0x{:08x}, CRC32=0x{:08x}-0x{:08x}, Gap=64 bytes",
+                safe_stack,
+                crc32_address,
+                crc32_address + crc32_size
+            );
+            tracing::info!(
+                "🧠 STACK-SAFETY: Stack collision avoided, stack moved from 0x{:08x} to 0x{:08x}",
+                algo.stack_top,
+                safe_stack
+            );
             safe_stack
         } else {
-            tracing::info!("🧠 MEMORY-LAYOUT: No CRC32 binary allocated, stack at original 0x{:08x}", algo.stack_top);
+            tracing::info!(
+                "🧠 MEMORY-LAYOUT: No CRC32 binary allocated, stack at original 0x{:08x}",
+                algo.stack_top
+            );
             algo.stack_top
         };
-        
-        self.core.write_core_reg(self.core.stack_pointer(), stack_pointer)
+
+        self.core
+            .write_core_reg(self.core.stack_pointer(), stack_pointer)
             .map_err(FlashError::Core)?;
-        
+
         // Step 2: Load CRC32 binary to separate RAM region
         tracing::debug!("Loading CRC32 binary for target-side calculation...");
         if let Err(e) = self.load_crc32_for_reading() {
@@ -1322,46 +1386,69 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             return Err(e);
         }
         tracing::debug!("CRC32 binary loaded successfully");
-        
-        tracing::info!("🔍 CRC32-READ: Reading mode initialization complete - CRC32 ready for target execution");
+
+        tracing::info!(
+            "🔍 CRC32-READ: Reading mode initialization complete - CRC32 ready for target execution"
+        );
         Ok(())
     }
-    
+
     /// Read flash sector directly from XIP memory mapping (bypassing flash algorithm)
-    fn read_flash_sector_direct(&mut self, sector_address: u64, sector_size: u32) -> Result<Vec<u8>, FlashError> {
-        tracing::debug!("🔍 DIRECT-READ: Reading sector at 0x{:08x} ({} bytes) from XIP mapping", 
-            sector_address, sector_size);
-        
+    fn read_flash_sector_direct(
+        &mut self,
+        sector_address: u64,
+        sector_size: u32,
+    ) -> Result<Vec<u8>, FlashError> {
+        tracing::debug!(
+            "🔍 DIRECT-READ: Reading sector at 0x{:08x} ({} bytes) from XIP mapping",
+            sector_address,
+            sector_size
+        );
+
         let mut buffer = vec![0u8; sector_size as usize];
-        
+
         // Read directly from the XIP memory region
-        self.core.read_8(sector_address, &mut buffer).map_err(FlashError::Core)?;
-        
-        tracing::debug!("🔍 DIRECT-READ: Successfully read {} bytes from 0x{:08x}", 
-            buffer.len(), sector_address);
-        
+        self.core
+            .read_8(sector_address, &mut buffer)
+            .map_err(FlashError::Core)?;
+
+        tracing::debug!(
+            "🔍 DIRECT-READ: Successfully read {} bytes from 0x{:08x}",
+            buffer.len(),
+            sector_address
+        );
+
         Ok(buffer)
     }
-    
+
     /// Load CRC32 binary to separate RAM region for reading operations
-    /// This loads the CRC32 function for target-side execution like work-rp-4 
+    /// This loads the CRC32 function for target-side execution like work-rp-4
     fn load_crc32_for_reading(&mut self) -> Result<(), FlashError> {
         // Check if CRC32 binary is available in flash algorithm
-        if let Some((crc32_binary, crc32_address, crc32_size)) = &self.flash_algorithm.crc32_binary {
-            tracing::info!("🔍 CRC32-READ: Loading CRC32 binary ({} bytes) to RAM at 0x{:08x} for target execution", 
-                crc32_size, crc32_address);
-            
+        if let Some((crc32_binary, crc32_address, crc32_size)) = &self.flash_algorithm.crc32_binary
+        {
+            tracing::info!(
+                "🔍 CRC32-READ: Loading CRC32 binary ({} bytes) to RAM at 0x{:08x} for target execution",
+                crc32_size,
+                crc32_address
+            );
+
             // Write CRC32 binary to allocated RAM region
-            self.core.write(*crc32_address, crc32_binary).map_err(FlashError::Core)?;
-            
-            tracing::info!("🔍 CRC32-READ: CRC32 algorithm loaded successfully at 0x{:08x} (target-side)", crc32_address);
+            self.core
+                .write(*crc32_address, crc32_binary)
+                .map_err(FlashError::Core)?;
+
+            tracing::info!(
+                "🔍 CRC32-READ: CRC32 algorithm loaded successfully at 0x{:08x} (target-side)",
+                crc32_address
+            );
         } else {
             tracing::warn!("🔍 CRC32-READ: No CRC32 binary allocated for reading mode");
         }
-        
+
         Ok(())
     }
-    
+
     /// Clean up reading mode resources
     /// XIP is already enabled from uninit() call in init_for_reading()
     #[tracing::instrument(name = "Exit reading mode", skip(self))]
@@ -1374,87 +1461,126 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
     /// Verify flash regions using target-side CRC32 function calls
     /// This method uses the loaded CRC32 function for minimal USB traffic like work-rp-4
-    pub(super) fn verify_with_crc32_reading(&mut self, regions: &[LoadedRegion]) -> Result<VerificationResult, FlashError> {
+    pub(super) fn verify_with_crc32_reading(
+        &mut self,
+        regions: &[LoadedRegion],
+    ) -> Result<VerificationResult, FlashError> {
         tracing::debug!("Starting CRC32 verification using target function");
-        
+
         // Start progress reporting for CRC32 verification
         self.progress.started_crc32_verifying();
-        
+
         let mut sectors_needing_update = Vec::new();
         let mut total_sectors = 0;
         let mut matched_sectors = 0;
-        
+
         for region in regions {
             let flash_layout = region.flash_layout();
-            
+
             for sector in flash_layout.sectors() {
                 total_sectors += 1;
                 let sector_address = sector.address();
                 let sector_size = sector.size() as u32;
-                
-                tracing::info!("🔍 SECTOR {}/{}: Verifying 0x{:08x} ({} bytes)", 
-                    total_sectors, flash_layout.sectors().len(), sector_address, sector_size);
-                
+
+                tracing::info!(
+                    "🔍 SECTOR {}/{}: Verifying 0x{:08x} ({} bytes)",
+                    total_sectors,
+                    flash_layout.sectors().len(),
+                    sector_address,
+                    sector_size
+                );
+
                 // Call CRC32 function on target (proper init/uninit done, XIP enabled for reads)
                 match self.call_crc32_function(sector_address, sector_size) {
                     Ok(target_crc32) => {
                         // Calculate expected CRC32 from sector data
                         let sector_data = super::flasher::Flasher::get_sector_data(region, sector);
-                        let expected_crc32 = super::flasher::Flasher::calculate_crc32_host(&sector_data);
-                        
+                        let expected_crc32 =
+                            super::flasher::Flasher::calculate_crc32_host(&sector_data);
+
                         if target_crc32 == expected_crc32 {
                             matched_sectors += 1;
-                            tracing::info!("✅ SECTOR {}/{}: 0x{:08x} -> MATCH (CRC32=0x{:08x})", 
-                                total_sectors, flash_layout.sectors().len(), sector_address, target_crc32);
+                            tracing::info!(
+                                "✅ SECTOR {}/{}: 0x{:08x} -> MATCH (CRC32=0x{:08x})",
+                                total_sectors,
+                                flash_layout.sectors().len(),
+                                sector_address,
+                                target_crc32
+                            );
                         } else {
                             sectors_needing_update.push(sector.clone());
-                            tracing::info!("🔄 SECTOR {}/{}: 0x{:08x} -> MISMATCH (Expected=0x{:08x}, Got=0x{:08x})", 
-                                total_sectors, flash_layout.sectors().len(), sector_address, expected_crc32, target_crc32);
+                            tracing::info!(
+                                "🔄 SECTOR {}/{}: 0x{:08x} -> MISMATCH (Expected=0x{:08x}, Got=0x{:08x})",
+                                total_sectors,
+                                flash_layout.sectors().len(),
+                                sector_address,
+                                expected_crc32,
+                                target_crc32
+                            );
                         }
-                        
+
                         // Update progress (timing is logged in call_crc32_function)
-                        self.progress.sector_crc32_verified(sector_size as u64, Duration::from_millis(100));
+                        self.progress
+                            .sector_crc32_verified(sector_size as u64, Duration::from_millis(100));
                     }
                     Err(e) => {
                         // CRC32 failed, assume sector needs update
                         sectors_needing_update.push(sector.clone());
-                        tracing::warn!("⚠️ SECTOR {}/{}: 0x{:08x} -> ERROR: {}, assuming update needed", 
-                            total_sectors, flash_layout.sectors().len(), sector_address, e);
-                        
+                        tracing::warn!(
+                            "⚠️ SECTOR {}/{}: 0x{:08x} -> ERROR: {}, assuming update needed",
+                            total_sectors,
+                            flash_layout.sectors().len(),
+                            sector_address,
+                            e
+                        );
+
                         // Still update progress even on failure (assume 0 duration for errors)
-                        self.progress.sector_crc32_verified(sector_size as u64, Duration::ZERO);
+                        self.progress
+                            .sector_crc32_verified(sector_size as u64, Duration::ZERO);
                     }
                 }
             }
         }
-        
-        tracing::info!("🔍 CRC32 verification complete: {}/{} sectors match, {} need updates", 
-            matched_sectors, total_sectors, sectors_needing_update.len());
-        
-        tracing::debug!("CRC32 verification: {}/{} sectors match, {} need updates", 
-            matched_sectors, total_sectors, sectors_needing_update.len());
-            
+
+        tracing::info!(
+            "🔍 CRC32 verification complete: {}/{} sectors match, {} need updates",
+            matched_sectors,
+            total_sectors,
+            sectors_needing_update.len()
+        );
+
+        tracing::debug!(
+            "CRC32 verification: {}/{} sectors match, {} need updates",
+            matched_sectors,
+            total_sectors,
+            sectors_needing_update.len()
+        );
+
         // Finish progress reporting
         self.progress.finished_crc32_verifying();
-        
+
         Ok(VerificationResult {
             sectors_needing_update,
             total_sectors,
         })
     }
-    
+
     /// Call CRC32 function on target with XIP enabled for flash reads
     fn call_crc32_function(&mut self, address: u64, length: u32) -> Result<u32, FlashError> {
         use std::time::Instant;
         let call_start = Instant::now();
-        
+
         // Check if CRC32 entry point is available
         let crc32_pc = self.flash_algorithm.pc_crc32.ok_or_else(|| {
             FlashError::Core(crate::Error::Other("CRC32 function not available".into()))
         })?;
-        
-        tracing::debug!("Calling CRC32 function: address=0x{:08x}, {} bytes", address, length);
-        
+
+        tracing::debug!(
+            "Calling CRC32 function: address=0x{:08x}, {} bytes",
+            address,
+            length
+        );
+
         // Call CRC32 function: R0=address, R1=length, R2=initial_crc (unused)
         let result = self.call_function_and_wait(
             &Registers {
@@ -1464,14 +1590,17 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 r2: Some(0), // Initial CRC (unused by our implementation)
                 r3: None,
             },
-            false, // Not an init function
+            false,                   // Not an init function
             Duration::from_secs(10), // CRC32 timeout
         )?;
-        
+
         let call_duration = call_start.elapsed();
-        tracing::debug!("CRC32 result: 0x{:08x}, Duration: {:.1}ms", 
-            result, call_duration.as_secs_f64() * 1000.0);
-        
+        tracing::debug!(
+            "CRC32 result: 0x{:08x}, Duration: {:.1}ms",
+            result,
+            call_duration.as_secs_f64() * 1000.0
+        );
+
         Ok(result)
     }
 
@@ -1494,7 +1623,10 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
     fn call_function(&mut self, registers: &Registers, init: bool) -> Result<(), FlashError> {
         tracing::debug!("🔧 FLASH-ALGO: Calling flash algorithm function");
         tracing::debug!("🔧 Registers: {:?}, init={}", registers, init);
-        tracing::debug!("🔧 Core status before halt check: {:?}", self.core.status().ok());
+        tracing::debug!(
+            "🔧 Core status before halt check: {:?}",
+            self.core.status().ok()
+        );
 
         let algo = &self.flash_algorithm;
         let regs: &'static CoreRegisters = self.core.registers();
@@ -1566,10 +1698,10 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
         tracing::debug!("🔧 FLASH-ALGO: All registers set, starting core execution");
         tracing::debug!("🔧 Core status before run: {:?}", self.core.status().ok());
-        
+
         // Resume target operation.
         self.core.run().map_err(FlashError::Run)?;
-        
+
         tracing::debug!("🔧 Core started, status: {:?}", self.core.status().ok());
 
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
@@ -1589,7 +1721,10 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
     #[tracing::instrument(skip(self))]
     pub(super) fn wait_for_completion(&mut self, timeout: Duration) -> Result<u32, FlashError> {
-        tracing::debug!("🔧 FLASH-ALGO: Waiting for routine call completion (timeout: {:?})", timeout);
+        tracing::debug!(
+            "🔧 FLASH-ALGO: Waiting for routine call completion (timeout: {:?})",
+            timeout
+        );
         let regs = self.core.registers();
 
         // Wait until halted state is active again.
@@ -1602,15 +1737,24 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 .core
                 .status()
                 .map_err(FlashError::UnableToReadCoreStatus)?;
-                
-            if poll_count % 100 == 0 { // Log every 100ms
-                tracing::debug!("🔧 FLASH-ALGO: Poll #{}: status={:?}, elapsed={:?}", 
-                    poll_count, status, start.elapsed());
+
+            if poll_count % 100 == 0 {
+                // Log every 100ms
+                tracing::debug!(
+                    "🔧 FLASH-ALGO: Poll #{}: status={:?}, elapsed={:?}",
+                    poll_count,
+                    status,
+                    start.elapsed()
+                );
             }
-            
+
             match status {
                 CoreStatus::Halted(_) => {
-                    tracing::debug!("🔧 FLASH-ALGO: Core halted after {:?} ({} polls)", start.elapsed(), poll_count);
+                    tracing::debug!(
+                        "🔧 FLASH-ALGO: Core halted after {:?} ({} polls)",
+                        start.elapsed(),
+                        poll_count
+                    );
                     // Once the core is halted we know for sure all RTT data is written
                     // so we can read all of it.
                     self.read_rtt()?;
@@ -1626,7 +1770,11 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             }
             self.read_rtt()?;
             if start.elapsed() >= timeout {
-                tracing::error!("🔧 FLASH-ALGO: Timeout after {:?} ({} polls)", start.elapsed(), poll_count);
+                tracing::error!(
+                    "🔧 FLASH-ALGO: Timeout after {:?} ({} polls)",
+                    start.elapsed(),
+                    poll_count
+                );
                 return Err(FlashError::Core(Error::Timeout));
             }
             std::thread::sleep(Duration::from_millis(1));
@@ -1807,16 +1955,23 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         length: u32,
     ) -> Result<u32, FlashError> {
         let total_start = std::time::Instant::now();
-        
+
         let Some(pc_crc32) = self.flash_algorithm.pc_crc32 else {
             return Err(FlashError::CrcNotSupported);
         };
-        
-        tracing::debug!("🔧 FLASH-ALGO: Calculating CRC32 for address 0x{:08x}, length {}", 
-            flash_address, length);
-        tracing::debug!("About to call CRC32 function at PC=0x{:08x} with R0=0x{:08x}, R1={}", 
-            pc_crc32, flash_address, length);
-        
+
+        tracing::debug!(
+            "🔧 FLASH-ALGO: Calculating CRC32 for address 0x{:08x}, length {}",
+            flash_address,
+            length
+        );
+        tracing::debug!(
+            "About to call CRC32 function at PC=0x{:08x} with R0=0x{:08x}, R1={}",
+            pc_crc32,
+            flash_address,
+            length
+        );
+
         // Step 1: Flash memory accessibility test (for debugging)
         let mem_test_start = std::time::Instant::now();
         let mut test_data = [0u8; 16];
@@ -1832,34 +1987,36 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             }
         };
         let mem_test_time = mem_test_start.elapsed();
-        
+
         let crc_length = length as u64;
-        
+
         // Step 2: Register setup
         let reg_setup_start = std::time::Instant::now();
         let registers = Registers {
             pc: into_reg(pc_crc32)?,
-            r0: Some(into_reg(flash_address)?),  // Flash address to read
-            r1: Some(into_reg(crc_length)?), // Number of bytes
+            r0: Some(into_reg(flash_address)?), // Flash address to read
+            r1: Some(into_reg(crc_length)?),    // Number of bytes
             r2: Some(into_reg(0u64)?),          // Initial CRC value (typically 0)
             r3: None,                           // Reserved
         };
         let reg_setup_time = reg_setup_start.elapsed();
-        
+
         // Step 3: Execute CRC32 calculation on target
         let crc_exec_start = std::time::Instant::now();
         let result = self.call_function_and_wait(
             &registers,
-            false, // Not an init operation
+            false,                  // Not an init operation
             Duration::from_secs(3), // Shorter timeout to debug faster
         )?;
         let crc_exec_time = crc_exec_start.elapsed();
-        
+
         let total_time = total_start.elapsed();
         let throughput = if crc_exec_time.as_secs_f64() > 0.0 {
             (length as f64) / (1024.0 * 1024.0) / crc_exec_time.as_secs_f64()
-        } else { 0.0 };
-        
+        } else {
+            0.0
+        };
+
         tracing::debug!(
             "⏱️  TARGET CRC32 PERF: 0x{:08x} ({} bytes) = 0x{:08x} | Total: {:.3}ms | Mem test: {:.3}ms | Reg setup: {:.3}ms | CRC exec: {:.3}ms ({:.1} MB/s) | Mem accessible: {}",
             flash_address,
@@ -1872,14 +2029,14 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             throughput,
             mem_accessible
         );
-        
+
         Ok(result)
     }
 
     /// Flash algorithm-owned CRC32 calculation with internal init→uninit→CRC32→init sequencing
-    /// 
-    /// This method implements the maintainer's request that "the flash algorithm should be in charge 
-    /// of all functionality that runs on the target." Instead of the host managing the init/uninit 
+    ///
+    /// This method implements the maintainer's request that "the flash algorithm should be in charge
+    /// of all functionality that runs on the target." Instead of the host managing the init/uninit
     /// lifecycle, the flash algorithm owns the entire sequence for XIP state management.
     pub(super) fn calculate_crc32_with_algorithm_ownership(
         &mut self,
@@ -1892,13 +2049,18 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             return Err(FlashError::CrcNotSupported);
         };
 
-        tracing::debug!("🔧 FLASH-ALGO-OWNED: Starting CRC32 with flash algorithm ownership for address 0x{:08x}, length {}", 
-            flash_address, length);
+        tracing::debug!(
+            "🔧 FLASH-ALGO-OWNED: Starting CRC32 with flash algorithm ownership for address 0x{:08x}, length {}",
+            flash_address,
+            length
+        );
 
         // Phase 1: Uninit flash algorithm (prepare for XIP access) - Skip if already uninitialized
         let uninit_start = std::time::Instant::now();
         let uninit_time = uninit_start.elapsed(); // No uninit needed - caller already uninitialized for XIP access
-        tracing::debug!("🔧 FLASH-ALGO-OWNED: Phase 1 - Skip uninit (already uninitialized for XIP access)");
+        tracing::debug!(
+            "🔧 FLASH-ALGO-OWNED: Phase 1 - Skip uninit (already uninitialized for XIP access)"
+        );
 
         // Phase 2: Execute CRC32 calculation (XIP-enabled flash access)
         let crc_start = std::time::Instant::now();
@@ -1906,12 +2068,12 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         let result = self.call_function_and_wait(
             &Registers {
                 pc: into_reg(pc_crc32)?,
-                r0: Some(into_reg(flash_address)?),  // Flash address to read
+                r0: Some(into_reg(flash_address)?), // Flash address to read
                 r1: Some(into_reg(length as u64)?), // Number of bytes
                 r2: Some(into_reg(0u64)?),          // Initial CRC value (typically 0)
                 r3: None,                           // Reserved
             },
-            false, // Not an init operation
+            false,                   // Not an init operation
             Duration::from_secs(10), // CRC32 timeout
         )?;
         let crc_time = crc_start.elapsed();
@@ -1919,12 +2081,16 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         // Phase 3: Re-init flash algorithm (restore programming state) - Skip to preserve uninitialized state
         let reinit_start = std::time::Instant::now();
         let reinit_time = reinit_start.elapsed(); // No re-init needed - caller expects uninitialized state
-        tracing::debug!("🔧 FLASH-ALGO-OWNED: Phase 3 - Skip re-init (preserve uninitialized state for caller)");
+        tracing::debug!(
+            "🔧 FLASH-ALGO-OWNED: Phase 3 - Skip re-init (preserve uninitialized state for caller)"
+        );
 
         let total_time = total_start.elapsed();
         let throughput = if crc_time.as_secs_f64() > 0.0 {
             (length as f64) / (1024.0 * 1024.0) / crc_time.as_secs_f64()
-        } else { 0.0 };
+        } else {
+            0.0
+        };
 
         tracing::debug!(
             "⏱️  FLASH-ALGO-OWNED CRC32 PERF: 0x{:08x} ({} bytes) = 0x{:08x} | Total: {:.3}ms | Uninit: {:.3}ms | CRC: {:.3}ms ({:.1} MB/s) | Re-init: {:.3}ms",
@@ -1942,68 +2108,92 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
     }
 
     /// Verify flash regions using flash algorithm-owned CRC32 sequencing
-    /// 
+    ///
     /// This method can be called on an already-uninitialized ActiveFlasher and will
     /// use the flash algorithm-owned init→uninit→CRC32→init sequencing internally.
-    pub(super) fn verify_with_crc32_preinit(&mut self, regions: &[LoadedRegion]) -> Result<VerificationResult, FlashError> {
+    pub(super) fn verify_with_crc32_preinit(
+        &mut self,
+        regions: &[LoadedRegion],
+    ) -> Result<VerificationResult, FlashError> {
         tracing::debug!("Starting flash algorithm-owned CRC32 verification");
-        
+
         // Start progress reporting for CRC32 verification
         self.progress.started_crc32_verifying();
-        
+
         let mut sectors_needing_update = Vec::new();
         let mut total_sectors = 0;
         let mut matched_sectors = 0;
 
         for region in regions {
             let flash_layout = region.flash_layout();
-            
+
             for sector in flash_layout.sectors() {
                 total_sectors += 1;
                 let sector_address = sector.address();
                 let sector_size = sector.size() as u32;
-                
-                tracing::debug!("🔍 Verifying sector at 0x{:08x} ({} bytes) with algorithm ownership", sector_address, sector_size);
-                
+
+                tracing::debug!(
+                    "🔍 Verifying sector at 0x{:08x} ({} bytes) with algorithm ownership",
+                    sector_address,
+                    sector_size
+                );
+
                 // Use flash algorithm-owned CRC32 calculation with internal init→uninit→CRC32→init sequencing
                 match self.calculate_crc32_with_algorithm_ownership(sector_address, sector_size) {
                     Ok(target_crc32) => {
                         // Calculate expected CRC32 from sector data
                         let sector_data = super::flasher::Flasher::get_sector_data(region, sector);
-                        let expected_crc32 = super::flasher::Flasher::calculate_crc32_host(&sector_data);
-                        
+                        let expected_crc32 =
+                            super::flasher::Flasher::calculate_crc32_host(&sector_data);
+
                         if target_crc32 == expected_crc32 {
                             matched_sectors += 1;
-                            tracing::debug!("✅ Sector 0x{:08x}: CRC32 match (0x{:08x})", 
-                                sector_address, target_crc32);
+                            tracing::debug!(
+                                "✅ Sector 0x{:08x}: CRC32 match (0x{:08x})",
+                                sector_address,
+                                target_crc32
+                            );
                         } else {
                             sectors_needing_update.push(sector.clone());
-                            tracing::debug!("🔄 Sector 0x{:08x}: CRC32 mismatch - expected 0x{:08x}, got 0x{:08x}", 
-                                sector_address, expected_crc32, target_crc32);
+                            tracing::debug!(
+                                "🔄 Sector 0x{:08x}: CRC32 mismatch - expected 0x{:08x}, got 0x{:08x}",
+                                sector_address,
+                                expected_crc32,
+                                target_crc32
+                            );
                         }
-                        
+
                         // Report progress for this sector
-                        self.progress.sector_crc32_verified(sector_size as u64, Duration::from_millis(50));
+                        self.progress
+                            .sector_crc32_verified(sector_size as u64, Duration::from_millis(50));
                     }
                     Err(e) => {
                         // CRC32 failed, assume sector needs update
                         sectors_needing_update.push(sector.clone());
-                        tracing::warn!("⚠️ CRC32 failed for sector 0x{:08x}: {}, assuming update needed", 
-                            sector_address, e);
-                        
+                        tracing::warn!(
+                            "⚠️ CRC32 failed for sector 0x{:08x}: {}, assuming update needed",
+                            sector_address,
+                            e
+                        );
+
                         // Report progress even for failed sectors
-                        self.progress.sector_crc32_verified(sector_size as u64, Duration::ZERO);
+                        self.progress
+                            .sector_crc32_verified(sector_size as u64, Duration::ZERO);
                     }
                 }
             }
         }
-        
-        tracing::info!("🔍 Flash algorithm-owned CRC32 verification complete: {}/{} sectors match, {} need updates", 
-            matched_sectors, total_sectors, sectors_needing_update.len());
-        
+
+        tracing::info!(
+            "🔍 Flash algorithm-owned CRC32 verification complete: {}/{} sectors match, {} need updates",
+            matched_sectors,
+            total_sectors,
+            sectors_needing_update.len()
+        );
+
         // Finish progress reporting
         self.progress.finished_crc32_verifying();
-        
+
         Ok(VerificationResult {
             sectors_needing_update,
             total_sectors,
@@ -2050,7 +2240,10 @@ impl ActiveFlasher<'_, '_, Erase> {
 
     pub(super) fn erase_sector(&mut self, sector: &FlashSector) -> Result<(), FlashError> {
         let address = sector.address();
-        tracing::info!("🔧 FLASH-ALGO: Starting sector erase at address {:#010x}", address);
+        tracing::info!(
+            "🔧 FLASH-ALGO: Starting sector erase at address {:#010x}",
+            address
+        );
         let t1 = Instant::now();
 
         let error_code = self.call_function_and_wait(
@@ -2068,7 +2261,9 @@ impl ActiveFlasher<'_, '_, Erase> {
         )?;
         tracing::info!(
             "🔧 FLASH-ALGO: Sector erase completed. Result: {} (0x{:08x}). Duration: {:?}",
-            error_code, error_code, t1.elapsed()
+            error_code,
+            error_code,
+            t1.elapsed()
         );
 
         if error_code != 0 {
@@ -2222,13 +2417,13 @@ mod tests {
     use super::*;
 
     /// Test CRC32C algorithm consistency - documents current behavior
-    /// 
+    ///
     /// CRITICAL BUG DETECTED: Host and embedded CRC32C implementations have different
     /// initialization/finalization, causing verification failures.
-    /// 
+    ///
     /// Host (crcxx CRC_32_ISCSI): Standard CRC32C with normal init/final XOR
     /// Embedded (simple): Custom init/final XOR that doesn't match standard
-    /// 
+    ///
     /// This test documents current host behavior for regression testing until fixed.
     #[test]
     fn test_crc32c_algorithm_current_behavior() {
@@ -2250,7 +2445,7 @@ mod tests {
             );
         }
     }
-    
+
     /// Test CRC32C standard compliance - currently failing due to host implementation issue
     /// Host produces non-standard CRC32C values (e.g. 0xFF000000 vs 0xB798B438 for byte 0xFF)
     #[test]
@@ -2260,7 +2455,7 @@ mod tests {
         // These are the correct values according to CRC32C specification
         let standard_crc32c_values = vec![
             (b"".as_slice(), 0x00000000u32),
-            (b"123456789".as_slice(), 0xE3069283u32), 
+            (b"123456789".as_slice(), 0xE3069283u32),
             (b"\x00".as_slice(), 0x527D5351u32),
             (b"\xFF".as_slice(), 0xB798B438u32), // Standard CRC32C value
             (b"\x00\x00\x00\x00".as_slice(), 0x48674BC7u32),
@@ -2286,46 +2481,65 @@ mod tests {
         // Erased flash (all 0xFF) - very common case
         let erased_sector = vec![0xFF; 4096];
         let erased_crc = Flasher::calculate_crc32_host(&erased_sector);
-        assert_ne!(erased_crc, 0x00000000, "Erased flash CRC should be non-zero");
-        assert_ne!(erased_crc, 0xFFFFFFFF, "Erased flash CRC should not be all ones");
+        assert_ne!(
+            erased_crc, 0x00000000,
+            "Erased flash CRC should be non-zero"
+        );
+        assert_ne!(
+            erased_crc, 0xFFFFFFFF,
+            "Erased flash CRC should not be all ones"
+        );
 
-        // Blank flash (all 0x00) - less common but possible  
+        // Blank flash (all 0x00) - less common but possible
         let blank_sector = vec![0x00; 4096];
         let blank_crc = Flasher::calculate_crc32_host(&blank_sector);
-        assert_ne!(blank_crc, erased_crc, "Blank and erased flash should have different CRCs");
+        assert_ne!(
+            blank_crc, erased_crc,
+            "Blank and erased flash should have different CRCs"
+        );
 
         // Repeating pattern - common in test firmware
         let pattern_sector = vec![0xAA; 4096];
         let pattern_crc = Flasher::calculate_crc32_host(&pattern_sector);
-        assert_ne!(pattern_crc, erased_crc, "Pattern and erased flash should have different CRCs");
-        assert_ne!(pattern_crc, blank_crc, "Pattern and blank flash should have different CRCs");
+        assert_ne!(
+            pattern_crc, erased_crc,
+            "Pattern and erased flash should have different CRCs"
+        );
+        assert_ne!(
+            pattern_crc, blank_crc,
+            "Pattern and blank flash should have different CRCs"
+        );
 
         // CRC should be consistent across multiple calculations
         let repeat_crc = Flasher::calculate_crc32_host(&pattern_sector);
-        assert_eq!(pattern_crc, repeat_crc, "CRC calculation should be consistent");
+        assert_eq!(
+            pattern_crc, repeat_crc,
+            "CRC calculation should be consistent"
+        );
     }
 
     /// Test CRC32C performance baseline to catch regressions
     #[test]
     fn test_crc32c_performance_baseline() {
         use std::time::Instant;
-        
+
         // Test various data sizes representative of flash sectors
         let data_sizes = vec![1024, 4096, 16384]; // 1KB, 4KB, 16KB
-        
+
         for size in data_sizes {
             let data = vec![0x42; size];
             let start = Instant::now();
             let _crc = Flasher::calculate_crc32_host(&data);
             let duration = start.elapsed();
-            
+
             // Rough baseline: should process at least 1 MB/s (very conservative)
             // This catches major performance regressions in CRC implementation
             let throughput_mbps = (size as f64) / duration.as_secs_f64() / 1_000_000.0;
             assert!(
                 throughput_mbps > 1.0,
                 "CRC32 too slow for {} bytes: {:.2} MB/s (minimum: 1.0 MB/s)",
-                size, throughput_mbps
+                size,
+                throughput_mbps
             );
         }
     }
@@ -2333,8 +2547,8 @@ mod tests {
     /// Deep analysis of CRC32C implementation to identify potential edge cases
     #[test]
     fn test_crc32c_deep_analysis() {
-        use crcxx::crc32::{*, catalog::CRC_32_ISCSI};
-        
+        use crcxx::crc32::{catalog::*, Crc, LookupTable256};
+
         println!("\n=== CRC_32_ISCSI Parameters Analysis ===");
         let crc_params = &CRC_32_ISCSI;
         println!("Width: {} bits", crc_params.width);
@@ -2343,7 +2557,7 @@ mod tests {
         println!("RefIn: {}", crc_params.refin);
         println!("RefOut: {}", crc_params.refout);
         println!("XorOut: 0x{:08X}", crc_params.xorout);
-        
+
         // Test edge cases that might expose differences
         let edge_cases = vec![
             // Empty data
@@ -2366,23 +2580,28 @@ mod tests {
             (b"12".as_slice(), "double_char"),
             (b"123456789".as_slice(), "standard_test"),
         ];
-        
+
         println!("\n=== Edge Case Analysis ===");
         for (data, name) in edge_cases {
             let result = Flasher::calculate_crc32_host(data);
             let manual_crc32c = manual_crc32c_castagnoli(data);
             let matches = result == manual_crc32c;
-            
-            println!("{:20} -> crcxx: 0x{:08X}, manual_crc32c: 0x{:08X} [{}]", 
-                name, result, manual_crc32c, if matches { "MATCH" } else { "DIFFER" });
+
+            println!(
+                "{:20} -> crcxx: 0x{:08X}, manual_crc32c: 0x{:08X} [{}]",
+                name,
+                result,
+                manual_crc32c,
+                if matches { "MATCH" } else { "DIFFER" }
+            );
         }
     }
-    
+
     /// Manual CRC32C/Castagnoli implementation for comparison
     fn manual_crc32c_castagnoli(data: &[u8]) -> u32 {
-        const CRC32C_POLY: u32 = 0x1EDC6F41;  // Castagnoli polynomial
+        const CRC32C_POLY: u32 = 0x1EDC6F41; // Castagnoli polynomial
         let mut crc = 0xFFFFFFFF;
-        
+
         for &byte in data {
             crc ^= byte as u32;
             for _ in 0..8 {
@@ -2393,7 +2612,7 @@ mod tests {
                 }
             }
         }
-        
+
         crc ^ 0xFFFFFFFF
     }
 
@@ -2401,7 +2620,7 @@ mod tests {
     #[test]
     fn test_verification_result() {
         use crate::flashing::FlashSector;
-        
+
         // Test all sectors match
         let all_match = VerificationResult {
             sectors_needing_update: vec![],
@@ -2415,7 +2634,7 @@ mod tests {
             sectors_needing_update: vec![
                 FlashSector {
                     address: 0x1000,
-                    size: 0x1000, 
+                    size: 0x1000,
                 },
                 FlashSector {
                     address: 0x2000,
@@ -2427,32 +2646,41 @@ mod tests {
         assert!(!some_mismatch.all_match());
         assert_eq!(some_mismatch.sectors_needing_update_count(), 2);
     }
-    
+
     #[test]
     fn test_crc32c_extended_analysis() {
-        use crcxx::crc32::{*, catalog::CRC_32_ISCSI};
-        
+        use crcxx::crc32::{catalog::*, Crc, LookupTable256};
+
         // Test with repetitive patterns that could expose algorithm differences
         println!("\n=== Extended CRC32C Analysis ===");
-        
+
         let repetitive_patterns = vec![
-            vec![0xAAu8; 1],    // Single 0xAA
-            vec![0xAAu8; 4],    // Word of 0xAA
-            vec![0xAAu8; 256],  // Page of 0xAA 
-            vec![0x55u8; 256],  // Page of 0x55 (alternating bits)
-            vec![0x00u8; 256],  // Page of zeros
-            vec![0xFFu8; 256],  // Page of ones
+            vec![0xAAu8; 1],   // Single 0xAA
+            vec![0xAAu8; 4],   // Word of 0xAA
+            vec![0xAAu8; 256], // Page of 0xAA
+            vec![0x55u8; 256], // Page of 0x55 (alternating bits)
+            vec![0x00u8; 256], // Page of zeros
+            vec![0xFFu8; 256], // Page of ones
         ];
-        
+
         for pattern in &repetitive_patterns {
             let host_result = Flasher::calculate_crc32_host(pattern);
             let manual_result = manual_crc32c_castagnoli(pattern);
-            println!("Pattern: {} bytes of 0x{:02X} -> Host: 0x{:08X}, Manual: 0x{:08X} [{}]",
-                pattern.len(), pattern[0], host_result, manual_result,
-                if host_result == manual_result { "MATCH" } else { "DIFFER" });
+            println!(
+                "Pattern: {} bytes of 0x{:02X} -> Host: 0x{:08X}, Manual: 0x{:08X} [{}]",
+                pattern.len(),
+                pattern[0],
+                host_result,
+                manual_result,
+                if host_result == manual_result {
+                    "MATCH"
+                } else {
+                    "DIFFER"
+                }
+            );
         }
-        
-        // Test boundary cases for flash sector operations  
+
+        // Test boundary cases for flash sector operations
         println!("\n=== Flash Boundary Cases ===");
         let boundary_cases = vec![
             (1usize, "single_byte"),
@@ -2464,102 +2692,140 @@ mod tests {
             (1024, "sector_boundary"),
             (1025, "sector_plus_one"),
         ];
-        
+
         for (size, name) in boundary_cases {
-            let pattern = vec![0x42u8; size];  // Use 0x42 as test pattern
+            let pattern = vec![0x42u8; size]; // Use 0x42 as test pattern
             let host_result = Flasher::calculate_crc32_host(&pattern);
             let manual_result = manual_crc32c_castagnoli(&pattern);
-            println!("{:20} ({:4} bytes) -> Host: 0x{:08X}, Manual: 0x{:08X} [{}]",
-                name, size, host_result, manual_result,
-                if host_result == manual_result { "MATCH" } else { "DIFFER" });
+            println!(
+                "{:20} ({:4} bytes) -> Host: 0x{:08X}, Manual: 0x{:08X} [{}]",
+                name,
+                size,
+                host_result,
+                manual_result,
+                if host_result == manual_result {
+                    "MATCH"
+                } else {
+                    "DIFFER"
+                }
+            );
         }
     }
-    
+
     #[test]
     fn test_crc32_variant_analysis() {
-        use crcxx::crc32::{*, catalog::*};
-        
+        use crcxx::crc32::{catalog::*, *};
+
         println!("\n=== CRC32 Variant Analysis ===");
-        
+
         // Compare key CRC32 variants for performance characteristics
         let variants = [
-            ("CRC_32_ISCSI (previous)", &CRC_32_ISCSI),    // Previously used - Castagnoli with reflections
-            ("CRC_32_BZIP2 (current)", &CRC_32_BZIP2),     // Current production - Standard poly, no reflections
-            ("CRC_32_MPEG_2", &CRC_32_MPEG_2),             // Standard poly, no reflections
-            ("CRC_32_CKSUM", &CRC_32_CKSUM),               // POSIX cksum variant
-            ("CRC_32_XFER", &CRC_32_XFER),                 // Transfer encoding variant
-            ("CRC_32_ISO_HDLC", &CRC_32_ISO_HDLC),         // Standard CRC32 with reflections
+            ("CRC_32_ISCSI (previous)", &CRC_32_ISCSI), // Previously used - Castagnoli with reflections
+            ("CRC_32_BZIP2 (current)", &CRC_32_BZIP2), // Current production - Standard poly, no reflections
+            ("CRC_32_MPEG_2", &CRC_32_MPEG_2),         // Standard poly, no reflections
+            ("CRC_32_CKSUM", &CRC_32_CKSUM),           // POSIX cksum variant
+            ("CRC_32_XFER", &CRC_32_XFER),             // Transfer encoding variant
+            ("CRC_32_ISO_HDLC", &CRC_32_ISO_HDLC),     // Standard CRC32 with reflections
         ];
-        
+
         println!("Variant Analysis:");
         for (name, params) in &variants {
-            println!("{:25} -> Poly: 0x{:08X}, RefIn: {:5}, RefOut: {:5}",
-                name, params.poly, params.refin, params.refout);
+            println!(
+                "{:25} -> Poly: 0x{:08X}, RefIn: {:5}, RefOut: {:5}",
+                name, params.poly, params.refin, params.refout
+            );
         }
-        
+
         // Test performance characteristics with standard test data
         let test_data = b"123456789";
-        println!("\nTest Vector Results ({}): ", std::str::from_utf8(test_data).unwrap());
-        
+        println!(
+            "\nTest Vector Results ({}): ",
+            std::str::from_utf8(test_data).unwrap()
+        );
+
         let iscsi_crc = Crc::<LookupTable256>::new(&CRC_32_ISCSI);
-        let bzip2_crc = Crc::<LookupTable256>::new(&CRC_32_BZIP2); 
+        let bzip2_crc = Crc::<LookupTable256>::new(&CRC_32_BZIP2);
         let mpeg2_crc = Crc::<LookupTable256>::new(&CRC_32_MPEG_2);
         let cksum_crc = Crc::<LookupTable256>::new(&CRC_32_CKSUM);
         let xfer_crc = Crc::<LookupTable256>::new(&CRC_32_XFER);
         let standard_crc = Crc::<LookupTable256>::new(&CRC_32_ISO_HDLC);
-        
-        println!("CRC_32_ISCSI (previous): 0x{:08X}", iscsi_crc.compute(test_data));
-        println!("CRC_32_BZIP2 (current):  0x{:08X}", bzip2_crc.compute(test_data));
-        println!("CRC_32_MPEG_2:          0x{:08X}", mpeg2_crc.compute(test_data));
-        println!("CRC_32_CKSUM:           0x{:08X}", cksum_crc.compute(test_data));
-        println!("CRC_32_XFER:            0x{:08X}", xfer_crc.compute(test_data));
-        println!("CRC_32_ISO_HDLC:        0x{:08X}", standard_crc.compute(test_data));
-        
+
+        println!(
+            "CRC_32_ISCSI (previous): 0x{:08X}",
+            iscsi_crc.compute(test_data)
+        );
+        println!(
+            "CRC_32_BZIP2 (current):  0x{:08X}",
+            bzip2_crc.compute(test_data)
+        );
+        println!(
+            "CRC_32_MPEG_2:          0x{:08X}",
+            mpeg2_crc.compute(test_data)
+        );
+        println!(
+            "CRC_32_CKSUM:           0x{:08X}",
+            cksum_crc.compute(test_data)
+        );
+        println!(
+            "CRC_32_XFER:            0x{:08X}",
+            xfer_crc.compute(test_data)
+        );
+        println!(
+            "CRC_32_ISO_HDLC:        0x{:08X}",
+            standard_crc.compute(test_data)
+        );
+
         // Analyze processing overhead characteristics
         println!("\n=== Processing Overhead Analysis ===");
-        
+
         // Group by processing characteristics
         let non_reflecting = [
             ("CRC_32_BZIP2", &CRC_32_BZIP2),
-            ("CRC_32_MPEG_2", &CRC_32_MPEG_2), 
+            ("CRC_32_MPEG_2", &CRC_32_MPEG_2),
             ("CRC_32_CKSUM", &CRC_32_CKSUM),
             ("CRC_32_XFER", &CRC_32_XFER),
         ];
-        
+
         println!("Non-reflecting variants (lowest overhead):");
         for (name, params) in &non_reflecting {
             if !params.refin && !params.refout {
-                println!("✓ {:15} -> poly=0x{:08X}, init=0x{:08X}, xor=0x{:08X}", 
-                    name, params.poly, params.init, params.xorout);
+                println!(
+                    "✓ {:15} -> poly=0x{:08X}, init=0x{:08X}, xor=0x{:08X}",
+                    name, params.poly, params.init, params.xorout
+                );
             }
         }
-        
+
         println!("\nReflecting variants (higher overhead):");
         let reflecting = [
             ("CRC_32_ISCSI", &CRC_32_ISCSI),
             ("CRC_32_ISO_HDLC", &CRC_32_ISO_HDLC),
         ];
-        
+
         for (name, params) in &reflecting {
             if params.refin && params.refout {
-                println!("• {:15} -> poly=0x{:08X}, init=0x{:08X}, xor=0x{:08X}",
-                    name, params.poly, params.init, params.xorout);
+                println!(
+                    "• {:15} -> poly=0x{:08X}, init=0x{:08X}, xor=0x{:08X}",
+                    name, params.poly, params.init, params.xorout
+                );
             }
         }
-        
+
         // Performance ranking analysis
         println!("\n=== Performance Ranking (fastest to slowest) ===");
-        println!("1. CRC_32_BZIP2:  Standard poly, no reflections, 0x00 init/xor (CURRENT PRODUCTION)");
-        println!("2. CRC_32_MPEG_2: Standard poly, no reflections, 0xFF init/xor");  
+        println!(
+            "1. CRC_32_BZIP2:  Standard poly, no reflections, 0x00 init/xor (CURRENT PRODUCTION)"
+        );
+        println!("2. CRC_32_MPEG_2: Standard poly, no reflections, 0xFF init/xor");
         println!("3. CRC_32_CKSUM:  Standard poly, no reflections, 0x00 init, 0xFF xor");
         println!("4. CRC_32_XFER:   Standard poly, no reflections, 0x00 init/xor");
         println!("5. CRC_32_ISCSI:  Castagnoli poly, reflections (previously used)");
-        
+
         // Detailed overhead comparison
         println!("\n=== Overhead Details ===");
         println!("CRC_32_BZIP2 (current) vs previous ISCSI:");
         println!("  - Eliminates input bit reflection per byte");
-        println!("  - Eliminates output bit reflection at end"); 
+        println!("  - Eliminates output bit reflection at end");
         println!("  - Uses standard polynomial (hardware acceleration potential)");
         println!("  - Simpler init/xor (0x00000000 vs 0xFFFFFFFF)");
         println!("  - Expected speedup: ~20-30% on embedded ARM");
