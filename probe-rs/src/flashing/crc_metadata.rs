@@ -1,8 +1,7 @@
 /// CRC32C Binary Metadata Management
-/// 
+///
 /// This module handles loading and parsing metadata for CRC32C binaries
 /// that are automatically generated during the build process.
-
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -64,16 +63,20 @@ impl CrcBinaryMetadata {
     /// Get the CRC32 function offset as a u32
     pub fn crc32_offset(&self) -> Result<u32, String> {
         let offset_str = &self.binary.crc32_function_offset;
-        
+
         // Handle both "0x12345678" and "12345678" formats
         let offset_str = if offset_str.starts_with("0x") {
             &offset_str[2..]
         } else {
             offset_str
         };
-        
-        u32::from_str_radix(offset_str, 16)
-            .map_err(|e| format!("Failed to parse offset '{}': {}", self.binary.crc32_function_offset, e))
+
+        u32::from_str_radix(offset_str, 16).map_err(|e| {
+            format!(
+                "Failed to parse offset '{}': {}",
+                self.binary.crc32_function_offset, e
+            )
+        })
     }
 
     /// Get the expected binary size
