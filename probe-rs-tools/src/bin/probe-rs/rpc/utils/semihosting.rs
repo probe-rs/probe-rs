@@ -24,14 +24,107 @@ enum FileHandle {
     UnixStream(UnixStream),
 }
 
+use std::convert::Infallible;
+
+use postcard_schema::Schema;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Schema, Clone)]
+enum Mapping {
+    Exact(String, String),
+    Prefix(String, String),
+    Regex(String, String),
+}
+
+enum FileVariant {
+    File(String),
+    TcpStream(String),
+    UnixStream(String),
+}
+
+#[derive(Serialize, Deserialize, Schema, Clone)]
+pub struct SemihostingOptions {
+    mappings: Vec<Mapping>,
+}
+
+impl SemihostingOptions {
+    pub fn new() -> Self {
+        Self { mappings: vec![] }
+    }
+
+    pub fn add_file(&mut self, from: String, to: String) -> Result<(), Infallible> {
+        self.mappings.push(Mapping::Exact(from, to));
+        Ok(())
+    }
+
+    pub fn add_file_prefix(&mut self, from: String, to: String) -> Result<(), Infallible> {
+        self.mappings.push(Mapping::Prefix(from, to));
+        Ok(())
+    }
+
+    pub fn add_file_regex(&mut self, re: String, to: String) -> Result<(), regex::Error> {
+        let _ = Regex::new(&re)?; // Check if it's a valid regular expression
+        self.mappings.push(Mapping::Regex(re, to));
+        Ok(())
+    }
+
+    fn map_file(&self, value: &str) -> Option<String> {
+        for item in &self.mappings {
+            match item {
+                Mapping::Exact(from, to) => {
+                    if value == from {
+                        return Some(to.clone());
+                    }
+                }
+                Mapping::Prefix(prefix, to) => {
+                    if let Some(rest) = value.strip_prefix(prefix) {
+                        return Some(to.clone() + rest);
+                    }
+                }
+                Mapping::Regex(re, to) => {
+                    let re = Regex::new(re).expect("valid Regex");
+                    if let Some(captures) = re.captures(value) {
+                        let mut ret = String::new();
+                        captures.expand(to, &mut ret);
+                        return Some(ret);
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    fn find_file(&self, value: &str) -> Option<FileVariant> {
+        let v = self.map_file(value)?;
+
+        if let Some(r) = v.strip_prefix("file:") {
+            return Some(FileVariant::File(r.into()));
+        }
+
+        if let Some(r) = v.strip_prefix("tcp:") {
+            return Some(FileVariant::TcpStream(r.into()));
+        }
+
+        if let Some(r) = v.strip_prefix("unix:") {
+            return Some(FileVariant::UnixStream(r.into()));
+        }
+
+        Some(FileVariant::File(v))
+    }
+}
+
 pub struct SemihostingFileManager {
     file_handles: Vec<Option<FileHandle>>,
+    semihosting_options: SemihostingOptions,
 }
 
 impl SemihostingFileManager {
-    pub fn new() -> Self {
+    pub fn new(semihosting_options: SemihostingOptions) -> Self {
         Self {
             file_handles: vec![],
+            semihosting_options,
         }
     }
 
@@ -161,22 +254,18 @@ impl SemihostingFileManager {
     fn handle_open(&mut self, core: &mut Core<'_>, request: OpenRequest) -> anyhow::Result<()> {
         let path = request.path(core)?;
 
-        // TODO: Add a more fine grained access control
-        const ALLOW_ACCESS_VARIABLE: &str = "PROBE_RS_SEMIHOSTING_ALLOW_FILE_ACCESS";
-        let allow_access = std::env::var(ALLOW_ACCESS_VARIABLE).is_ok();
-
         let f = if path == ":tt" {
             self.open_tt(request.mode())
-        } else if allow_access && let Some(addr) = path.strip_prefix("tcp://") {
-            self.open_tcp_stream(addr)
-        } else if allow_access && let Some(path) = path.strip_prefix("unix://") {
-            self.open_unix_stream(path)
-        } else if allow_access {
-            self.open_file(&path, request.mode())
+        } else if let Some(path) = self.semihosting_options.find_file(&path) {
+            match path {
+                FileVariant::File(path) => self.open_file(&path, request.mode()),
+                FileVariant::TcpStream(addr) => self.open_tcp_stream(&addr),
+                FileVariant::UnixStream(path) => self.open_unix_stream(&path),
+            }
         } else {
             tracing::warn!(
-                "The environment variable {ALLOW_ACCESS_VARIABLE} is not set, \
-                which is required to allow access to files via semihosting."
+                "Target wanted to open file {path} which is not configured \
+                for access via semihosting. Continuing..."
             );
             None
         };

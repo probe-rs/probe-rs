@@ -60,6 +60,7 @@ use crate::{
             test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
         },
         transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
+        utils::semihosting::SemihostingOptions,
     },
     util::{
         cli::MonitorEvent,
@@ -531,6 +532,7 @@ impl SessionInterface {
         &self,
         boot_info: BootInfo,
         rtt_client: Option<Key<RttClient>>,
+        semihosting_options: SemihostingOptions,
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<Tests> {
         self.client
@@ -539,6 +541,7 @@ impl SessionInterface {
                     sessid: self.sessid,
                     boot_info,
                     rtt_client,
+                    semihosting_options,
                 },
                 on_msg,
             )
@@ -549,6 +552,7 @@ impl SessionInterface {
         &self,
         test: Test,
         rtt_client: Option<Key<RttClient>>,
+        semihosting_options: SemihostingOptions,
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<TestResult> {
         self.client
@@ -557,6 +561,7 @@ impl SessionInterface {
                     sessid: self.sessid,
                     test,
                     rtt_client,
+                    semihosting_options,
                 },
                 on_msg,
             )

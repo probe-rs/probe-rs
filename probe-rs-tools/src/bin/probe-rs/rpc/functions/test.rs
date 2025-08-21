@@ -16,7 +16,7 @@ use crate::{
         },
         utils::{
             run_loop::{ReturnReason, RunLoop},
-            semihosting_file_manager::SemihostingFileManager,
+            semihosting::{SemihostingFileManager, SemihostingOptions},
         },
     },
     util::rtt::client::RttClient,
@@ -107,6 +107,7 @@ pub struct ListTestsRequest {
     pub boot_info: BootInfo,
     /// RTT client if used.
     pub rtt_client: Option<Key<RttClient>>,
+    pub semihosting_options: SemihostingOptions,
 }
 
 pub type ListTestsResponse = RpcResult<Tests>;
@@ -134,8 +135,9 @@ fn list_tests_impl(
     sender: MonitorSender,
 ) -> anyhow::Result<Tests> {
     let mut session = ctx.session_blocking(request.sessid);
-    let mut list_handler =
-        ListEventHandler::new(|event| sender.send_semihosting_event(event).unwrap());
+    let mut list_handler = ListEventHandler::new(request.semihosting_options, |event| {
+        sender.send_semihosting_event(event).unwrap()
+    });
 
     let mut rtt_client = request
         .rtt_client
@@ -192,6 +194,7 @@ pub struct RunTestRequest {
     pub test: Test,
     /// RTT client if used.
     pub rtt_client: Option<Key<RttClient>>,
+    pub semihosting_options: SemihostingOptions,
 }
 
 pub type RunTestResponse = RpcResult<TestResult>;
@@ -238,9 +241,10 @@ fn run_test_impl(
     }
 
     let expected_outcome = request.test.expected_outcome;
-    let mut run_handler = RunEventHandler::new(request.test, |event| {
-        sender.send_semihosting_event(event).unwrap()
-    });
+    let mut run_handler =
+        RunEventHandler::new(request.test, request.semihosting_options, |event| {
+            sender.send_semihosting_event(event).unwrap()
+        });
 
     let mut run_loop = RunLoop {
         core_id,
@@ -287,9 +291,9 @@ struct ListEventHandler<F: FnMut(SemihostingEvent)> {
 impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
     const SEMIHOSTING_USER_LIST: u32 = 0x100;
 
-    fn new(sender: F) -> Self {
+    fn new(semihosting_options: SemihostingOptions, sender: F) -> Self {
         Self {
-            semihosting_file_manager: SemihostingFileManager::new(),
+            semihosting_file_manager: SemihostingFileManager::new(semihosting_options),
             cmdline_requested: false,
             sender,
         }
@@ -366,10 +370,10 @@ struct RunEventHandler<F: FnMut(SemihostingEvent)> {
 }
 
 impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
-    fn new(test: Test, sender: F) -> Self {
+    fn new(test: Test, semihosting_options: SemihostingOptions, sender: F) -> Self {
         Self {
             test,
-            semihosting_file_manager: SemihostingFileManager::new(),
+            semihosting_file_manager: SemihostingFileManager::new(semihosting_options),
             cmdline_requested: false,
             sender,
         }
