@@ -723,19 +723,17 @@ fn check_dependencies(sh: &Shell, arm_only: bool, force: bool) -> Result<()> {
         missing_tools.push("ARM toolchain (arm-none-eabi-objcopy)");
     }
 
-    if !arm_only {
-        if cmd!(sh, "riscv64-unknown-elf-objcopy --version")
-            .run()
-            .is_err()
-        {
-            missing_tools.push("RISC-V toolchain (riscv64-unknown-elf-objcopy)");
-        }
+    if !arm_only && cmd!(sh, "riscv64-unknown-elf-objcopy --version")
+        .run()
+        .is_err()
+    {
+        missing_tools.push("RISC-V toolchain (riscv64-unknown-elf-objcopy)");
     }
 
     if !missing_tools.is_empty() && !force {
         println!("❌ Missing toolchains:");
         for tool in &missing_tools {
-            println!("  - {}", tool);
+            println!("  - {tool}");
         }
         println!();
         println!("Install missing toolchains or use --force to skip unavailable targets.");
@@ -747,7 +745,7 @@ fn check_dependencies(sh: &Shell, arm_only: bool, force: bool) -> Result<()> {
     }
 
     if !missing_tools.is_empty() {
-        println!("⚠️  Missing toolchains (will skip): {:?}", missing_tools);
+        println!("⚠️  Missing toolchains (will skip): {missing_tools:?}");
     } else {
         println!("✅ All required toolchains available");
     }
@@ -1001,14 +999,14 @@ fn build_target(sh: &Shell, target: &TargetInfo) -> Result<Vec<String>> {
     hasher.update(&binary_data);
     let checksum = format!("{:x}", hasher.finalize());
 
-    println!("   Generated: {} ({} bytes)", bin_file, size);
+    println!("   Generated: {bin_file} ({size} bytes)");
     println!("   SHA256: {}...", &checksum[..16]);
 
     // Generate metadata TOML file
     let toml_file = format!("{}.toml", target.name);
     let toml_full_path = Path::new("crc32_algorithms").join(&toml_file);
     generate_metadata_toml(&toml_full_path, target, size, &checksum, &function_offset)?;
-    println!("   Metadata: {}", toml_file);
+    println!("   Metadata: {toml_file}");
 
     Ok(vec![bin_file, toml_file])
 }
@@ -1020,7 +1018,7 @@ fn extract_function_offset(elf_file: &str, objdump_tool: &str) -> Result<String>
     // Use objdump to get symbol table and find calculate_crc32 function
     let output = cmd!(sh, "{objdump_tool} -t {elf_file}")
         .read()
-        .with_context(|| format!("Failed to run objdump on {}", elf_file))?;
+        .with_context(|| format!("Failed to run objdump on {elf_file}"))?;
 
     // Look for the calculate_crc32 function in the symbol table
     for line in output.lines() {
@@ -1032,7 +1030,7 @@ fn extract_function_offset(elf_file: &str, objdump_tool: &str) -> Result<String>
                 let address = parts[0];
                 // Validate it's a valid hex address
                 if address.len() == 8 && u32::from_str_radix(address, 16).is_ok() {
-                    return Ok(format!("0x{}", address));
+                    return Ok(format!("0x{address}"));
                 }
             }
         }
@@ -1100,7 +1098,7 @@ fn print_build_summary(built_files: &[String], failed_targets: &[&String]) -> Re
     if !built_files.is_empty() {
         println!("✅ Successfully generated files:");
         for file in built_files {
-            println!("  - {}", file);
+            println!("  - {file}");
         }
         println!();
         println!("📂 All files are in the crc32_algorithms/ directory");
@@ -1110,7 +1108,7 @@ fn print_build_summary(built_files: &[String], failed_targets: &[&String]) -> Re
     if !failed_targets.is_empty() {
         println!("❌ Failed targets:");
         for target in failed_targets {
-            println!("  - {}", target);
+            println!("  - {target}");
         }
         println!();
     }
@@ -1172,22 +1170,20 @@ fn clean_crc32() -> Result<()> {
 
     // Remove generated binary files from crc32_algorithms directory
     if let Ok(entries) = std::fs::read_dir(crc32_dir) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
-                    // Check if it's a CRC binary or metadata file
-                    let is_target_file = (filename.ends_with(".bin")
-                        || filename.ends_with(".toml"))
-                        && (filename.starts_with("thumbv6m-none-eabi")
-                            || filename.starts_with("riscv32"));
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+                // Check if it's a CRC binary or metadata file
+                let is_target_file = (filename.ends_with(".bin")
+                    || filename.ends_with(".toml"))
+                    && (filename.starts_with("thumbv6m-none-eabi")
+                        || filename.starts_with("riscv32"));
 
-                    if is_target_file {
-                        println!("  - Removing {}", filename);
-                        std::fs::remove_file(&path)
-                            .with_context(|| format!("Failed to remove {}", path.display()))?;
-                        cleaned_files.push(filename.to_string());
-                    }
+                if is_target_file {
+                    println!("  - Removing {filename}");
+                    std::fs::remove_file(&path)
+                        .with_context(|| format!("Failed to remove {}", path.display()))?;
+                    cleaned_files.push(filename.to_string());
                 }
             }
         }
@@ -1202,7 +1198,7 @@ fn clean_crc32() -> Result<()> {
     } else {
         println!("✅ Cleaned {} files:", cleaned_files.len());
         for file in &cleaned_files {
-            println!("  - {}", file);
+            println!("  - {file}");
         }
     }
 
