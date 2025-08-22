@@ -32,7 +32,9 @@ pub struct BinaryDownloadOptions {
         help_heading = "DOWNLOAD CONFIGURATION"
     )]
     pub flash_layout_output_path: Option<String>,
-    /// Before flashing, read back all the flashed data to skip flashing if the device is up to date.
+    /// Before flashing, intelligently verify device state and only flash what has changed.
+    /// Uses fast CRC32 verification on supported targets with selective programming.
+    /// Falls back to traditional verification on unsupported targets.
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub preverify: bool,
     /// After flashing, read back all the flashed data to verify it has been written correctly.

@@ -104,6 +104,12 @@ impl<'a> FlashProgress<'a> {
         self.started(ProgressOperation::Verify);
     }
 
+    /// Signal that the CRC32 verification procedure started.
+    pub(super) fn started_crc32_verifying(&self) {
+        self.started(ProgressOperation::Crc32Verify);
+    }
+
+
     /// Signal that the sector erasing procedure has made progress.
     pub(super) fn sector_erased(&self, size: u64, time: Duration) {
         self.progressed(ProgressOperation::Erase, size, time);
@@ -123,6 +129,13 @@ impl<'a> FlashProgress<'a> {
     pub(super) fn page_verified(&self, size: u64, time: Duration) {
         self.progressed(ProgressOperation::Verify, size, time);
     }
+
+    /// Signal that the CRC32 verification procedure has made progress.
+    pub(super) fn sector_crc32_verified(&self, size: u64, time: Duration) {
+        self.progressed(ProgressOperation::Crc32Verify, size, time);
+    }
+
+
 
     /// Signal that the erasing procedure failed.
     pub(super) fn failed_erasing(&self) {
@@ -144,6 +157,7 @@ impl<'a> FlashProgress<'a> {
         self.failed(ProgressOperation::Verify);
     }
 
+
     /// Signal that the programming procedure completed successfully.
     pub(super) fn finished_programming(&self) {
         self.finished(ProgressOperation::Program);
@@ -163,11 +177,20 @@ impl<'a> FlashProgress<'a> {
     pub(super) fn finished_verifying(&self) {
         self.finished(ProgressOperation::Verify);
     }
+
+    /// Signal that the CRC32 verification procedure completed successfully.
+    pub(super) fn finished_crc32_verifying(&self) {
+        self.finished(ProgressOperation::Crc32Verify);
+    }
+
 }
 
 /// The operation that is currently in progress.
 #[derive(Clone, Copy, Debug)]
 pub enum ProgressOperation {
+    /// Verifying flash contents using CRC32 (preverification for incremental mode).
+    Crc32Verify,
+
     /// Reading back flash contents to restore erased regions that should be kept unchanged.
     Fill,
 
@@ -176,6 +199,9 @@ pub enum ProgressOperation {
 
     /// Writing data to flash.
     Program,
+
+    /// Selectively programming only changed sectors (incremental mode).
+    IncrementalProgram,
 
     /// Checking flash contents.
     Verify,
