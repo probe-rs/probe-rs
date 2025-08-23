@@ -29,7 +29,7 @@ pub enum SemihostingCommand {
     /// The target indicated that it would like to write to the console.
     WriteConsole(WriteConsoleRequest),
 
-    /// The target indicated that it would like to write to the console.
+    /// The target indicated that it would like to write to a file on the host.
     Write(WriteRequest),
 
     /// The target indicated that it would like to read from a file on the host.
@@ -159,7 +159,7 @@ impl OpenRequest {
     }
 }
 
-/// A request to open a file on the host.
+/// A request to close a file on the host.
 ///
 /// Note that this is not implemented by probe-rs yet.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -189,13 +189,14 @@ impl WriteConsoleRequest {
     }
 }
 
-/// A request to write to the console
+/// A request to write to a file on the host
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct WriteRequest {
     handle: u32,
     bytes: u32,
     len: u32,
 }
+
 impl WriteRequest {
     /// Returns the handle of the file to write to
     pub fn file_handle(&self) -> u32 {
