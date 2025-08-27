@@ -14,7 +14,7 @@ variants:
     name: OCRAM
     range:
       start: 0x20200000
-      end: 0x20220000
+      end:   0x20240000
     cores:
     - main
   - !Nvm
@@ -26,6 +26,20 @@ variants:
     - main
     access:
       boot: true
+  - !Ram
+    name: ITCM
+    range:
+      start: 0x00000000
+      end:   0x00040000
+    cores:
+    - main
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end:   0x20040000
+    cores:
+    - main
   flash_algorithms:
   - mimxrt1021_quadspi_4kb_sec
 flash_algorithms:
