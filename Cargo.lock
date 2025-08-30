@@ -172,6 +172,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
+name = "async-codec-lite"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2527c30e3972d8ff366b353125dae828c4252a154dbe6063684f6c5e014760a3"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "futures-core",
+ "futures-io",
+ "futures-sink",
+ "log",
+ "pin-project-lite",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "async-io"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -234,6 +250,17 @@ name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
+
+[[package]]
+name = "auto_impl"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffdcb70bdbc4d478427380519163274ac86e52916e10f0a8889adf0f96d3fee7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
+]
 
 [[package]]
 name = "autocfg"
@@ -983,6 +1010,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dashmap"
+version = "6.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5041cc499144891f3790297212f32a74fb938e5136a14943f338ef9e0ae276cf"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+ "hashbrown 0.14.5",
+ "lock_api",
+ "once_cell",
+ "parking_lot_core",
+]
+
+[[package]]
 name = "data-encoding"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1005,7 +1046,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18e4fdb82bd54a12e42fb58a800dcae6b9e13982238ce2296dc3570b92148e1f"
 dependencies = [
  "data-encoding",
- "syn 1.0.109",
+ "syn 2.0.100",
 ]
 
 [[package]]
@@ -1673,6 +1714,12 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
+version = "0.14.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
+
+[[package]]
+name = "hashbrown"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
@@ -2084,7 +2131,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2481980430f9f78649238835720ddccc57e52df14ffce1c6f37391d61b563e9"
 dependencies = [
  "equivalent",
- "hashbrown",
+ "hashbrown 0.15.2",
  "serde",
 ]
 
@@ -2456,7 +2503,7 @@ version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "234cf4f4a04dc1f57e24b96cc0cd600cf2af460d4161ac5ecdd0af8e1f3b2a38"
 dependencies = [
- "hashbrown",
+ "hashbrown 0.15.2",
 ]
 
 [[package]]
@@ -3114,8 +3161,10 @@ dependencies = [
  "addr2line 0.25.0",
  "ansi-parser",
  "anyhow",
+ "async-codec-lite",
  "async-io",
  "async-trait",
+ "auto_impl",
  "axum",
  "axum-extra",
  "base64 0.22.1",
@@ -3126,12 +3175,14 @@ dependencies = [
  "clap",
  "clap_complete",
  "colored 3.0.0",
+ "dashmap",
  "defmt-decoder",
  "directories",
  "docsplay",
  "dunce",
  "fastrand",
  "figment",
+ "futures",
  "futures-util",
  "gdbstub",
  "git-version",
@@ -3177,6 +3228,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.27.0",
  "tokio-util",
+ "tower",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
