@@ -32,10 +32,10 @@ pub fn run_flash_download(
     let mut options = DownloadOptions::default();
     options.keep_unwritten_bytes = download_options.restore_unwritten;
     options.dry_run = probe_options.dry_run();
-    options.do_chip_erase = do_chip_erase;
+    options.do_chip_erase = do_chip_erase; // Enhanced preverify will handle selective programming
     options.disable_double_buffering = download_options.disable_double_buffering;
     options.verify = download_options.verify;
-    options.preverify = download_options.preverify;
+    options.preverify = download_options.preverify; // Enhanced preverify includes selective programming
 
     let flash_layout_output_path = download_options.flash_layout_output_path.clone();
 
@@ -44,6 +44,8 @@ pub fn run_flash_download(
     } else {
         Some(CliProgressBars::new())
     };
+    
+    let has_progress_bars = pb.is_some();
 
     options.progress = Some(FlashProgress::new(move |event| {
         if let Some(ref path) = flash_layout_output_path {
@@ -79,14 +81,21 @@ pub fn run_flash_download(
             path: path.as_ref().to_path_buf(),
         })?;
 
-    // If we don't do this, the progress bars disappear.
-    logging::clear_progress_bar();
+    // Ensure progress bars complete their final rendering before showing completion message
+    if has_progress_bars {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+    }
 
     logging::eprintln(format!(
         "     {} in {:.02}s",
         "Finished".green().bold(),
         flash_timer.elapsed().as_secs_f32(),
     ));
+
+    // Keep progress bars visible for a moment after showing completion
+    if has_progress_bars {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+    }
 
     Ok(())
 }
@@ -136,6 +145,8 @@ impl ProgressBars {
                 Operation::Fill => "Reading flash",
                 Operation::Program => "Programming",
                 Operation::Verify => "Verifying",
+                Operation::Crc32Verify => "Hash Check",
+                Operation::IncrementalProgram => "Programming",
             };
             ProgressBarGroup::new(format!("{message:>13}"))
         })
@@ -298,7 +309,7 @@ impl CliProgressBars {
 
 impl Drop for CliProgressBars {
     fn drop(&mut self) {
-        // If we don't do this, the progress bars disappear.
+        // Clear progress bars when dropping to prevent terminal artifacts
         logging::clear_progress_bar();
     }
 }
