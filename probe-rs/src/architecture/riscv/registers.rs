@@ -42,6 +42,13 @@ pub(crate) const RA: CoreRegister = CoreRegister {
 
 // S0 and S1 need to be referenceable as constants in other parts of the architecture specific code.
 
+/// The zero register, x0.
+pub const ZERO: CoreRegister = CoreRegister {
+    roles: &[RegisterRole::Core("x0"), RegisterRole::Other("zero")],
+    id: RegisterId(0x1000),
+    data_type: RegisterDataType::UnsignedInteger(32),
+    unwind_rule: UnwindRule::Clear,
+};
 /// The first saved register, s0. Used as the frame pointer
 pub const S0: CoreRegister = FP;
 /// The second saved register, s1.
@@ -57,12 +64,7 @@ pub static RISCV_CORE_REGISTERS: LazyLock<CoreRegisters> =
     LazyLock::new(|| CoreRegisters::new(RISCV_REGISTERS_SET.iter().collect()));
 
 static RISCV_REGISTERS_SET: &[CoreRegister] = &[
-    CoreRegister {
-        roles: &[RegisterRole::Core("x0"), RegisterRole::Other("zero")],
-        id: RegisterId(0x1000),
-        data_type: RegisterDataType::UnsignedInteger(32),
-        unwind_rule: UnwindRule::Clear,
-    },
+    ZERO,
     RA,
     SP,
     CoreRegister {
