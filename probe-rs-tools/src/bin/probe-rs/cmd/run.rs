@@ -5,7 +5,7 @@ use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
 use crate::rpc::functions::test::{Test, TestDefinition};
 
 use crate::FormatOptions;
-use crate::util::cli::{self, connect_target_output_files, rtt_client};
+use crate::util::cli::{self, connect_target_output_files, parse_semihosting_options, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 
 use anyhow::{Context, anyhow};
@@ -174,6 +174,16 @@ pub struct SharedOptions {
     /// Scan the memory to find the RTT control block
     #[clap(long)]
     pub(crate) rtt_scan_memory: bool,
+
+    /// File name to expose via semihosting. Values ending with a slash expose the whole directory.
+    /// By using `target=host` arguments the names can differ between the host and the target.
+    /// TCP and UNIX domain socket connections are possible by exposing files of the form
+    /// `tcp:hostname:port` or `unix:/some/path`. `file:/some/path` is valid for files too.
+    /// If the target path starts with a `^` and ends with a `$` it's interpreted as a regular
+    /// expression and captures are expanded in the host path (e.g. `--semihosting-file
+    /// "^/(\d).(\d)$=/path$1/file$2.txt"`).
+    #[arg(long, help_heading = "SEMIHOSTING CONFIGURATION")]
+    pub semihosting_file: Vec<String>,
 }
 
 impl Cmd {
@@ -200,6 +210,8 @@ impl Cmd {
 
         let mut target_output_files =
             connect_target_output_files(self.shared_options.target_output_file).await?;
+
+        let semihosting_options = parse_semihosting_options(self.shared_options.semihosting_file)?;
 
         let client_handle = rtt_client.handle();
 
@@ -240,6 +252,7 @@ impl Cmd {
                 &self.shared_options.path,
                 Some(rtt_client),
                 &mut target_output_files,
+                semihosting_options,
             )
             .await
         } else {
@@ -252,6 +265,7 @@ impl Cmd {
                     catch_reset: !self.run_options.no_catch_reset,
                     catch_hardfault: !self.run_options.no_catch_hardfault,
                     rtt_client: Some(client_handle),
+                    semihosting_options,
                 },
                 self.shared_options.always_print_stacktrace,
                 &mut target_output_files,
