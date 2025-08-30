@@ -85,6 +85,8 @@ impl ESP32S3 {
 
 impl XtensaDebugSequence for ESP32S3 {
     fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+        self.disable_wdts(interface)?;
+
         // Internal DRAM
         interface.core_properties().memory_ranges.insert(
             0x3FC8_8000..0x3FD0_0000,
@@ -121,8 +123,9 @@ impl XtensaDebugSequence for ESP32S3 {
                 fast_memory_access: true,
             },
         );
+        // External memory busses and peripheral address range uses the default (all false) properties.
 
-        self.disable_wdts(interface)
+        Ok(())
     }
 
     fn on_halt(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {

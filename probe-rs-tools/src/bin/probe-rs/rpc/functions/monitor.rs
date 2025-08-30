@@ -273,8 +273,8 @@ where
             let bytes = self.rtt_client.poll_channel(core, channel as u32)?;
             if !bytes.is_empty() {
                 // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
-                // Once we receive new data, we bump the frequency to 1kHz.
-                next_poll = Duration::from_millis(1);
+                // Once we receive new data, we poll continuously while we have anything to read.
+                next_poll = Duration::ZERO;
 
                 (self.sender)(RttEvent::Output {
                     channel: channel as u32,
