@@ -24,6 +24,7 @@ impl Cmd {
                 false => crate::rpc::functions::rtt_client::ScanRegion::Ranges(vec![]),
             },
             self.run.shared_options.log_format,
+            !self.run.shared_options.no_timestamps,
             !self.run.shared_options.no_location,
             Some(utc_offset),
         )

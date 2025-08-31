@@ -1,0 +1,1 @@
+Added option `--no-timestamps` to `probe-rs run` and `probe-rs attach` commands to suppress timestamps of String and Defmt messages.

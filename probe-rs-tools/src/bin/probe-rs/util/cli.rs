@@ -250,6 +250,7 @@ pub async fn rtt_client(
     path: &Path,
     mut scan_regions: ScanRegion,
     log_format: Option<String>,
+    show_timestamps: bool,
     show_location: bool,
     timestamp_offset: Option<UtcOffset>,
 ) -> anyhow::Result<CliRttClient> {
@@ -284,6 +285,7 @@ pub async fn rtt_client(
     Ok(CliRttClient {
         handle: rtt_client.handle,
         timestamp_offset,
+        show_timestamps,
         show_location,
         channel_processors: vec![],
         defmt_data,
@@ -684,6 +686,7 @@ pub struct CliRttClient {
 
     // Data necessary to create the channel processors once we know the channel names.
     log_format: Option<String>,
+    show_timestamps: bool,
     show_location: bool,
     timestamp_offset: Option<UtcOffset>,
     defmt_data: Option<DefmtState>,
@@ -708,7 +711,7 @@ impl CliRttClient {
                         RttDecoder::Defmt {
                             processor: DefmtProcessor::new(
                                 defmt_data,
-                                self.timestamp_offset.is_some(),
+                                self.show_timestamps,
                                 self.show_location,
                                 self.log_format.as_deref(),
                             ),
@@ -721,6 +724,7 @@ impl CliRttClient {
                     RttDecoder::String {
                         timestamp_offset: self.timestamp_offset,
                         last_line_done: false,
+                        show_timestamps: self.show_timestamps,
                     }
                 };
 

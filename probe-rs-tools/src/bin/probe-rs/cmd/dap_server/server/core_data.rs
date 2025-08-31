@@ -240,6 +240,7 @@ impl CoreHandle<'_> {
                 DataFormat::String => RttDecoder::String {
                     timestamp_offset: Some(timestamp_offset),
                     last_line_done: false,
+                    show_timestamps,
                 },
                 DataFormat::BinaryLE => RttDecoder::BinaryLE,
                 DataFormat::Defmt => {
