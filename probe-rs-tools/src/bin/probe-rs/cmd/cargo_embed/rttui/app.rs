@@ -107,6 +107,9 @@ impl App {
                 DataFormat::String => RttDecoder::String {
                     timestamp_offset: Some(timestamp_offset),
                     last_line_done: false,
+                    show_timestamps: channel_config
+                        .show_timestamps
+                        .unwrap_or(default_channel_config.show_timestamps),
                 },
                 DataFormat::BinaryLE => RttDecoder::BinaryLE,
                 DataFormat::Defmt if defmt_data.is_none() => {

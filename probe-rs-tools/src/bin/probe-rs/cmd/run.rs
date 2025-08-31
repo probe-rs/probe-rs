@@ -153,6 +153,10 @@ pub struct SharedOptions {
     #[clap(long)]
     pub(crate) no_location: bool,
 
+    /// Suppress timestamps from the rtt log
+    #[clap(long)]
+    pub(crate) no_timestamps: bool,
+
     #[clap(flatten)]
     pub(crate) format_options: FormatOptions,
 
@@ -193,6 +197,7 @@ impl Cmd {
                 false => crate::rpc::functions::rtt_client::ScanRegion::Ranges(vec![]),
             },
             self.shared_options.log_format,
+            !self.shared_options.no_timestamps,
             !self.shared_options.no_location,
             Some(utc_offset),
         )

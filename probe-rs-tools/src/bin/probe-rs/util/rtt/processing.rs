@@ -21,6 +21,7 @@ pub enum RttDecoder {
         /// so it needs to be stored.
         timestamp_offset: Option<UtcOffset>,
         last_line_done: bool,
+        show_timestamps: bool,
     },
     BinaryLE,
     Defmt {
@@ -44,10 +45,12 @@ impl fmt::Debug for RttDecoder {
             RttDecoder::String {
                 timestamp_offset,
                 last_line_done,
+                show_timestamps,
             } => f
                 .debug_struct("String")
                 .field("timestamp_offset", timestamp_offset)
                 .field("last_line_done", last_line_done)
+                .field("show_timestamps", show_timestamps)
                 .finish(),
             RttDecoder::BinaryLE => f.debug_struct("BinaryLE").finish(),
             RttDecoder::Defmt { .. } => f.debug_struct("Defmt").finish_non_exhaustive(),
@@ -77,8 +80,14 @@ impl RttDecoder {
             RttDecoder::String {
                 timestamp_offset,
                 last_line_done,
+                show_timestamps,
             } => {
-                let string = Self::process_string(buffer, *timestamp_offset, last_line_done)?;
+                let string = Self::process_string(
+                    buffer,
+                    *timestamp_offset,
+                    last_line_done,
+                    *show_timestamps,
+                )?;
                 collector.on_string_data(string).await
             }
             RttDecoder::Defmt { processor } => {
@@ -92,8 +101,13 @@ impl RttDecoder {
         buffer: &[u8],
         offset: Option<UtcOffset>,
         last_line_done: &mut bool,
+        show_timestamps: bool,
     ) -> Result<String, Error> {
         let incoming = String::from_utf8_lossy(buffer);
+
+        if !show_timestamps {
+            return Ok(incoming.to_string());
+        }
 
         let Some(offset) = offset else {
             return Ok(incoming.to_string());
