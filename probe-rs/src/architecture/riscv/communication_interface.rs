@@ -1042,6 +1042,23 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
     }
 
+    // TODO: this would be best executed on the probe. RiscvCommunicationInterface should be refactored to allow that.
+    fn wait_for_idle(&mut self, timeout: Duration) -> Result<(), RiscvError> {
+        let start = Instant::now();
+        loop {
+            let status: Abstractcs = self.read_dm_register()?;
+            match AbstractCommandErrorKind::parse(status) {
+                Ok(_) => return Ok(()),
+                Err(AbstractCommandErrorKind::Busy) => {}
+                Err(other) => return Err(other.into()),
+            }
+
+            if start.elapsed() > timeout {
+                return Err(RiscvError::Timeout);
+            }
+        }
+    }
+
     /// Perform memory read from a single location using the program buffer.
     /// Only reads up to a width of 32 bits are currently supported.
     fn perform_memory_read_progbuf<V: RiscvValue32>(
@@ -1075,13 +1092,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             core.schedule_write_dm_register(command)?;
 
-            let abstractcs_idx = core.schedule_read_dm_register::<Abstractcs>()?;
+            core.wait_for_idle(Duration::from_millis(10))?;
 
             // Read back s0
             let value = core.abstract_cmd_register_read(&registers::S0)?;
-
-            let abstractcs = Abstractcs(core.dtm.read_deferred_result(abstractcs_idx)?.into_u32());
-            AbstractCommandErrorKind::parse(abstractcs)?;
 
             // Restore s0 register
             core.restore_s0(s0)?;
@@ -1096,6 +1110,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
         data: &mut [V],
     ) -> Result<(), RiscvError> {
         if data.is_empty() {
+            return Ok(());
+        }
+
+        if data.len() == 1 {
+            data[0] = self.perform_memory_read_progbuf(address)?;
             return Ok(());
         }
 
@@ -1129,6 +1148,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             core.schedule_write_dm_register(command)?;
 
+            core.wait_for_idle(Duration::from_millis(10))?;
+
             let data_len = data.len();
 
             let mut result_idxs = Vec::with_capacity(data_len - 1);
@@ -1150,10 +1171,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 let value_idx = core.schedule_read_dm_register::<Data0>()?;
 
                 result_idxs.push((out_idx, value_idx));
+
+                core.wait_for_idle(Duration::from_millis(10))?;
             }
 
-            // Specifically read the last value first. The result is that this last read is still
-            // part of the command queue we just assembled.
+            // Now read the last value. This will also reset `postexec` to false, so we don't have to wait for the program buffer to execute.
             let last_value = core.abstract_cmd_register_read(&registers::S1)?;
             data[data.len() - 1] = V::from_register_value(last_value);
 
@@ -1249,18 +1271,14 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             core.schedule_write_dm_register(command)?;
 
-            let status = core.read_dm_register::<Abstractcs>()?;
-
-            let error = AbstractCommandErrorKind::parse(status);
-            if let Err(error) = error {
+            if let Err(error) = core.wait_for_idle(Duration::from_millis(10)) {
                 tracing::error!(
-                    "Executing the abstract command for write_{} failed: {:?} ({:x?})",
+                    "Executing the abstract command for write_{} failed: {:?}",
                     V::WIDTH.byte_width() * 8,
-                    error,
-                    status,
+                    error
                 );
 
-                return Err(RiscvError::AbstractCommand(error));
+                return Err(error);
             }
 
             core.restore_s0(s0)?;
@@ -1280,6 +1298,12 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if data.is_empty() {
             return Ok(());
         }
+
+        if data.len() == 1 {
+            self.perform_memory_write_progbuf(address, data[0])?;
+            return Ok(());
+        }
+
         self.halted_access(|core| {
             let s0 = core.save_s0()?;
             let s1 = core.save_s1()?;
@@ -1296,7 +1320,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             core.abstract_cmd_register_write(&registers::S0, address)?;
 
             for value in data {
-                // write address into data 0
+                // write data into data 0
                 core.schedule_write_dm_register(Data0((*value).into()))?;
 
                 // Write s0, then execute program buffer
@@ -1313,21 +1337,16 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 command.set_regno((registers::S1).id.0 as u32);
 
                 core.schedule_write_dm_register(command)?;
-            }
 
-            // Errors are sticky, so we can just check at the end if everything worked.
-            let status = core.read_dm_register::<Abstractcs>()?;
+                if let Err(error) = core.wait_for_idle(Duration::from_millis(10)) {
+                    tracing::error!(
+                        "Executing the abstract command for write_multiple_{} failed: {:?}",
+                        V::WIDTH.byte_width() * 8,
+                        error,
+                    );
 
-            let error = AbstractCommandErrorKind::parse(status);
-            if let Err(error) = error {
-                tracing::error!(
-                    "Executing the abstract command for write_multiple_{} failed: {:?} ({:x?})",
-                    V::WIDTH.byte_width() * 8,
-                    error,
-                    status,
-                );
-
-                return Err(RiscvError::AbstractCommand(error));
+                    return Err(error);
+                }
             }
 
             // Restore register s0 and s1

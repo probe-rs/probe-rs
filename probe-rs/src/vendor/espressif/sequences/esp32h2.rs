@@ -67,7 +67,9 @@ impl ESP32H2 {
 
 impl RiscvDebugSequence for ESP32H2 {
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
-        self.disable_wdts(interface)
+        self.disable_wdts(interface)?;
+
+        Ok(())
     }
 
     fn on_halt(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {

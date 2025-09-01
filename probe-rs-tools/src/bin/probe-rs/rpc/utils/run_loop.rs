@@ -131,9 +131,9 @@ impl RunLoop {
                 Ok(Some(r)) => Some(Ok(ReturnReason::Predicate(r))),
                 Err(e) => Some(Err(e)),
                 Ok(None) => {
-                    // Poll at 1kHz if the core was halted, to speed up reading strings
+                    // Re-poll immediately if the core was halted, to speed up reading strings
                     // from semihosting. The core is not expected to be halted for other reasons.
-                    next_poll = Duration::from_millis(1);
+                    next_poll = Duration::ZERO;
                     core.run()?;
                     None
                 }
