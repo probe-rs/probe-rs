@@ -1351,8 +1351,9 @@ fn unwind_program_counter_register(
                     //
                     // We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture,
                     // when in Thumb state for certain instruction types will set the LSB to 1)
-                    *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
-                    Some(RegisterValue::U32(return_address & !0b1))
+                    *register_rule_string =
+                        "PC=(unwound (LR - 2) & !0b1) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32((return_address - 2) & !0b1))
                 }
                 Some(InstructionSet::RV32C) => {
                     *register_rule_string = "PC=(unwound x1 - 2) (dwarf Undefined)".to_string();
