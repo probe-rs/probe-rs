@@ -1351,8 +1351,9 @@ fn unwind_program_counter_register(
                     //
                     // We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture,
                     // when in Thumb state for certain instruction types will set the LSB to 1)
-                    *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
-                    Some(RegisterValue::U32(return_address & !0b1))
+                    *register_rule_string =
+                        "PC=(unwound (LR - 2) & !0b1) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32((return_address - 2) & !0b1))
                 }
                 Some(InstructionSet::RV32C) => {
                     *register_rule_string = "PC=(unwound x1 - 2) (dwarf Undefined)".to_string();
@@ -1708,7 +1709,7 @@ mod test {
             "__cortex_m_rt_SVCall_trampoline".to_string()
         );
 
-        assert_eq!(frames[1].pc, RegisterValue::U32(0x0000018A)); // <-- This is the instruction *after* the jump into the topmost frame.
+        assert_eq!(frames[1].pc, RegisterValue::U32(0x00000188)); // <-- This is the instruction for the jump into the topmost frame.
 
         // The PC value in the exception data
         // depends on the exception type, and for some exceptions, it will

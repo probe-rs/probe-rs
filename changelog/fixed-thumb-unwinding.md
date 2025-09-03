@@ -1,0 +1,1 @@
+Fix unwinding on thumb targets for functions that never return

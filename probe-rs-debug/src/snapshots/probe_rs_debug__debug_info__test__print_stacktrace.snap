@@ -34,22 +34,22 @@ Frame:
  function:        delay_us<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
  source_location:
   path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
-  line: Some(325)
-  column: Some(Column(6))
+  line: Some(324)
+  column: Some(Column(9))
  frame_base:      Some(20003f88)
 Frame:
  function:        delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
  source_location:
   path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
-  line: Some(298)
-  column: Some(Column(6))
+  line: Some(297)
+  column: Some(Column(9))
  frame_base:      Some(20003fa8)
 Frame:
  function:        delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
  source_location:
   path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
-  line: Some(307)
-  column: Some(Column(6))
+  line: Some(306)
+  column: Some(Column(9))
  frame_base:      Some(20003fc0)
 Frame:
  function:        __cortex_m_rt_main
@@ -66,7 +66,7 @@ Frame:
   column: Some(Column(1))
  frame_base:      Some(20003ff8)
 Frame:
- function:        Reset @ 0x000000ce> : ERROR: UNWIND: Failed to read value for register R7/FP from address 0x0000000000000000 (4 bytes): The coredump does not include the memory for address 0x0 of size 0x4
+ function:        Reset @ 0x000000cc> : ERROR: UNWIND: Failed to read value for register R7/FP from address 0x0000000000000000 (4 bytes): The coredump does not include the memory for address 0x0 of size 0x4
  source_location:
 None
  frame_base:      None

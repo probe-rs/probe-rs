@@ -391,7 +391,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268465166
+        U32: 268465164
     - core_register:
         id: 17
         roles:
@@ -430,7 +430,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268465166
+    U32: 268465164
   frame_base: 536883320
   is_inlined: false
   local_variables:
@@ -616,7 +616,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268465166
+        U32: 268465164
     - core_register:
         id: 17
         roles:
@@ -655,7 +655,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268465166
+    U32: 268465164
   frame_base: 536883464
   is_inlined: false
   local_variables:
@@ -841,7 +841,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268465166
+        U32: 268465164
     - core_register:
         id: 17
         roles:
@@ -880,7 +880,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268465166
+    U32: 268465164
   frame_base: 536883608
   is_inlined: false
   local_variables:
@@ -1066,7 +1066,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268465166
+        U32: 268465164
     - core_register:
         id: 17
         roles:
@@ -1105,7 +1105,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268465166
+    U32: 268465164
   frame_base: 536883752
   is_inlined: false
   local_variables:
@@ -1291,7 +1291,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268465166
+        U32: 268465164
     - core_register:
         id: 17
         roles:
@@ -1330,7 +1330,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268465166
+    U32: 268465164
   frame_base: 536883896
   is_inlined: false
   local_variables:
@@ -1516,7 +1516,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268464920
+        U32: 268464918
     - core_register:
         id: 17
         roles:
@@ -1555,7 +1555,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268464920
+    U32: 268464918
   frame_base: 536886960
   is_inlined: false
   local_variables:
@@ -4654,7 +4654,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268436110
+        U32: 268436108
     - core_register:
         id: 17
         roles:
@@ -4693,7 +4693,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268436110
+    U32: 268436108
   frame_base: 536887280
   is_inlined: false
   local_variables:
@@ -5307,12 +5307,13 @@ expression: stack_frames
                         Base: u32
                       value: "46875"
   canonical_frame_address: 536887288
-- function_name: __cortex_m_rt_main
+- function_name: "__cortex_m_rt_main_trampoline : ERROR: UNWIND: Failed to read value for register R14/LR from address 0x0000000020003ffc (4 bytes): The coredump does not include the memory for address 0x20003ffc of size 0x4"
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
-    line: 22
-    column: LeftEdge
-    address: 268435972
+    line: 21
+    column:
+      Column: 1
+    address: 268435968
   registers:
     - core_register:
         id: 0
@@ -5462,7 +5463,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 268435972
+        U32: 268435970
     - core_register:
         id: 17
         roles:
@@ -5501,7 +5502,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 268435972
+    U32: 268435970
   frame_base: 536887288
   is_inlined: false
   local_variables:
@@ -5509,4 +5510,4 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-  canonical_frame_address: 536887288
+  canonical_frame_address: 536887296
