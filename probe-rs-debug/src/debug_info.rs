@@ -1709,7 +1709,7 @@ mod test {
             "__cortex_m_rt_SVCall_trampoline".to_string()
         );
 
-        assert_eq!(frames[1].pc, RegisterValue::U32(0x0000018A)); // <-- This is the instruction *after* the jump into the topmost frame.
+        assert_eq!(frames[1].pc, RegisterValue::U32(0x00000188)); // <-- This is the instruction for the jump into the topmost frame.
 
         // The PC value in the exception data
         // depends on the exception type, and for some exceptions, it will

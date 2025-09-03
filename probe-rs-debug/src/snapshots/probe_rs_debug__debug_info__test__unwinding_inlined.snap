@@ -52,7 +52,12 @@ Frame:
   column: Some(Column(1))
  frame_base:      Some(20003ff8)
 Frame:
- function:        Reset @ 0x0000013c>
+ function:        Reset @ 0x0000013a>
+ source_location:
+None
+ frame_base:      None
+Frame:
+ function:        Reset @ 0x0000013a>
  source_location:
 None
  frame_base:      None

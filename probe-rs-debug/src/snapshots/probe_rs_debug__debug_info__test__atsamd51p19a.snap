@@ -252,10 +252,10 @@ expression: stack_frames
 - function_name: print_pointers
   source_location:
     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
-    line: 94
+    line: 93
     column:
-      Column: 1
-    address: 5340
+      Column: 5
+    address: 5336
   registers:
     - core_register:
         id: 0
@@ -405,7 +405,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 5340
+        U32: 5338
     - core_register:
         id: 17
         roles:
@@ -444,7 +444,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 5340
+    U32: 5338
   frame_base: 536875104
   is_inlined: false
   local_variables:
@@ -481,10 +481,10 @@ expression: stack_frames
 - function_name: main
   source_location:
     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\main.c"
-    line: 111
+    line: 110
     column:
       Column: 9
-    address: 5434
+    address: 5430
   registers:
     - core_register:
         id: 0
@@ -634,7 +634,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 5434
+        U32: 5432
     - core_register:
         id: 17
         roles:
@@ -673,7 +673,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 5434
+    U32: 5432
   frame_base: 536875112
   is_inlined: false
   local_variables:
@@ -705,10 +705,10 @@ expression: stack_frames
 - function_name: Reset_Handler
   source_location:
     path: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup\\startup_samd51.c"
-    line: 536
+    line: 533
     column:
-      Column: 15
-    address: 2426
+      Column: 9
+    address: 2422
   registers:
     - core_register:
         id: 0
@@ -858,7 +858,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 2426
+        U32: 2424
     - core_register:
         id: 17
         roles:
@@ -897,7 +897,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 2426
+    U32: 2424
   frame_base: 536875128
   is_inlined: false
   local_variables:

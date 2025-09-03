@@ -1041,12 +1041,13 @@ expression: stack_frames
       type_name: Unknown
       value: "<unknown>"
   canonical_frame_address: 536887128
-- function_name: __cortex_m_rt_main_trampoline
+- function_name: "trigger_hardfault_from_usagefault : ERROR: UNWIND: Failed to read value for register R14/LR from address 0x0000000020003f5c (4 bytes): The coredump does not include the memory for address 0x20003f5c of size 0x4"
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
-    line: 18
-    column: LeftEdge
-    address: 390
+    line: 55
+    column:
+      Column: 5
+    address: 386
   registers:
     - core_register:
         id: 0
@@ -1196,7 +1197,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 390
+        U32: 388
     - core_register:
         id: 17
         roles:
@@ -1235,7 +1236,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 390
+    U32: 388
   frame_base: 536887128
   is_inlined: false
   local_variables:
@@ -1243,4 +1244,4 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-  canonical_frame_address: 536887128
+  canonical_frame_address: 536887136

@@ -853,10 +853,10 @@ expression: stack_frames
 - function_name: trigger_hardfault_from_busfault
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
-    line: 51
+    line: 49
     column:
-      Column: 2
-    address: 588
+      Column: 9
+    address: 584
   registers:
     - core_register:
         id: 0
@@ -1007,7 +1007,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 588
+        U32: 586
     - core_register:
         id: 17
         roles:
@@ -1046,7 +1046,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 588
+    U32: 586
   frame_base: 536887032
   is_inlined: false
   local_variables:
@@ -1055,217 +1055,13 @@ expression: stack_frames
       type_name: Unknown
       value: "<unknown>"
   canonical_frame_address: 536887040
-- function_name: software_breakpoint
-  source_location:
-    path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/lib.rs
-    line: 371
-    column:
-      Column: 9
-    address: 958
-  registers:
-    - core_register:
-        id: 0
-        roles:
-          - Core: R0
-          - Argument: a1
-          - Return: r1
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 0
-      value: ~
-    - core_register:
-        id: 1
-        roles:
-          - Core: R1
-          - Argument: a2
-          - Return: r2
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 1
-      value: ~
-    - core_register:
-        id: 2
-        roles:
-          - Core: R2
-          - Argument: a3
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 2
-      value: ~
-    - core_register:
-        id: 3
-        roles:
-          - Core: R3
-          - Argument: a4
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 3
-      value: ~
-    - core_register:
-        id: 4
-        roles:
-          - Core: R4
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 4
-      value:
-        U32: 1073741820
-    - core_register:
-        id: 5
-        roles:
-          - Core: R5
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 5
-      value:
-        U32: 1073741820
-    - core_register:
-        id: 6
-        roles:
-          - Core: R6
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 6
-      value:
-        U32: 2263
-    - core_register:
-        id: 7
-        roles:
-          - Core: R7
-          - FramePointer
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 7
-      value:
-        U32: 536887040
-    - core_register:
-        id: 8
-        roles:
-          - Core: R8
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 8
-      value:
-        U32: 2191
-    - core_register:
-        id: 9
-        roles:
-          - Core: R9
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 9
-      value: ~
-    - core_register:
-        id: 10
-        roles:
-          - Core: R10
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 10
-      value:
-        U32: 16777231
-    - core_register:
-        id: 11
-        roles:
-          - Core: R11
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 11
-      value:
-        U32: 3758153752
-    - core_register:
-        id: 12
-        roles:
-          - Core: R12
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 12
-      value:
-        U32: 0
-    - core_register:
-        id: 13
-        roles:
-          - Core: R13
-          - StackPointer
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 13
-      value:
-        U32: 536887040
-    - core_register:
-        id: 14
-        roles:
-          - Core: R14
-          - ReturnAddress
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 14
-      value:
-        U32: 959
-    - core_register:
-        id: 15
-        roles:
-          - Core: R15
-          - ProgramCounter
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 15
-      value:
-        U32: 958
-    - core_register:
-        id: 17
-        roles:
-          - Core: MSP
-          - MainStackPointer
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 16
-      value: ~
-    - core_register:
-        id: 18
-        roles:
-          - Core: PSP
-          - ProcessStackPointer
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 17
-      value: ~
-    - core_register:
-        id: 16
-        roles:
-          - Core: XPSR
-          - ProcessorStatus
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 18
-      value:
-        U32: 16777231
-    - core_register:
-        id: 20
-        roles:
-          - Core: EXTRA
-          - Other: EXTRA
-        data_type:
-          UnsignedInteger: 32
-      dwarf_id: 19
-      value: ~
-  pc:
-    U32: 958
-  frame_base: 536887040
-  is_inlined: true
-  local_variables:
-    Child Variables:
-      name: LocalScopeRoot
-      type_name: Unknown
-      value: "<unknown>"
-  canonical_frame_address: 536887048
 - function_name: __cortex_m_rt_SysTick
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
-    line: 84
+    line: 83
     column:
       Column: 5
-    address: 958
+    address: 954
   registers:
     - core_register:
         id: 0
@@ -1415,7 +1211,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 958
+        U32: 956
     - core_register:
         id: 17
         roles:
@@ -1454,7 +1250,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U64: 958
+    U32: 956
   frame_base: 536887040
   is_inlined: false
   local_variables:
@@ -1468,8 +1264,8 @@ expression: stack_frames
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
     line: 80
     column:
-      Column: 13
-    address: 948
+      Column: 1
+    address: 944
   registers:
     - core_register:
         id: 0
@@ -1619,7 +1415,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 948
+        U32: 946
     - core_register:
         id: 17
         roles:
@@ -1658,7 +1454,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 948
+    U32: 946
   frame_base: 536887048
   is_inlined: false
   local_variables:
@@ -2470,7 +2266,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 664
+        U32: 662
     - core_register:
         id: 17
         roles:
@@ -2509,7 +2305,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 664
+    U32: 662
   frame_base: 536887128
   is_inlined: false
   local_variables:
@@ -2703,10 +2499,10 @@ expression: stack_frames
 - function_name: __cortex_m_rt_main
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
-    line: 32
+    line: 26
     column:
       Column: 5
-    address: 752
+    address: 748
   registers:
     - core_register:
         id: 0
@@ -2856,7 +2652,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 752
+        U32: 750
     - core_register:
         id: 17
         roles:
@@ -2895,7 +2691,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 752
+    U32: 750
   frame_base: 536887280
   is_inlined: false
   local_variables:
@@ -3378,12 +3174,13 @@ expression: stack_frames
                 Struct: CLOCK
               value: CLOCK @ 0x20003F76
   canonical_frame_address: 536887288
-- function_name: __cortex_m_rt_main
+- function_name: "__cortex_m_rt_main_trampoline : ERROR: UNWIND: Failed to read value for register R14/LR from address 0x0000000020003ffc (4 bytes): The coredump does not include the memory for address 0x20003ffc of size 0x4"
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
-    line: 19
-    column: LeftEdge
-    address: 674
+    line: 18
+    column:
+      Column: 1
+    address: 670
   registers:
     - core_register:
         id: 0
@@ -3533,7 +3330,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 674
+        U32: 672
     - core_register:
         id: 17
         roles:
@@ -3572,7 +3369,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 674
+    U32: 672
   frame_base: 536887288
   is_inlined: false
   local_variables:
@@ -3580,4 +3377,4 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-  canonical_frame_address: 536887288
+  canonical_frame_address: 536887296

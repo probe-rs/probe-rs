@@ -853,10 +853,10 @@ expression: stack_frames
 - function_name: trigger_hardfault_from_busfault
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
-    line: 51
+    line: 49
     column:
-      Column: 2
-    address: 360
+      Column: 9
+    address: 356
   registers:
     - core_register:
         id: 0
@@ -1006,7 +1006,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 360
+        U32: 358
     - core_register:
         id: 17
         roles:
@@ -1045,7 +1045,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 360
+    U32: 358
   frame_base: 536887128
   is_inlined: false
   local_variables:
@@ -1057,10 +1057,10 @@ expression: stack_frames
 - function_name: __cortex_m_rt_main
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
-    line: 38
+    line: 32
     column:
-      Column: 54
-    address: 448
+      Column: 5
+    address: 444
   registers:
     - core_register:
         id: 0
@@ -1210,7 +1210,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 448
+        U32: 446
     - core_register:
         id: 17
         roles:
@@ -1249,7 +1249,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 448
+    U32: 446
   frame_base: 536887280
   is_inlined: false
   local_variables:
@@ -1732,12 +1732,13 @@ expression: stack_frames
                 Struct: CLOCK
               value: CLOCK @ 0x20003F76
   canonical_frame_address: 536887288
-- function_name: __cortex_m_rt_main
+- function_name: "__cortex_m_rt_main_trampoline : ERROR: UNWIND: Failed to read value for register R14/LR from address 0x0000000020003ffc (4 bytes): The coredump does not include the memory for address 0x20003ffc of size 0x4"
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/nRF52833_xxAA.rs
-    line: 19
-    column: LeftEdge
-    address: 370
+    line: 18
+    column:
+      Column: 1
+    address: 366
   registers:
     - core_register:
         id: 0
@@ -1887,7 +1888,7 @@ expression: stack_frames
           UnsignedInteger: 32
       dwarf_id: 15
       value:
-        U32: 370
+        U32: 368
     - core_register:
         id: 17
         roles:
@@ -1926,7 +1927,7 @@ expression: stack_frames
       dwarf_id: 19
       value: ~
   pc:
-    U32: 370
+    U32: 368
   frame_base: 536887288
   is_inlined: false
   local_variables:
@@ -1934,4 +1935,4 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: "<unknown>"
-  canonical_frame_address: 536887288
+  canonical_frame_address: 536887296
