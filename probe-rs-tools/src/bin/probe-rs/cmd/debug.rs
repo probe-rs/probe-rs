@@ -28,7 +28,6 @@ use super::dap_server::debug_adapter::dap::dap_types::Response;
 struct Shared {
     stop: bool,
     next_request: Option<Request>,
-    seq: i64,
 }
 
 /// A barebones adapter for the CLI "client".
@@ -37,7 +36,7 @@ struct CliAdapter {
     console_log_level: ConsoleLog,
 }
 impl ProtocolAdapter for CliAdapter {
-    fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
+    async fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
         Ok(self.shared.borrow().next_request.clone())
     }
 
@@ -79,7 +78,7 @@ impl ProtocolAdapter for CliAdapter {
         Ok(())
     }
 
-    fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
+    async fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
         if !response.success {
             print_error(&response)?;
             return Ok(());
@@ -120,9 +119,8 @@ impl ProtocolAdapter for CliAdapter {
         self.console_log_level
     }
 
-    fn get_next_seq(&mut self) -> i64 {
-        self.shared.borrow_mut().seq += 1;
-        self.shared.borrow().seq
+    fn event_sender(&self) -> Box<dyn super::dap_server::debug_adapter::protocol::EventSender> {
+        todo!()
     }
 }
 
@@ -192,7 +190,6 @@ impl Cmd {
         let shared = Rc::new(RefCell::new(Shared {
             stop: false,
             next_request: None,
-            seq: 0,
         }));
         let mut debug_adapter = DebugAdapter::new(CliAdapter {
             shared: shared.clone(),
@@ -225,7 +222,7 @@ impl Cmd {
             seq: 0,
             type_: "request".to_string(),
         });
-        debugger.handle_initialize(&mut debug_adapter)?;
+        debugger.handle_initialize(&mut debug_adapter).await?;
 
         let attach_request = Request {
             command: "attach".to_string(),
