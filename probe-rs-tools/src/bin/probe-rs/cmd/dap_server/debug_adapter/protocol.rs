@@ -1,9 +1,10 @@
 use crate::cmd::dap_server::{
     DebuggerError,
     debug_adapter::dap::dap_types::{
-        ErrorResponseBody, Event, MessageSeverity, OutputEventBody, Request, Response,
-        ShowMessageEventBody,
+        ErrorResponse, ErrorResponseBody, Event, MessageSeverity, OutputEventBody, Request,
+        Response, ShowMessageEventBody,
     },
+    protocol::response::ResponseKind,
     server::configuration::ConsoleLog,
 };
 use anyhow::{Context, anyhow};
@@ -19,7 +20,7 @@ use tokio_util::{
 };
 use tracing::instrument;
 
-use super::codec::{DapCodec, Frame, Message};
+use super::codec::{DapCodec, Message};
 
 pub trait ProtocolAdapter {
     /// Listen for a request. This call should be non-blocking, and if not request is available, it should
@@ -32,7 +33,7 @@ pub trait ProtocolAdapter {
         event_body: Option<S>,
     ) -> anyhow::Result<()>;
 
-    fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()>;
+    fn send_raw_response(&mut self, response: ResponseKind) -> anyhow::Result<()>;
 
     fn remove_pending_request(&mut self, request_seq: i64) -> Option<String>;
 
@@ -107,7 +108,7 @@ where
         let response_is_ok = response.is_ok();
 
         // The encoded response will be constructed from dap::Response for Ok, and dap::ErrorResponse for Err, to ensure VSCode doesn't lose the details of the error.
-        let encoded_resp = match response {
+        let encoded_resp: ResponseKind = match response {
             Ok(value) => Response {
                 command: request.command.clone(),
                 request_seq: request.seq,
@@ -116,7 +117,8 @@ where
                 type_: "response".to_owned(),
                 message: None,
                 body: value.map(|v| serde_json::to_value(v)).transpose()?,
-            },
+            }
+            .into(),
             Err(debugger_error) => {
                 let mut response_message = debugger_error.to_string();
                 let mut offset_iterations = 0;
@@ -140,7 +142,7 @@ where
                 // will not initiate a session, and will not be listening for 'output' events.
                 self.log_to_console(&response_message);
 
-                let response_body = ErrorResponseBody {
+                let body = ErrorResponseBody {
                     error: Some(super::dap::dap_types::Message {
                         format: "{response_message}".to_string(),
                         variables: Some(BTreeMap::from([(
@@ -156,15 +158,16 @@ where
                     }),
                 };
 
-                Response {
+                ErrorResponse {
                     command: request.command.clone(),
                     request_seq: request.seq,
                     seq: self.get_next_seq(),
                     success: false,
                     type_: "response".to_owned(),
                     message: Some("cancelled".to_string()), // Predefined value in the MSDAP spec.
-                    body: Some(serde_json::to_value(response_body)?),
+                    body,
                 }
+                .into()
             }
         };
 
@@ -232,7 +235,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     }
 
     #[instrument(level = "trace", skip_all)]
-    fn send_data(&mut self, item: Frame<Message>) -> Result<(), std::io::Error> {
+    fn send_data(&mut self, item: Message) -> Result<(), std::io::Error> {
         let mut buf = BytesMut::with_capacity(4096);
         self.codec.encode(item, &mut buf)?;
         self.output.write_all(&buf)?;
@@ -242,7 +245,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
 
     /// Receive data from `self.input`. Data has to be in the format specified by the Debug Adapter Protocol (DAP).
     /// The returned data is the content part of the request, as raw bytes.
-    fn receive_data(&mut self) -> Result<Option<Frame<Message>>, DebuggerError> {
+    fn receive_data(&mut self) -> Result<Option<Message>, DebuggerError> {
         match self.input.fill_buf() {
             Ok(data) => {
                 // New data is here. Shove it into the buffer.
@@ -302,14 +305,14 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
 
     fn receive_msg_content(&mut self) -> Result<Option<Request>, DebuggerError> {
         match self.receive_data() {
-            Ok(Some(frame)) => {
+            Ok(Some(message)) => {
                 // Extract protocol message
-                if let Message::Request(request) = frame.content {
+                if let Message::Request(request) = message {
                     Ok(Some(request))
                 } else {
                     Err(DebuggerError::Other(anyhow!(
                         "Received an unexpected message type: '{:?}'",
-                        frame.content.kind()
+                        message.kind()
                     )))
                 }
             }
@@ -341,7 +344,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         };
 
         let result = self
-            .send_data(Frame::new(new_event.clone().into()))
+            .send_data(new_event.clone().into())
             .context("Unexpected Error while sending event.");
 
         if event_type != "output" {
@@ -372,8 +375,8 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         self.pending_requests.remove(&request_seq)
     }
 
-    fn send_raw_response(&mut self, response: Response) -> anyhow::Result<()> {
-        self.send_data(Frame::new(Message::Response(response)))?;
+    fn send_raw_response(&mut self, response: ResponseKind) -> anyhow::Result<()> {
+        self.send_data(Message::Response(response))?;
 
         Ok(())
     }
