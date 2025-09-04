@@ -9,7 +9,7 @@ use crate::{
         },
         utils::{
             run_loop::{ReturnReason, RunLoop, RunLoopPoller},
-            semihosting_file_manager::SemihostingFileManager,
+            semihosting::{SemihostingFileManager, SemihostingOptions},
         },
     },
     util::rtt::client::RttClient,
@@ -53,6 +53,8 @@ pub struct MonitorOptions {
     pub catch_hardfault: bool,
     /// RTT client if used.
     pub rtt_client: Option<Key<RttClient>>,
+    /// Configure the support for semihosting.
+    pub semihosting_options: SemihostingOptions,
 }
 
 /// Monitor in normal run mode.
@@ -179,7 +181,9 @@ fn monitor_impl(
     let mut session = ctx.session_blocking(request.sessid);
 
     let mut semihosting_sink =
-        MonitorEventHandler::new(|event| sender.send_semihosting_event(event).unwrap());
+        MonitorEventHandler::new(request.options.semihosting_options, |event| {
+            sender.send_semihosting_event(event).unwrap()
+        });
 
     let mut rtt_client = request
         .options
@@ -294,15 +298,15 @@ where
 }
 
 struct MonitorEventHandler<F: FnMut(SemihostingEvent)> {
-    sender: F,
     semihosting_file_manager: SemihostingFileManager,
+    sender: F,
 }
 
 impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
-    pub fn new(sender: F) -> Self {
+    pub fn new(semihosting_options: SemihostingOptions, sender: F) -> Self {
         Self {
+            semihosting_file_manager: SemihostingFileManager::new(semihosting_options),
             sender,
-            semihosting_file_manager: SemihostingFileManager::new(),
         }
     }
 

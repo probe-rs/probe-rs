@@ -15,6 +15,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::cmd::run::EmbeddedTestElfInfo;
 use crate::rpc::functions::monitor::MonitorExitReason;
+use crate::rpc::utils::semihosting::SemihostingOptions;
 use crate::{
     FormatOptions,
     rpc::{
@@ -243,6 +244,35 @@ pub(crate) async fn connect_target_output_files(
         map.insert(key, value);
     }
     Ok(map)
+}
+
+pub(crate) fn parse_semihosting_options(arg: Vec<String>) -> anyhow::Result<SemihostingOptions> {
+    let mut options = SemihostingOptions::new();
+    for component in arg {
+        let parts: Vec<&str> = component.splitn(2, "=").collect();
+        match parts[..] {
+            // Tolerating empty entries in particular makes a trailing comma tolerated.
+            [] => continue,
+            [single] => {
+                if single.ends_with('/') {
+                    options.add_file_prefix(single.into(), single.into())?;
+                } else {
+                    options.add_file(single.into(), single.into())?;
+                }
+            }
+            [first, second] => {
+                if first.starts_with('^') && first.ends_with('$') {
+                    options.add_file_regex(first.into(), second.into())?;
+                } else if first.ends_with('/') {
+                    options.add_file_prefix(first.into(), second.into())?;
+                } else {
+                    options.add_file(first.into(), second.into())?;
+                }
+            }
+            _ => unreachable!("splitn produces at most 2 items."),
+        }
+    }
+    Ok(options)
 }
 
 pub async fn rtt_client(
@@ -519,6 +549,7 @@ pub async fn test(
     path: &Path,
     mut rtt_client: Option<CliRttClient>,
     target_output_files: &mut TargetOutputFiles,
+    semihosting_options: SemihostingOptions,
 ) -> anyhow::Result<()> {
     tracing::info!("libtest args {:?}", libtest_args);
     let token = CancellationToken::new();
@@ -530,7 +561,12 @@ pub async fn test(
         let tests = if elf_info.version == 0 {
             // In embedded test < 0.7, we have to query the tests from the target via semihosting
             session
-                .list_tests(boot_info, rtt_handle, async |msg| sender.send(msg).unwrap())
+                .list_tests(
+                    boot_info,
+                    rtt_handle,
+                    semihosting_options.clone(),
+                    async |msg| sender.send(msg).unwrap(),
+                )
                 .await?
                 .tests
         } else {
@@ -544,7 +580,17 @@ pub async fn test(
 
         let tests = tests
             .into_iter()
-            .map(|test| create_trial(session, path, rtt_handle, sender.clone(), &token, test))
+            .map(|test| {
+                create_trial(
+                    session,
+                    path,
+                    rtt_handle,
+                    semihosting_options.clone(),
+                    sender.clone(),
+                    &token,
+                    test,
+                )
+            })
             .collect::<Vec<_>>();
 
         tokio::task::spawn_blocking(move || {
@@ -588,6 +634,7 @@ fn create_trial(
     session: &SessionInterface,
     path: &Path,
     rtt_client: Option<Key<RttClient>>,
+    semihosting_options: SemihostingOptions,
     sender: UnboundedSender<MonitorEvent>,
     token: &CancellationToken,
     test: Test,
@@ -608,7 +655,9 @@ fn create_trial(
 
             let handle = tokio::spawn(async move {
                 match session
-                    .run_test(test, rtt_client, async move |msg| sender.send(msg).unwrap())
+                    .run_test(test, rtt_client, semihosting_options, async move |msg| {
+                        sender.send(msg).unwrap()
+                    })
                     .await
                 {
                     Ok(TestResult::Success) => Ok(()),
