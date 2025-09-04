@@ -215,7 +215,9 @@ pub struct DownloadOptions<'p> {
     /// If the chip was pre-erased with external erasers, this flag can set to true to skip erasing
     /// It may be useful for mass production.
     pub skip_erase: bool,
-    /// Before flashing, read back the flash contents to skip up-to-date regions.
+    /// Before flashing, intelligently verify device state and only flash what has changed.
+    /// Uses fast CRC32 verification on supported targets with selective programming.
+    /// Falls back to traditional verification on unsupported targets.
     pub preverify: bool,
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     pub verify: bool,

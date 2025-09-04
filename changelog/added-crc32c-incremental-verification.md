@@ -1,0 +1,1 @@
+Added CRC32C-based incremental flash verification system for significant performance improvements on ARM targets

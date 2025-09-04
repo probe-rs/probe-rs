@@ -1,6 +1,10 @@
 /target
 **/*.rs.bk
 
+# CRC32 build artifacts
+crc32_algorithms/target/
+crc32_algorithms/Cargo.lock
+
 # It's a Mac Thing
 **/.DS_Store
 
