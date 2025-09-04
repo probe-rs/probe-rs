@@ -501,11 +501,12 @@ impl MIMXRT5xxS {
             interface.write_word_32(0x40004214, 0x130)?; // full drive and pullup
             interface.write_word_32(0x40102010, 1 << 5)?; // PIO4_5 is an output
             interface.write_word_32(0x40103214, 0)?; // PIO4_5 is driven low
-            thread::sleep(Duration::from_millis(100));
+            interface.flush()?;
+            thread::sleep(Duration::from_micros(100));
 
             interface.write_word_32(0x40102010, 0)?; // PIO4_5 is an input
             interface.flush()?;
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_micros(100));
         } else {
             tracing::trace!("MIMXRT685-EVK FlexSPI flash reset (pulse PIO2_12)");
 
@@ -515,16 +516,19 @@ impl MIMXRT5xxS {
             // generalize this so that the reset is configurable?
             //
             // See MIMX685-EVK schematics page 12 for details.
+
+            // NOTE: This ordering deviates from what is specified in the CMSIS-pack.
             interface.write_word_32(0x40021044, 1 << 2)?; // enable HSGPIO2 clock
-            interface.write_word_32(0x40000074, 1 << 2)?; // take HSGPIO2 out of reset
+            interface.write_word_32(0x40020074, 1 << 2)?; // take HSGPIO2 out of reset
             interface.write_word_32(0x40004130, 0x130)?; // full drive and pullup
             interface.write_word_32(0x40102008, 1 << 12)?; // PIO2_12 is an output
             interface.write_word_32(0x40102288, 1 << 12)?; // PIO2_12 is driven low
-            thread::sleep(Duration::from_millis(100));
+            interface.flush()?;
+            thread::sleep(Duration::from_micros(100));
 
             interface.write_word_32(0x40102208, 1 << 12)?; // PIO2_12 is driven high
             interface.flush()?;
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_micros(100));
         }
 
         Ok(())
@@ -708,7 +712,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
         tracing::trace!("MIMXRT5xxS reset hardware deassert");
         let n_reset = Pins(0x80).0 as u32;
 
-        let can_read_pins = memory.swj_pins(0, n_reset, 0)? != 0xffff_ffff;
+        let can_read_pins = memory.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff;
 
         thread::sleep(Duration::from_millis(50));
 
