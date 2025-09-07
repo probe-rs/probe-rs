@@ -155,7 +155,7 @@ pub(crate) static ARM32_COMMON_REGS_SET: &[CoreRegister] = &[
     PC,
 ];
 
-static CORTEX_M_COMMON_REGS_SET: &[CoreRegister] = &[
+pub(crate) static CORTEX_M_COMMON_REGS_SET: &[CoreRegister] = &[
     CoreRegister {
         roles: &[RegisterRole::Core("MSP"), RegisterRole::MainStackPointer],
         id: RegisterId(0b10001),
@@ -179,7 +179,7 @@ static CORTEX_M_COMMON_REGS_SET: &[CoreRegister] = &[
     },
 ];
 
-static CORTEX_M_WITH_FP_REGS_SET: &[CoreRegister] = &[
+pub(crate) static CORTEX_M_WITH_FP_REGS_SET: &[CoreRegister] = &[
     CoreRegister {
         roles: &[
             RegisterRole::Core("FPSCR"),
