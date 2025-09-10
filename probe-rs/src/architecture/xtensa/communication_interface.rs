@@ -1347,6 +1347,9 @@ impl MemoryAccess for SlowMemoryAccess {
         &mut self,
         interface: &mut XtensaCommunicationInterface,
     ) -> Result<DeferredResultIndex, XtensaError> {
+        interface
+            .xdm
+            .schedule_execute_instruction(Instruction::Esync);
         interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address)?;
         interface
             .state
