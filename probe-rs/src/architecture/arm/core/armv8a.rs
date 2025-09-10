@@ -754,27 +754,6 @@ impl<'probe> Armv8a<'probe> {
         })
     }
 
-    fn write_cpu_memory_aarch64_bytes(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.with_core_halted(|armv8a| {
-            // Save r0, r1
-            armv8a.prepare_for_clobber(0)?;
-            armv8a.prepare_for_clobber(1)?;
-
-            // Load x0 with the address to write to
-            armv8a.set_reg_value(0, address)?;
-
-            for d in data {
-                armv8a.set_reg_value(1, u64::from(*d))?;
-
-                // Write data to memory - STRB w1, [r0], #1
-                let instruction = aarch64::build_strb(1, 0, 4);
-
-                armv8a.execute_instruction(instruction)?;
-            }
-            Ok(())
-        })
-    }
-
     fn write_cpu_memory_aarch64_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         self.with_core_halted(|armv8a| {
             // Save x0, x1
@@ -820,37 +799,35 @@ impl<'probe> Armv8a<'probe> {
         Ok(())
     }
 
-    fn write_cpu_memory_aarch64_fast(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+    fn write_cpu_memory_fast(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.with_core_halted(|armv8a| {
             let (prefix, aligned, suffix) = armv8a.aligned_to_32(address, data);
             let mut address = address;
 
             // write unaligned part
-            if !prefix.is_empty() {
-                armv8a.write_cpu_memory_aarch64_bytes(address, prefix)?;
-                address += u64::try_from(prefix.len()).unwrap();
+            for d in prefix {
+                armv8a.write_word_8(address, *d)?;
+                address += 1;
             }
 
             // write aligned part
-            armv8a.write_cpu_memory_aarch64_fast_inner(address, aligned)?;
+            armv8a.write_cpu_memory_fast_inner(address, aligned)?;
             address += u64::try_from(aligned.len()).unwrap();
 
             // write unaligned part
-            if !suffix.is_empty() {
-                armv8a.write_cpu_memory_aarch64_bytes(address, suffix)?;
+            for d in suffix {
+                armv8a.write_word_8(address, *d)?;
+                address += 1;
             }
+
             Ok(())
         })
     }
 
     /// Fast data download method
     /// ref. ARM DDI 0487D.a, K9-7312, Figure K9-1 Fast data download in AArch64 state
-    fn write_cpu_memory_aarch64_fast_inner(
-        &mut self,
-        address: u64,
-        data: &[u8],
-    ) -> Result<(), Error> {
-        // assume only call from write_cpu_memory_aarch64_fast
+    fn write_cpu_memory_fast_inner(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        // assume only call from write_cpu_memory_fast
         if data.is_empty() {
             return Ok(());
         }
@@ -862,16 +839,25 @@ impl<'probe> Armv8a<'probe> {
             .into());
         }
 
-        // Save x0
+        // ref. ARM DDI 0600B.a shared/debug/dccanditr/DBGDTRRX_EL0 pseudocode
+        // x0/r0 will be used for the address, and x1/r1 is clobbered.
         self.prepare_for_clobber(0)?;
+        self.prepare_for_clobber(1)?;
 
-        // Load r0 with the address to write to
+        // Load x0/r0 with the address to write to.
         self.set_reg_value(0, address)?;
 
         self.with_memory_access_mode(|armv8a| {
             for d in data.chunks(4) {
                 let word = u32::from_le_bytes([d[0], d[1], d[2], d[3]]);
                 // memory write loop
+                // With EDSCR.MA=1, any write to DBGDTRRX turns into:
+                // AArch64:
+                //  "MRS X1,DBGDTRRX_EL0"
+                //  "STR W1,[X0],#4"
+                // AArch32:
+                //  "MRS R1,DBGDTRRXint"
+                //  "STR R1,[R0],#4"
                 let dbgdtr_rx_address = Dbgdtrrx::get_mmio_address_from_base(armv8a.base_address)?;
                 armv8a.memory.write_word_32(dbgdtr_rx_address, word)?;
             }
@@ -994,7 +980,7 @@ impl<'probe> Armv8a<'probe> {
         let (data, last) = data.split_at_mut(data.len() - std::mem::size_of::<u32>());
 
         self.with_memory_access_mode(|armv8a| {
-            // discard firtst 32bit
+            // discard first 32bit
             let _ = armv8a.memory.read_word_32(dbgdtr_tx_address)?;
             for d in data.chunks_mut(4) {
                 // memory read loop
@@ -1628,53 +1614,29 @@ impl MemoryInterface for Armv8a<'_> {
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        if self.state.is_64_bit {
-            let (_prefix, data, _suffix) = unsafe { data.align_to::<u8>() };
-            self.write_cpu_memory_aarch64_fast(address, data)?;
-        } else {
-            for (i, word) in data.iter().enumerate() {
-                self.write_word_64(address + ((i as u64) * 8), *word)?;
-            }
-        }
+        // Note that the fast write path splits data into 32-bit words and does not guarantee 64-bit bus accesses.
+        let (_prefix, data, _suffix) = unsafe { data.align_to::<u8>() };
+        self.write_cpu_memory_fast(address, data)?;
 
         Ok(())
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        if self.state.is_64_bit {
-            let (_prefix, data, _suffix) = unsafe { data.align_to::<u8>() };
-            self.write_cpu_memory_aarch64_fast(address, data)?;
-        } else {
-            for (i, word) in data.iter().enumerate() {
-                self.write_word_32(address + ((i as u64) * 4), *word)?;
-            }
-        }
+        let (_prefix, data, _suffix) = unsafe { data.align_to::<u8>() };
+        self.write_cpu_memory_fast(address, data)?;
 
         Ok(())
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
-        if self.state.is_64_bit {
-            let (_prefix, data, _suffix) = unsafe { data.align_to::<u8>() };
-            self.write_cpu_memory_aarch64_fast(address, data)?;
-        } else {
-            for (i, word) in data.iter().enumerate() {
-                self.write_word_16(address + ((i as u64) * 2), *word)?;
-            }
-        }
+        let (_prefix, data, _suffix) = unsafe { data.align_to::<u8>() };
+        self.write_cpu_memory_fast(address, data)?;
 
         Ok(())
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        if self.state.is_64_bit {
-            self.write_cpu_memory_aarch64_fast(address, data)?;
-        } else {
-            for (i, byte) in data.iter().enumerate() {
-                tracing::info!("writing {:?} bytes", i);
-                self.write_word_8(address + (i as u64), *byte)?;
-            }
-        }
+        self.write_cpu_memory_fast(address, data)?;
 
         Ok(())
     }

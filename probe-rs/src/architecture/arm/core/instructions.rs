@@ -312,16 +312,6 @@ pub(crate) mod aarch64 {
         ret
     }
 
-    pub(crate) fn build_strb(reg_target: u16, reg_source: u16, imm: u16) -> u32 {
-        let mut ret = 0b0011_1000_0000_0000_0000_0100_0000_0000;
-
-        ret |= (imm as u32) << 12;
-        ret |= (reg_source as u32) << 5;
-        ret |= reg_target as u32;
-
-        ret
-    }
-
     pub(crate) fn build_ins_fp_to_gp(reg_target: u16, reg_source: u16, index: u16) -> u32 {
         let mut ret = 0b0100_1110_0000_1000_0011_1100_0000_0000;
 
