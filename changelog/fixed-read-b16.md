@@ -1,0 +1,1 @@
+Fixed the output format of `probe-rs read b16`
