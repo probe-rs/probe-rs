@@ -404,6 +404,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
                 exc_return.stack_pointer_selection(),
             );
 
+            // TODO: with no security extension, we should use the old SP_main and SP_process values.
             let sp_reg_id = match stack_info {
                 (false, false) => 0b00011000, // non-secure, main stack pointer
                 (false, true) => 0b00011001,  // non-secure, process stack pointer
@@ -431,6 +432,8 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
 
         memory_interface.read_32(sp_value, &mut calling_stack_registers)?;
         let mut calling_frame_registers = stackframe_registers.clone();
+        // TODO: v8m has "Additional State Context" registers that may be stacked
+        // not handled yet. don't think they're needed for unwind
         for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
             calling_frame_registers
                 .get_register_mut_by_role(register_role)?

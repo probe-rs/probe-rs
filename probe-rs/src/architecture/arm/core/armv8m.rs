@@ -3,6 +3,10 @@
 use super::{
     CortexMState, Dfsr,
     cortex_m::{IdPfr1, Mvfr0},
+    registers::armv8m::{
+        V8M_BASE_SEC_FP_REGISTERS, V8M_BASE_SEC_REGISTERS, V8M_MAIN_FP_REGISTERS,
+        V8M_MAIN_REGISTERS, V8M_MAIN_SEC_FP_REGISTERS, V8M_MAIN_SEC_REGISTERS,
+    },
     registers::cortex_m::{
         CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS, FP, PC, RA, SP,
     },
@@ -447,10 +451,19 @@ impl CoreInterface for Armv8m<'_> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        if self.state.fp_present {
-            &CORTEX_M_WITH_FP_CORE_REGISTERS
-        } else {
-            &CORTEX_M_CORE_REGISTERS
+        let main = true; //TODO
+        let security = true; //TODO
+        let fp = self.state.fp_present;
+
+        match (main, security, fp) {
+            (true, true, true) => &V8M_MAIN_SEC_FP_REGISTERS,
+            (true, true, false) => &V8M_MAIN_SEC_REGISTERS,
+            (true, false, true) => &V8M_MAIN_FP_REGISTERS,
+            (true, false, false) => &V8M_MAIN_REGISTERS,
+            (false, true, true) => &V8M_BASE_SEC_FP_REGISTERS,
+            (false, true, false) => &V8M_BASE_SEC_REGISTERS,
+            (false, false, true) => &CORTEX_M_WITH_FP_CORE_REGISTERS,
+            (false, false, false) => &CORTEX_M_CORE_REGISTERS,
         }
     }
 
