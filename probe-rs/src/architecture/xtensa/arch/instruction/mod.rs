@@ -36,6 +36,9 @@ pub enum Instruction {
 
     /// Rotate register window by n*4
     Rotw(u8),
+
+    /// Execution synchronize
+    Esync,
 }
 
 /// The architecture supports multi-word instructions. This enum represents the different encodings
@@ -65,6 +68,7 @@ impl Instruction {
                 // 0100 0000 1000 0000 t 0000
                 format::rrr(0x400000, 8, 0, count)
             }
+            Instruction::Esync => 0x002020,
         };
 
         (3, word)

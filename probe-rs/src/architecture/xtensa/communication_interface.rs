@@ -1295,10 +1295,16 @@ impl MemoryAccess for FastMemoryAccess {
 /// Memory access without LDDR32.P and SDDR32.P instructions.
 struct SlowMemoryAccess {
     current_address: u32,
+    current_offset: u32,
+    address_written: bool,
 }
 impl SlowMemoryAccess {
     fn new() -> Self {
-        Self { current_address: 0 }
+        Self {
+            current_address: 0,
+            current_offset: 0,
+            address_written: false,
+        }
     }
 }
 
@@ -1347,20 +1353,40 @@ impl MemoryAccess for SlowMemoryAccess {
         &mut self,
         interface: &mut XtensaCommunicationInterface,
     ) -> Result<DeferredResultIndex, XtensaError> {
-        interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address)?;
-        interface
-            .state
-            .register_cache
-            .mark_dirty(CpuRegister::A3.into());
-        self.current_address += 4;
+        if !self.address_written {
+            interface
+                .xdm
+                .schedule_execute_instruction(Instruction::Esync);
+            interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address)?;
+            interface
+                .state
+                .register_cache
+                .mark_dirty(CpuRegister::A3.into());
+            self.current_offset = 0;
+            self.address_written = true;
+        }
 
         interface
             .xdm
-            .schedule_execute_instruction(Instruction::L32I(CpuRegister::A3, CpuRegister::A4, 0));
+            .schedule_execute_instruction(Instruction::L32I(
+                CpuRegister::A3,
+                CpuRegister::A4,
+                (self.current_offset / 4) as u8,
+            ));
+        self.current_offset += 4;
+
         interface
             .state
             .register_cache
             .mark_dirty(CpuRegister::A4.into());
+
+        if self.current_offset == 1024 {
+            // The maximum offset for L32I is 1020, so we need to
+            // increment the base address and reset the offset.
+            self.current_address += self.current_offset;
+            self.current_offset = 0;
+            self.address_written = false;
+        }
 
         Ok(interface.schedule_read_cpu_register(CpuRegister::A4))
     }
