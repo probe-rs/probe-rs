@@ -71,7 +71,7 @@ impl Cmd {
             ReadWriteBitWidth::B16 => {
                 let values = core.read_memory_16(address, nwords).await?;
                 for val in values {
-                    print!("{val:08x} ");
+                    print!("{val:04x} ");
                 }
             }
             ReadWriteBitWidth::B32 => {
