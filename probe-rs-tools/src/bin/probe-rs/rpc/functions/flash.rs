@@ -38,6 +38,10 @@ pub struct DownloadOptions {
     pub verify: bool,
     /// Disable double buffering when loading flash.
     pub disable_double_buffering: bool,
+    /// Before flashing, intelligently verify device state and only flash what has changed.
+    /// Uses fast CRC32 verification on supported targets with selective programming.
+    /// Falls back to traditional verification on unsupported targets.
+    pub preverify: bool,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -84,9 +88,10 @@ impl FlashRequest {
         options.keep_unwritten_bytes = self.options.keep_unwritten_bytes;
         options.do_chip_erase = self.options.do_chip_erase;
         options.skip_erase = self.options.skip_erase;
-        options.preverify = false;
+        options.preverify = self.options.preverify;
         options.verify = self.options.verify;
         options.disable_double_buffering = self.options.disable_double_buffering;
+        tracing::debug!("RPC Flash: preverify={}, verify={}", self.options.preverify, self.options.verify);
 
         options
     }
@@ -180,6 +185,9 @@ pub struct FlashDataBlockSpan {
 
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Schema, Hash)]
 pub enum Operation {
+    /// Verifying flash contents using CRC32 (preverification for incremental mode).
+    Crc32Verify,
+
     /// Reading back flash contents to restore erased regions that should be kept unchanged.
     Fill,
 
@@ -188,6 +196,9 @@ pub enum Operation {
 
     /// Writing data to flash.
     Program,
+
+    /// Selectively programming only changed sectors (incremental mode).
+    IncrementalProgram,
 
     /// Checking flash contents.
     Verify,
@@ -200,6 +211,8 @@ impl From<flashing::ProgressOperation> for Operation {
             flashing::ProgressOperation::Erase => Operation::Erase,
             flashing::ProgressOperation::Program => Operation::Program,
             flashing::ProgressOperation::Verify => Operation::Verify,
+            flashing::ProgressOperation::Crc32Verify => Operation::Crc32Verify,
+            flashing::ProgressOperation::IncrementalProgram => Operation::IncrementalProgram,
         }
     }
 }

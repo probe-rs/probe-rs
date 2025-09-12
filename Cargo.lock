@@ -886,6 +886,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "crcxx"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b12fe074f6e54eb448d10ea76acfa1b1e0ce19fe798a2aa52521faf05806d5e"
+
+[[package]]
 name = "critical-section"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1656,6 +1662,12 @@ dependencies = [
  "quote",
  "syn 2.0.100",
 ]
+
+[[package]]
+name = "glob"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "goblin"
@@ -3037,6 +3049,7 @@ dependencies = [
  "bitvec",
  "clap",
  "cobs 0.4.0",
+ "crcxx",
  "docsplay",
  "dunce",
  "env_logger",
@@ -3055,6 +3068,7 @@ dependencies = [
  "object 0.37.3",
  "parking_lot",
  "pretty_assertions",
+ "probe-rs-crc32-builder",
  "probe-rs-target",
  "rmp-serde",
  "scroll",
@@ -3065,9 +3079,17 @@ dependencies = [
  "test-case",
  "test-log",
  "thiserror 2.0.16",
+ "toml 0.8.23",
  "tracing",
  "uf2-decode",
  "zerocopy",
+]
+
+[[package]]
+name = "probe-rs-crc32-builder"
+version = "0.1.0"
+dependencies = [
+ "crcxx",
 ]
 
 [[package]]
@@ -5545,10 +5567,15 @@ name = "xtask"
 version = "0.29.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
+ "glob",
+ "probe-rs-crc32-builder",
  "regex",
  "serde",
  "serde_json",
+ "sha2",
+ "toml 0.8.23",
  "xshell",
 ]
 

@@ -60,6 +60,9 @@ pub enum FlashError {
     /// This target does not support full chip flash erases.
     #[error("The chip erase routine is not supported with the given flash algorithm.")]
     ChipEraseNotSupported,
+    /// This target does not support CRC32 verification.
+    #[error("The CRC32 routine is not supported with the given flash algorithm.")]
+    CrcNotSupported,
     /// Calling the given routine returned the given error code.
     #[error(
         "The execution of '{name}' failed with code {error_code}. This might indicate a problem with the flash algorithm."

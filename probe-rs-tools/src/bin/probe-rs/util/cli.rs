@@ -23,7 +23,7 @@ use crate::{
         client::{MultiSubscribeError, MultiSubscription, MultiTopic, RpcClient, SessionInterface},
         functions::{
             CancelTopic, RttTopic, SemihostingTopic,
-            flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent, VerifyResult},
+            flash::{BootInfo, DownloadOptions, FlashLayout, ProgressEvent},
             monitor::{MonitorMode, MonitorOptions, RttEvent, SemihostingEvent},
             probe::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
@@ -340,7 +340,10 @@ pub async fn flash(
         skip_erase: false,
         verify: download_options.verify,
         disable_double_buffering: download_options.disable_double_buffering,
+        preverify: download_options.preverify,
     };
+    tracing::debug!("CLI flash() creating DownloadOptions with preverify={}, verify={}", 
+                   download_options.preverify, download_options.verify);
 
     let loader = session
         .build_flash_loader(path.to_path_buf(), format)
@@ -348,38 +351,15 @@ pub async fn flash(
 
     let mut flash_layout = None;
 
-    let run_flash = if download_options.preverify {
-        let pb = if download_options.disable_progressbars {
-            None
-        } else {
-            Some(CliProgressBars::new())
-        };
-        let result = session
-            .verify(loader.loader, async |event| {
-                if let ProgressEvent::FlashLayoutReady {
-                    flash_layout: layout,
-                } = &event
-                {
-                    flash_layout = Some(layout.clone());
-                }
-                if let Some(ref pb) = pb {
-                    pb.handle(event);
-                }
-            })
-            .await?;
-
-        result == VerifyResult::Mismatch
+    // Enhanced preverify: always use flash path, let FlashLoader::commit() handle preverify logic
+    tracing::debug!("CLI using unified flash path with preverify={}", download_options.preverify);
+    let pb: Option<CliProgressBars> = if download_options.disable_progressbars {
+        None
     } else {
-        true
+        Some(CliProgressBars::new())
     };
-
-    if run_flash {
-        let pb = if download_options.disable_progressbars {
-            None
-        } else {
-            Some(CliProgressBars::new())
-        };
-        session
+    tracing::debug!("CLI calling session.flash() with enhanced preverify support");
+    session
             .flash(
                 options,
                 loader.loader,
@@ -397,7 +377,7 @@ pub async fn flash(
                 },
             )
             .await?;
-    }
+    tracing::debug!("CLI session.flash() completed");
 
     // Visualise flash layout to file if requested.
     if let Some(visualizer_output) = download_options.flash_layout_output_path {
@@ -412,6 +392,14 @@ pub async fn flash(
         }
     }
 
+    // Ensure progress bars complete their final rendering before showing completion message
+    if pb.is_some() {
+        tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
+    }
+    
+    // Explicitly drop progress bars after they've completed but before showing finished message
+    drop(pb);
+    
     logging::eprintln(format!(
         "     {} in {:.02}s",
         "Finished".green().bold(),

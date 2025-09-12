@@ -1,0 +1,10 @@
+# Universal ARM binary configuration
+# Only thumbv6m-none-eabi is needed now due to ARM upward compatibility
+
+[target.thumbv6m-none-eabi]
+rustflags = [
+    "-C", "link-arg=-Tlink_minimal.x",
+    "-C", "relocation-model=pic",
+    "-C", "code-model=small",
+    "-C", "panic=abort",
+]
