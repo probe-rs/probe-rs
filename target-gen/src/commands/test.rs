@@ -300,10 +300,10 @@ pub fn run_flash_download(
     disable_double_buffering: bool,
 ) -> Result<()> {
     let mut download_option = DownloadOptions::default();
+
     download_option.keep_unwritten_bytes = false;
     download_option.disable_double_buffering = disable_double_buffering;
-
-    download_option.progress = Some(progress);
+    download_option.progress = progress;
     download_option.skip_erase = true;
 
     loader.commit(session, download_option)?;

@@ -18,7 +18,7 @@ struct FlasherWithRegions {
 ///
 /// The optional progress will only be used to emit RTT messages.
 /// No actual indication for the state of the erase all operation will be given.
-pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), FlashError> {
+pub fn erase_all(session: &mut Session, progress: &FlashProgress<'_>) -> Result<(), FlashError> {
     tracing::debug!("Erasing all...");
 
     // TODO: this first loop is pretty much identical to FlashLoader::prepare_plan - can we simplify?
@@ -161,7 +161,7 @@ pub fn erase_all(session: &mut Session, progress: FlashProgress) -> Result<(), F
 // TODO: currently no progress is reported by anything in this function.
 pub fn erase(
     session: &mut Session,
-    progress: FlashProgress,
+    progress: &FlashProgress<'_>,
     address_start: u64,
     address_end: u64,
 ) -> Result<(), FlashError> {
@@ -255,7 +255,7 @@ pub fn erase(
 /// Check that a memory range has been erased.
 pub fn run_blank_check(
     session: &mut Session,
-    progress: FlashProgress,
+    progress: &FlashProgress<'_>,
     address_start: u64,
     address_end: u64,
 ) -> Result<(), FlashError> {

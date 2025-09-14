@@ -304,13 +304,11 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
         ));
     };
 
-    let progress = FlashProgress::new(|event| {
+    let mut options = DownloadOptions::default();
+    options.progress = FlashProgress::new(|event| {
         log::debug!("Flash Event: {event:?}");
         print!(".");
     });
-
-    let mut options = DownloadOptions::default();
-    options.progress = Some(progress);
 
     println_test_status!(tracker, blue, "Starting flashing test");
     println_test_status!(tracker, blue, "Binary: {}", test_binary.display());

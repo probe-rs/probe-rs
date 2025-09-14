@@ -360,9 +360,9 @@ fn flash_impl(
 
     let mut options = request.download_options();
     options.dry_run = dry_run;
-    options.progress = Some(FlashProgress::new(move |event| {
+    options.progress = FlashProgress::new(move |event| {
         ProgressEvent::from_library_event(event, |event| sender.blocking_send(event).unwrap());
-    }));
+    });
 
     // run flash download
     loader
@@ -405,7 +405,7 @@ fn erase_impl(
     });
 
     match request.command {
-        EraseCommand::All => flashing::erase_all(&mut session, progress)?,
+        EraseCommand::All => flashing::erase_all(&mut session, &progress)?,
     }
 
     Ok(())
@@ -451,7 +451,7 @@ fn verify_impl(
         });
     });
 
-    match loader.verify(&mut session, progress) {
+    match loader.verify(&mut session, &progress) {
         Ok(()) => Ok(VerifyResult::Ok),
         Err(flashing::FlashError::Verify) => Ok(VerifyResult::Mismatch),
         Err(other) => Err(other.into()),

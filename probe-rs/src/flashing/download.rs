@@ -198,7 +198,7 @@ fn print_instr_sets(instr_sets: &[InstructionSet]) -> String {
 #[non_exhaustive]
 pub struct DownloadOptions<'p> {
     /// An optional progress reporter which is used if this argument is set to `Some(...)`.
-    pub progress: Option<FlashProgress<'p>>,
+    pub progress: FlashProgress<'p>,
     /// If `keep_unwritten_bytes` is `true`, erased portions of the flash that are not overwritten by the ELF data
     /// are restored afterwards, such that the old contents are untouched.
     ///

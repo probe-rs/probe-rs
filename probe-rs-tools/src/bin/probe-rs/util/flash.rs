@@ -45,7 +45,7 @@ pub fn run_flash_download(
         Some(CliProgressBars::new())
     };
 
-    options.progress = Some(FlashProgress::new(move |event| {
+    options.progress = FlashProgress::new(move |event| {
         if let Some(ref path) = flash_layout_output_path {
             if let probe_rs::flashing::ProgressEvent::FlashLayoutReady {
                 flash_layout: ref phases,
@@ -65,7 +65,7 @@ pub fn run_flash_download(
         if let Some(ref pb) = pb {
             ProgressEvent::from_library_event(event, |event| pb.handle(event));
         }
-    }));
+    });
 
     // Start timer.
     let flash_timer = Instant::now();
