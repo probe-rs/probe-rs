@@ -699,7 +699,7 @@ impl Debugger {
         ) {
             Ok(loader) => {
                 let do_flashing = if config.flashing_config.verify_before_flashing {
-                    match loader.verify(&mut session_data.session, &download_options.progress) {
+                    match loader.verify(&mut session_data.session, &mut download_options.progress) {
                         Ok(_) => false,
                         Err(FlashError::Verify) => true,
                         Err(other) => {

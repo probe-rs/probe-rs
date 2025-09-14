@@ -439,7 +439,7 @@ impl FlashLoader {
     pub fn verify(
         &self,
         session: &mut Session,
-        progress: &FlashProgress<'_>,
+        progress: &mut FlashProgress<'_>,
     ) -> Result<(), FlashError> {
         let mut algos = self.prepare_plan(session, false)?;
 
@@ -461,7 +461,7 @@ impl FlashLoader {
                 flasher.flash_algorithm.name
             );
 
-            if !flasher.verify(session, &progress, true)? {
+            if !flasher.verify(session, progress, true)? {
                 return Err(FlashError::Verify);
             }
         }
@@ -503,7 +503,7 @@ impl FlashLoader {
 
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
-                flasher.run_erase_all(session, &options.progress)?;
+                flasher.run_erase_all(session, &mut options.progress)?;
                 do_chip_erase = false;
                 did_chip_erase = true;
             }
@@ -519,7 +519,7 @@ impl FlashLoader {
             // Program the data.
             flasher.program(
                 session,
-                &options.progress,
+                &mut options.progress,
                 options.keep_unwritten_bytes,
                 do_use_double_buffering,
                 options.skip_erase || did_chip_erase,
