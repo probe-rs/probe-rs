@@ -33,7 +33,6 @@ use probe_rs::{
     probe::list::Lister,
 };
 use std::{
-    cell::RefCell,
     collections::HashMap,
     fs,
     path::Path,
@@ -617,8 +616,6 @@ impl Debugger {
         download_options.do_chip_erase = config.flashing_config.full_chip_erase;
         download_options.verify = config.flashing_config.verify_after_flashing;
 
-        let ref_debug_adapter = RefCell::new(&mut *debug_adapter);
-
         #[derive(Default)]
         struct ProgressBarState {
             total_size: u64,
@@ -626,8 +623,6 @@ impl Debugger {
         }
 
         type ProgressState = HashMap<Operation, ProgressBarState>;
-
-        let progress_state = RefCell::new(ProgressState::default());
 
         download_options.progress = progress_id
             .map(|id| {
@@ -637,10 +632,9 @@ impl Debugger {
                     Operation::Program => "Programming Pages",
                     Operation::Verify => "Verifying",
                 };
-
+                let mut flash_progress = ProgressState::default();
+                let debug_adapter = &mut *debug_adapter;
                 FlashProgress::new(move |event| {
-                    let mut flash_progress = progress_state.borrow_mut();
-                    let mut debug_adapter = ref_debug_adapter.borrow_mut();
                     match event {
                         ProgressEvent::AddProgressBar { operation, total } => {
                             let pbar_state = flash_progress.entry(operation.into()).or_default();

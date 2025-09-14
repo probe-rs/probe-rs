@@ -37,8 +37,6 @@ pub fn run_flash_download(
     options.verify = download_options.verify;
     options.preverify = download_options.preverify;
 
-    let flash_layout_output_path = download_options.flash_layout_output_path.clone();
-
     let pb = if download_options.disable_progressbars {
         None
     } else {
@@ -46,7 +44,7 @@ pub fn run_flash_download(
     };
 
     options.progress = FlashProgress::new(move |event| {
-        if let Some(ref path) = flash_layout_output_path {
+        if let Some(ref path) = download_options.flash_layout_output_path {
             if let probe_rs::flashing::ProgressEvent::FlashLayoutReady {
                 flash_layout: ref phases,
             } = event
