@@ -38,6 +38,10 @@ pub struct BinaryDownloadOptions {
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub verify: bool,
+
+    /// Whether to erase the entire chip before downloading
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub chip_erase: bool,
 }
 
 /// Supported bit-widths for read/write commands (not every device may support each width).

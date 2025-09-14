@@ -1,0 +1,1 @@
+Added `--chip-erase` option to cargo-flash

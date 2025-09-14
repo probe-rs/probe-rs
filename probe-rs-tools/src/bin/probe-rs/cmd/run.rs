@@ -145,10 +145,6 @@ pub struct SharedOptions {
     #[clap(long)]
     pub(crate) always_print_stacktrace: bool,
 
-    /// Whether to erase the entire chip before downloading
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
-    pub(crate) chip_erase: bool,
-
     /// Suppress filename and line number information from the rtt log
     #[clap(long)]
     pub(crate) no_location: bool,
@@ -224,7 +220,7 @@ impl Cmd {
         let boot_info = cli::flash(
             &session,
             &self.shared_options.path,
-            self.shared_options.chip_erase,
+            self.shared_options.download_options.chip_erase,
             self.shared_options.format_options,
             self.shared_options.download_options,
             Some(&mut rtt_client),

@@ -139,7 +139,6 @@ async fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), Oper
         &opt.download_options,
         &probe_options,
         loader,
-        false,
     )?;
 
     // Reset target according to CLI options
