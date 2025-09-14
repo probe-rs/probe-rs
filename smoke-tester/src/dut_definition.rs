@@ -159,16 +159,15 @@ impl DutDefinition {
         DutDefinition::from_raw_definition(raw_definition, file)
     }
 
-    pub async fn open_probe(&self) -> Result<Probe> {
+    pub fn open_probe(&self) -> Result<Probe> {
         let lister = Lister::new();
 
         let mut probe = match &self.probe_selector {
             Some(selector) => lister
                 .open(selector)
-                .await
                 .with_context(|| format!("Failed to open probe with selector {selector}"))?,
             None => {
-                let probes = lister.list_all().await;
+                let probes = lister.list_all();
 
                 anyhow::ensure!(!probes.is_empty(), "No probes detected!");
 

@@ -32,7 +32,6 @@ test = []
 [dependencies]
 anyhow.workspace = true
 async-io.workspace = true
-async-trait.workspace = true
 docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true

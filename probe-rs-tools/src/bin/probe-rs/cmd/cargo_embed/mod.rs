@@ -218,10 +218,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
     };
 
     let lister = Lister::new();
-    let (mut session, probe_options) = match probe_options
-        .simple_attach(&mut registry, &lister)
-        .await
-    {
+    let (mut session, probe_options) = match probe_options.simple_attach(&mut registry, &lister) {
         Ok((session, probe_options)) => (session, probe_options),
 
         Err(OperationError::MultipleProbesFound { list }) => {

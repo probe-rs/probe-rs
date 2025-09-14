@@ -67,7 +67,7 @@ async fn server_info() -> Html<String> {
     body.push_str("<body>");
     body.push_str("<h1>probe-rs status</h1>");
 
-    let probes = Lister::new().list_all().await;
+    let probes = Lister::new().list_all();
     if probes.is_empty() {
         body.push_str("<p>No probes connected</p>");
     } else {

@@ -16,15 +16,12 @@
 //! ```no_run
 //! use probe_rs::{Session, SessionConfig, flashing, Permissions};
 //!
-//! # async_io::block_on(async {
-//!
 //! let session_config = SessionConfig::default();
-//! let mut session = Session::auto_attach("nrf51822", session_config).await?;
+//! let mut session = Session::auto_attach("nrf51822", session_config)?;
 //!
 //! flashing::download_file(&mut session, "binary.hex", flashing::Format::Hex)?;
 //!
 //! # Ok::<(), anyhow::Error>(())
-//! # });
 //! ```
 //!
 //! ### Adding data manually
@@ -32,10 +29,8 @@
 //! ```no_run
 //! use probe_rs::{Session, SessionConfig, flashing::{FlashLoader, DownloadOptions}, Permissions};
 //!
-//! # async_io::block_on(async {
-//!
 //! let session_config = SessionConfig::default();
-//! let mut session = Session::auto_attach("nrf51822", session_config).await?;
+//! let mut session = Session::auto_attach("nrf51822", session_config)?;
 //!
 //! let mut loader = session.target().flash_loader();
 //!
@@ -45,7 +40,6 @@
 //! loader.commit(&mut session, DownloadOptions::default())?;
 //!
 //! # Ok::<(), anyhow::Error>(())
-//! # });
 //! ```
 //!
 //!

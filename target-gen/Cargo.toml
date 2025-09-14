@@ -52,7 +52,6 @@ tracing-subscriber = { version = "0.3.18", features = [
 xshell = { version = "0.2", default-features = false }
 parse_int = "0.9"
 zerocopy = { version = "0.8.0", features = ["derive"] }
-async-io.workspace = true
 
 [dev-dependencies]
 tempfile = "3.0"

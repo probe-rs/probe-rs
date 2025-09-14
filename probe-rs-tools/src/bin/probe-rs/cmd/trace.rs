@@ -25,13 +25,13 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub async fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
+    pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
         let mut xs = vec![];
         let mut ys = vec![];
 
         let start = Instant::now();
 
-        let (mut session, _probe_options) = self.common.simple_attach(registry, lister).await?;
+        let (mut session, _probe_options) = self.common.simple_attach(registry, lister)?;
 
         let mut core = session.core(self.shared.core)?;
 

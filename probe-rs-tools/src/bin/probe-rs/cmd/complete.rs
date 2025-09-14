@@ -26,7 +26,7 @@ pub struct Cmd {
 
 impl Cmd {
     /// Run the correct subcommand.
-    pub async fn run(&self, lister: &Lister) -> Result<()> {
+    pub fn run(&self, lister: &Lister) -> Result<()> {
         let shell = Shell::from_env()
             .or(self.shell)
             .ok_or_else(|| anyhow!("The current shell could not be determined. Please specify a shell with the --shell argument."))?;
@@ -36,7 +36,7 @@ impl Cmd {
                 self.install(shell)?;
             }
             CompleteKind::ProbeList { input } => {
-                self.probe_list(lister, input).await?;
+                self.probe_list(lister, input)?;
             }
             CompleteKind::ChipList { input } => {
                 self.chips_list(input)?;
@@ -83,8 +83,8 @@ impl Cmd {
     }
 
     /// List all the found probes in a format the shell autocompletion understands.
-    async fn probe_list(&self, lister: &Lister, input: &str) -> Result<()> {
-        println!("{}", list_probes(lister, input).await?);
+    fn probe_list(&self, lister: &Lister, input: &str) -> Result<()> {
+        println!("{}", list_probes(lister, input)?);
         Ok(())
     }
 
@@ -133,9 +133,9 @@ pub fn list_chips(starts_with: &str) -> Result<String> {
 /// This are all the probes that are currently connected.
 ///
 /// Output will be one line per probe and print the PID:VID:SERIAL and the full name.
-pub async fn list_probes(lister: &Lister, starts_with: &str) -> Result<String> {
+pub fn list_probes(lister: &Lister, starts_with: &str) -> Result<String> {
     let mut output = String::new();
-    let probes = lister.list_all().await;
+    let probes = lister.list_all();
     for probe in probes {
         if probe.identifier.starts_with(starts_with) {
             writeln!(

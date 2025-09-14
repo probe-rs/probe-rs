@@ -73,7 +73,7 @@ pub async fn target_info(
     let mut registry = ctx.registry().await;
     let probe_options = ProbeOptions::from(&request).load(&mut registry)?;
 
-    let probe = probe_options.attach_probe(&ctx.lister()).await?;
+    let probe = probe_options.attach_probe(&ctx.lister())?;
 
     if let Err(e) = try_show_info(
         ctx,
