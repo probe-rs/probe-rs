@@ -97,7 +97,7 @@ pub fn cmd_test(
     };
 
     let lister = Lister::new();
-    let available_probes = async_io::block_on(lister.list(probe.as_ref()));
+    let available_probes = lister.list(probe.as_ref());
     if available_probes.len() > 1 {
         return Err(anyhow!(
             "Multiple probes were found -- please specify a probe with `--probe`"

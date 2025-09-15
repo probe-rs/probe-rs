@@ -285,21 +285,19 @@ impl LimitedLister {
     }
 }
 
-#[async_trait::async_trait]
 impl ProbeLister for LimitedLister {
-    async fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
         if !self.is_allowed(selector) {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::CouldNotOpen,
             ));
         }
-        self.all_probes.open(selector).await
+        self.all_probes.open(selector)
     }
 
-    async fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
+    fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
         self.all_probes
             .list(selector)
-            .await
             .into_iter()
             .filter(|info| self.is_allowed(&DebugProbeSelector::from(info)))
             .collect()
@@ -525,7 +523,7 @@ postcard_rpc::define_dispatch! {
 
         | EndpointTy                | kind      | handler           |
         | ----------                | ----      | -------           |
-        | ListProbesEndpoint        | async     | list_probes       |
+        | ListProbesEndpoint        | blocking  | list_probes       |
         | SelectProbeEndpoint       | async     | select_probe      |
         | AttachEndpoint            | async     | attach            |
 

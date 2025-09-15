@@ -69,7 +69,7 @@ pub(crate) struct SessionData {
 }
 
 impl SessionData {
-    pub(crate) async fn new(
+    pub(crate) fn new(
         registry: &mut Registry,
         lister: &Lister,
         config: &mut configuration::SessionConfig,
@@ -78,7 +78,7 @@ impl SessionData {
         let target_selector = TargetSelector::from(config.chip.as_deref());
 
         let options = config.probe_options().load(registry)?;
-        let target_probe = options.attach_probe(lister).await?;
+        let target_probe = options.attach_probe(lister)?;
         let mut target_session = options
             .attach_session(target_probe, target_selector)
             .map_err(|operation_error| {

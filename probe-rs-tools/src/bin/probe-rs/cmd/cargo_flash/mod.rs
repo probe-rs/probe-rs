@@ -56,9 +56,9 @@ struct CliOptions {
     pub format_options: crate::FormatOptions,
 }
 
-pub async fn main(args: &[OsString]) {
+pub fn main(args: &[OsString]) {
     let mut registry = Registry::from_builtin_families();
-    match main_try(&mut registry, args).await {
+    match main_try(&mut registry, args) {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling process::exit,
@@ -73,7 +73,7 @@ pub async fn main(args: &[OsString]) {
     }
 }
 
-async fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), OperationError> {
+fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), OperationError> {
     // Parse the commandline options.
     let opt = CliOptions::parse_from(args);
 
@@ -128,7 +128,7 @@ async fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), Oper
     let lister = Lister::new();
 
     // Attach to specified probe
-    let (mut session, probe_options) = opt.probe_options.simple_attach(registry, &lister).await?;
+    let (mut session, probe_options) = opt.probe_options.simple_attach(registry, &lister)?;
 
     // Flash the binary
     let loader =
@@ -139,7 +139,6 @@ async fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), Oper
         &opt.download_options,
         &probe_options,
         loader,
-        false,
     )?;
 
     // Reset target according to CLI options

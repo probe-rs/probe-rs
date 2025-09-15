@@ -453,7 +453,7 @@ impl Debugger {
         self.config.validate_config_files()?;
 
         let mut session_data =
-            SessionData::new(registry, lister, &mut self.config, self.timestamp_offset).await?;
+            SessionData::new(registry, lister, &mut self.config, self.timestamp_offset)?;
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
@@ -1293,7 +1293,7 @@ mod test {
 
         let lister = TestLister::new();
         if with_probe {
-            lister.probes.lock().await.push(fake_probe());
+            lister.probes.borrow_mut().push(fake_probe());
         }
         let lister = Lister::with_lister(Box::new(lister));
 

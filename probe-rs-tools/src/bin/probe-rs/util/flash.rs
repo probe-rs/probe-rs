@@ -27,12 +27,11 @@ pub fn run_flash_download(
     download_options: &BinaryDownloadOptions,
     probe_options: &LoadedProbeOptions,
     loader: FlashLoader,
-    do_chip_erase: bool,
 ) -> Result<(), OperationError> {
     let mut options = DownloadOptions::default();
     options.keep_unwritten_bytes = download_options.restore_unwritten;
     options.dry_run = probe_options.dry_run();
-    options.do_chip_erase = do_chip_erase;
+    options.do_chip_erase = download_options.chip_erase;
     options.disable_double_buffering = download_options.disable_double_buffering;
     options.verify = download_options.verify;
     options.preverify = download_options.preverify;
