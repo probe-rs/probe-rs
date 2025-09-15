@@ -329,9 +329,13 @@ impl CoreHandle<'_> {
 
     /// Clear a single breakpoint from target configuration.
     pub(crate) fn clear_breakpoint(&mut self, address: u64) -> Result<()> {
-        self.core
-            .clear_hw_breakpoint(address)
-            .map_err(DebuggerError::ProbeRs)?;
+        match self.core.clear_hw_breakpoint(address) {
+            Ok(_) => {}
+            Err(probe_rs::Error::Other(e)) if e.starts_with("No breakpoint found at address") => {
+                // FIXME string comparison is terrible
+            }
+            Err(e) => return Err(DebuggerError::ProbeRs(e).into()),
+        }
         if let Some((breakpoint_position, _)) = self.find_breakpoint_in_cache(address) {
             self.core_data.breakpoints.remove(breakpoint_position);
         }
