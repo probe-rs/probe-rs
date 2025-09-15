@@ -104,7 +104,6 @@ impl ProfileCmd {
                 &self.run.shared_options.download_options,
                 &probe_options,
                 loader,
-                self.run.shared_options.chip_erase,
             )?;
         }
 

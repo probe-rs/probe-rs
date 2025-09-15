@@ -290,6 +290,7 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             flash_layout_output_path: None,
             preverify: config.flashing.preverify,
             verify: config.flashing.verify,
+            chip_erase: config.flashing.do_chip_erase,
         };
         let format_options = FormatOptions::default();
         let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
@@ -304,7 +305,6 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             &download_options,
             &probe_options,
             loader,
-            config.flashing.do_chip_erase,
         )?;
 
         match boot_info {
