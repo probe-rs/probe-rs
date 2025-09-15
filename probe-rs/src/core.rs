@@ -5,7 +5,7 @@ use crate::{
         xtensa::sequences::XtensaDebugSequence,
     },
     config::DebugSequence,
-    error::Error,
+    error::{BreakpointError, Error},
     memory::CoreMemoryInterface,
 };
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
@@ -489,8 +489,8 @@ impl<'probe> Core<'probe> {
                 self.inner.clear_hw_breakpoint(bp_position)?;
                 Ok(())
             }
-            None => Err(Error::Other(format!(
-                "No breakpoint found at address {address:#010x}"
+            None => Err(Error::BreakpointOperation(BreakpointError::NotFound(
+                address,
             ))),
         }
     }
