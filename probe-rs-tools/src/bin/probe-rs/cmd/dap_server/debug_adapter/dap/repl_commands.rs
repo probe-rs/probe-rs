@@ -651,6 +651,29 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             })
         },
     },
+    ReplCommand {
+        command: "step",
+        help_text: "Step one instruction",
+        sub_commands: &[],
+        args: &[],
+        handler: |target_core, _, _| {
+            let core_info = target_core.core.step()?;
+
+            Ok(Response {
+                command: "pause".to_string(),
+                success: true,
+                message: Some(
+                    CoreStatus::Halted(HaltReason::Request)
+                        .short_long_status(Some(core_info.pc))
+                        .1,
+                ),
+                type_: "response".to_string(),
+                request_seq: 0,
+                seq: 0,
+                body: None,
+            })
+        },
+    },
 ];
 
 struct ReplStackFrame<'a>(&'a StackFrame);
