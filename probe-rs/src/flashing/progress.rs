@@ -1,5 +1,5 @@
 use super::FlashLayout;
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 /// A structure to manage the flashing procedure progress reporting.
 ///
@@ -14,52 +14,57 @@ use std::{sync::Arc, time::Duration};
 /// // Print events
 /// let progress = FlashProgress::new(|event| println!("Event: {:#?}", event));
 /// ```
-#[derive(Clone)]
 pub struct FlashProgress<'a> {
-    handler: Arc<dyn Fn(ProgressEvent) + 'a>,
+    handler: Box<dyn FnMut(ProgressEvent) + 'a>,
+}
+
+impl<'a> Default for FlashProgress<'a> {
+    fn default() -> Self {
+        Self::empty()
+    }
 }
 
 impl<'a> FlashProgress<'a> {
     /// Create a new `FlashProgress` structure with a given `handler` to be called on events.
-    pub fn new(handler: impl Fn(ProgressEvent) + 'a) -> Self {
+    pub fn new(handler: impl FnMut(ProgressEvent) + 'a) -> Self {
         Self {
-            handler: Arc::new(handler),
+            handler: Box::new(handler),
         }
     }
 
     /// Create a new `FlashProgress` structure with an empty handler.
     pub fn empty() -> Self {
         Self {
-            handler: Arc::new(|_| {}),
+            handler: Box::new(|_| {}),
         }
     }
 
     /// Emit a flashing progress event.
-    pub fn emit(&self, event: ProgressEvent) {
+    pub fn emit(&mut self, event: ProgressEvent) {
         (self.handler)(event);
     }
 
     // --- Methods for emitting specific kinds of events.
 
     /// Signal that the flashing algorithm was set up and is initialized.
-    pub(super) fn initialized(&self, phases: Vec<FlashLayout>) {
+    pub(super) fn initialized(&mut self, phases: Vec<FlashLayout>) {
         self.emit(ProgressEvent::FlashLayoutReady {
             flash_layout: phases,
         });
     }
 
     /// Signal that a new progress bar should be created.
-    pub(super) fn add_progress_bar(&self, operation: ProgressOperation, total: Option<u64>) {
+    pub(super) fn add_progress_bar(&mut self, operation: ProgressOperation, total: Option<u64>) {
         self.emit(ProgressEvent::AddProgressBar { operation, total });
     }
 
     /// Signal that the procedure started.
-    pub(super) fn started(&self, operation: ProgressOperation) {
+    pub(super) fn started(&mut self, operation: ProgressOperation) {
         self.emit(ProgressEvent::Started(operation));
     }
 
     /// Signal that the procedure has made progress.
-    pub(super) fn progressed(&self, operation: ProgressOperation, size: u64, time: Duration) {
+    pub(super) fn progressed(&mut self, operation: ProgressOperation, size: u64, time: Duration) {
         self.emit(ProgressEvent::Progress {
             operation,
             size,
@@ -68,99 +73,99 @@ impl<'a> FlashProgress<'a> {
     }
 
     /// Signal that the procedure failed.
-    pub(super) fn failed(&self, operation: ProgressOperation) {
+    pub(super) fn failed(&mut self, operation: ProgressOperation) {
         self.emit(ProgressEvent::Failed(operation));
     }
 
     /// Signal that the procedure completed successfully.
-    pub(super) fn finished(&self, operation: ProgressOperation) {
+    pub(super) fn finished(&mut self, operation: ProgressOperation) {
         self.emit(ProgressEvent::Finished(operation));
     }
 
     /// Signal that a flashing algorithm produced a diagnostic message.
-    pub(super) fn message(&self, message: String) {
+    pub(super) fn message(&mut self, message: String) {
         self.emit(ProgressEvent::DiagnosticMessage { message });
     }
 
     // --- Methods for emitting events for a specific operation.
 
     /// Signal that the erasing procedure started.
-    pub(super) fn started_erasing(&self) {
+    pub(super) fn started_erasing(&mut self) {
         self.started(ProgressOperation::Erase);
     }
 
     /// Signal that the filling procedure started.
-    pub(super) fn started_filling(&self) {
+    pub(super) fn started_filling(&mut self) {
         self.started(ProgressOperation::Fill);
     }
 
     /// Signal that the programming procedure started.
-    pub(super) fn started_programming(&self) {
+    pub(super) fn started_programming(&mut self) {
         self.started(ProgressOperation::Program);
     }
 
     /// Signal that the verifying procedure started.
-    pub(crate) fn started_verifying(&self) {
+    pub(crate) fn started_verifying(&mut self) {
         self.started(ProgressOperation::Verify);
     }
 
     /// Signal that the sector erasing procedure has made progress.
-    pub(super) fn sector_erased(&self, size: u64, time: Duration) {
+    pub(super) fn sector_erased(&mut self, size: u64, time: Duration) {
         self.progressed(ProgressOperation::Erase, size, time);
     }
 
     /// Signal that the page filling procedure has made progress.
-    pub(super) fn page_filled(&self, size: u64, time: Duration) {
+    pub(super) fn page_filled(&mut self, size: u64, time: Duration) {
         self.progressed(ProgressOperation::Fill, size, time);
     }
 
     /// Signal that the page programming procedure has made progress.
-    pub(super) fn page_programmed(&self, size: u64, time: Duration) {
+    pub(super) fn page_programmed(&mut self, size: u64, time: Duration) {
         self.progressed(ProgressOperation::Program, size, time);
     }
 
     /// Signal that the page filling procedure has made progress.
-    pub(super) fn page_verified(&self, size: u64, time: Duration) {
+    pub(super) fn page_verified(&mut self, size: u64, time: Duration) {
         self.progressed(ProgressOperation::Verify, size, time);
     }
 
     /// Signal that the erasing procedure failed.
-    pub(super) fn failed_erasing(&self) {
+    pub(super) fn failed_erasing(&mut self) {
         self.failed(ProgressOperation::Erase);
     }
 
     /// Signal that the filling procedure failed.
-    pub(super) fn failed_filling(&self) {
+    pub(super) fn failed_filling(&mut self) {
         self.failed(ProgressOperation::Fill);
     }
 
     /// Signal that the programming procedure failed.
-    pub(super) fn failed_programming(&self) {
+    pub(super) fn failed_programming(&mut self) {
         self.failed(ProgressOperation::Program);
     }
 
     /// Signal that the verifying procedure failed.
-    pub(super) fn failed_verifying(&self) {
+    pub(super) fn failed_verifying(&mut self) {
         self.failed(ProgressOperation::Verify);
     }
 
     /// Signal that the programming procedure completed successfully.
-    pub(super) fn finished_programming(&self) {
+    pub(super) fn finished_programming(&mut self) {
         self.finished(ProgressOperation::Program);
     }
 
     /// Signal that the erasing procedure completed successfully.
-    pub(super) fn finished_erasing(&self) {
+    pub(super) fn finished_erasing(&mut self) {
         self.finished(ProgressOperation::Erase);
     }
 
     /// Signal that the filling procedure completed successfully.
-    pub(super) fn finished_filling(&self) {
+    pub(super) fn finished_filling(&mut self) {
         self.finished(ProgressOperation::Fill);
     }
 
     /// Signal that the verifying procedure completed successfully.
-    pub(super) fn finished_verifying(&self) {
+    pub(super) fn finished_verifying(&mut self) {
         self.finished(ProgressOperation::Verify);
     }
 }

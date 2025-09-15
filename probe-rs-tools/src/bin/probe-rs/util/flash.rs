@@ -36,16 +36,14 @@ pub fn run_flash_download(
     options.verify = download_options.verify;
     options.preverify = download_options.preverify;
 
-    let flash_layout_output_path = download_options.flash_layout_output_path.clone();
-
     let pb = if download_options.disable_progressbars {
         None
     } else {
         Some(CliProgressBars::new())
     };
 
-    options.progress = Some(FlashProgress::new(move |event| {
-        if let Some(ref path) = flash_layout_output_path {
+    options.progress = FlashProgress::new(move |event| {
+        if let Some(ref path) = download_options.flash_layout_output_path {
             if let probe_rs::flashing::ProgressEvent::FlashLayoutReady {
                 flash_layout: ref phases,
             } = event
@@ -64,7 +62,7 @@ pub fn run_flash_download(
         if let Some(ref pb) = pb {
             ProgressEvent::from_library_event(event, |event| pb.handle(event));
         }
-    }));
+    });
 
     // Start timer.
     let flash_timer = Instant::now();
