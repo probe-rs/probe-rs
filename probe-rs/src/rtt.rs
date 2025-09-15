@@ -14,12 +14,11 @@
 //! use probe_rs::probe::list::Lister;
 //! use probe_rs::Permissions;
 //! use probe_rs::rtt::Rtt;
-//! # async_io::block_on(async {
 //!
 //! // First obtain a probe-rs session (see probe-rs documentation for details)
 //! let lister = Lister::new();
 //!
-//! let probes = lister.list_all().await;
+//! let probes = lister.list_all();
 //!
 //! let probe = probes[0].open()?;
 //! let mut session = probe.attach("somechip", Permissions::default())?;
@@ -43,7 +42,6 @@
 //! }
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
-//! # });
 //! ```
 
 mod channel;

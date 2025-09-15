@@ -150,27 +150,25 @@ fn main() -> Result<()> {
 }
 
 fn open_probe(index: Option<usize>) -> Result<Probe> {
-    async_io::block_on(async move {
-        let lister = Lister::new();
+    let lister = Lister::new();
 
-        let list = lister.list_all().await;
+    let list = lister.list_all();
 
-        let device = match index {
-            Some(index) => list
-                .get(index)
-                .ok_or_else(|| anyhow!("Probe with specified index not found"))?,
-            None => {
-                // open the default probe, if only one probe was found
-                if list.len() == 1 {
-                    &list[0]
-                } else {
-                    return Err(anyhow!("No probe found."));
-                }
+    let device = match index {
+        Some(index) => list
+            .get(index)
+            .ok_or_else(|| anyhow!("Probe with specified index not found"))?,
+        None => {
+            // open the default probe, if only one probe was found
+            if list.len() == 1 {
+                &list[0]
+            } else {
+                return Err(anyhow!("No probe found."));
             }
-        };
+        }
+    };
 
-        let probe = device.open().context("Failed to open probe")?;
+    let probe = device.open().context("Failed to open probe")?;
 
-        Ok(probe)
-    })
+    Ok(probe)
 }
