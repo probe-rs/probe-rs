@@ -35,6 +35,12 @@ impl XtensaExceptionHandler {
 
         // We can try and use FP to unwind SP and RA that allows us to continue unwinding.
 
+        let ra = unwind_registers.get_register_value_by_role(&RegisterRole::ReturnAddress)?;
+
+        if ra == 0 {
+            return Ok(());
+        }
+
         // Current register values.
         let sp = unwind_registers.get_register_value_by_role(&RegisterRole::StackPointer)?;
 
@@ -45,7 +51,6 @@ impl XtensaExceptionHandler {
             ));
         }
 
-        let ra = unwind_registers.get_register_value_by_role(&RegisterRole::ReturnAddress)?;
         let windowsize = (ra & 0xc000_0000) >> 30;
 
         // Read A0-A3 from current stack frame's Register-Spill Area.
