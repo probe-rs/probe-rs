@@ -599,6 +599,19 @@ impl CoreHandle<'_> {
                 request.write_errno(&mut self.core, 0)?;
             }
 
+            SemihostingCommand::ExitSuccess => {
+                debug_adapter.log_to_console("Application has exited with success.");
+                return Ok(CoreStatus::Halted(HaltReason::Breakpoint(
+                    BreakpointCause::Semihosting(command),
+                )));
+            }
+            SemihostingCommand::ExitError(details) => {
+                debug_adapter.log_to_console(format!("Application has exited with  {details}"));
+                return Ok(CoreStatus::Halted(HaltReason::Breakpoint(
+                    BreakpointCause::Semihosting(command),
+                )));
+            }
+
             unhandled => {
                 tracing::warn!("Unhandled semihosting command: {:?}", unhandled);
                 // Turn unhandled semihosting commands into a breakpoint.

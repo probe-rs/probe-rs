@@ -311,6 +311,12 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
         // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "list"
         // Then, we wait until the target invokes SEMIHOSTING_USER_LIST (0x100) with the json containing all tests
         match cmd {
+            SemihostingCommand::ExitSuccess => {
+                anyhow::bail!("Application exited instead of providing a test list")
+            }
+            SemihostingCommand::ExitError(details) => anyhow::bail!(
+                "Application exited with error {details} instead of providing a test list",
+            ),
             SemihostingCommand::GetCommandLine(request) if !self.cmdline_requested => {
                 tracing::debug!("target asked for cmdline. send 'list'");
                 self.cmdline_requested = true;
