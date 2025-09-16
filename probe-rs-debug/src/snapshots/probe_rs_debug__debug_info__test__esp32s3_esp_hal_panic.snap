@@ -178,6 +178,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107310682
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107310682
   frame_base: 1070449504
@@ -529,6 +538,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107310574
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107310574
   frame_base: 1070449552
@@ -921,6 +939,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107310611
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107310611
   frame_base: 1070449584
@@ -1263,6 +1290,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107327898
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107327898
   frame_base: 1070449632
@@ -1682,6 +1718,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107301821
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107301821
   frame_base: 1070449680
@@ -1879,6 +1924,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107301788
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107301788
   frame_base: 1070449744
@@ -2076,6 +2130,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107301788
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107301788
   frame_base: 1070449808
@@ -2273,6 +2336,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107301788
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107301788
   frame_base: 1070449872
@@ -2470,6 +2542,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107301788
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107301788
   frame_base: 1070449936
@@ -2667,6 +2748,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107301788
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107301788
   frame_base: 1070450000
@@ -2864,6 +2954,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107300807
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107300807
   frame_base: 1070450064
@@ -3334,6 +3433,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107300807
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U64: 1107300547
   frame_base: 1070450064
@@ -4140,6 +4248,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107323454
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107323454
   frame_base: 1070450240
@@ -4877,6 +4994,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107323454
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U64: 1107323449
   frame_base: 1070450240
@@ -5404,6 +5530,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107323454
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U64: 1107323384
   frame_base: 1070450240
@@ -5669,6 +5804,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107323454
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U64: 1107323384
   frame_base: 1070450240
@@ -5940,6 +6084,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107300249
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107300249
   frame_base: 1070450272
@@ -6222,6 +6375,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107301855
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107301855
   frame_base: 1070450352
@@ -6579,6 +6741,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107301855
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U64: 1107301845
   frame_base: 1070450352
@@ -6765,6 +6936,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1107322891
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1107322891
   frame_base: 1070450400
@@ -6951,6 +7131,15 @@ expression: stack_frames
       dwarf_id: 16
       value:
         U32: 1077381094
+    - core_register:
+        id: 65281
+        roles:
+          - Core: ps
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
   pc:
     U32: 1077381094
   frame_base: 1070450432

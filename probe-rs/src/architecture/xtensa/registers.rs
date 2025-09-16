@@ -47,6 +47,14 @@ pub const FP: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Clear,
 };
 
+/// Processor status register.
+pub const PS: CoreRegister = CoreRegister {
+    roles: &[RegisterRole::Core("ps"), RegisterRole::ProcessorStatus],
+    id: crate::RegisterId(0xFF01),
+    data_type: RegisterDataType::UnsignedInteger(32),
+    unwind_rule: UnwindRule::Clear,
+};
+
 /// XTENSA core registers
 pub static XTENSA_CORE_REGISTERS: LazyLock<CoreRegisters> =
     LazyLock::new(|| CoreRegisters::new(XTENSA_REGISTERS_SET.iter().collect()));
@@ -150,4 +158,5 @@ static XTENSA_REGISTERS_SET: &[CoreRegister] = &[
         unwind_rule: UnwindRule::Clear,
     },
     PC,
+    PS,
 ];
