@@ -70,6 +70,16 @@ pub enum Error {
         /// The source error of this error.
         source: Box<dyn std::error::Error + 'static + Send + Sync>,
     },
+
+    /// Error during breakpoint configuration
+    BreakpointOperation(#[from] BreakpointError),
+}
+
+/// Errors that occur during breakpoint configuration
+#[derive(thiserror::Error, Debug, docsplay::Display)]
+pub enum BreakpointError {
+    /// No breakpoint found at address {0:#010x}
+    NotFound(u64),
 }
 
 impl From<ArmError> for Error {

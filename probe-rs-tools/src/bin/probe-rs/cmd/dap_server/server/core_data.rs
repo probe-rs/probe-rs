@@ -22,8 +22,8 @@ use crate::{
     util::rtt::RttDecoder,
 };
 use anyhow::{Result, anyhow};
-use probe_rs::BreakpointCause;
 use probe_rs::semihosting::SemihostingCommand;
+use probe_rs::{BreakpointCause, BreakpointError};
 use probe_rs::{Core, CoreStatus, HaltReason, rtt::ScanRegion};
 use probe_rs_debug::VerifiedBreakpoint;
 use probe_rs_debug::{
@@ -329,9 +329,11 @@ impl CoreHandle<'_> {
 
     /// Clear a single breakpoint from target configuration.
     pub(crate) fn clear_breakpoint(&mut self, address: u64) -> Result<()> {
-        self.core
-            .clear_hw_breakpoint(address)
-            .map_err(DebuggerError::ProbeRs)?;
+        match self.core.clear_hw_breakpoint(address) {
+            Ok(_) => {}
+            Err(probe_rs::Error::BreakpointOperation(BreakpointError::NotFound(_addr))) => {}
+            Err(e) => return Err(DebuggerError::ProbeRs(e).into()),
+        }
         if let Some((breakpoint_position, _)) = self.find_breakpoint_in_cache(address) {
             self.core_data.breakpoints.remove(breakpoint_position);
         }

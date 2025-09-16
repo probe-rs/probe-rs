@@ -97,7 +97,7 @@ pub use crate::core::{
     CoreRegisters, CoreState, CoreStatus, HaltReason, MemoryMappedRegister, RegisterId,
     RegisterRole, RegisterValue, SpecificCoreState, VectorCatchCondition,
 };
-pub use crate::error::Error;
+pub use crate::error::{BreakpointError, Error};
 pub use crate::memory::MemoryInterface;
 pub use crate::session::{Permissions, Session, SessionConfig};
 
