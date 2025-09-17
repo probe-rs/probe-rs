@@ -242,15 +242,18 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
 
 // Process all `.pdsc` files in the given directory.
 pub fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
-    walk_files(path, &mut |path| {
-        if has_extension(path, "pack") {
-            log::info!("Found .pdsc file: {}", path.display());
+    walk_files(path, &mut |file_path| {
+        if has_extension(file_path, "pdsc") {
+            log::info!("Found .pdsc file: {}", file_path.display());
 
-            let package = Package::from_path(path)
-                .context(format!("Failed to open .pdsc file {}.", path.display()))?;
+            let package = Package::from_path(file_path).context(format!(
+                "Failed to open .pdsc file {}.",
+                file_path.display()
+            ))?;
 
-            extract_families::<fs::File>(package, Kind::Directory(path), families, false)
-                .context(format!("Failed to process .pdsc file {}.", path.display()))?;
+            extract_families::<fs::File>(package, Kind::Directory(path), families, false).context(
+                format!("Failed to process .pdsc file {}.", file_path.display()),
+            )?;
         }
 
         Ok(())
