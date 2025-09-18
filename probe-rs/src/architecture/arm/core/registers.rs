@@ -2,4 +2,5 @@
 
 pub mod aarch32;
 pub mod aarch64;
+pub mod armv8m;
 pub mod cortex_m;

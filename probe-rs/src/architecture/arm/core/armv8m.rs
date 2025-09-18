@@ -3,6 +3,10 @@
 use super::{
     CortexMState, Dfsr,
     cortex_m::{IdPfr1, Mvfr0},
+    registers::armv8m::{
+        V8M_BASE_SEC_FP_REGISTERS, V8M_BASE_SEC_REGISTERS, V8M_MAIN_FP_REGISTERS,
+        V8M_MAIN_REGISTERS, V8M_MAIN_SEC_FP_REGISTERS, V8M_MAIN_SEC_REGISTERS,
+    },
     registers::cortex_m::{
         CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS, FP, PC, RA, SP,
     },
@@ -30,6 +34,9 @@ pub struct Armv8m<'probe> {
     memory: Box<dyn ArmMemoryInterface + 'probe>,
 
     state: &'probe mut CortexMState,
+
+    /// True if the core implements the security extension.
+    security: bool,
 
     sequence: Arc<dyn ArmDebugSequence>,
 }
@@ -72,9 +79,14 @@ impl<'probe> Armv8m<'probe> {
             state.initialize();
         }
 
+        // TODO is this stupid?
+        let idpfr1 = IdPfr1(memory.read_word_32(IdPfr1::get_mmio_address())?);
+        let security = idpfr1.security_present();
+
         Ok(Self {
             memory,
             state,
+            security,
             sequence,
         })
     }
@@ -447,10 +459,19 @@ impl CoreInterface for Armv8m<'_> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        if self.state.fp_present {
-            &CORTEX_M_WITH_FP_CORE_REGISTERS
-        } else {
-            &CORTEX_M_CORE_REGISTERS
+        let main = true; // TODO m33 is mainline, no one has m23 (baseline) yet
+        let security = self.security;
+        let fp = self.state.fp_present;
+
+        match (main, security, fp) {
+            (true, true, true) => &V8M_MAIN_SEC_FP_REGISTERS,
+            (true, true, false) => &V8M_MAIN_SEC_REGISTERS,
+            (true, false, true) => &V8M_MAIN_FP_REGISTERS,
+            (true, false, false) => &V8M_MAIN_REGISTERS,
+            (false, true, true) => &V8M_BASE_SEC_FP_REGISTERS,
+            (false, true, false) => &V8M_BASE_SEC_REGISTERS,
+            (false, false, true) => &CORTEX_M_WITH_FP_CORE_REGISTERS,
+            (false, false, false) => &CORTEX_M_CORE_REGISTERS,
         }
     }
 
