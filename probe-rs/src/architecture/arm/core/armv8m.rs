@@ -35,6 +35,9 @@ pub struct Armv8m<'probe> {
 
     state: &'probe mut CortexMState,
 
+    /// True if the core implements the security extension.
+    security: bool,
+
     sequence: Arc<dyn ArmDebugSequence>,
 }
 
@@ -76,9 +79,14 @@ impl<'probe> Armv8m<'probe> {
             state.initialize();
         }
 
+        // TODO is this stupid?
+        let idpfr1 = IdPfr1(memory.read_word_32(IdPfr1::get_mmio_address())?);
+        let security = idpfr1.security_present();
+
         Ok(Self {
             memory,
             state,
+            security,
             sequence,
         })
     }
@@ -451,8 +459,8 @@ impl CoreInterface for Armv8m<'_> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        let main = true; //TODO
-        let security = true; //TODO
+        let main = true; // TODO m33 is mainline, no one has m23 (baseline) yet
+        let security = self.security;
         let fp = self.state.fp_present;
 
         match (main, security, fp) {
