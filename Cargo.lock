@@ -3993,13 +3993,13 @@ dependencies = [
  "anyhow",
  "clap",
  "colored 3.0.0",
- "env_logger",
  "linkme",
  "log",
  "probe-rs",
  "serde",
  "thiserror 2.0.16",
  "toml 0.9.6",
+ "tracing-subscriber",
 ]
 
 [[package]]
