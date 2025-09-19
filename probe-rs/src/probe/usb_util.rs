@@ -47,7 +47,7 @@ impl InterfaceExt for Interface {
         }
 
         let max_packet_size = endpoint.max_packet_size().max(1);
-        let requested_len = buf.len().div_ceil(max_packet_size);
+        let requested_len = buf.len().div_ceil(max_packet_size) * max_packet_size;
 
         let transfer_buffer = Buffer::new(requested_len);
         endpoint.submit(transfer_buffer);
