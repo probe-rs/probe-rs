@@ -91,7 +91,7 @@ struct Opt {
 }
 
 fn main() -> Result<ExitCode> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let opt = Opt::parse();
 
