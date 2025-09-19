@@ -20,7 +20,7 @@ use crate::{
     },
 };
 use bitvec::prelude::*;
-use nusb::DeviceInfo;
+use nusb::{DeviceInfo, MaybeFuture};
 use std::{
     io::{Read, Write},
     sync::Arc,
@@ -281,8 +281,11 @@ impl ProbeFactory for FtdiProbeFactory {
             ));
         };
 
-        let mut probes = nusb::list_devices()
-            .map_err(FtdiError::from)?
+        let devices = nusb::list_devices()
+            .wait()
+            .map_err(|e| DebugProbeError::from(FtdiError::Usb(e.into())))?;
+
+        let mut probes = devices
             .filter(|usb_info| selector.matches(usb_info))
             .collect::<Vec<_>>();
 
@@ -610,10 +613,13 @@ fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
 
 #[tracing::instrument(skip_all)]
 fn list_ftdi_devices() -> Vec<DebugProbeInfo> {
-    match nusb::list_devices() {
+    match nusb::list_devices().wait() {
         Ok(devices) => devices
             .filter_map(|device| get_device_info(&device))
             .collect(),
-        Err(_) => vec![],
+        Err(e) => {
+            tracing::warn!("error listing FTDI devices: {e}");
+            vec![]
+        }
     }
 }
