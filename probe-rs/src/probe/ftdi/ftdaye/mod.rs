@@ -4,10 +4,13 @@ use std::collections::VecDeque;
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
-use nusb::DeviceInfo;
+use nusb::{
+    DeviceInfo, MaybeFuture,
+    descriptors::TransferType,
+    transfer::{ControlOut, ControlType, Direction, Recipient},
+};
 
 use error::FtdiError;
-use nusb::transfer::{Control, ControlType, Direction, EndpointType, Recipient};
 use tracing::{debug, trace, warn};
 
 use crate::probe::DebugProbeError;
@@ -93,22 +96,22 @@ struct FtdiContext {
 
 impl FtdiContext {
     fn sio_write(&mut self, request: u8, value: u16) -> Result<()> {
-        let result = self
-            .handle
-            .control_out_blocking(
-                Control {
+        self.handle
+            .control_out(
+                ControlOut {
                     control_type: ControlType::Vendor,
                     recipient: Recipient::Device,
                     request,
                     value,
                     index: self.interface.index(),
+                    data: &[],
                 },
-                &[],
                 self.usb_write_timeout,
             )
-            .map_err(std::io::Error::from)?;
+            .wait()
+            .map_err(|e| FtdiError::Usb(std::io::Error::from(e)))?;
 
-        tracing::debug!("Response to {:02X}/{:04X}: {:?}", request, value, result);
+        tracing::debug!("Control transfer {:02X}/{:04X} completed", request, value);
 
         Ok(())
     }
@@ -305,7 +308,8 @@ impl Device {
 
         let handle = usb_device
             .open()
-            .map_err(|e| open_error(e, "opening the USB device"))?;
+            .wait()
+            .map_err(|e| open_error(e.into(), "opening the USB device"))?;
 
         let configs: Vec<_> = handle.configurations().collect();
 
@@ -322,7 +326,8 @@ impl Device {
                 if configuration != conf.configuration_value() {
                     handle
                         .set_configuration(conf.configuration_value())
-                        .map_err(FtdiError::Usb)?;
+                        .wait()
+                        .map_err(|e| FtdiError::Usb(e.into()))?;
                 }
             }
         }
@@ -344,7 +349,7 @@ impl Device {
 
                 if endpoints
                     .iter()
-                    .any(|ep| ep.transfer_type() != EndpointType::Bulk)
+                    .any(|ep| ep.transfer_type() != TransferType::Bulk)
                 {
                     warn!(
                         "encountered non-bulk endpoints, skipping interface: {:#x?}",
@@ -417,7 +422,8 @@ impl Device {
 
         let handle = handle
             .detach_and_claim_interface(intf)
-            .map_err(|e| open_error(e, "taking control over USB device"))?;
+            .wait()
+            .map_err(|e| open_error(e.into(), "taking control over USB device"))?;
 
         tracing::debug!("Opened FTDI device: {:?}", chip_type);
 
