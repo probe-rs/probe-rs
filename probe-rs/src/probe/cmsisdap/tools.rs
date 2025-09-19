@@ -5,10 +5,7 @@ use crate::probe::{
 };
 #[cfg(feature = "cmsisdap_v1")]
 use hidapi::HidApi;
-use nusb::{
-    DeviceInfo,
-    transfer::{Direction, EndpointType},
-};
+use nusb::{DeviceInfo, MaybeFuture, descriptors::TransferType, transfer::Direction};
 
 const USB_CLASS_HID: u8 = 0x03;
 
@@ -22,12 +19,12 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
     tracing::debug!("Searching for CMSIS-DAP probes using nusb");
 
     #[cfg_attr(not(feature = "cmsisdap_v1"), expect(unused_mut))]
-    let mut probes = match nusb::list_devices() {
+    let mut probes = match nusb::list_devices().wait() {
         Ok(devices) => devices
             .filter_map(|device| get_cmsisdap_info(&device))
             .collect(),
         Err(e) => {
-            tracing::warn!("error listing devices with nusb: {:?}", e);
+            tracing::warn!("error listing devices with nusb: {e}");
             vec![]
         }
     };
@@ -157,8 +154,17 @@ pub fn open_v2_device(
     let vid = device_info.vendor_id();
     let pid = device_info.product_id();
 
-    let Some(device) = device_info.open().ok() else {
-        return Ok(None);
+    let device = match device_info.open().wait() {
+        Ok(device) => device,
+        Err(e) => {
+            tracing::debug!(
+                vendor_id = %format!("{vid:04x}"),
+                product_id = %format!("{pid:04x}"),
+                error = %e,
+                "failed to open device for CMSIS-DAP v2"
+            );
+            return Ok(None);
+        }
     };
 
     // Go through interfaces to try and find a v2 interface.
@@ -193,13 +199,13 @@ pub fn open_v2_device(
             let eps: Vec<_> = i_desc.endpoints().collect();
 
             // Check the first endpoint is bulk out
-            if eps[0].transfer_type() != EndpointType::Bulk || eps[0].direction() != Direction::Out
+            if eps[0].transfer_type() != TransferType::Bulk || eps[0].direction() != Direction::Out
             {
                 continue;
             }
 
             // Check the second endpoint is bulk in
-            if eps[1].transfer_type() != EndpointType::Bulk || eps[1].direction() != Direction::In {
+            if eps[1].transfer_type() != TransferType::Bulk || eps[1].direction() != Direction::In {
                 continue;
             }
 
@@ -207,14 +213,14 @@ pub fn open_v2_device(
             let mut swo_ep = None;
 
             if eps.len() > 2
-                && eps[2].transfer_type() == EndpointType::Bulk
+                && eps[2].transfer_type() == TransferType::Bulk
                 && eps[2].direction() == Direction::In
             {
                 swo_ep = Some((eps[2].address(), eps[2].max_packet_size()));
             }
 
             // Attempt to claim this interface
-            match device.claim_interface(interface.interface_number()) {
+            match device.claim_interface(interface.interface_number()).wait() {
                 Ok(handle) => {
                     tracing::debug!("Opening {:04x}:{:04x} in CMSIS-DAPv2 mode", vid, pid);
                     reject_probe_by_version(
@@ -230,7 +236,14 @@ pub fn open_v2_device(
                         max_packet_size: eps[1].max_packet_size(),
                     }));
                 }
-                Err(_) => continue,
+                Err(e) => {
+                    tracing::debug!(
+                        interface = interface.interface_number(),
+                        error = %e,
+                        "failed to claim interface"
+                    );
+                    continue;
+                }
             }
         }
     }
@@ -290,25 +303,28 @@ pub fn open_device_from_selector(
     // Try using nusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver
     // or permission issues with opening bulk devices.
-    if let Ok(devices) = nusb::list_devices() {
-        for device in devices {
-            tracing::trace!("Trying device {:?}", device);
+    match nusb::list_devices().wait() {
+        Ok(devices) => {
+            for device in devices {
+                tracing::trace!("Trying device {:?}", device);
 
-            if selector.matches(&device) {
-                hid_device_info = get_cmsisdap_info(&device);
+                if selector.matches(&device) {
+                    hid_device_info = get_cmsisdap_info(&device);
 
-                if hid_device_info.is_some() {
-                    // If the VID, PID, and potentially SN all match,
-                    // and the device is a valid CMSIS-DAP probe,
-                    // attempt to open the device in v2 mode.
-                    if let Some(device) = open_v2_device(&device)? {
-                        return Ok(device);
+                    if hid_device_info.is_some() {
+                        // If the VID, PID, and potentially SN all match,
+                        // and the device is a valid CMSIS-DAP probe,
+                        // attempt to open the device in v2 mode.
+                        if let Some(device) = open_v2_device(&device)? {
+                            return Ok(device);
+                        }
                     }
                 }
             }
         }
-    } else {
-        tracing::debug!("No devices matched using nusb");
+        Err(e) => {
+            tracing::debug!("No devices matched using nusb: {e}");
+        }
     }
 
     #[cfg(not(feature = "cmsisdap_v1"))]
