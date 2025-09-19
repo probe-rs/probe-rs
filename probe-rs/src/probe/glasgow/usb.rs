@@ -112,14 +112,12 @@ impl GlasgowUsbDevice {
     pub fn transfer(
         &mut self,
         output: Vec<u8>,
-        input: impl FnMut(Vec<u8>) -> Result<bool, DebugProbeError>,
+        mut input: impl FnMut(Vec<u8>) -> Result<bool, DebugProbeError>,
     ) -> Result<(), DebugProbeError> {
         let out_iface = self.out_iface.clone();
         let in_iface = self.in_iface.clone();
         let out_ep = self.out_ep_num;
         let in_ep = self.in_ep_num;
-        let mut input = input;
-        let output = output;
 
         block_on(async move {
             let out_fut = async move {
