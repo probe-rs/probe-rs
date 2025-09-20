@@ -15,17 +15,22 @@ impl InterfaceExt for Interface {
             .endpoint::<Bulk, Out>(endpoint)
             .map_err(io::Error::from)?;
 
-        if buf.is_empty() {
-            return Ok(0);
-        }
-
         let mut transfer_buffer = Buffer::new(buf.len());
         transfer_buffer.extend_from_slice(buf);
 
         endpoint.submit(transfer_buffer);
 
         let Some(completion) = endpoint.wait_next_complete(timeout) else {
+            // Request cancellation...
             endpoint.cancel_all();
+
+            // ...and then immediately drain the completion so the endpoint is reusable.
+            while let Some(cancelled) = endpoint.wait_next_complete(Duration::from_millis(10)) {
+                if cancelled.status.is_err() {
+                    break;
+                }
+            }
+
             return Err(io::Error::new(
                 io::ErrorKind::TimedOut,
                 "bulk write timed out",
@@ -42,10 +47,6 @@ impl InterfaceExt for Interface {
             .endpoint::<Bulk, In>(endpoint)
             .map_err(io::Error::from)?;
 
-        if buf.is_empty() {
-            return Ok(0);
-        }
-
         let max_packet_size = endpoint.max_packet_size().max(1);
         let requested_len = buf.len().div_ceil(max_packet_size) * max_packet_size;
 
@@ -53,7 +54,16 @@ impl InterfaceExt for Interface {
         endpoint.submit(transfer_buffer);
 
         let Some(completion) = endpoint.wait_next_complete(timeout) else {
+            // Request cancellation...
             endpoint.cancel_all();
+
+            // ...and then immediately drain the completion so the endpoint is reusable.
+            while let Some(cancelled) = endpoint.wait_next_complete(Duration::from_millis(10)) {
+                if cancelled.status.is_err() {
+                    break;
+                }
+            }
+
             return Err(io::Error::new(
                 io::ErrorKind::TimedOut,
                 "bulk read timed out",
