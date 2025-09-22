@@ -24,12 +24,10 @@ impl InterfaceExt for Interface {
             // Request cancellation...
             endpoint.cancel_all();
 
-            // ...and then immediately drain the completion so the endpoint is reusable.
-            while let Some(cancelled) = endpoint.wait_next_complete(Duration::from_millis(10)) {
-                if cancelled.status.is_err() {
-                    break;
-                }
-            }
+            // ...and then immediately drain the completion. Whether the the response is the
+            // result of the original write, the cancellation, or a timeout of the cancellation, we
+            // drop it and return a timeout.
+            let _ = endpoint.wait_next_complete(Duration::from_millis(100));
 
             return Err(io::Error::new(
                 io::ErrorKind::TimedOut,
@@ -57,12 +55,10 @@ impl InterfaceExt for Interface {
             // Request cancellation...
             endpoint.cancel_all();
 
-            // ...and then immediately drain the completion so the endpoint is reusable.
-            while let Some(cancelled) = endpoint.wait_next_complete(Duration::from_millis(10)) {
-                if cancelled.status.is_err() {
-                    break;
-                }
-            }
+            // ...and then immediately drain the completion. Whether the the response is the
+            // result of the original read, the cancellation, or a timeout of the cancellation, we
+            // drop it and return a timeout.
+            let _ = endpoint.wait_next_complete(Duration::from_millis(100));
 
             return Err(io::Error::new(
                 io::ErrorKind::TimedOut,
