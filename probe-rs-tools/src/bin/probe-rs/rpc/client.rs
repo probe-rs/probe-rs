@@ -130,7 +130,7 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
     let tx = WebsocketTx::new(tx);
     tx.send(challenge_response)
         .await
-        .map_err(|err| anyhow::anyhow!("Failed to send challenge response: {:?}", err))?;
+        .map_err(|err| anyhow::anyhow!("Failed to send challenge response: {err:?}"))?;
 
     let mut client = RpcClient::new_from_wire(
         tx,
@@ -269,9 +269,9 @@ impl RpcClient {
         match self.client.send_resp::<E>(req).await {
             Ok(r) => Ok(r),
             Err(e) => match e {
-                HostErr::Wire(w) => anyhow::bail!("Wire error: {}", w),
+                HostErr::Wire(w) => anyhow::bail!("Wire error: {w}"),
                 HostErr::BadResponse => anyhow::bail!("Bad response"),
-                HostErr::Postcard(error) => anyhow::bail!("Postcard error: {}", error),
+                HostErr::Postcard(error) => anyhow::bail!("Postcard error: {error}"),
                 HostErr::Closed => anyhow::bail!("Connection closed"),
             },
         }
@@ -285,7 +285,7 @@ impl RpcClient {
     {
         match self.send::<E, RpcResult<T>>(req).await? {
             Ok(r) => Ok(r),
-            Err(e) => anyhow::bail!("{}", e),
+            Err(e) => anyhow::bail!("{e}"),
         }
     }
 

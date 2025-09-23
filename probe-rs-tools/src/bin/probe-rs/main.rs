@@ -561,7 +561,7 @@ fn apply_config_preset(
                 }
             }
             Value::Bool(_, _) => {}
-            _ => anyhow::bail!("Unsupported value: {:?}", value),
+            _ => anyhow::bail!("Unsupported value: {value:?}"),
         }
     }
 

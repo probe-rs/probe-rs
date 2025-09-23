@@ -184,8 +184,7 @@ fn get_absolute_path(
                     new_path.push(cwd_path);
                 } else {
                     return Err(DebuggerError::Other(anyhow!(
-                        "Invalid value {:?} for `cwd`",
-                        configured_cwd
+                        "Invalid value {configured_cwd:?} for `cwd`"
                     )));
                 }
             }
