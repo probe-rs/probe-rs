@@ -478,18 +478,20 @@ pub async fn monitor(
     })
     .await;
 
-    let print_stack_trace = match &result {
+    let (print_stack_trace, result) = match result {
         Ok(MonitorExitReason::Success | MonitorExitReason::SemihostingExit(Ok(_))) => {
             println!("Firmware exited successfully");
-            print_stack_trace // On success, we only print if the user asked for it.
+            // On success, we only print if the user asked for it.
+            (print_stack_trace, Ok(()))
         }
         Ok(MonitorExitReason::UserExit) => {
             println!("Exited by user request");
-            print_stack_trace // On ctrl-c, we only print if the user asked for it.
+            // On ctrl-c, we only print if the user asked for it.
+            (print_stack_trace, Ok(()))
         }
         Ok(MonitorExitReason::UnexpectedExit(reason)) => {
             println!("Firmware exited unexpectedly: {reason}");
-            true
+            (true, Err(anyhow::anyhow!("{reason}")))
         }
         Ok(MonitorExitReason::SemihostingExit(Err(details))) => {
             let reason = match details.reason {
@@ -527,16 +529,19 @@ pub async fn monitor(
 
             println!("Firmware exited with: {reason}{subcode}");
 
-            true
+            (true, Err(anyhow::anyhow!(reason)))
         }
-        Err(_) => false, // Some irrecoverable error happened, probably can't print the stack trace.
+        Err(e) => {
+            // Some irrecoverable error happened, probably can't print the stack trace.
+            (false, Err(e))
+        }
     };
 
     if print_stack_trace {
         display_stack_trace(session, path).await?;
     }
 
-    result.map(|_| ())
+    result
 }
 
 #[allow(clippy::too_many_arguments)]
