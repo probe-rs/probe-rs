@@ -125,6 +125,13 @@ sha2 = "0.10"
 # gdb server
 gdbstub = "0.7.6"
 
+# profiling
+fxprof-processed-profile = { version = "0.8.1", default-features = false }
+flate2 = { version = "1.1.2", default-features = false, features = ["zlib-rs"] }
+# samply-object dependencies for profiling, to replace with samply-object when released
+debugid = { version = "0.8.0", default-features = false }
+uuid = { version = "1.0", default-features = false }
+
 [build-dependencies]
 git-version = "0.3"
 
