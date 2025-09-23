@@ -8,3 +8,6 @@
 .vscode/settings.json
 .idea/
 .zed/
+
+# recorded profiles
+*.json.gz
