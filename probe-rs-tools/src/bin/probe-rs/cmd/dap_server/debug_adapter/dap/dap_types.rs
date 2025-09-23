@@ -192,7 +192,7 @@ where
                 Err(DebuggerError::ArgumentParseError {
                     argument_index: index,
                     argument: argument_name.to_string(),
-                    source: anyhow::anyhow!("Could not parse str at index: {}", index),
+                    source: anyhow::anyhow!("Could not parse str at index: {index}"),
                 })
             }
         }
@@ -221,7 +221,7 @@ fn get_string_argument(
                 Err(DebuggerError::ArgumentParseError {
                     argument_index: index,
                     argument: argument_name.to_string(),
-                    source: anyhow::anyhow!("Could not parse str at index: {}", index),
+                    source: anyhow::anyhow!("Could not parse str at index: {index}"),
                 })
             }
         }

@@ -105,11 +105,7 @@ impl SessionData {
         // Change the current working directory if `config.cwd` is `Some(T)`.
         if let Some(new_cwd) = config.cwd.clone() {
             set_current_dir(new_cwd.as_path()).map_err(|err| {
-                anyhow!(
-                    "Failed to set current working directory to: {:?}, {:?}",
-                    new_cwd,
-                    err
-                )
+                anyhow!("Failed to set current working directory to: {new_cwd:?}, {err:?}")
             })?;
         };
 
