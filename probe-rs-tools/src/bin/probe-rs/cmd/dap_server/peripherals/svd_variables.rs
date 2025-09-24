@@ -57,9 +57,7 @@ impl SvdCache {
                 })
             }
             Err(error) => Err(DebuggerError::Other(anyhow::anyhow!(
-                "Unable to parse CMSIS-SVD file: {:?}. {:?}",
-                svd_file,
-                error,
+                "Unable to parse CMSIS-SVD file: {svd_file:?}. {error:?}"
             ))),
         };
         debug_adapter.end_progress(progress_id)?;

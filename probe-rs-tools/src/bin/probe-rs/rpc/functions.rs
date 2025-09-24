@@ -359,7 +359,7 @@ impl RpcContext {
             .unwrap()
             .publish::<T>(seq_no, msg)
             .await
-            .map_err(|e| anyhow!("{:?}", e))
+            .map_err(|e| anyhow!("{e:?}"))
     }
 
     pub async fn object_mut<T: Any + Send>(

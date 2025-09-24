@@ -165,8 +165,7 @@ impl Debugger {
 
         let Some(target_core_config) = self.config.core_configs.get(core_id) else {
             return Err(DebuggerError::Other(anyhow!(
-                "No core configuration found for core id {}",
-                core_id
+                "No core configuration found for core id {core_id}"
             )));
         };
 
@@ -230,8 +229,7 @@ impl Debugger {
                         .send_response::<()>(&request, Ok(None))
                         .map_err(|error| {
                             DebuggerError::Other(anyhow!(
-                                "Could not deserialize arguments for RttWindowOpened : {:?}.",
-                                error
+                                "Could not deserialize arguments for RttWindowOpened : {error:?}."
                             ))
                         })?;
                 }
@@ -255,7 +253,7 @@ impl Debugger {
                 let result = target_core
                     .core
                     .halt(Duration::from_millis(500))
-                    .map_err(|error| anyhow!("Failed to halt core: {}", error))
+                    .map_err(|error| anyhow!("Failed to halt core: {error:?}"))
                     .and(Ok(()));
 
                 debug_session = DebugSessionStatus::Restart(request);
@@ -277,8 +275,7 @@ impl Debugger {
                 debug_adapter.send_response::<()>(
                     &request,
                     Err(&DebuggerError::Other(anyhow!(
-                        "Received request '{}', which is not supported or not implemented yet",
-                        other_command
+                        "Received request '{other_command}', which is not supported or not implemented yet"
                     ))),
                 )
             }

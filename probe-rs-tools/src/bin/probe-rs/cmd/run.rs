@@ -355,8 +355,7 @@ impl<'a> ElfReader<'a> {
             }
 
             _ => Err(anyhow!(
-                "Found embedded_test protocol version {}, which is not yet supported by probe-rs. Update probe-rs?",
-                version
+                "Found embedded_test protocol version {version}, which is not yet supported by probe-rs. Update probe-rs?"
             )),
         }
     }
@@ -375,7 +374,7 @@ impl<'a> ElfReader<'a> {
         let sym_name = self.symbol_name_of(sym)?;
         let def: TestDefinition = serde_json::from_str(sym_name)?;
         let mut test: Test = def.into();
-        test.name = format!("{}::{}", mod_path, test.name); //prepend mod path to test name
+        test.name = format!("{mod_path}::{}", test.name); //prepend mod path to test name
         test.address = Some(test_fn_ptr);
         Ok(test)
     }
@@ -384,7 +383,7 @@ impl<'a> ElfReader<'a> {
         self.elf
             .strtab
             .get_at(sym.st_name)
-            .ok_or(anyhow!("No name for symbol {:?}", sym))
+            .ok_or(anyhow!("No name for symbol {sym:?}"))
     }
 
     #[inline]
@@ -409,8 +408,7 @@ impl<'a> ElfReader<'a> {
                     && mod_path_ptr + mod_path_len <= (section.sh_addr + section.sh_size) as u32
             })
             .ok_or(anyhow!(
-                "section not found for mod path str {:x}",
-                mod_path_ptr
+                "section not found for mod path str {mod_path_ptr:x}"
             ))?;
 
         let file_offset = self.file_offset_for(mod_path_ptr as u64, section);

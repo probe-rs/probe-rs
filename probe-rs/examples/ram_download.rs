@@ -42,7 +42,7 @@ fn main() -> Result<()> {
     let protocol = match matches.protocol {
         Some(protocol) => protocol
             .parse()
-            .map_err(|e| anyhow!("Unknown protocol: '{}'", e))?,
+            .map_err(|e| anyhow!("Unknown protocol: '{e}'"))?,
         None => WireProtocol::Swd,
     };
 

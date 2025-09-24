@@ -421,7 +421,7 @@ fn get_capstone_le(target_core: &mut CoreHandle) -> Result<Capstone, DebuggerErr
             .build(),
         InstructionSet::Xtensa => return Err(DebuggerError::Unimplemented),
     }
-    .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
+    .map_err(|err| anyhow!("Error creating capstone: {err:?}"))?;
     let _ = cs.set_skipdata(true);
     Ok(cs)
 }

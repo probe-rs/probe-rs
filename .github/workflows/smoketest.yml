@@ -30,12 +30,12 @@ jobs:
         run: rustup target add aarch64-unknown-linux-gnu
 
       - name: Install cross
-        uses: taiki-e/install-action@v2.61.5
+        uses: taiki-e/install-action@v2.62.4
         with:
           tool: cross
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.8.0
+        uses: Swatinem/rust-cache@v2.8.1
 
       - name: Build smoke-tester
         run: cross build --release --target aarch64-unknown-linux-gnu -p smoke_tester

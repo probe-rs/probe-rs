@@ -128,7 +128,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 Ok(())
             }
             Err(error) => {
-                self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{}", error))))
+                self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))))
             }
         }
     }
@@ -219,8 +219,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             self.send_response::<()>(
                 request,
                 Err(&DebuggerError::Other(anyhow!(
-                    "Could not read any data at address {:#010x}",
-                    address
+                    "Could not read any data at address {address:#010x}"
                 ))),
             )
         }
@@ -640,10 +639,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             return self.send_response::<SetVariableResponseBody>(
                                 request,
                                 Err(&DebuggerError::Other(anyhow!(
-                                    "Failed to update variable: {}, with new value {:?} : {:?}",
+                                    "Failed to update variable: {}, with new value {new_value:?}: {error:?}",
                                     cache_variable.name,
-                                    new_value,
-                                    error
                                 ))),
                             );
                         }
@@ -678,10 +675,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 if let Some(request) = request {
                     return self.send_response::<()>(
                         request,
-                        Err(&DebuggerError::Other(anyhow!("{}", error))),
+                        Err(&DebuggerError::Other(anyhow!("{error}"))),
                     );
                 } else {
-                    return self.show_error_message(&DebuggerError::Other(anyhow!("{}", error)));
+                    return self.show_error_message(&DebuggerError::Other(anyhow!("{error}")));
                 }
             }
         }
@@ -692,10 +689,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(request) = request {
             // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
             if let Err(error) = target_core.core.reset_and_halt(Duration::from_millis(500)) {
-                return self.send_response::<()>(
-                    request,
-                    Err(&DebuggerError::Other(anyhow!("{}", error))),
-                );
+                return self
+                    .send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))));
             }
 
             // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
@@ -736,7 +731,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }
                     Err(error) => self.send_response::<()>(
                         request,
-                        Err(&DebuggerError::Other(anyhow!("{}", error))),
+                        Err(&DebuggerError::Other(anyhow!("{error}"))),
                     ),
                 }
             } else {
@@ -763,7 +758,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             let core_info = match target_core.core.reset_and_halt(Duration::from_millis(500)) {
                 Ok(core_info) => core_info,
                 Err(error) => {
-                    return self.show_error_message(&DebuggerError::Other(anyhow!("{}", error)));
+                    return self.show_error_message(&DebuggerError::Other(anyhow!("{error}")));
                 }
             };
 
@@ -856,8 +851,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     return self.send_response::<()>(
                         request,
                         Err(&DebuggerError::Other(anyhow!(
-                            "Failed to clear existing breakpoints before setting new ones : {}",
-                            error
+                            "Failed to clear existing breakpoints before setting new ones: {error}"
                         ))),
                     );
                 }
@@ -998,8 +992,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response::<()>(
             request,
             Err(&DebuggerError::Other(anyhow!(
-                "Received request for `threads`, while last known core status was {:?}",
-                current_core_status
+                "Received request for `threads`, while last known core status was {current_core_status:?}",
             ))),
         )
     }
@@ -1092,8 +1085,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             return self.send_response::<()>(
                 request,
                 Err(&DebuggerError::Other(anyhow!(
-                    "Request for stack trace failed with invalid arguments: {:?}",
-                    arguments
+                    "Request for stack trace failed with invalid arguments: {arguments:?}"
                 ))),
             );
         }
@@ -1285,8 +1277,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         if assembly_lines.is_empty() {
             Err(DebuggerError::Other(anyhow::anyhow!(
-                "No valid instructions found at memory reference {:#010x?}",
-                memory_reference
+                "No valid instructions found at memory reference {memory_reference:#010x?}"
             )))
         } else {
             Ok(assembly_lines)
@@ -1572,7 +1563,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         request: &Request,
     ) -> Result<()> {
         if let Err(error) = target_core.core.run() {
-            self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{}", error))))?;
+            self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))))?;
             return Err(error.into());
         }
 
