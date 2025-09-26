@@ -15,10 +15,6 @@ pub struct Cmd {
     /// The path to the file to be downloaded to the flash
     pub path: PathBuf,
 
-    /// Whether to erase the entire chip before downloading
-    #[clap(long)]
-    pub chip_erase: bool,
-
     #[clap(flatten)]
     pub download_options: BinaryDownloadOptions,
 
@@ -33,7 +29,7 @@ impl Cmd {
         cli::flash(
             &session,
             &self.path,
-            self.chip_erase,
+            self.download_options.chip_erase,
             self.format_options,
             self.download_options,
             None,
