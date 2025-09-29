@@ -4,8 +4,10 @@ use crate::architecture::arm::armv7m::Demcr;
 use crate::{
     MemoryMappedRegister,
     architecture::arm::{
-        ArmDebugInterface, ArmError, FullyQualifiedApAddress, armv7m::Dhcsr,
-        memory::ArmMemoryInterface, sequences::ArmDebugSequence,
+        ArmDebugInterface, ArmError, FullyQualifiedApAddress,
+        core::cortex_m::{Dhcsr, Vtor},
+        memory::ArmMemoryInterface,
+        sequences::ArmDebugSequence,
     },
 };
 use probe_rs_target::CoreType;
@@ -14,40 +16,18 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// Marker struct indicating initialization sequencing for Microchip MEC172x family parts.
+/// Marker struct indicating initialization sequencing for Microchip MEC172x family of parts
 #[derive(Debug)]
 pub struct Mec172x {}
 
 impl Mec172x {
-    /// Create the sequencer for the MEC172x family of parts.
+    /// Create the sequencer for the MEC172x family of parts
     pub fn create() -> Arc<Self> {
         Arc::new(Self {})
     }
 
-    /// Release the CPU core from Reset Extension
-    pub fn release_reset_extension(
-        &self,
-        memory: &mut dyn ArmMemoryInterface,
-    ) -> Result<(), ArmError> {
-        // Halt the core
-        let mut dhcsr = Dhcsr(0);
-        dhcsr.enable_write();
-        dhcsr.set_c_halt(true);
-        dhcsr.set_c_debugen(true);
-        memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
-        memory.flush()?;
-
-        // Clear VECTOR CATCH and set TRCENA
-        let mut demcr: Demcr = memory.read_word_32(Demcr::get_mmio_address())?.into();
-        demcr.set_trcena(true);
-        memory.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
-        memory.flush()?;
-
-        Ok(())
-    }
-
-    /// Halt or unhalt the core.
-    fn halt(&self, memory: &mut dyn ArmMemoryInterface, halt: bool) -> Result<(), ArmError> {
+    /// Halt or unhalt the core
+    fn _halt_core(&self, memory: &mut dyn ArmMemoryInterface, halt: bool) -> Result<(), ArmError> {
         let mut dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
         dhcsr.set_c_halt(halt);
         dhcsr.set_c_debugen(true);
@@ -114,16 +94,30 @@ impl ArmDebugSequence for Mec172x {
         _debug_base: Option<u64>,
         _cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        let mut core = interface.memory_interface(core_ap)?;
+        let mut memory = interface.memory_interface(core_ap)?;
 
-        self.release_reset_extension(&mut *core)
+        // Halt the core and enable debugging
+        let mut dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+        dhcsr.set_c_halt(true);
+        dhcsr.set_c_debugen(true);
+        dhcsr.enable_write();
+        memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+        memory.flush()?;
+
+        // Enable tracing
+        let mut demcr: Demcr = memory.read_word_32(Demcr::get_mmio_address())?.into();
+        demcr.set_trcena(true);
+        memory.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+        memory.flush()?;
+
+        Ok(())
     }
 
     fn reset_system(
         &self,
         memory: &mut dyn ArmMemoryInterface,
         core_type: CoreType,
-        debug_base: Option<u64>,
+        _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
         use crate::architecture::arm::core::armv8m::Aircr;
 
@@ -135,22 +129,34 @@ impl ArmDebugSequence for Mec172x {
             .ok();
         memory.flush().ok();
 
-        // If all goes well, we lost the debug port. Thanks, boot ROM. Let's bring it back.
-        //
-        // The ARM communication interface knows how to re-initialize the debug port.
-        // Re-initializing the core(s) is on us.
+        // Re-initialize the Arm debug interface and handle core operations
         let ap = memory.fully_qualified_address();
         let interface = memory.get_arm_debug_interface()?;
         interface.reinitialize()?;
 
-        assert!(debug_base.is_none());
+        // Initialize core debugging and tracing
         self.debug_core_start(interface, &ap, core_type, None, None)?;
 
         // Are we back?
         self.wait_for_enable(memory, Duration::from_millis(300))?;
 
-        // We're back. Halt the core so we can establish the reset context.
-        self.halt(memory, true)?;
+        // Set the vector table base address to point to the boot ROM's vector table
+        memory.write_word_32(Vtor::get_mmio_address(), 0)?;
+
+        // Mask and clear all possible pending external interrupts.  This it to avoid the
+        // problem where the boot ROM starts execution of code in SPI NOR which in turn
+        // enables a timer or starts a DMA transaction which then later triggers an interrupt
+        // during the SPI NOR flashing operation.
+        //
+        const NVIC_BASE: u64 = 0xE000_E100;
+        const ICER_OFFSET: u64 = 0x080;
+        const ICPR_OFFSET: u64 = 0x180;
+
+        // Iterate over all possible 256 Arm IRQs
+        for index in (0..256).step_by(core::mem::size_of::<u32>()) {
+            memory.write_word_32(NVIC_BASE + ICER_OFFSET + index, 0xFFFF_FFFF)?;
+            memory.write_word_32(NVIC_BASE + ICPR_OFFSET + index, 0xFFFF_FFFF)?;
+        }
 
         Ok(())
     }
