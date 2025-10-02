@@ -37,7 +37,7 @@ impl Lister {
         self.lister.list_all()
     }
 
-    /// List all available debug probes
+    /// List probes found by the lister, with optional filtering.
     pub fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
         self.lister.list(selector)
     }
