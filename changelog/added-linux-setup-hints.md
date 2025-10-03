@@ -6,3 +6,5 @@ The hints cover the following cases:
 - The user uses systemd >= 258 and the `plugdev` group is missing or has an id <= 1000.
   See https://github.com/probe-rs/probe-rs/issues/3566 for more info.
 - The user does not belong to the `plugdev` group.
+
+You can disable the hints if by setting the `PROBE_RS_DISABLE_SETUP_HINTS` variable.

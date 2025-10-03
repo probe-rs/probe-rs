@@ -97,7 +97,7 @@ impl ProbeLister for AllProbesLister {
             list.extend(driver.list_probes_filtered(selector));
         }
 
-        if list.is_empty() {
+        if list.is_empty() && std::env::var("PROBE_RS_DISABLE_SETUP_HINTS").is_err() {
             #[cfg(target_os = "linux")]
             linux::help_linux();
         }
