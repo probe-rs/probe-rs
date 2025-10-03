@@ -138,6 +138,7 @@ mod linux {
 
     const UDEV_GROUP: &str = "plugdev";
     const SYSTEMD_VERSION: usize = 258;
+    const UDEV_RULES_PATH: &str = "/etc/udev/rules.d";
 
     /// Gives the user a hint if they are on Linux.
     ///
@@ -148,7 +149,15 @@ mod linux {
     }
 
     /// Prints a helptext if udev rules seem to be missing.
-    fn help_udev_rules() {}
+    fn help_udev_rules() {
+        if udev_rule_present() {
+            tracing::warn!("There seems no probe-rs rule to be installed.");
+            tracing::warn!("Read more under https://probe.rs/docs/getting-started/probe-setup/");
+            tracing::warn!(
+                "If you manage your rules differently, put an empty rule file with 'probe-rs' in the name in {UDEV_RULES_PATH}."
+            );
+        }
+    }
 
     /// Prints a helptext if udev user groups seem to be missing or wrong.
     fn help_systemd() {
@@ -257,5 +266,18 @@ mod linux {
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         stdout.split(':').nth(2).and_then(|id| id.parse().ok())
+    }
+
+    /// Returns true if there is a probe-rs resembling udev rule file.
+    fn udev_rule_present() -> bool {
+        let mut files = match std::fs::read_dir(UDEV_RULES_PATH) {
+            Err(error) => {
+                tracing::debug!("Listing udev rule files at {UDEV_RULES_PATH} failed: {error}");
+                return false;
+            }
+            Ok(files) => files,
+        };
+
+        files.any(|p| p.unwrap().path().display().to_string().contains("probe-rs"))
     }
 }
