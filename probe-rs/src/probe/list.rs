@@ -82,6 +82,9 @@ impl ProbeLister for AllProbesLister {
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)) => {
                     fallback_error = ProbeCreationError::CouldNotOpen;
+
+                    #[cfg(target_os = "linux")]
+                    linux::help_linux();
                 }
                 Err(e) => open_error = Some(e),
             };
@@ -97,8 +100,8 @@ impl ProbeLister for AllProbesLister {
             list.extend(driver.list_probes_filtered(selector));
         }
 
-        if list.is_empty() && std::env::var("PROBE_RS_DISABLE_SETUP_HINTS").is_err() {
-            #[cfg(target_os = "linux")]
+        #[cfg(target_os = "linux")]
+        if list.is_empty() {
             linux::help_linux();
         }
 
@@ -137,20 +140,24 @@ mod linux {
     use std::process::Command;
 
     const UDEV_GROUP: &str = "plugdev";
-    const SYSTEMD_VERSION: usize = 258;
+    const SYSTEMD_STRICT_SYSTEM_GROUP_VERSION: usize = 258;
     const UDEV_RULES_PATH: &str = "/etc/udev/rules.d";
 
     /// Gives the user a hint if they are on Linux.
     ///
     /// Best is to call this only if no probes were found.
     pub(super) fn help_linux() {
+        if std::env::var("PROBE_RS_DISABLE_SETUP_HINTS").is_ok() {
+            return;
+        }
+
         help_systemd();
         help_udev_rules();
     }
 
     /// Prints a helptext if udev rules seem to be missing.
     fn help_udev_rules() {
-        if udev_rule_present() {
+        if !udev_rule_present() {
             tracing::warn!("There seems no probe-rs rule to be installed.");
             tracing::warn!("Read more under https://probe.rs/docs/getting-started/probe-setup/");
             tracing::warn!(
@@ -165,35 +172,37 @@ mod linux {
         let systemd_version = systemd_version();
         let udev_group_id = udev_group_id();
 
+        let systemd_version_requires_system_group =
+            systemd_version.unwrap_or_default() >= SYSTEMD_STRICT_SYSTEM_GROUP_VERSION;
+
+        match udev_group_id {
+            None => {
+                tracing::warn!("The '{UDEV_GROUP}' group does not exist.");
+                tracing::warn!(
+                    "On how to create it, read more under https://probe.rs/docs/getting-started/probe-setup/"
+                );
+                return;
+            }
+            Some(id) if id >= 1000 && systemd_version_requires_system_group => {
+                tracing::warn!("The '{UDEV_GROUP}' group is not a system group.");
+                tracing::warn!(
+                    "Read more under https://probe.rs/docs/getting-started/probe-setup/"
+                );
+
+                return;
+            }
+            _ => {
+                // We do not have to print a message as the group exists and is a system group (id < 1000).
+            }
+        }
+
         // Warn if the user does not belong to the right udev group.
         if !groups.iter().any(|g| g == UDEV_GROUP) {
             tracing::warn!("The user does not belong to the group '{UDEV_GROUP}'.");
-            tracing::warn!(
-                "Since version {SYSTEMD_VERSION} this is required to access USB devices."
-            );
             tracing::warn!("Read more under https://probe.rs/docs/getting-started/probe-setup/");
-        }
-
-        // Warn about the new systemd requirements.
-        // If we don't find a systemd version we do not print an error message.
-        if systemd_version.unwrap_or_default() >= SYSTEMD_VERSION {
-            match udev_group_id {
-                None => {
-                    tracing::warn!("The '{UDEV_GROUP}' group does not exist.");
-                    tracing::warn!(
-                        "On how to create it, read more under https://probe.rs/docs/getting-started/probe-setup/"
-                    );
-                }
-                Some(id) if id < 1000 => {
-                    tracing::warn!("The '{UDEV_GROUP}' group is not a system group.");
-                    tracing::warn!(
-                        "Read more under https://probe.rs/docs/getting-started/probe-setup/"
-                    );
-                }
-                _ => {
-                    // We do not have to print a message as the group exists and is a system group (id < 1000).
-                }
-            }
+        } else {
+            tracing::warn!("Make sure you have reloaded udev rules after setting everything up");
+            tracing::warn!("Read more under https://probe.rs/docs/getting-started/probe-setup/");
         }
     }
 
