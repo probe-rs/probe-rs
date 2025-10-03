@@ -97,6 +97,11 @@ impl ProbeLister for AllProbesLister {
             list.extend(driver.list_probes_filtered(selector));
         }
 
+        if list.is_empty() {
+            #[cfg(target_os = "linux")]
+            linux::help_linux();
+        }
+
         list
     }
 }
@@ -124,5 +129,133 @@ impl AllProbesLister {
     /// Create a new lister with all built-in probe drivers.
     pub const fn new() -> Self {
         Self
+    }
+}
+
+#[cfg(target_os = "linux")]
+mod linux {
+    use std::process::Command;
+
+    const UDEV_GROUP: &str = "plugdev";
+    const SYSTEMD_VERSION: usize = 258;
+
+    /// Gives the user a hint if they are on Linux.
+    ///
+    /// Best is to call this only if no probes were found.
+    pub(super) fn help_linux() {
+        help_systemd();
+        help_udev_rules();
+    }
+
+    /// Prints a helptext if udev rules seem to be missing.
+    fn help_udev_rules() {}
+
+    /// Prints a helptext if udev user groups seem to be missing or wrong.
+    fn help_systemd() {
+        let groups = user_groups();
+        let systemd_version = systemd_version();
+        let udev_group_id = udev_group_id();
+
+        // Warn if the user does not belong to the right udev group.
+        if !groups.iter().any(|g| g == UDEV_GROUP) {
+            tracing::warn!("The user does not belong to the group '{UDEV_GROUP}'.");
+            tracing::warn!(
+                "Since version {SYSTEMD_VERSION} this is required to access USB devices."
+            );
+            tracing::warn!("Read more under https://probe.rs/docs/getting-started/probe-setup/");
+        }
+
+        // Warn about the new systemd requirements.
+        // If we don't find a systemd version we do not print an error message.
+        if systemd_version.unwrap_or_default() >= SYSTEMD_VERSION {
+            match udev_group_id {
+                None => {
+                    tracing::warn!("The '{UDEV_GROUP}' group does not exist.");
+                    tracing::warn!(
+                        "On how to create it, read more under https://probe.rs/docs/getting-started/probe-setup/"
+                    );
+                }
+                Some(id) if id < 1000 => {
+                    tracing::warn!("The '{UDEV_GROUP}' group is not a system group.");
+                    tracing::warn!(
+                        "Read more under https://probe.rs/docs/getting-started/probe-setup/"
+                    );
+                }
+                _ => {
+                    // We do not have to print a message as the group exists and is a system group (id < 1000).
+                }
+            }
+        }
+    }
+
+    /// Returns the groups assigned to the current user.
+    fn user_groups() -> Vec<String> {
+        let output = match Command::new("id").arg("-Gn").output() {
+            Err(error) => {
+                tracing::debug!("Gathering information about relevant user groups failed: {error}");
+                return Vec::new();
+            }
+            Ok(child) => child,
+        };
+        if !output.status.success() {
+            tracing::debug!(
+                "Gathering information about relevant user groups failed: {:?}",
+                output.status.code()
+            );
+            return Vec::new();
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        stdout
+            .split_ascii_whitespace()
+            .map(|g| g.to_owned())
+            .collect()
+    }
+
+    /// Returns the systemd version of the current system.
+    fn systemd_version() -> Option<usize> {
+        let output = match Command::new("systemctl").arg("--version").output() {
+            Err(error) => {
+                tracing::debug!("Gathering information about relevant user groups failed: {error}");
+                return None;
+            }
+            Ok(child) => child,
+        };
+        if !output.status.success() {
+            tracing::debug!(
+                "Gathering information about relevant user groups failed: {:?}",
+                output.status.code()
+            );
+            return None;
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        // First line looks like: "systemd 256 (256.6-1-arch)"
+        stdout
+            .lines()
+            .next()
+            .and_then(|l| l.split_whitespace().nth(1))
+            .and_then(|version| version.parse().ok())
+    }
+
+    /// Returns the group id of the group required to list udev devices.
+    fn udev_group_id() -> Option<usize> {
+        let output = match Command::new("getent").arg("group").arg(UDEV_GROUP).output() {
+            Err(error) => {
+                tracing::debug!("Finding the entry for the {UDEV_GROUP} failed: {error}");
+                return None;
+            }
+            Ok(child) => child,
+        };
+
+        if !output.status.success() {
+            tracing::debug!(
+                "Finding the entry for the {UDEV_GROUP} failed: {:?}",
+                output.status.code()
+            );
+            return None;
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        stdout.split(':').nth(2).and_then(|id| id.parse().ok())
     }
 }
