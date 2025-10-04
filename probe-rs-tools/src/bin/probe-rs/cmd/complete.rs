@@ -33,7 +33,7 @@ impl Cmd {
 
         match &self.kind {
             CompleteKind::Install { manual } => {
-                self.install(shell, manual)?;
+                self.install(shell, *manual)?;
             }
             CompleteKind::ProbeList { input } => {
                 self.probe_list(lister, input)?;
@@ -109,6 +109,7 @@ pub enum CompleteKind {
         ///
         /// This is useful for packaging probe-rs for installers that have their
         /// own autocomplete packaging mechanisms.
+        #[clap(short, long)]
         manual: bool,
     },
     /// Lists the probes that are currently plugged in in a way that the shell understands.
