@@ -32,8 +32,8 @@ impl Cmd {
             .ok_or_else(|| anyhow!("The current shell could not be determined. Please specify a shell with the --shell argument."))?;
 
         match &self.kind {
-            CompleteKind::Install => {
-                self.install(shell)?;
+            CompleteKind::Install { manual } => {
+                self.install(shell, manual)?;
             }
             CompleteKind::ProbeList { input } => {
                 self.probe_list(lister, input)?;
@@ -50,7 +50,7 @@ impl Cmd {
     ///
     /// If the shell cannot be determined or the auto-install is not implemented yet,
     /// the function prints the script with instructions for the user.
-    pub fn install(&self, shell: Shell) -> Result<()> {
+    pub fn install(&self, shell: Shell, manual: bool) -> Result<()> {
         let mut command = <Cli as CommandFactory>::command();
         let path: PathBuf = std::env::args_os().next().unwrap().into();
         let name = path.file_name().unwrap().to_str().unwrap();
@@ -61,6 +61,11 @@ impl Cmd {
         inject_dynamic_completions(shell, name, &mut script)?;
 
         let file_name = shell.file_name(BIN_NAME);
+
+        if manual {
+            println!("{script}");
+            return Ok(());
+        }
 
         match shell {
             Shell::Zsh => {
@@ -99,7 +104,13 @@ impl Cmd {
 #[clap(verbatim_doc_comment)]
 pub enum CompleteKind {
     /// Installs the autocomplete script for the correct shell.
-    Install,
+    Install {
+        /// Just print the script to stdout if this flag is active.
+        ///
+        /// This is useful for packaging probe-rs for installers that have their
+        /// own autocomplete packaging mechanisms.
+        manual: bool,
+    },
     /// Lists the probes that are currently plugged in in a way that the shell understands.
     ProbeList {
         /// The already entered user input that will be used to filter the list.
