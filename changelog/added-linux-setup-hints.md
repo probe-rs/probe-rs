@@ -7,4 +7,6 @@ The hints cover the following cases:
 
 See https://github.com/probe-rs/webpage/pull/200 for more info.
 
+For packagers, this hint can be disabled by `setup-hints` feature gate if you ensure you install configure files correctly. 
+
 You can disable the hints if by setting the `PROBE_RS_DISABLE_SETUP_HINTS` variable.
