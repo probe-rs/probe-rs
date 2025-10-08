@@ -21,7 +21,7 @@ rust-version.workspace = true
 exclude = ["tests/"]
 
 [features]
-default = ["builtin-targets", "cmsisdap_v1", "builtin-formats", "coredump"]
+default = ["builtin-targets", "cmsisdap_v1", "builtin-formats", "coredump", "setup-hints"]
 flate2 = ["dep:flate2"]
 
 # Enable all built in targets.
@@ -32,6 +32,8 @@ cmsisdap_v1 = ["dep:hidapi"]
 builtin-formats = ["dep:uf2-decode", "object", "flate2", "dep:ihex"]
 
 coredump = ["object", "dep:rmp-serde", "dep:dunce"]
+
+setup-hints = []
 
 # Enable helpers for testing
 test = ["object"]

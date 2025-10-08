@@ -83,7 +83,7 @@ impl ProbeLister for AllProbesLister {
             };
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "linux", feature = "setup-hints"))]
         if matches!(fallback_error, ProbeCreationError::CouldNotOpen) {
             linux::help_linux();
         }
@@ -98,7 +98,7 @@ impl ProbeLister for AllProbesLister {
             list.extend(driver.list_probes_filtered(selector));
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "linux", feature = "setup-hints"))]
         if list.is_empty() {
             linux::help_linux();
         }
@@ -120,7 +120,7 @@ impl AllProbesLister {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", feature = "setup-hints"))]
 mod linux {
     use std::process::Command;
 
