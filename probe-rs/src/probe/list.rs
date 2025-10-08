@@ -141,8 +141,7 @@ impl AllProbesLister {
 mod linux {
     use std::process::Command;
 
-    const UDEV_GROUP: &str = "plugdev";
-    const SYSTEMD_STRICT_SYSTEM_GROUP_VERSION: usize = 258;
+    const SYSTEMD_SUPPORT_UACCESS_VERSION: usize = 30;
     const UDEV_RULES_PATH: &str = "/etc/udev/rules.d";
 
     /// Gives the user a hint if they are on Linux.
@@ -170,66 +169,13 @@ mod linux {
 
     /// Prints a helptext if udev user groups seem to be missing or wrong.
     fn help_systemd() {
-        let groups = user_groups();
         let systemd_version = systemd_version();
-        let udev_group_id = udev_group_id();
 
-        let systemd_version_requires_system_group =
-            systemd_version.unwrap_or_default() >= SYSTEMD_STRICT_SYSTEM_GROUP_VERSION;
-
-        match udev_group_id {
-            None => {
-                tracing::warn!("The '{UDEV_GROUP}' group does not exist.");
-                tracing::warn!(
-                    "On how to create it, read more under https://probe.rs/docs/getting-started/probe-setup/"
-                );
-                return;
-            }
-            Some(id) if id >= 1000 && systemd_version_requires_system_group => {
-                tracing::warn!("The '{UDEV_GROUP}' group is not a system group.");
-                tracing::warn!(
-                    "Read more under https://probe.rs/docs/getting-started/probe-setup/"
-                );
-
-                return;
-            }
-            _ => {
-                // We do not have to print a message as the group exists and is a system group (id < 1000).
-            }
-        }
-
-        // Warn if the user does not belong to the right udev group.
-        if !groups.iter().any(|g| g == UDEV_GROUP) {
-            tracing::warn!("The user does not belong to the group '{UDEV_GROUP}'.");
-            tracing::warn!("Read more under https://probe.rs/docs/getting-started/probe-setup/");
-        } else {
-            tracing::warn!("Make sure you have reloaded udev rules after setting everything up");
-            tracing::warn!("Read more under https://probe.rs/docs/getting-started/probe-setup/");
-        }
-    }
-
-    /// Returns the groups assigned to the current user.
-    fn user_groups() -> Vec<String> {
-        let output = match Command::new("id").arg("-Gn").output() {
-            Err(error) => {
-                tracing::debug!("Gathering information about relevant user groups failed: {error}");
-                return Vec::new();
-            }
-            Ok(child) => child,
-        };
-        if !output.status.success() {
-            tracing::debug!(
-                "Gathering information about relevant user groups failed: {:?}",
-                output.status.code()
+        if systemd_version.unwrap_or_default() < SYSTEMD_SUPPORT_UACCESS_VERSION {
+            tracing::warn!(
+                "The systemd on your Linux is older than v30, which doesn't support uaccess mechanism"
             );
-            return Vec::new();
         }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        stdout
-            .split_ascii_whitespace()
-            .map(|g| g.to_owned())
-            .collect()
     }
 
     /// Returns the systemd version of the current system.
@@ -255,28 +201,6 @@ mod linux {
             .next()
             .and_then(|l| l.split_whitespace().nth(1))
             .and_then(|version| version.parse().ok())
-    }
-
-    /// Returns the group id of the group required to list udev devices.
-    fn udev_group_id() -> Option<usize> {
-        let output = match Command::new("getent").arg("group").arg(UDEV_GROUP).output() {
-            Err(error) => {
-                tracing::debug!("Finding the entry for the {UDEV_GROUP} failed: {error}");
-                return None;
-            }
-            Ok(child) => child,
-        };
-
-        if !output.status.success() {
-            tracing::debug!(
-                "Finding the entry for the {UDEV_GROUP} failed: {:?}",
-                output.status.code()
-            );
-            return None;
-        }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        stdout.split(':').nth(2).and_then(|id| id.parse().ok())
     }
 
     /// Returns true if there is a probe-rs resembling udev rule file.
