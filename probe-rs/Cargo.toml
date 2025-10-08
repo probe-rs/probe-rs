@@ -20,12 +20,14 @@ license.workspace = true
 exclude = ["tests/"]
 
 [features]
-default = ["builtin-targets", "cmsisdap_v1"]
+default = ["builtin-targets", "cmsisdap_v1", "setup-hints"]
 
 
 # Enable all built in targets.
 builtin-targets = ["dep:bincode", "dep:serde_yaml", "dep:probe-rs-target"]
 cmsisdap_v1 = ["dep:hidapi"]
+
+setup-hints = []
 
 # Enable helpers for testing
 test = []
