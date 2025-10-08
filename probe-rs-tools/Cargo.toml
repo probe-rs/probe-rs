@@ -15,7 +15,7 @@ description = "A collection of on chip debugging tools to communicate with micro
 default-run = "probe-rs"
 
 [features]
-default = []
+default = ["setup-hints"]
 # Include server/client functionality
 remote = [
     "dep:tokio-tungstenite",
@@ -24,6 +24,8 @@ remote = [
     "dep:rustls",
     "dep:tempfile",
 ]
+# Enable setup hints
+setup-hints = []
 
 [dependencies]
 anyhow = { workspace = true }

@@ -87,11 +87,6 @@ impl ProbeLister for AllProbesLister {
             };
         }
 
-        #[cfg(all(target_os = "linux", feature = "setup-hints"))]
-        if matches!(fallback_error, ProbeCreationError::CouldNotOpen) {
-            linux::help_linux();
-        }
-
         Err(open_error.unwrap_or(DebugProbeError::ProbeCouldNotBeCreated(fallback_error)))
     }
 
@@ -100,11 +95,6 @@ impl ProbeLister for AllProbesLister {
 
         for driver in Self::DRIVERS {
             list.extend(driver.list_probes_filtered(selector));
-        }
-
-        #[cfg(all(target_os = "linux", feature = "setup-hints"))]
-        if list.is_empty() {
-            linux::help_linux();
         }
 
         list
@@ -134,85 +124,5 @@ impl AllProbesLister {
     /// Create a new lister with all built-in probe drivers.
     pub const fn new() -> Self {
         Self
-    }
-}
-
-#[cfg(all(target_os = "linux", feature = "setup-hints"))]
-mod linux {
-    use std::process::Command;
-
-    const SYSTEMD_SUPPORT_UACCESS_VERSION: usize = 30;
-    const UDEV_RULES_PATH: &str = "/etc/udev/rules.d";
-
-    /// Gives the user a hint if they are on Linux.
-    ///
-    /// Best is to call this only if no probes were found.
-    pub(super) fn help_linux() {
-        if std::env::var("PROBE_RS_DISABLE_SETUP_HINTS").is_ok() {
-            return;
-        }
-
-        help_systemd();
-        help_udev_rules();
-    }
-
-    /// Prints a helptext if udev rules seem to be missing.
-    fn help_udev_rules() {
-        if !udev_rule_present() {
-            tracing::warn!("There seems no probe-rs rule to be installed.");
-            tracing::warn!("Read more under https://probe.rs/docs/getting-started/probe-setup/");
-            tracing::warn!(
-                "If you manage your rules differently, put an empty rule file with 'probe-rs' in the name in {UDEV_RULES_PATH}."
-            );
-        }
-    }
-
-    /// Prints a helptext if udev user groups seem to be missing or wrong.
-    fn help_systemd() {
-        let systemd_version = systemd_version();
-
-        if systemd_version.unwrap_or_default() < SYSTEMD_SUPPORT_UACCESS_VERSION {
-            tracing::warn!(
-                "The systemd on your Linux is older than v30, which doesn't support uaccess mechanism"
-            );
-        }
-    }
-
-    /// Returns the systemd version of the current system.
-    fn systemd_version() -> Option<usize> {
-        let output = match Command::new("systemctl").arg("--version").output() {
-            Err(error) => {
-                tracing::debug!("Gathering information about relevant user groups failed: {error}");
-                return None;
-            }
-            Ok(child) => child,
-        };
-        if !output.status.success() {
-            tracing::debug!(
-                "Gathering information about relevant user groups failed: {:?}",
-                output.status.code()
-            );
-            return None;
-        }
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        // First line looks like: "systemd 256 (256.6-1-arch)"
-        stdout
-            .lines()
-            .next()
-            .and_then(|l| l.split_whitespace().nth(1))
-            .and_then(|version| version.parse().ok())
-    }
-
-    /// Returns true if there is a probe-rs resembling udev rule file.
-    fn udev_rule_present() -> bool {
-        let mut files = match std::fs::read_dir(UDEV_RULES_PATH) {
-            Err(error) => {
-                tracing::debug!("Listing udev rule files at {UDEV_RULES_PATH} failed: {error}");
-                return false;
-            }
-            Ok(files) => files,
-        };
-
-        files.any(|p| p.unwrap().path().display().to_string().contains("probe-rs"))
     }
 }
