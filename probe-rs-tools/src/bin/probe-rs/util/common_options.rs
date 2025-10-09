@@ -306,9 +306,9 @@ impl<'r> LoadedProbeOptions<'r> {
         }
 
         let session = if self.0.connect_under_reset {
-            probe.attach_under_reset(target, permissions)
+            probe.attach_under_reset_with_registry(target, permissions, self.1)
         } else {
-            probe.attach(target, permissions)
+            probe.attach_with_registry(target, permissions, self.1)
         }
         .map_err(|error| OperationError::AttachingFailed {
             source: error,
