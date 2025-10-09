@@ -1,5 +1,6 @@
 use crate::probe::DebugProbeInfo;
 use crate::probe::stlink::StLinkFactory;
+use nusb::MaybeFuture;
 
 use super::usb_interface::USB_PID_EP_MAP;
 use super::usb_interface::USB_VID;
@@ -12,10 +13,10 @@ pub(super) fn is_stlink_device(device: &nusb::DeviceInfo) -> bool {
 
 #[tracing::instrument(skip_all)]
 pub(super) fn list_stlink_devices() -> Vec<DebugProbeInfo> {
-    let devices = match nusb::list_devices() {
+    let devices = match nusb::list_devices().wait() {
         Ok(d) => d,
         Err(e) => {
-            tracing::warn!("listing stlink devices failed: {:?}", e);
+            tracing::warn!("listing stlink devices failed: {e}");
             return vec![];
         }
     };
