@@ -633,14 +633,12 @@ fn ensure_single_ram_region_is_executable(mem_map: &mut [MemoryRegion]) {
         .filter_map(MemoryRegion::as_ram_region)
         .count();
 
-    if ram_regions == 1 {
-        if let Some(MemoryRegion::Ram(ram_region)) = mem_map
+    if ram_regions == 1
+        && let Some(MemoryRegion::Ram(ram_region)) = mem_map
             .iter_mut()
             .find(|region| matches!(region, MemoryRegion::Ram(_)))
-        {
-            if let Some(ref mut access) = ram_region.access {
-                access.execute = true;
-            }
-        }
+        && let Some(ref mut access) = ram_region.access
+    {
+        access.execute = true;
     }
 }

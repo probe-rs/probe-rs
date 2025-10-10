@@ -98,13 +98,13 @@ pub fn read_chip_info_from_rom_table(
             let base_address = memory.base_address()?;
             let component = Component::try_parse(&mut *memory, base_address)?;
 
-            if let Component::Class1RomTable(component_id, _) = component {
-                if let Some(jep106) = component_id.peripheral_id().jep106() {
-                    return Ok(Some(ArmChipInfo {
-                        manufacturer: jep106,
-                        part: component_id.peripheral_id().part(),
-                    }));
-                }
+            if let Component::Class1RomTable(component_id, _) = component
+                && let Some(jep106) = component_id.peripheral_id().jep106()
+            {
+                return Ok(Some(ArmChipInfo {
+                    manufacturer: jep106,
+                    part: component_id.peripheral_id().part(),
+                }));
             }
         }
     }

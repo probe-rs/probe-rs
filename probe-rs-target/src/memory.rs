@@ -365,10 +365,10 @@ impl MemoryRange for Range<u64> {
     }
 
     fn align_to_32_bits(&mut self) {
-        if self.start % 4 != 0 {
+        if !self.start.is_multiple_of(4) {
             self.start -= self.start % 4;
         }
-        if self.end % 4 != 0 {
+        if !self.end.is_multiple_of(4) {
             // Try to align the end to 32 bits, but don't overflow.
             if let Some(new_end) = self.end.checked_add(4 - self.end % 4) {
                 self.end = new_end;

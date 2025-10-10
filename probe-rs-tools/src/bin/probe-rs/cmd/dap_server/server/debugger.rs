@@ -283,13 +283,10 @@ impl Debugger {
 
         result.map_err(|e| DebuggerError::Other(e.context("Error executing request.")))?;
 
-        if unhalt_me {
-            if let Err(error) = target_core.core.run() {
-                let error =
-                    DebuggerError::Other(anyhow!(error).context("Failed to resume target."));
-                debug_adapter.show_error_message(&error)?;
-                return Err(error);
-            }
+        if unhalt_me && let Err(error) = target_core.core.run() {
+            let error = DebuggerError::Other(anyhow!(error).context("Failed to resume target."));
+            debug_adapter.show_error_message(&error)?;
+            return Err(error);
         }
 
         Ok(debug_session)
@@ -765,13 +762,13 @@ impl Debugger {
             get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
 
         // Enable quirks specific to particular DAP clients...
-        if let Some(client_id) = initialize_arguments.client_id {
-            if client_id == "vscode" {
-                tracing::info!(
-                    "DAP client reports its 'ClientID' is 'vscode', enabling vscode_quirks."
-                );
-                debug_adapter.vscode_quirks = true;
-            }
+        if let Some(client_id) = initialize_arguments.client_id
+            && client_id == "vscode"
+        {
+            tracing::info!(
+                "DAP client reports its 'ClientID' is 'vscode', enabling vscode_quirks."
+            );
+            debug_adapter.vscode_quirks = true;
         }
 
         if !(initialize_arguments.columns_start_at_1.unwrap_or(true)
@@ -1088,7 +1085,7 @@ mod test {
             RequestBuilder { adapter: self }
         }
 
-        fn expect_response(&mut self, response: Response) -> ResponseBuilder {
+        fn expect_response(&mut self, response: Response) -> ResponseBuilder<'_> {
             assert!(
                 response.success,
                 "success field must be true for succesful response"
@@ -1097,7 +1094,7 @@ mod test {
             ResponseBuilder { adapter: self }
         }
 
-        fn expect_error_response(&mut self, response: Response) -> ResponseBuilder {
+        fn expect_error_response(&mut self, response: Response) -> ResponseBuilder<'_> {
             assert!(
                 !response.success,
                 "success field must be false for error response"

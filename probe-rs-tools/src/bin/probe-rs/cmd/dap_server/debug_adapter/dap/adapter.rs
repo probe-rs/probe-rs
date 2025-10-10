@@ -603,14 +603,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let mut cache_variable: Option<probe_rs_debug::Variable> = None;
                 let mut variable_cache: Option<&mut probe_rs_debug::VariableCache> = None;
                 for search_frame in target_core.core_data.stack_frames.iter_mut() {
-                    if let Some(search_cache) = &mut search_frame.local_variables {
-                        if let Some(search_variable) =
+                    if let Some(search_cache) = &mut search_frame.local_variables
+                        && let Some(search_variable) =
                             search_cache.get_variable_by_name_and_parent(&variable_name, parent_key)
-                        {
-                            cache_variable = Some(search_variable);
-                            variable_cache = Some(search_cache);
-                            break;
-                        }
+                    {
+                        cache_variable = Some(search_variable);
+                        variable_cache = Some(search_cache);
+                        break;
                     }
                 }
 
@@ -961,11 +960,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // In addition to the response values, also show a message to users for any breakpoints that could not be verified.
         for breakpoint_response in &instruction_breakpoint_body.breakpoints {
-            if !breakpoint_response.verified {
-                if let Some(message) = &breakpoint_response.message {
-                    self.log_to_console(format!("Warning: {message}"));
-                    self.show_message(MessageSeverity::Warning, message.clone());
-                }
+            if !breakpoint_response.verified
+                && let Some(message) = &breakpoint_response.message
+            {
+                self.log_to_console(format!("Warning: {message}"));
+                self.show_message(MessageSeverity::Warning, message.clone());
             }
         }
 
@@ -1360,51 +1359,50 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .core_peripherals
             .as_ref()
             .map(|cp| &cp.svd_variable_cache)
+            && svd_cache.get_variable_by_key(variable_ref).is_some()
         {
-            if svd_cache.get_variable_by_key(variable_ref).is_some() {
-                let dap_variables: Vec<Variable> = svd_cache
-                    .get_children(variable_ref)
-                    .iter()
-                    // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
-                    .map(|variable| {
-                        let (variables_reference, named_child_variables_cnt) =
-                            get_svd_variable_reference(variable, svd_cache);
+            let dap_variables: Vec<Variable> = svd_cache
+                .get_children(variable_ref)
+                .iter()
+                // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
+                .map(|variable| {
+                    let (variables_reference, named_child_variables_cnt) =
+                        get_svd_variable_reference(variable, svd_cache);
 
-                        // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
-                        let name = if let Some(last_part) =
-                            variable.name().split_terminator('.').next_back()
-                        {
-                            last_part.to_string()
-                        } else {
-                            variable.name().to_string()
-                        };
+                    // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
+                    let name = if let Some(last_part) =
+                        variable.name().split_terminator('.').next_back()
+                    {
+                        last_part.to_string()
+                    } else {
+                        variable.name().to_string()
+                    };
 
-                        Variable {
-                            name,
-                            evaluate_name: Some(variable.name().to_string()),
-                            memory_reference: variable.memory_reference(),
-                            indexed_variables: None,
-                            named_variables: Some(named_child_variables_cnt),
-                            presentation_hint: None,
-                            type_: variable.type_name(),
-                            value: {
-                                // The SVD cache is not automatically refreshed on every stack trace, and we only need to refresh the field values.
-                                variable.get_value(&mut target_core.core)
-                            },
-                            variables_reference: variables_reference.into(),
-                            declaration_location_reference: None,
-                            value_location_reference: None,
-                        }
-                    })
-                    .collect();
+                    Variable {
+                        name,
+                        evaluate_name: Some(variable.name().to_string()),
+                        memory_reference: variable.memory_reference(),
+                        indexed_variables: None,
+                        named_variables: Some(named_child_variables_cnt),
+                        presentation_hint: None,
+                        type_: variable.type_name(),
+                        value: {
+                            // The SVD cache is not automatically refreshed on every stack trace, and we only need to refresh the field values.
+                            variable.get_value(&mut target_core.core)
+                        },
+                        variables_reference: variables_reference.into(),
+                        declaration_location_reference: None,
+                        value_location_reference: None,
+                    }
+                })
+                .collect();
 
-                return self.send_response(
-                    request,
-                    Ok(Some(VariablesResponseBody {
-                        variables: dap_variables,
-                    })),
-                );
-            }
+            return self.send_response(
+                request,
+                Ok(Some(VariablesResponseBody {
+                    variables: dap_variables,
+                })),
+            );
         }
 
         let mut parent_variable: Option<probe_rs_debug::Variable> = None;
@@ -1413,36 +1411,36 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let registers;
 
-        if let Some(search_cache) = &mut target_core.core_data.static_variables {
-            if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
-                parent_variable = Some(search_variable);
-                variable_cache = Some(search_cache);
+        if let Some(search_cache) = &mut target_core.core_data.static_variables
+            && let Some(search_variable) = search_cache.get_variable_by_key(variable_ref)
+        {
+            parent_variable = Some(search_variable);
+            variable_cache = Some(search_cache);
 
-                if let Some(top_level_frame) = target_core.core_data.stack_frames.first() {
-                    registers = top_level_frame.registers.clone();
+            if let Some(top_level_frame) = target_core.core_data.stack_frames.first() {
+                registers = top_level_frame.registers.clone();
 
-                    frame_info = Some(StackFrameInfo {
-                        registers: &registers,
-                        frame_base: top_level_frame.frame_base,
-                        canonical_frame_address: top_level_frame.canonical_frame_address,
-                    });
-                }
+                frame_info = Some(StackFrameInfo {
+                    registers: &registers,
+                    frame_base: top_level_frame.frame_base,
+                    canonical_frame_address: top_level_frame.canonical_frame_address,
+                });
             }
         }
 
         if parent_variable.is_none() {
             for stack_frame in target_core.core_data.stack_frames.iter_mut() {
-                if let Some(search_cache) = &mut stack_frame.local_variables {
-                    if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
-                        parent_variable = Some(search_variable);
-                        variable_cache = Some(search_cache);
-                        frame_info = Some(StackFrameInfo {
-                            registers: &stack_frame.registers,
-                            frame_base: stack_frame.frame_base,
-                            canonical_frame_address: stack_frame.canonical_frame_address,
-                        });
-                        break;
-                    }
+                if let Some(search_cache) = &mut stack_frame.local_variables
+                    && let Some(search_variable) = search_cache.get_variable_by_key(variable_ref)
+                {
+                    parent_variable = Some(search_variable);
+                    variable_cache = Some(search_cache);
+                    frame_info = Some(StackFrameInfo {
+                        registers: &stack_frame.registers,
+                        frame_base: stack_frame.frame_base,
+                        canonical_frame_address: stack_frame.canonical_frame_address,
+                    });
+                    break;
                 }
 
                 if stack_frame.id == variable_ref {
@@ -1479,23 +1477,22 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // During the intial stack unwind operation, if encounter [Variable]'s with [VariableNodeType::is_deferred()], they will not be auto-expanded and included in the variable cache.
         // TODO: Use the DAP "Invalidated" event to refresh the variables for this stackframe. It will allow the UI to see updated compound values for pointer variables based on the newly resolved children.
         if let Some(variable_cache) = variable_cache {
-            if let Some(parent_variable) = parent_variable.as_mut() {
-                if parent_variable.variable_node_type.is_deferred()
-                    && !variable_cache.has_children(parent_variable)
-                {
-                    if let Some(frame_info) = frame_info {
-                        target_core.core_data.debug_info.cache_deferred_variables(
-                            variable_cache,
-                            &mut target_core.core,
-                            parent_variable,
-                            frame_info,
-                        )?;
-                    } else {
-                        tracing::error!(
-                            "Could not cache deferred child variables for variable: {}. No register data available.",
-                            parent_variable.name
-                        );
-                    }
+            if let Some(parent_variable) = parent_variable.as_mut()
+                && parent_variable.variable_node_type.is_deferred()
+                && !variable_cache.has_children(parent_variable)
+            {
+                if let Some(frame_info) = frame_info {
+                    target_core.core_data.debug_info.cache_deferred_variables(
+                        variable_cache,
+                        &mut target_core.core,
+                        parent_variable,
+                        frame_info,
+                    )?;
+                } else {
+                    tracing::error!(
+                        "Could not cache deferred child variables for variable: {}. No register data available.",
+                        parent_variable.name
+                    );
                 }
             }
 

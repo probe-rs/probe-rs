@@ -125,7 +125,7 @@ impl JtagAdapter {
         }
 
         // If `speed_khz` is not a divisor of the maximum supported speed, we need to round up
-        let is_exact = self.ftdi.max_clock % speed_khz == 0;
+        let is_exact = self.ftdi.max_clock.is_multiple_of(speed_khz);
 
         // If `speed_khz` is 0, use the maximum supported speed
         let divisor =

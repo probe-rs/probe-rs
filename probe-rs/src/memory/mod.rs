@@ -110,7 +110,7 @@ where
         // to bytes. Assumes target is little endian. May be overridden to
         // provide an implementation that avoids heap allocation and endian
         // conversions. Must be overridden for big endian targets.
-        if data.len() % 8 != 0 {
+        if !data.len().is_multiple_of(8) {
             return Err(InvalidDataLengthError::new("read_mem_64bit", 8).into());
         }
         let mut buffer = vec![0u64; data.len() / 8];
@@ -130,7 +130,7 @@ where
         // to bytes. Assumes target is little endian. May be overridden to
         // provide an implementation that avoids heap allocation and endian
         // conversions. Must be overridden for big endian targets.
-        if data.len() % 4 != 0 {
+        if !data.len().is_multiple_of(4) {
             return Err(InvalidDataLengthError::new("read_mem_32bit", 4).into());
         }
         let mut buffer = vec![0u32; data.len() / 4];
@@ -155,7 +155,7 @@ where
         if self.supports_native_64bit_access() {
             // Avoid heap allocation and copy if we don't need it.
             self.read_8(address, data)?;
-        } else if address % 4 == 0 && data.len() % 4 == 0 {
+        } else if address.is_multiple_of(4) && data.len().is_multiple_of(4) {
             // Avoid heap allocation and copy if we don't need it.
             self.read_mem_32bit(address, data)?;
         } else {
@@ -227,7 +227,7 @@ where
         // to bytes. Assumes target is little endian. May be overridden to
         // provide an implementation that avoids heap allocation and endian
         // conversions. Must be overridden for big endian targets.
-        if data.len() % 8 != 0 {
+        if !data.len().is_multiple_of(8) {
             return Err(InvalidDataLengthError::new("write_mem_64bit", 8).into());
         }
         let mut buffer = vec![0u64; data.len() / 8];
@@ -248,7 +248,7 @@ where
         // to bytes. Assumes target is little endian. May be overridden to
         // provide an implementation that avoids heap allocation and endian
         // conversions. Must be overridden for big endian targets.
-        if data.len() % 4 != 0 {
+        if !data.len().is_multiple_of(4) {
             return Err(InvalidDataLengthError::new("write_mem_32bit", 4).into());
         }
         let mut buffer = vec![0u32; data.len() / 4];
@@ -275,7 +275,7 @@ where
         let inbetween_count = len - start_extra_count - end_extra_count;
         assert!(start_extra_count < 4);
         assert!(end_extra_count < 4);
-        assert!(inbetween_count % 4 == 0);
+        assert!(inbetween_count.is_multiple_of(4));
 
         if start_extra_count != 0 || end_extra_count != 0 {
             // If we do not support 8 bit transfers we have to bail

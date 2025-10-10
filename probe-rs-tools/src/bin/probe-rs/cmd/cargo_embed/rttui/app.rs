@@ -275,11 +275,9 @@ impl App {
             KeyCode::BackTab => self.previous_tab(),
             KeyCode::Enter => self.push_rtt(core),
             KeyCode::Char(c) => {
-                if has_control {
-                    if let Some(digit) = c.to_digit(10).and_then(|d| d.checked_sub(1)) {
-                        self.select_tab(digit as usize);
-                        return false;
-                    }
+                if has_control && let Some(digit) = c.to_digit(10).and_then(|d| d.checked_sub(1)) {
+                    self.select_tab(digit as usize);
+                    return false;
                 }
 
                 self.current_tab_mut().push_input(c)

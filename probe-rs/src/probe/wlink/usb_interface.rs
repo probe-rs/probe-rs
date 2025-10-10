@@ -32,16 +32,15 @@ impl WchLinkUsbDevice {
         let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
 
         let mut configs = device_handle.configurations();
-        if let Some(config) = configs.next() {
-            if let Some(interface) = config.interfaces().next() {
-                if let Some(altsetting) = interface.alt_settings().next() {
-                    for endpoint in altsetting.endpoints() {
-                        if endpoint.address() == ENDPOINT_OUT {
-                            endpoint_out = true;
-                        } else if endpoint.address() == ENDPOINT_IN {
-                            endpoint_in = true;
-                        }
-                    }
+        if let Some(config) = configs.next()
+            && let Some(interface) = config.interfaces().next()
+            && let Some(altsetting) = interface.alt_settings().next()
+        {
+            for endpoint in altsetting.endpoints() {
+                if endpoint.address() == ENDPOINT_OUT {
+                    endpoint_out = true;
+                } else if endpoint.address() == ENDPOINT_IN {
+                    endpoint_in = true;
                 }
             }
         }

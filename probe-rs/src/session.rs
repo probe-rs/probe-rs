@@ -221,24 +221,21 @@ impl Session {
             }
         }
 
-        if let Some(jtag) = target.jtag.as_ref() {
-            if let Some(scan_chain) = jtag.scan_chain.clone() {
-                if let Some(probe) = probe.try_as_jtag_probe() {
-                    probe.set_scan_chain(&scan_chain)?;
-                }
-            }
+        if let Some(jtag) = target.jtag.as_ref()
+            && let Some(scan_chain) = jtag.scan_chain.clone()
+            && let Some(probe) = probe.try_as_jtag_probe()
+        {
+            probe.set_scan_chain(&scan_chain)?;
         }
 
         probe.attach_to_unspecified()?;
-        if probe.protocol() == Some(WireProtocol::Jtag) {
-            if let Some(probe) = probe.try_as_jtag_probe() {
-                if let Ok(chain) = probe.scan_chain() {
-                    if !chain.is_empty() {
-                        for core in &cores {
-                            probe.select_target(core.jtag_tap_index())?;
-                        }
-                    }
-                }
+        if probe.protocol() == Some(WireProtocol::Jtag)
+            && let Some(probe) = probe.try_as_jtag_probe()
+            && let Ok(chain) = probe.scan_chain()
+            && !chain.is_empty()
+        {
+            for core in &cores {
+                probe.select_target(core.jtag_tap_index())?;
             }
         }
 
@@ -341,12 +338,11 @@ impl Session {
         // While we still don't support mixed architectures
         // (they'd need per-core debug sequences), we can at least
         // handle most of the setup in the same way.
-        if let Some(jtag) = target.jtag.as_ref() {
-            if let Some(scan_chain) = jtag.scan_chain.clone() {
-                if let Some(probe) = probe.try_as_jtag_probe() {
-                    probe.set_scan_chain(&scan_chain)?;
-                }
-            }
+        if let Some(jtag) = target.jtag.as_ref()
+            && let Some(scan_chain) = jtag.scan_chain.clone()
+            && let Some(probe) = probe.try_as_jtag_probe()
+        {
+            probe.set_scan_chain(&scan_chain)?;
         }
 
         probe.attach_to_unspecified()?;

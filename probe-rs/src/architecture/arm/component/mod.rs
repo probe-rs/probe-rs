@@ -298,7 +298,7 @@ pub(crate) fn read_trace_memory(
             None => {
                 // If there's nothing available in the FIFO, we can only break out of reading if we
                 // have an integer number of formatted frames, which are 16 bytes each.
-                if (etf_trace.len() % 16) == 0 {
+                if etf_trace.len().is_multiple_of(16) {
                     break;
                 }
             }
@@ -306,7 +306,7 @@ pub(crate) fn read_trace_memory(
 
         // If the FIFO is being filled faster than we can read it, break out after reading a
         // maximum number of frames.
-        let frame_boundary = (etf_trace.len() % 16) == 0;
+        let frame_boundary = etf_trace.len().is_multiple_of(16);
 
         if frame_boundary && etf_trace.len() >= fifo_size as usize {
             break;

@@ -446,16 +446,13 @@ impl<'debug_info> InstructionSequence<'debug_info> {
                     program_language,
                     gimli::DW_LANG_C99 | gimli::DW_LANG_C11 | gimli::DW_LANG_C17
                 )
+                && let Some(prev_row) = previous_row
+                && (row.end_sequence()
+                    || (row.is_stmt()
+                        && (row.file_index() == prev_row.file_index()
+                            && (row.line() != prev_row.line() || row.line().is_none()))))
             {
-                if let Some(prev_row) = previous_row {
-                    if row.end_sequence()
-                        || (row.is_stmt()
-                            && (row.file_index() == prev_row.file_index()
-                                && (row.line() != prev_row.line() || row.line().is_none())))
-                    {
-                        prologue_completed = true;
-                    }
-                }
+                prologue_completed = true;
             }
 
             if !prologue_completed {
@@ -488,14 +485,13 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         // has the same file index and column value.
         // This prevents the debugger from jumping to the top of the file unexpectedly.
         let mut instruction_line = row.line();
-        if let Some(prev_row) = previous_row {
-            if row.line().is_none()
-                && prev_row.line().is_some()
-                && row.file_index() == prev_row.file_index()
-                && prev_row.column() == row.column()
-            {
-                instruction_line = prev_row.line();
-            }
+        if let Some(prev_row) = previous_row
+            && row.line().is_none()
+            && prev_row.line().is_some()
+            && row.file_index() == prev_row.file_index()
+            && prev_row.column() == row.column()
+        {
+            instruction_line = prev_row.line();
         }
 
         let instruction_location = InstructionLocation {

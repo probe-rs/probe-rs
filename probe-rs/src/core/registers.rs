@@ -117,7 +117,7 @@ pub struct CoreRegister {
 
 impl PartialOrd for CoreRegister {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.id.cmp(&other.id))
+        Some(self.cmp(other))
     }
 }
 

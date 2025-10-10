@@ -354,6 +354,10 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                         response_message.push_str("No breakpoints set.");
                     } else {
                         for (idx, bpt) in breakpoint_addrs {
+                            #[expect(
+                                clippy::unwrap_used,
+                                reason = "Writing to a string is infallible"
+                            )]
                             writeln!(&mut response_message, "Breakpoint #{idx} @ {bpt:#010X}\n")
                                 .unwrap();
                         }
@@ -549,8 +553,9 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             let mut range_string = String::new();
             for memory_range in &ranges {
                 if !range_string.is_empty() {
-                    write!(&mut range_string, ", ").unwrap();
+                    range_string.push_str(", ");
                 }
+                #[expect(clippy::unwrap_used, reason = "Writing to a string never fails")]
                 write!(&mut range_string, "{memory_range:#X?}").unwrap();
             }
             range_string = if range_string.is_empty() {
@@ -725,6 +730,10 @@ fn reg_table(results: &[(String, String)], max_line_length: usize) -> String {
             response_message.push(' ');
         }
 
+        #[expect(
+            clippy::unwrap_used,
+            reason = "This is safe because we are writing to a string"
+        )]
         // Format the line name and value
         write!(
             &mut response_message,

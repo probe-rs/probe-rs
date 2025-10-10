@@ -102,13 +102,13 @@ pub fn run<'a>(
     // Process every target in a loop
     loop {
         // Check if the gdb we spawned has exited and if so exit outself.
-        if let Some(gdb_process) = &mut gdb_process {
-            if let Some(exit_status) = gdb_process.try_wait()? {
-                if !exit_status.success() {
-                    bail!("Gdb failed with {exit_status}");
-                }
-                return Ok(());
+        if let Some(gdb_process) = &mut gdb_process
+            && let Some(exit_status) = gdb_process.try_wait()?
+        {
+            if !exit_status.success() {
+                bail!("Gdb failed with {exit_status}");
             }
+            return Ok(());
         }
 
         let mut wait_time = Duration::MAX;

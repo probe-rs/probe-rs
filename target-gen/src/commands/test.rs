@@ -148,7 +148,7 @@ pub fn cmd_test(
     let test_start_sector_address = test_start_sector_address.unwrap_or(start_address);
     if test_start_sector_address < start_address
         || test_start_sector_address > start_address + end_address - sector_size * 2
-        || test_start_sector_address % sector_size != 0
+        || !test_start_sector_address.is_multiple_of(sector_size)
     {
         return Err(anyhow!(
             "test_start_sector_address must be sector aligned address pointing flash range"

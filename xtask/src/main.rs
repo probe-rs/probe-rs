@@ -449,10 +449,10 @@ fn print_fragment_list(fragment_list: FragmentList, pr: Option<u64>) -> Result<(
     let message = fragment_list.display();
     println!("{message}");
 
-    if !fragment_list.is_ok() {
-        if let Some(pr) = pr {
-            write_comment(pr, &message)?;
-        }
+    if !fragment_list.is_ok()
+        && let Some(pr) = pr
+    {
+        write_comment(pr, &message)?;
     }
 
     Ok(())

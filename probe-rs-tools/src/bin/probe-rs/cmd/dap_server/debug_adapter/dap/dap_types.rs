@@ -31,39 +31,8 @@ impl TryFrom<&str> for MemoryAddress {
     }
 }
 
-/// Custom 'quit' request, so that VSCode can tell the `probe-rs-debugger` to terminate its own process.
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
-pub struct QuitRequest {
-    /// Object containing arguments for the command.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<TerminateArguments>,
-    /// The command to execute.
-    pub command: String,
-    /// Sequence number (also known as message ID). For protocol messages of type \'request\' this ID
-    /// can be used to cancel the request.
-    pub seq: i64,
-    /// Message type.
-    #[serde(rename = "type")]
-    pub type_: String,
-}
-
-/// Custom [`RttWindowOpened`] request, so that VSCode can confirm once a specific RTT channel's window has opened.
+/// Arguments for custom [`RttWindowOpened`] request, so that VSCode can confirm once a specific RTT channel's window has opened.
 /// `probe-rs-debugger` will delay polling RTT channels until the data window has opened. This ensure no RTT data is lost on the client.
-#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
-pub struct RttWindowOpened {
-    /// Object containing arguments for the command.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub arguments: Option<RttWindowOpenedArguments>,
-    /// The command to execute.
-    pub command: String,
-    /// Sequence number (also known as message ID). For protocol messages of type `request` this ID
-    /// can be used to cancel the request.
-    pub seq: i64,
-    /// Message type.
-    #[serde(rename = "type")]
-    pub type_: String,
-}
-///  Arguments for [`RttWindowOpened`] request.
 #[derive(Clone, PartialEq, Eq, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RttWindowOpenedArguments {

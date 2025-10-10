@@ -54,23 +54,19 @@ impl GlasgowUsbDevice {
         let mut in_ep_num = None;
         let mut out_ep_num = None;
         if let Ok(config) = device.active_configuration() {
-            if let Some(interface) = config.interfaces().nth(in_iface_num as usize) {
-                if let Some(altsetting) = interface.alt_settings().nth(1) {
-                    if let Some(endpoint) = altsetting.endpoints().next() {
-                        if endpoint.direction() == Direction::In {
-                            in_ep_num = Some(endpoint.address());
-                        }
-                    }
-                }
+            if let Some(interface) = config.interfaces().nth(in_iface_num as usize)
+                && let Some(altsetting) = interface.alt_settings().nth(1)
+                && let Some(endpoint) = altsetting.endpoints().next()
+                && endpoint.direction() == Direction::In
+            {
+                in_ep_num = Some(endpoint.address());
             }
-            if let Some(interface) = config.interfaces().nth(out_iface_num as usize) {
-                if let Some(altsetting) = interface.alt_settings().nth(1) {
-                    if let Some(endpoint) = altsetting.endpoints().next() {
-                        if endpoint.direction() == Direction::Out {
-                            out_ep_num = Some(endpoint.address());
-                        }
-                    }
-                }
+            if let Some(interface) = config.interfaces().nth(out_iface_num as usize)
+                && let Some(altsetting) = interface.alt_settings().nth(1)
+                && let Some(endpoint) = altsetting.endpoints().next()
+                && endpoint.direction() == Direction::Out
+            {
+                out_ep_num = Some(endpoint.address());
             }
         }
 

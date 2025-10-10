@@ -1423,15 +1423,15 @@ impl ProbeFactory for BlackMagicProbeFactory {
 
         // If the serial number is a valid "address:port" string, attempt to
         // connect to it via TCP.
-        if let Some(serial_number) = &selector.serial_number {
-            if let Ok(connection) = std::net::TcpStream::connect(serial_number) {
-                let reader = connection;
-                let writer = reader.try_clone().map_err(|e| {
-                    DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::Usb(e))
-                })?;
-                return BlackMagicProbe::new(Box::new(reader), Box::new(writer))
-                    .map(|p| Box::new(p) as Box<dyn DebugProbe>);
-            }
+        if let Some(serial_number) = &selector.serial_number
+            && let Ok(connection) = std::net::TcpStream::connect(serial_number)
+        {
+            let reader = connection;
+            let writer = reader
+                .try_clone()
+                .map_err(|e| DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::Usb(e)))?;
+            return BlackMagicProbe::new(Box::new(reader), Box::new(writer))
+                .map(|p| Box::new(p) as Box<dyn DebugProbe>);
         }
 
         // Otherwise, treat it as a serial port and iterate through all ports.

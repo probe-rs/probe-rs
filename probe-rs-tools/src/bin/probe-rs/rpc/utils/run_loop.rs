@@ -98,10 +98,10 @@ impl RunLoop {
             match self.poll_once(core, poller, predicate)? {
                 ControlFlow::Break(reason) => return Ok(reason),
                 ControlFlow::Continue(next_poll) => {
-                    if let Some(timeout) = timeout {
-                        if start.elapsed() >= timeout {
-                            return Ok(ReturnReason::Timeout);
-                        }
+                    if let Some(timeout) = timeout
+                        && start.elapsed() >= timeout
+                    {
+                        return Ok(ReturnReason::Timeout);
                     }
 
                     // If the polling frequency is too high, the USB connection to the probe

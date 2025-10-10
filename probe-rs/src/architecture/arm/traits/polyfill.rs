@@ -219,23 +219,21 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
 
     if let Some(ctrl_value) = ctrl_value {
         // Check CTRL/STATUS to make sure OK/FAULT meant OK
-        if let Ok(CommandResult::U32(received_value)) = jtag_results.take(ctrl_value) {
-            if Ctrl(received_value).sticky_err() {
-                tracing::debug!("JTAG transaction set failed: {:#X?}", transfers);
+        if let Ok(CommandResult::U32(received_value)) = jtag_results.take(ctrl_value)
+            && Ctrl(received_value).sticky_err()
+        {
+            tracing::debug!("JTAG transaction set failed: {:#X?}", transfers);
 
-                // Clear the sticky bit so future transactions succeed
-                let (_, _) = perform_jtag_transfer(
-                    probe,
-                    &DapTransfer::write(Ctrl::ADDRESS, received_value),
-                )?;
+            // Clear the sticky bit so future transactions succeed
+            let (_, _) =
+                perform_jtag_transfer(probe, &DapTransfer::write(Ctrl::ADDRESS, received_value))?;
 
-                // Mark OK/FAULT transactions as failed. Since the error is sticky, we can assume that
-                // if we received a WAIT, the previous transactions were successful.
-                // The caller will reset the sticky flag and retry if needed
-                for transfer in transfers.iter_mut() {
-                    if transfer.status == TransferStatus::Ok {
-                        transfer.status = TransferStatus::Failed(DapError::FaultResponse);
-                    }
+            // Mark OK/FAULT transactions as failed. Since the error is sticky, we can assume that
+            // if we received a WAIT, the previous transactions were successful.
+            // The caller will reset the sticky flag and retry if needed
+            for transfer in transfers.iter_mut() {
+                if transfer.status == TransferStatus::Ok {
+                    transfer.status = TransferStatus::Failed(DapError::FaultResponse);
                 }
             }
         }

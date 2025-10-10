@@ -40,12 +40,11 @@ impl Events {
                 .spawn(move || {
                     loop {
                         // poll for tick rate duration, if no events, sent tick event.
-                        if event::poll(config.poll_rate).unwrap() {
-                            if let CEvent::Key(key) = event::read().unwrap() {
-                                if tx.send(key).is_err() {
-                                    return;
-                                }
-                            }
+                        if event::poll(config.poll_rate).unwrap()
+                            && let CEvent::Key(key) = event::read().unwrap()
+                            && tx.send(key).is_err()
+                        {
+                            return;
                         }
                     }
                 })

@@ -156,11 +156,11 @@ impl ArmDebugSequence for LPC80x {
         let start = Instant::now();
         while start.elapsed() < Duration::from_millis(100) {
             // ignore read errors while resetting
-            if let Ok(dhcr) = interface.read_word_32(Dhcsr::get_mmio_address()) {
-                if Dhcsr(dhcr).s_halt() {
-                    // return early if we're in debug state
-                    return Ok(());
-                }
+            if let Ok(dhcr) = interface.read_word_32(Dhcsr::get_mmio_address())
+                && Dhcsr(dhcr).s_halt()
+            {
+                // return early if we're in debug state
+                return Ok(());
             }
         }
 
