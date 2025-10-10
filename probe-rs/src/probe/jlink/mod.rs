@@ -473,7 +473,7 @@ impl JLink {
     }
 
     fn read(&self, buf: &mut [u8]) -> Result<(), JlinkError> {
-        let needs_workaround = buf.len() % self.max_read_ep_packet == 0;
+        let needs_workaround = buf.len().is_multiple_of(self.max_read_ep_packet);
         let len = buf.len();
 
         let mut tmp_buffer;

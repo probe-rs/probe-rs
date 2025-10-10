@@ -39,16 +39,16 @@ impl DebugRegister {
 
     /// Return the memory range required to read the register value.
     pub fn memory_range(&self) -> Result<Option<Range<u64>>, Error> {
-        if self.is_pointer() {
-            if let Some(mut register_value) = self.value {
-                let start_address: u64 = register_value.try_into()?;
-                register_value.increment_address(self.core_register.size_in_bytes())?;
-                let end_address: u64 = register_value.try_into()?;
-                return Ok(Some(Range {
-                    start: start_address,
-                    end: end_address,
-                }));
-            }
+        if self.is_pointer()
+            && let Some(mut register_value) = self.value
+        {
+            let start_address: u64 = register_value.try_into()?;
+            register_value.increment_address(self.core_register.size_in_bytes())?;
+            let end_address: u64 = register_value.try_into()?;
+            return Ok(Some(Range {
+                start: start_address,
+                end: end_address,
+            }));
         }
         Ok(None)
     }

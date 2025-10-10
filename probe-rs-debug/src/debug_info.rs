@@ -175,18 +175,17 @@ impl DebugInfo {
                             //
                             // (If we don't do this, you get the artificial effect where the debugger
                             // steps to the top of the file when it is steppping out of a function.)
-                            if let Some(previous_row) = previous_row {
-                                if let Some(path) =
+                            if let Some(previous_row) = previous_row
+                                && let Some(path) =
                                     self.find_file_and_directory(unit, previous_row.file_index())
-                                {
-                                    tracing::debug!("{:#010x} - {:?}", address, previous_row.isa());
-                                    return Some(SourceLocation {
-                                        line: previous_row.line().map(NonZeroU64::get),
-                                        column: Some(previous_row.column().into()),
-                                        path,
-                                        address: Some(previous_row.address()),
-                                    });
-                                }
+                            {
+                                tracing::debug!("{:#010x} - {:?}", address, previous_row.isa());
+                                return Some(SourceLocation {
+                                    line: previous_row.line().map(NonZeroU64::get),
+                                    column: Some(previous_row.column().into()),
+                                    path,
+                                    address: Some(previous_row.address()),
+                                });
                             }
                         }
                         Ordering::Less => {}

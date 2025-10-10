@@ -128,10 +128,10 @@ impl FlashAlgorithm {
             }
 
             // Advance desc_idx if needed
-            if let Some(next_desc) = props.sectors.get(desc_idx + 1) {
-                if props.address_range.start + next_desc.address <= addr {
-                    desc_idx += 1;
-                }
+            if let Some(next_desc) = props.sectors.get(desc_idx + 1)
+                && props.address_range.start + next_desc.address <= addr
+            {
+                desc_idx += 1;
             }
 
             let size = props.sectors[desc_idx].size;

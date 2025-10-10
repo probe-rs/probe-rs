@@ -58,17 +58,17 @@ impl ProbeFactory for GlasgowFactory {
             product_id,
             serial_number: serial_number @ Some(_),
         }) = selector
+            && *vendor_id == usb::VID_QIHW
+            && *product_id == usb::PID_GLASGOW
         {
-            if *vendor_id == usb::VID_QIHW && *product_id == usb::PID_GLASGOW {
-                return vec![DebugProbeInfo {
-                    identifier: "Glasgow".to_owned(),
-                    vendor_id: *vendor_id,
-                    product_id: *product_id,
-                    serial_number: serial_number.clone(),
-                    hid_interface: None,
-                    probe_factory: &Self,
-                }];
-            }
+            return vec![DebugProbeInfo {
+                identifier: "Glasgow".to_owned(),
+                vendor_id: *vendor_id,
+                product_id: *product_id,
+                serial_number: serial_number.clone(),
+                hid_interface: None,
+                probe_factory: &Self,
+            }];
         }
 
         vec![]

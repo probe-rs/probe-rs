@@ -273,50 +273,50 @@ impl<'probe> Armv7a<'probe> {
         let writeback_iter = (17u16..=48).chain(15u16..=16).chain(0u16..=14);
 
         for i in writeback_iter {
-            if let Some((val, writeback)) = self.state.register_cache[i as usize] {
-                if writeback {
-                    match i {
-                        0..=14 => {
-                            let instruction = build_mrc(14, 0, i, 0, 5, 0);
+            if let Some((val, writeback)) = self.state.register_cache[i as usize]
+                && writeback
+            {
+                match i {
+                    0..=14 => {
+                        let instruction = build_mrc(14, 0, i, 0, 5, 0);
 
-                            self.execute_instruction_with_input(instruction, val.try_into()?)?;
-                        }
-                        15 => {
-                            // Move val to r0
-                            let instruction = build_mrc(14, 0, 0, 0, 5, 0);
+                        self.execute_instruction_with_input(instruction, val.try_into()?)?;
+                    }
+                    15 => {
+                        // Move val to r0
+                        let instruction = build_mrc(14, 0, 0, 0, 5, 0);
 
-                            self.execute_instruction_with_input(instruction, val.try_into()?)?;
+                        self.execute_instruction_with_input(instruction, val.try_into()?)?;
 
-                            // Use `mov pc, r0` rather than `bx r0` because the `bx` instruction is
-                            // `UNPREDICTABLE` in the debug state (ARM Architecture Reference Manual,
-                            // ARMv7-A and ARMv7-R edition, C5.3: "Executing instructions in Debug state").
-                            let instruction = build_mov(15, 0);
-                            self.execute_instruction(instruction)?;
-                        }
-                        16 => {
-                            // msr cpsr_fsxc, r0
-                            let instruction = build_msr(0);
-                            self.execute_instruction_with_input(instruction, val.try_into()?)?;
-                        }
-                        17..=48 => {
-                            // Move value to r0, r1
-                            let value: u64 = val.try_into()?;
-                            let low_word = value as u32;
-                            let high_word = (value >> 32) as u32;
+                        // Use `mov pc, r0` rather than `bx r0` because the `bx` instruction is
+                        // `UNPREDICTABLE` in the debug state (ARM Architecture Reference Manual,
+                        // ARMv7-A and ARMv7-R edition, C5.3: "Executing instructions in Debug state").
+                        let instruction = build_mov(15, 0);
+                        self.execute_instruction(instruction)?;
+                    }
+                    16 => {
+                        // msr cpsr_fsxc, r0
+                        let instruction = build_msr(0);
+                        self.execute_instruction_with_input(instruction, val.try_into()?)?;
+                    }
+                    17..=48 => {
+                        // Move value to r0, r1
+                        let value: u64 = val.try_into()?;
+                        let low_word = value as u32;
+                        let high_word = (value >> 32) as u32;
 
-                            let instruction = build_mrc(14, 0, 0, 0, 5, 0);
-                            self.execute_instruction_with_input(instruction, low_word)?;
+                        let instruction = build_mrc(14, 0, 0, 0, 5, 0);
+                        self.execute_instruction_with_input(instruction, low_word)?;
 
-                            let instruction = build_mrc(14, 0, 1, 0, 5, 0);
-                            self.execute_instruction_with_input(instruction, high_word)?;
+                        let instruction = build_mrc(14, 0, 1, 0, 5, 0);
+                        self.execute_instruction_with_input(instruction, high_word)?;
 
-                            // VMOV
-                            let instruction = build_vmov(0, 0, 1, i - 17);
-                            self.execute_instruction(instruction)?;
-                        }
-                        _ => {
-                            panic!("Logic missing for writeback of register {i}");
-                        }
+                        // VMOV
+                        let instruction = build_vmov(0, 0, 1, i - 17);
+                        self.execute_instruction(instruction)?;
+                    }
+                    _ => {
+                        panic!("Logic missing for writeback of register {i}");
                     }
                 }
             }
@@ -831,10 +831,10 @@ impl CoreInterface for Armv7a<'_> {
         let reg_num = address.0;
 
         // check cache
-        if (reg_num as usize) < self.state.register_cache.len() {
-            if let Some(cached_result) = self.state.register_cache[reg_num as usize] {
-                return Ok(cached_result.0);
-            }
+        if (reg_num as usize) < self.state.register_cache.len()
+            && let Some(cached_result) = self.state.register_cache[reg_num as usize]
+        {
+            return Ok(cached_result.0);
         }
 
         // Generate instruction to extract register
@@ -1257,10 +1257,10 @@ impl MemoryInterface for Armv7a<'_> {
                     // Grab the last value that we skipped during the main sequence.
                     // Ignore any errors here since they will generate an abort that
                     // will be caught below.
-                    if let Ok(last) = banked.dtrrx() {
-                        if let Some(v) = data.last_mut() {
-                            *v = last;
-                        }
+                    if let Ok(last) = banked.dtrrx()
+                        && let Some(v) = data.last_mut()
+                    {
+                        *v = last;
                     }
                 }
 
@@ -1293,7 +1293,7 @@ impl MemoryInterface for Armv7a<'_> {
 
     fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.halted_access(|core| {
-            if address % 4 == 0 && data.len() % 4 == 0 {
+            if address.is_multiple_of(4) && data.len().is_multiple_of(4) {
                 // Avoid heap allocation and copy if we don't need it.
                 if let Ok((aligned_buffer, _)) =
                     <[u32]>::mut_from_prefix_with_elems(data, data.len() / 4)

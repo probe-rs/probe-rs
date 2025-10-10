@@ -63,13 +63,13 @@ impl RttClient {
         // header's final address in RAM, then it's not relocated on startup and we should not
         // clear it. This impacts static RTT headers, like used in defmt_rtt.
 
-        if let ScanRegion::Exact(address) = self.scan_region {
-            if loader.has_data_for_address(address) {
-                tracing::debug!(
-                    "RTT control block is initialized by flash loader. Disabling clearing."
-                );
-                self.disallow_clearing_rtt_header()
-            }
+        if let ScanRegion::Exact(address) = self.scan_region
+            && loader.has_data_for_address(address)
+        {
+            tracing::debug!(
+                "RTT control block is initialized by flash loader. Disabling clearing."
+            );
+            self.disallow_clearing_rtt_header()
         }
     }
 

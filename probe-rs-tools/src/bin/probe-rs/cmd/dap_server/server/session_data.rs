@@ -364,22 +364,21 @@ impl SessionData {
             // the core will be resumed, so we need to update the status.
             // If the command is not handled, the core will remain halted and we
             // need to notify the UI.
-            if current_core_status != previous_core_status {
-                if let CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+            if current_core_status != previous_core_status
+                && let CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
                     command,
                 ))) = current_core_status
-                {
-                    current_core_status = target_core.handle_semihosting(debug_adapter, command)?;
+            {
+                current_core_status = target_core.handle_semihosting(debug_adapter, command)?;
 
-                    if current_core_status.is_halted() {
-                        // poll_core did not notify about the halt, so we need to do it manually.
-                        target_core.notify_halted(debug_adapter, current_core_status)?;
-                    } else {
-                        // If the semihosting command was handled, we do not need to suggest a delay.
-                        suggest_delay_required = false;
-                    }
-                    target_core.core_data.last_known_status = current_core_status;
+                if current_core_status.is_halted() {
+                    // poll_core did not notify about the halt, so we need to do it manually.
+                    target_core.notify_halted(debug_adapter, current_core_status)?;
+                } else {
+                    // If the semihosting command was handled, we do not need to suggest a delay.
+                    suggest_delay_required = false;
                 }
+                target_core.core_data.last_known_status = current_core_status;
             }
 
             // If the core is running, we set the flag to indicate that at least one core is not halted.

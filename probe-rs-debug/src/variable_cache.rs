@@ -62,13 +62,13 @@ impl Serialize for VariableCache {
             let mut out = Vec::new();
 
             loop {
-                if let Some(max_count) = max_children {
-                    if out.len() >= max_count {
-                        // Be a bit lenient with the limit, avoid showing "1 more" for a single child.
-                        let remaining = children.clone().count();
-                        if remaining > 1 {
-                            break;
-                        }
+                if let Some(max_count) = max_children
+                    && out.len() >= max_count
+                {
+                    // Be a bit lenient with the limit, avoid showing "1 more" for a single child.
+                    let remaining = children.clone().count();
+                    if remaining > 1 {
+                        break;
                     }
                 }
                 let Some(child_variable) = children.next() else {

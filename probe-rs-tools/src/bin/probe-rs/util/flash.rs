@@ -43,20 +43,19 @@ pub fn run_flash_download(
     };
 
     options.progress = FlashProgress::new(move |event| {
-        if let Some(ref path) = download_options.flash_layout_output_path {
-            if let probe_rs::flashing::ProgressEvent::FlashLayoutReady {
+        if let Some(ref path) = download_options.flash_layout_output_path
+            && let probe_rs::flashing::ProgressEvent::FlashLayoutReady {
                 flash_layout: ref phases,
             } = event
-            {
-                let mut flash_layout = FlashLayout::default();
-                for phase_layout in phases {
-                    flash_layout.merge_from(phase_layout.into());
-                }
-
-                // Visualise flash layout to file if requested.
-                let visualizer = flash_layout.visualize();
-                _ = visualizer.write_svg(path);
+        {
+            let mut flash_layout = FlashLayout::default();
+            for phase_layout in phases {
+                flash_layout.merge_from(phase_layout.into());
             }
+
+            // Visualise flash layout to file if requested.
+            let visualizer = flash_layout.visualize();
+            _ = visualizer.write_svg(path);
         }
 
         if let Some(ref pb) = pb {

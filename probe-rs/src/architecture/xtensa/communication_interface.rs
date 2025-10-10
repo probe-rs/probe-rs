@@ -700,7 +700,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
         // Let's assume we can just do 32b reads, so let's
         // do some pre-massaging on unaligned reads if needed.
-        let first_read = if address % 4 != 0
+        let first_read = if !address.is_multiple_of(4)
             && !self
                 .core_properties
                 .memory_range_properties(address..address + dst.len() as u64)
@@ -789,7 +789,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         // We store the unaligned head of the data separately. In case the core supports unaligned
         // load/store, we can just write the data directly.
         let mut address_loaded = false;
-        if addr % 4 != 0
+        if !addr.is_multiple_of(4)
             && !self
                 .core_properties
                 .memory_range_properties(address..address + buffer.len() as u64)

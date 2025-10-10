@@ -277,14 +277,14 @@ impl<'r> LoadedProbeOptions<'r> {
             // Warn the user if they specified a speed the debug probe does not support
             // and a fitting speed was automatically selected.
             let protocol_speed = probe.speed_khz();
-            if let Some(speed) = self.0.speed {
-                if protocol_speed < speed {
-                    tracing::warn!(
-                        "Unable to use specified speed of {} kHz, actual speed used is {} kHz",
-                        speed,
-                        protocol_speed
-                    );
-                }
+            if let Some(speed) = self.0.speed
+                && protocol_speed < speed
+            {
+                tracing::warn!(
+                    "Unable to use specified speed of {} kHz, actual speed used is {} kHz",
+                    speed,
+                    protocol_speed
+                );
             }
 
             tracing::info!("Protocol speed {} kHz", protocol_speed);

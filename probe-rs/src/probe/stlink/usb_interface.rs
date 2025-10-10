@@ -122,16 +122,16 @@ impl StLinkUsbDevice {
         let mut endpoint_swo = false;
 
         let config = device_handle.configurations().next().unwrap();
-        if let Some(interface) = config.interfaces().next() {
-            if let Some(descriptor) = interface.alt_settings().next() {
-                for endpoint in descriptor.endpoints() {
-                    if endpoint.address() == info.ep_out {
-                        endpoint_out = true;
-                    } else if endpoint.address() == info.ep_in {
-                        endpoint_in = true;
-                    } else if endpoint.address() == info.ep_swo {
-                        endpoint_swo = true;
-                    }
+        if let Some(interface) = config.interfaces().next()
+            && let Some(descriptor) = interface.alt_settings().next()
+        {
+            for endpoint in descriptor.endpoints() {
+                if endpoint.address() == info.ep_out {
+                    endpoint_out = true;
+                } else if endpoint.address() == info.ep_in {
+                    endpoint_in = true;
+                } else if endpoint.address() == info.ep_swo {
+                    endpoint_swo = true;
                 }
             }
         }

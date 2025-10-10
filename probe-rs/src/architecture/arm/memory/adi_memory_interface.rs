@@ -58,7 +58,7 @@ where
             return Ok(());
         }
 
-        if (address % 8) != 0 {
+        if !address.is_multiple_of(8) {
             return Err(ArmError::alignment_error(address, 8));
         }
 
@@ -111,7 +111,7 @@ where
             return Ok(());
         }
 
-        if (address % 4) != 0 {
+        if !address.is_multiple_of(4) {
             return Err(ArmError::alignment_error(address, 4));
         }
 
@@ -153,7 +153,7 @@ where
             return Err(ArmError::UnsupportedTransferWidth(16));
         }
 
-        if (address % 2) != 0 {
+        if !address.is_multiple_of(2) {
             return Err(ArmError::alignment_error(address, 2));
         }
 
@@ -251,7 +251,7 @@ where
 
     fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         let len = data.len();
-        if address % 4 == 0 && len % 4 == 0 {
+        if address.is_multiple_of(4) && len.is_multiple_of(4) {
             let mut buffer = vec![0u32; len / 4];
             self.read_32(address, &mut buffer)?;
             for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
@@ -277,7 +277,7 @@ where
     /// The address where the write should be performed at has to be a multiple of 8.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     fn write_64(&mut self, mut address: u64, mut data: &[u64]) -> Result<(), ArmError> {
-        if (address % 8) != 0 {
+        if !address.is_multiple_of(8) {
             return Err(ArmError::alignment_error(address, 8));
         }
 
@@ -335,7 +335,7 @@ where
     /// The address where the write should be performed at has to be a multiple of 4.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     fn write_32(&mut self, mut address: u64, mut data: &[u32]) -> Result<(), ArmError> {
-        if (address % 4) != 0 {
+        if !address.is_multiple_of(4) {
             return Err(ArmError::alignment_error(address, 4));
         }
 
@@ -386,7 +386,7 @@ where
         if self.memory_ap.supports_only_32bit_data_size() {
             return Err(ArmError::UnsupportedTransferWidth(16));
         }
-        if (address % 2) != 0 {
+        if !address.is_multiple_of(2) {
             return Err(ArmError::alignment_error(address, 2));
         }
         if data.is_empty() {

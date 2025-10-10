@@ -183,13 +183,13 @@ impl FlashBuilder {
         }
 
         // Check the new data doesn't overlap to the right.
-        if let Some((&next_addr, next_data)) = self.data.range(address..).next() {
-            if address + (data.len() as u64) > next_addr {
-                return Err(FlashError::DataOverlaps {
-                    added_addresses: address..address + data.len() as u64,
-                    existing_addresses: next_addr..next_addr + next_data.len() as u64,
-                });
-            }
+        if let Some((&next_addr, next_data)) = self.data.range(address..).next()
+            && address + (data.len() as u64) > next_addr
+        {
+            return Err(FlashError::DataOverlaps {
+                added_addresses: address..address + data.len() as u64,
+                existing_addresses: next_addr..next_addr + next_data.len() as u64,
+            });
         }
 
         // Check the new data doesn't overlap to the left.
@@ -237,10 +237,10 @@ impl FlashBuilder {
 
         // Check if the immediately preceding data overlaps with the wanted range.
         // If so, adjust the iteration start so it is included.
-        if let Some((&prev_addr, prev_data)) = self.data.range(..range.start).next_back() {
-            if prev_addr + (prev_data.len() as u64) > range.start {
-                adjusted_start = prev_addr;
-            }
+        if let Some((&prev_addr, prev_data)) = self.data.range(..range.start).next_back()
+            && prev_addr + (prev_data.len() as u64) > range.start
+        {
+            adjusted_start = prev_addr;
         }
 
         self.data

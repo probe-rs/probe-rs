@@ -875,11 +875,11 @@ impl<D: StLinkUsb> StLink<D> {
         );
 
         assert!(
-            data.len() % 4 == 0,
+            data.len().is_multiple_of(4),
             "Data length has to be a multiple of 4 for 32 bit reads"
         );
 
-        if address % 4 != 0 {
+        if !address.is_multiple_of(4) {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
@@ -916,11 +916,11 @@ impl<D: StLinkUsb> StLink<D> {
         // TODO what is the max length?
 
         assert!(
-            data.len() % 2 == 0,
+            data.len().is_multiple_of(2),
             "Data length has to be a multiple of 2 for 16 bit reads"
         );
 
-        if address % 2 != 0 {
+        if !address.is_multiple_of(2) {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
@@ -1020,11 +1020,11 @@ impl<D: StLinkUsb> StLink<D> {
         );
 
         assert!(
-            data.len() % 4 == 0,
+            data.len().is_multiple_of(4),
             "Data length has to be a multiple of 4 for 32 bit writes"
         );
 
-        if address % 4 != 0 {
+        if !address.is_multiple_of(4) {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
@@ -1060,11 +1060,11 @@ impl<D: StLinkUsb> StLink<D> {
         // TODO what is the maximum supported length?
 
         assert!(
-            data.len() % 2 == 0,
+            data.len().is_multiple_of(2),
             "Data length has to be a multiple of 2 for 16 bit writes"
         );
 
-        if address % 2 != 0 {
+        if !address.is_multiple_of(2) {
             return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 

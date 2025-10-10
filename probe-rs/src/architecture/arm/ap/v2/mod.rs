@@ -48,23 +48,23 @@ fn process_root_component<ADI: ArmDebugInterface>(
         {
             let rom_table = RomTable::try_parse(iface, c.component_address())?;
             for e in rom_table.entries() {
-                if let Component::CoresightComponent(comp) = e.component() {
-                    if comp.peripheral_id().is_of_type(PeripheralType::MemAp) {
-                        let base_address = ApV2Address::new(comp.component_address());
-                        // TODO: Check this AP for further nested APs.
-                        result.insert(base_address);
-                    }
+                if let Component::CoresightComponent(comp) = e.component()
+                    && comp.peripheral_id().is_of_type(PeripheralType::MemAp)
+                {
+                    let base_address = ApV2Address::new(comp.component_address());
+                    // TODO: Check this AP for further nested APs.
+                    result.insert(base_address);
                 }
             }
         }
         Component::Class1RomTable(_, rom_table) => {
             for e in rom_table.entries() {
-                if let Component::CoresightComponent(comp) = e.component() {
-                    if comp.peripheral_id().is_of_type(PeripheralType::MemAp) {
-                        let base_address = ApV2Address::new(comp.component_address());
-                        // TODO: Check this AP for further nested APs.
-                        result.insert(base_address);
-                    }
+                if let Component::CoresightComponent(comp) = e.component()
+                    && comp.peripheral_id().is_of_type(PeripheralType::MemAp)
+                {
+                    let base_address = ApV2Address::new(comp.component_address());
+                    // TODO: Check this AP for further nested APs.
+                    result.insert(base_address);
                 }
             }
         }

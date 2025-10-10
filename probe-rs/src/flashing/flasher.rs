@@ -80,11 +80,10 @@ impl FlashData {
             encoder,
             ignore_fills: was_ignore_fills,
         } = self
+            && *was_ignore_fills != ignore_fills
         {
-            if *was_ignore_fills != ignore_fills {
-                // Fill handling changed, invalidate the encoder
-                *self = FlashData::Raw(encoder.flash_layout().clone());
-            }
+            // Fill handling changed, invalidate the encoder
+            *self = FlashData::Raw(encoder.flash_layout().clone());
         }
         if let FlashData::Raw(layout) = self {
             let layout = std::mem::take(layout);

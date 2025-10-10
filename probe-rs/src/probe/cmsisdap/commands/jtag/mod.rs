@@ -44,10 +44,10 @@ impl RawJtagIo for CmsisDap {
 
 impl CmsisDap {
     fn flush_jtag(&mut self) -> Result<(), DebugProbeError> {
-        if let Some(seq) = self.jtag_buffer.current_sequence.take() {
-            if !seq.is_empty() {
-                self.jtag_buffer.complete_sequences.push(seq);
-            }
+        if let Some(seq) = self.jtag_buffer.current_sequence.take()
+            && !seq.is_empty()
+        {
+            self.jtag_buffer.complete_sequences.push(seq);
         }
 
         // Flush was called but not neeed.

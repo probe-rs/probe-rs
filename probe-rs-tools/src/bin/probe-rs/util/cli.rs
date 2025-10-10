@@ -201,11 +201,11 @@ impl ChannelIdentifier {
         if map.contains_key(self) {
             return map.get_mut(self);
         };
-        if let Some(fallback) = self.unqualified() {
-            if map.contains_key(&fallback) {
-                return map.get_mut(&fallback);
-            };
-        }
+        if let Some(fallback) = self.unqualified()
+            && map.contains_key(&fallback)
+        {
+            return map.get_mut(&fallback);
+        };
         map.get_mut(&Self::CatchAll)
     }
 }
@@ -400,16 +400,16 @@ pub async fn flash(
     }
 
     // Visualise flash layout to file if requested.
-    if let Some(visualizer_output) = download_options.flash_layout_output_path {
-        if let Some(phases) = flash_layout {
-            let mut flash_layout = FlashLayout::default();
-            for phase_layout in phases {
-                flash_layout.merge_from(phase_layout);
-            }
-
-            let visualizer = flash_layout.visualize();
-            _ = visualizer.write_svg(visualizer_output);
+    if let Some(visualizer_output) = download_options.flash_layout_output_path
+        && let Some(phases) = flash_layout
+    {
+        let mut flash_layout = FlashLayout::default();
+        for phase_layout in phases {
+            flash_layout.merge_from(phase_layout);
         }
+
+        let visualizer = flash_layout.visualize();
+        _ = visualizer.write_svg(visualizer_output);
     }
 
     logging::eprintln(format!(

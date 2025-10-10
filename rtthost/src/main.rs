@@ -146,11 +146,10 @@ fn main() -> Result<()> {
         Err(err) => {
             let mut err_str = format!("Error creating debug session: {err}");
 
-            if opts.chip.is_none() {
-                if let probe_rs::Error::ChipNotFound(_) = err {
-                    err_str
-                        .push_str("\nHint: Use '--chip' to specify the target chip type manually");
-                }
+            if opts.chip.is_none()
+                && let probe_rs::Error::ChipNotFound(_) = err
+            {
+                err_str.push_str("\nHint: Use '--chip' to specify the target chip type manually");
             }
 
             bail!("{err}");

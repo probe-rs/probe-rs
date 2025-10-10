@@ -149,10 +149,9 @@ pub(crate) fn disassemble_target_memory(
             .core_data
             .debug_info
             .get_source_location(start_from_address)
+            && let Some(source_address) = source_location.address
         {
-            if let Some(source_address) = source_location.address {
-                start_from_address = source_address;
-            }
+            start_from_address = source_address;
         }
     }
 
@@ -363,14 +362,13 @@ pub(crate) fn disassemble_target_memory(
         let maybe_inst_with_location = disassembled_instructions
             .drain(0..first_instruction_index)
             .rfind(|inst| inst.location.is_some());
-        if let Some(inst_with_location) = maybe_inst_with_location {
-            if let Some(first_instruction) = disassembled_instructions.get_mut(0) {
-                if first_instruction.location.is_none() {
-                    first_instruction.line = inst_with_location.line;
-                    first_instruction.column = inst_with_location.column;
-                    first_instruction.location = inst_with_location.location;
-                }
-            }
+        if let Some(inst_with_location) = maybe_inst_with_location
+            && let Some(first_instruction) = disassembled_instructions.get_mut(0)
+            && first_instruction.location.is_none()
+        {
+            first_instruction.line = inst_with_location.line;
+            first_instruction.column = inst_with_location.column;
+            first_instruction.location = inst_with_location.location;
         }
     } else {
         return Err(DebuggerError::Other(anyhow!(
@@ -439,10 +437,10 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
     let native_path = file_path.with_windows_encoding();
     let native_path = std::path::PathBuf::try_from(native_path)
         .map(|mut path| {
-            if path.is_relative() {
-                if let Ok(current_dir) = std::env::current_dir() {
-                    path = current_dir.join(path);
-                }
+            if path.is_relative()
+                && let Ok(current_dir) = std::env::current_dir()
+            {
+                path = current_dir.join(path);
             }
             path
         })
@@ -464,23 +462,21 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
 
     // Precompiled rustlib paths start with /rustc/<hash>/ which needs to be
     // mapped to <sysroot>/lib/rustlib/src/rust/
-    if let Some((old_prefix, new_prefix)) = RUSTLIB_SOURCE_MAP.as_ref() {
-        if let Ok(path) = file_path.strip_prefix(old_prefix) {
-            if let Ok(rustlib_path) = std::path::PathBuf::try_from(new_prefix.join(path)) {
-                if rustlib_path.exists() {
-                    return Some(Source {
-                        name: file_name,
-                        path: Some(rustlib_path.to_string_lossy().to_string()),
-                        source_reference: None,
-                        presentation_hint: None,
-                        origin: None,
-                        sources: None,
-                        adapter_data: None,
-                        checksums: None,
-                    });
-                }
-            }
-        }
+    if let Some((old_prefix, new_prefix)) = RUSTLIB_SOURCE_MAP.as_ref()
+        && let Ok(path) = file_path.strip_prefix(old_prefix)
+        && let Ok(rustlib_path) = std::path::PathBuf::try_from(new_prefix.join(path))
+        && rustlib_path.exists()
+    {
+        return Some(Source {
+            name: file_name,
+            path: Some(rustlib_path.to_string_lossy().to_string()),
+            source_reference: None,
+            presentation_hint: None,
+            origin: None,
+            sources: None,
+            adapter_data: None,
+            checksums: None,
+        });
     }
 
     // If no matching file was found

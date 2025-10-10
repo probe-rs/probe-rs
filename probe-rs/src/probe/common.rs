@@ -249,11 +249,11 @@ pub(crate) fn extract_ir_lengths<T: BitStore>(
             let mut irlens = starts_to_lengths(&starts, ir.len()).into_iter();
             let mut merged = Vec::new();
             while let Some(len) = irlens.next() {
-                if len == 2 {
-                    if let Some(next) = irlens.next() {
-                        merged.push(len + next);
-                        continue;
-                    }
+                if len == 2
+                    && let Some(next) = irlens.next()
+                {
+                    merged.push(len + next);
+                    continue;
                 }
                 merged.push(len);
             }

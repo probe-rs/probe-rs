@@ -409,10 +409,10 @@ impl FlashLoader {
             for (core, _) in session.list_cores() {
                 match session.core(core) {
                     Ok(mut core) => {
-                        if let Ok(set) = core.instruction_set() {
-                            if !target_archs.contains(&set) {
-                                target_archs.push(set);
-                            }
+                        if let Ok(set) = core.instruction_set()
+                            && !target_archs.contains(&set)
+                        {
+                            target_archs.push(set);
                         }
                     }
                     Err(crate::Error::CoreDisabled(_)) => continue,
