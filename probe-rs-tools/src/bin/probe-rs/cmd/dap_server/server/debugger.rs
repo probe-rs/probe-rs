@@ -1088,7 +1088,7 @@ mod test {
             RequestBuilder { adapter: self }
         }
 
-        fn expect_response(&mut self, response: Response) -> ResponseBuilder {
+        fn expect_response(&mut self, response: Response) -> ResponseBuilder<'_> {
             assert!(
                 response.success,
                 "success field must be true for succesful response"
@@ -1097,7 +1097,7 @@ mod test {
             ResponseBuilder { adapter: self }
         }
 
-        fn expect_error_response(&mut self, response: Response) -> ResponseBuilder {
+        fn expect_error_response(&mut self, response: Response) -> ResponseBuilder<'_> {
             assert!(
                 !response.success,
                 "success field must be false for error response"
