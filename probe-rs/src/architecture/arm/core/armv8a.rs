@@ -26,6 +26,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+const OPERATION_TIMEOUT: Duration = Duration::from_millis(250);
+
 /// Errors for the ARMv8-A state machine
 #[derive(thiserror::Error, Debug)]
 pub enum Armv8aError {
@@ -131,7 +133,11 @@ impl<'probe> Armv8a<'probe> {
         let address = Edscr::get_mmio_address_from_base(self.base_address)?;
         let mut edscr = Edscr(self.memory.read_word_32(address)?);
 
+        let start = Instant::now();
         while !edscr.ite() {
+            if start.elapsed() > OPERATION_TIMEOUT {
+                return Err(Error::Arm(ArmError::Timeout));
+            }
             edscr = Edscr(self.memory.read_word_32(address)?);
         }
 
@@ -155,7 +161,11 @@ impl<'probe> Armv8a<'probe> {
         let mut edscr = self.execute_instruction(instruction)?;
 
         // Wait for TXfull
+        let start = Instant::now();
         while !edscr.txfull() {
+            if start.elapsed() > OPERATION_TIMEOUT {
+                return Err(Error::Timeout);
+            }
             let address = Edscr::get_mmio_address_from_base(self.base_address)?;
             edscr = Edscr(self.memory.read_word_32(address)?);
         }
@@ -173,7 +183,11 @@ impl<'probe> Armv8a<'probe> {
         let mut edscr = self.execute_instruction(instruction)?;
 
         // Wait for TXfull
+        let start = Instant::now();
         while !edscr.txfull() {
+            if start.elapsed() > OPERATION_TIMEOUT {
+                return Err(Error::Timeout);
+            }
             let address = Edscr::get_mmio_address_from_base(self.base_address)?;
             edscr = Edscr(self.memory.read_word_32(address)?);
         }
@@ -201,7 +215,11 @@ impl<'probe> Armv8a<'probe> {
         let address = Edscr::get_mmio_address_from_base(self.base_address)?;
         let mut edscr = Edscr(self.memory.read_word_32(address)?);
 
+        let start = Instant::now();
         while !edscr.rxfull() {
+            if start.elapsed() > OPERATION_TIMEOUT {
+                return Err(Error::Timeout);
+            }
             edscr = Edscr(self.memory.read_word_32(address)?);
         }
 
@@ -230,7 +248,11 @@ impl<'probe> Armv8a<'probe> {
         let address = Edscr::get_mmio_address_from_base(self.base_address)?;
         let mut edscr = Edscr(self.memory.read_word_32(address)?);
 
+        let start = Instant::now();
         while !edscr.rxfull() {
+            if start.elapsed() > OPERATION_TIMEOUT {
+                return Err(Error::Timeout);
+            }
             edscr = Edscr(self.memory.read_word_32(address)?);
         }
 
@@ -410,12 +432,16 @@ impl<'probe> Armv8a<'probe> {
         let address = CtiIntack::get_mmio_address_from_base(self.cti_address)?;
         self.memory.write_word_32(address, ack.into())?;
 
+        let start = Instant::now();
         loop {
             let address = CtiTrigoutstatus::get_mmio_address_from_base(self.cti_address)?;
             let trig_status = CtiTrigoutstatus(self.memory.read_word_32(address)?);
 
             if trig_status.status(0) == 0 {
                 break;
+            }
+            if start.elapsed() > OPERATION_TIMEOUT {
+                return Err(Error::Timeout);
             }
         }
 
@@ -974,7 +1000,15 @@ impl<'probe> Armv8a<'probe> {
 
         // wait for TXfull == 1
         let edscr_address = Edscr::get_mmio_address_from_base(self.base_address)?;
-        while !{ Edscr(self.memory.read_word_32(edscr_address)?) }.txfull() {}
+        let start = Instant::now();
+        while !{
+            if start.elapsed() > OPERATION_TIMEOUT {
+                return Err(Error::Timeout);
+            }
+            Edscr(self.memory.read_word_32(edscr_address)?)
+        }
+        .txfull()
+        {}
 
         let dbgdtr_tx_address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
         let (data, last) = data.split_at_mut(data.len() - std::mem::size_of::<u32>());
@@ -1130,10 +1164,14 @@ impl CoreInterface for Armv8a<'_> {
         // Wait for ack
         let address = Edprsr::get_mmio_address_from_base(self.base_address)?;
 
+        let start = Instant::now();
         loop {
             let edprsr = Edprsr(self.memory.read_word_32(address)?);
             if edprsr.sdr() {
                 break;
+            }
+            if start.elapsed() > OPERATION_TIMEOUT {
+                return Err(Error::Timeout);
             }
         }
 

@@ -35,6 +35,9 @@ use std::{
 };
 use zerocopy::{FromBytes, IntoBytes};
 
+/// The maximum amount of time to wait for the core to respond
+const OPERATION_TIMEOUT: Duration = Duration::from_millis(250);
+
 /// Addresses for accessing debug registers when in banked mode
 struct BankedAccess<'a> {
     /// Keep a reference to the `interface` to prevent anyone else
@@ -229,9 +232,15 @@ impl<'probe> Armv7a<'probe> {
         let mut dbgdscr = self.execute_instruction(instruction)?;
 
         // Wait for TXfull
+        let start = Instant::now();
         while !dbgdscr.txfull_l() {
             let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
             dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+            // Check if we had any aborts, if so clear them and fail
+            check_and_clear_data_abort(&mut *self.memory, self.base_address, dbgdscr)?;
+            if start.elapsed() >= OPERATION_TIMEOUT {
+                return Err(Error::Timeout);
+            }
         }
 
         // Read result
@@ -254,8 +263,14 @@ impl<'probe> Armv7a<'probe> {
         let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
         let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
 
+        let start = Instant::now();
         while !dbgdscr.rxfull_l() {
             dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+            // Check if we had any aborts, if so clear them and fail
+            check_and_clear_data_abort(&mut *self.memory, self.base_address, dbgdscr)?;
+            if start.elapsed() >= OPERATION_TIMEOUT {
+                return Err(Error::Timeout);
+            }
         }
 
         // Run instruction
@@ -426,10 +441,14 @@ pub(crate) fn run(memory: &mut dyn ArmMemoryInterface, base_address: u64) -> Res
     // Wait for ack
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
 
+    let start = Instant::now();
     loop {
         let dbgdscr = Dbgdscr(memory.read_word_32(address)?);
         if dbgdscr.restarted() {
             return Ok(());
+        }
+        if start.elapsed() > OPERATION_TIMEOUT {
+            return Err(ArmError::Timeout);
         }
     }
 }
@@ -559,8 +578,14 @@ fn execute_instruction(
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
     let mut dbgdscr = Dbgdscr(memory.read_word_32(address)?);
 
+    let start = Instant::now();
     while !dbgdscr.instrcoml_l() {
         dbgdscr = Dbgdscr(memory.read_word_32(address)?);
+        // Check if we had any aborts, if so clear them and fail
+        check_and_clear_data_abort(memory, base_address, dbgdscr)?;
+        if start.elapsed() >= OPERATION_TIMEOUT {
+            return Err(ArmError::Timeout);
+        }
     }
 
     // Check if we had any aborts, if so clear them and fail
@@ -584,9 +609,16 @@ fn set_instruction_input(
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
     let mut dbgdscr = Dbgdscr(memory.read_word_32(address)?);
 
+    let start = Instant::now();
     while !dbgdscr.rxfull_l() {
         dbgdscr = Dbgdscr(memory.read_word_32(address)?);
+        // Check if we had any aborts, if so clear them and fail
+        check_and_clear_data_abort(memory, base_address, dbgdscr)?;
+        if start.elapsed() >= OPERATION_TIMEOUT {
+            return Err(ArmError::Timeout);
+        }
     }
+
     Ok(())
 }
 
@@ -598,10 +630,14 @@ fn get_instruction_result(
 ) -> Result<u32, ArmError> {
     // Wait for TXfull
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
+    let start = Instant::now();
     loop {
         let dbgdscr = Dbgdscr(memory.read_word_32(address)?);
         if dbgdscr.txfull_l() {
             break;
+        }
+        if start.elapsed() > OPERATION_TIMEOUT {
+            return Err(ArmError::Timeout);
         }
     }
 
