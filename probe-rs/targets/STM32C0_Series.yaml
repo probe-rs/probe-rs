@@ -709,6 +709,36 @@ variants:
     - main
   flash_algorithms:
   - stm32c0x_256
+- name: STM32C092RC
+  package_variants:
+  - STM32C092RCUx
+  - STM32C092RCTx
+  - STM32C092RCTxTR
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20007800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_256
 flash_algorithms:
 - name: stm32c0x_32
   description: STM32C0x_32
