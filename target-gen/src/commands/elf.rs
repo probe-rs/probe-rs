@@ -70,11 +70,6 @@ pub fn cmd_elf(
             algorithm.name = name;
         }
 
-        // if a load address was specified, use it in the replacement
-        if let Some(load_addr) = current.load_address {
-            algorithm.load_address = Some(load_addr);
-            algorithm.data_section_offset = algorithm.data_section_offset.saturating_sub(load_addr);
-        }
         // core access cannot be determined, use the current value
         algorithm.cores.clone_from(&current.cores);
         algorithm.description.clone_from(&current.description);
