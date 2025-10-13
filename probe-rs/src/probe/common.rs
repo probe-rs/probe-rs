@@ -110,6 +110,7 @@ pub(crate) fn extract_idcodes<T: BitStore>(
     mut dr: &BitSlice<T>,
 ) -> Result<Vec<Option<IdCode>>, ScanChainError> {
     let mut idcodes = Vec::new();
+    let mut accumulated_bypass_taps = 0;
 
     while !dr.is_empty() {
         if dr[0] {
@@ -130,12 +131,19 @@ pub(crate) fn extract_idcodes<T: BitStore>(
                 tracing::error!("Invalid IDCODE: {:08X}", idcode.0);
                 return Err(ScanChainError::InvalidIdCode);
             }
+
+            if accumulated_bypass_taps != 0 {
+                tracing::info!("Appending {accumulated_bypass_taps} bypass taps");
+                for _ in 0..accumulated_bypass_taps {
+                    idcodes.push(None);
+                }
+                accumulated_bypass_taps = 0;
+            }
             tracing::info!("Found IDCODE: {idcode}");
             idcodes.push(Some(idcode));
             dr = &dr[32..];
         } else {
-            idcodes.push(None);
-            tracing::info!("Found bypass TAP");
+            accumulated_bypass_taps += 1;
             dr = &dr[1..];
         }
     }
