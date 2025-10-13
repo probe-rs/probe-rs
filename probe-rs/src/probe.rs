@@ -1387,13 +1387,13 @@ pub trait JtagAccess: DebugProbe {
 /// A raw JTAG bit sequence.
 pub struct JtagSequence {
     /// TDO capture
-    pub(crate) tdo_capture: bool,
+    pub tdo_capture: bool,
 
     /// TMS value
-    pub(crate) tms: bool,
+    pub tms: bool,
 
     /// Data to generate on TDI
-    pub(crate) data: BitVec,
+    pub data: BitVec,
 }
 
 /// A low-level JTAG register write command.
