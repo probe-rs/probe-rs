@@ -602,6 +602,20 @@ impl CoreRegisters {
     }
 
     /// Returns an iterator over the descriptions of all the registers of this core.
+    pub fn fpu_status_registers(&self) -> Option<impl Iterator<Item = &CoreRegister>> {
+        let mut fpu_registers = self
+            .0
+            .iter()
+            .filter(|r| r.register_has_role(RegisterRole::FloatingPointStatus))
+            .peekable();
+        if fpu_registers.peek().is_some() {
+            Some(fpu_registers.cloned())
+        } else {
+            None
+        }
+    }
+
+    /// Returns an iterator over the descriptions of all the registers of this core.
     pub fn fpu_registers(&self) -> Option<impl Iterator<Item = &CoreRegister>> {
         let mut fpu_registers = self
             .0
