@@ -5,7 +5,7 @@ use crate::architecture::arm::core::registers::aarch64::AARCH64_CORE_REGISTERS;
 use crate::architecture::arm::core::registers::cortex_m::{
     CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS,
 };
-use crate::architecture::riscv::registers::RISCV_CORE_REGISTERS;
+use crate::architecture::riscv::registers::{RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS};
 use crate::architecture::xtensa::arch::{Register as XtensaRegister, SpecialRegister};
 use crate::architecture::xtensa::registers::XTENSA_CORE_REGISTERS;
 use crate::{Core, CoreRegisters, CoreType, Error, InstructionSet, MemoryInterface};
@@ -382,7 +382,13 @@ impl CoreDump {
                     &CORTEX_M_CORE_REGISTERS
                 }
             }
-            CoreType::Riscv => &RISCV_CORE_REGISTERS,
+            CoreType::Riscv => {
+                if self.fpu_support {
+                    &RISCV_WITH_FP_CORE_REGISTERS
+                } else {
+                    &RISCV_CORE_REGISTERS
+                }
+            }
             CoreType::Xtensa => &XTENSA_CORE_REGISTERS,
         }
     }

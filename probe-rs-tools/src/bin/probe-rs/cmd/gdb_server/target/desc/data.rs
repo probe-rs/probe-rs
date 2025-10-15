@@ -257,6 +257,12 @@ fn build_riscv_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     desc.add_registers(regs.core_registers());
     desc.add_register(&architecture::riscv::PC);
 
+    if regs.fpu_registers().is_some() {
+        desc.add_gdb_feature("org.gnu.gdb.riscv.fpu");
+        desc.add_registers(regs.fpu_registers().unwrap());
+        desc.add_registers(regs.fpu_status_registers().unwrap());
+    }
+
     desc.update_register_type("pc", "code_ptr");
 }
 

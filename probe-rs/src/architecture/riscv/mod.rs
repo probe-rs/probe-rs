@@ -15,7 +15,7 @@ use crate::{
 };
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
-use registers::{FP, RA, RISCV_CORE_REGISTERS, SP};
+use registers::{FP, RA, RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS, SP};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -45,8 +45,17 @@ impl<'state> Riscv32<'state> {
         state: &'state mut RiscvCoreState,
         sequence: Arc<dyn RiscvDebugSequence>,
     ) -> Result<Self, RiscvError> {
+        // Determine FPU presence from MISA extensions (F, D, or Q)
+        let mut tmp_interface = interface;
+        let misa_val = tmp_interface
+            .read_csr(Misa::get_mmio_address() as u16)
+            .unwrap_or(0);
+        let isa_extensions = Misa::from(misa_val).extensions();
+        let fp_mask = (1 << 3) | (1 << 5) | (1 << 16);
+        state.fp_present = isa_extensions & fp_mask != 0;
+
         Ok(Self {
-            interface,
+            interface: tmp_interface,
             state,
             sequence,
         })
@@ -567,7 +576,11 @@ impl CoreInterface for Riscv32<'_> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        &RISCV_CORE_REGISTERS
+        if self.state.fp_present {
+            &RISCV_WITH_FP_CORE_REGISTERS
+        } else {
+            &RISCV_CORE_REGISTERS
+        }
     }
 
     fn program_counter(&self) -> &'static CoreRegister {
@@ -624,12 +637,7 @@ impl CoreInterface for Riscv32<'_> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        // Read the extensions from the Machine ISA regiseter.
-        let isa_extensions =
-            Misa::from(self.read_csr(Misa::get_mmio_address() as u16)?).extensions();
-        // Mask for the D(double float), F(single float) and Q(quad float) extension bits.
-        let mask = (1 << 3) | (1 << 5) | (1 << 16);
-        Ok(isa_extensions & mask != 0)
+        Ok(self.state.fp_present)
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
@@ -673,6 +681,9 @@ pub struct RiscvCoreState {
 
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
+
+    /// Whether the core has FPU support (F, D, or Q extensions present)
+    fp_present: bool,
 }
 
 impl RiscvCoreState {
@@ -682,6 +693,7 @@ impl RiscvCoreState {
             hw_breakpoints: None,
             pc_written: false,
             semihosting_command: None,
+            fp_present: false,
         }
     }
 }
