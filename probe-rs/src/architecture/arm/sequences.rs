@@ -169,12 +169,13 @@ fn armv7a_core_start(
     let address = Dbgdscr::get_mmio_address_from_base(debug_base)?;
     let mut dbgdscr = Dbgdscr(core.read_word_32(address)?);
 
-    if dbgdscr.hdbgen() {
+    if dbgdscr.hdbgen() && dbgdscr.extdccmode() == 0 {
         tracing::debug!("Core is already in debug mode, no need to enable it again");
         return Ok(());
     }
 
     dbgdscr.set_hdbgen(true);
+    dbgdscr.set_extdccmode(0);
     core.write_word_32(address, dbgdscr.into())?;
 
     Ok(())
@@ -308,12 +309,13 @@ fn armv8a_core_start(
     let address = Edscr::get_mmio_address_from_base(debug_base)?;
     let mut edscr = Edscr(core.read_word_32(address)?);
 
-    if edscr.hde() {
+    if edscr.hde() && !edscr.ma() {
         tracing::debug!("Core is already in debug mode, no need to enable it again");
         return Ok(());
     }
 
     edscr.set_hde(true);
+    edscr.set_ma(false);
     core.write_word_32(address, edscr.into())?;
 
     Ok(())
