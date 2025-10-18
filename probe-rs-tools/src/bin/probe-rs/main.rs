@@ -522,13 +522,17 @@ fn apply_config_preset(
     matches: &ArgMatches,
     args: &mut Vec<OsString>,
 ) -> anyhow::Result<bool> {
-    let Some(preset) = matches.get_one::<String>("preset") else {
-        // No --preset in the CLI arguments or environment variables.
+    let preset_name = if let Some(preset) = matches.get_one::<String>("preset") {
+        preset.as_str()
+    } else if config.presets.contains_key("default") {
+        "default"
+    } else {
+        // No --preset in the CLI arguments or environment variables, and no default preset configured.
         return Ok(false);
     };
 
-    let Some(preset) = config.presets.get(preset) else {
-        anyhow::bail!("Config preset '{preset}' not found.");
+    let Some(preset) = config.presets.get(preset_name) else {
+        anyhow::bail!("Config preset '{preset_name}' not found.");
     };
 
     let mut args_modified = false;
