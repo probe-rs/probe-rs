@@ -1,9 +1,8 @@
+use probe_rs::MemoryInterface;
+use probe_rs_debug::{ObjectRef, Variable, VariableCache};
 /// Variable modification manager for the debugger
 /// Handles queuing and applying variable modifications at runtime
-
 use std::collections::HashMap;
-use probe_rs_debug::{ObjectRef, Variable, VariableCache};
-use probe_rs::MemoryInterface;
 
 /// Manages variable modifications for the debugger session
 #[derive(Debug, Clone)]
@@ -138,10 +137,7 @@ impl VariableModifier {
         for modification in pending {
             match self.apply_modification(modification.variable_key, memory, variable_cache) {
                 Ok(new_value) => {
-                    results.push(format!(
-                        "{} = {}",
-                        modification.variable_name, new_value
-                    ));
+                    results.push(format!("{} = {}", modification.variable_name, new_value));
                 }
                 Err(e) => {
                     errors.push(format!("{}: {}", modification.variable_name, e));
