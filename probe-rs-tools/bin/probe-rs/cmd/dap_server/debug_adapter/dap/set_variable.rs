@@ -1,6 +1,6 @@
-/// Support for DAP setVariable request to modify variable values at runtime
-/// This module implements the setVariable request handler which allows modifying
-/// variable values without pausing the debugger (pending modifications queue).
+//! Support for DAP setVariable request to modify variable values at runtime
+//! This module implements the setVariable request handler which allows modifying
+//! variable values without pausing the debugger (pending modifications queue).
 use crate::cmd::dap_server::server::debugger::DebuggerState;
 use probe_rs_debug::{Variable, VariableCache, VariableValue};
 use std::collections::HashMap;
