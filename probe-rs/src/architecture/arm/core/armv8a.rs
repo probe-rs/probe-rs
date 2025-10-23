@@ -377,7 +377,10 @@ impl<'probe> Armv8a<'probe> {
 
     /// Save register if needed before it gets clobbered by instruction execution
     fn prepare_for_clobber(&mut self, reg: u16) -> Result<(), Error> {
-        if self.state.register_cache[reg as usize].is_none() {
+        if let Some(val) = &mut self.state.register_cache[reg as usize] {
+            // Mark reg as needing writeback
+            val.1 = true;
+        } else {
             // cache reg since we're going to clobber it
             let val = self.read_core_reg(RegisterId(reg))?;
 
