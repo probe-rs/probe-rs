@@ -86,6 +86,12 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         data: &mut [u8],
         tid: Tid,
     ) -> TargetResult<usize, Self> {
+        if start_addr.checked_add(data.len() as u64).is_none() {
+            // Workaround for a GDB bug: it may send "$mfffffffffffffffc,4#2a".
+            // Detect address+length overflow and report EFAULT (14) to GDB.
+            // Treat as non-fatal; remove once upstream GDB fixes this.
+            return Err(TargetError::Errno(14));
+        }
         let mut session = self.session.lock();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 

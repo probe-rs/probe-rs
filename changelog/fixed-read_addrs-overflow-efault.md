@@ -1,0 +1,1 @@
+Detect and handle start_addr + len overflow in read_addrs by returning non-fatal EFAULT (14) when GDB issues wrapped requests (e.g., $mfffffffffffffffc,4), mirroring OpenOCD behavior and preventing the panic in aligned_to_32_split_offset while keeping valid reads unaffected.
