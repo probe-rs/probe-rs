@@ -377,7 +377,10 @@ impl<'probe> Armv8a<'probe> {
 
     /// Save register if needed before it gets clobbered by instruction execution
     fn prepare_for_clobber(&mut self, reg: u16) -> Result<(), Error> {
-        if self.state.register_cache[reg as usize].is_none() {
+        if let Some(val) = &mut self.state.register_cache[reg as usize] {
+            // Mark reg as needing writeback
+            val.1 = true;
+        } else {
             // cache reg since we're going to clobber it
             let val = self.read_core_reg(RegisterId(reg))?;
 
@@ -630,6 +633,8 @@ impl<'probe> Armv8a<'probe> {
         result
     }
 
+    /// This function enables EDSCR.MA=1, which allows direct memory access via debug instructions.
+    /// With EDSCR.MA=1, any write to DBGDTRRX / read to DBGDTRTX break the x0,x1 registers
     fn with_memory_access_mode<F, R>(&mut self, f: F) -> Result<R, Error>
     where
         F: FnOnce(&mut Self) -> Result<R, Error>,
@@ -961,8 +966,10 @@ impl<'probe> Armv8a<'probe> {
             .into());
         }
 
-        // Save x0
+        // ref. ARM DDI 0600B.a shared/debug/dccanditr/DBGDTRRX_EL0 pseudocode
+        // x0/r0 will be used for the address, and x1/r1 is clobbered.
         self.prepare_for_clobber(0)?;
+        self.prepare_for_clobber(1)?;
 
         // Load x0 with the address to read from
         self.set_reg_value(0, address)?;
