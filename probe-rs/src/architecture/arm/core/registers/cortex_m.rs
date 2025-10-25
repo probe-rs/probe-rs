@@ -155,18 +155,18 @@ pub(crate) static ARM32_COMMON_REGS_SET: &[CoreRegister] = &[
     PC,
 ];
 
-static CORTEX_M_COMMON_REGS_SET: &[CoreRegister] = &[
+pub(crate) static CORTEX_M_COMMON_REGS_SET: &[CoreRegister] = &[
     CoreRegister {
         roles: &[RegisterRole::Core("MSP"), RegisterRole::MainStackPointer],
         id: RegisterId(0b10001),
         data_type: RegisterDataType::UnsignedInteger(32),
-        unwind_rule: UnwindRule::SpecialRule,
+        unwind_rule: UnwindRule::Preserve,
     },
     CoreRegister {
         roles: &[RegisterRole::Core("PSP"), RegisterRole::ProcessStackPointer],
         id: RegisterId(0b10010),
         data_type: RegisterDataType::UnsignedInteger(32),
-        unwind_rule: UnwindRule::SpecialRule,
+        unwind_rule: UnwindRule::Preserve,
     },
     XPSR,
     // CONTROL bits [31:24], FAULTMASK bits [23:16],
@@ -179,7 +179,7 @@ static CORTEX_M_COMMON_REGS_SET: &[CoreRegister] = &[
     },
 ];
 
-static CORTEX_M_WITH_FP_REGS_SET: &[CoreRegister] = &[
+pub(crate) static CORTEX_M_WITH_FP_REGS_SET: &[CoreRegister] = &[
     CoreRegister {
         roles: &[
             RegisterRole::Core("FPSCR"),
