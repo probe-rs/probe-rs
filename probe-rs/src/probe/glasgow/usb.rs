@@ -1,10 +1,10 @@
-use std::io;
+use std::{io, mem};
 
 use async_io::block_on;
 use futures_lite::future;
 use nusb::{
-    Interface,
-    transfer::{Direction, RequestBuffer},
+    Interface, MaybeFuture,
+    transfer::{Buffer, Bulk, Direction, In, Out},
 };
 
 use crate::probe::{
@@ -46,10 +46,14 @@ impl GlasgowUsbDevice {
             ..selector.clone()
         };
         let device_info = nusb::list_devices()
-            .map_err(ProbeCreationError::Usb)?
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?
             .find(|device| selector.matches(device))
             .ok_or(ProbeCreationError::NotFound)?;
-        let device = device_info.open().map_err(ProbeCreationError::Usb)?;
+        let device = device_info
+            .open()
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?;
 
         let mut in_ep_num = None;
         let mut out_ep_num = None;
@@ -80,18 +84,22 @@ impl GlasgowUsbDevice {
         // This makes our endpoints available for use.
         let out_iface = device
             .claim_interface(out_iface_num)
-            .map_err(ProbeCreationError::Usb)?;
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?;
         let in_iface = device
             .claim_interface(in_iface_num)
-            .map_err(ProbeCreationError::Usb)?;
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?;
 
         // This takes the applet out of reset.
         out_iface
             .set_alt_setting(1)
-            .map_err(ProbeCreationError::Usb)?;
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?;
         in_iface
             .set_alt_setting(1)
-            .map_err(ProbeCreationError::Usb)?;
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?;
 
         Ok(Self {
             out_iface,
@@ -106,36 +114,67 @@ impl GlasgowUsbDevice {
         output: Vec<u8>,
         mut input: impl FnMut(Vec<u8>) -> Result<bool, DebugProbeError>,
     ) -> Result<(), DebugProbeError> {
-        block_on(async {
-            let out_fut = async {
+        let out_iface = self.out_iface.clone();
+        let in_iface = self.in_iface.clone();
+        let out_ep = self.out_ep_num;
+        let in_ep = self.in_ep_num;
+
+        block_on(async move {
+            let out_fut = async move {
                 if !output.is_empty() {
                     tracing::trace!("OUT URB: {}", hexdump(&output));
-                    let out_buffer_len = output.len();
-                    let out_completion = self.out_iface.bulk_out(self.out_ep_num, output).await;
-                    out_completion
+                    let out_len = output.len();
+                    let mut endpoint = out_iface
+                        .endpoint::<Bulk, Out>(out_ep)
+                        .map_err(|e| DebugProbeError::Usb(e.into()))?;
+
+                    let buffer = Buffer::from(output);
+                    endpoint.submit(buffer);
+
+                    let completion = endpoint.next_complete().await;
+                    completion
                         .status
-                        .map_err(io::Error::other)
+                        .map_err(io::Error::from)
                         .map_err(DebugProbeError::Usb)?;
-                    assert!(out_completion.data.actual_length() == out_buffer_len);
+
+                    if completion.actual_len != out_len {
+                        return Err(DebugProbeError::Other(format!(
+                            "expected to send {out_len} bytes, sent {}",
+                            completion.actual_len
+                        )));
+                    }
                 }
                 Ok(())
             };
-            let in_fut = async {
+
+            let in_fut = async move {
+                let mut endpoint = in_iface
+                    .endpoint::<Bulk, In>(in_ep)
+                    .map_err(|e| DebugProbeError::Usb(e.into()))?;
+
                 let mut buffer = Vec::new();
-                while !input(buffer)? {
-                    let in_completion = self
-                        .in_iface
-                        .bulk_in(self.in_ep_num, RequestBuffer::new(65536))
-                        .await;
-                    in_completion
+                loop {
+                    if input(mem::take(&mut buffer))? {
+                        break;
+                    }
+
+                    let transfer = Buffer::new(65536);
+                    endpoint.submit(transfer);
+
+                    let completion = endpoint.next_complete().await;
+                    completion
                         .status
-                        .map_err(io::Error::other)
+                        .map_err(io::Error::from)
                         .map_err(DebugProbeError::Usb)?;
-                    tracing::trace!("IN URB: {}", hexdump(in_completion.data.as_slice()));
-                    buffer = in_completion.data;
+
+                    let data = completion.buffer.into_vec();
+                    tracing::trace!("IN URB: {}", hexdump(&data));
+                    buffer = data;
                 }
+
                 Ok::<(), DebugProbeError>(())
             };
+
             let (out_result, in_result) = future::zip(out_fut, in_fut).await;
             out_result.and(in_result)
         })
