@@ -252,7 +252,7 @@ impl<'probe> Armv8a<'probe> {
     }
 
     fn writeback_registers_aarch32(&mut self) -> Result<(), Error> {
-        // Update SP, PC, CPSR first since they clobber the GP registeres
+        // Update SP, PC, CPSR first since they clobber the GP registers
         let writeback_iter = (15u16..=16).chain(17u16..=48).chain(0u16..=14);
 
         for i in writeback_iter {
@@ -308,7 +308,7 @@ impl<'probe> Armv8a<'probe> {
     }
 
     fn writeback_registers_aarch64(&mut self) -> Result<(), Error> {
-        // Update SP, PC, CPSR, FP first since they clobber the GP registeres
+        // Update SP, PC, CPSR, FP first since they clobber the GP registers
         let writeback_iter = (31u16..=33).chain(34u16..=65).chain(0u16..=30);
 
         for i in writeback_iter {
@@ -520,22 +520,8 @@ impl<'probe> Armv8a<'probe> {
                 // SP
                 self.prepare_for_clobber(0)?;
 
-                // MRS SP_EL0, X0
+                // MRS X0, SP_EL0
                 let instruction = aarch64::build_mrs(3, 0, 4, 1, 0, 0);
-                self.execute_instruction(instruction)?;
-
-                // Read from x0
-                let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
-                let pc = self.execute_instruction_with_result_64(instruction)?;
-
-                Ok(pc.into())
-            }
-            32 => {
-                // PC, must access via x0
-                self.prepare_for_clobber(0)?;
-
-                // MRS DLR_EL0, X0
-                let instruction = aarch64::build_mrs(3, 3, 4, 5, 1, 0);
                 self.execute_instruction(instruction)?;
 
                 // Read from x0
@@ -544,11 +530,25 @@ impl<'probe> Armv8a<'probe> {
 
                 Ok(sp.into())
             }
+            32 => {
+                // PC, must access via x0
+                self.prepare_for_clobber(0)?;
+
+                // MRS X0, DLR_EL0
+                let instruction = aarch64::build_mrs(3, 3, 4, 5, 1, 0);
+                self.execute_instruction(instruction)?;
+
+                // Read from x0
+                let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
+                let pc = self.execute_instruction_with_result_64(instruction)?;
+
+                Ok(pc.into())
+            }
             33 => {
                 // PSR
                 self.prepare_for_clobber(0)?;
 
-                // MRS DSPSR_EL0, X0
+                // MRS X0, DSPSR_EL0
                 let instruction = aarch64::build_mrs(3, 3, 4, 5, 0, 0);
                 self.execute_instruction(instruction)?;
 
@@ -584,7 +584,7 @@ impl<'probe> Armv8a<'probe> {
                 // FPSR
                 self.prepare_for_clobber(0)?;
 
-                // MRS FPSR, X0
+                // MRS X0, FPSR
                 let instruction = aarch64::build_mrs(3, 3, 4, 4, 1, 0);
                 self.execute_instruction(instruction)?;
 
@@ -598,15 +598,15 @@ impl<'probe> Armv8a<'probe> {
                 // FPCR
                 self.prepare_for_clobber(0)?;
 
-                // MRS FPCR, X0
+                // MRS X0, FPCR
                 let instruction = aarch64::build_mrs(3, 3, 4, 4, 0, 0);
                 self.execute_instruction(instruction)?;
 
                 // Read from x0
                 let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
-                let fpsr: u32 = self.execute_instruction_with_result_64(instruction)? as u32;
+                let fpcr: u32 = self.execute_instruction_with_result_64(instruction)? as u32;
 
-                Ok(fpsr.into())
+                Ok(fpcr.into())
             }
             _ => Err(Error::Arm(
                 Armv8aError::InvalidRegisterNumber(reg_num, 64).into(),
@@ -747,7 +747,7 @@ impl<'probe> Armv8a<'probe> {
             armv8a.prepare_for_clobber(0)?;
             armv8a.prepare_for_clobber(1)?;
 
-            // Load x0 with the address to write to
+            // Load r0 with the address to write to
             armv8a.set_reg_value(0, address.into())?;
             armv8a.set_reg_value(1, data.into())?;
 
@@ -765,7 +765,7 @@ impl<'probe> Armv8a<'probe> {
             armv8a.prepare_for_clobber(0)?;
             armv8a.prepare_for_clobber(1)?;
 
-            // Load r0 with the address to write to
+            // Load x0 with the address to write to
             armv8a.set_reg_value(0, address)?;
             armv8a.set_reg_value(1, data.into())?;
 
@@ -783,7 +783,7 @@ impl<'probe> Armv8a<'probe> {
             armv8a.prepare_for_clobber(0)?;
             armv8a.prepare_for_clobber(1)?;
 
-            // Load r0 with the address to write to
+            // Load x0 with the address to write to
             armv8a.set_reg_value(0, address)?;
             armv8a.set_reg_value(1, data)?;
 
