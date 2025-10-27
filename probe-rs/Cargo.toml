@@ -62,7 +62,7 @@ uf2-decode = "0.2"
 espflash = { version = "4", default-features = false }
 parking_lot = "0.12.2"
 zerocopy = { version = "0.8.0", features = ["derive"] }
-cobs = "0.4"
+cobs = "0.5"
 
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
