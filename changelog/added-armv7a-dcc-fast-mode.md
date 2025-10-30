@@ -1,1 +1,0 @@
-Added DCC Fast mode for ARMv7A to improve reading and writing speeds. As part of this, add a helper for banked register writes.

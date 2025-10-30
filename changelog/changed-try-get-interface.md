@@ -1,1 +1,0 @@
-Changed `Probe::try_get_X_interface` to return architecture-specific errors.

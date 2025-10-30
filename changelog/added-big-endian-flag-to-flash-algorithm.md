@@ -1,1 +1,0 @@
-Added an `big_endian` flag to flash algorithms to indicate if an algorithm should get a big endian header.

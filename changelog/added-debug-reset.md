@@ -1,1 +1,0 @@
-Added (back) the `reset` command to the debugger.

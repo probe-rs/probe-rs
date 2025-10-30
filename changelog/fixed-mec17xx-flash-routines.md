@@ -1,1 +1,0 @@
-Relocate Microchip MEC-172x flashing routines and disable device interrupts after system reset

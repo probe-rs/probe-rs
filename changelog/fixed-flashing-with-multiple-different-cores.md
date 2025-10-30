@@ -1,1 +1,0 @@
-Fixed flashing devices such as STM32WL with multiple cores where the algorithm wasn't correctly selected
