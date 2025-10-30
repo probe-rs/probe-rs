@@ -205,6 +205,22 @@ impl ArmDebugInterface for SifliUartArmDebug {
     }
 }
 
+fn map_address(addr: u32) -> u32 {
+    if (0x0..=0x0000FFFF).contains(&addr) {
+        // Map 0x0-0x0000FFFF to 0xA0000000-0xA000FFFF
+        0xA0000000 + addr
+    } else if (0xE0000000..=0xEFFFFFFF).contains(&addr) {
+        // Map 0xE0000000-0xEFFFFFFF to 0xF0000000-0xFFFFFFFF
+        (addr & 0x0FFFFFFF) | 0xF0000000
+    } else if (0x10000000..=0x1FFFFFFF).contains(&addr) {
+        // Map 0x10000000-0x1FFFFFFF to 0x60000000-0x6FFFFFFF
+        (addr & 0x0FFFFFFF) | 0x60000000
+    } else {
+        // No mapping needed, return original address
+        addr
+    }
+}
+
 #[derive(Debug)]
 struct SifliUartMemoryInterface<'probe> {
     probe: &'probe mut SifliUartArmDebug,
@@ -219,11 +235,7 @@ impl SifliUartMemoryInterface<'_> {
             return Ok(());
         }
 
-        let address = if (address & 0xff000000) == 0x12000000 {
-            (address & 0x00ffffff) | 0x62000000
-        } else {
-            address
-        };
+        let address = map_address(address as u32) as u64;
 
         let addr_usize = address as usize;
         // Calculate the start address and end address after alignment
@@ -295,11 +307,7 @@ impl SifliUartMemoryInterface<'_> {
             return Ok(());
         }
 
-        let address = if (address & 0xff000000) == 0x12000000 {
-            (address & 0x00ffffff) | 0x62000000
-        } else {
-            address
-        };
+        let address = map_address(address as u32) as u64;
 
         let addr = address as usize;
         let end_addr = addr + data.len();
