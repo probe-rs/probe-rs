@@ -1,1 +1,0 @@
-Fixed MIMXRT1010 memory map: Added DTCM region, correct OCRAM region size.
