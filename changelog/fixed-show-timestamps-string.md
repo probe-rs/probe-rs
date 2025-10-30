@@ -1,1 +1,0 @@
-Fixed an issue where the show_timestamps property for RTT channels was ignored when using the String format in both the DAP server and `cargo embed`.
