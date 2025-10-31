@@ -1,1 +1,0 @@
-Updated espflash to v4. The default bootloader for ESP32 devices now requires an app descriptor to be present in the firmware. For esp-hal based firmware, you'll need to use add `esp_bootloader_esp_idf` to your project.

@@ -1,1 +1,0 @@
-Removed a step where all cores are halted when creating a Session for non-ARM targets.

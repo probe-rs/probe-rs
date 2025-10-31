@@ -1,1 +1,0 @@
-Added support for saml21 series.

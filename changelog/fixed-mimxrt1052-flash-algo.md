@@ -1,1 +1,0 @@
-Added flash algo for MIMXRT1052 targets

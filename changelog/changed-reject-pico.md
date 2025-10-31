@@ -1,1 +1,0 @@
-probe-rs will fail with an outdated firmware error when trying to use an old Raspberry Pi debugprobe.
