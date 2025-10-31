@@ -1,1 +1,0 @@
-Fixed address mapping issue in sifli uart

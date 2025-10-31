@@ -1,1 +1,0 @@
-Added SF32LB58 Series target.

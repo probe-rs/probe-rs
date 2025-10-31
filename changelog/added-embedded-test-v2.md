@@ -1,1 +1,0 @@
-Added support for reading embedded_test testcases directly from ELF file.

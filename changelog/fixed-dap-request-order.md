@@ -1,2 +1,0 @@
-dap: Don't terminate the debug session if another request than `launch` and `attach` is received after the `initialize` request. Instead,
-ignore requests until we receive either a `launch` or `attach` request.

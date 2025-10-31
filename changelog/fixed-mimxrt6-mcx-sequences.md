@@ -1,1 +1,0 @@
-Fixed minor issues with resetting mimxrt6xx and mcx.
