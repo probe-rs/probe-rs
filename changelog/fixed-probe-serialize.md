@@ -1,0 +1,1 @@
+Fixed an issue where specifying the `--probe` parameter in the CLI would cause an error, Serialize DebugProbeSelector as a string.
