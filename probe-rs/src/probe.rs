@@ -31,7 +31,7 @@ use bitvec::vec::BitVec;
 use common::ScanChainError;
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
@@ -897,7 +897,7 @@ pub enum DebugProbeSelectorParseError {
 /// assert_eq!(selector.vendor_id, 0x1942);
 /// assert_eq!(selector.product_id, 0x1337);
 /// ```
-#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DebugProbeSelector {
     /// The the USB vendor id of the debug probe to be used.
     pub vendor_id: u16,
@@ -1018,6 +1018,15 @@ impl fmt::Display for DebugProbeSelector {
 impl From<DebugProbeSelector> for String {
     fn from(value: DebugProbeSelector) -> String {
         value.to_string()
+    }
+}
+
+impl Serialize for DebugProbeSelector {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
     }
 }
 
