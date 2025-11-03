@@ -82,12 +82,14 @@ impl ProbeLister for AllProbesLister {
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)) => {
                     fallback_error = ProbeCreationError::CouldNotOpen;
-
-                    #[cfg(target_os = "linux")]
-                    linux::help_linux();
                 }
                 Err(e) => open_error = Some(e),
             };
+        }
+
+        #[cfg(target_os = "linux")]
+        if matches!(fallback_error, ProbeCreationError::CouldNotOpen) {
+            linux::help_linux();
         }
 
         Err(open_error.unwrap_or(DebugProbeError::ProbeCouldNotBeCreated(fallback_error)))
