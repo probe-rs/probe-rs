@@ -23,6 +23,13 @@ variants:
     - main
     access:
       boot: true
+  - !Generic
+    name: ROM
+    range:
+      start: 0x40000000
+      end: 0x40050000
+    cores:
+    - main
   - !Ram
     range:
       start: 0x40800000

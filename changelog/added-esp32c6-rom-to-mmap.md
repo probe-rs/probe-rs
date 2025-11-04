@@ -1,0 +1,1 @@
+Add ESP32-C6 ROM (320KB) to the target file's memory map.
