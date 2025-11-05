@@ -294,7 +294,7 @@ impl RttConnection {
 
     /// Overwrites the control block with zeros. This is useful after resets.
     pub fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
-        let zeros = vec![0; Rtt::control_block_size(core)];
+        let zeros = vec![0; Rtt::control_block_size()];
         core.write(self.control_block_addr, &zeros)?;
         self.active_down_channels.clear();
         self.active_up_channels.clear();

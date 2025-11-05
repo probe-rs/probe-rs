@@ -113,50 +113,36 @@ pub struct Rtt {
 
 #[repr(C)]
 #[derive(FromBytes)]
-struct RttControlBlockHeaderInner<T> {
+struct RttControlBlockHeaderInner {
     id: [u8; 16],
-    max_up_channels: T,
-    max_down_channels: T,
-}
-
-impl From<RttControlBlockHeaderInner<u32>> for RttControlBlockHeaderInner<u64> {
-    fn from(value: RttControlBlockHeaderInner<u32>) -> Self {
-        Self {
-            id: value.id,
-            max_up_channels: u64::from(value.max_up_channels),
-            max_down_channels: u64::from(value.max_down_channels),
-        }
-    }
+    max_up_channels: u32,
+    max_down_channels: u32,
 }
 
 enum RttControlBlockHeader {
-    Header32(RttControlBlockHeaderInner<u32>),
-    Header64(RttControlBlockHeaderInner<u64>),
+    Header32(RttControlBlockHeaderInner),
+    Header64(RttControlBlockHeaderInner),
 }
 
 impl RttControlBlockHeader {
     pub fn try_from_header(is_64_bit: bool, mem: &[u8]) -> Option<Self> {
         if is_64_bit {
-            RttControlBlockHeaderInner::<u64>::read_from_prefix(mem)
+            RttControlBlockHeaderInner::read_from_prefix(mem)
                 .map(|(header, _)| Self::Header64(header))
                 .ok()
         } else {
-            RttControlBlockHeaderInner::<u32>::read_from_prefix(mem)
+            RttControlBlockHeaderInner::read_from_prefix(mem)
                 .map(|(header, _)| Self::Header32(header))
                 .ok()
         }
     }
 
-    pub const fn minimal_header_size(is_64_bit: bool) -> usize {
-        if is_64_bit {
-            std::mem::size_of::<RttControlBlockHeaderInner<u64>>()
-        } else {
-            std::mem::size_of::<RttControlBlockHeaderInner<u32>>()
-        }
+    pub const fn minimal_header_size() -> usize {
+        std::mem::size_of::<RttControlBlockHeaderInner>()
     }
 
-    pub fn header_size(&self) -> usize {
-        Self::minimal_header_size(matches!(self, Self::Header64(_)))
+    pub const fn header_size(&self) -> usize {
+        std::mem::size_of::<RttControlBlockHeaderInner>()
     }
 
     pub fn id(&self) -> [u8; 16] {
@@ -242,7 +228,7 @@ impl Rtt {
     ) -> Result<Rtt, Error> {
         let is_64_bit = core.is_64_bit();
 
-        let mut mem = [0u32; RttControlBlockHeader::minimal_header_size(true) / 4];
+        let mut mem = [0u32; RttControlBlockHeader::minimal_header_size() / 4];
         // Read the magic value first as unordered data, and read the subsequent pointers
         // as ordered u32 values.
         core.read(ptr, &mut mem.as_mut_bytes()[0..Self::RTT_ID.len()])?;
@@ -428,9 +414,8 @@ impl Rtt {
     }
 
     /// Returns the size of the RTT control block.
-    pub fn control_block_size(core: &Core) -> usize {
-        let is_64_bit = core.is_64_bit();
-        RttControlBlockHeader::minimal_header_size(is_64_bit)
+    pub fn control_block_size() -> usize {
+        RttControlBlockHeader::minimal_header_size()
     }
 }
 
