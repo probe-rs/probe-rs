@@ -15,8 +15,8 @@ use crate::{
     vendor::{
         Vendor,
         espressif::sequences::{
-            esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6::ESP32C6, esp32h2::ESP32H2,
-            esp32s2::ESP32S2, esp32s3::ESP32S3,
+            esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c5::ESP32C5, esp32c6::ESP32C6,
+            esp32h2::ESP32H2, esp32s2::ESP32S2, esp32s3::ESP32S3,
         },
     },
 };
@@ -43,7 +43,7 @@ fn get_target_by_magic(info: &EspressifDetection, read_magic: u32) -> Option<Str
 
 fn try_detect_espressif_chip(
     registry: &Registry,
-    probe: &mut impl MemoryInterface,
+    mut read_magic: impl FnMut(u64) -> Option<u32>,
     idcode: u32,
 ) -> Option<String> {
     for family in registry.families() {
@@ -55,12 +55,20 @@ fn try_detect_espressif_chip(
             if info.idcode != idcode {
                 continue;
             }
-            let Ok(read_magic) = probe.read_word_32(MAGIC_VALUE_ADDRESS) else {
-                continue;
-            };
-            tracing::debug!("Read magic value: {read_magic:#010x}");
-            if let Some(target) = get_target_by_magic(info, read_magic) {
+            if info.variants.len() == 1
+                && let Some(target) = get_target_by_magic(info, 0)
+            {
+                // C5 workaround - CPU is on TAP 1. We can infer this from the family,
+                // but we can't use it in the detection process.
                 return Some(target);
+            } else {
+                let Some(read_magic) = read_magic(MAGIC_VALUE_ADDRESS) else {
+                    continue;
+                };
+                tracing::debug!("Read magic value: {read_magic:#010x}");
+                if let Some(target) = get_target_by_magic(info, read_magic) {
+                    return Some(target);
+                }
             }
         }
     }
@@ -82,6 +90,8 @@ impl Vendor for Espressif {
             DebugSequence::Riscv(ESP32C2::create())
         } else if chip.name.eq_ignore_ascii_case("esp32c3") {
             DebugSequence::Riscv(ESP32C3::create())
+        } else if chip.name.eq_ignore_ascii_case("esp32c5") {
+            DebugSequence::Riscv(ESP32C5::create())
         } else if chip.name.eq_ignore_ascii_case("esp32c6") {
             DebugSequence::Riscv(ESP32C6::create())
         } else if chip.name.eq_ignore_ascii_case("esp32h2") {
@@ -101,10 +111,15 @@ impl Vendor for Espressif {
         probe: &mut RiscvCommunicationInterface,
         idcode: u32,
     ) -> Result<Option<String>, Error> {
-        let result =
-            probe.halted_access(|probe| Ok(try_detect_espressif_chip(registry, probe, idcode)))?;
-
-        Ok(result)
+        Ok(try_detect_espressif_chip(
+            registry,
+            |address| {
+                probe
+                    .halted_access(|probe| Ok(probe.read_word_32(address).ok()))
+                    .unwrap()
+            },
+            idcode,
+        ))
     }
 
     fn try_detect_xtensa_chip(
@@ -113,6 +128,10 @@ impl Vendor for Espressif {
         probe: &mut XtensaCommunicationInterface,
         idcode: u32,
     ) -> Result<Option<String>, Error> {
-        Ok(try_detect_espressif_chip(registry, probe, idcode))
+        Ok(try_detect_espressif_chip(
+            registry,
+            |address| probe.read_word_32(address).ok(),
+            idcode,
+        ))
     }
 }

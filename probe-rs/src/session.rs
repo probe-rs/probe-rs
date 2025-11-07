@@ -346,6 +346,14 @@ impl Session {
         }
 
         probe.attach_to_unspecified()?;
+        if let Some(probe) = probe.try_as_jtag_probe()
+            && let Ok(chain) = probe.scan_chain()
+            && !chain.is_empty()
+        {
+            for core in &cores {
+                probe.select_target(core.jtag_tap_index())?;
+            }
+        }
 
         // We try to guess the TAP number. Normally we trust the scan chain, but some probes are
         // only quasi-JTAG (wch-link), so we'll have to work with at least 1, but if we're guessing

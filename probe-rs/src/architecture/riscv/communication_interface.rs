@@ -1917,6 +1917,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             // Reset is performed by setting the bit high, and then low again
             let mut dmcontrol = readback;
             dmcontrol.set_dmactive(true);
+            dmcontrol.set_haltreq(true);
             dmcontrol.set_hartreset(false);
 
             self.write_dm_register(dmcontrol)?;

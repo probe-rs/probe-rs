@@ -1,0 +1,90 @@
+name: esp32c5
+manufacturer:
+  id: 0x12
+  cc: 0xc
+chip_detection:
+- !Espressif
+  idcode: 0x17c25
+  variants:
+    # 0x1101406f: esp32c5
+    # 0x63e1406f: esp32c5
+    # 0x5fd1406f: esp32c5
+    0: esp32c5 # hacky variant, to be removed once chip detection can use other TAPs
+variants:
+- name: esp32c5
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: 1
+  memory_map:
+  - !Nvm
+    name: 32 MB Max addressable Flash
+    range:
+      start: 0x0
+      end: 0x2000000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Generic
+    name: ROM
+    range:
+      start: 0x40000000
+      end: 0x40050000
+    cores:
+    - main
+  - !Ram
+    range:
+      start: 0x40800000
+      end: 0x40860000
+    cores:
+    - main
+  - !Nvm
+    name: External flash (Read Only)
+    range:
+      start: 0x42000000
+      end: 0x44000000
+    cores:
+    - main
+    is_alias: true
+  flash_algorithms:
+  - esp32c5-flashloader
+  jtag:
+    scan_chain:
+    - name: dummy
+      ir_len: 5
+    - name: main
+      ir_len: 5
+  default_binary_format: idf
+flash_algorithms:
+- name: esp32c5-flashloader
+  description: A flasher loader for the esp32c5.
+  default: true
+  instructions: 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
+  load_address: 0x40810000
+  data_load_address: 0x40850000
+  pc_init: 0xd0
+  pc_uninit: 0x100
+  pc_program_page: 0xe8
+  pc_erase_sector: 0xd8
+  pc_erase_all: 0xe0
+  pc_verify: 0xf0
+  pc_read: 0xf8
+  data_section_offset: 0x40810678
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x2000000
+    page_size: 0x4000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x10000
+      address: 0x0
+  cores:
+  - main
+  stack_overflow_check: false
+  transfer_encoding: miniz
