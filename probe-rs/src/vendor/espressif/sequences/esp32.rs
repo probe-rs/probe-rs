@@ -212,6 +212,7 @@ impl XtensaDebugSequence for ESP32 {
         }
 
         core.reset_and_halt(timeout)?;
+        self.on_connect(core)?;
 
         {
             let _span = tracing::debug_span!("Restore RAM contents").entered();

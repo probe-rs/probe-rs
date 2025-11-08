@@ -248,6 +248,7 @@ impl XtensaDebugSequence for ESP32S2 {
         }
 
         core.reset_and_halt(timeout)?;
+        self.on_connect(core)?;
 
         self.unstall(core)?;
 
