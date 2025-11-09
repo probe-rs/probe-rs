@@ -11,6 +11,46 @@ use super::DebugComponentInterface;
 use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::{Error, memory_mapped_bitfield_register};
 
+/// Represents the function type on the DWT comparator units.
+/// See ARMv7-M architecture for extended information about what function
+/// types are available.
+#[repr(u32)]
+pub enum FuncType {
+    /// Disabled comparator
+    None = 0b0000,
+    /// Outputs the PC of the instruction that has performed
+    /// read or write event on the specified address.
+    TraceDataPcRW = 0b0001,
+    /// Outputs the value read or written on the data address
+    TraceDataValRW = 0b0010,
+    /// Output both the PC and data value on read or write.
+    TraceDataPCValRW = 0b0011,
+    /// Outputs the value read on the data address.
+    TraceDataValR = 0b1100,
+    /// Outputs the value written on the data address.
+    TraceDataValW = 0b1101,
+    /// Output both the PC and data value on read.
+    TraceDataPcValR = 0b1110,
+    /// Output both the PC and data value on write.
+    TraceDataPCValW = 0b1111,
+    /// Halt on PC.
+    WatchPc = 0b0100,
+    /// Halt on data address read.
+    WatchDataR = 0b0101,
+    /// Halt on data address write.
+    WatchDataW = 0b0110,
+    /// Halt on data address read or write.
+    WatchDataRW = 0b0111,
+    /// Creates an CMPEVENT[N] on PC.
+    CmpPC = 0b1000,
+    /// Creates an CMPEVENT[N] on data address read.
+    CmpDataR = 0b1001,
+    /// Creates an CMPEVENT[N] on data address written.
+    CmpDataW = 0b1010,
+    /// Creates an CMPEVENT[N] on data address read or written.
+    CmpDataRW = 0b1011,
+}
+
 /// A struct representing a DWT unit on target.
 pub struct Dwt<'a> {
     component: &'a CoresightComponent,
@@ -40,6 +80,14 @@ impl<'a> Dwt<'a> {
         tracing::info!("  cyccnt support: {}", !ctrl.nocyccnt());
         tracing::info!("  performance counter support: {}", !ctrl.noprfcnt());
 
+        if ctrl.numcomp() > 0 {
+            tracing::info!("Comparators status:");
+            for i in 0..ctrl.numcomp() {
+                let function = Function::load_unit(self.component, self.interface, i.into())?;
+                tracing::info!(" comparator {} matched: {:?}", i, function.matched());
+            }
+        }
+
         Ok(())
     }
 
@@ -49,6 +97,38 @@ impl<'a> Dwt<'a> {
         ctrl.set_synctap(0x01);
         ctrl.set_cyccntena(true);
         ctrl.store(self.component, self.interface)
+    }
+
+    /// Configures the function type register for the required action.
+    pub fn configure_function_type(
+        &mut self,
+        typ: FuncType,
+        unit: usize,
+        emitrange: Option<bool>,
+        datavmatch: Option<bool>,
+        cycmatch: Option<bool>,
+        datavsize: Option<u8>,
+    ) -> Result<(), ArmError> {
+        let mut function = Function::load_unit(self.component, self.interface, unit)?;
+
+        if let Some(datavsize) = datavsize {
+            function.set_datavsize(datavsize);
+        }
+
+        if let Some(emitrange) = emitrange {
+            function.set_emitrange(emitrange);
+        }
+
+        if let Some(datavmatch) = datavmatch {
+            function.set_datavmatch(datavmatch);
+        }
+
+        if let Some(cycmatch) = cycmatch {
+            function.set_cycmatch(cycmatch);
+        }
+
+        function.set_function(typ as u32);
+        function.store_unit(self.component, self.interface, unit)
     }
 
     /// Enables data tracing on a specific address in memory on a specific DWT unit.
@@ -61,21 +141,41 @@ impl<'a> Dwt<'a> {
         mask.set_mask(0x0);
         mask.store_unit(self.component, self.interface, unit)?;
 
-        let mut function = Function::load_unit(self.component, self.interface, unit)?;
-        function.set_datavsize(0b10);
-        function.set_emitrange(false);
-        function.set_datavmatch(false);
-        function.set_cycmatch(false);
-        function.set_function(0b11);
-
-        function.store_unit(self.component, self.interface, unit)
+        self.configure_function_type(
+            FuncType::TraceDataPCValRW,
+            unit,
+            Some(false),
+            Some(false),
+            Some(false),
+            Some(0b10),
+        )
     }
 
     /// Disables data tracing on the given unit.
     pub fn disable_data_trace(&mut self, unit: usize) -> Result<(), ArmError> {
-        let mut function = Function::load_unit(self.component, self.interface, unit)?;
-        function.set_function(0x0);
-        function.store_unit(self.component, self.interface, unit)
+        self.configure_function_type(
+            FuncType::None,
+            unit,
+            Some(false),
+            Some(false),
+            Some(false),
+            Some(0b10),
+        )
+    }
+
+    /// Configures the CMPEVENT for an PC match event.
+    /// This could be used to signal an external unit like ETM that an start or stop event has happened.
+    /// Implementation defined for signaling anything other than ETM.
+    pub fn enable_instruction_event(&mut self, unit: usize, address: u32) -> Result<(), ArmError> {
+        let mut comp = Comp::load_unit(self.component, self.interface, unit)?;
+        comp.set_comp(address);
+        comp.store_unit(self.component, self.interface, unit)?;
+
+        let mut mask = Mask::load_unit(self.component, self.interface, unit)?;
+        mask.set_mask(0x0);
+        mask.store_unit(self.component, self.interface, unit)?;
+
+        self.configure_function_type(FuncType::CmpPC, unit, None, Some(false), Some(false), None)
     }
 
     /// Enable exception tracing.
