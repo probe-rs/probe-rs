@@ -12,7 +12,7 @@ use std::{
 use crate::{
     architecture::arm::{
         ArmError,
-        armv7m::{FpCtrl, FpRev2CompX},
+        armv7m::{Demcr, FpCtrl, FpRev2CompX},
         core::{
             armv7m::{Aircr, Dhcsr},
             registers::cortex_m::PC,
@@ -39,12 +39,19 @@ use crate::{
 /// If the design changes such that the kind of reset isn't in our control, we'll
 /// need to handle those cases.
 #[derive(Debug)]
-pub struct MIMXRT10xx(());
+pub struct MIMXRT10xx {
+    /// We're always catching the MCU at a watchpoint
+    /// in the boot ROM. "Not catching" means that we'll
+    /// release it after it hits the watchpoint.
+    simulate_reset_catch: AtomicBool,
+}
 
 impl MIMXRT10xx {
     /// Create a sequence handle for the MIMXRT10xx.
     pub fn create() -> Arc<dyn ArmDebugSequence> {
-        Arc::new(Self(()))
+        Arc::new(Self {
+            simulate_reset_catch: AtomicBool::new(false),
+        })
     }
 
     /// Halt or unhalt the core.
@@ -57,16 +64,7 @@ impl MIMXRT10xx {
         probe.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
         probe.flush()?;
 
-        let start = Instant::now();
-        let action = if halt { "halt" } else { "unhalt" };
-
-        while Dhcsr(probe.read_word_32(Dhcsr::get_mmio_address())?).s_halt() != halt {
-            if start.elapsed() > Duration::from_millis(100) {
-                tracing::debug!("Exceeded timeout while waiting for the core to {action}");
-                return Err(ArmError::Timeout);
-            }
-            thread::sleep(Duration::from_millis(1));
-        }
+        self.wait_for_halt(probe, halt)?;
 
         Ok(())
     }
@@ -92,24 +90,114 @@ impl MIMXRT10xx {
         probe.flush()?;
         Ok(())
     }
+
+    /// Wait for the MCU to signal it's halted.
+    fn wait_for_halt(
+        &self,
+        probe: &mut dyn ArmMemoryInterface,
+        halt: bool,
+    ) -> Result<(), ArmError> {
+        let start = Instant::now();
+        let action = if halt { "halt" } else { "unhalt" };
+        while Dhcsr(probe.read_word_32(Dhcsr::get_mmio_address())?).s_halt() != halt {
+            if start.elapsed() > Duration::from_millis(100) {
+                tracing::debug!("Exceeded timeout while waiting for core to {action}");
+                return Err(ArmError::Timeout);
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+
+        Ok(())
+    }
 }
 
 impl ArmDebugSequence for MIMXRT10xx {
+    fn reset_catch_set(
+        &self,
+        _: &mut dyn ArmMemoryInterface,
+        _: probe_rs_target::CoreType,
+        _: Option<u64>,
+    ) -> Result<(), ArmError> {
+        self.simulate_reset_catch.store(true, Ordering::Relaxed);
+        Ok(())
+    }
+    fn reset_catch_clear(
+        &self,
+        _: &mut dyn ArmMemoryInterface,
+        _: probe_rs_target::CoreType,
+        _: Option<u64>,
+    ) -> Result<(), ArmError> {
+        self.simulate_reset_catch.store(false, Ordering::Relaxed);
+        Ok(())
+    }
+
     fn reset_system(
         &self,
         interface: &mut dyn ArmMemoryInterface,
         _: crate::CoreType,
         _: Option<u64>,
     ) -> Result<(), ArmError> {
-        // Halt the processor before messing with the memory map.
+        tracing::debug!("Halting MCU before changing FlexRAM layout");
         self.halt(interface, true)?;
 
         // OK to perform before the reset, since the configuration
         // persists beyond the reset.
+        tracing::debug!("Setting FlexRAM layout");
         self.use_boot_fuses_for_flexram(interface)?;
 
-        // Do the usual reset.
+        tracing::debug!("Enabling DWT to set a watchpoint");
+        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+        let trcena = demcr.trcena();
+        demcr.set_trcena(true);
+        interface.write_word_32(Demcr::get_mmio_address(), demcr.0)?;
+
+        // Catching the MCU here helps RAM loading reliability.
+        // The boot ROM sets up just enough of the MCU for us,
+        // and we catch it as it tries to figure out the boot
+        // configuration. If we're not changing execution context
+        // after the fact, this is a no-op.
+        tracing::debug!("Installing watchpoint to catch boot ROM SRC_SBMR1 read");
+        const DWT_COMP0: u64 = 0xE000_1020;
+        const DWT_MASK0: u64 = 0xE000_1024;
+        const DWT_FUNCTION0: u64 = 0xE000_1028;
+        const DWT_FUNCTION_DATAVSIZE_WORD: u32 = 0b10 << 10;
+        const DWT_FUNCTION_DEBUG_DATA_RW: u32 = 0b0111;
+        const SRC_SBMR1: u32 = 0x400F_8004;
+        interface.write_word_32(DWT_COMP0, SRC_SBMR1)?;
+        interface.write_word_32(DWT_MASK0, 0)?;
+        interface.write_word_32(
+            DWT_FUNCTION0,
+            DWT_FUNCTION_DATAVSIZE_WORD | DWT_FUNCTION_DEBUG_DATA_RW,
+        )?;
+
+        interface.flush()?;
+
+        // Do the usual reset. The watchpoint persists across the
+        // reset.
+        tracing::debug!("Performing the standard Cortex-M system reset");
         sequences::cortex_m_reset_system(interface)?;
+
+        // Wait for that watchpoint to hit.
+        tracing::debug!("Waiting for watchpoint to hit");
+        self.wait_for_halt(interface, true)?;
+
+        // Clean up after ourselves.
+        tracing::debug!("Cleaning up watchpoints");
+        interface.write_word_32(DWT_COMP0, 0)?;
+        interface.write_word_32(DWT_FUNCTION0, 0)?;
+
+        // Keep whatever tracing selection the system
+        // previously had.
+        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+        demcr.set_trcena(trcena);
+        interface.write_word_32(Demcr::get_mmio_address(), demcr.0)?;
+
+        interface.flush()?;
+
+        // Unhalt if we're not catching the reset.
+        if !self.simulate_reset_catch.load(Ordering::Relaxed) {
+            self.halt(interface, false)?;
+        }
 
         Ok(())
     }
