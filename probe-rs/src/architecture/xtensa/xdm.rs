@@ -319,7 +319,8 @@ impl<'probe> Xdm<'probe> {
                             // retry, but we should probably add some no-ops later.
                         }
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)) => {
-                            // The instruction is still executing. Retry the Debug Status read.
+                            // The instruction is still executing. Clear ExecBusy and retry the Debug Status read.
+                            self.clear_exception_state()?;
                             to_consume -= 1;
                         }
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecExeception)) => {
