@@ -114,12 +114,9 @@ impl Ch347UsbJtagDevice {
 
         // ch347f default interface number is 4
         // ch347t default interface number is 2
-        let interface = device_handle
-            .claim_interface(4)
-            .or(device_handle
-                    .claim_interface(2)
-                    .map_err(ProbeCreationError::Usb)
-            )?;
+        let interface = device_handle.claim_interface(4).or(device_handle
+            .claim_interface(2)
+            .map_err(ProbeCreationError::Usb))?;
 
         // set 15MHz speed, and check pack mode
         let mut obuf = [0xD0, 0x06, 0x00, 0x00, 0x07, 0x30, 0x30, 0x30, 0x30];
