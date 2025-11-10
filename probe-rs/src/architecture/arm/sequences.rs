@@ -372,7 +372,9 @@ fn cortex_m_reset_catch_set(core: &mut dyn ArmMemoryInterface) -> Result<(), Arm
 }
 
 /// ResetSystem for Cortex-M devices
-fn cortex_m_reset_system(interface: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+pub(crate) fn cortex_m_reset_system(
+    interface: &mut dyn ArmMemoryInterface,
+) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::Aircr;
 
     let mut aircr = Aircr(0);

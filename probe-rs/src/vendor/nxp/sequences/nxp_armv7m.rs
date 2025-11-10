@@ -12,14 +12,13 @@ use std::{
 use crate::{
     architecture::arm::{
         ArmError,
-        ap::AccessPortError,
         armv7m::{FpCtrl, FpRev2CompX},
         core::{
             armv7m::{Aircr, Dhcsr},
             registers::cortex_m::PC,
         },
         memory::ArmMemoryInterface,
-        sequences::{ArmDebugSequence, ArmDebugSequenceError},
+        sequences::{self, ArmDebugSequence, ArmDebugSequenceError},
     },
     core::MemoryMappedRegister,
 };
@@ -46,18 +45,6 @@ impl MIMXRT10xx {
     /// Create a sequence handle for the MIMXRT10xx.
     pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self(()))
-    }
-
-    /// Runtime validation of core type.
-    fn check_core_type(&self, core_type: crate::CoreType) -> Result<(), ArmError> {
-        const EXPECTED: crate::CoreType = crate::CoreType::Armv7em;
-        if core_type != EXPECTED {
-            tracing::warn!(
-                "MIMXRT10xx core type supplied as {core_type:?}, but the actual core is a {EXPECTED:?}"
-            );
-            // Not an issue right now. Warning because it's curious.
-        }
-        Ok(())
     }
 
     /// Halt or unhalt the core.
@@ -111,11 +98,9 @@ impl ArmDebugSequence for MIMXRT10xx {
     fn reset_system(
         &self,
         interface: &mut dyn ArmMemoryInterface,
-        core_type: crate::CoreType,
+        _: crate::CoreType,
         _: Option<u64>,
     ) -> Result<(), ArmError> {
-        self.check_core_type(core_type)?;
-
         // Halt the processor before messing with the memory map.
         self.halt(interface, true)?;
 
@@ -123,47 +108,10 @@ impl ArmDebugSequence for MIMXRT10xx {
         // persists beyond the reset.
         self.use_boot_fuses_for_flexram(interface)?;
 
-        let mut aircr = Aircr(0);
-        aircr.vectkey();
-        aircr.set_sysresetreq(true);
+        // Do the usual reset.
+        sequences::cortex_m_reset_system(interface)?;
 
-        // Reset happens very quickly, and takes a bit. Ignore write and flush
-        // errors that will occur due to the reset reaction.
-        interface
-            .write_word_32(Aircr::get_mmio_address(), aircr.into())
-            .ok();
-        interface.flush().ok();
-
-        // Wait for the reset to finish...
-        thread::sleep(Duration::from_millis(100));
-
-        let start = Instant::now();
-        loop {
-            let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
-                Ok(val) => Dhcsr(val),
-                Err(ArmError::AccessPort {
-                    source:
-                        AccessPortError::RegisterRead { .. } | AccessPortError::RegisterWrite { .. },
-                    ..
-                }) => {
-                    // Some combinations of debug probe and target (in
-                    // particular, hs-probe and ATSAMD21) result in
-                    // register read errors while the target is
-                    // resetting.
-                    //
-                    // See here for more info: https://github.com/probe-rs/probe-rs/pull/1174#issuecomment-1275568493
-                    continue;
-                }
-                Err(err) => return Err(err),
-            };
-            if !dhcsr.s_reset_st() {
-                return Ok(());
-            }
-
-            if start.elapsed() >= Duration::from_millis(500) {
-                return Err(ArmError::Timeout);
-            }
-        }
+        Ok(())
     }
 }
 
