@@ -11,6 +11,8 @@ use crate::probe::{
 use super::Ch347UsbJtagFactory;
 
 const CH34X_VID_PID: [(u16, u16); 3] = [(0x1A86, 0x55DE), (0x1A86, 0x55DD), (0x1A86, 0x55E8)];
+const CH347F_INTERFACE_NUM: u8 = 4;
+const CH347T_INTERFACE_NUM: u8 = 2;
 
 pub(crate) fn is_ch34x_device(device: &DeviceInfo) -> bool {
     CH34X_VID_PID.contains(&(device.vendor_id(), device.product_id()))
@@ -114,9 +116,11 @@ impl Ch347UsbJtagDevice {
 
         // ch347f default interface number is 4
         // ch347t default interface number is 2
-        let interface = device_handle.claim_interface(4).or(device_handle
-            .claim_interface(2)
-            .map_err(ProbeCreationError::Usb))?;
+        let interface = device_handle
+            .claim_interface(CH347F_INTERFACE_NUM)
+            .or(device_handle
+                .claim_interface(CH347T_INTERFACE_NUM)
+                .map_err(ProbeCreationError::Usb))?;
 
         // set 15MHz speed, and check pack mode
         let mut obuf = [0xD0, 0x06, 0x00, 0x00, 0x07, 0x30, 0x30, 0x30, 0x30];
