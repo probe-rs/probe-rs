@@ -6,7 +6,7 @@ chip_detection:
 - !AtsamDsu
   processor: 6
   family: 3
-  series: 0
+  series: 2
   # All variants have the max 1MB+256KB configuration
   variants:
     0x0: PIC32CX1025SG61128 # 128 pin
