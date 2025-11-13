@@ -1,4 +1,4 @@
-use nusb::descriptors::ActiveConfigurationError;
+use nusb::ActiveConfigurationError;
 
 use crate::probe::{ProbeError, ftdi::ftdaye::ChipType};
 
@@ -10,7 +10,7 @@ pub enum FtdiError {
     /// operation. It may indicate that the USB device was unplugged, that another application or an
     /// operating system driver is currently using it, or that the current user does not have
     /// permission to access it.
-    Usb(#[from] nusb::Error),
+    Usb(#[from] std::io::Error),
 
     #[error("Unsupported chip type: {0:?}")]
     /// The connected device is not supported by the driver.

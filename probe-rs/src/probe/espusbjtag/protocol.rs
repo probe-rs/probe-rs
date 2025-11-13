@@ -1,8 +1,5 @@
 use bitvec::prelude::*;
-use nusb::{
-    DeviceInfo,
-    transfer::{Direction, EndpointType},
-};
+use nusb::{DeviceInfo, MaybeFuture, descriptors::TransferType, transfer::Direction};
 use std::{
     fmt::Debug,
     time::{Duration, Instant},
@@ -86,13 +83,18 @@ impl Debug for ProtocolHandler {
 
 impl ProtocolHandler {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        let device = nusb::list_devices()
-            .map_err(ProbeCreationError::Usb)?
+        let devices = nusb::list_devices()
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?;
+        let device = devices
             .filter(is_espjtag_device)
             .find(|device| selector.matches(device))
             .ok_or(ProbeCreationError::NotFound)?;
 
-        let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
+        let device_handle = device
+            .open()
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?;
 
         tracing::debug!("Aquired handle for probe");
 
@@ -124,7 +126,7 @@ impl ProtocolHandler {
             for endpoint in descriptor.endpoints() {
                 let address = endpoint.address();
                 tracing::trace!("Endpoint {address:#04x}");
-                if endpoint.transfer_type() != EndpointType::Bulk {
+                if endpoint.transfer_type() != TransferType::Bulk {
                     tracing::debug!("Skipping endpoint {address:#04x}");
                     continue;
                 }
@@ -152,7 +154,8 @@ impl ProtocolHandler {
 
         let iface = device_handle
             .claim_interface(interface_number)
-            .map_err(ProbeCreationError::Usb)?;
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?;
 
         let start = Instant::now();
         let buffer = loop {
@@ -163,7 +166,8 @@ impl ProtocolHandler {
                     0,
                     USB_TIMEOUT,
                 )
-                .map_err(ProbeCreationError::Usb)?;
+                .wait()
+                .map_err(|e| ProbeCreationError::Usb(e.into()))?;
             if !buffer.is_empty() {
                 break buffer;
             }
@@ -533,21 +537,23 @@ pub(super) fn is_espjtag_device(device: &DeviceInfo) -> bool {
 
 #[tracing::instrument(skip_all)]
 pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
-    let Ok(devices) = nusb::list_devices() else {
-        return vec![];
-    };
-
-    devices
-        .filter(is_espjtag_device)
-        .map(|device| {
-            DebugProbeInfo::new(
-                "ESP JTAG".to_string(),
-                device.vendor_id(),
-                device.product_id(),
-                device.serial_number().map(Into::into),
-                &EspUsbJtagFactory,
-                None,
-            )
-        })
-        .collect()
+    match nusb::list_devices().wait() {
+        Ok(devices) => devices
+            .filter(is_espjtag_device)
+            .map(|device| {
+                DebugProbeInfo::new(
+                    "ESP JTAG".to_string(),
+                    device.vendor_id(),
+                    device.product_id(),
+                    device.serial_number().map(Into::into),
+                    &EspUsbJtagFactory,
+                    None,
+                )
+            })
+            .collect(),
+        Err(e) => {
+            tracing::warn!("error listing ESP USB JTAG devices: {e}");
+            vec![]
+        }
+    }
 }

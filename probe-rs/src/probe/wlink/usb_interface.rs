@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use nusb::Interface;
+use nusb::{Interface, MaybeFuture, descriptors::TransferType, transfer::Direction};
 
 use crate::probe::{
     DebugProbeError, DebugProbeSelector, ProbeCreationError, usb_util::InterfaceExt,
@@ -20,39 +20,61 @@ pub struct WchLinkUsbDevice {
 
 impl WchLinkUsbDevice {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        let device = nusb::list_devices()
-            .map_err(ProbeCreationError::Usb)?
+        let devices = nusb::list_devices()
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?;
+        let device = devices
             .filter(|device| selector.matches(device))
             .find(|device| get_wlink_info(device).is_some())
             .ok_or(ProbeCreationError::NotFound)?;
 
-        let mut endpoint_out = false;
-        let mut endpoint_in = false;
+        let device = device
+            .open()
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?;
 
-        let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
+        let configuration = device
+            .configurations()
+            .next()
+            .ok_or(ProbeCreationError::NotFound)?;
 
-        let mut configs = device_handle.configurations();
-        if let Some(config) = configs.next()
-            && let Some(interface) = config.interfaces().next()
-            && let Some(altsetting) = interface.alt_settings().next()
-        {
-            for endpoint in altsetting.endpoints() {
-                if endpoint.address() == ENDPOINT_OUT {
-                    endpoint_out = true;
-                } else if endpoint.address() == ENDPOINT_IN {
-                    endpoint_in = true;
+        let interface = configuration
+            .interfaces()
+            .find(|intf| intf.interface_number() == 0)
+            .ok_or(ProbeCreationError::NotFound)?;
+
+        let altsetting = interface
+            .alt_settings()
+            .next()
+            .ok_or(ProbeCreationError::NotFound)?;
+
+        let mut endpoint_out = None;
+        let mut endpoint_in = None;
+        for endpoint in altsetting.endpoints() {
+            if endpoint.transfer_type() != TransferType::Bulk {
+                continue;
+            }
+
+            match endpoint.direction() {
+                Direction::Out if endpoint.address() == ENDPOINT_OUT => {
+                    endpoint_out = Some(endpoint.address());
                 }
+                Direction::In if endpoint.address() == ENDPOINT_IN => {
+                    endpoint_in = Some(endpoint.address());
+                }
+                _ => {}
             }
         }
 
-        if !endpoint_out || !endpoint_in {
+        if endpoint_out.is_none() || endpoint_in.is_none() {
             return Err(WchLinkError::EndpointNotFound.into());
         }
 
         tracing::trace!("Aquired handle for probe");
-        let device_handle = device_handle
-            .claim_interface(0)
-            .map_err(ProbeCreationError::Usb)?;
+        let device_handle = device
+            .claim_interface(interface.interface_number())
+            .wait()
+            .map_err(|e| ProbeCreationError::Usb(e.into()))?;
         tracing::trace!("Claimed interface 0 of USB device.");
 
         let usb_wlink = Self { device_handle };

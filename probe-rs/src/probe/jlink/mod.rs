@@ -16,8 +16,7 @@ use std::time::{Duration, Instant};
 use bitvec::prelude::*;
 
 use itertools::Itertools;
-use nusb::DeviceInfo;
-use nusb::transfer::{Direction, EndpointType};
+use nusb::{DeviceInfo, MaybeFuture, descriptors::TransferType, transfer::Direction};
 
 use self::bits::BitIter;
 use self::capabilities::{Capabilities, Capability};
@@ -77,11 +76,13 @@ impl ProbeFactory for JLinkFactory {
             )))
         }
 
-        let mut jlinks = nusb::list_devices()
-            .map_err(DebugProbeError::Usb)?
-            .filter(is_jlink)
-            .filter(|info| selector.matches(info))
-            .collect::<Vec<_>>();
+        let mut jlinks = match nusb::list_devices().wait() {
+            Ok(devices) => devices
+                .filter(is_jlink)
+                .filter(|info| selector.matches(info))
+                .collect::<Vec<_>>(),
+            Err(e) => return Err(open_error(e.into(), "listing USB devices")),
+        };
 
         if jlinks.is_empty() {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
@@ -95,7 +96,8 @@ impl ProbeFactory for JLinkFactory {
 
         let handle = info
             .open()
-            .map_err(|e| open_error(e, "opening the USB device"))?;
+            .wait()
+            .map_err(|e| open_error(e.into(), "opening the USB device"))?;
 
         let configs: Vec<_> = handle.configurations().collect();
 
@@ -137,7 +139,7 @@ impl ProbeFactory for JLinkFactory {
 
                     if !endpoints
                         .iter()
-                        .all(|ep| ep.transfer_type() == EndpointType::Bulk)
+                        .all(|ep| ep.transfer_type() == TransferType::Bulk)
                     {
                         tracing::warn!(
                             "encountered non-bulk endpoints, skipping interface: {:#x?}",
@@ -171,7 +173,8 @@ impl ProbeFactory for JLinkFactory {
 
         let handle = handle
             .claim_interface(intf)
-            .map_err(|e| open_error(e, "taking control over USB device"))?;
+            .wait()
+            .map_err(|e| open_error(e.into(), "taking control over USB device"))?;
 
         let mut this = JLink {
             read_ep,
@@ -460,7 +463,8 @@ impl JLink {
 
         let n = self
             .handle
-            .write_bulk(self.write_ep, cmd, TIMEOUT_DEFAULT)?;
+            .write_bulk(self.write_ep, cmd, TIMEOUT_DEFAULT)
+            .map_err(JlinkError::Usb)?;
 
         if n != cmd.len() {
             return Err(JlinkError::Other(format!(
@@ -491,7 +495,8 @@ impl JLink {
         while total < len {
             let n = self
                 .handle
-                .read_bulk(self.read_ep, &mut dst[total..], TIMEOUT_DEFAULT)?;
+                .read_bulk(self.read_ep, &mut dst[total..], TIMEOUT_DEFAULT)
+                .map_err(JlinkError::Usb)?;
 
             total += n;
         }
@@ -1270,8 +1275,12 @@ impl SwoAccess for JLink {
 
 #[tracing::instrument]
 fn list_jlink_devices() -> Vec<DebugProbeInfo> {
-    let Ok(devices) = nusb::list_devices() else {
-        return vec![];
+    let devices = match nusb::list_devices().wait() {
+        Ok(devices) => devices,
+        Err(e) => {
+            tracing::warn!("error listing J-Link devices: {e}");
+            return vec![];
+        }
     };
 
     devices
