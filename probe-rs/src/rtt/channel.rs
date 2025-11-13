@@ -24,10 +24,10 @@ pub trait RttChannel {
 pub(crate) struct RttChannelBufferInner<T> {
     standard_name_pointer: T,
     buffer_start_pointer: T,
-    size_of_buffer: T,
-    write_offset: T,
-    read_offset: T,
-    flags: T,
+    size_of_buffer: u32,
+    write_offset: u32,
+    read_offset: u32,
+    flags: u32,
 }
 
 impl<T> RttChannelBufferInner<T> {
@@ -92,8 +92,8 @@ impl RttChannelBuffer {
 
     pub fn size_of_buffer(&self) -> u64 {
         match self {
-            RttChannelBuffer::Buffer32(x) => u64::from(x.size_of_buffer),
-            RttChannelBuffer::Buffer64(x) => x.size_of_buffer,
+            RttChannelBuffer::Buffer32(x) => x.size_of_buffer.into(),
+            RttChannelBuffer::Buffer64(x) => x.size_of_buffer.into(),
         }
     }
 
@@ -106,9 +106,9 @@ impl RttChannelBuffer {
                 (u64::from(block[0]), u64::from(block[1]))
             }
             RttChannelBuffer::Buffer64(h64) => {
-                let mut block = [0u64; 2];
-                core.read_64(ptr + h64.write_buffer_ptr_offset() as u64, block.as_mut())?;
-                (block[0], block[1])
+                let mut block = [0u32; 2];
+                core.read_32(ptr + h64.write_buffer_ptr_offset() as u64, block.as_mut())?;
+                (u64::from(block[0]), u64::from(block[1]))
             }
         })
     }
@@ -159,7 +159,7 @@ impl RttChannelBuffer {
                 u64::from(core.read_word_32(ptr + h32.flags_offset() as u64)?)
             }
             RttChannelBuffer::Buffer64(h64) => {
-                core.read_word_64(ptr + h64.flags_offset() as u64)?
+                u64::from(core.read_word_32(ptr + h64.flags_offset() as u64)?)
             }
         })
     }
@@ -170,7 +170,7 @@ impl RttChannelBuffer {
                 core.write_word_32(ptr + h32.flags_offset() as u64, flags.try_into().unwrap())?;
             }
             RttChannelBuffer::Buffer64(h64) => {
-                core.write_word_64(ptr + h64.flags_offset() as u64, flags)?;
+                core.write_word_32(ptr + h64.flags_offset() as u64, flags.try_into().unwrap())?;
             }
         };
         Ok(())
@@ -187,7 +187,7 @@ pub(crate) struct Channel {
     last_read_ptr: Option<u64>,
 }
 
-// Chanels must follow this data layout when reading/writing memory in order to be compatible with
+// Channels must follow this data layout when reading/writing memory in order to be compatible with
 // the official RTT implementation.
 //
 // struct Channel {
