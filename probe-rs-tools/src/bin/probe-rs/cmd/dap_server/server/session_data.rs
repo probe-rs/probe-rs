@@ -398,8 +398,10 @@ impl SessionData {
                 let exception_interface = exception_handler_for_core(target_core.core.core_type());
                 let instruction_set = target_core.core.instruction_set().ok();
 
-                target_core.core_data.static_variables =
-                    Some(target_core.core_data.debug_info.create_static_scope_cache());
+                if target_core.core_data.static_variables.is_none() {
+                    target_core.core_data.static_variables =
+                        Some(target_core.core_data.debug_info.create_static_scope_cache());
+                }
 
                 target_core.core_data.stack_frames = target_core.core_data.debug_info.unwind(
                     &mut target_core.core,
