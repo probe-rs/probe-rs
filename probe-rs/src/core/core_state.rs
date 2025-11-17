@@ -6,10 +6,7 @@ use crate::{
             core::{CortexAState, CortexMState},
             dp::DpAddress,
         },
-        riscv::{
-            RiscvCoreState,
-            communication_interface::{RiscvCommunicationInterface, RiscvError},
-        },
+        riscv::{RiscvCoreState, communication_interface::RiscvCommunicationInterface},
         xtensa::{XtensaCoreState, communication_interface::XtensaCommunicationInterface},
     },
 };
@@ -179,10 +176,6 @@ impl CombinedCoreState {
         };
 
         let hart = options.hart_id.unwrap_or_default();
-        if !interface.hart_enabled(hart) {
-            return Err(RiscvError::HartUnavailable.into());
-        }
-
         interface.select_hart(hart)?;
 
         Ok(Core::new(

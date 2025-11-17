@@ -557,7 +557,11 @@ impl Session {
         self.interfaces
             .attach(&self.target, combined_state)
             .map_err(|e| {
-                if matches!(e, Error::Xtensa(XtensaError::CoreDisabled)) {
+                if matches!(
+                    e,
+                    Error::Xtensa(XtensaError::CoreDisabled)
+                        | Error::Riscv(RiscvError::HartUnavailable),
+                ) {
                     // If the core is disabled, we can't attach to it.
                     // We can't do anything about it, so we just translate
                     // and return the error.
