@@ -308,7 +308,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 
         for i in 0..4 {
             if preambles[i] != expected[i] {
-                tracing::warn!(
+                tracing::info!(
                     "Component at 0x{:x}: CIDR{} has invalid preamble (expected 0x{:x}, got 0x{:x})",
                     self.base_address,
                     i,

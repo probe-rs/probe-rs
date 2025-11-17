@@ -1,0 +1,1 @@
+Fixed CH347 opening logic to account for both CH347T and CH347F

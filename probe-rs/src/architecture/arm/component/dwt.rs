@@ -62,7 +62,7 @@ impl<'a> Dwt<'a> {
         mask.store_unit(self.component, self.interface, unit)?;
 
         let mut function = Function::load_unit(self.component, self.interface, unit)?;
-        function.set_datavsize(0x10);
+        function.set_datavsize(0b10);
         function.set_emitrange(false);
         function.set_datavmatch(false);
         function.set_cycmatch(false);
@@ -223,3 +223,21 @@ memory_mapped_bitfield_register! {
 }
 
 impl DebugComponentInterface for Pcsr {}
+
+#[cfg(test)]
+mod tests {
+    use super::Function;
+
+    /// Demonstrates a field usage that
+    /// was previously in this module.
+    #[test]
+    fn invalid_datavsize() {
+        let mut func = Function(0);
+
+        func.set_datavsize(0x10);
+        assert_eq!(func.0, 0);
+
+        func.set_datavsize(0b10);
+        assert_eq!(func.0, 0b10 << 10);
+    }
+}

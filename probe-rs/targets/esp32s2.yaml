@@ -36,6 +36,13 @@ variants:
     cores:
     - main
     is_alias: true
+  - !Generic
+    name: ROM1, Data bus
+    range:
+      start: 0x3FFA0000
+      end: 0x3FFB0000
+    cores:
+    - main
   - !Ram
     name: SRAM0, Data bus
     range:
@@ -48,6 +55,20 @@ variants:
     range:
       start: 0x3ffb8000
       end: 0x40000000
+    cores:
+    - main
+  - !Generic
+    name: ROM0
+    range:
+      start: 0x40000000
+      end: 0x40010000
+    cores:
+    - main
+  - !Generic
+    name: ROM1
+    range:
+      start: 0x40010000
+      end: 0x40020000
     cores:
     - main
   - !Ram
