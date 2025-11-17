@@ -1,0 +1,201 @@
+//! Sequences for the ESP32P4.
+
+use std::{sync::Arc, time::Duration};
+
+use crate::{
+    MemoryInterface, Session,
+    architecture::riscv::{
+        Dmcontrol,
+        communication_interface::{
+            MemoryAccessMethod, RiscvBusAccess, RiscvCommunicationInterface, Sbaddress0, Sbcs,
+            Sbdata0,
+        },
+        sequences::RiscvDebugSequence,
+    },
+    vendor::espressif::sequences::esp::EspFlashSizeDetector,
+};
+
+const DR_REG_LP_WDT_BASE: u64 = 0x5011_6000;
+
+const RTC_CNTL_WDTCONFIG0_REG: u64 = DR_REG_LP_WDT_BASE;
+const RTC_CNTL_WDTWPROTECT_REG: u64 = DR_REG_LP_WDT_BASE + 0x18;
+const RTC_CNTL_WDT_WKEY: u32 = 0x50d8_3aa1;
+
+const RTC_CNTL_SWD_CONF_REG: u64 = DR_REG_LP_WDT_BASE + 0x001c;
+const RTC_CNTL_SWD_AUTO_FEED_EN: u32 = 1 << 18;
+const RTC_CNTL_SWD_WPROTECT_REG: u64 = DR_REG_LP_WDT_BASE + 0x0020;
+const RTC_CNTL_SWD_WKEY: u32 = 0x50d8_3aa1;
+
+const DR_REG_TIMG0_BASE: u64 = 0x500c_2000;
+const TIMG0_WDTCONFIG0_REG: u64 = DR_REG_TIMG0_BASE + 0x48;
+const TIMG0_WDTWPROTECT_REG: u64 = DR_REG_TIMG0_BASE + 0x64;
+const TIMG0_WDT_WKEY: u32 = 0x50d8_3aa1;
+const TIMG0_INT_CLR_TIMERS_REG: u64 = DR_REG_TIMG0_BASE + 0x7c;
+const TIMG0_INT_CLR_WDG_INT: u32 = 0x4;
+
+const DR_REG_TIMG1_BASE: u64 = 0x500c_3000;
+const TIMG1_WDTCONFIG0_REG: u64 = DR_REG_TIMG1_BASE + 0x48;
+const TIMG1_WDTWPROTECT_REG: u64 = DR_REG_TIMG1_BASE + 0x64;
+const TIMG1_WDT_WKEY: u32 = 0x50d8_3aa1;
+const TIMG1_INT_CLR_TIMERS_REG: u64 = DR_REG_TIMG1_BASE + 0x7c;
+const TIMG1_INT_CLR_WDG_INT: u32 = 0x4;
+
+/// The debug sequence implementation for the ESP32P4.
+#[derive(Debug)]
+pub struct ESP32P4 {
+    inner: EspFlashSizeDetector,
+}
+
+impl ESP32P4 {
+    /// Creates a new debug sequence handle for the ESP32P4.
+    pub fn create() -> Arc<dyn RiscvDebugSequence> {
+        Arc::new(Self {
+            inner: EspFlashSizeDetector {
+                stack_pointer: 0x4FFC_0000,
+                load_address: 0x4FF7_0000,
+                spiflash_peripheral: 0x5008_D000,
+                efuse_get_spiconfig_fn: None,
+                attach_fn: 0x4FC0_01E8,
+            },
+        })
+    }
+
+    fn disable_wdts(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        tracing::info!("Disabling ESP32P4 watchdogs...");
+
+        // tg0 wdg
+        // Write protection off
+        interface.write_word_32(TIMG0_WDTWPROTECT_REG, TIMG0_WDT_WKEY)?;
+        // Disable reset
+        interface.write_word_32(TIMG0_WDTCONFIG0_REG, 0x0)?;
+        // Clear interrupt state
+        interface.write_word_32(TIMG0_INT_CLR_TIMERS_REG, TIMG0_INT_CLR_WDG_INT)?;
+        // Write protection on
+        interface.write_word_32(TIMG0_WDTWPROTECT_REG, 0x0)?;
+
+        // tg1 wdg
+        // Write protection off
+        interface.write_word_32(TIMG1_WDTWPROTECT_REG, TIMG1_WDT_WKEY)?;
+        // Disable reset
+        interface.write_word_32(TIMG1_WDTCONFIG0_REG, 0x0)?;
+        // Clear interrupt state
+        interface.write_word_32(TIMG1_INT_CLR_TIMERS_REG, TIMG1_INT_CLR_WDG_INT)?;
+        // Write protection on
+        interface.write_word_32(TIMG1_WDTWPROTECT_REG, 0x0)?;
+
+        // Disable RTC WDT
+        // Write protection off
+        interface.write_word_32(RTC_CNTL_WDTWPROTECT_REG, RTC_CNTL_WDT_WKEY)?;
+        // Disable reset
+        interface.write_word_32(RTC_CNTL_WDTCONFIG0_REG, 0)?;
+        // Write protection on
+        interface.write_word_32(RTC_CNTL_WDTWPROTECT_REG, 0)?;
+
+        // Write protection off
+        interface.write_word_32(RTC_CNTL_SWD_WPROTECT_REG, RTC_CNTL_SWD_WKEY)?;
+        // Automatically feed SWD
+        let auto_feed_swd =
+            interface.read_word_32(RTC_CNTL_SWD_CONF_REG)? | RTC_CNTL_SWD_AUTO_FEED_EN;
+        interface.write_word_32(RTC_CNTL_SWD_CONF_REG, auto_feed_swd)?;
+        // Write protection on
+        interface.write_word_32(RTC_CNTL_SWD_WPROTECT_REG, 0)?;
+
+        tracing::info!("Done disabling watchdogs");
+        Ok(())
+    }
+
+    fn configure_memory_access(
+        &self,
+        interface: &mut RiscvCommunicationInterface<'_>,
+    ) -> Result<(), crate::Error> {
+        let memory_access_config = interface.memory_access_config();
+
+        let accesses = [
+            RiscvBusAccess::A8,
+            RiscvBusAccess::A16,
+            RiscvBusAccess::A32,
+            RiscvBusAccess::A64,
+            RiscvBusAccess::A128,
+        ];
+        for access in accesses {
+            if memory_access_config.default_method(access) != MemoryAccessMethod::SystemBus {
+                // External data/instruction bus
+                // Loading external memory is slower than the CPU. If we can't access something via the
+                // system bus, select the waiting program buffer method.
+                memory_access_config.set_region_override(
+                    access,
+                    0x4000_0000..0x4400_0000,
+                    MemoryAccessMethod::WaitingProgramBuffer,
+                );
+            } else {
+                // System bus access to RAM appears broken, and returns garbage
+                // values.
+                memory_access_config.set_region_override(
+                    access,
+                    0x4ff0_0000..0x4ffc_0000,
+                    MemoryAccessMethod::ProgramBuffer,
+                );
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl RiscvDebugSequence for ESP32P4 {
+    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        self.configure_memory_access(interface)?;
+        self.disable_wdts(interface)?;
+
+        Ok(())
+    }
+
+    fn reset_system_and_halt(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+        timeout: Duration,
+    ) -> Result<(), crate::Error> {
+        interface.halt(timeout)?;
+
+        // System reset, ported from OpenOCD.
+        interface.write_dm_register(Sbcs(0x48000))?;
+        interface.write_dm_register(Sbaddress0(0x600b1034))?;
+        interface.write_dm_register(Sbdata0(0x80000000_u32))?;
+
+        // clear dmactive to clear sbbusy otherwise debug module gets stuck
+        interface.write_dm_register(Dmcontrol(0))?;
+
+        interface.write_dm_register(Sbcs(0x48000))?;
+        interface.write_dm_register(Sbaddress0(0x600b1038))?;
+        interface.write_dm_register(Sbdata0(0x10000000_u32))?;
+
+        // clear dmactive to clear sbbusy otherwise debug module gets stuck
+        interface.write_dm_register(Dmcontrol(0))?;
+
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_resumereq(true);
+        interface.write_dm_register(dmcontrol)?;
+
+        std::thread::sleep(Duration::from_millis(10));
+
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_ackhavereset(true);
+        interface.write_dm_register(dmcontrol)?;
+
+        interface.enter_debug_mode()?;
+        self.on_connect(interface)?;
+
+        interface.reset_hart_and_halt(timeout)?;
+
+        Ok(())
+    }
+
+    fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
+        self.inner.detect_flash_size(session)
+    }
+}
