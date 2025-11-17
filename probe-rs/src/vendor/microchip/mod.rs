@@ -72,7 +72,6 @@ impl Vendor for Microchip {
                     continue;
                 }
                 for (devsel, variant) in info.variants.iter() {
-                    println!("Variant {} - Devsel {}, chip devsel: {}", variant, *devsel, did.devsel());
                     if *devsel == did.devsel() as u8 {
                         return Ok(Some(variant.clone()));
                     }
