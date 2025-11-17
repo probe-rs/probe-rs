@@ -11,8 +11,8 @@ chip_detection:
   variants:
     0x0: PIC32CX1025SG41128 # 128 pin
     0x1: PIC32CX1025SG41100 # 100 pin
-    0x4: PIC32CX1025SG41064 # 064 pin
-    # TODO - 80 pin variant ID is missing from the datasheet
+    0x2: PIC32CX1025SG41064 # 064 pin
+    0x3: PIC32CX1025SG41080 # 080 pin
 variants:
 - name: PIC32CX1025SG41064
   cores:
@@ -61,6 +61,29 @@ variants:
   flash_algorithms:
   - pic32cxsg_1024
 - name: PIC32CX1025SG41128
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - pic32cxsg_1024
+- name: PIC32CX1025SG41080
   cores:
   - name: main
     type: armv7em

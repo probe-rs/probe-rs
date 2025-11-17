@@ -28,6 +28,7 @@ impl Vendor for Microchip {
             || chip.name.starts_with("ATSAMDA")
             || chip.name.starts_with("ATSAMD5")
             || chip.name.starts_with("ATSAME5")
+            || chip.name.starts_with("PIC32CX")
         {
             DebugSequence::Arm(AtSAM::create())
         } else if chip.name.starts_with("MEC172") {
@@ -71,6 +72,7 @@ impl Vendor for Microchip {
                     continue;
                 }
                 for (devsel, variant) in info.variants.iter() {
+                    println!("Variant {} - Devsel {}, chip devsel: {}", variant, *devsel, did.devsel());
                     if *devsel == did.devsel() as u8 {
                         return Ok(Some(variant.clone()));
                     }
