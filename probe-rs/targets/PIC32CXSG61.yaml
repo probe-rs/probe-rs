@@ -1,0 +1,83 @@
+name: PIC32CXSG61
+manufacturer:
+  id: 0x1f
+  cc: 0x0
+chip_detection:
+- !AtsamDsu
+  processor: 6
+  family: 3
+  series: 2
+  # All variants have the max 1MB+256KB configuration
+  variants:
+    0x0: PIC32CX1025SG61128 # 128 pin
+    0x1: PIC32CX1025SG61100 # 100 pin
+variants:
+- name: PIC32CX1025SG61100
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - pic32cxsg_1024
+- name: PIC32CX1025SG61128
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - pic32cxsg_1024
+flash_algorithms:
+- name: pic32cxsg_1024
+  description: PIC32CXSG 1024kB Flash
+  default: true
+  instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x25
+  pc_program_page: 0x51
+  pc_erase_sector: 0x29
+  data_section_offset: 0xa0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x100000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+  cores:
+  - main

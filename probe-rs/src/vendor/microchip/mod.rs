@@ -28,6 +28,7 @@ impl Vendor for Microchip {
             || chip.name.starts_with("ATSAMDA")
             || chip.name.starts_with("ATSAMD5")
             || chip.name.starts_with("ATSAME5")
+            || chip.name.starts_with("PIC32CX")
         {
             DebugSequence::Arm(AtSAM::create())
         } else if chip.name.starts_with("MEC172") {
