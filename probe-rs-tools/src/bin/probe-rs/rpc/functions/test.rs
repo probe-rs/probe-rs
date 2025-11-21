@@ -153,12 +153,9 @@ fn list_tests_impl(
     request.boot_info.prepare(&mut session, run_loop.core_id)?;
 
     let mut core = session.core(0)?;
-    if let Some(rtt_client) = rtt_client.as_mut() {
-        rtt_client.clear_control_block(&mut core)?;
-    }
-
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
+        clear_control_block: true,
         sender: |message| {
             sender
                 .send_rtt_event(message)
@@ -236,10 +233,6 @@ fn run_test_impl(
     let mut core = session.core(core_id)?;
     core.reset_and_halt(Duration::from_millis(100))?;
 
-    if let Some(rtt_client) = rtt_client.as_mut() {
-        rtt_client.clear_control_block(&mut core)?;
-    }
-
     let expected_outcome = request.test.expected_outcome;
     let mut run_handler =
         RunEventHandler::new(request.test, request.semihosting_options, |event| {
@@ -253,6 +246,7 @@ fn run_test_impl(
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
+        clear_control_block: true,
         sender: |message| {
             sender
                 .send_rtt_event(message)

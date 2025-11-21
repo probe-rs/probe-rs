@@ -200,14 +200,9 @@ fn monitor_impl(
     request.mode.prepare(&mut session, run_loop.core_id)?;
 
     let mut core = session.core(run_loop.core_id)?;
-    if request.mode.should_clear_rtt_header()
-        && let Some(rtt_client) = rtt_client.as_mut()
-    {
-        rtt_client.clear_control_block(&mut core)?;
-    }
-
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
+        clear_control_block: request.mode.should_clear_rtt_header(),
         sender: |message| {
             sender
                 .send_rtt_event(message)
@@ -238,6 +233,7 @@ where
     S: 'c,
 {
     pub rtt_client: &'c mut RttClient,
+    pub clear_control_block: bool,
     pub sender: S,
 }
 
@@ -246,7 +242,10 @@ where
     S: FnMut(RttEvent) -> anyhow::Result<()>,
     S: 'c,
 {
-    fn start(&mut self, _core: &mut Core<'_>) -> anyhow::Result<()> {
+    fn start(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
+        if self.clear_control_block {
+            self.rtt_client.clear_control_block(core)?;
+        }
         Ok(())
     }
 
