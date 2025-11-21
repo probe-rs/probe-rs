@@ -146,13 +146,12 @@ fn list_tests_impl(
     let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
 
     let mut run_loop = RunLoop {
-        core_id,
         cancellation_token: ctx.cancellation_token(),
     };
 
     {
         let mut session = shared_session.session_blocking();
-        request.boot_info.prepare(&mut session, run_loop.core_id)?;
+        request.boot_info.prepare(&mut session, core_id)?;
     }
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
@@ -246,7 +245,6 @@ fn run_test_impl(
         });
 
     let mut run_loop = RunLoop {
-        core_id,
         cancellation_token: ctx.cancellation_token(),
     };
 
@@ -304,6 +302,9 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
         halt_reason: HaltReason,
         core: &mut Core<'_>,
     ) -> anyhow::Result<Option<Tests>> {
+        if core.id() != 0 {
+            return Ok(None);
+        }
         let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
             anyhow::bail!("CPU halted unexpectedly. Halt reason: {halt_reason:?}");
         };
@@ -393,9 +394,14 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
         let cmd = match halt_reason {
             HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => cmd,
             // Exception occurred (e.g. hardfault) => Abort testing altogether
-            reason => anyhow::bail!(
-                "The CPU halted unexpectedly: {reason:?}. Test should signal failure via a panic handler that calls `semihosting::proces::abort()` instead",
-            ),
+            reason => {
+                if core.id() != 0 {
+                    return Ok(None);
+                }
+                anyhow::bail!(
+                    "The CPU halted unexpectedly: {reason:?}. Test should signal failure via a panic handler that calls `semihosting::proces::abort()` instead",
+                )
+            }
         };
 
         match cmd {
