@@ -193,13 +193,11 @@ fn monitor_impl(
     let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
 
     let mut run_loop = RunLoop {
-        core_id,
         cancellation_token: ctx.cancellation_token(),
     };
 
-    request.mode.prepare(&mut session, run_loop.core_id)?;
+    request.mode.prepare(&mut session, core_id)?;
 
-    let mut core = session.core(run_loop.core_id)?;
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
         clear_control_block: request.mode.should_clear_rtt_header(),
@@ -211,7 +209,7 @@ fn monitor_impl(
     });
 
     let exit_reason = run_loop.run_until(
-        &mut core,
+        &mut session,
         request.options.catch_hardfault,
         request.options.catch_reset,
         poller,
@@ -243,13 +241,16 @@ where
     S: 'c,
 {
     fn start(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
-        if self.clear_control_block {
+        if self.clear_control_block && core.id() == self.rtt_client.core_id() {
             self.rtt_client.clear_control_block(core)?;
         }
         Ok(())
     }
 
     fn poll(&mut self, core: &mut Core<'_>) -> anyhow::Result<Duration> {
+        if core.id() != self.rtt_client.core_id() {
+            return Ok(Duration::MAX);
+        }
         if !self.rtt_client.is_attached() && matches!(self.rtt_client.try_attach(core), Ok(true)) {
             tracing::debug!("Attached to RTT");
             let up_channels = self
@@ -291,7 +292,9 @@ where
     }
 
     fn exit(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
-        self.rtt_client.clean_up(core)?;
+        if core.id() == self.rtt_client.core_id() {
+            self.rtt_client.clean_up(core)?;
+        }
         Ok(())
     }
 }
