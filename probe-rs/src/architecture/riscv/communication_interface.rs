@@ -567,7 +567,9 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    pub(crate) fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
+    /// Enable the debug module on the target and detect which features
+    /// are supported.
+    pub fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
         tracing::debug!("Building RISC-V interface");
         self.dtm.init()?;
 
@@ -766,7 +768,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    pub(crate) fn disable_debug_module(&mut self) -> Result<(), RiscvError> {
+    /// Disable debugging on the target.
+    pub fn disable_debug_module(&mut self) -> Result<(), RiscvError> {
         self.debug_on_sw_breakpoint(false)?;
 
         let mut control = Dmcontrol(0);
@@ -776,7 +779,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    pub(crate) fn halt(&mut self, timeout: Duration) -> Result<(), RiscvError> {
+    /// Halt all harts on the target.
+    pub fn halt(&mut self, timeout: Duration) -> Result<(), RiscvError> {
         // Fast path.
         // Try to do the halt, in a single step.
         let mut dmcontrol = self.state.current_dmcontrol;
@@ -846,7 +850,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(CoreInformation { pc })
     }
 
-    pub(crate) fn core_halted(&mut self) -> Result<bool, RiscvError> {
+    /// Return whether or not the core is halted.
+    pub fn core_halted(&mut self) -> Result<bool, RiscvError> {
         if !self.state.is_halted {
             let dmstatus: Dmstatus = self.read_dm_register()?;
 
@@ -912,9 +917,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     /// Schedules a DM register read, flushes the queue and returns the result.
-    pub(crate) fn read_dm_register<R: MemoryMappedRegister<u32>>(
-        &mut self,
-    ) -> Result<R, RiscvError> {
+    pub fn read_dm_register<R: MemoryMappedRegister<u32>>(&mut self) -> Result<R, RiscvError> {
         tracing::debug!(
             "Reading DM register '{}' at {:#010x}",
             R::NAME,
@@ -943,7 +946,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(register_value)
     }
 
-    pub(crate) fn write_dm_register<R: MemoryMappedRegister<u32>>(
+    /// Schedules a DM register write and flushes the queue.
+    pub fn write_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
         register: R,
     ) -> Result<(), RiscvError> {
@@ -1874,8 +1878,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
         }
     }
 
-    // Resume the core.
-    pub(crate) fn resume_core(&mut self) -> Result<(), RiscvError> {
+    /// Resume the core.
+    pub fn resume_core(&mut self) -> Result<(), RiscvError> {
         self.state.is_halted = false; // `false` will re-query the DM, so it's safe to write
 
         // set resume request.
@@ -1899,7 +1903,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    pub(crate) fn reset_hart_and_halt(&mut self, timeout: Duration) -> Result<(), RiscvError> {
+    /// Perform a reset of all harts on the target and halt them at the first instruction.
+    pub fn reset_hart_and_halt(&mut self, timeout: Duration) -> Result<(), RiscvError> {
         tracing::debug!("Resetting core, setting hartreset bit");
 
         let mut dmcontrol = self.state.current_dmcontrol;
