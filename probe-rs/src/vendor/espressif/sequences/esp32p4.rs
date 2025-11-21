@@ -51,8 +51,8 @@ impl ESP32P4 {
     pub fn create() -> Arc<dyn RiscvDebugSequence> {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
-                stack_pointer: 0x4FFC_0000,
-                load_address: 0x4FF7_0000,
+                stack_pointer: 0x8FF7_0000,
+                load_address: 0x8FF1_0000,
                 spiflash_peripheral: 0x5008_D000,
                 efuse_get_spiconfig_fn: None,
                 attach_fn: 0x4FC0_01E8,
@@ -136,6 +136,12 @@ impl ESP32P4 {
                 memory_access_config.set_region_override(
                     access,
                     0x4ff0_0000..0x4ffc_0000,
+                    MemoryAccessMethod::ProgramBuffer,
+                );
+                // Also mark uncached access as going through the program buffer
+                memory_access_config.set_region_override(
+                    access,
+                    0x8ff0_0000..0x8ffc_0000,
                     MemoryAccessMethod::ProgramBuffer,
                 );
             }
