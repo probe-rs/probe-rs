@@ -1451,6 +1451,9 @@ impl ArmDebugInterface for StlinkArmDebug {
     }
 
     fn reinitialize(&mut self) -> Result<(), ArmError> {
+        self.probe
+            .init()
+            .map_err(|e| ArmError::Probe(DebugProbeError::from(e)))?;
         Ok(())
     }
 }
