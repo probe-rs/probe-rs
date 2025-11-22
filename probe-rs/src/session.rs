@@ -304,11 +304,18 @@ impl Session {
                 // means that the core should stop when coming out of reset.
 
                 for core_id in 0..session.cores.len() {
-                    let mut core = session.core(core_id)?;
+                    let mut core = session
+                        .core(core_id)
+                        .inspect_err(|e| tracing::error!("Unable to get core {core_id}: {e}"))?;
 
-                    core.wait_for_core_halted(Duration::from_millis(100))?;
+                    core.wait_for_core_halted(Duration::from_millis(100))
+                        .inspect_err(|e| {
+                            tracing::error!("Unable to wait for {core_id} halted: {e}")
+                        })?;
 
-                    core.reset_catch_clear()?;
+                    core.reset_catch_clear().inspect_err(|e| {
+                        tracing::error!("Unable to clear catch for {core_id} : {e}")
+                    })?;
                 }
             }
 
