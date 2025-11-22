@@ -52,7 +52,7 @@ impl ESP32P4 {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
                 stack_pointer: 0x8FF7_0000,
-                load_address: 0x8FF3_0000,
+                load_address: 0x8FF2_0000,
                 spiflash_peripheral: 0x5008_D000,
                 efuse_get_spiconfig_fn: None,
                 attach_fn: 0x4FC0_01E8,
@@ -164,27 +164,26 @@ impl RiscvDebugSequence for ESP32P4 {
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
     ) -> Result<(), crate::Error> {
-        interface.halt(timeout)?;
-
         // System reset, ported from OpenOCD.
+
+        interface.halt(timeout)?;
         interface.write_dm_register(Sbcs(0x48000))?;
-        interface.write_dm_register(Sbaddress0(0x600b1034))?;
-        interface.write_dm_register(Sbdata0(0x80000000_u32))?;
 
-        // clear dmactive to clear sbbusy otherwise debug module gets stuck
-        interface.write_dm_register(Dmcontrol(0))?;
+        // Unstall both CPUs
+        // HAL_FORCE_MODIFY_U32_REG_FIELD(PMU.cpu_sw_stall, hpcore*_stall_code, 0xFF);
+        interface.write_dm_register(Sbaddress0(0x50115200))?;
+        interface.write_dm_register(Sbdata0(0xFFFF0000))?;
+        std::thread::sleep(Duration::from_millis(10));
 
-        interface.write_dm_register(Sbcs(0x48000))?;
-        interface.write_dm_register(Sbaddress0(0x600b1038))?;
-        interface.write_dm_register(Sbdata0(0x10000000_u32))?;
+        // Writing LP_SYS_SYS_CTRL_REG causes the System Reset
+        // System Reset: resets the whole digital system, including the LP system.
+        interface.write_dm_register(Sbaddress0(0x50110008))?;
+        // Set (LP_SYS_SYS_SW_RST|LP_SYS_DIG_FIB|LP_SYS_ANA_FIB|LP_SYS_LP_FIB_SEL)
+        interface.write_dm_register(Sbdata0(0x1fffc7fa))?;
 
-        // clear dmactive to clear sbbusy otherwise debug module gets stuck
-        interface.write_dm_register(Dmcontrol(0))?;
-
-        let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_dmactive(true);
-        dmcontrol.set_resumereq(true);
-        interface.write_dm_register(dmcontrol)?;
+        // Force on the clock, bypassing the clock gating for all peripherals
+        interface.write_dm_register(Sbaddress0(0x500e60b4))?;
+        interface.write_dm_register(Sbdata0(0x3FFFF))?;
 
         std::thread::sleep(Duration::from_millis(10));
 
