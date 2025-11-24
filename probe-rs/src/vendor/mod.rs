@@ -22,6 +22,7 @@ use crate::{
 };
 
 pub mod espressif;
+pub mod holtek;
 pub mod infineon;
 pub mod microchip;
 pub mod nordicsemi;
@@ -73,6 +74,7 @@ static VENDORS: LazyLock<RwLock<Vec<Box<dyn Vendor>>>> = LazyLock::new(|| {
     let vendors: Vec<Box<dyn Vendor>> = vec![
         Box::new(microchip::Microchip),
         Box::new(infineon::Infineon),
+        Box::new(holtek::Holtek),
         Box::new(silabs::SiliconLabs),
         Box::new(ti::TexasInstruments),
         Box::new(espressif::Espressif),
