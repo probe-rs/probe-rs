@@ -1,0 +1,1 @@
+- Fixed STM32C0 flash routines by updating to CMSIS-Pack 2.3.0.
