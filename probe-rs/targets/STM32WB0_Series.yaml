@@ -16,16 +16,6 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: OTP
-    range:
-      start: 0x10001800
-      end: 0x10001bff
-    cores:
-    - main
-    access:
-      write: false
-      execute: false
-  - !Nvm
     name: Main_Flash
     range:
       start: 0x10040000
@@ -35,10 +25,10 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Ram
     name: SRAM0
     range:
-      start: 0x20000018
+      start: 0x20000000
       end: 0x20003000
     cores:
     - main
@@ -49,6 +39,16 @@ variants:
       end: 0x20006000
     cores:
     - main
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x10001800
+      end: 0x10001bff
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   flash_algorithms:
   - stm32wb0x_512k
 - name: STM32WB06
@@ -82,10 +82,10 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Ram
     name: SRAM0
     range:
-      start: 0x20000018
+      start: 0x20000000
       end: 0x20004000
     cores:
     - main
@@ -129,10 +129,10 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Ram
     name: SRAM0
     range:
-      start: 0x20000018
+      start: 0x20000000
       end: 0x20004000
     cores:
     - main
@@ -189,10 +189,10 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Ram
     name: SRAM0
     range:
-      start: 0x20000018
+      start: 0x20000000
       end: 0x20004000
     cores:
     - main
