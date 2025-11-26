@@ -5,10 +5,9 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 1.0.2
 variants:
-- name: STM32WB05
+- name: STM32WB05KZ
   package_variants:
   - STM32WB05KZVx
-  - STM32WB05TZFx
   cores:
   - name: main
     type: armv6m
@@ -16,7 +15,17 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: Main_Flash
+    name: OTP
+    range:
+      start: 0x10001800
+      end: 0x10001c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x10040000
       end: 0x10070000
@@ -39,23 +48,11 @@ variants:
       end: 0x20006000
     cores:
     - main
-  - !Nvm
-    name: OTP
-    range:
-      start: 0x10001800
-      end: 0x10001bff
-    cores:
-    - main
-    access:
-      write: false
-      execute: false
   flash_algorithms:
   - stm32wb0x_512k
-- name: STM32WB06
+- name: STM32WB05TZ
   package_variants:
-  - STM32WB06CCFx
-  - STM32WB06CCVx
-  - STM32WB06KCVx
+  - STM32WB05TZFx
   cores:
   - name: main
     type: armv6m
@@ -66,14 +63,60 @@ variants:
     name: OTP
     range:
       start: 0x10001800
-      end: 0x10001bff
+      end: 0x10001c00
     cores:
     - main
     access:
       write: false
       execute: false
   - !Nvm
-    name: Main_Flash
+    name: BANK_1
+    range:
+      start: 0x10040000
+      end: 0x10070000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM0
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20003000
+      end: 0x20006000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb0x_512k
+- name: STM32WB06CC
+  package_variants:
+  - STM32WB06CCFx
+  - STM32WB06CCVx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x10001800
+      end: 0x10001c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x10040000
       end: 0x10080000
@@ -98,11 +141,9 @@ variants:
     - main
   flash_algorithms:
   - stm32wb0x_512k
-- name: STM32WB07
+- name: STM32WB06KC
   package_variants:
-  - STM32WB07CCFx
-  - STM32WB07CCVx
-  - STM32WB07KCVx
+  - STM32WB06KCVx
   cores:
   - name: main
     type: armv6m
@@ -113,14 +154,60 @@ variants:
     name: OTP
     range:
       start: 0x10001800
-      end: 0x10001bff
+      end: 0x10001c00
     cores:
     - main
     access:
       write: false
       execute: false
   - !Nvm
-    name: Main_Flash
+    name: BANK_1
+    range:
+      start: 0x10040000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM0
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb0x_512k
+- name: STM32WB07CC
+  package_variants:
+  - STM32WB07CCFx
+  - STM32WB07CCVx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x10001800
+      end: 0x10001c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x10040000
       end: 0x10080000
@@ -159,9 +246,126 @@ variants:
     - main
   flash_algorithms:
   - stm32wb0x_512k
-- name: STM32WB09
+- name: STM32WB07KC
+  package_variants:
+  - STM32WB07KCVx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x10001800
+      end: 0x10001c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x10040000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM0
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x2000c000
+      end: 0x20010000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb0x_512k
+- name: STM32WB09KE
   package_variants:
   - STM32WB09KEVx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: OTP
+    range:
+      start: 0x10001800
+      end: 0x10001c00
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x10040000
+      end: 0x100c0000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM0
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20008000
+      end: 0x2000c000
+    cores:
+    - main
+  - !Ram
+    name: SRAM3
+    range:
+      start: 0x2000c000
+      end: 0x20010000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wb0x_512k
+- name: STM32WB09TE
+  package_variants:
   - STM32WB09TEFx
   cores:
   - name: main
@@ -173,14 +377,14 @@ variants:
     name: OTP
     range:
       start: 0x10001800
-      end: 0x10001bff
+      end: 0x10001c00
     cores:
     - main
     access:
       write: false
       execute: false
   - !Nvm
-    name: Main_Flash
+    name: BANK_1
     range:
       start: 0x10040000
       end: 0x100c0000
