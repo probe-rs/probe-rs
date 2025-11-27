@@ -130,10 +130,7 @@ pub fn erase_all(
                 .iter_sectors()
                 .filter(|info| {
                     let range = info.base_address..info.base_address + info.size;
-                    flasher
-                        .regions
-                        .iter()
-                        .any(|r| r.region.range.contains_range(&range))
+                    el.regions.iter().any(|r| r.range.contains_range(&range))
                 })
                 .collect::<Vec<_>>();
 
