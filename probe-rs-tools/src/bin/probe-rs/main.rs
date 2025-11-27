@@ -522,10 +522,12 @@ fn apply_config_preset(
     matches: &ArgMatches,
     args: &mut Vec<OsString>,
 ) -> anyhow::Result<bool> {
+    const DEFAULT_PRESET_NAME: &str = "default";
+
     let preset_name = if let Some(preset) = matches.get_one::<String>("preset") {
         preset.as_str()
-    } else if config.presets.contains_key("default") {
-        "default"
+    } else if config.presets.contains_key(DEFAULT_PRESET_NAME) {
+        DEFAULT_PRESET_NAME
     } else {
         // No --preset in the CLI arguments or environment variables, and no default preset configured.
         return Ok(false);
