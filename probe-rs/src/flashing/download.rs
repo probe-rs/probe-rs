@@ -170,6 +170,14 @@ pub enum FileDownloadError {
         image: InstructionSet,
     },
 
+    /// The target chip {target} is not compatible with the image. The image is compatible with: {image_chips.join(", ")}
+    IncompatibleImageChip {
+        /// The target chip.
+        target: String,
+        /// The chips compatible with the image.
+        image_chips: Vec<String>,
+    },
+
     /// An error occurred during download.
     Other(#[source] crate::Error),
 }
