@@ -22,8 +22,8 @@ variants:
   - !Nvm
     name: Flash4
     range:
-      start: 0x68000000
-      end: 0xA0000000
+      start: 0x18000000
+      end: 0x1C000000
     cores:
     - hcpu
     - acpu
