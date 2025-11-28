@@ -1,5 +1,5 @@
 use espflash::flasher::{FlashData, FlashSettings, FlashSize};
-use espflash::image_format::idf::IdfBootloaderFormat;
+use espflash::image_format::idf::{IdfBootloaderFormat, check_idf_bootloader};
 use ihex::Record;
 use probe_rs_target::{
     InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
@@ -271,6 +271,12 @@ impl ImageLoader for IdfLoader {
 
         let mut elf_buffer = Vec::new();
         file.read_to_end(&mut elf_buffer)?;
+
+        check_idf_bootloader(&elf_buffer).map_err(|e| {
+            FileDownloadError::Idf(espflash::Error::AppDescriptorNotPresent(e.to_string()))
+        })?;
+        check_chip_compatibility_from_elf_metadata(session, &elf_buffer)?;
+
         let image = IdfBootloaderFormat::new(
             &elf_buffer,
             &flash_data,
@@ -279,8 +285,6 @@ impl ImageLoader for IdfLoader {
             None,
             self.0.target_app_partition.as_deref(),
         )?;
-
-        check_chip_compatibility_from_elf_metadata(session, &elf_buffer)?;
 
         for data in image.flash_segments() {
             flash_loader.add_data(data.addr.into(), &data.data)?;
