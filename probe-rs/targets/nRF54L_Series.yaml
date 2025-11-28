@@ -12,6 +12,12 @@ chip_detection:
     part: 0x54B15
     variants:
       0x41414242: nRF54L15 # QFN48, engineering B
+  - !NordicFicrInfo
+    part_address: 0xffc31c
+    variant_address: 0xffc320
+    part: 0x54B15
+    variants:
+      0x41414142: nRF54LM20A
 variants:
   - name: nRF54L15
     cores:
@@ -35,10 +41,33 @@ variants:
         cores:
           - main
     flash_algorithms:
-      - algorithm
+      - nRF54L15
+  - name: nRF54LM20A
+    cores:
+      - name: main
+        type: armv8m
+        core_access_options: !Arm
+          ap: !v1 0
+    memory_map:
+      - !Nvm
+        range:
+          start: 0x0
+          end: 0x1FD000
+        cores:
+          - main
+        access:
+          boot: true
+      - !Ram
+        range:
+          start: 0x20000000
+          end: 0x20080000
+        cores:
+          - main
+    flash_algorithms:
+      - nRF54LM20A
 
 flash_algorithms:
-  - name: algorithm
+  - name: nRF54L15
     description: nrf54l flash algorithm
     default: true
     instructions: QPKwEEvyAFHC8gAAxfIEAQN4C7EAIwtgAToDKj+/ACIKYAEhAXA8vwAgcEf+3kDysBHC8gABCHgBKBy/ASBwRwAgCHBL8gBRxfIEAQhgcEdA8rAQwvIAAAB4gPABAHBHC0ZA8rARwvIAAQl4ASkcvwEgcEfQtQKvS/IIBELyAQHF8gQExPj4FNT4+BPJB/vQEUYaRgDwevgBICBg1Pj4A8AH+9AAIMT4+ATU+PgDwAf70AAg0L1A8rAQwvIAAAF4ASABKRi/cEdL8gBBxfIEAcH4QAEIaMAH/NAAIHBH8LUDry3pAA8QKjXTQ0IT8AMEAOsEDAfQA0YORhb4AVsD+AFbY0X506LrBA4B6wQKLvADCAzrCANf6opyHtC48QEPJdsYIirwAwYC6soLT+rKAsLxAAkyaDUdCfAYBlX4BBsi+gvyAfoG9CJDTPgEKwpGnEXz0wvgA0YN4LjxAQ8G21JGUvgEG0z4BBucRfnTCusIAQ7wAwIysRpEEfgBawP4AWuTQvnTvegAD/C9//envwDU1NQ=
@@ -62,3 +91,27 @@ flash_algorithms:
           address: 0x0
     cores:
       - main
+  - name: nRF54LM20A
+    description: A flash algorithm under test
+    default: true
+    instructions: QPISQMLyAAABeAEgASkYv3BHgLVvRk7yAEHF8gQBwfhAAQhowAf80AAgveiAQHBHgLVvRkDyEkDC8gAAAHiA8AEAgL1A8hJATvIAUcLyAADF8gQBA3gLsQAjC2ABOgEjAyoDcD+/ACIKYANwACA4v3BHgLVvRgDwPvgLRkDyEkHC8gABCXgBKRy/ASBwR9C1Aq9O8ggEQvIBAcXyBATE+PgU1Pj4E8kH+9ARRhpGAPAm+AEgIGDU+PgDwAf70AAgxPj4BNT4+APAB/vQACDQvUDyEkHC8gABCHgBKBy/ASBwR4C1b0YAIAhwTvIAUcXyBAEIYIC9gLVvRgDe/t6AtW9GveiAQADwALjwtQOvLekAD4ywECoe00NCA/ADCADrCAOYQjPSqPEBDAZGDEa48QAPGtAMRgZGFPgB67jxAQ8G+AHrEdBOeLjxAg9GcAjRjByGHAnghEYM6wIDnEVA02zgjnjMHIZwxhy88QMPDtMEPAQ+FPgEXwb4BF9leHVwpXi1cOV49XA1HZ1C8tGi6wgOAesIBC7wAwIU8AMGA+sCDFnRY0UV0iFGDWhD+ARbY0UP0k1oQ/gEW2NFPr+NaEP4BFtjRQXSzWgQMUP4BFtjRerToRgO8AMCDOsCA5xFLNKi8QEOEvADBBPQCkZlRhL4AWsBLAX4AWsN0Ep4AiyM+AEgHtGKHAzxAgW+8QMPBdIT4GVGCka+8QMPDtMRHyofEfgEbwL4BG9OeFZwjniWcM541nAWHZ5C8tEMsL3oAA/wvYp4DPEDBYz4AiDKHL7xAw/j0vHnT/AACsbxBAsLrc34LKAF6wYJX+rLdR6/JXiJ+ABQT/ABCqUbCJX1AAGVX+qLdUS/NPgKUCn4ClAdHd34LLBlRQGdxfEACc34AJBg0nNCzfggsAHrAwoJ8BgB3fgEkINGB5EK6wgFCJnN+BCg1fgEoAebIfoJ8c34DLDN+CCgCvoD8wtDC+sIAYtGS/gIO+NFQNIImwaV1fgIoCP6CfUHmwWRCvoD8ytDS2AB8QwDY0U00gad7WgIlSr6CfUCld3pB1EB+gX6BZkCnRAxReoKBWFFy/gAUCjSBpkInd34EKAJaSX6CfsHnQiRCvEQCgH6BfVF6gsB3fgMsBlgC/EQCwvrCAMZHWFFq9PCRBDg3fggoA/gBfEECgsdCeAGmdNGBZsIMQgzikYE4AaZAfEMCt34ILAAIQEujfgoEAf4JhwF0Q3xKAlP8AAIACYK4Jr4BVCn8SYJmvgEEAImjfgoEE/qBSjlBwHRACYJ4ArxBAGJXYn4ABAX+CZcnfgoEC4ERuoIBgGdMUMAngbwGAYr+gX1sUApQxlg8OYA1A==
+    load_address: 0x20000020
+    pc_init: 0x45
+    pc_uninit: 0xd1
+    pc_program_page: 0x7b
+    pc_erase_sector: 0x31
+    pc_erase_all: 0x1
+    data_section_offset: 0x20000414
+    flash_properties:
+      address_range:
+        start: 0x0
+        end: 0x1FD000
+      page_size: 0x1000
+      erased_byte_value: 0xff
+      program_page_timeout: 1000
+      erase_sector_timeout: 2000
+      sectors:
+      - size: 0x1000
+        address: 0x0
+    cores:
+    - main
