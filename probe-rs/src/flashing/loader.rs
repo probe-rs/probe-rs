@@ -91,13 +91,14 @@ impl ImageLoader for ElfLoader {
     fn load(
         &self,
         flash_loader: &mut FlashLoader,
-        _session: &mut Session,
+        session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
         const VECTOR_TABLE_SECTION_NAME: &str = ".vector_table";
         let mut elf_buffer = Vec::new();
         file.read_to_end(&mut elf_buffer)?;
 
+        check_chip_compatibility_from_elf_metadata(session, &elf_buffer)?;
         let extracted_data = extract_from_elf(&elf_buffer, &self.0)?;
 
         if extracted_data.is_empty() {
@@ -268,10 +269,10 @@ impl ImageLoader for IdfLoader {
             chip.default_xtal_frequency(),
         );
 
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
+        let mut elf_buffer = Vec::new();
+        file.read_to_end(&mut elf_buffer)?;
         let image = IdfBootloaderFormat::new(
-            &buf,
+            &elf_buffer,
             &flash_data,
             self.0.partition_table.as_deref(),
             self.0.bootloader.as_deref(),
@@ -279,12 +280,33 @@ impl ImageLoader for IdfLoader {
             self.0.target_app_partition.as_deref(),
         )?;
 
+        check_chip_compatibility_from_elf_metadata(session, &elf_buffer)?;
+
         for data in image.flash_segments() {
             flash_loader.add_data(data.addr.into(), &data.data)?;
         }
 
         Ok(())
     }
+}
+
+fn check_chip_compatibility_from_elf_metadata(
+    session: &Session,
+    elf_data: &[u8],
+) -> Result<(), FileDownloadError> {
+    let esp_metadata = espflash::image_format::Metadata::from_bytes(Some(elf_data));
+
+    if let Some(chip_name) = esp_metadata.chip_name() {
+        let target = session.target();
+        if chip_name != target.name {
+            return Err(FileDownloadError::IncompatibleImageChip {
+                target: target.name.clone(),
+                image_chips: vec![chip_name.to_string()],
+            });
+        }
+    }
+
+    Ok(())
 }
 
 /// Current boot information
