@@ -377,24 +377,35 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // The Variables request sometimes returns the variable name, and other times the variable id, so this expression will be tested to determine if it is an id or not.
                 let expression = arguments.expression.clone();
 
+                let mut expression_resolved = false;
+
                 // Make sure we have a valid StackFrame
-                if let Some(stack_frame) =
-                    match arguments.frame_id.map(ObjectRef::try_from).transpose() {
-                        Ok(Some(frame_id)) => target_core
-                            .core_data
-                            .stack_frames
-                            .iter_mut()
-                            .find(|stack_frame| stack_frame.id == frame_id),
-                        Ok(None) => {
-                            // Use the current frame_id
-                            target_core.core_data.stack_frames.first_mut()
-                        }
-                        Err(e) => {
-                            tracing::warn!("Invalid frame_id: {e}");
-                            // Use the current frame_id
-                            target_core.core_data.stack_frames.first_mut()
+                let frame_index = match arguments.frame_id.map(ObjectRef::try_from).transpose() {
+                    Ok(Some(frame_id)) => target_core
+                        .core_data
+                        .stack_frames
+                        .iter()
+                        .position(|stack_frame| stack_frame.id == frame_id),
+                    Ok(None) => {
+                        if target_core.core_data.stack_frames.is_empty() {
+                            None
+                        } else {
+                            Some(0)
                         }
                     }
+                    Err(e) => {
+                        tracing::warn!("Invalid frame_id: {e}");
+                        if target_core.core_data.stack_frames.is_empty() {
+                            None
+                        } else {
+                            Some(0)
+                        }
+                    }
+                };
+
+                if let Some(frame_index) = frame_index
+                    && let Some(stack_frame) =
+                        target_core.core_data.stack_frames.get_mut(frame_index)
                 {
                     // Always search the registers first, because we don't have a VariableCache for them.
                     if let Some(register_value) = stack_frame
@@ -404,11 +415,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     {
                         response_body.type_ = Some(format!("{}", VariableName::RegistersRoot));
                         response_body.result = format!("{register_value}");
+                        expression_resolved = true;
                     } else {
-                        // If the expression wasn't pointing to a register, then check if is a local or static variable in our stack_frame
+                        // If the expression wasn't pointing to a register, then check if it is a local variable in our stack_frame.
                         let mut variable: Option<probe_rs_debug::Variable> = None;
                         let mut variable_cache: Option<&mut probe_rs_debug::VariableCache> = None;
-                        // Search through available caches and stop as soon as the variable is found
+
                         if let Some(search_cache) = stack_frame.local_variables.as_mut() {
                             if search_cache.len() == 1 {
                                 let mut root_variable = search_cache.root_variable().clone();
@@ -439,7 +451,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 variable_cache = Some(search_cache);
                             }
                         }
-                        // Check if we found a variable.
+
                         if let (Some(variable), Some(variable_cache)) = (variable, variable_cache) {
                             let (
                                 variables_reference,
@@ -453,41 +465,112 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             response_body.result = variable.to_string(variable_cache);
                             response_body.type_ = Some(variable.type_name());
                             response_body.variables_reference = variables_reference.into();
-                        } else {
-                            // If we made it to here, no register or variable matched the expression.
-                            for variable_cache_entry in [target_core
-                                .core_data
-                                .core_peripherals
-                                .as_ref()
-                                .map(|core_peripherals| &core_peripherals.svd_variable_cache)]
-                            .into_iter()
-                            .flatten()
-                            {
-                                let svd_variable = if let Ok(expression_as_key) =
-                                    expression.parse::<ObjectRef>()
-                                {
-                                    variable_cache_entry.get_variable_by_key(expression_as_key)
-                                } else {
-                                    variable_cache_entry.get_variable_by_name(&expression)
-                                };
+                            expression_resolved = true;
+                        }
+                    }
+                }
 
-                                if let Some(svd_variable) = svd_variable {
-                                    let (variables_reference, named_child_variables_cnt) =
-                                        get_svd_variable_reference(
-                                            svd_variable,
-                                            variable_cache_entry,
-                                        );
-                                    response_body.indexed_variables = None;
-                                    response_body.memory_reference =
-                                        svd_variable.memory_reference();
-                                    response_body.named_variables = Some(named_child_variables_cnt);
-                                    response_body.result =
-                                        svd_variable.get_value(&mut target_core.core);
-                                    response_body.type_ = svd_variable.type_name();
-                                    response_body.variables_reference = variables_reference.into();
-                                }
+                if !expression_resolved
+                    && let Some(static_cache) = &mut target_core.core_data.static_variables
+                {
+                    if static_cache.len() == 1 {
+                        let mut root_variable = static_cache.root_variable().clone();
+                        if root_variable.variable_node_type.is_deferred()
+                            && !static_cache.has_children(&root_variable)
+                        {
+                            if let Some(top_frame) = target_core.core_data.stack_frames.first() {
+                                let registers = top_frame.registers.clone();
+                                let frame_info = StackFrameInfo {
+                                    registers: &registers,
+                                    frame_base: top_frame.frame_base,
+                                    canonical_frame_address: top_frame.canonical_frame_address,
+                                };
+                                target_core.core_data.debug_info.cache_deferred_variables(
+                                    static_cache,
+                                    &mut target_core.core,
+                                    &mut root_variable,
+                                    frame_info,
+                                )?;
+                            } else {
+                                tracing::error!(
+                                    "Could not cache deferred static variables. No register data available."
+                                );
                             }
                         }
+                    }
+
+                    let mut static_variable = if let Ok(expression_as_key) =
+                        expression.parse::<ObjectRef>()
+                    {
+                        static_cache.get_variable_by_key(expression_as_key)
+                    } else {
+                        static_cache.get_variable_by_name(&VariableName::Named(expression.clone()))
+                    };
+
+                    if let Some(static_variable) = static_variable.as_mut() {
+                        if static_variable.variable_node_type.is_deferred()
+                            && !static_cache.has_children(static_variable)
+                        {
+                            if let Some(top_frame) = target_core.core_data.stack_frames.first() {
+                                let registers = top_frame.registers.clone();
+                                let frame_info = StackFrameInfo {
+                                    registers: &registers,
+                                    frame_base: top_frame.frame_base,
+                                    canonical_frame_address: top_frame.canonical_frame_address,
+                                };
+                                target_core.core_data.debug_info.cache_deferred_variables(
+                                    static_cache,
+                                    &mut target_core.core,
+                                    static_variable,
+                                    frame_info,
+                                )?;
+                            } else {
+                                tracing::error!(
+                                    "Could not cache deferred static variable: {}. No register data available.",
+                                    static_variable.name
+                                );
+                            }
+                        }
+
+                        static_variable.extract_value(&mut target_core.core, static_cache);
+                        static_cache.update_variable(static_variable)?;
+
+                        let (
+                            variables_reference,
+                            named_child_variables_cnt,
+                            indexed_child_variables_cnt,
+                        ) = get_variable_reference(static_variable, static_cache);
+                        response_body.indexed_variables = Some(indexed_child_variables_cnt);
+                        response_body.memory_reference =
+                            Some(static_variable.memory_location.to_string());
+                        response_body.named_variables = Some(named_child_variables_cnt);
+                        response_body.result = static_variable.to_string(static_cache);
+                        response_body.type_ = Some(static_variable.type_name());
+                        response_body.variables_reference = variables_reference.into();
+                        expression_resolved = true;
+                    }
+                }
+
+                if !expression_resolved
+                    && let Some(core_peripherals) = &target_core.core_data.core_peripherals
+                {
+                    let svd_cache = &core_peripherals.svd_variable_cache;
+                    let svd_variable =
+                        if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
+                            svd_cache.get_variable_by_key(expression_as_key)
+                        } else {
+                            svd_cache.get_variable_by_name(&expression)
+                        };
+
+                    if let Some(svd_variable) = svd_variable {
+                        let (variables_reference, named_child_variables_cnt) =
+                            get_svd_variable_reference(svd_variable, svd_cache);
+                        response_body.indexed_variables = None;
+                        response_body.memory_reference = svd_variable.memory_reference();
+                        response_body.named_variables = Some(named_child_variables_cnt);
+                        response_body.result = svd_variable.get_value(&mut target_core.core);
+                        response_body.type_ = svd_variable.type_name();
+                        response_body.variables_reference = variables_reference.into();
                     }
                 }
             }
