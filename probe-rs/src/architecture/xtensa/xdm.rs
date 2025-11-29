@@ -90,7 +90,7 @@ pub enum DebugRegisterError {
 
 #[derive(thiserror::Error, Debug, Clone, Copy, docsplay::Display)]
 pub enum Error {
-    /// Error {access} register {narsel:#04X}
+    /// Error {access} {print_narsel(narsel)} register
     Xdm {
         /// Nexus Address Register selector. Contains the ID of the register being accessed.
         narsel: u8,
@@ -103,7 +103,7 @@ pub enum Error {
     },
 
     /// The instruction execution has encountered an exception.
-    ExecExeception,
+    ExecException,
 
     /// The core is still executing a previous instruction.
     ExecBusy,
@@ -117,6 +117,21 @@ pub enum Error {
 
     /// The Xtensa Debug Module is powered off.
     XdmPoweredOff,
+}
+
+fn print_narsel(narsel: &u8) -> String {
+    let name = match *narsel {
+        0x40 => "the OCDID",
+        0x42 => "the DCRCLR",
+        0x43 => "the DCRSET",
+        0x44 => "the DSR",
+        0x45 => "the DDR",
+        0x46 => "the DDREXEC",
+        0x47 => "the DIR0EXEC",
+        0x48 => "the DIR0",
+        _ => "an unknown",
+    };
+    format!("{name} ({narsel:#04X})")
 }
 
 #[derive(Debug, Default)]
@@ -323,13 +338,13 @@ impl<'probe> Xdm<'probe> {
                             self.clear_exception_state()?;
                             to_consume -= 1;
                         }
-                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecExeception)) => {
+                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecException)) => {
                             // Clear exception to allow executing further instructions.
                             self.clear_exception_state()?;
                             // TODO: in the future, we might want to bubble up the exception cause.
                             // We might also want to store this error for each result that has not
                             // yet been read.
-                            return Err(XtensaError::XdmError(Error::ExecExeception));
+                            return Err(XtensaError::XdmError(Error::ExecException));
                         }
 
                         ProbeRsError::Probe(error) => return Err(error.into()),
@@ -710,7 +725,7 @@ fn transform_instruction_status(
     }
     if status.exec_exception() {
         return Err(ProbeRsError::Xtensa(XtensaError::XdmError(
-            Error::ExecExeception,
+            Error::ExecException,
         )));
     }
     if status.exec_busy() {
