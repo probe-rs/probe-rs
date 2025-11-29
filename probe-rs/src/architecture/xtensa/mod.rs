@@ -305,6 +305,22 @@ impl<'probe> Xtensa<'probe> {
         }
         self.state.spilled = true;
 
+        if self.current_ps()?.excm() {
+            // We are in an exception, possibly WindowOverflowN or WindowUnderflowN.
+            // We can't spill registers in this state.
+            return Ok(());
+        }
+        if self.current_ps()?.woe() {
+            let register_file = self.read_window_registers()?;
+            // We should only spill registers if PS.WOE is set. According to the debug guide, we
+            // also should not spill if INTLEVEL != 0 but I don't see why.
+            register_file.spill(&mut self.interface)?;
+        }
+
+        Ok(())
+    }
+
+    fn read_window_registers(&mut self) -> Result<RegisterFile, Error> {
         let register_file = RegisterFile::read(
             self.interface.core_properties().window_option_properties,
             &mut self.interface,
@@ -320,19 +336,7 @@ impl<'probe> Xtensa<'probe> {
                 .register_cache
                 .store(Register::Cpu(reg), value);
         }
-
-        if self.current_ps()?.excm() {
-            // We are in an exception, possibly WindowOverflowN or WindowUnderflowN.
-            // We can't spill registers in this state.
-            return Ok(());
-        }
-        if self.current_ps()?.woe() {
-            // We should only spill registers if PS.WOE is set. According to the debug guide, we
-            // also should not spill if INTLEVEL != 0 but I don't see why.
-            register_file.spill(&mut self.interface)?;
-        }
-
-        Ok(())
+        Ok(register_file)
     }
 }
 
