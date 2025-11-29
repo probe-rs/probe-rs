@@ -737,17 +737,22 @@ impl CoreInterface for Armv7a<'_> {
 
     fn run(&mut self) -> Result<(), Error> {
         if matches!(self.state.current_state, CoreStatus::Running) {
+            tracing::info!("Core was already running");
             return Ok(());
         }
 
         // set writeback values
-        self.writeback_registers()?;
+        self.writeback_registers()
+            .inspect_err(|e| tracing::error!("Unable to writeback registers: {e}"))?;
 
-        run(&mut *self.memory, self.base_address)?;
+        run(&mut *self.memory, self.base_address)
+            .inspect_err(|e| tracing::error!("Unable to run: {e}"))?;
 
         // Recompute / verify current state
         self.set_core_status(CoreStatus::Running);
-        let _ = self.status()?;
+        let _ = self
+            .status()
+            .inspect_err(|e| tracing::error!("Unable to update status: {e}"))?;
 
         Ok(())
     }

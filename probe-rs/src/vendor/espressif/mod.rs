@@ -16,7 +16,7 @@ use crate::{
         Vendor,
         espressif::sequences::{
             esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c5::ESP32C5, esp32c6::ESP32C6,
-            esp32h2::ESP32H2, esp32s2::ESP32S2, esp32s3::ESP32S3,
+            esp32h2::ESP32H2, esp32p4::ESP32P4, esp32s2::ESP32S2, esp32s3::ESP32S3,
         },
     },
 };
@@ -55,10 +55,8 @@ fn try_detect_espressif_chip(
             if info.idcode != idcode {
                 continue;
             }
-            if info.variants.len() == 1
-                && let Some(target) = get_target_by_magic(info, 0)
-            {
-                // C5 workaround - CPU is on TAP 1. We can infer this from the family,
+            if let Some(target) = get_target_by_magic(info, 0) {
+                // C5/P4 workaround - CPU is on TAP 1. We can infer this from the family,
                 // but we can't use it in the detection process.
                 return Some(target);
             } else {
@@ -96,6 +94,8 @@ impl Vendor for Espressif {
             DebugSequence::Riscv(ESP32C6::create())
         } else if chip.name.eq_ignore_ascii_case("esp32h2") {
             DebugSequence::Riscv(ESP32H2::create())
+        } else if chip.name.eq_ignore_ascii_case("esp32p4") {
+            DebugSequence::Riscv(ESP32P4::create())
         } else if chip.name.starts_with("esp32") {
             DebugSequence::Xtensa(ESP32::create())
         } else {
