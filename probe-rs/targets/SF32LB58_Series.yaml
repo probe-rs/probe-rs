@@ -1,6 +1,6 @@
 name: SF32LB58 Series
 variants:
-- name: SF32LB58
+- name: SF32LB586
   cores:
   - name: hcpu
     type: armv8m
