@@ -146,19 +146,14 @@ fn list_tests_impl(
     let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
 
     let mut run_loop = RunLoop {
-        core_id,
         cancellation_token: ctx.cancellation_token(),
     };
 
-    request.boot_info.prepare(&mut session, run_loop.core_id)?;
-
-    let mut core = session.core(0)?;
-    if let Some(rtt_client) = rtt_client.as_mut() {
-        rtt_client.clear_control_block(&mut core)?;
-    }
+    request.boot_info.prepare(&mut session, core_id)?;
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
+        clear_control_block: true,
         sender: |message| {
             sender
                 .send_rtt_event(message)
@@ -167,7 +162,7 @@ fn list_tests_impl(
     });
 
     match run_loop.run_until(
-        &mut core,
+        &mut session,
         true,
         true,
         poller,
@@ -232,12 +227,10 @@ fn run_test_impl(
         .rtt_client
         .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
 
-    let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
-    let mut core = session.core(core_id)?;
-    core.reset_and_halt(Duration::from_millis(100))?;
-
-    if let Some(rtt_client) = rtt_client.as_mut() {
-        rtt_client.clear_control_block(&mut core)?;
+    {
+        let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
+        let mut core = session.core(core_id)?;
+        core.reset_and_halt(Duration::from_millis(100))?;
     }
 
     let expected_outcome = request.test.expected_outcome;
@@ -247,12 +240,12 @@ fn run_test_impl(
         });
 
     let mut run_loop = RunLoop {
-        core_id,
         cancellation_token: ctx.cancellation_token(),
     };
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
+        clear_control_block: true,
         sender: |message| {
             sender
                 .send_rtt_event(message)
@@ -261,7 +254,7 @@ fn run_test_impl(
     });
 
     match run_loop.run_until(
-        &mut core,
+        &mut session,
         true,
         true,
         poller,
@@ -304,6 +297,9 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
         halt_reason: HaltReason,
         core: &mut Core<'_>,
     ) -> anyhow::Result<Option<Tests>> {
+        if core.id() != 0 {
+            return Ok(None);
+        }
         let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
             anyhow::bail!("CPU halted unexpectedly. Halt reason: {halt_reason:?}");
         };
@@ -393,9 +389,14 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
         let cmd = match halt_reason {
             HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => cmd,
             // Exception occurred (e.g. hardfault) => Abort testing altogether
-            reason => anyhow::bail!(
-                "The CPU halted unexpectedly: {reason:?}. Test should signal failure via a panic handler that calls `semihosting::proces::abort()` instead",
-            ),
+            reason => {
+                if core.id() != 0 {
+                    return Ok(None);
+                }
+                anyhow::bail!(
+                    "The CPU halted unexpectedly: {reason:?}. Test should signal failure via a panic handler that calls `semihosting::proces::abort()` instead",
+                )
+            }
         };
 
         match cmd {
