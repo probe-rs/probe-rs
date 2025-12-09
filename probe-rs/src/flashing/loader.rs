@@ -230,14 +230,14 @@ impl ImageLoader for IdfLoader {
         let chip = espflash::target::Chip::from_str(target_name)
             .map_err(|_| FileDownloadError::IdfUnsupported(target.name.to_string()))?;
 
-        let flash_size_result = session.halted_access(|session| {
-            // Figure out flash size from the memory map. We need a different bootloader for each size.
-            match session.target().debug_sequence.clone() {
-                DebugSequence::Riscv(sequence) => sequence.detect_flash_size(session),
-                DebugSequence::Xtensa(sequence) => sequence.detect_flash_size(session),
-                DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
-            }
-        });
+        let debug_sequence = target.debug_sequence.clone();
+        let mut core = session.core(0).map_err(FileDownloadError::Other)?;
+        // Figure out flash size from the memory map. We need a different bootloader for each size.
+        let flash_size_result = match debug_sequence {
+            DebugSequence::Riscv(sequence) => sequence.detect_flash_size(&mut core),
+            DebugSequence::Xtensa(sequence) => sequence.detect_flash_size(&mut core),
+            DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
+        };
 
         let flash_size = match flash_size_result.map_err(FileDownloadError::FlashSizeDetection)? {
             Some(0x40000) => Some(FlashSize::_256Kb),

@@ -3,7 +3,7 @@ use std::time::Duration;
 use probe_rs_target::Architecture;
 
 use crate::{
-    Core, CoreInterface, MemoryInterface, Session,
+    Core, CoreInterface, MemoryInterface,
     architecture::{riscv::Riscv32, xtensa::Xtensa},
     semihosting::{
         SemihostingCommand, UnknownCommandDetails, WriteConsoleRequest, ZeroTerminatedString,
@@ -29,15 +29,14 @@ pub(super) struct EspFlashSizeDetector {
 }
 
 impl EspFlashSizeDetector {
-    fn attach_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
-        let mut core = session.core(0)?;
+    fn attach_flash(&self, core: &mut Core<'_>) -> Result<(), crate::Error> {
         core.reset_and_halt(Duration::from_millis(500))?;
 
         let regs = core.registers();
         let spi_config = match self.efuse_get_spiconfig_fn {
             Some(get_spiconfig_fn) => {
                 call_function(
-                    &mut core,
+                    core,
                     self.stack_pointer,
                     self.load_address,
                     get_spiconfig_fn,
@@ -53,33 +52,28 @@ impl EspFlashSizeDetector {
         core.write_core_reg(regs.argument_register(0), spi_config as u64)?;
         core.write_core_reg(regs.argument_register(1), 0_u64)?;
 
-        call_function(
-            &mut core,
-            self.stack_pointer,
-            self.load_address,
-            self.attach_fn,
-        )?;
+        call_function(core, self.stack_pointer, self.load_address, self.attach_fn)?;
 
         Ok(())
     }
 
     pub fn detect_flash_size_esp32(
         &self,
-        session: &mut Session,
+        core: &mut Core<'_>,
     ) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
-        self.attach_flash(session)?;
+        self.attach_flash(core)?;
 
         tracing::info!("Flash attached");
-        detect_flash_size_esp32(session, self.spiflash_peripheral)
+        detect_flash_size_esp32(core, self.spiflash_peripheral)
     }
 
-    pub fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
+    pub fn detect_flash_size(&self, core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
-        self.attach_flash(session)?;
+        self.attach_flash(core)?;
 
         tracing::info!("Flash attached");
-        detect_flash_size(session, self.spiflash_peripheral)
+        detect_flash_size(core, self.spiflash_peripheral)
     }
 }
 
@@ -227,13 +221,13 @@ fn execute_flash_command_generic(
 }
 
 fn detect_flash_size(
-    session: &mut Session,
+    core: &mut Core<'_>,
     spiflash_addr: u32,
 ) -> Result<Option<usize>, crate::Error> {
     const RDID: u8 = 0x9F;
 
     let value = execute_flash_command_generic(
-        &mut session.core(0)?,
+        core,
         &SpiRegisters {
             base: spiflash_addr,
             cmd: 0x00,
@@ -253,13 +247,13 @@ fn detect_flash_size(
 }
 
 fn detect_flash_size_esp32(
-    session: &mut Session,
+    core: &mut Core<'_>,
     spiflash_addr: u32,
 ) -> Result<Option<usize>, crate::Error> {
     const RDID: u8 = 0x9F;
 
     let value = execute_flash_command_generic(
-        &mut session.core(0)?,
+        core,
         &SpiRegisters {
             base: spiflash_addr,
             cmd: 0x00,

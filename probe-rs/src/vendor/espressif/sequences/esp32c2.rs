@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 
 use super::esp::EspFlashSizeDetector;
 use crate::{
-    MemoryInterface, Session,
+    Core, MemoryInterface,
     architecture::riscv::{
         Dmcontrol, Dmstatus, Riscv32,
         communication_interface::{
@@ -109,8 +109,8 @@ impl RiscvDebugSequence for ESP32C2 {
         self.disable_wdts(interface)
     }
 
-    fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(session)
+    fn detect_flash_size(&self, core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
+        self.inner.detect_flash_size(core)
     }
 
     fn reset_system_and_halt(

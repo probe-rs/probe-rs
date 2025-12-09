@@ -1,6 +1,6 @@
 //! Debug sequences to operate special requirements RISC-V targets.
 
-use crate::Session;
+use crate::Core;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::riscv::{Dmcontrol, Riscv32};
 use crate::semihosting::{SemihostingCommand, UnknownCommandDetails};
@@ -25,7 +25,7 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
     }
 
     /// Detects the flash size of the target.
-    fn detect_flash_size(&self, _session: &mut Session) -> Result<Option<usize>, crate::Error> {
+    fn detect_flash_size(&self, _core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
         Ok(None)
     }
 

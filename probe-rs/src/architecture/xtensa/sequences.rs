@@ -1,6 +1,6 @@
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
-use crate::Session;
+use crate::Core;
 use crate::architecture::xtensa::Xtensa;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::semihosting::{SemihostingCommand, UnknownCommandDetails};
@@ -23,7 +23,7 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
     }
 
     /// Detects the flash size of the target.
-    fn detect_flash_size(&self, _session: &mut Session) -> Result<Option<usize>, crate::Error> {
+    fn detect_flash_size(&self, _core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
         Ok(None)
     }
 
