@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 
 use super::esp::EspFlashSizeDetector;
 use crate::{
-    MemoryInterface, Session,
+    Core, MemoryInterface,
     architecture::riscv::{
         Dmcontrol, Riscv32,
         communication_interface::{
@@ -28,11 +28,7 @@ impl ESP32H2 {
     pub fn create() -> Arc<dyn RiscvDebugSequence> {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
-                stack_pointer: 0x40830000,
-                load_address: 0x40810000,
                 spiflash_peripheral: 0x6000_3000,
-                efuse_get_spiconfig_fn: None,
-                attach_fn: 0x4000_01D4,
             },
         })
     }
@@ -109,8 +105,8 @@ impl RiscvDebugSequence for ESP32H2 {
         self.disable_wdts(interface)
     }
 
-    fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(session)
+    fn detect_flash_size(&self, core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
+        self.inner.detect_flash_size(core)
     }
 
     fn reset_system_and_halt(

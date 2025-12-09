@@ -3,6 +3,7 @@ use crate::architecture::xtensa::arch::{CpuRegister, SpecialRegister};
 pub mod format;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
+#[allow(dead_code)]
 pub enum Instruction {
     /// Loads a 32-bit word from the address in `src` into `DDR`
     /// Note: this is an illegal instruction when the processor is not in On-Chip Debug Mode
@@ -74,56 +75,8 @@ impl Instruction {
         (3, word)
     }
 
-    /// Encodes the instruction into a Little Endian sequence of bytes and appends it to the given
-    /// vector.
-    pub fn encode_into_vec(self, vec: &mut Vec<u8>) {
-        let (bytes, narrow) = self.encode_bytes();
-
-        vec.extend_from_slice(&narrow.to_le_bytes()[..bytes]);
-    }
-
     pub const fn encode(self) -> InstructionEncoding {
         let narrow = self.encode_bytes().1;
         InstructionEncoding::Narrow(narrow)
-    }
-}
-
-pub(crate) fn into_binary(instructions: impl IntoIterator<Item = Instruction>) -> Vec<u8> {
-    Program::instructions_into_bytes(instructions)
-}
-
-#[derive(Debug, Default)]
-pub(crate) struct Program {
-    bytes: Vec<u8>,
-}
-
-impl Program {
-    // TODO:
-    // - add origin address
-    // - add ability to retrieve the current PC for jumps
-    pub fn new() -> Self {
-        Program { bytes: Vec::new() }
-    }
-
-    pub fn add_instruction(&mut self, instruction: Instruction) {
-        instruction.encode_into_vec(&mut self.bytes);
-    }
-
-    pub fn add_instructions(&mut self, instructions: impl IntoIterator<Item = Instruction>) {
-        for instruction in instructions {
-            self.add_instruction(instruction);
-        }
-    }
-
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.bytes
-    }
-
-    pub fn instructions_into_bytes(instructions: impl IntoIterator<Item = Instruction>) -> Vec<u8> {
-        let mut program = Program::new();
-
-        program.add_instructions(instructions);
-
-        program.into_bytes()
     }
 }

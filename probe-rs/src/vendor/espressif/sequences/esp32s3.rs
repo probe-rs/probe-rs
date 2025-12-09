@@ -7,7 +7,7 @@ use std::{
 
 use super::esp::EspFlashSizeDetector;
 use crate::{
-    MemoryInterface, Session,
+    Core, MemoryInterface,
     architecture::xtensa::{
         Xtensa,
         communication_interface::{
@@ -37,11 +37,7 @@ impl ESP32S3 {
     pub fn create() -> Arc<dyn XtensaDebugSequence> {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
-                stack_pointer: 0x3FCF_0000,
-                load_address: 0x4037_8000,
                 spiflash_peripheral: 0x6000_2000,
-                efuse_get_spiconfig_fn: Some(0x40001f74),
-                attach_fn: 0x4000_0aec,
             },
         })
     }
@@ -140,8 +136,8 @@ impl XtensaDebugSequence for ESP32S3 {
         self.disable_wdts(interface)
     }
 
-    fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(session)
+    fn detect_flash_size(&self, core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
+        self.inner.detect_flash_size(core)
     }
 
     fn reset_system_and_halt(
