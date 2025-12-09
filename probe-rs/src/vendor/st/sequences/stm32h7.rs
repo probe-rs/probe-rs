@@ -213,22 +213,26 @@ impl ArmDebugSequence for Stm32h7 {
         );
         cstf.unlock()?;
         match sink {
-            TraceSink::Swo(_) => cstf.enable_port(0b00)?,
-            TraceSink::Tpiu(_) | TraceSink::TraceMemory => cstf.enable_port(0b10)?,
-        }
-
-        // The SWTF needs to be configured to route traffic to SWO. When not in use, it needs to be
-        // disabled so that the SWO peripheral does not propogate buffer overflows through the
-        // trace bus via busy signalling.
-        let mut swtf = TraceFunnel::new(
-            interface,
-            find_trace_funnel(components, TraceFunnelId::SerialWire)?,
-        );
-        swtf.unlock()?;
-        if matches!(sink, TraceSink::Swo(_)) {
-            swtf.enable_port(0b01)?;
-        } else {
-            swtf.enable_port(0b00)?;
+            TraceSink::Swo(_) => {
+                cstf.enable_port(0b00)?;
+                // The SWTF needs to be configured to route traffic to SWO. When not in use, it needs to be
+                // disabled so that the SWO peripheral does not propogate buffer overflows through the
+                // trace bus via busy signalling.
+                let mut swtf = TraceFunnel::new(
+                    interface,
+                    find_trace_funnel(components, TraceFunnelId::SerialWire)?,
+                );
+                swtf.unlock()?;
+                if matches!(sink, TraceSink::Swo(_)) {
+                    swtf.enable_port(0b01)?;
+                } else {
+                    swtf.enable_port(0b00)?;
+                }
+            }
+            TraceSink::Tpiu(_) | TraceSink::TraceMemory => {
+                // This enables both ETM and ITM.
+                cstf.enable_port(0b11)?;
+            }
         }
 
         Ok(())

@@ -76,7 +76,7 @@ impl Cmd {
             ItmSource::TraceMemory { coreclk } => {
                 session.setup_tracing(self.shared.core, TraceSink::TraceMemory)?;
 
-                let trace = session.read_trace_data()?;
+                let trace = session.read_trace_data(Some(13))?;
                 let decoder =
                     itm::Decoder::new(trace.as_slice(), itm::DecoderOptions { ignore_eof: false });
 
