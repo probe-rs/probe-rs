@@ -791,7 +791,7 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
 }
 
 pub(super) struct ActiveFlasher<'op, 'p, O: Operation> {
-    core: Core<'op>,
+    pub(super) core: Core<'op>,
     instruction_set: InstructionSet,
     rtt: Option<Rtt>,
     progress: &'op mut FlashProgress<'p>,

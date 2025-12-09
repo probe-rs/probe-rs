@@ -1,7 +1,3 @@
-use std::time::Duration;
-
-use probe_rs_target::Architecture;
-
 use crate::{
     Core, CoreInterface, MemoryInterface,
     architecture::{riscv::Riscv32, xtensa::Xtensa},
@@ -12,113 +8,23 @@ use crate::{
 
 #[derive(Debug)]
 pub(super) struct EspFlashSizeDetector {
-    /// The target information. We calculate the stack pointer from the first flash algorithm.
-    pub stack_pointer: u32,
-
     /// The address of the SPI flash peripheral (`SPIMEM1`).
     pub spiflash_peripheral: u32,
-
-    /// The address of the `ets_efuse_get_spiconfig` ROM function, if needed.
-    pub efuse_get_spiconfig_fn: Option<u32>,
-
-    /// The address of the `esp_rom_spiflash_attach` ROM function.
-    pub attach_fn: u32,
-
-    /// RAM address that we may use to download some code.
-    pub load_address: u32,
 }
 
 impl EspFlashSizeDetector {
-    fn attach_flash(&self, core: &mut Core<'_>) -> Result<(), crate::Error> {
-        core.reset_and_halt(Duration::from_millis(500))?;
-
-        let regs = core.registers();
-        let spi_config = match self.efuse_get_spiconfig_fn {
-            Some(get_spiconfig_fn) => {
-                call_function(
-                    core,
-                    self.stack_pointer,
-                    self.load_address,
-                    get_spiconfig_fn,
-                )?;
-
-                core.read_core_reg::<u32>(regs.result_register(0))?;
-                0
-            }
-            None => 0,
-        };
-
-        // call esp_rom_spiflash_attach(spi_config, false)
-        core.write_core_reg(regs.argument_register(0), spi_config as u64)?;
-        core.write_core_reg(regs.argument_register(1), 0_u64)?;
-
-        call_function(core, self.stack_pointer, self.load_address, self.attach_fn)?;
-
-        Ok(())
-    }
-
     pub fn detect_flash_size_esp32(
         &self,
         core: &mut Core<'_>,
     ) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
-        self.attach_flash(core)?;
-
-        tracing::info!("Flash attached");
         detect_flash_size_esp32(core, self.spiflash_peripheral)
     }
 
     pub fn detect_flash_size(&self, core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
         tracing::info!("Detecting flash size");
-        self.attach_flash(core)?;
-
-        tracing::info!("Flash attached");
         detect_flash_size(core, self.spiflash_peripheral)
     }
-}
-
-fn call_function(
-    core: &mut Core<'_>,
-    stack_pointer: u32,
-    load_addr: u32,
-    fn_addr: u32,
-) -> Result<(), crate::Error> {
-    if core.architecture() == Architecture::Xtensa {
-        use crate::architecture::xtensa::arch::{
-            CpuRegister,
-            instruction::{Instruction, into_binary},
-        };
-        let instructions = into_binary([
-            Instruction::CallX8(CpuRegister::A4),
-            // Set a breakpoint at the end of the code
-            Instruction::Break(0, 0),
-        ]);
-
-        // Download code
-        core.write_8(load_addr as u64, &instructions)?;
-
-        // Set up processor state
-        core.write_core_reg(core.program_counter(), load_addr)?;
-        core.write_core_reg(CpuRegister::A4, fn_addr)?;
-    } else {
-        use crate::architecture::riscv::assembly;
-
-        // Return to a breakpoint
-        core.write_32(load_addr as u64, &[assembly::EBREAK, assembly::EBREAK])?;
-
-        core.write_core_reg(core.program_counter(), fn_addr as u64)?;
-        core.write_core_reg(core.return_address(), load_addr as u64)?;
-
-        core.debug_on_sw_breakpoint(true)?;
-    }
-
-    core.write_core_reg(core.stack_pointer(), stack_pointer)?;
-
-    // Let it run
-    core.run()?;
-    core.wait_for_core_halted(Duration::from_millis(500))?;
-
-    Ok(())
 }
 
 struct SpiRegisters {

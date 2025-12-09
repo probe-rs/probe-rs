@@ -27,11 +27,7 @@ impl ESP32C2 {
     pub fn create() -> Arc<dyn RiscvDebugSequence> {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
-                stack_pointer: 0x403a0000,
-                load_address: 0x4038c000,
                 spiflash_peripheral: 0x6000_2000,
-                efuse_get_spiconfig_fn: None,
-                attach_fn: 0x4000_0178,
             },
         })
     }

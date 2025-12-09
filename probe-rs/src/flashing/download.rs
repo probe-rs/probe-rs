@@ -160,7 +160,7 @@ pub enum FileDownloadError {
     NoLoadableSegments,
 
     /// Could not determine flash size.
-    FlashSizeDetection(#[from] crate::Error),
+    FlashSizeDetection(#[source] FlashError),
 
     /// The image ({image:?}) is not compatible with the target ({print_instr_sets(target)}).
     IncompatibleImage {

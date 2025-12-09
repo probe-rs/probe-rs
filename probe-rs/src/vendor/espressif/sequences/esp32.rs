@@ -34,11 +34,7 @@ impl ESP32 {
         );
         Arc::new(Self {
             inner: EspFlashSizeDetector {
-                stack_pointer: 0x3ffd0000,
-                load_address: 0x4009_0000,
                 spiflash_peripheral: 0x3ff4_2000,
-                efuse_get_spiconfig_fn: Some(0x40008658),
-                attach_fn: 0x4006_2a6c,
             },
         })
     }
