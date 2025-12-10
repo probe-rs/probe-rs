@@ -40,6 +40,39 @@ const TIMG1_WDT_WKEY: u32 = 0x50d8_3aa1;
 const TIMG1_INT_CLR_TIMERS_REG: u64 = DR_REG_TIMG1_BASE + 0x7c;
 const TIMG1_INT_CLR_WDG_INT: u32 = 0x4;
 
+/// A register that effects a reset when bits are set, and releases the
+/// block from reset when `0` is written.
+struct ResetRegister {
+    /// The physical address where this reset occurs
+    address: u64,
+    /// The value of legal bits to set to trigger the reset
+    value: u32,
+}
+
+impl ResetRegister {
+    const fn new(address: u64, value: u32) -> ResetRegister {
+        ResetRegister { address, value }
+    }
+}
+/// Manually reset blocks, since there's no way to otherwise perform
+/// a global reset.
+const HP_RST_EN0_REG: ResetRegister = ResetRegister::new(
+    0x500e_60c0,
+    // Skip REG_RST_EN_CORE0_GLOBAL and REG_RST_EN_CORE1_GLOBAL since
+    // we're already resetting the CPUs
+    !(1 << 7 | 1 << 8),
+);
+const HP_RST_EN1_REG: ResetRegister = ResetRegister::new(0x500e_60c4, !0);
+const HP_RST_EN2_REG: ResetRegister = ResetRegister::new(0x500e_60c8, !0);
+
+const LP_AONCLKRST_LP_RST_EN: ResetRegister = ResetRegister::new(
+    0x5011_100c,
+    // Skip resetting the efuse registers, since that will reset the USJ connection
+    0xfffc_0000 & !(1 << 30),
+);
+
+const LP_PERI_RESET_EN: ResetRegister = ResetRegister::new(0x5012_0008, 0xfffc_0000);
+
 /// The debug sequence implementation for the ESP32P4.
 #[derive(Debug)]
 pub struct ESP32P4 {
@@ -192,6 +225,26 @@ impl RiscvDebugSequence for ESP32P4 {
         self.on_connect(interface)?;
 
         interface.reset_hart_and_halt(timeout)?;
+
+        // Perform a manual reset of all peripherals
+        for reg in &[
+            HP_RST_EN0_REG,
+            HP_RST_EN1_REG,
+            HP_RST_EN2_REG,
+            LP_AONCLKRST_LP_RST_EN,
+            LP_PERI_RESET_EN,
+        ] {
+            interface.write_word_32(reg.address, reg.value)?;
+        }
+        for reg in &[
+            HP_RST_EN0_REG,
+            HP_RST_EN1_REG,
+            HP_RST_EN2_REG,
+            LP_AONCLKRST_LP_RST_EN,
+            LP_PERI_RESET_EN,
+        ] {
+            interface.write_word_32(reg.address, 0)?;
+        }
 
         Ok(())
     }
