@@ -3,7 +3,7 @@
 use std::{sync::Arc, time::Duration};
 
 use crate::{
-    MemoryInterface, Session,
+    Core, MemoryInterface,
     architecture::riscv::{
         Dmcontrol,
         communication_interface::{
@@ -51,11 +51,7 @@ impl ESP32P4 {
     pub fn create() -> Arc<dyn RiscvDebugSequence> {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
-                stack_pointer: 0x8FF7_0000,
-                load_address: 0x8FF2_0000,
                 spiflash_peripheral: 0x5008_D000,
-                efuse_get_spiconfig_fn: None,
-                attach_fn: 0x4FC0_01E8,
             },
         })
     }
@@ -200,7 +196,7 @@ impl RiscvDebugSequence for ESP32P4 {
         Ok(())
     }
 
-    fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(session)
+    fn detect_flash_size(&self, core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
+        self.inner.detect_flash_size(core)
     }
 }
