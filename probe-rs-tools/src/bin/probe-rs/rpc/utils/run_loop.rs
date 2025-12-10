@@ -1,3 +1,5 @@
+use probe_rs::architecture::riscv::communication_interface::RiscvError;
+use probe_rs::architecture::xtensa::communication_interface::XtensaError;
 use tokio_util::sync::CancellationToken;
 
 use std::ops::ControlFlow;
@@ -5,10 +7,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use probe_rs::{Core, Error, HaltReason, VectorCatchCondition};
+use probe_rs::{Core, Error, HaltReason, Session, VectorCatchCondition};
 
 pub struct RunLoop {
-    pub core_id: usize,
     pub cancellation_token: CancellationToken,
 }
 
@@ -35,7 +36,7 @@ impl RunLoop {
     /// The function will also return on timeout with `Ok(ReturnReason::Timeout)` or if the user presses CTRL + C with `Ok(ReturnReason::User)`.
     pub fn run_until<F, R>(
         &mut self,
-        core: &mut Core,
+        session: &mut Session,
         catch_hardfault: bool,
         catch_reset: bool,
         mut poller: impl RunLoopPoller,
@@ -45,38 +46,54 @@ impl RunLoop {
     where
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
-        if catch_hardfault || catch_reset {
-            if !core.core_halted()? {
-                core.halt(Duration::from_millis(100))?;
-            }
+        let core_count = 1; //session.target().cores.len();
+        for idx in 0..core_count {
+            let mut core = match session.core(idx) {
+                Ok(core) => core,
+                Err(Error::Xtensa(XtensaError::CoreDisabled)) => continue,
+                Err(Error::Riscv(RiscvError::HartUnavailable)) => continue,
+                Err(e) => return Err(e.into()),
+            };
+            if catch_hardfault || catch_reset {
+                if !core.core_halted()? {
+                    core.halt(Duration::from_millis(100))?;
+                }
 
-            if catch_hardfault {
-                match core.enable_vector_catch(VectorCatchCondition::HardFault) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                if catch_hardfault {
+                    match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+                        Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+                if catch_reset {
+                    match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                        Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
                 }
             }
-            if catch_reset {
-                match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                }
+            poller.start(&mut core)?;
+
+            if core.core_halted()? {
+                core.run()?;
             }
         }
 
-        poller.start(core)?;
-
-        if core.core_halted()? {
-            core.run()?;
-        }
-
-        let result = self.do_run_until(core, &mut poller, timeout, &mut predicate);
+        let result = self.do_run_until(session, &mut poller, timeout, &mut predicate);
 
         // Always clean up after RTT but don't overwrite the original result.
-        let poller_exit_result = poller.exit(core);
-        if result.is_ok() {
-            // If the result is Ok, we return the potential error during cleanup.
-            poller_exit_result?;
+        for idx in 0..core_count {
+            let mut core = match session.core(idx) {
+                Ok(core) => core,
+                Err(Error::Xtensa(XtensaError::CoreDisabled)) => continue,
+                Err(Error::Riscv(RiscvError::HartUnavailable)) => continue,
+                Err(e) => return Err(e.into()),
+            };
+            let poller_exit_result = poller.exit(&mut core);
+            if result.is_ok() {
+                // If the result is Ok, we return the potential error during cleanup.
+                poller_exit_result?;
+            }
         }
 
         result
@@ -84,7 +101,7 @@ impl RunLoop {
 
     fn do_run_until<F, R>(
         &mut self,
-        core: &mut Core<'_>,
+        session: &mut Session,
         poller: &mut impl RunLoopPoller,
         timeout: Option<Duration>,
         predicate: &mut F,
@@ -93,22 +110,43 @@ impl RunLoop {
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
         let start = Instant::now();
+        let core_count = 1; //session.target().cores.len();
+
+        let mut next_wakeup = {
+            let now = Instant::now();
+            vec![now; core_count]
+        };
 
         loop {
-            match self.poll_once(core, poller, predicate)? {
-                ControlFlow::Break(reason) => return Ok(reason),
-                ControlFlow::Continue(next_poll) => {
-                    if let Some(timeout) = timeout
-                        && start.elapsed() >= timeout
-                    {
-                        return Ok(ReturnReason::Timeout);
-                    }
+            let now = Instant::now();
+            for idx in 0..core_count {
+                if now < next_wakeup[idx] {
+                    continue;
+                }
 
-                    // If the polling frequency is too high, the USB connection to the probe
-                    // can become unstable. Hence we only poll as little as necessary.
-                    thread::sleep(next_poll);
+                let mut core = match session.core(idx) {
+                    Ok(core) => core,
+                    Err(Error::Xtensa(XtensaError::CoreDisabled)) => continue,
+                    Err(Error::Riscv(RiscvError::HartUnavailable)) => continue,
+                    Err(e) => return Err(e.into()),
+                };
+                match self.poll_once(&mut core, poller, predicate)? {
+                    ControlFlow::Break(reason) => return Ok(reason),
+                    ControlFlow::Continue(next_poll) => {
+                        if let Some(timeout) = timeout
+                            && start.elapsed() >= timeout
+                        {
+                            return Ok(ReturnReason::Timeout);
+                        }
+
+                        next_wakeup[idx] = Instant::now() + next_poll;
+                    }
                 }
             }
+
+            // If the polling frequency is too high, the USB connection to the probe
+            // can become unstable. Hence we only poll as little as necessary.
+            thread::sleep(*next_wakeup.iter().min().unwrap() - Instant::now());
         }
     }
 
