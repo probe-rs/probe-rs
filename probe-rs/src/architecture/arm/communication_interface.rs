@@ -227,6 +227,7 @@ impl ArmCommunicationInterface {
             }
         };
 
+        self.dps.clear();
         probe.raw_flush().ok();
     }
 }
@@ -246,6 +247,7 @@ impl ArmDebugInterface for ArmCommunicationInterface {
 
         // This should be set to None by the disconnect call above.
         assert!(self.current_dp.is_none());
+        assert!(self.dps.is_empty());
 
         // Reconnect to the DP again
         if let Some(dp) = current_dp {
