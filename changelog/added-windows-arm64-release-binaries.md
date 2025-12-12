@@ -1,0 +1,1 @@
+Enable generation of Windows ARM64 binaries when creating releases
