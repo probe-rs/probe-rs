@@ -151,10 +151,8 @@ impl XtensaDebugSequence for ESP32S3 {
         const RTC_CNTL_RESET_STATE_DEF: u32 = 0x3000;
 
         {
-            let _span = tracing::debug_span!("Halting core").entered();
-            if !core.core_halted()? {
-                core.halt(timeout)?;
-            }
+            let _span = tracing::debug_span!("Resetting core").entered();
+            core.reset_and_halt(timeout)?;
         }
 
         // A program that does the system reset and then loops,

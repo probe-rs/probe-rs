@@ -194,7 +194,10 @@ impl XtensaDebugSequence for ESP32S2 {
 
         const SYS_RESET: u32 = 1 << 31;
 
-        core.reset_and_halt(timeout)?;
+        {
+            let _span = tracing::debug_span!("Resetting core").entered();
+            core.reset_and_halt(timeout)?;
+        }
 
         // Set some clock-related RTC registers to the default values
         core.write_word_32(Self::STORE4, 0)?;
