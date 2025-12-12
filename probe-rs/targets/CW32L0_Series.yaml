@@ -1,0 +1,149 @@
+name: CW32L0 Series
+generated_from_pack: true
+pack_file_release: 1.0.2
+variants:
+- name: CW32L010x8
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  flash_algorithms:
+  - flashcw32l010
+- name: CW32L011x8
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001800
+    cores:
+    - main
+  flash_algorithms:
+  - flashcw32l011
+- name: CW32L012x8
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - flashcw32l012
+flash_algorithms:
+- name: flashcw32l010
+  description: CW32L010
+  default: true
+  instructions: QLpwR8C6cEcQtVZIVEkBY1VJCYhVSpFCMNAAKS7QAyJSAxFDgWFBaFFKEUNBYIFpCQT81U5JSR4BYEJoESMaQFIYQmBISgAgIDKDGBt4SaQkXKNCEtFAHAgo9tNISAFgQWBISlJoSEtSBtIPkgBLRJpYEUOBYIFokUIB0AEgEL0AIQFigWIIRhC9OUk8SEkeAWCBYIFoACkB0AEgcEcAIYFiCEZwRzZIQWqJBvzUMEmJHAFgAWjJQ4kHAdABIHBHMkoAIQpgQmqSBvzUQmoTIxpCAdCBYvHnACBwRyhJSmqSBvzUIkpSHApgCmiSBwHUASBwRyVKAmBIaoAG/NRIahMiEED10AAgiGLx5xC1HEtcaqQG/NQWTBxgHGjkBwfRASAQvRDKEMAJH1xqpAb81AAp99FYahMhCEDy0AAgmGLu5zC1ACMG4NRcxVysQgHQwBgwvVsci0L200AYML0AAP//WloAQABAwAcQAP//AAABAFpaQ1czMkwwMTAAAAAAACACQABDAEAMAAAAeFY0EgAAAAAAgAAAAAABAP8AAAD//wAA
+  pc_init: 0x9
+  pc_uninit: 0x8b
+  pc_program_page: 0x10d
+  pc_erase_sector: 0xdd
+  pc_erase_all: 0xa7
+  pc_verify: 0x143
+  data_section_offset: 0x190
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x200
+      address: 0x0
+- name: flashcw32l011
+  description: CW32L011
+  default: true
+  instructions: QLpwR8C6cEcwtYFIAGsBBIBIgUIA0IBIgEmBSgFDEWOASQtoWwacD39LBtB/TNxhf0x9TQRDQDUsY1RoASUFQyxDVGCUaSQE/NUQYFRoESUsQARDVGAIYEhgWmh1S1IG0g+SAEtEmlgQQ4hgiGiQQgHQASAwvQAgCGKIYjC9ZEgAa2RJAASIQgDQY0llSAFggWCBaAApAdABIHBHACGBYghGcEdaSABrWkkABIhCANBZSVxIQmqSBvzUAyIRQwFgAWjJQ4kHAdABIHBHWkoAIQpgQmqSBvzUQmrSBgHQgWLy5wAgcEdKSQlrSkoJBJFCANBJSktLQDMZaxtrCQYbBBsOyQuBQgXYWQL/Mf8xAjGBQgnYQ0lLapsG/NQCIxpDCmAKaJIHAdQBIHBHQkoCYEhqgAb81EhqwAb20AAgiGLy5/C1N0hAMAFrAGvNsgAEBg61QgLZ//el//C9MkhAaDRJQAbAD0lEgAAIOQhYACRHCgngrEIB07RCBNlgAv/3sv8BKOnQZBynQvPYACDwvXC1H0sbax9MGwSjQgDQHkwgTUA1K2staxsGLQQtDtsLASaDQgXYawL/M/8zAjODQgjYGEtdaq0G/NQ0QxxgHGjkBwfRASBwvRDKEMAJH1xqpAb81AAp99FYasAG89AAIJhi7+cwtQAjBuDUXMVcrEIB0MAYML1bHItC9tNAGDC9wAcQAAAASVMAAFpa//8AAABAAEAAIAJAAEMAQFBaAADNqwAADAAAAHhWNBIAAAAAAIAAAAAAAQD/AAAA//8AAA==
+  pc_init: 0x9
+  pc_uninit: 0x7f
+  pc_program_page: 0x191
+  pc_erase_sector: 0xe7
+  pc_erase_all: 0x143
+  pc_verify: 0x1f5
+  data_section_offset: 0x23c
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x200
+      address: 0x0
+- name: flashcw32l012
+  description: CW32L012
+  default: true
+  instructions: QLpwR8C6cEcQtVRIUkkBY1NJCYhTSpFCMNAAKS7QByISAxFDgWFBaE9KEUNBYIFpCQT81UxJSR4BYEJoESMaQFIYQmBGSgAgIDKDGBt4R6QkXKNCEtFAHAgo9tNGSAFgQWBGSlJoRktSBtIPkgBLRJpYEUOBYIFokUIB0AEgEL0AIQFigWIIRhC9N0k6SEkeAWCBYIFoACkB0AEgcEcAIYFiCEZwRzRIQWqJBvzULkmJHAFgAWjJQ4kHAdABIHBHMEoAIQpgQmqSBvzUQmrSBgHQgWLy5wAgcEcnSUpqkgb81CFKUhwKYApokgcB1AEgcEckSgJgSGqABvzUSGrABvbQACCIYvLnELUbS1xqpAb81BVMHGAcaOQHB9EBIBC9EMoQwAkfXGqkBvzUACn30VhqwAbz0AAgmGLv5zC1ACMG4NRcxVysQgHQwBgwvVsci0L200AYML3//1paAEAAQMAHEAD//wAAAQBaWkNXMzJMMDEyAAAAAAAgAkAAQwBADAAAAHhWNBIAAAAAAIAAAAAAAQD/AAAA//8AAA==
+  pc_init: 0x9
+  pc_uninit: 0x8b
+  pc_program_page: 0x109
+  pc_erase_sector: 0xdb
+  pc_erase_all: 0xa7
+  pc_verify: 0x13d
+  data_section_offset: 0x188
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x200
+      address: 0x0
