@@ -1,5 +1,3 @@
-# MANUAL EDIT: stm32c0x_64 flash algorithm region modified
----
 name: STM32C0 Series
 manufacturer:
   id: 0x20
@@ -407,7 +405,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071CB
   package_variants:
   - STM32C071CBTx
@@ -438,7 +436,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071F8
   package_variants:
   - STM32C071F8Px
@@ -467,7 +465,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071FB
   package_variants:
   - STM32C071FBPx
@@ -497,7 +495,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071G8
   package_variants:
   - STM32C071G8Ux
@@ -526,7 +524,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071GB
   package_variants:
   - STM32C071GBUx
@@ -555,7 +553,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071K8
   package_variants:
   - STM32C071K8Tx
@@ -586,7 +584,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071KB
   package_variants:
   - STM32C071KBTx
@@ -617,7 +615,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071R8
   package_variants:
   - STM32C071R8Tx
@@ -648,7 +646,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071RB
   package_variants:
   - STM32C071RBTx
@@ -678,7 +676,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C092CC
   package_variants:
   - STM32C092CCUx
@@ -714,6 +712,7 @@ variants:
   - STM32C092RCUx
   - STM32C092RCTx
   - STM32C092RCTxTR
+  - STM32C092RCIx
   cores:
   - name: main
     type: armv6m
@@ -743,13 +742,14 @@ flash_algorithms:
 - name: stm32c0x_32
   description: STM32C0x_32
   default: true
-  instructions: crZlSGVJCGEIasADDdRlSGNKAmBSEAJgBiJCYGJKgmBiSNIQQmB/IgJgSGkAKAPaX0iIYF9IiGBitgAgcEdXSEFpggQRQ0FhACBwRwEgcEdytlJIAWnJA/zUQmkEIQpDQmFCaYsDGkNCYQJp0gP81ANpSUoTQgLQAmEBIHBHQmmKQ0JhYrYAIHBHELVytkJKQkkKYUtp/yTkAKNDS2EjBsAYTGkACgIjGEMEQ0xhTGnYAwRDTGEMaeQD/NQMaRRCAtAKYQEgEL1KaZpDSmEBItIGEmhSHALRCmgCQwpgYrYAIBC98LWIsIRGcrbJHcsIKknbAAhpwAP81C9ICGFIaQEkIENIYW1GMuAIKwzTYEYUaARgVGhEYAgwCDKERgg7CGnAA/zUG+AAIATghgAUeEAcrFFSHJhC+NMAJP8nCCDGGgPg4BiAAC9QZBymQvnYCGnAA/zUYEYAmwNgQ2AAIwhpwAcE0AxICGEBIAiw8L0AK8rRSGlACEAASGEBIMAGAGhAHATQCGgBIhIEkEMIYGK2ACDq5wAA+sMAAAAgAkCqqgAAADAAQP8PAAAALABAIwFnRauJ783/AQAAAAAAAA==
+  instructions: crYRSBFJgWCBackDBNXBaAApEtQAIHBHDUkOSgpgDkoKYAYiSmANSopgDUkNSkpgfyIKYMFoACns1QtJAWALSQFgACBwR8BGCCACQPrDAAAAMABAqqoAAFVVAAD/DwAAACwAQP8BAAAjAWdFq4nvzQEgwAcCSQpoAkMKYAAgcEcUIAJAASBwRxC1crYBIAIEFUkLaBNCCNALaBNCBdALaBNCAtALaBNC89FMaAQjHENMYExoFENMYAxoFEII0AxoFEIF0AxoFEIC0AxoFELz0QxoBkoUQgHQCmAQvUhomENIYAAgEL3ARhAgAkD6wwAA8LVyth9JDGgfSQofH0sTYKQAH00lQAckZRsMaCxADGAfJOQGABkACgxoBEMCJjRDDGABIAQED2gnQw9gF2gnQgjQF2gnQgXQF2gnQgLQF2gnQvPRF2gfQgHQE2DwvQhoKEAIYAhosEMIYAEgwAYCaAAgUhwA0PC9FDkKaCJDCmDwvcBGoHX/HxQgAkD6wwAA+D8AAPC1jbAFRnK2zh0BIACQBARbSQhoIEII0AhoIEIF0AhoIEIC0AhoIELz0VZICGBIaACbGENIYAcghkMFqIAwAZAL4AOdApgoYAGYAGhoYAAmBJoIaMAHANCM4AAuetAILhbTEGgoYFBoaGAIMghoIEII0AhoIEIF0AhoIEIC0AhoIELz0Qg+CDUIaMAH5dBx4BB4ApAFkAEuA5UB0VIcIOBQeAaQAi4B0ZIcGuCQeAeQAy4B0dIcFODQeAiQBC4B0RIdDuAQeQmQBS4B0VIdCOBQeQqQBi4B0ZIdAuCQeQuQ0h0EkggghRsELgLZMkYAIA/gDCcvQDJGsAAFqxsYACD/Jh5gXmCeYN5gEDMAHYdC9tEDIx1ADtCAGIAABar/IxNQAS0H0AWqghhTYAItAtAFqoAYg2AIaCBCgtAIaCBCANF+5whoIEIA0XrnCGggQvHRdudKaAEjmkNKYNoGEmgAIFIcBNAbBBA5CmiaQwpgDbDwvQRICGAAmA2w8L3ARhAgAkD/AQAA+sMAAAAAAAA=
   pc_init: 0x1
-  pc_uninit: 0x3f
-  pc_program_page: 0xe5
-  pc_erase_sector: 0x8b
-  pc_erase_all: 0x51
-  data_section_offset: 0x1bc
+  pc_uninit: 0x71
+  pc_program_page: 0x185
+  pc_erase_sector: 0xf1
+  pc_erase_all: 0x89
+  pc_blank_check: 0x85
+  data_section_offset: 0x310
   flash_properties:
     address_range:
       start: 0x8000000
@@ -761,20 +761,20 @@ flash_algorithms:
     sectors:
     - size: 0x800
       address: 0x0
-- name: stm32c0x_64
-  description: STM32C0x_64
+- name: stm32c0x_128
+  description: STM32C0x_128
   default: true
-  instructions: 7/MQgHK2EUgRSYFggWnJAwTVwWgAKRLUACBwRw1JDkoKYA5KCmAGIkpgDUqKYA1JDUpKYH8iCmDBaAAp7NULSQFgC0kBYAAgcEfARgggAkD6wwAAADAAQKqqAABVVQAA/w8AAAAsAED/AQAAIwFnRauJ780BIMAHAkkKaAJDCmAAIHBHFCACQAEgcEcQte/zEIBytgEgAgQVSQtoE0II0AtoE0IF0AtoE0IC0AtoE0Lz0UxoBCMcQ0xgTGgUQ0xgDGgUQgjQDGgUQgXQDGgUQgLQDGgUQvPRDGgGShRCAdAKYBC9SGiYQ0hgACAQvcBGECACQPrDAABwte/zEIFythtJCh8bSxNg/yTkAA1opUMNYB8k5AYAGQAKDGgEQwIlLEMMYAEgBAQOaCZDDmAWaCZCCNAWaCZCBdAWaCZCAtAWaCZC89EWaB5CAdATYHC9CGioQwhgASDABgJoACBSHADQcL0UOQpoIkMKYHC9wEYUIAJA+sMAAPC1jrATRgVG7/MQgHK2zh0BIACQBARbSQhoIEII0AhoIEIF0AhoIEIC0AhoIELz0VVICGBIaACaEENIYAcghkMGqIAwAZAF4Ag+CDUIaMAHANCB4AAuANGD4AguEdMYaChgWGhoYAgzCGggQuzQCGggQunQCGggQubQCGggQvPR4ucYeAOQBpABLgHRWxwg4Fh4B5ACLgHRmxwa4Jh4CJADLgHR2xwU4Nh4CZAELgHRGx0O4Bh5CpAFLgHRWx0I4Fh5C5AGLgHRmx0C4Jh5DJDbHQWTBJUIIIMbAyAEKwKQAdIAJw7gHUaFQ7AABq84GAAn/yICYEJggmDCYBAwPx29QvbRApgDQA7QuBmAAAat/yIqUAErB9AGrUUZamACKwLQBqvAGIJgCGggQgjQCGggQgXQCGggQgLQCGggQvPRBJ0DmChgAZgAaGhgACYFmwhowAcA0X3nDEgIYACYDrDwvUpoASOaQ0pg2gYSaAAgUhwE0BsEEDkKaJpDCmAOsPC9wEYQIAJA/wEAAPrDAAAAAAAA
+  instructions: crYPSA9JgWCBackDDdQOSQ5KCmAOSgpgBiJKYA1KimANSQ5KSmB/IgpgwWgAKQHUACBwRwpJAWAKSQFgACBwRwggAkD6wwAAADAAQKqqAABVVQAA/w8AAAAsAED/AQAAIwFnRauJ780BIMAHAkkKaAJDCmAAIHBHFCACQAEgcEewtXK2ASADBAxJCh8UaBxC+9ENaAQkJUMNYA1oHUMNYBVoHUL80RVoBUsdQgHQE2CwvQhooEMIYAAgsL0UIAJA+sMAAPC1crYaSQxoGkkKHxpLE2CkABpNJUAHJGUbDGgsQAxgHyTkBgAZAAoMaARDAiY0QwxgASAEBA9oJ0MPYBdoJ0L80RdoH0IB0BNg8L0IaChACGAIaLBDCGABIMAGAmgAIFIcANDwvRQ5CmgiQwpg8L2gdf8fFCACQPrDAAD4PwAA8LWKsANGcrbOHQEgAJAEBChJCGggQvzRJ0gIYEhoAJ0oQ0hgByCGQwKogDABkAjgApgYYAGYAGhYYAAmCGjABzLRAC4g0AcuCtkVaB1gVWhdYAgyDWglQvzRCD4IM+3nAq81RhB4AcdtHlIcAC350bUACD4CqP8nR1EtHXYc+dMIaCBC/NHT50poASOaQ0pg2gYSaAAgUhwE0BsEEDkKaJpDCmAKsPC9BEgIYACYCrDwvcBGECACQP8BAAD6wwAAAAAAAA==
   pc_init: 0x1
-  pc_uninit: 0x75
-  pc_program_page: 0x179
-  pc_erase_sector: 0xf9
-  pc_erase_all: 0x8d
-  data_section_offset: 0x308
+  pc_uninit: 0x69
+  pc_program_page: 0x145
+  pc_erase_sector: 0xc5
+  pc_erase_all: 0x81
+  pc_blank_check: 0x7d
+  data_section_offset: 0x204
   flash_properties:
     address_range:
       start: 0x8000000
-      # MANUAL EDIT: extended region from 64KB to 128KB
       end: 0x8020000
     page_size: 0x800
     erased_byte_value: 0xff
@@ -792,6 +792,7 @@ flash_algorithms:
   pc_program_page: 0x185
   pc_erase_sector: 0xf1
   pc_erase_all: 0x89
+  pc_blank_check: 0x85
   data_section_offset: 0x310
   flash_properties:
     address_range:
