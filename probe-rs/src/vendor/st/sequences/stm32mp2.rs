@@ -141,24 +141,21 @@ impl ArmDebugSequence for Stm32mp2 {
 
     fn trace_start(
         &self,
-        _interface: &mut dyn ArmDebugInterface,
+        interface: &mut dyn ArmDebugInterface,
         _components: &[CoresightComponent],
-        _sink: &TraceSink,
+        sink: &TraceSink,
     ) -> Result<(), ArmError> {
-        // let mut memory = interface.memory_interface(&components[0].ap_address)?;
-        // let mut cr = dbgmcu::Control::read(&mut *memory)?;
+        let mut axi_memory = interface.memory_interface(
+            &FullyQualifiedApAddress::v1_with_default_dp(STM32MP2_AXI_AP),
+        )?;
+        let pre = axi_memory.read_word_32(0x44200520)?;
 
-        // if matches!(sink, TraceSink::Tpiu(_) | TraceSink::Swo(_)) {
-        //     cr.set_traceen(true);
-        //     cr.set_traceioen(true);
-        //     cr.set_tracemode(0);
-        // } else {
-        //     cr.set_traceen(false);
-        //     cr.set_traceioen(false);
-        //     cr.set_tracemode(0);
-        // }
+        if matches!(sink, TraceSink::Tpiu(_) | TraceSink::Swo(_)) {
+            axi_memory.write_word_32(0x44200520, pre | 0x200)?;
+        } else {
+            axi_memory.write_word_32(0x44200520, pre & !0x200)?;
+        }
 
-        // cr.write(&mut *memory)?;
-        Err(ArmError::NotImplemented("Tracing not implemented yet"))
+        Ok(())
     }
 }
