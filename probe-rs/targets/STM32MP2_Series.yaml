@@ -1,0 +1,103 @@
+name: STM32MP2 Series
+manufacturer:
+  id: 0x20
+  cc: 0x0
+variants:
+- name: STM32MP257
+  cores:
+  - name: ca35_0
+    type: armv8a
+    core_access_options: !Arm
+      ap: !v1 0
+      debug_base: 0x80210000
+      cti_base: 0x80220000
+  - name: ca35_1
+    type: armv8a
+    core_access_options: !Arm
+      ap: !v1 0
+      debug_base: 0x80310000
+      cti_base: 0x80320000
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 8
+  - name: cm0p
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 2
+  memory_map:
+  - !Ram
+    name: SYSRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20040000
+      end: 0x20060000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20060000
+      end: 0x20080000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: RETRAM
+    range:
+      start: 0x20080000
+      end: 0x200A0000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: VDERAM
+    range:
+      start: 0x200A0000
+      end: 0x200C0000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: LPSRAM1
+    range:
+      start: 0x200C0000
+      end: 0x200C2000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+    - cm0p
+  - !Ram
+    name: LPSRAM2
+    range:
+      start: 0x200C2000
+      end: 0x200C4000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+    - cm0p
+  - !Ram
+    name: LPSRAM3
+    range:
+      start: 0x200C4000
+      end: 0x200C8000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+    - cm0p
