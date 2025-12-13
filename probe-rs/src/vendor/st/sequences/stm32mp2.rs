@@ -25,14 +25,10 @@ pub const STM32MP2_SR_AHB_AP: u8 = 1;
 /// Marker structure for ARMv8 STM32 devices.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Stm32mp2Line {
-    /// STM32MP253/255/257 Have 2xA35+M33+M0p
-    MP25x,
-    /// STM32MP251 Has A35+M33+M0p
-    MP251,
+    /// STM32MP251/253/255/257 Have A35+M33+M0p
+    MP25,
     /// STM32MP233/235/237 Have 2xA35+M33
-    MP23x,
-    /// STM32MP231 Has A35+M33
-    MP231,
+    MP23,
 }
 
 /// Marker structure for ARMv8 STM32 devices.
@@ -102,24 +98,16 @@ impl ArmDebugSequence for Stm32mp2 {
             // enables CM0 access through the same AP as opposed to seperate SWD pins
             cr.enable_cm0_access(true);
             cr.write(&mut *memory)?;
-
-            memory.write_word_32(0x80210300, 0).unwrap();
-            let pre = memory.read_word_32(0x80210088).unwrap();
-            memory.write_word_32(0x80210088, pre | 0x0004000).unwrap();
-
-            // Only power up second core if chip has it
-            if self.line == Stm32mp2Line::MP25x || self.line == Stm32mp2Line::MP23x {
-                memory.write_word_32(0x80310300, 0).unwrap();
-                let pre = memory.read_word_32(0x80310088).unwrap();
-                memory.write_word_32(0x80310088, pre | 0x0004000).unwrap();
-            }
         }
 
         // Power up CM0 if chip has it
-        if self.line == Stm32mp2Line::MP25x || self.line == Stm32mp2Line::MP251 {
+        if self.line == Stm32mp2Line::MP25 {
             let mut axi_memory = interface.memory_interface(
                 &FullyQualifiedApAddress::v1_with_default_dp(STM32MP2_AXI_AP),
             )?;
+            // Enable MSI Clock
+            axi_memory.write_word_32(0x44200444, 0x0000003).unwrap();
+            // Enable CM0P
             axi_memory.write_word_32(0x44200490, 0x0000006).unwrap();
         }
 

@@ -54,14 +54,10 @@ impl Vendor for St {
             DebugSequence::Arm(Stm32Armv8::create())
         } else if chip.name.starts_with("STM32N6") {
             DebugSequence::Arm(Stm32n6::create())
-        } else if chip.name.starts_with("STM32MP25x") {
-            DebugSequence::Arm(Stm32mp2::create(Stm32mp2Line::MP25x))
-        } else if chip.name.starts_with("STM32MP251") {
-            DebugSequence::Arm(Stm32mp2::create(Stm32mp2Line::MP251))
-        } else if chip.name.starts_with("STM32MP23x") {
-            DebugSequence::Arm(Stm32mp2::create(Stm32mp2Line::MP23x))
-        } else if chip.name.starts_with("STM32MP231") {
-            DebugSequence::Arm(Stm32mp2::create(Stm32mp2Line::MP231))
+        } else if chip.name.starts_with("STM32MP25") {
+            DebugSequence::Arm(Stm32mp2::create(Stm32mp2Line::MP25))
+        } else if chip.name.starts_with("STM32MP23") {
+            DebugSequence::Arm(Stm32mp2::create(Stm32mp2Line::MP23))
         } else {
             return None;
         };
