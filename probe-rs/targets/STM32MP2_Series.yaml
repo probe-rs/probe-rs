@@ -3,7 +3,56 @@ manufacturer:
   id: 0x20
   cc: 0x0
 variants:
-- name: STM32MP257
+- name: STM32MP25x
+  package_variants:
+  - STM32MP253AAJx
+  - STM32MP255AAJx
+  - STM32MP257AAJx
+  - STM32MP253AALx
+  - STM32MP255AALx
+  - STM32MP257AALx
+  - STM32MP253AAKx
+  - STM32MP255AAKx
+  - STM32MP257AAKx
+  - STM32MP253AAIx
+  - STM32MP255AAIx
+  - STM32MP257AAIx
+  - STM32MP253CAJx
+  - STM32MP255CAJx
+  - STM32MP257CAJx
+  - STM32MP253CALx
+  - STM32MP255CALx
+  - STM32MP257CALx
+  - STM32MP253CAKx
+  - STM32MP255CAKx
+  - STM32MP257CAKx
+  - STM32MP253CAIx
+  - STM32MP255CAIx
+  - STM32MP257CAIx
+  - STM32MP253DAJx
+  - STM32MP255DAJx
+  - STM32MP257DAJx
+  - STM32MP253DALx
+  - STM32MP255DALx
+  - STM32MP257DALx
+  - STM32MP253DAKx
+  - STM32MP255DAKx
+  - STM32MP257DAKx
+  - STM32MP253DAIx
+  - STM32MP255DAIx
+  - STM32MP257DAIx
+  - STM32MP253FAJx
+  - STM32MP255FAJx
+  - STM32MP257FAJx
+  - STM32MP253FALx
+  - STM32MP255FALx
+  - STM32MP257FALx
+  - STM32MP253FAKx
+  - STM32MP255FAKx
+  - STM32MP257FAKx
+  - STM32MP253FAIx
+  - STM32MP255FAIx
+  - STM32MP257FAIx
   cores:
   - name: ca35_0
     type: armv8a
@@ -101,3 +150,310 @@ variants:
     - ca35_1
     - cm33
     - cm0p
+- name: STM32MP251
+  package_variants:
+  - STM32MP251AAJx
+  - STM32MP251AALx
+  - STM32MP251AAKx
+  - STM32MP251AAIx
+  - STM32MP251CAJx
+  - STM32MP251CALx
+  - STM32MP251CAKx
+  - STM32MP251CAIx
+  - STM32MP251DAJx
+  - STM32MP251DALx
+  - STM32MP251DAKx
+  - STM32MP251DAIx
+  - STM32MP251FAJx
+  - STM32MP251FALx
+  - STM32MP251FAKx
+  - STM32MP251FAIx
+  cores:
+  - name: ca35_0
+    type: armv8a
+    core_access_options: !Arm
+      ap: !v1 0
+      debug_base: 0x80210000
+      cti_base: 0x80220000
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 8
+  - name: cm0p
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 2
+  memory_map:
+  - !Ram
+    name: SYSRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20040000
+      end: 0x20060000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20060000
+      end: 0x20080000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: RETRAM
+    range:
+      start: 0x20080000
+      end: 0x200A0000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: VDERAM
+    range:
+      start: 0x200A0000
+      end: 0x200C0000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: LPSRAM1
+    range:
+      start: 0x200C0000
+      end: 0x200C2000
+    cores:
+    - ca35_0
+    - cm33
+    - cm0p
+  - !Ram
+    name: LPSRAM2
+    range:
+      start: 0x200C2000
+      end: 0x200C4000
+    cores:
+    - ca35_0
+    - cm33
+    - cm0p
+  - !Ram
+    name: LPSRAM3
+    range:
+      start: 0x200C4000
+      end: 0x200C8000
+    cores:
+    - ca35_0
+    - cm33
+    - cm0p
+- name: STM32MP23x
+  package_variants:
+  - STM32MP233AAJx
+  - STM32MP235AAJx
+  - STM32MP233AALx
+  - STM32MP235AALx
+  - STM32MP233AAKx
+  - STM32MP235AAKx
+  - STM32MP233CAJx
+  - STM32MP235CAJx
+  - STM32MP233CALx
+  - STM32MP235CALx
+  - STM32MP233CAKx
+  - STM32MP235CAKx
+  - STM32MP233DAJx
+  - STM32MP235DAJx
+  - STM32MP233DALx
+  - STM32MP235DALx
+  - STM32MP233DAKx
+  - STM32MP235DAKx
+  - STM32MP233FAJx
+  - STM32MP235FAJx
+  - STM32MP233FALx
+  - STM32MP235FALx
+  - STM32MP233FAKx
+  - STM32MP235FAKx
+  cores:
+  - name: ca35_0
+    type: armv8a
+    core_access_options: !Arm
+      ap: !v1 0
+      debug_base: 0x80210000
+      cti_base: 0x80220000
+  - name: ca35_1
+    type: armv8a
+    core_access_options: !Arm
+      ap: !v1 0
+      debug_base: 0x80310000
+      cti_base: 0x80320000
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 8
+  memory_map:
+  - !Ram
+    name: SYSRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20040000
+      end: 0x20060000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20060000
+      end: 0x20080000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: RETRAM
+    range:
+      start: 0x20080000
+      end: 0x200A0000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: VDERAM
+    range:
+      start: 0x200A0000
+      end: 0x200C0000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: LPSRAM1
+    range:
+      start: 0x200C0000
+      end: 0x200C2000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: LPSRAM2
+    range:
+      start: 0x200C2000
+      end: 0x200C4000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: LPSRAM3
+    range:
+      start: 0x200C4000
+      end: 0x200C8000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+- name: STM32MP231
+  package_variants:
+  - STM32MP231AAJx
+  - STM32MP231AALx
+  - STM32MP231AAKx
+  - STM32MP231CAJx
+  - STM32MP231CALx
+  - STM32MP231CAKx
+  - STM32MP231DAJx
+  - STM32MP231DALx
+  - STM32MP231DAKx
+  - STM32MP231FAJx
+  - STM32MP231FALx
+  - STM32MP231FAKx
+  cores:
+  - name: ca35_0
+    type: armv8a
+    core_access_options: !Arm
+      ap: !v1 0
+      debug_base: 0x80210000
+      cti_base: 0x80220000
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 8
+  memory_map:
+  - !Ram
+    name: SYSRAM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20040000
+      end: 0x20060000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20060000
+      end: 0x20080000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: RETRAM
+    range:
+      start: 0x20080000
+      end: 0x200A0000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: VDERAM
+    range:
+      start: 0x200A0000
+      end: 0x200C0000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: LPSRAM1
+    range:
+      start: 0x200C0000
+      end: 0x200C2000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: LPSRAM2
+    range:
+      start: 0x200C2000
+      end: 0x200C4000
+    cores:
+    - ca35_0
+    - cm33
+  - !Ram
+    name: LPSRAM3
+    range:
+      start: 0x200C4000
+      end: 0x200C8000
+    cores:
+    - ca35_0
+    - cm33

@@ -1,8 +1,4 @@
-//! Sequences for ARMv8 STM32s: STM32H5, STM32L5, STM32U5
-//!
-//! This covers devices where DBGMCU is at 0xE004400 and has the TRACE_MODE, TRACE_EN,
-//! TRACE_IOEN, DBG_STANDBY, DBG_STOP bits.
-//!
+//! Sequences for STM32MP2 devices
 
 use std::sync::Arc;
 
@@ -15,14 +11,40 @@ use crate::architecture::arm::{
     sequences::ArmDebugSequence,
 };
 
+/// DAP for the APB debug bus going to both A35s
+pub const STM32MP2_CA35_AP: u8 = 0;
+/// DAP for the CM33
+pub const STM32MP2_CM33_AP: u8 = 8;
+/// DAP for the CM0P
+pub const STM32MP2_CM0P_AP: u8 = 2;
+/// DAP for the AXI Bus Matrix
+pub const STM32MP2_AXI_AP: u8 = 4;
+/// DAP for the AHB SmartRun Bus Matrix
+pub const STM32MP2_SR_AHB_AP: u8 = 1;
+
+/// Marker structure for ARMv8 STM32 devices.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Stm32mp2Line {
+    /// STM32MP253/255/257 Have 2xA35+M33+M0p
+    MP25x,
+    /// STM32MP251 Has A35+M33+M0p
+    MP251,
+    /// STM32MP233/235/237 Have 2xA35+M33
+    MP23x,
+    /// STM32MP231 Has A35+M33
+    MP231,
+}
+
 /// Marker structure for ARMv8 STM32 devices.
 #[derive(Debug)]
-pub struct Stm32mp2 {}
+pub struct Stm32mp2 {
+    line: Stm32mp2Line,
+}
 
 impl Stm32mp2 {
     /// Create the sequencer for ARMv8 STM32 families.
-    pub fn create() -> Arc<Self> {
-        Arc::new(Self {})
+    pub fn create(line: Stm32mp2Line) -> Arc<Self> {
+        Arc::new(Self { line })
     }
 }
 
@@ -66,11 +88,13 @@ impl ArmDebugSequence for Stm32mp2 {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmDebugInterface,
-        default_ap: &FullyQualifiedApAddress,
+        _default_ap: &FullyQualifiedApAddress,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         {
-            let mut memory = interface.memory_interface(default_ap)?;
+            let mut memory = interface.memory_interface(
+                &FullyQualifiedApAddress::v1_with_default_dp(STM32MP2_CA35_AP),
+            )?;
             let mut cr = dbgmcu::Control::read(&mut *memory)?;
             cr.enable_standby_debug(true);
             cr.enable_stop_debug(true);
@@ -83,15 +107,19 @@ impl ArmDebugSequence for Stm32mp2 {
             let pre = memory.read_word_32(0x80210088).unwrap();
             memory.write_word_32(0x80210088, pre | 0x0004000).unwrap();
 
-            memory.write_word_32(0x80310300, 0).unwrap();
-            let pre = memory.read_word_32(0x80310088).unwrap();
-            memory.write_word_32(0x80310088, pre | 0x0004000).unwrap();
+            // Only power up second core if chip has it
+            if self.line == Stm32mp2Line::MP25x || self.line == Stm32mp2Line::MP23x {
+                memory.write_word_32(0x80310300, 0).unwrap();
+                let pre = memory.read_word_32(0x80310088).unwrap();
+                memory.write_word_32(0x80310088, pre | 0x0004000).unwrap();
+            }
         }
 
-        // Power up CM0
-        {
-            let mut axi_memory =
-                interface.memory_interface(&FullyQualifiedApAddress::v1_with_default_dp(4))?;
+        // Power up CM0 if chip has it
+        if self.line == Stm32mp2Line::MP25x || self.line == Stm32mp2Line::MP251 {
+            let mut axi_memory = interface.memory_interface(
+                &FullyQualifiedApAddress::v1_with_default_dp(STM32MP2_AXI_AP),
+            )?;
             axi_memory.write_word_32(0x44200490, 0x0000006).unwrap();
         }
 
