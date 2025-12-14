@@ -31,9 +31,7 @@ struct SpiRegisters {
     base: u32,
     cmd: u32,
     addr: u32,
-    ctrl: u32,
     user: u32,
-    user1: u32,
     user2: u32,
     miso_dlen: u32,
     data_buf_0: u32,
@@ -48,16 +46,8 @@ impl SpiRegisters {
         self.base as u64 | self.addr as u64
     }
 
-    fn ctrl(&self) -> u64 {
-        self.base as u64 | self.ctrl as u64
-    }
-
     fn user(&self) -> u64 {
         self.base as u64 | self.user as u64
-    }
-
-    fn user1(&self) -> u64 {
-        self.base as u64 | self.user1 as u64
     }
 
     fn user2(&self) -> u64 {
@@ -80,12 +70,8 @@ fn execute_flash_command_generic(
     miso_bits: u32,
 ) -> Result<u32, crate::Error> {
     // Save registers
-    let old_ctrl_reg = interface.read_word_32(regs.ctrl())?;
     let old_user_reg = interface.read_word_32(regs.user())?;
-    let old_user1_reg = interface.read_word_32(regs.user1())?;
-
-    // ctrl register
-    const CTRL_WP: u32 = 1 << 21;
+    let old_user2_reg = interface.read_word_32(regs.user2())?;
 
     // user register
     const USER_MISO: u32 = 1 << 28;
@@ -100,15 +86,10 @@ fn execute_flash_command_generic(
     // cmd register
     const USER_CMD: u32 = 1 << 18;
 
-    interface.write_word_32(regs.ctrl(), old_ctrl_reg | CTRL_WP)?;
     interface.write_word_32(regs.user(), old_user_reg | USER_COMMAND | USER_MISO)?;
-    interface.write_word_32(regs.user1(), 0)?;
     interface.write_word_32(regs.user2(), (7 << USER_COMMAND_BITLEN) | command as u32)?;
     interface.write_word_32(regs.addr(), 0)?;
-    interface.write_word_32(
-        regs.miso_dlen(),
-        (miso_bits.saturating_sub(1)) << MISO_BITLEN,
-    )?;
+    interface.write_word_32(regs.miso_dlen(), miso_bits.saturating_sub(1) << MISO_BITLEN)?;
     interface.write_word_32(regs.data_buf_0(), 0)?;
 
     // Execute read
@@ -119,9 +100,8 @@ fn execute_flash_command_generic(
     let value = interface.read_word_32(regs.data_buf_0())?;
 
     // Restore registers
-    interface.write_word_32(regs.ctrl(), old_ctrl_reg)?;
     interface.write_word_32(regs.user(), old_user_reg)?;
-    interface.write_word_32(regs.user1(), old_user1_reg)?;
+    interface.write_word_32(regs.user2(), old_user2_reg)?;
 
     Ok(value)
 }
@@ -138,9 +118,7 @@ fn detect_flash_size(
             base: spiflash_addr,
             cmd: 0x00,
             addr: 0x04,
-            ctrl: 0x08,
             user: 0x18,
-            user1: 0x1C,
             user2: 0x20,
             miso_dlen: 0x28,
             data_buf_0: 0x58,
@@ -164,9 +142,7 @@ fn detect_flash_size_esp32(
             base: spiflash_addr,
             cmd: 0x00,
             addr: 0x04,
-            ctrl: 0x08,
             user: 0x1C,
-            user1: 0x20,
             user2: 0x24,
             miso_dlen: 0x2C,
             data_buf_0: 0x80,
