@@ -97,7 +97,7 @@ parking_lot = "0.12.2"
 cargo-config2 = "0.1.26"
 clap_complete = "4.5.2"
 regex = "1.10.4"
-zip = { version = "5.0.0", default-features = false, features = [
+zip = { version = "6.0.0", default-features = false, features = [
     "deflate",
     "time",
 ] }
