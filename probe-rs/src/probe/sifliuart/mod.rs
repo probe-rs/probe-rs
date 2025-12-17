@@ -396,7 +396,7 @@ impl SifliUartFactory {
         let vendor_id = usb_info.vid;
         let product_id = usb_info.pid;
         let serial_number = Some(port_name.to_string()); //We set serial_number to the serial device number to make it easier to specify the
-        let hid_interface = usb_info.interface;
+        let interface = usb_info.interface;
         let identifier = "Sifli uart debug probe".to_string();
 
         Some(DebugProbeInfo {
@@ -405,7 +405,8 @@ impl SifliUartFactory {
             product_id,
             serial_number,
             probe_factory: &SifliUartFactory,
-            hid_interface,
+            interface,
+            is_hid_interface: false
         })
     }
 

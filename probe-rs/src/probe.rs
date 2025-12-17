@@ -804,10 +804,11 @@ pub struct DebugProbeInfo {
     pub product_id: u16,
     /// The serial number of the debug probe.
     pub serial_number: Option<String>,
+    /// The interface index of the debug probe
+    pub interface: Option<u8>,
 
-    /// The USB HID interface which should be used.
-    /// This is necessary for composite HID devices.
-    pub hid_interface: Option<u8>,
+    /// This is a composite HID device.
+    pub is_hid_interface: bool,
 
     /// A reference to the [`ProbeFactory`] that created this info object.
     probe_factory: &'static dyn ProbeFactory,
@@ -817,10 +818,11 @@ impl std::fmt::Display for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{} -- {:04x}:{:04x}:{} ({})",
+            "{} -- {:04x}:{:04x}-{}:{} ({})",
             self.identifier,
             self.vendor_id,
             self.product_id,
+            self.interface.unwrap_or(0),
             self.serial_number.as_deref().unwrap_or(""),
             self.probe_factory,
         )
@@ -835,7 +837,8 @@ impl DebugProbeInfo {
         product_id: u16,
         serial_number: Option<String>,
         probe_factory: &'static dyn ProbeFactory,
-        hid_interface: Option<u8>,
+        interface: Option<u8>,
+        is_hid_interface: bool,
     ) -> Self {
         Self {
             identifier: identifier.into(),
@@ -843,7 +846,8 @@ impl DebugProbeInfo {
             product_id,
             serial_number,
             probe_factory,
-            hid_interface,
+            interface,
+            is_hid_interface,
         }
     }
 
@@ -903,13 +907,19 @@ pub struct DebugProbeSelector {
     pub vendor_id: u16,
     /// The the USB product id of the debug probe to be used.
     pub product_id: u16,
+    /// The the USB interface of the debug probe to be used.
+    pub interface: Option<u8>,
     /// The the serial number of the debug probe to be used.
     pub serial_number: Option<String>,
 }
 
 impl DebugProbeSelector {
     pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
-        self.match_probe_selector(info.vendor_id(), info.product_id(), info.serial_number())
+        if self.interface.is_some() {
+            info.interfaces().into_iter().any(|iface| self.match_probe_selector(info.vendor_id(), info.product_id(), Some(iface.interface_number()), info.serial_number()))
+        } else {
+            self.match_probe_selector(info.vendor_id(), info.product_id(), None, info.serial_number())
+        }
     }
 
     /// Check if the given probe info matches this selector.
@@ -917,6 +927,7 @@ impl DebugProbeSelector {
         self.match_probe_selector(
             info.vendor_id,
             info.product_id,
+            info.interface,
             info.serial_number.as_deref(),
         )
     }
@@ -925,10 +936,22 @@ impl DebugProbeSelector {
         &self,
         vendor_id: u16,
         product_id: u16,
+        interface: Option<u8>,
         serial_number: Option<&str>,
     ) -> bool {
         vendor_id == self.vendor_id
             && product_id == self.product_id
+            && self
+                .interface
+                .map(|iface| {
+                    if let Some(interface) = interface {
+                        iface == interface
+                    } else {
+                        // We were given an interface but the device doesn't have one, so we return false
+                        false
+                    }
+                })
+                .unwrap_or(true)
             && self
                 .serial_number
                 .as_ref()
@@ -954,13 +977,25 @@ impl TryFrom<&str> for DebugProbeSelector {
         let mut split = value.splitn(3, ':');
 
         let vendor_id = split.next().unwrap(); // First split is always successful
-        let product_id = split.next().ok_or(DebugProbeSelectorParseError::Format)?;
+        let mut product_id = split.next().ok_or(DebugProbeSelectorParseError::Format)?;
+        let interface = if let Some((id, iface)) = product_id.split_once("-") {
+            product_id = id;
+            // Matches probes without interface where the selector has minus but no interface number ("VID:PID-")
+            if iface.is_empty() {
+                Ok(None)
+            } else {
+                iface.parse::<u8>().map(|num| Some(num))
+            }
+        } else {
+            Ok(None)
+        }?;
         let serial_number = split.next().map(|s| s.to_string());
 
         Ok(DebugProbeSelector {
             vendor_id: u16::from_str_radix(vendor_id, 16)?,
             product_id: u16::from_str_radix(product_id, 16)?,
             serial_number,
+            interface,
         })
     }
 }
@@ -985,6 +1020,7 @@ impl From<DebugProbeInfo> for DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
+            interface: selector.interface,
         }
     }
 }
@@ -995,6 +1031,7 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number.clone(),
+            interface: selector.interface,
         }
     }
 }
@@ -1748,6 +1785,7 @@ mod test {
             Some("mock_serial".to_owned()),
             &ftdi::FtdiProbeFactory,
             None,
+            false,
         );
 
         assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
@@ -1774,8 +1812,8 @@ mod test {
         assert_eq!(selector.product_id, 0x1001);
         assert_eq!(selector.serial_number, None);
 
-        let matches = selector.match_probe_selector(0x303a, 0x1001, None);
-        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, Some("serial"));
+        let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
+        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001,None, Some("serial"));
         assert!(matches);
         assert!(matches_with_serial);
     }
@@ -1788,9 +1826,53 @@ mod test {
         assert_eq!(selector.product_id, 0x1001);
         assert_eq!(selector.serial_number, Some(String::new()));
 
-        let matches = selector.match_probe_selector(0x303a, 0x1001, None);
-        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, Some("serial"));
+        let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
+        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, None,Some("serial"));
         assert!(matches);
         assert!(!matches_with_serial);
+    }
+
+    #[test]
+    fn missing_interface_is_none() {
+        let selector: DebugProbeSelector = "303a:1001".try_into().unwrap();
+
+        assert_eq!(selector.vendor_id, 0x303a);
+        assert_eq!(selector.product_id, 0x1001);
+        assert_eq!(selector.interface, None);
+
+        let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
+        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001,Some(0), None);
+        assert!(matches);
+        assert!(matches_with_interface);
+    }
+
+    #[test]
+    fn empty_interface_is_none() {
+        let selector: DebugProbeSelector = "303a:1001-".try_into().unwrap();
+
+        assert_eq!(selector.vendor_id, 0x303a);
+        assert_eq!(selector.product_id, 0x1001);
+        assert_eq!(selector.interface, None);
+
+        let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
+        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001,Some(0), None);
+        assert!(matches);
+        assert!(matches_with_interface);
+    }
+
+    #[test]
+    fn set_interface_matches() {
+        let selector: DebugProbeSelector = "303a:1001-0".try_into().unwrap();
+
+        assert_eq!(selector.vendor_id, 0x303a);
+        assert_eq!(selector.product_id, 0x1001);
+        assert_eq!(selector.interface, Some(0));
+
+        let no_match = selector.match_probe_selector(0x303a, 0x1001, None, None);
+        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001,Some(0), None);
+        let no_match_with_wrong_interface = selector.match_probe_selector(0x303a, 0x1001,Some(1), None);
+        assert_eq!(no_match, false);
+        assert!(matches_with_interface);
+        assert_eq!(no_match_with_wrong_interface, false);
     }
 }

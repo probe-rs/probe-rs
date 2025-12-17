@@ -1396,7 +1396,8 @@ fn black_magic_debug_port_info(
         product_id,
         serial_number,
         probe_factory: &BlackMagicProbeFactory,
-        hid_interface: interface,
+        interface,
+        is_hid_interface: false,
     })
 }
 
@@ -1550,7 +1551,8 @@ impl ProbeFactory for BlackMagicProbeFactory {
             product_id: BLACK_MAGIC_PROBE_PID,
             serial_number: Some(ip_port.to_string()),
             probe_factory: &BlackMagicProbeFactory,
-            hid_interface: None,
+            interface: None,
+            is_hid_interface: false,
         }]
     }
 }

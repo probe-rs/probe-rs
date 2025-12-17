@@ -22,6 +22,8 @@ pub struct DebugProbeEntry {
     pub vendor_id: u16,
     /// The USB product ID of the debug probe.
     pub product_id: u16,
+    /// The interface of the debug probe.
+    pub interface: u8,
     /// The serial number of the debug probe.
     pub serial_number: String,
 
@@ -32,8 +34,8 @@ impl Display for DebugProbeEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} -- {:04x}:{:04x}:{} ({})",
-            self.identifier, self.vendor_id, self.product_id, self.serial_number, self.probe_type,
+            "{} -- {:04x}:{:04x}-{}:{} ({})",
+            self.identifier, self.vendor_id, self.product_id, self.interface, self.serial_number, self.probe_type,
         )
     }
 }
@@ -46,6 +48,7 @@ impl From<DebugProbeInfo> for DebugProbeEntry {
             vendor_id: probe.vendor_id,
             product_id: probe.product_id,
             serial_number: probe.serial_number.unwrap_or_default(),
+            interface: probe.interface.unwrap_or_default(),
         }
     }
 }
@@ -56,6 +59,7 @@ impl DebugProbeEntry {
             vendor_id: self.vendor_id,
             product_id: self.product_id,
             serial_number: Some(self.serial_number.clone()),
+            interface: Some(self.interface)
         }
     }
 }
@@ -165,6 +169,8 @@ pub struct DebugProbeSelector {
     pub vendor_id: u16,
     /// The the USB product id of the debug probe to be used.
     pub product_id: u16,
+    /// The the interface of the debug probe to be used.
+    pub interface: Option<u8>,
     /// The the serial number of the debug probe to be used.
     pub serial_number: Option<String>,
 }
@@ -175,6 +181,7 @@ impl From<probe_rs::probe::DebugProbeSelector> for DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
+            interface: selector.interface,
         }
     }
 }
@@ -185,6 +192,7 @@ impl From<DebugProbeSelector> for probe_rs::probe::DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
+            interface: selector.interface,
         }
     }
 }
