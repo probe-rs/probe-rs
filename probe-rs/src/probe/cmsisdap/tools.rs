@@ -71,7 +71,7 @@ fn get_cmsisdap_info(device: &DeviceInfo) -> Vec<DebugProbeInfo> {
     // 1. Any with CMSIS-DAP in their interface string
     // 2. Any that are HID, if the product string says CMSIS-DAP,
     //    to save for potential HID-only operation.
-    let mut has_found_hid_interface= None;
+    let mut has_found_hid_interface = None;
     for interface in device.interfaces() {
         let Some(interface_desc) = interface.interface_string() else {
             tracing::trace!(

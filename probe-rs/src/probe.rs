@@ -916,9 +916,21 @@ pub struct DebugProbeSelector {
 impl DebugProbeSelector {
     pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
         if self.interface.is_some() {
-            info.interfaces().into_iter().any(|iface| self.match_probe_selector(info.vendor_id(), info.product_id(), Some(iface.interface_number()), info.serial_number()))
+            info.interfaces().into_iter().any(|iface| {
+                self.match_probe_selector(
+                    info.vendor_id(),
+                    info.product_id(),
+                    Some(iface.interface_number()),
+                    info.serial_number(),
+                )
+            })
         } else {
-            self.match_probe_selector(info.vendor_id(), info.product_id(), None, info.serial_number())
+            self.match_probe_selector(
+                info.vendor_id(),
+                info.product_id(),
+                None,
+                info.serial_number(),
+            )
         }
     }
 
@@ -1813,7 +1825,8 @@ mod test {
         assert_eq!(selector.serial_number, None);
 
         let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
-        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001,None, Some("serial"));
+        let matches_with_serial =
+            selector.match_probe_selector(0x303a, 0x1001, None, Some("serial"));
         assert!(matches);
         assert!(matches_with_serial);
     }
@@ -1827,7 +1840,8 @@ mod test {
         assert_eq!(selector.serial_number, Some(String::new()));
 
         let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
-        let matches_with_serial = selector.match_probe_selector(0x303a, 0x1001, None,Some("serial"));
+        let matches_with_serial =
+            selector.match_probe_selector(0x303a, 0x1001, None, Some("serial"));
         assert!(matches);
         assert!(!matches_with_serial);
     }
@@ -1841,7 +1855,7 @@ mod test {
         assert_eq!(selector.interface, None);
 
         let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
-        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001,Some(0), None);
+        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001, Some(0), None);
         assert!(matches);
         assert!(matches_with_interface);
     }
@@ -1855,7 +1869,7 @@ mod test {
         assert_eq!(selector.interface, None);
 
         let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
-        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001,Some(0), None);
+        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001, Some(0), None);
         assert!(matches);
         assert!(matches_with_interface);
     }
@@ -1869,8 +1883,9 @@ mod test {
         assert_eq!(selector.interface, Some(0));
 
         let no_match = selector.match_probe_selector(0x303a, 0x1001, None, None);
-        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001,Some(0), None);
-        let no_match_with_wrong_interface = selector.match_probe_selector(0x303a, 0x1001,Some(1), None);
+        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001, Some(0), None);
+        let no_match_with_wrong_interface =
+            selector.match_probe_selector(0x303a, 0x1001, Some(1), None);
         assert_eq!(no_match, false);
         assert!(matches_with_interface);
         assert_eq!(no_match_with_wrong_interface, false);

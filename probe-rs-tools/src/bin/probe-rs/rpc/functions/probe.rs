@@ -35,7 +35,12 @@ impl Display for DebugProbeEntry {
         write!(
             f,
             "{} -- {:04x}:{:04x}-{}:{} ({})",
-            self.identifier, self.vendor_id, self.product_id, self.interface, self.serial_number, self.probe_type,
+            self.identifier,
+            self.vendor_id,
+            self.product_id,
+            self.interface,
+            self.serial_number,
+            self.probe_type,
         )
     }
 }
@@ -59,7 +64,7 @@ impl DebugProbeEntry {
             vendor_id: self.vendor_id,
             product_id: self.product_id,
             serial_number: Some(self.serial_number.clone()),
-            interface: Some(self.interface)
+            interface: Some(self.interface),
         }
     }
 }
