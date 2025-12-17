@@ -996,7 +996,7 @@ impl TryFrom<&str> for DebugProbeSelector {
             if iface.is_empty() {
                 Ok(None)
             } else {
-                iface.parse::<u8>().map(|num| Some(num))
+                iface.parse::<u8>().map(Some)
             }
         } else {
             Ok(None)
@@ -1886,8 +1886,8 @@ mod test {
         let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001, Some(0), None);
         let no_match_with_wrong_interface =
             selector.match_probe_selector(0x303a, 0x1001, Some(1), None);
-        assert_eq!(no_match, false);
+        assert!(!no_match);
         assert!(matches_with_interface);
-        assert_eq!(no_match_with_wrong_interface, false);
+        assert!(!no_match_with_wrong_interface);
     }
 }

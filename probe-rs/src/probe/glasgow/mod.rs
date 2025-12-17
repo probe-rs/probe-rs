@@ -69,7 +69,7 @@ impl ProbeFactory for GlasgowFactory {
                 serial_number: serial_number.clone(),
                 is_hid_interface: false,
                 probe_factory: &Self,
-                interface: interface.clone(),
+                interface: *interface,
             }];
         }
 
