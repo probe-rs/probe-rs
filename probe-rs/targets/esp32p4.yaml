@@ -1,0 +1,95 @@
+name: esp32p4
+manufacturer:
+  id: 0x12
+  cc: 0xc
+chip_detection:
+- !Espressif
+  idcode: 0x12c25
+  variants:
+    0x0: esp32p4
+    0xaddbad0: esp32p4
+variants:
+- name: esp32p4
+  cores:
+  - name: cpu0
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      jtag_tap: 1
+  - name: cpu1
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 1
+      jtag_tap: 1
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x4000000
+    cores:
+    - cpu0
+    - cpu1
+    access:
+      boot: true
+  - !Nvm
+    range:
+      start: 0x40000000
+      end: 0x44000000
+    cores:
+    - cpu0
+    - cpu1
+    is_alias: true
+  - !Ram
+    range:
+      start: 0x4ff00000
+      end: 0x4ffc0000
+    cores:
+    - cpu0
+    - cpu1
+  - !Ram
+    name: Uncached RAM
+    range:
+      start: 0x8ff00000
+      end: 0x8ffc0000
+    cores:
+    - cpu0
+    - cpu1
+  flash_algorithms:
+  - esp32p4-flashloader
+  jtag:
+    scan_chain:
+    - name: lpcpu
+      ir_len: 5
+    - name: hp
+      ir_len: 5
+  default_binary_format: idf
+flash_algorithms:
+- name: esp32p4-flashloader
+  description: ''
+  load_address: 0x8FF50000
+  transfer_encoding: miniz
+  data_load_address: 0x8FF70000
+  stack_overflow_check: false
+  default: true
+  instructions: AAAAAMi+wU9UwMFPVMDBT1TBwU8BAAAAnL/BTyjBwU8owcFPKMLBT2QAAACoxMFPNMbBTzTGwU80x8FPLAEAAGDIwU/sycFP7MnBT+zKwU8GAAAABgAAAAgAAAAIAAAACAAAAAgAAAAIAAAACAAAAAgAAAAIAAAACAAAABcDAABnAIMAN7X2jwMlBbC3BcGquRVjFrUAFwPLv2cAYwkTBXDBgoAXAwAAZwCDALe19o+DpQWwNwbBqjkWY5fFAEGBFwPLv2cAAwkTBXDBgoAXAwAAZwCDAHlxBtYi1CbSStBOzlLMNwr1jxMKCgUFSZMEygJSxibISspoAJcAAADngGBGCgW32RJQTpVIWWoFE1TlAVLGJshKymgAlwAAAOeAYEQKBU6VSFlVgRGJQY2TBUAGMwS1AlLGJshKymgAlwAAAOeAIEKBRQoFTpVQWTcF9Y8TBQUAPYoilpMGBQUYQWNj5gCqhVEF4xvV/rnByEGQRWNwxQIUQVhBHEVj+OYAhEORB4TCkQbj7Ob+MQXjZMX+yEWMSWN+tQAQQVRBY3fWACMgBgARBuNt1v4hBeNmtf4BRYFFlwDLv+eAIAPBZ7cFAARBZoVm/RcRZwFFlwDLv+eAoPkZwQVFLaC3BfaPN7b2jyOgBQC3BcGquRUjILaw/VUjKAauIyq2riMsBq4jLgauslAiVJJUAlnySWJKRWGCgBcDAABnAIMALoe3tfaPg6UFsLcGwaq5FmOY1QCTdTYAmcUTBTDBgoATBXDBgoC3BvWPk4bmUrKFOoYXAwAAZwCDDxcDAABnAIMAroa3tfaPg6UFsDcHwao5F2OY5QCTdTYAmcUTBTDBgoATBXDBgoCyhTaGFwMAAGcAoywXAwAAZwCDAEERBsY3tvaPgyYGsLcFwaoTh+X+Y5fmAqqFAUWJRiMgBrBjktUCBUUqxANFgQAFiRnJKACVRZcAy7/ngODpddUZoBMFcMGyQEEBgoAXAwAAZwCDAEERBsYixCbCLoS3tfaPg6UFsLcGwaq5FmOZ1QCqhBN1NgAZxRMFMMEloBMFcMENoLcG9Y+ThsZIJoWyhSKGlwAAAOeAwAEzNaAAfRVhjSaVskAiRJJEQQGCgHlxBtYi1CbSStBOzlLMVspayF7GYsQ2iS6Kt7r2j4OlSq9jhKUEkUVjdbYAEwVAwf2og0UKAINGGgADRyoAg0c6ABEKcRaiBtWNtwb2j+IHQgddj9mNI6qqriOsCq4jrrquI6AGACOoCq4DpcqvEc0yjGNjpgAqjLMFhUEjrrquhURjZ6YAhUkpoBMFUMFFoI1JoWs3NfaPEwsFr2MFDAhjU5AIYsADpQqvM4WrQCrCA6cKr1qXNwX2jwqGXADShdqGToiXAMu/54DgzoJFY3W8AJMEYMEhqKqEEkUDpgqvMwy8QC6aMpUjqKqumcQDpQqvIWbjFMX6GaADpgqvA6VKr4Oliq8jqAquLpUzhMUA2oUCmSOsiq7jUgX4EwUFgBMFBYYpoBOFBIP9hGWNslAiVJJUAlnySWJK0kpCS7JLIkxFYYKALXEUAiOuFgCAzsTKI6gmASOmNgGyia6EKokBRRMGBfAByhMGFQCjBaEQqoUyhf23owWxAGOLCQQTBQAQToRj5KkAEwQAEJMFsQBKhSKGlwAAAOeAgAeqhX1VY8kFArOFhACziYlAEwaxAKKGmcoDxwQAg0cGAIUEBQb9FuMI9/4xoCKZroTjmQn6AUUMAoOgxQGATcRJA6kFAYOpxQAVYYKABcJBEQbGlwDLv+eAAMKTBQWAk4UFhn2FbY2yQEEBgoABRYKACcYXA8u/ZwBDwAFFgoAMQVBBCEUNjgmCY2OmACqGAUURxpRBkQU2lX0WZf6CgA==
+  pc_init: 0xce
+  pc_uninit: 0x290
+  pc_program_page: 0x214
+  pc_erase_sector: 0xa4
+  pc_erase_all: 0x7c
+  pc_verify: 0x2e4
+  pc_read: 0x256
+  data_section_offset: 0x580
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x4000000
+    page_size: 0x4000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x10000
+      address: 0x0
+  cores:
+  - cpu0

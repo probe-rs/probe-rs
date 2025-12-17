@@ -1957,6 +1957,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             if start.elapsed() > timeout {
                 return Err(RiscvError::RequestNotAcknowledged);
             }
+            self.write_dm_register(dmcontrol)?;
         }
 
         // clear the reset request
