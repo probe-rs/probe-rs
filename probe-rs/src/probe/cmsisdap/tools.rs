@@ -153,7 +153,7 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
 /// Attempt to open the given device in CMSIS-DAP v2 mode
 pub fn open_v2_device(
     device_info: &DeviceInfo,
-    selected_interface: Option<u8>
+    selected_interface: Option<u8>,
 ) -> Result<Option<CmsisDapDevice>, ProbeCreationError> {
     // Open device handle and read basic information
     let vid = device_info.vendor_id();
@@ -182,7 +182,9 @@ pub fn open_v2_device(
         return Ok(None);
     };
     for interface in c_desc.interfaces() {
-        if let Some(iface) = selected_interface && interface.interface_number() != iface {
+        if let Some(iface) = selected_interface
+            && interface.interface_number() != iface
+        {
             continue;
         }
         for i_desc in interface.alt_settings() {
@@ -317,7 +319,10 @@ pub fn open_device_from_selector(
                 tracing::trace!("Trying device {:?}", device);
 
                 if selector.matches(&device) {
-                    hid_device_info = get_cmsisdap_info(&device).iter().filter(|dpi| dpi.interface == selector.interface).next().cloned();
+                    hid_device_info = get_cmsisdap_info(&device)
+                        .iter()
+                        .find(|dpi| dpi.interface == selector.interface)
+                        .cloned();
 
                     if let Some(device_info) = &hid_device_info {
                         // If the VID, PID, and potentially SN all match,
