@@ -97,7 +97,7 @@ impl JtagAdapter {
             // Digilent HS2
             (0x0403, 0x6014, "Digilent Adept USB Device") => (0x00e8, 0x60eb),
             // Digilent HS1
-            (0x0403, 0x6010, "Digilent Adept USB Device") => (0x0088, 0x008b),
+            (0x0403, 0x6010, _) => (0x0088, 0x008b),
             // Other devices:
             // TMS starts high
             // TMS, TDO and TCK are outputs
