@@ -916,7 +916,7 @@ pub struct DebugProbeSelector {
 impl DebugProbeSelector {
     pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
         if self.interface.is_some() {
-            info.interfaces().into_iter().any(|iface| {
+            info.interfaces().any(|iface| {
                 self.match_probe_selector(
                     info.vendor_id(),
                     info.product_id(),
@@ -955,15 +955,8 @@ impl DebugProbeSelector {
             && product_id == self.product_id
             && self
                 .interface
-                .map(|iface| {
-                    if let Some(interface) = interface {
-                        iface == interface
-                    } else {
-                        // We were given an interface but the device doesn't have one, so we return false
-                        false
-                    }
-                })
-                .unwrap_or(true)
+                .map(|iface| interface == Some(iface))
+                .unwrap_or(true) // USB interface not specified by user
             && self
                 .serial_number
                 .as_ref()

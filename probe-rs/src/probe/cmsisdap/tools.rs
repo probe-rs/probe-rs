@@ -325,20 +325,19 @@ pub fn open_device_from_selector(
             for device in devices {
                 tracing::trace!("Trying device {:?}", device);
 
-                if selector.matches(&device) {
-                    if let Some(device_info) = get_cmsisdap_info(&device)
+                if selector.matches(&device)
+                    && let Some(device_info) = get_cmsisdap_info(&device)
                         .into_iter()
                         .find(|dpi| dpi.interface == selector.interface)
-                    {
-                        // If the VID, PID, and potentially SN all match,
-                        // and the device is a valid CMSIS-DAP probe,
-                        // attempt to open the device in v2 mode.
-                        if let Some(device) = open_v2_device(&device, device_info.interface)? {
-                            return Ok(device);
-                        } else {
-                            // Otherwise, save as a potential CMSIS-DAP v1 HID device and continue.
-                            hid_device_info = Some(device_info);
-                        }
+                {
+                    // If the VID, PID, and potentially SN all match,
+                    // and the device is a valid CMSIS-DAP probe,
+                    // attempt to open the device in v2 mode.
+                    if let Some(device) = open_v2_device(&device, device_info.interface)? {
+                        return Ok(device);
+                    } else {
+                        // Otherwise, save as a potential CMSIS-DAP v1 HID device and continue.
+                        hid_device_info = Some(device_info);
                     }
                 }
             }
