@@ -867,6 +867,44 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         Ok(())
     }
 
+    pub(super) fn read_flash_size(&mut self) -> Result<u32, FlashError> {
+        tracing::debug!("Reading flash size.");
+        let algo = &self.flash_algorithm;
+
+        // Fail routine if not present.
+        let Some(pc_flash_size) = algo.pc_flash_size else {
+            return Err(FlashError::FlashSizeFailed {
+                source: String::from("Flash algorithm does not implement the FlashSize function")
+                    .into(),
+            });
+        };
+
+        let retval = self
+            .call_function_and_wait(
+                &Registers {
+                    pc: into_reg(pc_flash_size)?,
+                    r0: None,
+                    r1: None,
+                    r2: None,
+                    r3: None,
+                },
+                false,
+                INIT_TIMEOUT,
+            )
+            .map_err(|error| FlashError::FlashSizeFailed {
+                source: Box::new(error),
+            })?;
+
+        if (retval as i32) < 0 {
+            return Err(FlashError::RoutineCallFailed {
+                name: "flash_size",
+                error_code: retval,
+            });
+        }
+
+        Ok(retval)
+    }
+
     fn call_function_and_wait(
         &mut self,
         registers: &Registers,
