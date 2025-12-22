@@ -115,6 +115,10 @@ pub fn extract_flash_algo(
         );
 
         algo.load_address = Some(algorithm_binary.code_section.load_address as u64);
+        algo.data_section_offset = (algorithm_binary.data_section.start
+            - algorithm_binary.code_section.load_address) as u64;
+    } else {
+        algo.data_section_offset = algorithm_binary.data_section.start as u64;
     }
 
     algo.description.clone_from(&flash_device.name);
@@ -124,7 +128,6 @@ pub fn extract_flash_algo(
         .unwrap()
         .to_lowercase();
     algo.default = default;
-    algo.data_section_offset = algorithm_binary.data_section.start as u64;
     algo.flash_properties = FlashProperties::from(flash_device);
     algo.big_endian = !elf.little_endian;
 
