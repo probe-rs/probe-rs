@@ -8,6 +8,8 @@ use hidapi::HidApi;
 use nusb::{DeviceInfo, MaybeFuture, descriptors::TransferType, transfer::Direction};
 
 const USB_CLASS_HID: u8 = 0x03;
+const USB_CMSIS_DAP_CLASS: u8 = 0xFF;
+const USB_CMSIS_DAP_SUBCLASS: u8 = 0;
 
 /// Finds all CMSIS-DAP devices, either v1 (HID) or v2 (WinUSB Bulk).
 ///
@@ -84,13 +86,18 @@ fn get_cmsisdap_info(device: &DeviceInfo) -> Vec<DebugProbeInfo> {
             tracing::trace!(
                 "  Interface {}: {}",
                 interface.interface_number(),
-                interface_desc
+                interface_desc,
             );
             let selected_interface = Some(interface.interface_number());
             let is_hid_interface = if interface.class() == USB_CLASS_HID {
                 tracing::trace!("    HID interface found");
                 has_found_hid_interface = selected_interface;
                 true
+            } else if (interface.class(), interface.subclass())
+                != (USB_CMSIS_DAP_CLASS, USB_CMSIS_DAP_SUBCLASS)
+            {
+                // Not a CMSIS-DAP v2 interface, skip.
+                continue;
             } else {
                 false
             };
