@@ -1,0 +1,1 @@
+Fixed incorrect group checks for the current user in linux help error message during setup.
