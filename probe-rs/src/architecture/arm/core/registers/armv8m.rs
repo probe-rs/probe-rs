@@ -142,6 +142,7 @@ static V8M_SECURITY_REGS_SET: &[CoreRegister] = &[
         data_type: RegisterDataType::UnsignedInteger(32),
         unwind_rule: UnwindRule::SpecialRule,
     },
+    // {CONTROL_S[7:0],FAULTMASK_S[7:0],BASEPRI_S[7:0],PRIMASK_S[7:0]}
     CoreRegister {
         roles: &[
             RegisterRole::Core("EXTRA_S"),
@@ -151,12 +152,13 @@ static V8M_SECURITY_REGS_SET: &[CoreRegister] = &[
         data_type: RegisterDataType::UnsignedInteger(32),
         unwind_rule: UnwindRule::SpecialRule,
     },
+    // {CONTROL_NS[7:0],FAULTMASK_NS[7:0],BASEPRI_NS[7:0],PRIMASK_NS[7:0]}
     CoreRegister {
         roles: &[
             RegisterRole::Core("EXTRA_NS"),
             RegisterRole::Other("EXTRA_NS"),
         ],
-        id: RegisterId(0b00100010),
+        id: RegisterId(0b00100011),
         data_type: RegisterDataType::UnsignedInteger(32),
         unwind_rule: UnwindRule::SpecialRule,
     },
