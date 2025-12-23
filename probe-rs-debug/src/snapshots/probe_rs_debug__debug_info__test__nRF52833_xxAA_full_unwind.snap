@@ -400,7 +400,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value: ~
+      value:
+        U32: 536883328
     - core_register:
         id: 18
         roles:
@@ -409,7 +410,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 0
     - core_register:
         id: 16
         roles:
@@ -625,7 +627,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value: ~
+      value:
+        U32: 536883328
     - core_register:
         id: 18
         roles:
@@ -634,7 +637,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 0
     - core_register:
         id: 16
         roles:
@@ -850,7 +854,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value: ~
+      value:
+        U32: 536883328
     - core_register:
         id: 18
         roles:
@@ -859,7 +864,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 0
     - core_register:
         id: 16
         roles:
@@ -1075,7 +1081,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value: ~
+      value:
+        U32: 536883328
     - core_register:
         id: 18
         roles:
@@ -1084,7 +1091,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 0
     - core_register:
         id: 16
         roles:
@@ -1300,7 +1308,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value: ~
+      value:
+        U32: 536883328
     - core_register:
         id: 18
         roles:
@@ -1309,7 +1318,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 0
     - core_register:
         id: 16
         roles:
@@ -1525,7 +1535,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value: ~
+      value:
+        U32: 536883328
     - core_register:
         id: 18
         roles:
@@ -1534,7 +1545,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 0
     - core_register:
         id: 16
         roles:
@@ -4664,7 +4676,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value: ~
+      value:
+        U32: 536883328
     - core_register:
         id: 18
         roles:
@@ -4673,7 +4686,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 0
     - core_register:
         id: 16
         roles:
@@ -5342,7 +5356,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 16
-      value: ~
+      value:
+        U32: 536883328
     - core_register:
         id: 18
         roles:
@@ -5351,7 +5366,8 @@ expression: stack_frames
         data_type:
           UnsignedInteger: 32
       dwarf_id: 17
-      value: ~
+      value:
+        U32: 0
     - core_register:
         id: 16
         roles:

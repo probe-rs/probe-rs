@@ -27,7 +27,8 @@ pub fn cmd_elf(
     let elf_file = std::fs::read(file)
         .with_context(|| format!("Failed to open ELF file {}", file.display()))?;
 
-    let mut algorithm = extract_flash_algo(None, &elf_file, file, true, fixed_load_address)?;
+    let mut algorithm = extract_flash_algo(None, &elf_file, file, true, fixed_load_address)
+        .context("Failed to extract flash algorithm from ELF file")?;
 
     if let Some(name) = &name {
         algorithm.name = name.clone();
@@ -36,14 +37,17 @@ pub fn cmd_elf(
     if update {
         // Update an existing target file
 
-        let target_description_file = output.unwrap(); // Argument is checked by structopt, so we now its present.
+        let target_description_file = output.unwrap(); // Argument is checked by structopt, so we know its present.
 
-        let target_description = File::open(target_description_file).context(format!(
-            "Unable to open target specification '{}'",
-            target_description_file.display()
-        ))?;
+        let target_description = File::open(target_description_file).with_context(|| {
+            format!(
+                "Unable to open target specification '{}'",
+                target_description_file.display()
+            )
+        })?;
 
-        let mut family: ChipFamily = serde_yaml::from_reader(target_description)?;
+        let mut family: ChipFamily = serde_yaml::from_reader(target_description)
+            .context("Failed to deserialize target description file")?;
 
         let Some(algorithm_to_update) = family
             .flash_algorithms
@@ -63,9 +67,10 @@ pub fn cmd_elf(
             Some(current.clone()),
             &elf_file,
             file,
-            true,
+            current.default,
             fixed_load_address,
-        )?;
+        )
+        .context("Failed to re-extract flash algorithm from ELF file")?;
         if let Some(name) = name {
             algorithm.name = name;
         }
@@ -73,7 +78,6 @@ pub fn cmd_elf(
         // if a load address was specified, use it in the replacement
         if let Some(load_addr) = current.load_address {
             algorithm.load_address = Some(load_addr);
-            algorithm.data_section_offset = algorithm.data_section_offset.saturating_sub(load_addr);
         }
         // core access cannot be determined, use the current value
         algorithm.cores.clone_from(&current.cores);
@@ -81,7 +85,8 @@ pub fn cmd_elf(
 
         family.flash_algorithms[algorithm_to_update] = algorithm;
 
-        let output_yaml = serialize_to_yaml_string(&family)?;
+        let output_yaml = serialize_to_yaml_string(&family)
+            .context("Failed to serialize updated target description")?;
         std::fs::write(target_description_file, output_yaml)?;
     } else {
         // Create a complete target specification, with place holder values

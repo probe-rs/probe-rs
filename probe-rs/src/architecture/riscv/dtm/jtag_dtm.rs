@@ -598,7 +598,7 @@ fn tunnel_dtmcs_command(data: u32) -> ShiftDrCommand {
         data: tunneled_dr.to_le_bytes().into(),
         len: (msb_offset as u32) + 1,
         transform: |_, result| {
-            let response = result[4..].load_le::<u32>();
+            let response = result[4..36].load_le::<u32>();
             Ok(CommandResult::U32(response))
         },
     }
