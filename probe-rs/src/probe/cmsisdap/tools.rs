@@ -235,8 +235,6 @@ pub fn open_v2_device(
             {
                 swo_ep = Some((eps[2].address(), eps[2].max_packet_size()));
             }
-
-            println!("Trying to open {:04x}:{:04x}-{} in CMSIS-DAPv2 mode", vid, pid, interface.interface_number());
             // Attempt to claim this interface
             match device.claim_interface(interface.interface_number()).wait() {
                 Ok(handle) => {

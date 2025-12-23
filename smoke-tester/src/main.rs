@@ -133,6 +133,7 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
     let result = test_tracker.run(|tracker, definition| {
         let probe = definition.open_probe()?;
 
+        println_dut_status!(tracker, blue, "Selector: {:?}", &definition.probe_selector);
         println_dut_status!(tracker, blue, "Probe: {:?}", probe.get_name());
         println_dut_status!(tracker, blue, "Chip:  {:?}", &definition.chip.name);
 
