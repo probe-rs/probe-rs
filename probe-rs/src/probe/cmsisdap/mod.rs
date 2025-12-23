@@ -810,7 +810,21 @@ impl CmsisDap {
 
 impl DebugProbe for CmsisDap {
     fn get_name(&self) -> &str {
-        "CMSIS-DAP"
+        match &self.device {
+            CmsisDapDevice::V2 {
+                handle,
+                out_ep: _,
+                in_ep: _,
+                max_packet_size: _,
+                swo_ep: _,
+            } => format!(
+                "CMSIS-DAP V2 IF: {} DESC: {:?}",
+                handle.interface_number(),
+                handle.descriptor()
+            )
+            .leak(),
+            _ => "CMSIS-DAP V1",
+        }
     }
 
     /// Get the currently set maximum speed.
