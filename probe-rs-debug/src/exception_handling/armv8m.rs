@@ -385,6 +385,46 @@ impl ExceptionReason {
         }
     }
 }
+
+//TODO don't copy paste this
+pub enum SecurityExtension {
+    NotImplemented,
+    Implemented,
+    ImplementedWithStateHandling,
+    Reserved,
+}
+
+impl From<u8> for SecurityExtension {
+    fn from(value: u8) -> Self {
+        match value {
+            0b0000 => SecurityExtension::NotImplemented,
+            0b0001 => SecurityExtension::Implemented,
+            0b0011 => SecurityExtension::ImplementedWithStateHandling,
+            _ => SecurityExtension::Reserved,
+        }
+    }
+}
+
+memory_mapped_bitfield_register! {
+    /// Processor Feature Register 1
+    pub struct IdPfr1(u32);
+    0xE000_ED44, "ID_PFR1",
+    impl From;
+    /// Identifies support for the M-Profile programmer's model
+    pub u8, m_prog_mod, _: 11, 8;
+    /// Identifies whether the Security Extension is implemented
+    pub u8, security, _: 7, 4;
+}
+
+impl IdPfr1 {
+    pub fn security_present(&self) -> bool {
+        matches!(
+            self.security().into(),
+            SecurityExtension::Implemented | SecurityExtension::ImplementedWithStateHandling
+        )
+    }
+}
+
 pub struct ArmV8MExceptionHandler;
 
 impl ExceptionInterface for ArmV8MExceptionHandler {
@@ -394,22 +434,34 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
         stackframe_registers: &DebugRegisters,
         _raw_exception: u32,
     ) -> Result<DebugRegisters, DebugError> {
+        // TODO v8m has additional optional stacked registers
         let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
         let exc_return = ExcReturn(stack_frame_return_address);
+        let idpfr1 = IdPfr1(memory_interface.read_word_32(IdPfr1::get_mmio_address())?);
+        let secure = idpfr1.security_present();
 
         let sp_value = if exc_return.is_exception_flag() == 0xFF {
-            let stack_info = (
-                exc_return.use_secure_stack(),
-                exc_return.stack_pointer_selection(),
-            );
+            // EXC_RETURN, returning from an exception
+            let sp_reg_id = if secure {
+                let stack_info = (
+                    exc_return.use_secure_stack(),
+                    exc_return.stack_pointer_selection(),
+                );
 
-            let sp_reg_id = match stack_info {
-                (false, false) => 0b00011000, // non-secure, main stack pointer
-                (false, true) => 0b00011001,  // non-secure, process stack pointer
-                (true, false) => 0b00011010,  // secure, main stack pointer
-                (true, true) => 0b00011011,   // secure, process stack pointer
+                match stack_info {
+                    (false, false) => 0b00011000, // non-secure, main stack pointer
+                    (false, true) => 0b00011001,  // non-secure, process stack pointer
+                    (true, false) => 0b00011010,  // secure, main stack pointer
+                    (true, true) => 0b00011011,   // secure, process stack pointer
+                }
+            } else {
+                match exc_return.stack_pointer_selection() {
+                    false => 0b00010001, // main stack pointer
+                    true => 0b00010010,  // process stack pointer
+                }
             };
+
             stackframe_registers
                 .get_register(sp_reg_id.into())
                 .ok_or_else(|| {
@@ -425,12 +477,18 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
                     )
                 })?
                 .try_into()?
+        } else if exc_return.is_exception_flag() == 0xFE {
+            // FNC_RETURN, returning from a secure -> non-secure function call
+            // get SPSEL from CONTROL_S, unstack ReturnAddress (and retpsr?)
+            todo!()
         } else {
             stackframe_registers.get_register_value_by_role(&RegisterRole::StackPointer)?
         };
 
         memory_interface.read_32(sp_value, &mut calling_stack_registers)?;
         let mut calling_frame_registers = stackframe_registers.clone();
+        // TODO: v8m has "Additional State Context" registers that may be stacked
+        // not handled yet. don't think they're needed for unwind
         for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
             calling_frame_registers
                 .get_register_mut_by_role(register_role)?
@@ -489,6 +547,8 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
                 local_variables: None,
                 canonical_frame_address: None,
             };
+
+            //TODO update SP as in v6m+v7m?
 
             Ok(Some(ExceptionInfo {
                 raw_exception,

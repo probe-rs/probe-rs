@@ -2,9 +2,8 @@
 
 use std::{sync::Arc, time::Duration};
 
-use super::esp::EspFlashSizeDetector;
 use crate::{
-    Core, MemoryInterface,
+    MemoryInterface,
     architecture::riscv::{
         Dmcontrol, Riscv32,
         communication_interface::{
@@ -19,18 +18,12 @@ use crate::{
 
 /// The debug sequence implementation for the ESP32C5.
 #[derive(Debug)]
-pub struct ESP32C5 {
-    inner: EspFlashSizeDetector,
-}
+pub struct ESP32C5 {}
 
 impl ESP32C5 {
     /// Creates a new debug sequence handle for the ESP32C5.
     pub fn create() -> Arc<dyn RiscvDebugSequence> {
-        Arc::new(Self {
-            inner: EspFlashSizeDetector {
-                spiflash_peripheral: 0x6000_3000,
-            },
-        })
+        Arc::new(Self {})
     }
 
     fn disable_wdts(
@@ -102,10 +95,6 @@ impl RiscvDebugSequence for ESP32C5 {
 
     fn on_halt(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
         self.disable_wdts(interface)
-    }
-
-    fn detect_flash_size(&self, core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(core)
     }
 
     fn reset_system_and_halt(

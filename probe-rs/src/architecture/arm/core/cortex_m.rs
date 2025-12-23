@@ -53,7 +53,8 @@ memory_mapped_bitfield_register! {
     impl From;
     pub _, set_regwnr: 16;
     // If the processor does not implement the FP extension the REGSEL field is bits `[4:0]`, and bits `[6:5]` are Reserved, SBZ.
-    pub _, set_regsel: 6,0;
+    // Increased to 7 bits on v8-M
+    pub _, set_regsel: 7,0;
 }
 
 memory_mapped_bitfield_register! {

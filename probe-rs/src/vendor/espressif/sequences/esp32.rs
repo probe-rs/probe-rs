@@ -5,9 +5,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use super::esp::EspFlashSizeDetector;
 use crate::{
-    Core, MemoryInterface,
+    MemoryInterface,
     architecture::xtensa::{
         Xtensa,
         communication_interface::{
@@ -22,9 +21,7 @@ use crate::{
 
 /// The debug sequence implementation for the ESP32.
 #[derive(Debug)]
-pub struct ESP32 {
-    inner: EspFlashSizeDetector,
-}
+pub struct ESP32 {}
 
 impl ESP32 {
     /// Creates a new debug sequence handle for the ESP32.
@@ -32,11 +29,7 @@ impl ESP32 {
         tracing::warn!(
             "Be careful not to reset your ESP32 while connected to the debugger! Depending on the specific device, this may render it temporarily inoperable or permanently damage it."
         );
-        Arc::new(Self {
-            inner: EspFlashSizeDetector {
-                spiflash_peripheral: 0x3ff4_2000,
-            },
-        })
+        Arc::new(Self {})
     }
 
     fn disable_wdts(
@@ -110,10 +103,6 @@ impl XtensaDebugSequence for ESP32 {
 
     fn on_halt(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
         self.disable_wdts(interface)
-    }
-
-    fn detect_flash_size(&self, core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size_esp32(core)
     }
 
     fn reset_system_and_halt(
