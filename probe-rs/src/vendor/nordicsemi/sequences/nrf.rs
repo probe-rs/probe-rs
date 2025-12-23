@@ -3,7 +3,6 @@
 use crate::{
     architecture::arm::{
         ArmDebugInterface, ArmError, FullyQualifiedApAddress,
-        ap::{self, ApRegister},
         dp::DpAddress,
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, ArmDebugSequenceError},
@@ -78,8 +77,7 @@ fn erase_all(
     Ok(())
 }
 
-/// Unlocks the core by performing an erase all procedure.
-/// If the operation fails, it will re-attempt the operation once.
+/// Performs an erase all procedure to unlock the core.
 /// The `ap_address` must be of the ctrl ap of the core.
 fn unlock_core(
     arm_interface: &mut dyn ArmDebugInterface,
@@ -87,17 +85,7 @@ fn unlock_core(
     permissions: &crate::Permissions,
     reset_after_erase: bool,
 ) -> Result<(), ArmError> {
-    erase_all(arm_interface, ap_address, permissions, reset_after_erase)?;
-
-    let csw = arm_interface.read_raw_ap_register(ap_address, ap::CSW::ADDRESS)?;
-    let debug_status = csw & (1 << 6); // DbgStatus bit [6]
-    if debug_status == 0 {
-        tracing::warn!("Core is still locked after erase operation. Retrying");
-
-        erase_all(arm_interface, ap_address, permissions, reset_after_erase)?;
-    }
-
-    Ok(())
+    erase_all(arm_interface, ap_address, permissions, reset_after_erase)
 }
 
 /// Sets the network core to active running.
@@ -151,10 +139,21 @@ impl<T: Nrf> ArmDebugSequence for T {
             )?;
 
             if !self.is_core_unlocked(interface, core_ahb_ap_address, core_ctrl_ap_address)? {
-                return Err(ArmDebugSequenceError::custom(format!(
-                    "Could not unlock core {core_index}"
-                ))
-                .into());
+                tracing::warn!("Core is still locked after erase operation. Retrying");
+
+                unlock_core(
+                    interface,
+                    core_ctrl_ap_address,
+                    permissions,
+                    self.requires_soft_reset_after_erase(),
+                )?;
+
+                if !self.is_core_unlocked(interface, core_ahb_ap_address, core_ctrl_ap_address)? {
+                    return Err(ArmDebugSequenceError::custom(format!(
+                        "Could not unlock core {core_index}"
+                    ))
+                    .into());
+                }
             }
         }
 
