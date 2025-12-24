@@ -335,13 +335,16 @@ pub async fn flash(
     // Start timer.
     let flash_timer = Instant::now();
 
-    let options = DownloadOptions {
+    let mut options = DownloadOptions {
         keep_unwritten_bytes: download_options.restore_unwritten,
         do_chip_erase: chip_erase,
         skip_erase: false,
         verify: download_options.verify,
         disable_double_buffering: download_options.disable_double_buffering,
+        preferred_algos: download_options.prefer_flash_algorithm,
     };
+
+    options.sanitize();
 
     let loader = session
         .build_flash_loader(

@@ -304,6 +304,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
             verify: config.flashing.verify,
             chip_erase: config.flashing.do_chip_erase,
             read_flasher_rtt: config.flashing.read_flasher_rtt,
+            prefer_flash_algorithm: Vec::new(),
         };
         let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
 
