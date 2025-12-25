@@ -45,14 +45,6 @@ jobs:
           name: smoke_tester
           path: target/aarch64-unknown-linux-gnu/release/smoke_tester
 
-      - name: Build probe-rs
-        run: cross build --release --target aarch64-unknown-linux-gnu -p probe-rs-tools --features remote
-
-      - uses: actions/upload-artifact@v6
-        with:
-          name: probe-rs
-          path: target/aarch64-unknown-linux-gnu/release/probe-rs
-
   build-probe-rs:
     runs-on: ubuntu-latest
 
