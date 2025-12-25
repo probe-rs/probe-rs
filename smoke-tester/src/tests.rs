@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use anyhow::Context;
-use colored::Colorize;
+use libtest_mimic::Failed;
 use linkme::distributed_slice;
 use probe_rs::{
     Architecture, Core, CoreInterface, MemoryInterface, Session,
@@ -11,10 +11,7 @@ use probe_rs::{
 
 pub mod stepping;
 
-use crate::{
-    CORE_TESTS, SESSION_TESTS, TestFailure, TestResult, TestTracker, dut_definition::DutDefinition,
-    println_test_status,
-};
+use crate::{CORE_TESTS, SESSION_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
 
 #[distributed_slice(CORE_TESTS)]
 pub fn test_register_read(dut_definition: &DutDefinition, core: &mut Core) -> TestResult {
@@ -202,9 +199,7 @@ fn test_hw_breakpoints(definition: &DutDefinition, core: &mut Core) -> TestResul
         .collect();
 
     if memory_regions.is_empty() {
-        return Err(TestFailure::Skipped(
-            "No NVM memory regions found, unable to test HW breakpoints.".to_string(),
-        ));
+        skip_test!("No NVM memory regions found, unable to test HW breakpoints.".to_string());
     }
 
     // For this test, we assume that code is executed from Flash / non-volatile memory, and try to set breakpoints
@@ -282,14 +277,9 @@ fn test_hw_breakpoints(definition: &DutDefinition, core: &mut Core) -> TestResul
 }
 
 #[distributed_slice(SESSION_TESTS)]
-pub fn test_flashing(
-    dut_definition: &DutDefinition,
-    session: &mut Session,
-) -> Result<(), TestFailure> {
+pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> Result<(), Failed> {
     let Some(test_binary) = dut_definition.flash_test_binary.as_deref() else {
-        return Err(TestFailure::MissingResource(
-            "No flash test binary specified".to_string(),
-        ));
+        skip_test!("No flash test binary specified");
     };
 
     let mut options = DownloadOptions::default();
@@ -310,7 +300,7 @@ pub fn test_flashing(
     println!();
 
     if let Err(err) = result {
-        return Err(TestFailure::Error(err.into()));
+        return Err(err.into());
     }
 
     println!("Total time for flashing: {:.2?}", start_time.elapsed());
