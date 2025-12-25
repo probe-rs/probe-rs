@@ -1,16 +1,12 @@
 use std::time::Duration;
 
-use colored::Colorize;
 use linkme::distributed_slice;
 use probe_rs::{
     Architecture, BreakpointCause, Core, CoreStatus, Error, HaltReason, MemoryInterface,
     config::MemoryRegion, probe::DebugProbeError,
 };
 
-use crate::{
-    CORE_TESTS, TestFailure, TestResult, TestTracker, dut_definition::DutDefinition,
-    println_test_status,
-};
+use crate::{CORE_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
 
 const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
 
@@ -19,6 +15,9 @@ fn test_stepping(definition: &DutDefinition, core: &mut Core) -> TestResult {
     println!("Testing stepping on core {}...", core.id());
 
     if core.architecture() != Architecture::Arm {
+        skip_test!("Not implement for architectures other than ARM");
+
+        /*
         // Not implemented for RISC-V yet
         return Err(TestFailure::UnimplementedForTarget(
             Box::new(definition.chip.clone()),
@@ -27,6 +26,7 @@ fn test_stepping(definition: &DutDefinition, core: &mut Core) -> TestResult {
                 core.architecture()
             ),
         ));
+        */
     }
 
     let ram_region = core
@@ -35,9 +35,7 @@ fn test_stepping(definition: &DutDefinition, core: &mut Core) -> TestResult {
         .find(|r| r.is_executable());
 
     let Some(ram_region) = ram_region else {
-        return Err(TestFailure::Skipped(
-            "No RAM configured for core, unable to test stepping".to_string(),
-        ));
+        skip_test!("No RAM configured for core, unable to test stepping");
     };
 
     let code_load_address = ram_region.range.start;

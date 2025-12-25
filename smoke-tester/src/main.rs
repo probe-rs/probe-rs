@@ -1,14 +1,13 @@
 use std::{
     path::{Path, PathBuf},
     process::ExitCode,
-    time::{Duration, Instant},
+    time::Duration,
 };
 
-use crate::dut_definition::{DefinitionSource, DutDefinition};
+use crate::dut_definition::DutDefinition;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use colored::Colorize;
 use libtest_mimic::{Arguments, Failed, Trial};
 use linkme::distributed_slice;
 use probe_rs::{Permissions, probe::WireProtocol};
@@ -17,114 +16,43 @@ mod dut_definition;
 mod macros;
 mod tests;
 
-#[derive(Debug, thiserror::Error)]
-pub enum TestFailure {
-    #[error("Test returned an error")]
-    Error(#[from] anyhow::Error),
-
-    #[error("The test was skipped: {0}")]
-    Skipped(String),
-
-    #[error("Test is not implemented for target {0:?}: {1}")]
-    UnimplementedForTarget(Box<probe_rs::Target>, String),
-    #[error("A resource necessary to execute the test is not available: {0}")]
-    MissingResource(String),
-
-    /// A fatal error means that all future tests will be cancelled as well.
-    #[error("A fatal error occured")]
-    Fatal(#[source] anyhow::Error),
-}
-
-impl From<probe_rs::Error> for TestFailure {
-    fn from(error: probe_rs::Error) -> Self {
-        TestFailure::Error(error.into())
-    }
-}
-
-pub type TestResult = Result<(), TestFailure>;
-
-#[derive(Debug)]
-struct SingleTestReport {
-    result: TestResult,
-    _duration: Duration,
-}
-
-impl SingleTestReport {
-    fn failed(&self) -> bool {
-        matches!(
-            self.result,
-            Err(TestFailure::Error(_) | TestFailure::Fatal(_))
-        )
-    }
-}
-
-#[derive(Debug, Subcommand)]
-enum Command {
-    Test,
-}
+pub type TestResult = Result<(), Failed>;
 
 #[derive(Debug, Parser)]
 struct Opt {
-    #[command(subcommand)]
-    command: Command,
-
-    #[arg(long, global = true, value_name = "DIRECTORY", conflicts_with_all = ["chip", "probe", "single_dut"])]
-    dut_definitions: Option<PathBuf>,
-
-    #[arg(long, global = true, value_name = "CHIP", conflicts_with_all = ["dut_definitions", "single_dut"])]
-    chip: Option<String>,
-
-    #[arg(long, global = true, value_name = "PROBE")]
-    probe: Option<String>,
-
-    #[arg(long, global = true, value_name = "PROBE_SPEED")]
-    probe_speed: Option<u32>,
-
-    #[arg(long, global = true, value_name = "PROTOCOL")]
-    protocol: Option<WireProtocol>,
-
-    #[arg(long, global = true, value_name = "FILE", conflicts_with_all = ["chip", "dut_definitions"])]
-    single_dut: Option<PathBuf>,
+    #[arg(long, value_name = "DIRECTORY")]
+    dut_definitions: PathBuf,
 }
 
 fn main() -> Result<ExitCode> {
     tracing_subscriber::fmt::init();
 
-    let opt = Opt::parse();
+    let args = std::env::args().collect::<Vec<_>>();
 
-    let mut definitions = if let Some(dut_definitions) = opt.dut_definitions.as_deref() {
-        let definitions = DutDefinition::collect(dut_definitions)?;
-        println!("Found {} target definitions.", definitions.len());
-        definitions
-    } else if let Some(single_dut) = opt.single_dut.as_deref() {
-        vec![DutDefinition::from_file(Path::new(single_dut))?]
+    let delimiter = args.iter().rposition(|arg| arg == "--");
+
+    let (test_args, other_args) = if let Some(delimiter) = delimiter {
+        let (test_args, other_args) = args.split_at(delimiter);
+        (test_args, &other_args[1..])
     } else {
-        // Chip needs to be specified
-        let chip = opt.chip.as_deref().unwrap(); // If dut-definitions is not present, chip must be present
-
-        if let Some(probe) = &opt.probe {
-            vec![DutDefinition::new(chip, probe)?]
-        } else {
-            vec![DutDefinition::autodetect_probe(chip)?]
-        }
+        (args.as_slice(), &[] as _)
     };
 
-    for definition in &mut definitions {
-        if let Some(probe_speed) = opt.probe_speed {
-            definition.probe_speed = Some(probe_speed);
-        }
+    // TODO: Handle arguments
+    let test_args = Arguments::from_args();
 
-        if let Some(protcol) = opt.protocol {
-            definition.protocol = Some(protcol);
-        }
-    }
+    // Require dut definition as an environment variable
+    let Some(dut_definition) = std::env::var_os("SMOKE_TESTER_CONFIG") else {
+        anyhow::bail!("SMOKE_TESTER_CONFIG environment variable not set");
+    };
 
-    match opt.command {
-        Command::Test => run_test(&definitions),
-    }
+    let definitions = DutDefinition::collect(Path::new(&dut_definition))?;
+    println!("Found {} target definitions.", definitions.len());
+
+    run_test(test_args, &definitions)
 }
 
-fn run_test(definitions: &[DutDefinition]) -> Result<ExitCode> {
+fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCode> {
     let mut trials = Vec::new();
 
     for (index, definition) in definitions.iter().enumerate() {
@@ -255,213 +183,10 @@ fn run_test(definitions: &[DutDefinition]) -> Result<ExitCode> {
     }
     */
 
-    // TODO: Handle arguments
-    let mut args = Arguments::default();
-
     // Ensure tests are not run in parallel
     args.test_threads = Some(1);
 
     Ok(libtest_mimic::run(&args, trials).exit_code())
-}
-
-#[derive(Debug)]
-struct DutReport {
-    name: String,
-    succesful: bool,
-}
-
-#[derive(Debug)]
-struct TestReport {
-    dut_tests: Vec<DutReport>,
-}
-
-impl TestReport {
-    fn new() -> Self {
-        TestReport { dut_tests: vec![] }
-    }
-
-    fn add_report(&mut self, report: DutReport) {
-        self.dut_tests.push(report)
-    }
-
-    fn any_failed(&self) -> bool {
-        self.dut_tests.iter().any(|d| !d.succesful)
-    }
-
-    fn num_failed_tests(&self) -> usize {
-        self.dut_tests.iter().filter(|d| !d.succesful).count()
-    }
-
-    fn num_tests(&self) -> usize {
-        self.dut_tests.len()
-    }
-}
-
-#[derive(Debug)]
-struct ConsoleReportPrinter;
-
-impl ConsoleReportPrinter {
-    fn print(
-        &self,
-        report: &TestReport,
-        mut writer: impl std::io::Write,
-    ) -> Result<(), std::io::Error> {
-        writeln!(writer, "Test summary:")?;
-
-        for dut in &report.dut_tests {
-            if dut.succesful {
-                writeln!(writer, " [{}] passed", &dut.name)?;
-            } else {
-                writeln!(writer, " [{}] failed", &dut.name)?;
-            }
-        }
-
-        // Write summary
-        if report.any_failed() {
-            writeln!(
-                writer,
-                "{} out of {} tests failed.",
-                report.num_failed_tests(),
-                report.num_tests()
-            )?;
-        } else {
-            writeln!(writer, "All tests passed.")?;
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
-pub struct TestTracker<'dut> {
-    dut_definition: &'dut DutDefinition,
-    current_test: usize,
-}
-
-impl<'dut> TestTracker<'dut> {
-    fn new(dut_definition: &'dut DutDefinition) -> Self {
-        Self {
-            dut_definition,
-            current_test: 0,
-        }
-    }
-
-    fn current_dut_name(&self) -> &str {
-        &self.dut_definition.chip.name
-    }
-
-    fn current_test(&self) -> usize {
-        self.current_test + 1
-    }
-
-    fn advance_test(&mut self) {
-        self.current_test += 1;
-    }
-
-    pub fn current_target(&self) -> &probe_rs::Target {
-        &self.dut_definition.chip
-    }
-
-    pub fn current_dut_definition(&self) -> &DutDefinition {
-        self.dut_definition
-    }
-
-    #[must_use]
-    fn run(
-        &mut self,
-        handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> anyhow::Result<()> + Sync + Send,
-    ) -> TestReport {
-        let mut report = TestReport::new();
-
-        print_dut_status!(self, blue, "Starting Test");
-
-        if let DefinitionSource::File(path) = &self.dut_definition.source {
-            print!(" - {}", path.display());
-        }
-        println!();
-
-        let join_result =
-            std::thread::scope(|s| s.spawn(|| handle_dut(self, self.dut_definition)).join());
-
-        match join_result {
-            Ok(Ok(())) => {
-                report.add_report(DutReport {
-                    name: self.dut_definition.chip.name.clone(),
-                    succesful: true,
-                });
-                println_dut_status!(self, green, "Tests Passed");
-            }
-            Ok(Err(e)) => {
-                report.add_report(DutReport {
-                    name: self.dut_definition.chip.name.clone(),
-                    succesful: false,
-                });
-
-                println_dut_status!(self, red, "Error message: {:#}", e);
-
-                if let Some(source) = e.source() {
-                    println_dut_status!(self, red, " caused by:    {}", source);
-                }
-
-                println_dut_status!(self, red, "Tests Failed");
-            }
-            Err(_join_err) => {
-                report.add_report(DutReport {
-                    name: self.dut_definition.chip.name.clone(),
-                    succesful: false,
-                });
-
-                println_dut_status!(self, red, "Panic while running tests.");
-            }
-        }
-
-        report
-    }
-
-    fn run_test(
-        &mut self,
-        test: impl FnOnce(&TestTracker) -> Result<(), TestFailure>,
-    ) -> SingleTestReport {
-        let start_time = Instant::now();
-
-        let test_result = test(self);
-
-        let duration = start_time.elapsed();
-
-        let formatted_duration = if duration < Duration::from_secs(1) {
-            format!("{} ms", duration.as_millis())
-        } else {
-            format!("{:.2} s", duration.as_secs_f32())
-        };
-
-        match &test_result {
-            Ok(()) => {
-                println_test_status!(self, green, "Test passed in {formatted_duration}.");
-            }
-            Err(TestFailure::UnimplementedForTarget(target, message)) => {
-                println_test_status!(
-                    self,
-                    yellow,
-                    "Test not implemented for {}: {}",
-                    target.name,
-                    message
-                );
-            }
-            Err(TestFailure::MissingResource(message)) => {
-                println_test_status!(self, yellow, "Missing resource for test: {}", message);
-            }
-            Err(_e) => {
-                println_test_status!(self, red, "{_e:?}");
-                println_test_status!(self, red, "Test failed in {formatted_duration}.");
-            }
-        };
-        self.advance_test();
-
-        SingleTestReport {
-            result: test_result,
-            _duration: duration,
-        }
-    }
 }
 
 /// A list of all tests which run on cores.

@@ -1,0 +1,12 @@
+[test-groups]
+hardware = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = "package(smoke_tester)"
+test-group = "hardware"
+
+
+
+[profile.ci]
+# Do not cancel the test run on the first failure.
+fail-fast = false
