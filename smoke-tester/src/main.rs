@@ -1,5 +1,4 @@
 use std::{
-    io::Write,
     path::{Path, PathBuf},
     process::ExitCode,
     time::{Duration, Instant},
@@ -61,10 +60,7 @@ impl SingleTestReport {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    Test {
-        #[arg(long, value_name = "FILE")]
-        markdown_summary: Option<PathBuf>,
-    },
+    Test,
 }
 
 #[derive(Debug, Parser)]
@@ -124,28 +120,87 @@ fn main() -> Result<ExitCode> {
     }
 
     match opt.command {
-        Command::Test { markdown_summary } => run_test(&definitions, markdown_summary),
+        Command::Test => run_test(&definitions),
     }
 }
 
-fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) -> Result<ExitCode> {
+fn run_test(definitions: &[DutDefinition]) -> Result<ExitCode> {
     let mut trials = Vec::new();
 
-    for definition in definitions {
-        let definition = definition.clone();
+    for (index, definition) in definitions.iter().enumerate() {
+        // Log some information
+        let probe = definition.open_probe()?;
 
-        let trial = Trial::test(definition.chip.name.clone(), move || {
+        println!("DUT {}", index + 1);
+        println!(" Probe: {:?}", probe.get_name());
+        println!(" Chip:  {:?}", &definition.chip.name);
+
+        let chip_name = definition.chip.name.clone();
+
+        let session_definition = definition.clone();
+
+        let session_trial = Trial::test("Session", move || {
+            let definition = session_definition;
             let mut test_tracker = TestTracker::new(&definition);
             let result = test_tracker.run(|tracker, definition| {
                 let probe = definition.open_probe()?;
 
-                println_dut_status!(tracker, blue, "Probe: {:?}", probe.get_name());
-                println_dut_status!(tracker, blue, "Chip:  {:?}", &definition.chip.name);
-
                 // We don't care about existing flash contents
                 let permissions = Permissions::default().allow_erase_all();
 
-                let mut fail_counter = 0;
+                let mut session = probe
+                    .attach(definition.chip.clone(), permissions)
+                    .context("Failed to attach to chip")?;
+
+                for test in SESSION_TESTS {
+                    let result = tracker.run_test(|tracker| test(tracker, &mut session));
+
+                    if let Err(TestFailure::Fatal(error)) = result.result {
+                        return Err(error.context("Fatal error in test"));
+                    }
+                }
+
+                drop(session);
+
+                Ok(())
+            });
+
+            if result.any_failed() {
+                // TODO: Return error message
+                Err(Failed::without_message())
+            } else {
+                Ok(())
+            }
+        })
+        .with_kind(&chip_name);
+
+        trials.push(session_trial);
+
+        // Try attaching with hard reset
+        if definition.reset_connected {
+            let definition = definition.clone();
+
+            let trial = Trial::test("Hard Reset", move || {
+                let probe = definition.open_probe()?;
+
+                let _session =
+                    probe.attach_under_reset(definition.chip.clone(), Permissions::default())?;
+                Ok(())
+            })
+            .with_kind(&chip_name);
+
+            trials.push(trial);
+        }
+
+        let definition_for_cores = definition.clone();
+        let cores_trial = Trial::test("Cores", move || {
+            let definition = definition_for_cores;
+            let mut test_tracker = TestTracker::new(&definition);
+            let result = test_tracker.run(|tracker, definition| {
+                let probe = definition.open_probe()?;
+
+                // We don't care about existing flash contents
+                let permissions = Permissions::default().allow_erase_all();
 
                 let mut session = probe
                     .attach(definition.chip.clone(), permissions)
@@ -169,10 +224,6 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
                         if let Err(TestFailure::Fatal(error)) = result.result {
                             return Err(error.context("Fatal error in test"));
                         }
-
-                        if result.failed() {
-                            fail_counter += 1;
-                        }
                     }
 
                     // Ensure core is not running anymore.
@@ -180,29 +231,6 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
                         .with_context(|| {
                             format!("Failed to reset core with index {core_index} after test")
                         })?;
-                }
-
-                for test in SESSION_TESTS {
-                    let result = tracker.run_test(|tracker| test(tracker, &mut session));
-
-                    if let Err(TestFailure::Fatal(error)) = result.result {
-                        return Err(error.context("Fatal error in test"));
-                    }
-
-                    if result.failed() {
-                        fail_counter += 1;
-                    }
-                }
-
-                drop(session);
-
-                // Try attaching with hard reset
-
-                if definition.reset_connected {
-                    let probe = definition.open_probe()?;
-
-                    let _session = probe
-                        .attach_under_reset(definition.chip.clone(), Permissions::default())?;
                 }
 
                 Ok(())
@@ -214,9 +242,10 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
             } else {
                 Ok(())
             }
-        });
+        })
+        .with_kind(&chip_name);
 
-        trials.push(trial);
+        trials.push(cores_trial);
     }
 
     /*
@@ -249,7 +278,10 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
     */
 
     // TODO: Handle arguments
-    let args = Arguments::default();
+    let mut args = Arguments::default();
+
+    // Ensure tests are not run in parallel
+    args.test_threads = Some(1);
 
     Ok(libtest_mimic::run(&args, trials).exit_code())
 }
