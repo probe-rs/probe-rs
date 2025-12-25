@@ -176,60 +176,54 @@ fn run_test(definitions: &[DutDefinition]) -> Result<ExitCode> {
             trials.push(trial);
         }
 
-        let definition_for_cores = definition.clone();
-        let cores_trial = Trial::test("Cores", move || {
-            let definition = definition_for_cores;
-            let mut test_tracker = TestTracker::new(&definition);
-            let result = test_tracker.run(|tracker, definition| {
-                let probe = definition.open_probe()?;
+        let cores: Vec<_> = definition
+            .chip
+            .cores
+            .iter()
+            .enumerate()
+            .map(|(index, core)| (index, core.core_type))
+            .collect();
 
-                // We don't care about existing flash contents
-                let permissions = Permissions::default().allow_erase_all();
+        // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
+        //       some cores need additional setup so that they can be used, and this is not handled yet.
+        for (core_index, core_type) in cores.into_iter().take(1) {
+            for test_fn in CORE_TESTS {
+                let definition_for_cores = definition.clone();
+                let cores_trial = Trial::test("Cores", move || {
+                    let definition = definition_for_cores;
 
-                let mut session = probe
-                    .attach(definition.chip.clone(), permissions)
-                    .context("Failed to attach to chip")?;
-                let cores = session.list_cores();
+                    let probe = definition.open_probe()?;
 
-                // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
-                //       some cores need additional setup so that they can be used, and this is not handled yet.
-                for (core_index, core_type) in cores.into_iter().take(1) {
-                    println_dut_status!(tracker, blue, "Core {}: {:?}", core_index, core_type);
+                    // We don't care about existing flash contents
+                    let permissions = Permissions::default().allow_erase_all();
+
+                    let mut session = probe
+                        .attach(definition.chip.clone(), permissions)
+                        .context("Failed to attach to chip")?;
+
+                    println!("Core {}: {:?}", core_index, core_type);
 
                     let mut core = session.core(core_index)?;
 
-                    println_dut_status!(tracker, blue, "Halting core..");
+                    println!("Halting core..");
 
                     core.reset_and_halt(Duration::from_millis(500))?;
 
-                    for test_fn in CORE_TESTS {
-                        let result = tracker.run_test(|tracker| test_fn(tracker, &mut core));
-
-                        if let Err(TestFailure::Fatal(error)) = result.result {
-                            return Err(error.context("Fatal error in test"));
-                        }
-                    }
+                    let result = test_fn(&definition, &mut core);
 
                     // Ensure core is not running anymore.
                     core.reset_and_halt(Duration::from_millis(200))
                         .with_context(|| {
                             format!("Failed to reset core with index {core_index} after test")
                         })?;
-                }
 
-                Ok(())
-            });
+                    result.map_err(|err| Failed::from(err))
+                })
+                .with_kind(&chip_name);
 
-            if result.any_failed() {
-                // TODO: Return error message
-                Err(Failed::without_message())
-            } else {
-                Ok(())
+                trials.push(cores_trial);
             }
-        })
-        .with_kind(&chip_name);
-
-        trials.push(cores_trial);
+        }
     }
 
     /*
@@ -472,7 +466,7 @@ impl<'dut> TestTracker<'dut> {
 
 /// A list of all tests which run on cores.
 #[distributed_slice]
-pub static CORE_TESTS: [fn(&TestTracker, &mut probe_rs::Core) -> TestResult];
+pub static CORE_TESTS: [fn(&DutDefinition, &mut probe_rs::Core) -> TestResult];
 
 /// A list of all tests which run on `Session`.
 #[distributed_slice]
