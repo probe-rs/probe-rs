@@ -10,6 +10,7 @@ use crate::dut_definition::{DefinitionSource, DutDefinition};
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
+use libtest_mimic::{Arguments, Failed, Trial};
 use linkme::distributed_slice;
 use probe_rs::{Permissions, probe::WireProtocol};
 
@@ -128,91 +129,98 @@ fn main() -> Result<ExitCode> {
 }
 
 fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) -> Result<ExitCode> {
-    let mut test_tracker = TestTracker::new(definitions);
+    let mut trials = Vec::new();
 
-    let result = test_tracker.run(|tracker, definition| {
-        let probe = definition.open_probe()?;
+    for definition in definitions {
+        let definition = definition.clone();
 
-        println_dut_status!(tracker, blue, "Selector: {:?}", &definition.probe_selector);
-        println_dut_status!(tracker, blue, "Probe: {:?}", probe.get_name());
-        println_dut_status!(tracker, blue, "Chip:  {:?}", &definition.chip.name);
+        let trial = Trial::test(definition.chip.name.clone(), move || {
+            let mut test_tracker = TestTracker::new(&definition);
+            let result = test_tracker.run(|tracker, definition| {
+                let probe = definition.open_probe()?;
 
-        // We don't care about existing flash contents
-        let permissions = Permissions::default().allow_erase_all();
+                println_dut_status!(tracker, blue, "Probe: {:?}", probe.get_name());
+                println_dut_status!(tracker, blue, "Chip:  {:?}", &definition.chip.name);
 
-        let mut fail_counter = 0;
+                // We don't care about existing flash contents
+                let permissions = Permissions::default().allow_erase_all();
 
-        let mut session = probe
-            .attach(definition.chip.clone(), permissions)
-            .context("Failed to attach to chip")?;
-        let cores = session.list_cores();
+                let mut fail_counter = 0;
 
-        // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
-        //       some cores need additional setup so that they can be used, and this is not handled yet.
-        for (core_index, core_type) in cores.into_iter().take(1) {
-            println_dut_status!(tracker, blue, "Core {}: {:?}", core_index, core_type);
+                let mut session = probe
+                    .attach(definition.chip.clone(), permissions)
+                    .context("Failed to attach to chip")?;
+                let cores = session.list_cores();
 
-            let mut core = session.core(core_index)?;
+                // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
+                //       some cores need additional setup so that they can be used, and this is not handled yet.
+                for (core_index, core_type) in cores.into_iter().take(1) {
+                    println_dut_status!(tracker, blue, "Core {}: {:?}", core_index, core_type);
 
-            println_dut_status!(tracker, blue, "Halting core..");
+                    let mut core = session.core(core_index)?;
 
-            core.reset_and_halt(Duration::from_millis(500))?;
+                    println_dut_status!(tracker, blue, "Halting core..");
 
-            for test_fn in CORE_TESTS {
-                let result = tracker.run_test(|tracker| test_fn(tracker, &mut core));
+                    core.reset_and_halt(Duration::from_millis(500))?;
 
-                if let Err(TestFailure::Fatal(error)) = result.result {
-                    return Err(error.context("Fatal error in test"));
+                    for test_fn in CORE_TESTS {
+                        let result = tracker.run_test(|tracker| test_fn(tracker, &mut core));
+
+                        if let Err(TestFailure::Fatal(error)) = result.result {
+                            return Err(error.context("Fatal error in test"));
+                        }
+
+                        if result.failed() {
+                            fail_counter += 1;
+                        }
+                    }
+
+                    // Ensure core is not running anymore.
+                    core.reset_and_halt(Duration::from_millis(200))
+                        .with_context(|| {
+                            format!("Failed to reset core with index {core_index} after test")
+                        })?;
                 }
 
-                if result.failed() {
-                    fail_counter += 1;
+                for test in SESSION_TESTS {
+                    let result = tracker.run_test(|tracker| test(tracker, &mut session));
+
+                    if let Err(TestFailure::Fatal(error)) = result.result {
+                        return Err(error.context("Fatal error in test"));
+                    }
+
+                    if result.failed() {
+                        fail_counter += 1;
+                    }
                 }
+
+                drop(session);
+
+                // Try attaching with hard reset
+
+                if definition.reset_connected {
+                    let probe = definition.open_probe()?;
+
+                    let _session = probe
+                        .attach_under_reset(definition.chip.clone(), Permissions::default())?;
+                }
+
+                Ok(())
+            });
+
+            if result.any_failed() {
+                // TODO: Return error message
+                Err(Failed::without_message())
+            } else {
+                Ok(())
             }
+        });
 
-            // Ensure core is not running anymore.
-            core.reset_and_halt(Duration::from_millis(200))
-                .with_context(|| {
-                    format!("Failed to reset core with index {core_index} after test")
-                })?;
-        }
+        trials.push(trial);
+    }
 
-        for test in SESSION_TESTS {
-            let result = tracker.run_test(|tracker| test(tracker, &mut session));
-
-            if let Err(TestFailure::Fatal(error)) = result.result {
-                return Err(error.context("Fatal error in test"));
-            }
-
-            if result.failed() {
-                fail_counter += 1;
-            }
-        }
-
-        drop(session);
-
-        // Try attaching with hard reset
-
-        if definition.reset_connected {
-            let probe = definition.open_probe()?;
-
-            let _session =
-                probe.attach_under_reset(definition.chip.clone(), Permissions::default())?;
-        }
-
-        match fail_counter {
-            0 => Ok(()),
-            1 => anyhow::bail!("1 test failed"),
-            count => anyhow::bail!("{count} tests failed"),
-        }
-    });
-
-    println!();
-
+    /*
     let printer = ConsoleReportPrinter;
-
-    printer.print(&result, std::io::stdout())?;
-
     if let Some(summary_file) = &markdown_summary {
         let mut file = std::fs::File::create(summary_file).with_context(|| {
             format!(
@@ -223,14 +231,27 @@ fn run_test(definitions: &[DutDefinition], markdown_summary: Option<PathBuf>) ->
 
         writeln!(file, "## smoke-tester")?;
 
-        for dut in &result.dut_tests {
-            let test_state = if dut.succesful { "Passed" } else { "Failed" };
+        for result in &reports {
+            for dut in &result.dut_tests {
+                let test_state = if dut.succesful { "Passed" } else { "Failed" };
 
-            writeln!(file, " - {}: {}", dut.name, test_state)?;
+                writeln!(file, " - {}: {}", dut.name, test_state)?;
+            }
         }
     }
 
-    Ok(result.exit_code())
+
+    for result in &reports {
+        if result.any_failed() {
+            return Ok(ExitCode::FAILURE);
+        }
+    }
+    */
+
+    // TODO: Handle arguments
+    let args = Arguments::default();
+
+    Ok(libtest_mimic::run(&args, trials).exit_code())
 }
 
 #[derive(Debug)]
@@ -255,18 +276,6 @@ impl TestReport {
 
     fn any_failed(&self) -> bool {
         self.dut_tests.iter().any(|d| !d.succesful)
-    }
-
-    /// Return the appropriate exit code for the test result.
-    ///
-    /// This is current 0, or success, if all tests have passed,
-    /// and the default failure exit code for the platform otherwise.
-    fn exit_code(&self) -> ExitCode {
-        if self.any_failed() {
-            ExitCode::FAILURE
-        } else {
-            ExitCode::SUCCESS
-        }
     }
 
     fn num_failed_tests(&self) -> usize {
@@ -315,35 +324,20 @@ impl ConsoleReportPrinter {
 
 #[derive(Debug)]
 pub struct TestTracker<'dut> {
-    dut_definitions: &'dut [DutDefinition],
-    current_dut: usize,
+    dut_definition: &'dut DutDefinition,
     current_test: usize,
 }
 
 impl<'dut> TestTracker<'dut> {
-    fn new(dut_definitions: &'dut [DutDefinition]) -> Self {
+    fn new(dut_definition: &'dut DutDefinition) -> Self {
         Self {
-            dut_definitions,
-            current_dut: 0,
+            dut_definition,
             current_test: 0,
         }
     }
 
-    fn advance_dut(&mut self) {
-        self.current_dut += 1;
-        self.current_test = 0;
-    }
-
-    fn current_dut(&self) -> usize {
-        self.current_dut + 1
-    }
-
     fn current_dut_name(&self) -> &str {
-        &self.dut_definitions[self.current_dut].chip.name
-    }
-
-    fn num_duts(&self) -> usize {
-        self.dut_definitions.len()
+        &self.dut_definition.chip.name
     }
 
     fn current_test(&self) -> usize {
@@ -355,11 +349,11 @@ impl<'dut> TestTracker<'dut> {
     }
 
     pub fn current_target(&self) -> &probe_rs::Target {
-        &self.dut_definitions[self.current_dut].chip
+        &self.dut_definition.chip
     }
 
     pub fn current_dut_definition(&self) -> &DutDefinition {
-        &self.dut_definitions[self.current_dut]
+        self.dut_definition
     }
 
     #[must_use]
@@ -369,60 +363,46 @@ impl<'dut> TestTracker<'dut> {
     ) -> TestReport {
         let mut report = TestReport::new();
 
-        let mut tests_ok = true;
+        print_dut_status!(self, blue, "Starting Test");
 
-        for definition in self.dut_definitions {
-            print_dut_status!(self, blue, "Starting Test");
-
-            if let DefinitionSource::File(path) = &definition.source {
-                print!(" - {}", path.display());
-            }
-            println!();
-
-            let join_result =
-                std::thread::scope(|s| s.spawn(|| handle_dut(self, definition)).join());
-
-            match join_result {
-                Ok(Ok(())) => {
-                    report.add_report(DutReport {
-                        name: definition.chip.name.clone(),
-                        succesful: true,
-                    });
-                    println_dut_status!(self, green, "Tests Passed");
-                }
-                Ok(Err(e)) => {
-                    tests_ok = false;
-                    report.add_report(DutReport {
-                        name: definition.chip.name.clone(),
-                        succesful: false,
-                    });
-
-                    println_dut_status!(self, red, "Error message: {:#}", e);
-
-                    if let Some(source) = e.source() {
-                        println_dut_status!(self, red, " caused by:    {}", source);
-                    }
-
-                    println_dut_status!(self, red, "Tests Failed");
-                }
-                Err(_join_err) => {
-                    tests_ok = false;
-                    report.add_report(DutReport {
-                        name: definition.chip.name.clone(),
-                        succesful: false,
-                    });
-
-                    println_dut_status!(self, red, "Panic while running tests.");
-                }
-            }
-
-            self.advance_dut();
+        if let DefinitionSource::File(path) = &self.dut_definition.source {
+            print!(" - {}", path.display());
         }
+        println!();
 
-        if tests_ok {
-            println_status!(self, green, "All DUTs passed.");
-        } else {
-            println_status!(self, red, "Some DUTs failed some tests.");
+        let join_result =
+            std::thread::scope(|s| s.spawn(|| handle_dut(self, self.dut_definition)).join());
+
+        match join_result {
+            Ok(Ok(())) => {
+                report.add_report(DutReport {
+                    name: self.dut_definition.chip.name.clone(),
+                    succesful: true,
+                });
+                println_dut_status!(self, green, "Tests Passed");
+            }
+            Ok(Err(e)) => {
+                report.add_report(DutReport {
+                    name: self.dut_definition.chip.name.clone(),
+                    succesful: false,
+                });
+
+                println_dut_status!(self, red, "Error message: {:#}", e);
+
+                if let Some(source) = e.source() {
+                    println_dut_status!(self, red, " caused by:    {}", source);
+                }
+
+                println_dut_status!(self, red, "Tests Failed");
+            }
+            Err(_join_err) => {
+                report.add_report(DutReport {
+                    name: self.dut_definition.chip.name.clone(),
+                    succesful: false,
+                });
+
+                println_dut_status!(self, red, "Panic while running tests.");
+            }
         }
 
         report
