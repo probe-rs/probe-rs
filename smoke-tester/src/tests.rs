@@ -11,7 +11,10 @@ use probe_rs::{
 
 pub mod stepping;
 
-use crate::{CORE_TESTS, SESSION_TESTS, TestFailure, TestResult, TestTracker, println_test_status};
+use crate::{
+    CORE_TESTS, SESSION_TESTS, TestFailure, TestResult, TestTracker, dut_definition::DutDefinition,
+    println_test_status,
+};
 
 #[distributed_slice(CORE_TESTS)]
 pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> TestResult {
@@ -293,12 +296,11 @@ fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> TestResult {
 }
 
 #[distributed_slice(SESSION_TESTS)]
-pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(), TestFailure> {
-    let Some(test_binary) = tracker
-        .current_dut_definition()
-        .flash_test_binary
-        .as_deref()
-    else {
+pub fn test_flashing(
+    dut_definition: &DutDefinition,
+    session: &mut Session,
+) -> Result<(), TestFailure> {
+    let Some(test_binary) = dut_definition.flash_test_binary.as_deref() else {
         return Err(TestFailure::MissingResource(
             "No flash test binary specified".to_string(),
         ));
@@ -310,8 +312,8 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
         print!(".");
     });
 
-    println_test_status!(tracker, blue, "Starting flashing test");
-    println_test_status!(tracker, blue, "Binary: {}", test_binary.display());
+    println!("Starting flashing test");
+    println!("Binary: {}", test_binary.display());
 
     let start_time = Instant::now();
 
@@ -325,14 +327,9 @@ pub fn test_flashing(tracker: &TestTracker, session: &mut Session) -> Result<(),
         return Err(TestFailure::Error(err.into()));
     }
 
-    println_test_status!(
-        tracker,
-        blue,
-        "Total time for flashing: {:.2?}",
-        start_time.elapsed()
-    );
+    println!("Total time for flashing: {:.2?}", start_time.elapsed());
 
-    println_test_status!(tracker, blue, "Finished flashing");
+    println!("Finished flashing");
 
     Ok(())
 }

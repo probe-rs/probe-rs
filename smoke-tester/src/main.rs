@@ -137,44 +137,28 @@ fn run_test(definitions: &[DutDefinition]) -> Result<ExitCode> {
 
         let chip_name = definition.chip.name.clone();
 
-        let session_definition = definition.clone();
+        for (i, test) in SESSION_TESTS.iter().enumerate() {
+            let session_definition = definition.clone();
 
-        let session_trial = Trial::test("Session", move || {
-            let definition = session_definition;
-            let mut test_tracker = TestTracker::new(&definition);
-            let result = test_tracker.run(|tracker, definition| {
-                let probe = definition.open_probe()?;
+            let trial = Trial::test(format!("Session test {i}"), move || {
+                let probe = session_definition.open_probe()?;
 
                 // We don't care about existing flash contents
                 let permissions = Permissions::default().allow_erase_all();
 
                 let mut session = probe
-                    .attach(definition.chip.clone(), permissions)
+                    .attach(session_definition.chip.clone(), permissions)
                     .context("Failed to attach to chip")?;
 
-                for test in SESSION_TESTS {
-                    let result = tracker.run_test(|tracker| test(tracker, &mut session));
-
-                    if let Err(TestFailure::Fatal(error)) = result.result {
-                        return Err(error.context("Fatal error in test"));
-                    }
+                match test(&session_definition, &mut session) {
+                    Ok(()) => Ok(()),
+                    Err(err) => Err(err.into()),
                 }
+            })
+            .with_kind(&chip_name);
 
-                drop(session);
-
-                Ok(())
-            });
-
-            if result.any_failed() {
-                // TODO: Return error message
-                Err(Failed::without_message())
-            } else {
-                Ok(())
-            }
-        })
-        .with_kind(&chip_name);
-
-        trials.push(session_trial);
+            trials.push(trial);
+        }
 
         // Try attaching with hard reset
         if definition.reset_connected {
@@ -492,4 +476,4 @@ pub static CORE_TESTS: [fn(&TestTracker, &mut probe_rs::Core) -> TestResult];
 
 /// A list of all tests which run on `Session`.
 #[distributed_slice]
-pub static SESSION_TESTS: [fn(&TestTracker, &mut probe_rs::Session) -> TestResult];
+pub static SESSION_TESTS: [fn(&DutDefinition, &mut probe_rs::Session) -> TestResult];
