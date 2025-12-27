@@ -96,6 +96,12 @@ fn get_cmsisdap_info(device: &DeviceInfo) -> Vec<DebugProbeInfo> {
             } else if (interface.class(), interface.subclass())
                 != (USB_CMSIS_DAP_CLASS, USB_CMSIS_DAP_SUBCLASS)
             {
+                tracing::trace!(
+                    "Interface {} has a cmsis-dap description but wrong classes ({}, {}), skipping",
+                    interface.interface_number(),
+                    interface.class(),
+                    interface.subclass(),
+                );
                 // Not a CMSIS-DAP v2 interface, skip.
                 continue;
             } else {
