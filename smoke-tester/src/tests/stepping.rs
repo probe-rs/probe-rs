@@ -10,8 +10,8 @@ use crate::{CORE_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
 
 const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
 
-#[distributed_slice(CORE_TESTS)]
-fn test_stepping(definition: &DutDefinition, core: &mut Core) -> TestResult {
+#[smoke_tester_macros::core_test]
+fn test_stepping(_definition: &DutDefinition, core: &mut Core) -> TestResult {
     println!("Testing stepping on core {}...", core.id());
 
     if core.architecture() != Architecture::Arm {

@@ -7,10 +7,10 @@ use std::{
 use crate::dut_definition::DutDefinition;
 
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use libtest_mimic::{Arguments, Failed, Trial};
 use linkme::distributed_slice;
-use probe_rs::{Permissions, probe::WireProtocol};
+use probe_rs::Permissions;
 
 mod dut_definition;
 mod macros;
@@ -27,18 +27,6 @@ struct Opt {
 fn main() -> Result<ExitCode> {
     tracing_subscriber::fmt::init();
 
-    let args = std::env::args().collect::<Vec<_>>();
-
-    let delimiter = args.iter().rposition(|arg| arg == "--");
-
-    let (test_args, other_args) = if let Some(delimiter) = delimiter {
-        let (test_args, other_args) = args.split_at(delimiter);
-        (test_args, &other_args[1..])
-    } else {
-        (args.as_slice(), &[] as _)
-    };
-
-    // TODO: Handle arguments
     let test_args = Arguments::from_args();
 
     // Require dut definition as an environment variable
@@ -47,7 +35,7 @@ fn main() -> Result<ExitCode> {
     };
 
     let definitions = DutDefinition::collect(Path::new(&dut_definition))?;
-    println!("Found {} target definitions.", definitions.len());
+    //println!("Found {} target definitions.", definitions.len());
 
     run_test(test_args, &definitions)
 }
@@ -55,20 +43,20 @@ fn main() -> Result<ExitCode> {
 fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCode> {
     let mut trials = Vec::new();
 
-    for (index, definition) in definitions.iter().enumerate() {
+    for (_index, definition) in definitions.iter().enumerate() {
         // Log some information
-        let probe = definition.open_probe()?;
+        //let probe = definition.open_probe()?;
 
-        println!("DUT {}", index + 1);
-        println!(" Probe: {:?}", probe.get_name());
-        println!(" Chip:  {:?}", &definition.chip.name);
+        //println!("DUT {}", index + 1);
+        //println!(" Probe: {:?}", probe.get_name());
+        //println!(" Chip:  {:?}", &definition.chip.name);
 
         let chip_name = definition.chip.name.clone();
 
-        for (i, test) in SESSION_TESTS.iter().enumerate() {
+        for test in SESSION_TESTS {
             let session_definition = definition.clone();
 
-            let trial = Trial::test(format!("Session test {i}"), move || {
+            let trial = Trial::test(test.name, move || {
                 let probe = session_definition.open_probe()?;
 
                 // We don't care about existing flash contents
@@ -78,7 +66,7 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
                     .attach(session_definition.chip.clone(), permissions)
                     .context("Failed to attach to chip")?;
 
-                match test(&session_definition, &mut session) {
+                match (test.test_fn)(&session_definition, &mut session) {
                     Ok(()) => Ok(()),
                     Err(err) => Err(err.into()),
                 }
@@ -115,9 +103,9 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
         // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
         //       some cores need additional setup so that they can be used, and this is not handled yet.
         for (core_index, core_type) in cores.into_iter().take(1) {
-            for test_fn in CORE_TESTS {
+            for test_struct in CORE_TESTS {
                 let definition_for_cores = definition.clone();
-                let cores_trial = Trial::test("Cores", move || {
+                let cores_trial = Trial::test(test_struct.name, move || {
                     let definition = definition_for_cores;
 
                     let probe = definition.open_probe()?;
@@ -137,7 +125,7 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
 
                     core.reset_and_halt(Duration::from_millis(500))?;
 
-                    let result = test_fn(&definition, &mut core);
+                    let result = (test_struct.test_fn)(&definition, &mut core);
 
                     // Ensure core is not running anymore.
                     core.reset_and_halt(Duration::from_millis(200))
@@ -189,10 +177,38 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
     Ok(libtest_mimic::run(&args, trials).exit_code())
 }
 
+struct NamedSessionTest {
+    pub name: &'static str,
+    pub test_fn: &'static fn(&DutDefinition, &mut probe_rs::Session) -> TestResult,
+}
+
+impl NamedSessionTest {
+    const fn new(
+        name: &'static str,
+        test_fn: &'static fn(&DutDefinition, &mut probe_rs::Session) -> TestResult,
+    ) -> Self {
+        NamedSessionTest { name, test_fn }
+    }
+}
+
+struct NamedCoreTest {
+    pub name: &'static str,
+    pub test_fn: &'static fn(&DutDefinition, &mut probe_rs::Core) -> TestResult,
+}
+
+impl NamedCoreTest {
+    const fn new(
+        name: &'static str,
+        test_fn: &'static fn(&DutDefinition, &mut probe_rs::Core) -> TestResult,
+    ) -> Self {
+        NamedCoreTest { name, test_fn }
+    }
+}
+
 /// A list of all tests which run on cores.
 #[distributed_slice]
-pub static CORE_TESTS: [fn(&DutDefinition, &mut probe_rs::Core) -> TestResult];
+pub static CORE_TESTS: [NamedCoreTest];
 
 /// A list of all tests which run on `Session`.
 #[distributed_slice]
-pub static SESSION_TESTS: [fn(&DutDefinition, &mut probe_rs::Session) -> TestResult];
+pub static SESSION_TESTS: [NamedSessionTest];

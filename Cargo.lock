@@ -3916,10 +3916,20 @@ dependencies = [
  "log",
  "probe-rs",
  "serde",
+ "smoke_tester_macros",
  "thiserror 2.0.17",
  "toml 0.9.10+spec-1.1.0",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "smoke_tester_macros"
+version = "0.30.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
 ]
 
 [[package]]
