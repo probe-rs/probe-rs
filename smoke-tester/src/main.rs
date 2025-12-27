@@ -12,6 +12,7 @@ use libtest_mimic::{Arguments, Failed, Trial};
 use linkme::distributed_slice;
 use probe_rs::Permissions;
 use tracing::Level;
+use tracing_subscriber::EnvFilter;
 
 mod dut_definition;
 mod macros;
@@ -26,8 +27,10 @@ struct Opt {
 }
 
 fn main() -> Result<ExitCode> {
+    // nextest will get angry if logs are emitted outside of tests,
+    // so we use a separate ENV variable here, so setting RUST_LOG doesn't affect this
     tracing_subscriber::fmt()
-        .with_max_level(Level::TRACE)
+        .with_env_filter(EnvFilter::from_env("SMOKE_TESTER_LOG"))
         .init();
 
     let test_args = Arguments::from_args();
@@ -145,39 +148,18 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
         }
     }
 
-    /*
-    let printer = ConsoleReportPrinter;
-    if let Some(summary_file) = &markdown_summary {
-        let mut file = std::fs::File::create(summary_file).with_context(|| {
-            format!(
-                "Failed to create markdown summary file at location {}",
-                summary_file.display()
-            )
-        })?;
-
-        writeln!(file, "## smoke-tester")?;
-
-        for result in &reports {
-            for dut in &result.dut_tests {
-                let test_state = if dut.succesful { "Passed" } else { "Failed" };
-
-                writeln!(file, " - {}: {}", dut.name, test_state)?;
-            }
-        }
-    }
-
-
-    for result in &reports {
-        if result.any_failed() {
-            return Ok(ExitCode::FAILURE);
-        }
-    }
-    */
-
     // Ensure tests are not run in parallel
     args.test_threads = Some(1);
 
-    Ok(libtest_mimic::run(&args, trials).exit_code())
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(Level::TRACE)
+        .finish();
+
+    let exit_code = tracing::subscriber::with_default(subscriber, || {
+        libtest_mimic::run(&args, trials).exit_code()
+    });
+
+    Ok(exit_code)
 }
 
 struct NamedSessionTest {
