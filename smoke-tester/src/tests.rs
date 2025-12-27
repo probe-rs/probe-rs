@@ -279,7 +279,6 @@ fn test_hw_breakpoints(_definition: &DutDefinition, core: &mut Core) -> TestResu
 #[smoke_tester_macros::session_test]
 pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> Result<(), Failed> {
     let Some(test_binary) = dut_definition.flash_test_binary.as_deref() else {
-        panic!("Panic for demo purposes");
         skip_test!("No flash test binary specified");
     };
 
@@ -299,8 +298,6 @@ pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> R
     let result = download_file_with_options(session, test_binary, format, options);
 
     println!();
-
-    panic!("Flashing test failed for demo purposes");
 
     if let Err(err) = result {
         return Err(err.into());
