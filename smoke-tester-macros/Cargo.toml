@@ -1,0 +1,20 @@
+[package]
+name = "smoke_tester_macros"
+version.workspace = true
+edition.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+
+[dependencies]
+proc-macro2 = "1.0.103"
+quote = "1.0.42"
+syn = "2.0.111"
+
+[lib]
+proc-macro = true
+
+[lints]
+workspace = true

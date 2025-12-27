@@ -1,0 +1,17 @@
+[test-groups]
+hardware = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = "package(smoke_tester)"
+test-group = "hardware"
+
+
+[profile.ci-unit]
+filter = "not(package(smoke_tester))"
+# Do not cancel the test run on the first failure.
+fail-fast = false
+
+[profile.ci-hardware]
+filter = "package(smoke_tester)"
+# Do not cancel the test run on the first failure.
+fail-fast = false
