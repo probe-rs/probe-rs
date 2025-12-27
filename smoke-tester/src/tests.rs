@@ -13,8 +13,8 @@ pub mod stepping;
 
 use crate::{CORE_TESTS, SESSION_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
 
-#[distributed_slice(CORE_TESTS)]
-pub fn test_register_read(dut_definition: &DutDefinition, core: &mut Core) -> TestResult {
+#[smoke_tester_macros::core_test]
+pub fn test_register_read(_dut_definition: &DutDefinition, core: &mut Core) -> TestResult {
     println!("Testing register read...");
 
     let register = core.registers();
@@ -28,8 +28,8 @@ pub fn test_register_read(dut_definition: &DutDefinition, core: &mut Core) -> Te
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_register_write(definition: &DutDefinition, core: &mut Core) -> TestResult {
+#[smoke_tester_macros::core_test]
+fn test_register_write(_definition: &DutDefinition, core: &mut Core) -> TestResult {
     println!("Testing register write...");
 
     let register = core.registers();
@@ -93,8 +93,8 @@ fn test_write_read(scenario: &str, core: &mut Core, address: u64, data: &[u8]) -
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_memory_access(dut: &DutDefinition, core: &mut Core) -> TestResult {
+#[smoke_tester_macros::core_test]
+fn test_memory_access(_dut: &DutDefinition, core: &mut Core) -> TestResult {
     let memory_regions = core
         .memory_regions()
         .filter_map(MemoryRegion::as_ram_region)
@@ -187,8 +187,8 @@ fn test_memory_access(dut: &DutDefinition, core: &mut Core) -> TestResult {
     Ok(())
 }
 
-#[distributed_slice(CORE_TESTS)]
-fn test_hw_breakpoints(definition: &DutDefinition, core: &mut Core) -> TestResult {
+#[smoke_tester_macros::core_test]
+fn test_hw_breakpoints(_definition: &DutDefinition, core: &mut Core) -> TestResult {
     println!("Testing HW breakpoints");
 
     let memory_regions: Vec<_> = core
@@ -276,7 +276,7 @@ fn test_hw_breakpoints(definition: &DutDefinition, core: &mut Core) -> TestResul
     Ok(())
 }
 
-#[distributed_slice(SESSION_TESTS)]
+#[smoke_tester_macros::session_test]
 pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> Result<(), Failed> {
     let Some(test_binary) = dut_definition.flash_test_binary.as_deref() else {
         skip_test!("No flash test binary specified");
