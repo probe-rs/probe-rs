@@ -85,9 +85,10 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
 
     let uri = Uri::from_str(&format!("{host}/worker")).context("Failed to parse server URI")?;
 
-    let is_localhost = uri
-        .host()
-        .is_some_and(|h| ["localhost", "127.0.0.1", "::1"].contains(&h));
+    // We could check the host address for localhost and then set the `is_localhost` option, but
+    // there are setups where the user uses port forwarding and the file actually needs to be
+    // uploaded for correct behavior. Therefore, this check is not performed.
+
     let req = ClientRequestBuilder::new(uri).with_header(
         "User-Agent",
         format!("probe-rs-tools {}", env!("PROBE_RS_LONG_VERSION")),
@@ -132,7 +133,7 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
         .await
         .map_err(|err| anyhow::anyhow!("Failed to send challenge response: {err:?}"))?;
 
-    let mut client = RpcClient::new_from_wire(
+    Ok(RpcClient::new_from_wire(
         tx,
         WebsocketRx::new(rx.map(|message| {
             message.map(|message| match message {
@@ -140,10 +141,7 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
                 _ => Bytes::new(),
             })
         })),
-    );
-    client.is_localhost = is_localhost;
-
-    Ok(client)
+    ))
 }
 
 #[cfg(feature = "remote")]
