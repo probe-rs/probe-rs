@@ -6,11 +6,6 @@
 
 #image.name = "ahuszagh/aarch64-cross:armv7-unknown-linux-gnueabihf"
 #image.toolchain = ["aarch64-unknown-linux-gnu"]
-pre-build = [
-    "dpkg --add-architecture armhf",
-    "apt-get update",
-    "apt-get install --assume-yes libudev-dev:armhf",
-]
 
 [target.aarch64-unknown-linux-gnu]
 # The following lines can be uncommented to use a native
@@ -20,8 +15,3 @@ pre-build = [
 
 # image.name = "ahuszagh/aarch64-cross:aarch64-unknown-linux-gnu"
 # image.toolchain = ["aarch64-unknown-linux-gnu"]
-pre-build = [
-    "dpkg --add-architecture arm64",
-    "apt-get update",
-    "apt-get install --assume-yes libudev-dev:arm64",
-]

@@ -35,7 +35,3 @@ github-attestations = true
 global = "ubuntu-22.04"
 aarch64-unknown-linux-gnu = "buildjet-2vcpu-ubuntu-2204-arm"
 aarch64-unknown-linux-musl = "buildjet-2vcpu-ubuntu-2204-arm"
-
-[dist.dependencies.apt]
-libudev-dev = '*'
-libudev1 = { stage = ["run"] }

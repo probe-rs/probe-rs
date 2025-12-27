@@ -40,8 +40,8 @@ probe-rs-target.workspace = true
 bincode = { version = "2", features = ["serde"], optional = true }
 bitfield = "0.19.0"
 bitvec = "1"
-hidapi = { version = "2", default-features = false, features = [
-    "linux-native",
+hidapi = { version = "2.6.4", default-features = false, features = [
+    "linux-native-basic-udev",
 ], optional = true }
 ihex = "3.0"
 itertools = "0.14"

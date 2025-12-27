@@ -28,10 +28,6 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-release,cargo-semver-checks
-      - name: Install libudev (linux)
-        run: |
-          sudo apt update
-          sudo apt install -y libudev-dev
       - name: Install SSH
         run: |
           apt-get update -y && apt-get install openssh-client -y
