@@ -11,6 +11,7 @@ use clap::Parser;
 use libtest_mimic::{Arguments, Failed, Trial};
 use linkme::distributed_slice;
 use probe_rs::Permissions;
+use tracing::Level;
 
 mod dut_definition;
 mod macros;
@@ -25,7 +26,9 @@ struct Opt {
 }
 
 fn main() -> Result<ExitCode> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_max_level(Level::TRACE)
+        .init();
 
     let test_args = Arguments::from_args();
 
