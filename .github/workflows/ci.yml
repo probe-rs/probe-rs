@@ -38,13 +38,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v6
 
-      - name: Install libudev (linux)
-        run: |
-          sudo apt update
-          sudo apt install -y libudev-dev
-        # Only install on Ubuntu
-        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-22.04')
-
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.8.2
 
@@ -74,13 +67,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v6
 
-      - name: Install libudev (linux)
-        run: |
-          sudo apt update
-          sudo apt install -y libudev-dev
-        # Only install on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
-
       - name: "Install thumbv7m-none-eabi target for tests"
         run: rustup target add thumbv7m-none-eabi
 
@@ -107,11 +93,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v6
 
-      - name: Install libudev
-        run: |
-          sudo apt update
-          sudo apt install -y libudev-dev
-
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.8.2
 
@@ -121,8 +102,8 @@ jobs:
   cargo-deny:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
-    - uses: EmbarkStudios/cargo-deny-action@v2
+      - uses: actions/checkout@v6
+      - uses: EmbarkStudios/cargo-deny-action@v2
 
   doc:
     name: Check docs
@@ -131,15 +112,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v6
 
-      - name: Install libudev
-        run: |
-          sudo apt update
-          sudo apt install -y libudev-dev
-
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.8.2
 
       - name: Run cargo doc
         run: cargo doc -p probe-rs --no-deps --all-features --locked
         env:
-          RUSTDOCFLAGS: '-D warnings'
+          RUSTDOCFLAGS: "-D warnings"

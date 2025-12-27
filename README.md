@@ -144,15 +144,7 @@ Please reach out to [@Yatekii](https://github.com/Yatekii)
 
 ### Building
 
-Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). On Linux these can be installed with your package manager:
-
-```console
-# Ubuntu
-> sudo apt install -y libudev-dev
-
-# Fedora
-> sudo dnf install -y libudev-devel
-```
+Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). 
 
 ### Adding Targets
 
