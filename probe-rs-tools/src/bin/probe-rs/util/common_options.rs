@@ -527,12 +527,6 @@ pub enum OperationError {
     #[error("Failed to get a handle to the first core.")]
     AttachingToCoreFailed(#[source] probe_rs::Error),
 
-    #[error("The reset of the target failed.")]
-    TargetResetFailed(#[source] probe_rs::Error),
-
-    #[error("The target could not be reset and halted.")]
-    TargetResetHaltFailed(#[source] probe_rs::Error),
-
     #[error("Failed to write to file")]
     IOError(#[source] std::io::Error),
 
@@ -540,6 +534,9 @@ pub enum OperationError {
     CliArgument(#[from] clap::Error),
     #[error("Failed to parse interactive probe index selection")]
     ParseProbeIndex(#[source] std::num::ParseIntError),
+
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
 }
 
 /// Used in errors it can print a list of items.

@@ -123,8 +123,13 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
 
 /// Returns the target instruction set for the given target triple, or the current cargo project.
 pub fn target_instruction_set(target: Option<&str>) -> Option<InstructionSet> {
+    cargo_target(target).and_then(|target| InstructionSet::from_target_triple(&target))
+}
+
+/// Returns the target instruction set for the given target triple, or the current cargo project.
+pub fn cargo_target(target: Option<&str>) -> Option<String> {
     if let Some(target) = target {
-        return InstructionSet::from_target_triple(target);
+        return Some(target.to_string());
     }
 
     let cargo_config = cargo_config2::Config::load().ok()?;
@@ -132,8 +137,7 @@ pub fn target_instruction_set(target: Option<&str>) -> Option<InstructionSet> {
         .build
         .target
         .as_ref()
-        .and_then(|ts| Some(ts.first()?.triple()))
-        .and_then(InstructionSet::from_target_triple)
+        .and_then(|ts| Some(ts.first()?.triple().to_string()))
 }
 
 #[cfg(test)]

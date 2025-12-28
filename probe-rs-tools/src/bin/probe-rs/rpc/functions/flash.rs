@@ -3,7 +3,7 @@ use std::time::Duration;
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
 use probe_rs::{
-    Session,
+    InstructionSet, Session,
     flashing::{self, FileDownloadError, FlashLoader, FlashProgress},
 };
 use serde::{Deserialize, Serialize};
@@ -45,6 +45,7 @@ pub struct BuildRequest {
     pub sessid: Key<Session>,
     pub path: String,
     pub format: FormatOptions,
+    pub image_target: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -62,7 +63,15 @@ pub async fn build(
 ) -> BuildResponse {
     // build loader
     let mut session = ctx.session(request.sessid).await;
-    let loader = build_loader(&mut session, &request.path, request.format, None)?;
+    let loader = build_loader(
+        &mut session,
+        &request.path,
+        request.format,
+        request
+            .image_target
+            .as_deref()
+            .and_then(InstructionSet::from_target_triple),
+    )?;
 
     Ok(BuildResult {
         boot_info: loader.boot_info().into(),

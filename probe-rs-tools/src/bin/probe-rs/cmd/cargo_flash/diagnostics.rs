@@ -192,20 +192,16 @@ pub(crate) fn render_diagnostics(registry: &Registry, error: OperationError) {
             error.to_string(),
             vec![],
         ),
-        OperationError::TargetResetFailed(_e) =>  (
-            error.to_string(),
-            vec![],
-        ),
-        OperationError::TargetResetHaltFailed(_e) => (
-            error.to_string(),
-            vec![],
-        ),
         OperationError::CliArgument(_e) => (
             error.to_string(),
             vec![],
         ),
         OperationError::ParseProbeIndex(_e) => (
             error.to_string(),
+            vec![],
+        ),
+        OperationError::Anyhow(error) => (
+            format!("{error:?}"),
             vec![],
         ),
     };
