@@ -435,7 +435,7 @@ async fn main() -> Result<()> {
     //        at this point we don't have a logger yet.
     let utc_offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
 
-    let mut args: Vec<_> = std::env::args_os().collect();
+    let args: Vec<_> = std::env::args_os().collect();
 
     let config = load_config().context("Failed to load configuration.")?;
 
@@ -449,20 +449,7 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Parse the commandline options.
-    let mut matches = Cli::command().get_matches_from(&args);
-
-    // Apply the configuration preset if one is specified.
-    if apply_config_preset(&config, &matches, &mut args)? {
-        // Re-parse the modified CLI input. Ignore errors so that users can specify
-        // options that are only valid for certain subcommands.
-        matches = Cli::command().ignore_errors(true).get_matches_from(args);
-    }
-
-    let mut cli = match Cli::from_arg_matches(&matches) {
-        Ok(matches) => matches,
-        Err(err) => err.exit(),
-    };
+    let mut cli = parse_and_resolve_cli_args::<Cli>(args, &config)?;
 
     // If the user has not specified a log file, we will try to create one in the default location.
     if cli.log_file.is_none() && (cli.log_to_folder || cli.report.is_some()) {
@@ -515,6 +502,23 @@ async fn main() -> Result<()> {
     _ = handle.await.unwrap();
 
     compile_report(result, report_path, elf, log_path.as_deref())
+}
+
+fn parse_and_resolve_cli_args<T: FromArgMatches + CommandFactory>(
+    mut args: Vec<OsString>,
+    config: &Config,
+) -> Result<T> {
+    // Parse the commandline options.
+    let mut matches = T::command().get_matches_from(&args);
+
+    // Apply the configuration preset if one is specified.
+    if apply_config_preset(&config, &matches, &mut args)? {
+        // Re-parse the modified CLI input. Ignore errors so that users can specify
+        // options that are only valid for certain subcommands.
+        matches = T::command().ignore_errors(true).get_matches_from(args);
+    }
+
+    Ok(T::from_arg_matches(&matches)?)
 }
 
 fn apply_config_preset(

@@ -1,6 +1,5 @@
 mod diagnostics;
 
-use clap::Parser;
 use colored::Colorize;
 use diagnostics::render_diagnostics;
 use probe_rs::config::Registry;
@@ -8,7 +7,6 @@ use probe_rs::probe::list::Lister;
 use std::ffi::OsString;
 use std::{path::PathBuf, process};
 
-use crate::Config;
 use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{
     BinaryDownloadOptions, CargoOptions, OperationError, ProbeOptions,
@@ -16,6 +14,7 @@ use crate::util::common_options::{
 use crate::util::flash;
 use crate::util::logging::{LevelFilter, setup_logging};
 use crate::util::{cargo::build_artifact, logging};
+use crate::{Config, parse_and_resolve_cli_args};
 
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
@@ -91,7 +90,7 @@ fn main_try(
     args: Vec<OsString>,
 ) -> Result<(), OperationError> {
     // Parse the commandline options.
-    let opt = CliOptions::parse_from(args);
+    let opt = parse_and_resolve_cli_args::<CliOptions>(args, &config)?;
 
     // Initialize the logger with the loglevel given on the commandline.
     let _log_guard = setup_logging(None, opt.log);

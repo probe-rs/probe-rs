@@ -3,7 +3,6 @@ mod rttui;
 
 use crate::cmd::gdb_server::GdbInstanceConfiguration;
 use anyhow::{Context, Result, anyhow};
-use clap::Parser;
 use colored::Colorize;
 use parking_lot::FairMutex;
 use probe_rs::config::Registry;
@@ -31,7 +30,7 @@ use crate::util::logging::setup_logging;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
-use crate::{Config, FormatOptions};
+use crate::{Config, FormatOptions, parse_and_resolve_cli_args};
 
 #[derive(Debug, clap::Parser)]
 #[clap(
@@ -119,7 +118,7 @@ pub async fn main(args: Vec<OsString>, config: Config, offset: UtcOffset) {
 
 async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Result<()> {
     // Parse the commandline options.
-    let opt = CliOptions::parse_from(args);
+    let opt = parse_and_resolve_cli_args::<CliOptions>(args, &config)?;
 
     // Change the work dir if the user asked to do so.
     if let Some(ref work_dir) = opt.work_dir {
