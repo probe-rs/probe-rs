@@ -33,6 +33,7 @@ impl Cmd {
             self.format_options,
             self.download_options,
             None,
+            None,
         )
         .await?;
 

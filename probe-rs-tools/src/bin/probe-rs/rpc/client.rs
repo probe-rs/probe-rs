@@ -35,11 +35,11 @@ use crate::{
             CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint,
             ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint,
             ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
-            ReadMemory64Endpoint, ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult,
-            RunTestEndpoint, SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic,
-            TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner, VerifyEndpoint,
-            WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
-            WriteMemory64Endpoint,
+            ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
+            ResumeAllCoresEndpoint, RpcResult, RunTestEndpoint, SelectProbeEndpoint,
+            TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint,
+            TokioSpawner, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
+            WriteMemory32Endpoint, WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
             flash::{
@@ -53,7 +53,7 @@ use crate::{
                 AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector,
                 ListProbesRequest, SelectProbeRequest, SelectProbeResult,
             },
-            reset::ResetCoreRequest,
+            reset::{ResetCoreAndHaltRequest, ResetCoreRequest},
             resume::ResumeAllCoresRequest,
             rtt_client::{CreateRttClientRequest, RttClientData, ScanRegion},
             stack_trace::{StackTraces, TakeStackTraceRequest},
@@ -446,6 +446,7 @@ impl SessionInterface {
         &self,
         mut path: PathBuf,
         mut format: FormatOptions,
+        image_target: Option<String>,
     ) -> anyhow::Result<BuildResult> {
         path = self.client.upload_file(&path).await?;
 
@@ -472,6 +473,7 @@ impl SessionInterface {
                 sessid: self.sessid,
                 path: path.display().to_string(),
                 format,
+                image_target,
             })
             .await
     }
@@ -707,6 +709,16 @@ impl CoreInterface {
             .send_resp::<ResetCoreEndpoint, _>(&ResetCoreRequest {
                 sessid: self.sessid,
                 core: self.core,
+            })
+            .await
+    }
+
+    pub async fn reset_and_halt(&self, timeout: Duration) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<ResetCoreAndHaltEndpoint, _>(&ResetCoreAndHaltRequest {
+                sessid: self.sessid,
+                core: self.core,
+                timeout,
             })
             .await
     }

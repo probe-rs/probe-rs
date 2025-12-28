@@ -32,7 +32,7 @@ impl Cmd {
             Some(CliProgressBars::new())
         };
         let loader = session
-            .build_flash_loader(self.path.to_path_buf(), self.format_options)
+            .build_flash_loader(self.path.to_path_buf(), self.format_options, None)
             .await?;
 
         let result = session

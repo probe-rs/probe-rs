@@ -1,20 +1,19 @@
 mod diagnostics;
 
-use colored::Colorize;
+use anyhow::Context;
 use diagnostics::render_diagnostics;
-use probe_rs::config::Registry;
-use probe_rs::probe::list::Lister;
 use std::ffi::OsString;
 use std::{path::PathBuf, process};
 
-use crate::util::cargo::target_instruction_set;
+use crate::rpc::client::RpcClient;
+use crate::util::cargo::build_artifact;
+use crate::util::cargo::cargo_target;
+use crate::util::cli;
 use crate::util::common_options::{
     BinaryDownloadOptions, CargoOptions, OperationError, ProbeOptions,
 };
-use crate::util::flash;
 use crate::util::logging::{LevelFilter, setup_logging};
-use crate::util::{cargo::build_artifact, logging};
-use crate::{Config, parse_and_resolve_cli_args};
+use crate::{Config, parse_and_resolve_cli_args, run_app};
 
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
@@ -67,34 +66,43 @@ struct CliOptions {
     preset: Option<String>,
 }
 
-pub fn main(args: Vec<OsString>, config: Config) {
-    let mut registry = Registry::from_builtin_families();
-    match main_try(&mut registry, config, args) {
-        Ok(_) => (),
-        Err(e) => {
-            // Ensure stderr is flushed before calling process::exit,
-            // otherwise the process might panic, because it tries
-            // to access stderr during shutdown.
-            //
-            // We ignore the errors, not much we can do anyway.
-            render_diagnostics(&registry, e);
-
-            process::exit(1);
-        }
-    }
-}
-
-fn main_try(
-    registry: &mut Registry,
-    config: Config,
-    args: Vec<OsString>,
-) -> Result<(), OperationError> {
+pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
     // Parse the commandline options.
     let opt = parse_and_resolve_cli_args::<CliOptions>(args, &config)?;
 
     // Initialize the logger with the loglevel given on the commandline.
     let _log_guard = setup_logging(None, opt.log);
 
+    let terminate = run_app(None, async |mut client| {
+        let main_result = main_try(&mut client, opt).await;
+
+        let r = client.registry().await;
+
+        match main_result {
+            Ok(()) => Ok(false),
+            Err(e) => {
+                // Ensure stderr is flushed before calling process::exit,
+                // otherwise the process might panic, because it tries
+                // to access stderr during shutdown.
+                //
+                // We ignore the errors, not much we can do anyway.
+                render_diagnostics(&r, e);
+
+                Ok(true)
+            }
+        }
+    })
+    .await?;
+
+    if terminate {
+        // We've already printed the error with our custom renderer, just exit here.
+        process::exit(1);
+    }
+
+    Ok(())
+}
+
+async fn main_try(client: &mut RpcClient, opt: CliOptions) -> Result<(), OperationError> {
     // Change the work dir if the user asked to do so.
     if let Some(ref work_dir) = opt.work_dir {
         std::env::set_current_dir(work_dir).map_err(|error| {
@@ -114,7 +122,7 @@ fn main_try(
         path_buf.clone()
     } else {
         let cargo_options = opt.cargo_options.to_cargo_options();
-        image_instr_set = target_instruction_set(opt.cargo_options.target.as_deref());
+        image_instr_set = cargo_target(opt.cargo_options.target.as_deref());
 
         // Build the project, and extract the path of the built artifact.
         build_artifact(&work_dir, &cargo_options)
@@ -134,39 +142,28 @@ fn main_try(
             .into()
     };
 
-    logging::eprintln(format!(
-        "    {} {}",
-        "Flashing".green().bold(),
-        path.display()
-    ));
+    let session = cli::attach_probe(&client, opt.probe_options, false).await?;
 
-    let lister = Lister::new();
-
-    // Attach to specified probe
-    let (mut session, probe_options) = opt.probe_options.simple_attach(registry, &lister)?;
-
-    // Flash the binary
-    let loader =
-        flash::build_loader(&mut session, &path, opt.format_options, image_instr_set).unwrap();
-    flash::run_flash_download(
-        &mut session,
+    cli::flash(
+        &session,
         &path,
-        &opt.download_options,
-        &probe_options,
-        loader,
-    )?;
+        opt.download_options.chip_erase,
+        opt.format_options,
+        opt.download_options,
+        None,
+        image_instr_set,
+    )
+    .await?;
 
     // Reset target according to CLI options
-    {
-        let mut core = session
-            .core(0)
-            .map_err(OperationError::AttachingToCoreFailed)?;
-        if opt.reset_halt {
-            core.reset_and_halt(std::time::Duration::from_millis(500))
-                .map_err(OperationError::TargetResetHaltFailed)?;
-        } else {
-            core.reset().map_err(OperationError::TargetResetFailed)?;
-        }
+    let core = session.core(0);
+
+    if opt.reset_halt {
+        core.reset_and_halt(std::time::Duration::from_millis(500))
+            .await
+            .context("Failed to reset and halt target")?;
+    } else {
+        core.reset().await.context("Failed to reset target")?;
     }
 
     Ok(())

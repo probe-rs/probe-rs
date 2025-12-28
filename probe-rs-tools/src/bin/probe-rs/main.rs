@@ -441,8 +441,7 @@ async fn main() -> Result<()> {
 
     // Special-case `cargo-embed` and `cargo-flash`.
     if let Some(args) = multicall_check(&args, "cargo-flash") {
-        cmd::cargo_flash::main(args, config);
-        return Ok(());
+        return cmd::cargo_flash::main(args, config).await;
     }
     if let Some(args) = multicall_check(&args, "cargo-embed") {
         cmd::cargo_embed::main(args, config, utc_offset).await;
@@ -504,10 +503,10 @@ async fn main() -> Result<()> {
 }
 
 /// Runs the callback using either a local or remote RPC client.
-async fn run_app(
+async fn run_app<R>(
     _connection_params: Option<(String, Option<String>)>,
-    cb: impl AsyncFnOnce(RpcClient) -> Result<()>,
-) -> Result<()> {
+    cb: impl AsyncFnOnce(RpcClient) -> Result<R>,
+) -> Result<R> {
     #[cfg(feature = "remote")]
     if let Some((host, token)) = _connection_params {
         // Run the command remotely.

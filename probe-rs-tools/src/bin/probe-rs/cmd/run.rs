@@ -224,6 +224,7 @@ impl Cmd {
             self.shared_options.format_options,
             self.shared_options.download_options,
             Some(&mut rtt_client),
+            None,
         )
         .await?;
 

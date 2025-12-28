@@ -23,7 +23,7 @@ use crate::{
                 AttachRequest, AttachResponse, ListProbesRequest, ListProbesResponse,
                 SelectProbeRequest, SelectProbeResponse, attach, list_probes, select_probe,
             },
-            reset::{ResetCoreRequest, reset},
+            reset::{ResetCoreAndHaltRequest, ResetCoreRequest, reset, reset_and_halt},
             resume::{ResumeAllCoresRequest, resume_all_cores},
             rtt_client::{CreateRttClientRequest, CreateRttClientResponse, create_rtt_client},
             stack_trace::{TakeStackTraceRequest, TakeStackTraceResponse, take_stack_trace},
@@ -453,43 +453,44 @@ type WriteMemory64Request = WriteMemoryRequest<u64>;
 
 endpoints! {
     list = ENDPOINT_LIST;
-    | EndpointTy                | RequestTy              | ResponseTy              | Path               |
-    | ----------                | ---------              | ----------              | ----               |
-    | ListProbesEndpoint        | ListProbesRequest      | ListProbesResponse      | "probe/list"       |
-    | SelectProbeEndpoint       | SelectProbeRequest     | SelectProbeResponse     | "probe/select"     |
-    | AttachEndpoint            | AttachRequest          | AttachResponse          | "probe/attach"     |
+    | EndpointTy                | RequestTy               | ResponseTy              | Path               |
+    | ----------                | ---------               | ----------              | ----               |
+    | ListProbesEndpoint        | ListProbesRequest       | ListProbesResponse      | "probe/list"       |
+    | SelectProbeEndpoint       | SelectProbeRequest      | SelectProbeResponse     | "probe/select"     |
+    | AttachEndpoint            | AttachRequest           | AttachResponse          | "probe/attach"     |
 
-    | ResumeAllCoresEndpoint    | ResumeAllCoresRequest  | NoResponse              | "resume"           |
-    | CreateRttClientEndpoint   | CreateRttClientRequest | CreateRttClientResponse | "create_rtt"       |
-    | TakeStackTraceEndpoint    | TakeStackTraceRequest  | TakeStackTraceResponse  | "stack_trace"      |
-    | BuildEndpoint             | BuildRequest           | BuildResponse           | "flash/build"      |
-    | FlashEndpoint             | FlashRequest           | NoResponse              | "flash/flash"      |
-    | EraseEndpoint             | EraseRequest           | NoResponse              | "flash/erase"      |
-    | VerifyEndpoint            | VerifyRequest          | VerifyResponse          | "flash/verify"     |
-    | MonitorEndpoint           | MonitorRequest         | MonitorResponse         | "monitor"          |
+    | ResumeAllCoresEndpoint    | ResumeAllCoresRequest   | NoResponse              | "resume"           |
+    | CreateRttClientEndpoint   | CreateRttClientRequest  | CreateRttClientResponse | "create_rtt"       |
+    | TakeStackTraceEndpoint    | TakeStackTraceRequest   | TakeStackTraceResponse  | "stack_trace"      |
+    | BuildEndpoint             | BuildRequest            | BuildResponse           | "flash/build"      |
+    | FlashEndpoint             | FlashRequest            | NoResponse              | "flash/flash"      |
+    | EraseEndpoint             | EraseRequest            | NoResponse              | "flash/erase"      |
+    | VerifyEndpoint            | VerifyRequest           | VerifyResponse          | "flash/verify"     |
+    | MonitorEndpoint           | MonitorRequest          | MonitorResponse         | "monitor"          |
 
-    | ListTestsEndpoint         | ListTestsRequest       | ListTestsResponse       | "tests/list"       |
-    | RunTestEndpoint           | RunTestRequest         | RunTestResponse         | "tests/run"        |
+    | ListTestsEndpoint         | ListTestsRequest        | ListTestsResponse       | "tests/list"       |
+    | RunTestEndpoint           | RunTestRequest          | RunTestResponse         | "tests/run"        |
 
-    | CreateTempFileEndpoint    | ()                     | CreateFileResponse      | "temp_file/new"    |
-    | TempFileDataEndpoint      | AppendFileRequest      | NoResponse              | "temp_file/append" |
+    | CreateTempFileEndpoint    | ()                      | CreateFileResponse      | "temp_file/new"    |
+    | TempFileDataEndpoint      | AppendFileRequest       | NoResponse              | "temp_file/append" |
 
-    | ListChipFamiliesEndpoint  | ()                     | ListFamiliesResponse    | "chips/list"       |
-    | ChipInfoEndpoint          | ChipInfoRequest        | ChipInfoResponse        | "chips/info"       |
-    | LoadChipFamilyEndpoint    | LoadChipFamilyRequest  | NoResponse              | "chips/load"       |
+    | ListChipFamiliesEndpoint  | ()                      | ListFamiliesResponse    | "chips/list"       |
+    | ChipInfoEndpoint          | ChipInfoRequest         | ChipInfoResponse        | "chips/info"       |
+    | LoadChipFamilyEndpoint    | LoadChipFamilyRequest   | NoResponse              | "chips/load"       |
 
-    | TargetInfoEndpoint        | TargetInfoRequest      | NoResponse              | "info"             |
-    | ResetCoreEndpoint         | ResetCoreRequest       | NoResponse              | "reset"            |
+    | TargetInfoEndpoint        | TargetInfoRequest       | NoResponse              | "info"             |
+    | ResetCoreEndpoint         | ResetCoreRequest        | NoResponse              | "reset"            |
+    | ResetCoreAndHaltEndpoint  | ResetCoreAndHaltRequest | NoResponse              | "reset_and_halt"   |
 
-    | ReadMemory8Endpoint       | ReadMemoryRequest      | ReadMemory8Response     | "memory/read8"     |
-    | ReadMemory16Endpoint      | ReadMemoryRequest      | ReadMemory16Response    | "memory/read16"    |
-    | ReadMemory32Endpoint      | ReadMemoryRequest      | ReadMemory32Response    | "memory/read32"    |
-    | ReadMemory64Endpoint      | ReadMemoryRequest      | ReadMemory64Response    | "memory/read64"    |
+    | ReadMemory8Endpoint       | ReadMemoryRequest       | ReadMemory8Response     | "memory/read8"     |
+    | ReadMemory16Endpoint      | ReadMemoryRequest       | ReadMemory16Response    | "memory/read16"    |
+    | ReadMemory32Endpoint      | ReadMemoryRequest       | ReadMemory32Response    | "memory/read32"    |
+    | ReadMemory64Endpoint      | ReadMemoryRequest       | ReadMemory64Response    | "memory/read64"    |
 
-    | WriteMemory8Endpoint      | WriteMemory8Request    | NoResponse              | "memory/write8"    |
-    | WriteMemory16Endpoint     | WriteMemory16Request   | NoResponse              | "memory/write16"   |
-    | WriteMemory32Endpoint     | WriteMemory32Request   | NoResponse              | "memory/write32"   |
-    | WriteMemory64Endpoint     | WriteMemory64Request   | NoResponse              | "memory/write64"   |
+    | WriteMemory8Endpoint      | WriteMemory8Request     | NoResponse              | "memory/write8"    |
+    | WriteMemory16Endpoint     | WriteMemory16Request    | NoResponse              | "memory/write16"   |
+    | WriteMemory32Endpoint     | WriteMemory32Request    | NoResponse              | "memory/write32"   |
+    | WriteMemory64Endpoint     | WriteMemory64Request    | NoResponse              | "memory/write64"   |
 }
 
 topics! {
@@ -548,6 +549,7 @@ postcard_rpc::define_dispatch! {
 
         | TargetInfoEndpoint        | async     | target_info       |
         | ResetCoreEndpoint         | async     | reset             |
+        | ResetCoreAndHaltEndpoint  | async     | reset_and_halt    |
 
         | ReadMemory8Endpoint       | async     | read_memory       |
         | ReadMemory16Endpoint      | async     | read_memory       |
