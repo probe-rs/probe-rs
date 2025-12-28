@@ -410,7 +410,7 @@ fn prune_logs(directory: &Path) -> Result<(), anyhow::Error> {
 
 /// Returns the cleaned arguments for the handler of the respective end binary
 /// (cli, cargo-flash, cargo-embed, etc.)
-fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<Vec<OsString>> {
+fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
     let argv0 = Path::new(&args[0]);
     if let Some(command) = argv0.file_stem().and_then(|f| f.to_str())
         && command == want
@@ -537,7 +537,7 @@ fn parse_and_resolve_cli_args<T: FromArgMatches + CommandFactory>(
     let mut matches = T::command().get_matches_from(&args);
 
     // Apply the configuration preset if one is specified.
-    if apply_config_preset(&config, &matches, &mut args)? {
+    if apply_config_preset(config, &matches, &mut args)? {
         // Re-parse the modified CLI input. Ignore errors so that users can specify
         // options that are only valid for certain subcommands.
         matches = T::command().ignore_errors(true).get_matches_from(args);
