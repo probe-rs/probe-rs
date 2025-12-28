@@ -1,6 +1,7 @@
 mod diagnostics;
 
 use anyhow::Context;
+use colored::Colorize;
 use diagnostics::render_diagnostics;
 use std::ffi::OsString;
 use std::{path::PathBuf, process};
@@ -8,11 +9,11 @@ use std::{path::PathBuf, process};
 use crate::rpc::client::RpcClient;
 use crate::util::cargo::build_artifact;
 use crate::util::cargo::cargo_target;
-use crate::util::cli;
 use crate::util::common_options::{
     BinaryDownloadOptions, CargoOptions, OperationError, ProbeOptions,
 };
 use crate::util::logging::{LevelFilter, setup_logging};
+use crate::util::{cli, logging};
 use crate::{Config, parse_and_resolve_cli_args, run_app};
 
 /// Common options when flashing a target device.
@@ -171,6 +172,11 @@ async fn main_try(client: &mut RpcClient, opt: CliOptions) -> Result<(), Operati
             .into()
     };
 
+    logging::eprintln(format!(
+        "    {} {}",
+        "Flashing".green().bold(),
+        path.display()
+    ));
     let session = cli::attach_probe(client, opt.probe_options, false).await?;
 
     cli::flash(
