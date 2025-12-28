@@ -43,12 +43,6 @@ impl RawDutDefinition {
 }
 
 #[derive(Debug, Clone)]
-pub enum DefinitionSource {
-    File(PathBuf),
-    Cli,
-}
-
-#[derive(Debug, Clone)]
 pub struct DutDefinition {
     pub chip: Target,
 
@@ -72,9 +66,6 @@ pub struct DutDefinition {
     /// Path to a binary which can be used to test
     /// flashing for the DUT.
     pub flash_test_binary: Option<PathBuf>,
-
-    /// Source of the DUT definition.
-    pub source: DefinitionSource,
 
     /// Indicates if the probe can control the reset pin of the
     /// DUT.
@@ -186,7 +177,6 @@ impl DutDefinition {
             protocol: raw_definition.protocol,
             probe_selector,
             flash_test_binary,
-            source: DefinitionSource::File(source_file.to_owned()),
             reset_connected: raw_definition.reset_connected,
         })
     }

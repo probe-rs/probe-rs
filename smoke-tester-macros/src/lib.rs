@@ -22,7 +22,7 @@ pub fn session_test(_args: TokenStream, item: TokenStream) -> TokenStream {
 
     };
 
-    proc_macro2::TokenStream::from(with_attr).into()
+    with_attr.into()
 }
 
 #[proc_macro_attribute]
@@ -44,5 +44,5 @@ pub fn core_test(_args: TokenStream, item: TokenStream) -> TokenStream {
 
     };
 
-    proc_macro2::TokenStream::from(with_attr).into()
+    with_attr.into()
 }

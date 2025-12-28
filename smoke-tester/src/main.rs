@@ -49,7 +49,7 @@ fn main() -> Result<ExitCode> {
 fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCode> {
     let mut trials = Vec::new();
 
-    for (_index, definition) in definitions.iter().enumerate() {
+    for definition in definitions.iter() {
         // Log some information
         //let probe = definition.open_probe()?;
 
@@ -74,7 +74,7 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
 
                 match (test.test_fn)(&session_definition, &mut session) {
                     Ok(()) => Ok(()),
-                    Err(err) => Err(err.into()),
+                    Err(err) => Err(err),
                 }
             })
             .with_kind(&chip_name);
@@ -139,7 +139,7 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
                             format!("Failed to reset core with index {core_index} after test")
                         })?;
 
-                    result.map_err(|err| Failed::from(err))
+                    result
                 })
                 .with_kind(&chip_name);
 
