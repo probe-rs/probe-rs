@@ -208,6 +208,10 @@ pub(crate) fn render_diagnostics(registry: &Registry, error: OperationError) {
             error.to_string(),
             vec![],
         ),
+        OperationError::Anyhow(error) => (
+            format!("{error:?}"),
+            vec![],
+        ),
     };
 
     use std::io::Write;

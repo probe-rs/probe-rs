@@ -540,6 +540,9 @@ pub enum OperationError {
     CliArgument(#[from] clap::Error),
     #[error("Failed to parse interactive probe index selection")]
     ParseProbeIndex(#[source] std::num::ParseIntError),
+
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
 }
 
 /// Used in errors it can print a list of items.
