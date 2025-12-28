@@ -24,7 +24,6 @@ use std::{
 };
 use time::{OffsetDateTime, UtcOffset};
 
-use crate::FormatOptions;
 use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
@@ -32,6 +31,7 @@ use crate::util::logging::setup_logging;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
+use crate::{Config, FormatOptions};
 
 #[derive(Debug, clap::Parser)]
 #[clap(
@@ -68,10 +68,21 @@ struct CliOptions {
     path: Option<PathBuf>,
     #[clap(flatten)]
     cargo_options: CargoOptions,
+
+    /// A configuration preset to apply.
+    ///
+    /// A preset is a list of command line arguments, that can be defined in the configuration file.
+    /// Presets can be used as a shortcut to specify any number of options, e.g. they can be used to
+    /// assign a name to a specific probe-chip pair.
+    ///
+    /// Manually specified command line arguments take overwrite presets, but presets
+    /// take precedence over environment variables.
+    #[arg(long, global = true, env = "PROBE_RS_CONFIG_PRESET")]
+    preset: Option<String>,
 }
 
-pub async fn main(args: Vec<OsString>, offset: UtcOffset) {
-    match main_try(&args, offset).await {
+pub async fn main(args: Vec<OsString>, config: Config, offset: UtcOffset) {
+    match main_try(args, config, offset).await {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling proces::exit,
@@ -106,7 +117,7 @@ pub async fn main(args: Vec<OsString>, offset: UtcOffset) {
     }
 }
 
-async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
+async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Result<()> {
     // Parse the commandline options.
     let opt = CliOptions::parse_from(args);
 

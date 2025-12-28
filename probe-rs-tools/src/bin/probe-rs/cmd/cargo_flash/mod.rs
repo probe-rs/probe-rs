@@ -8,6 +8,7 @@ use probe_rs::probe::list::Lister;
 use std::ffi::OsString;
 use std::{path::PathBuf, process};
 
+use crate::Config;
 use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{
     BinaryDownloadOptions, CargoOptions, OperationError, ProbeOptions,
@@ -54,11 +55,22 @@ struct CliOptions {
 
     #[command(flatten)]
     pub format_options: crate::FormatOptions,
+
+    /// A configuration preset to apply.
+    ///
+    /// A preset is a list of command line arguments, that can be defined in the configuration file.
+    /// Presets can be used as a shortcut to specify any number of options, e.g. they can be used to
+    /// assign a name to a specific probe-chip pair.
+    ///
+    /// Manually specified command line arguments take overwrite presets, but presets
+    /// take precedence over environment variables.
+    #[arg(long, global = true, env = "PROBE_RS_CONFIG_PRESET")]
+    preset: Option<String>,
 }
 
-pub fn main(args: Vec<OsString>) {
+pub fn main(args: Vec<OsString>, config: Config) {
     let mut registry = Registry::from_builtin_families();
-    match main_try(&mut registry, args) {
+    match main_try(&mut registry, config, args) {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling process::exit,
@@ -73,7 +85,11 @@ pub fn main(args: Vec<OsString>) {
     }
 }
 
-fn main_try(registry: &mut Registry, args: Vec<OsString>) -> Result<(), OperationError> {
+fn main_try(
+    registry: &mut Registry,
+    config: Config,
+    args: Vec<OsString>,
+) -> Result<(), OperationError> {
     // Parse the commandline options.
     let opt = CliOptions::parse_from(args);
 

@@ -437,17 +437,17 @@ async fn main() -> Result<()> {
 
     let mut args: Vec<_> = std::env::args_os().collect();
 
+    let config = load_config().context("Failed to load configuration.")?;
+
     // Special-case `cargo-embed` and `cargo-flash`.
     if let Some(args) = multicall_check(&args, "cargo-flash") {
-        cmd::cargo_flash::main(args);
+        cmd::cargo_flash::main(args, config);
         return Ok(());
     }
     if let Some(args) = multicall_check(&args, "cargo-embed") {
-        cmd::cargo_embed::main(args, utc_offset).await;
+        cmd::cargo_embed::main(args, config, utc_offset).await;
         return Ok(());
     }
-
-    let config = load_config().context("Failed to load configuration.")?;
 
     // Parse the commandline options.
     let mut matches = Cli::command().get_matches_from(&args);
