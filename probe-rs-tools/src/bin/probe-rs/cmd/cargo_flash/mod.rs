@@ -54,6 +54,26 @@ struct CliOptions {
     #[command(flatten)]
     pub format_options: crate::FormatOptions,
 
+    /// Remote host to connect to
+    #[cfg(feature = "remote")]
+    #[arg(
+        long,
+        global = true,
+        env = "PROBE_RS_REMOTE_HOST",
+        help_heading = "REMOTE CONFIGURATION"
+    )]
+    host: Option<String>,
+
+    /// Authentication token for remote connections
+    #[cfg(feature = "remote")]
+    #[arg(
+        long,
+        global = true,
+        env = "PROBE_RS_REMOTE_TOKEN",
+        help_heading = "REMOTE CONFIGURATION"
+    )]
+    token: Option<String>,
+
     /// A configuration preset to apply.
     ///
     /// A preset is a list of command line arguments, that can be defined in the configuration file.
@@ -73,7 +93,16 @@ pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
     // Initialize the logger with the loglevel given on the commandline.
     let _log_guard = setup_logging(None, opt.log);
 
-    let terminate = run_app(None, async |mut client| {
+    #[cfg(feature = "remote")]
+    let connection_params = opt
+        .host
+        .as_ref()
+        .map(|host| (host.clone(), opt.token.clone()));
+
+    #[cfg(not(feature = "remote"))]
+    let connection_params = None;
+
+    let terminate = run_app(connection_params, async |mut client| {
         let main_result = main_try(&mut client, opt).await;
 
         let r = client.registry().await;
