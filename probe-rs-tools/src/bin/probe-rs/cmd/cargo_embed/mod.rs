@@ -70,8 +70,8 @@ struct CliOptions {
     cargo_options: CargoOptions,
 }
 
-pub async fn main(args: &[OsString], offset: UtcOffset) {
-    match main_try(args, offset).await {
+pub async fn main(args: Vec<OsString>, offset: UtcOffset) {
+    match main_try(&args, offset).await {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling proces::exit,

@@ -56,7 +56,7 @@ struct CliOptions {
     pub format_options: crate::FormatOptions,
 }
 
-pub fn main(args: &[OsString]) {
+pub fn main(args: Vec<OsString>) {
     let mut registry = Registry::from_builtin_families();
     match main_try(&mut registry, args) {
         Ok(_) => (),
@@ -73,7 +73,7 @@ pub fn main(args: &[OsString]) {
     }
 }
 
-fn main_try(registry: &mut Registry, args: &[OsString]) -> Result<(), OperationError> {
+fn main_try(registry: &mut Registry, args: Vec<OsString>) -> Result<(), OperationError> {
     // Parse the commandline options.
     let opt = CliOptions::parse_from(args);
 

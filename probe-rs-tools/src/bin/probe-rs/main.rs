@@ -410,18 +410,18 @@ fn prune_logs(directory: &Path) -> Result<(), anyhow::Error> {
 
 /// Returns the cleaned arguments for the handler of the respective end binary
 /// (cli, cargo-flash, cargo-embed, etc.)
-fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<&'list [OsString]> {
+fn multicall_check<'list>(args: &'list [OsString], want: &str) -> Option<Vec<OsString>> {
     let argv0 = Path::new(&args[0]);
     if let Some(command) = argv0.file_stem().and_then(|f| f.to_str())
         && command == want
     {
-        return Some(args);
+        return Some(args.to_vec());
     }
 
     if let Some(command) = args.get(1).and_then(|f| f.to_str())
         && command == want
     {
-        return Some(&args[1..]);
+        return Some(args[1..].to_vec());
     }
 
     None
