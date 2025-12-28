@@ -249,6 +249,10 @@ impl RpcClient {
         }
     }
 
+    pub fn is_local_session(&self) -> bool {
+        self.is_localhost
+    }
+
     pub fn new_local_from_wire(
         tx: impl PostcardSender + Send + Sync + 'static,
         rx: impl PostcardReceiver + Send + 'static,

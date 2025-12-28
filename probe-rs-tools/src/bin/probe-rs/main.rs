@@ -476,18 +476,44 @@ async fn main() -> Result<()> {
     let report_path = cli.report.clone();
 
     #[cfg(feature = "remote")]
-    if let Some(host) = cli.host.as_deref() {
-        // Run the command remotely.
-        let client = rpc::client::connect(host, cli.token.clone()).await?;
+    let connection_params = cli
+        .host
+        .as_ref()
+        .map(|host| (host.clone(), cli.token.clone()));
 
+    #[cfg(not(feature = "remote"))]
+    let connection_params = None;
+
+    let is_local = connection_params.is_none();
+
+    let result = run_app(connection_params, async |client| {
         anyhow::ensure!(
-            cli.subcommand.is_remote_cmd(),
+            client.is_local_session() || !cli.subcommand.is_remote_cmd(),
             "The subcommand is not supported in remote mode."
         );
 
-        cli.run(client, config, utc_offset).await?;
-        // TODO: handle the report
-        return Ok(());
+        cli.run(client, config, utc_offset).await
+    })
+    .await;
+
+    if is_local {
+        // TODO: do something with remote crashes
+        compile_report(result, report_path, elf, log_path.as_deref())?;
+    }
+    Ok(())
+}
+
+/// Runs the callback using either a local or remote RPC client.
+async fn run_app(
+    _connection_params: Option<(String, Option<String>)>,
+    cb: impl AsyncFnOnce(RpcClient) -> Result<()>,
+) -> Result<()> {
+    #[cfg(feature = "remote")]
+    if let Some((host, token)) = _connection_params {
+        // Run the command remotely.
+        let client = rpc::client::connect(&host, token).await?;
+
+        return cb(client).await;
     }
 
     // Create a local server to run commands against.
@@ -496,12 +522,12 @@ async fn main() -> Result<()> {
 
     // Run the command locally.
     let client = RpcClient::new_local_from_wire(tx, rx);
-    let result = cli.run(client, config, utc_offset).await;
+    let result = cb(client).await;
 
     // Wait for the server to shut down
     _ = handle.await.unwrap();
 
-    compile_report(result, report_path, elf, log_path.as_deref())
+    result
 }
 
 fn parse_and_resolve_cli_args<T: FromArgMatches + CommandFactory>(
