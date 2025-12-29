@@ -441,6 +441,9 @@ async fn run_rttui_app(
         if start.elapsed() > config.rtt.timeout {
             return Err(anyhow!("Failed to attach to RTT: Timeout"));
         }
+
+        // Throttle attaching. If the target requires stop-mode RTT, this sleep will improve the boot time.
+        std::thread::sleep(Duration::from_millis(10));
     };
 
     tracing::info!("RTT initialized.");
