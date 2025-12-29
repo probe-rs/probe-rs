@@ -434,7 +434,7 @@ async fn run_rttui_app(
         let mut session_handle = session.lock();
         let mut core = session_handle.core(core_id)?;
 
-        if client.try_attach(&mut core)? {
+        if let Ok(true) = client.try_attach(&mut core) {
             break client;
         }
 
