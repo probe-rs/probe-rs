@@ -198,7 +198,6 @@ enum Subcommand {
 }
 
 impl Subcommand {
-    #[cfg(feature = "remote")]
     fn is_remote_cmd(&self) -> bool {
         // Commands that are implemented via a series of RPC calls.
         // TODO: refactor other commands
