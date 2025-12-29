@@ -446,8 +446,13 @@ impl Debugger {
 
         self.config.validate_config_files()?;
 
-        let mut session_data =
-            SessionData::new(registry, lister, &mut self.config, self.timestamp_offset)?;
+        let mut session_data = SessionData::new(
+            registry,
+            lister,
+            &mut self.config,
+            self.timestamp_offset,
+            requested_target_session_type,
+        )?;
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 

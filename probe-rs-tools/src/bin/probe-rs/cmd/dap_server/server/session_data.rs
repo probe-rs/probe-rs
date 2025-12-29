@@ -10,6 +10,7 @@ use crate::{
             dap::{adapter::DebugAdapter, dap_types::Source},
             protocol::ProtocolAdapter,
         },
+        server::startup::TargetSessionType,
     },
     util::{common_options::OperationError, rtt},
 };
@@ -74,6 +75,7 @@ impl SessionData {
         lister: &Lister,
         config: &mut configuration::SessionConfig,
         timestamp_offset: UtcOffset,
+        session_type: TargetSessionType,
     ) -> Result<Self, DebuggerError> {
         let target_selector = TargetSelector::from(config.chip.as_deref());
 
@@ -176,7 +178,8 @@ impl SessionData {
                 rtt_scan_ranges: ScanRegion::Ranges(vec![]),
                 rtt_connection: None,
                 rtt_client: None,
-                clear_rtt_header: false,
+                // For launch requests, always clear the RTT header, otherwise we may attach before the channel names are set.
+                clear_rtt_header: session_type == TargetSessionType::LaunchRequest,
                 rtt_header_cleared: false,
 
                 // We're abusing the RTT window machinery here for simplicity.
@@ -345,7 +348,8 @@ impl SessionData {
                     {
                         suggest_delay_required = false;
                     }
-                } else {
+                } else if debug_adapter.configuration_is_done() {
+                    // Make sure we only attempt attaching when we're ready.
                     #[expect(clippy::unwrap_used)]
                     if let Err(error) = target_core.attach_to_rtt(
                         debug_adapter,
