@@ -133,6 +133,8 @@ fn get_cmsisdap_info(device: &DeviceInfo) -> Vec<DebugProbeInfo> {
             tracing::trace!("No HID interface for CMSIS-DAP found.")
         }
     }
+    // Make sure cmsis-dap v2 interfaces are tried first
+    results.sort_by_key(|dpi| dpi.is_hid_interface);
     results
 }
 
