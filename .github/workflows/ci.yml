@@ -45,6 +45,9 @@ jobs:
         run: cargo check -p probe-rs --no-default-features --locked
 
       - name: Run cargo check
+        run: cargo check --locked
+
+      - name: Run cargo check with all features
         run: cargo check --all-features --locked
 
   test:
