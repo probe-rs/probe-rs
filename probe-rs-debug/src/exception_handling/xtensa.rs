@@ -76,7 +76,10 @@ impl XtensaExceptionHandler {
 
         if windowsize > 1 {
             // The rest of the registers are in the previous stack frame.
-            let frame_sp = memory.read_word_32(caller_sp as u64 - 12)?;
+            let Some(caller_sp) = caller_sp.checked_sub(12) else {
+                return Ok(());
+            };
+            let frame_sp = memory.read_word_32(caller_sp as u64)?;
 
             // We've already read 4 registers out of windowsize * 4.
             const AREGS: [&str; 8] = ["a4", "a5", "a6", "a7", "a8", "a9", "a10", "a11"];
@@ -86,10 +89,13 @@ impl XtensaExceptionHandler {
             let frame_to_read = &mut frame[..regs_to_read as usize];
 
             // For windowsize = 3(12 registers), the offset is -48
-            memory.read_32(
-                frame_sp as u64 - 16 - 4 * regs_to_read,
-                &mut frame_to_read[..],
-            )?;
+            let sp_offset = 16 + 4 * regs_to_read;
+
+            let Some(frame_sp) = (frame_sp as u64).checked_sub(sp_offset) else {
+                return Ok(());
+            };
+
+            memory.read_32(frame_sp, &mut frame_to_read[..])?;
 
             for (reg, reg_value) in AREGS.iter().zip(frame_to_read.iter().copied()) {
                 let reg = unwind_registers
