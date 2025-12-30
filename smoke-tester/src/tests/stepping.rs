@@ -15,7 +15,7 @@ fn test_stepping(_definition: &DutDefinition, core: &mut Core) -> TestResult {
     println!("Testing stepping on core {}...", core.id());
 
     if core.architecture() != Architecture::Arm {
-        skip_test!("Not implement for architectures other than ARM");
+        skip_test!("Not implemented for architectures other than ARM");
 
         /*
         // Not implemented for RISC-V yet
