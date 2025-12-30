@@ -120,6 +120,7 @@ pub(super) struct Flasher {
     pub(super) flash_algorithm: FlashAlgorithm,
     pub(super) loaded: bool,
     pub(super) regions: Vec<LoadedRegion>,
+    pub(super) read_flasher_rtt: bool,
 }
 
 /// The byte used to fill the stack when checking for stack overflows.
@@ -142,6 +143,7 @@ impl Flasher {
             flash_algorithm,
             loaded: false,
             regions: Vec::new(),
+            read_flasher_rtt: false,
         })
     }
 
@@ -252,6 +254,7 @@ impl Flasher {
             rtt: None,
             progress,
             flash_algorithm: &self.flash_algorithm,
+            read_flasher_rtt: self.read_flasher_rtt,
             _operation: PhantomData,
         };
 
@@ -762,6 +765,10 @@ impl Flasher {
         });
         Ok(())
     }
+
+    pub(crate) fn read_rtt_output(&mut self, read: bool) {
+        self.read_flasher_rtt = read;
+    }
 }
 
 struct Registers {
@@ -796,6 +803,7 @@ pub(super) struct ActiveFlasher<'op, 'p, O: Operation> {
     rtt: Option<Rtt>,
     progress: &'op mut FlashProgress<'p>,
     flash_algorithm: &'op FlashAlgorithm,
+    read_flasher_rtt: bool,
     _operation: PhantomData<O>,
 }
 
@@ -996,7 +1004,8 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         self.core.run().map_err(FlashError::Run)?;
 
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block
-            && rtt::log_rtt_output()
+            && self.rtt.is_none()
+            && self.read_flasher_rtt
         {
             match crate::rtt::try_attach_to_rtt(
                 &mut self.core,
@@ -1080,7 +1089,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 Ok(read) if read > 0 => {
                     let message = String::from_utf8_lossy(&buffer[..read]).to_string();
                     let channel = channel.name().unwrap_or("unnamed");
-                    rtt::print(channel, &message);
+                    tracing::debug!("RTT({channel}): {message}");
                     self.progress.message(message);
                 }
                 Ok(_) => (),
@@ -1425,21 +1434,5 @@ impl ActiveFlasher<'_, '_, Program> {
                 page_address: last_page_address,
                 source: Box::new(error),
             })
-    }
-}
-
-// Separate module so that RTT can be controlled independently of other flasher log output.
-mod rtt {
-    use tracing::Level;
-
-    pub(super) const RTT_LOG_LEVEL: Level = Level::DEBUG;
-
-    /// Returns `true` if `probe_rs::flashing::flasher::rtt` is enabled at `RTT_LOG_LEVEL` (debug) level.
-    pub(super) fn log_rtt_output() -> bool {
-        tracing::enabled!(RTT_LOG_LEVEL)
-    }
-
-    pub(super) fn print(channel: &str, message: &str) {
-        tracing::event!(RTT_LOG_LEVEL, "RTT({channel}): {message}");
     }
 }

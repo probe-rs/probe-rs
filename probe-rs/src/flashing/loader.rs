@@ -349,6 +349,8 @@ pub struct FlashLoader {
     source: TargetDescriptionSource,
     /// Relevant for manually configured RAM booted executables, available only if given loader supports it
     vector_table_addr: Option<u64>,
+
+    read_flasher_rtt: bool,
 }
 
 impl FlashLoader {
@@ -359,7 +361,13 @@ impl FlashLoader {
             builder: FlashBuilder::new(),
             source,
             vector_table_addr: None,
+            read_flasher_rtt: false,
         }
+    }
+
+    /// Enable reading RTT output from the flasher.
+    pub fn read_rtt_output(&mut self, read: bool) {
+        self.read_flasher_rtt = read;
     }
 
     fn set_vector_table_addr(&mut self, vector_table_addr: u64) {
@@ -729,6 +737,9 @@ impl FlashLoader {
             } else {
                 let mut flasher = Flasher::new(target, core, algo)?;
                 flasher.add_region(region, &self.builder, restore_unwritten_bytes)?;
+
+                flasher.read_rtt_output(self.read_flasher_rtt);
+
                 algos.push(flasher);
             }
         }
