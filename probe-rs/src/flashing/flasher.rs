@@ -995,7 +995,9 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         // Resume target operation.
         self.core.run().map_err(FlashError::Run)?;
 
-        if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
+        if let Some(rtt_address) = self.flash_algorithm.rtt_control_block
+            && tracing::enabled!(Level::DEBUG)
+        {
             match rtt::try_attach_to_rtt(
                 &mut self.core,
                 Duration::from_secs(1),
