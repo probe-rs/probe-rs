@@ -8,7 +8,7 @@ use crate::error::Error;
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector};
 use crate::memory::MemoryInterface;
-use crate::rtt::{self, Rtt, ScanRegion};
+use crate::rtt::{Rtt, ScanRegion};
 use crate::{Core, InstructionSet, core::CoreRegisters, session::Session};
 use crate::{CoreStatus, Target};
 use std::borrow::Cow;
@@ -996,15 +996,15 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         self.core.run().map_err(FlashError::Run)?;
 
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block
-            && tracing::enabled!(Level::DEBUG)
+            && rtt::log_rtt_output()
         {
-            match rtt::try_attach_to_rtt(
+            match crate::rtt::try_attach_to_rtt(
                 &mut self.core,
                 Duration::from_secs(1),
                 &ScanRegion::Exact(rtt_address),
             ) {
                 Ok(rtt) => self.rtt = Some(rtt),
-                Err(rtt::Error::NoControlBlockLocation) => {}
+                Err(crate::rtt::Error::NoControlBlockLocation) => {}
                 Err(error) => tracing::error!("RTT could not be initialized: {error}"),
             }
         }
@@ -1019,6 +1019,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
         // Wait until halted state is active again.
         let start = Instant::now();
+        let mut last_read = Instant::now();
 
         loop {
             match self
@@ -1039,11 +1040,16 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 }
                 _ => {} // All other statuses are okay: we'll just keep polling.
             }
-            self.read_rtt()?;
-            if start.elapsed() >= timeout {
+
+            let now = Instant::now();
+            // TODO make this configurable.
+            if now - last_read >= Duration::from_millis(20) {
+                self.read_rtt()?;
+                last_read = now;
+            }
+            if now - start >= timeout {
                 return Err(FlashError::Core(Error::Timeout));
             }
-            std::thread::sleep(Duration::from_millis(1));
         }
 
         self.check_for_stack_overflow()?;
@@ -1074,7 +1080,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 Ok(read) if read > 0 => {
                     let message = String::from_utf8_lossy(&buffer[..read]).to_string();
                     let channel = channel.name().unwrap_or("unnamed");
-                    tracing::debug!("RTT({channel}): {message}");
+                    rtt::print(channel, &message);
                     self.progress.message(message);
                 }
                 Ok(_) => (),
@@ -1419,5 +1425,21 @@ impl ActiveFlasher<'_, '_, Program> {
                 page_address: last_page_address,
                 source: Box::new(error),
             })
+    }
+}
+
+// Separate module so that RTT can be controlled independently of other flasher log output.
+mod rtt {
+    use tracing::Level;
+
+    pub(super) const RTT_LOG_LEVEL: Level = Level::DEBUG;
+
+    /// Returns `true` if `probe_rs::flashing::flasher::rtt` is enabled at `RTT_LOG_LEVEL` (debug) level.
+    pub(super) fn log_rtt_output() -> bool {
+        tracing::enabled!(RTT_LOG_LEVEL)
+    }
+
+    pub(super) fn print(channel: &str, message: &str) {
+        tracing::event!(RTT_LOG_LEVEL, "RTT({channel}): {message}");
     }
 }
