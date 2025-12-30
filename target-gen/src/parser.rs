@@ -99,6 +99,10 @@ pub fn extract_flash_algo(
                 algo.rtt_location = Some(sym.st_value);
                 log::debug!("Found RTT control block at address {:#010x}", sym.st_value);
             }
+            "PAGE_BUFFER" => {
+                algo.data_load_address = Some(sym.st_value);
+                log::debug!("Found PAGE_BUFFER at address {:#010x}", sym.st_value);
+            }
 
             _ => {}
         }
