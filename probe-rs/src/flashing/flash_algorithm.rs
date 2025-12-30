@@ -63,6 +63,11 @@ pub struct FlashAlgorithm {
     /// If this is present, the flash algorithm supports debug output over RTT.
     pub rtt_control_block: Option<u64>,
 
+    /// Milliseconds between RTT polls.
+    ///
+    /// Set to 0 to only read output when the flasher function has returned.
+    pub rtt_poll_interval: u64,
+
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
 
@@ -438,6 +443,7 @@ impl FlashAlgorithm {
             stack_size,
             page_buffers,
             rtt_control_block: raw.rtt_location,
+            rtt_poll_interval: raw.rtt_poll_interval,
             flash_properties: raw.flash_properties.clone(),
             transfer_encoding: raw.transfer_encoding.unwrap_or_default(),
             stack_overflow_check: raw.stack_overflow_check(),

@@ -100,6 +100,7 @@ flash_algorithms:
   pc_flash_size: 0x27c
   data_section_offset: 0xb60
   rtt_location: 0x3fcc2c10
+  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x0

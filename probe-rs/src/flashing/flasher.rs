@@ -1030,6 +1030,8 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         let start = Instant::now();
         let mut last_read = Instant::now();
 
+        let poll_interval = Duration::from_millis(self.flash_algorithm.rtt_poll_interval);
+
         loop {
             match self
                 .core
@@ -1051,8 +1053,8 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             }
 
             let now = Instant::now();
-            // TODO make this configurable.
-            if now - last_read >= Duration::from_millis(20) {
+
+            if poll_interval != Duration::ZERO && now - last_read >= poll_interval {
                 self.read_rtt()?;
                 last_read = now;
             }
