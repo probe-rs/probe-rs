@@ -13,7 +13,7 @@ use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use probe_rs::InstructionSet;
-use probe_rs::flashing::{BinOptions, ElfOptions, FlashProgress, Format, IdfOptions};
+use probe_rs::flashing::{BinOptions, ElfOptions, FlashError, FlashProgress, Format, IdfOptions};
 use probe_rs::{
     Session,
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},
@@ -66,14 +66,33 @@ pub fn run_flash_download(
     // Start timer.
     let flash_timer = Instant::now();
 
-    loader
-        .commit(session, options)
-        .map_err(|error| OperationError::FlashingFailed {
-            source: Box::new(error),
-            target: Box::new(session.target().clone()),
-            target_spec: probe_options.chip(),
-            path: path.as_ref().to_path_buf(),
-        })?;
+    let run_flash = if options.preverify {
+        match loader.verify(session, &mut options.progress) {
+            Ok(_) => false,
+            Err(FlashError::Verify) => true,
+            Err(error) => {
+                return Err(OperationError::FlashingFailed {
+                    source: Box::new(error),
+                    target: Box::new(session.target().clone()),
+                    target_spec: probe_options.chip(),
+                    path: path.as_ref().to_path_buf(),
+                });
+            }
+        }
+    } else {
+        true
+    };
+
+    if run_flash {
+        loader
+            .commit(session, options)
+            .map_err(|error| OperationError::FlashingFailed {
+                source: Box::new(error),
+                target: Box::new(session.target().clone()),
+                target_spec: probe_options.chip(),
+                path: path.as_ref().to_path_buf(),
+            })?;
+    }
 
     // If we don't do this, the progress bars disappear.
     logging::clear_progress_bar();

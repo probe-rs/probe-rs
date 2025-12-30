@@ -269,7 +269,8 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
         Err(e) => return Err(e.into()),
     };
 
-    let format = FormatKind::from(FormatOptions::default().to_format_kind(session.target()));
+    let format_options = FormatOptions::default();
+    let format = FormatKind::from(format_options.to_format_kind(session.target()));
     let elf = if matches!(format, FormatKind::Elf | FormatKind::Idf) {
         Some(fs::read(&path)?)
     } else {
@@ -302,7 +303,6 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
             verify: config.flashing.verify,
             chip_erase: config.flashing.do_chip_erase,
         };
-        let format_options = FormatOptions::default();
         let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
 
         rtt_client.configure_from_loader(&loader);
@@ -434,13 +434,16 @@ async fn run_rttui_app(
         let mut session_handle = session.lock();
         let mut core = session_handle.core(core_id)?;
 
-        if client.try_attach(&mut core)? {
+        if let Ok(true) = client.try_attach(&mut core) {
             break client;
         }
 
         if start.elapsed() > config.rtt.timeout {
             return Err(anyhow!("Failed to attach to RTT: Timeout"));
         }
+
+        // Throttle attaching. If the target requires stop-mode RTT, this sleep will improve the boot time.
+        std::thread::sleep(Duration::from_millis(10));
     };
 
     tracing::info!("RTT initialized.");
