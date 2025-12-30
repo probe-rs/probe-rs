@@ -503,6 +503,7 @@ impl SessionInterface {
     pub async fn erase(
         &self,
         command: EraseCommand,
+        read_flasher_rtt: bool,
         on_msg: impl AsyncFnMut(ProgressEvent),
     ) -> anyhow::Result<()> {
         self.client
@@ -510,6 +511,7 @@ impl SessionInterface {
                 &EraseRequest {
                     sessid: self.sessid,
                     command,
+                    read_flasher_rtt,
                 },
                 on_msg,
             )

@@ -388,6 +388,7 @@ fn flash_impl(
 pub struct EraseRequest {
     pub sessid: Key<Session>,
     pub command: EraseCommand,
+    pub read_flasher_rtt: bool,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -417,7 +418,9 @@ fn erase_impl(
     });
 
     match request.command {
-        EraseCommand::All => flashing::erase_all(&mut session, &mut progress)?,
+        EraseCommand::All => {
+            flashing::erase_all(&mut session, &mut progress, request.read_flasher_rtt)?
+        }
     }
 
     Ok(())
