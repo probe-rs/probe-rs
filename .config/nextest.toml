@@ -1,10 +1,15 @@
 [test-groups]
+# We need to limit the number of threads for hardware tests to avoid resource contention,
+# technically we could run tests for multiple hardware targets in parallel.
 hardware = { max-threads = 1 }
+
+[profile.default]
+# Disable tests requiring hardware by default
+default-filter = "not package(smoke_tester)"
 
 [[profile.default.overrides]]
 filter = "package(smoke_tester)"
 test-group = "hardware"
-
 
 [profile.ci-unit]
 default-filter = "not package(smoke_tester)"

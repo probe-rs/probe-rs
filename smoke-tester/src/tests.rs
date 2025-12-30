@@ -13,7 +13,7 @@ pub mod stepping;
 
 use crate::{CORE_TESTS, SESSION_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
 
-#[smoke_tester_macros::core_test]
+#[smoke_tester_macros::test(core)]
 pub fn test_register_read(_dut_definition: &DutDefinition, core: &mut Core) -> TestResult {
     println!("Testing register read...");
 
@@ -28,7 +28,7 @@ pub fn test_register_read(_dut_definition: &DutDefinition, core: &mut Core) -> T
     Ok(())
 }
 
-#[smoke_tester_macros::core_test]
+#[smoke_tester_macros::test(core)]
 fn test_register_write(_definition: &DutDefinition, core: &mut Core) -> TestResult {
     println!("Testing register write...");
 
@@ -93,7 +93,7 @@ fn test_write_read(scenario: &str, core: &mut Core, address: u64, data: &[u8]) -
     Ok(())
 }
 
-#[smoke_tester_macros::core_test]
+#[smoke_tester_macros::test(core)]
 fn test_memory_access(_dut: &DutDefinition, core: &mut Core) -> TestResult {
     let memory_regions = core
         .memory_regions()
@@ -187,7 +187,7 @@ fn test_memory_access(_dut: &DutDefinition, core: &mut Core) -> TestResult {
     Ok(())
 }
 
-#[smoke_tester_macros::core_test]
+#[smoke_tester_macros::test(core)]
 fn test_hw_breakpoints(_definition: &DutDefinition, core: &mut Core) -> TestResult {
     println!("Testing HW breakpoints");
 
@@ -276,7 +276,7 @@ fn test_hw_breakpoints(_definition: &DutDefinition, core: &mut Core) -> TestResu
     Ok(())
 }
 
-#[smoke_tester_macros::session_test]
+#[smoke_tester_macros::test(session)]
 pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> Result<(), Failed> {
     let Some(test_binary) = dut_definition.flash_test_binary.as_deref() else {
         skip_test!("No flash test binary specified");

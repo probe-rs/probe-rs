@@ -10,7 +10,7 @@ use crate::{CORE_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
 
 const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
 
-#[smoke_tester_macros::core_test]
+#[smoke_tester_macros::test(core)]
 fn test_stepping(_definition: &DutDefinition, core: &mut Core) -> TestResult {
     println!("Testing stepping on core {}...", core.id());
 

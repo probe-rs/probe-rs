@@ -1576,6 +1576,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glob"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
+
+[[package]]
 name = "goblin"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3083,6 +3089,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-error-attr2"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96de42df36bb9bba5542fe9f1a054b8cc87e172759a1868aa05c1f3acc89dfc5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "proc-macro-error2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11ec05c52be0a07b08061f7dd003e7d7092e0472bc731b4af7bb1ef876109802"
+dependencies = [
+ "proc-macro-error-attr2",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3927,9 +3955,11 @@ dependencies = [
 name = "smoke_tester_macros"
 version = "0.30.0"
 dependencies = [
+ "proc-macro-error2",
  "proc-macro2",
  "quote",
  "syn 2.0.111",
+ "trybuild",
 ]
 
 [[package]]
@@ -4111,6 +4141,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "target-triple"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "591ef38edfb78ca4771ee32cf494cb8771944bee237a9b91fc9c1424ac4b777b"
+
+[[package]]
 name = "tempfile"
 version = "3.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4121,6 +4157,15 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "termcolor"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
+dependencies = [
+ "winapi-util",
 ]
 
 [[package]]
@@ -4611,6 +4656,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
+name = "trybuild"
+version = "1.0.114"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e17e807bff86d2a06b52bca4276746584a78375055b6e45843925ce2802b335"
+dependencies = [
+ "glob",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "target-triple",
+ "termcolor",
+ "toml 0.9.10+spec-1.1.0",
+]
+
+[[package]]
 name = "tungstenite"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4954,6 +5014,15 @@ name = "winapi-i686-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
+
+[[package]]
+name = "winapi-util"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
+dependencies = [
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "winapi-x86_64-pc-windows-gnu"
