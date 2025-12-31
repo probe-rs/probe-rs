@@ -1,6 +1,7 @@
 use std::{
     any::Any,
-    collections::HashMap,
+    collections::{HashMap, HashSet},
+    hash::{Hash, Hasher},
     marker::PhantomData,
     ops::DerefMut,
     sync::{
@@ -16,16 +17,29 @@ use postcard_schema::{
 use probe_rs::{Session, config::Registry};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 
 pub mod client;
 pub mod functions;
 pub mod transport;
 pub mod utils;
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Key<T> {
     key: u64,
     marker: PhantomData<T>,
+}
+
+impl<T> Eq for Key<T> {}
+impl<T> PartialEq for Key<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+impl<T> Hash for Key<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.key.hash(state);
+    }
 }
 
 unsafe impl<T> Send for Key<T> {}
@@ -119,19 +133,23 @@ impl ObjectStorage {
     }
 }
 
+/// State associated with a single connection.
 #[derive(Clone)]
-pub struct SessionState {
-    dry_run: bool,
+pub struct ConnectionState {
+    dry_run_sessions: HashSet<Key<Session>>,
+    /// Generic object storage.
     object_storage: Arc<Mutex<ObjectStorage>>,
     registry: Arc<Mutex<Registry>>,
+    token: CancellationToken,
 }
 
-impl SessionState {
+impl ConnectionState {
     pub fn new() -> Self {
         Self {
-            dry_run: false,
+            dry_run_sessions: HashSet::new(),
             object_storage: Arc::new(Mutex::new(ObjectStorage::new())),
             registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
+            token: CancellationToken::new(),
         }
     }
 
@@ -155,18 +173,41 @@ impl SessionState {
 
     pub async fn set_session(&mut self, session: Session, dry_run: bool) -> Key<Session> {
         let key = self.store_object(session).await;
-        self.dry_run = dry_run;
+        if dry_run {
+            self.dry_run_sessions.insert(key);
+        }
         key
     }
 
-    pub fn session_blocking(
-        &self,
-        sid: Key<Session>,
-    ) -> impl DerefMut<Target = Session> + Send + use<> {
-        self.object_mut_blocking(sid)
+    pub fn shared_session(&self, sid: Key<Session>) -> SessionState<'_> {
+        SessionState {
+            object_storage: self.object_storage.as_ref(),
+            session: sid,
+            dry_run: self.dry_run_sessions.contains(&sid),
+        }
+    }
+}
+
+/// A shared handle for the [`Session`].
+#[derive(Clone)]
+pub struct SessionState<'a> {
+    object_storage: &'a Mutex<ObjectStorage>,
+    session: Key<Session>,
+    dry_run: bool,
+}
+
+impl SessionState<'_> {
+    /// Returns a handle to the session.
+    ///
+    /// This function blocks while other users hold the session.
+    pub fn session_blocking(&self) -> impl DerefMut<Target = Session> + Send + use<> {
+        self.object_storage
+            .blocking_lock()
+            .object_mut_blocking(self.session)
     }
 
-    pub fn dry_run(&self, _sid: Key<Session>) -> bool {
+    /// Returns whether the session is in dry-run mode.
+    pub fn dry_run(&self) -> bool {
         self.dry_run
     }
 }

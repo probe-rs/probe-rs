@@ -7,6 +7,8 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use probe_rs::{Core, Error, HaltReason, VectorCatchCondition};
 
+use crate::rpc::SessionState;
+
 pub struct RunLoop {
     pub core_id: usize,
     pub cancellation_token: CancellationToken,
@@ -35,7 +37,7 @@ impl RunLoop {
     /// The function will also return on timeout with `Ok(ReturnReason::Timeout)` or if the user presses CTRL + C with `Ok(ReturnReason::User)`.
     pub fn run_until<F, R>(
         &mut self,
-        core: &mut Core,
+        shared_session: &SessionState<'_>,
         catch_hardfault: bool,
         catch_reset: bool,
         mut poller: impl RunLoopPoller,
@@ -45,35 +47,43 @@ impl RunLoop {
     where
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
-        if catch_hardfault || catch_reset {
-            if !core.core_halted()? {
-                core.halt(Duration::from_millis(100))?;
+        // Prepare run loop
+        {
+            let mut session = shared_session.session_blocking();
+            let mut core = session.core(self.core_id)?;
+            if catch_hardfault || catch_reset {
+                if !core.core_halted()? {
+                    core.halt(Duration::from_millis(100))?;
+                }
+
+                if catch_hardfault {
+                    match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+                        Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+                if catch_reset {
+                    match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                        Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
             }
 
-            if catch_hardfault {
-                match core.enable_vector_catch(VectorCatchCondition::HardFault) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                }
-            }
-            if catch_reset {
-                match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                }
+            poller.start(&mut core)?;
+
+            if core.core_halted()? {
+                core.run()?;
             }
         }
 
-        poller.start(core)?;
+        let result = self.do_run_until(shared_session, &mut poller, timeout, &mut predicate);
 
-        if core.core_halted()? {
-            core.run()?;
-        }
-
-        let result = self.do_run_until(core, &mut poller, timeout, &mut predicate);
-
+        // Clean up run loop
+        let mut session = shared_session.session_blocking();
+        let mut core = session.core(self.core_id)?;
         // Always clean up after RTT but don't overwrite the original result.
-        let poller_exit_result = poller.exit(core);
+        let poller_exit_result = poller.exit(&mut core);
         if result.is_ok() {
             // If the result is Ok, we return the potential error during cleanup.
             poller_exit_result?;
@@ -84,7 +94,7 @@ impl RunLoop {
 
     fn do_run_until<F, R>(
         &mut self,
-        core: &mut Core<'_>,
+        shared_session: &SessionState<'_>,
         poller: &mut impl RunLoopPoller,
         timeout: Option<Duration>,
         predicate: &mut F,
@@ -95,7 +105,7 @@ impl RunLoop {
         let start = Instant::now();
 
         loop {
-            match self.poll_once(core, poller, predicate)? {
+            match self.poll_once(shared_session, poller, predicate)? {
                 ControlFlow::Break(reason) => return Ok(reason),
                 ControlFlow::Continue(next_poll) => {
                     if let Some(timeout) = timeout
@@ -114,20 +124,23 @@ impl RunLoop {
 
     fn poll_once<F, R>(
         &self,
-        core: &mut Core<'_>,
+        shared_session: &SessionState<'_>,
         poller: &mut impl RunLoopPoller,
         predicate: &mut F,
     ) -> Result<ControlFlow<ReturnReason<R>, Duration>>
     where
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
+        let mut session = shared_session.session_blocking();
+        let mut core = session.core(self.core_id)?;
+
         let mut next_poll = Duration::from_millis(100);
 
         // check for halt first, poll rtt after.
         // this is important so we do one last poll after halt, so we flush all messages
         // the core printed before halting, such as a panic message.
         let return_reason = match core.status()? {
-            probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core) {
+            probe_rs::CoreStatus::Halted(reason) => match predicate(reason, &mut core) {
                 Ok(Some(r)) => Some(Ok(ReturnReason::Predicate(r))),
                 Err(e) => Some(Err(e)),
                 Ok(None) => {
@@ -148,7 +161,7 @@ impl RunLoop {
             probe_rs::CoreStatus::LockedUp => Some(Ok(ReturnReason::LockedUp)),
         };
 
-        let poller_result = poller.poll(core);
+        let poller_result = poller.poll(&mut core);
 
         if let Some(reason) = return_reason {
             return reason.map(ControlFlow::Break);
