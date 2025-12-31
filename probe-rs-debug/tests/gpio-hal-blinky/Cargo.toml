@@ -6,7 +6,7 @@ edition = "2018"
 [workspace]
 
 [dependencies]
-embedded-hal = "0.2.7"
+embedded-hal = "1.0.0"
 cortex-m-rt = "0.7"
 cortex-m = { version = "0.7", features = [
     "critical-section-single-core",
