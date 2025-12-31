@@ -16,6 +16,7 @@ use postcard_schema::{
 use probe_rs::{Session, config::Registry};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 
 pub mod client;
 pub mod functions;
@@ -119,19 +120,23 @@ impl ObjectStorage {
     }
 }
 
+/// State associated with a single connection.
 #[derive(Clone)]
-pub struct SessionState {
+pub struct ConnectionState {
     dry_run: bool,
+    /// Generic object storage.
     object_storage: Arc<Mutex<ObjectStorage>>,
     registry: Arc<Mutex<Registry>>,
+    token: CancellationToken,
 }
 
-impl SessionState {
+impl ConnectionState {
     pub fn new() -> Self {
         Self {
             dry_run: false,
             object_storage: Arc::new(Mutex::new(ObjectStorage::new())),
             registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
+            token: CancellationToken::new(),
         }
     }
 

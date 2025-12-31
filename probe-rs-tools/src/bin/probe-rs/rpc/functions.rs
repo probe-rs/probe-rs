@@ -6,7 +6,7 @@ use crate::rpc::functions::file::{
 };
 use crate::{
     rpc::{
-        Key, SessionState,
+        ConnectionState, Key,
         functions::{
             chip::{
                 ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse, LoadChipFamilyRequest,
@@ -144,8 +144,7 @@ impl From<RpcError> for anyhow::Error {
 
 #[derive(Clone)]
 pub struct RpcSpawnContext {
-    state: SessionState,
-    token: CancellationToken,
+    state: ConnectionState,
     sender: PostcardSender<WireTxImpl>,
 }
 
@@ -225,7 +224,7 @@ impl RpcSpawnContext {
     }
 
     pub fn cancellation_token(&self) -> CancellationToken {
-        self.token.clone()
+        self.state.token.clone()
     }
 
     pub async fn run_blocking<T, F, REQ, RESP>(&mut self, request: REQ, task: F) -> RESP
@@ -315,8 +314,8 @@ pub(crate) enum ProbeAccess {
 }
 
 pub struct RpcContext {
-    state: SessionState,
-    token: CancellationToken,
+    /// State associated with a single connection.
+    state: ConnectionState,
     sender: Option<PostcardSender<WireTxImpl>>,
     probe_access: ProbeAccess,
 }
@@ -325,10 +324,9 @@ impl SpawnContext for RpcContext {
     type SpawnCtxt = RpcSpawnContext;
 
     fn spawn_ctxt(&mut self) -> Self::SpawnCtxt {
-        self.token = CancellationToken::new();
+        self.state.token = CancellationToken::new();
         RpcSpawnContext {
             state: self.state.clone(),
-            token: self.token.clone(),
             sender: self.sender.clone().unwrap(),
         }
     }
@@ -337,8 +335,7 @@ impl SpawnContext for RpcContext {
 impl RpcContext {
     pub fn new(probe_access: ProbeAccess) -> Self {
         Self {
-            state: SessionState::new(),
-            token: CancellationToken::new(),
+            state: ConnectionState::new(),
             sender: None,
             probe_access,
         }
@@ -413,7 +410,7 @@ async fn cancel_handler(
     _msg: (),
     _sender: &PostcardSender<WireTxImpl>,
 ) {
-    ctx.token.cancel();
+    ctx.state.token.cancel();
 }
 
 #[derive(Clone)]
