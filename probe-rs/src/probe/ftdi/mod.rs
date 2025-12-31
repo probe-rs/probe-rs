@@ -1,4 +1,7 @@
 //! FTDI-based debug probes.
+
+pub use gpio::{FtdiPin, GpioSignal, GpioState, ProbeLayout, SignalType, jtag_pins};
+
 use crate::{
     architecture::{
         arm::{
@@ -29,20 +32,33 @@ use std::{
 
 mod command_compacter;
 mod ftdaye;
+pub mod gpio;
 
 use command_compacter::Command;
 use ftdaye::{ChipType, error::FtdiError};
 
 #[derive(Debug)]
 struct JtagAdapter {
+    /// USB device handle for the FTDI chip.
     device: ftdaye::Device,
+    /// Current JTAG clock speed in kHz.
     speed_khz: u32,
 
+    /// Current MPSSE command being built.
     command: Command,
+    /// Buffer of encoded MPSSE commands to send.
     commands: Vec<u8>,
+    /// Number of bits to read for each response byte.
     in_bit_counts: Vec<usize>,
+    /// Captured TDO bits from JTAG operations.
     in_bits: BitVec,
+    /// FTDI chip properties (buffer size, max clock, etc.).
     ftdi: FtdiProperties,
+
+    /// GPIO layout for this adapter.
+    layout: &'static ProbeLayout,
+    /// Current GPIO state (tracks pin levels and directions).
+    gpio_state: GpioState,
 }
 
 impl JtagAdapter {
@@ -53,7 +69,7 @@ impl JtagAdapter {
             .with_write_timeout(Duration::from_secs(5))
             .usb_open(usb_device)?;
 
-        let ftdi = FtdiProperties::try_from((ftdi, device.chip_type()))?;
+        let ftdi_props = FtdiProperties::try_from((ftdi, device.chip_type()))?;
 
         Ok(Self {
             device,
@@ -62,7 +78,9 @@ impl JtagAdapter {
             commands: vec![],
             in_bit_counts: vec![],
             in_bits: BitVec::new(),
-            ftdi,
+            ftdi: ftdi_props,
+            layout: ftdi.layout,
+            gpio_state: ftdi.layout.init_state,
         })
     }
 
@@ -76,7 +94,9 @@ impl JtagAdapter {
         let mut junk = vec![];
         let _ = self.device.read_to_end(&mut junk);
 
-        let (output, direction) = self.pin_layout();
+        self.select_layout_by_product_string();
+        self.gpio_state = self.layout.init_state;
+        let (output, direction) = self.gpio_state.as_u16();
         self.device.set_pins(output, direction)?;
 
         self.apply_clock_speed(self.speed_khz)?;
@@ -86,26 +106,80 @@ impl JtagAdapter {
         Ok(())
     }
 
-    fn pin_layout(&self) -> (u16, u16) {
-        let (output, direction) = match (
+    /// Selects the appropriate layout based on USB product string.
+    ///
+    /// This is needed for Digilent devices that use generic FTDI VID/PID pairs
+    /// but have different pin assignments.
+    fn select_layout_by_product_string(&mut self) {
+        let layout = match (
             self.device.vendor_id(),
             self.device.product_id(),
             self.device.product_string().unwrap_or(""),
         ) {
             // Digilent HS3
-            (0x0403, 0x6014, "Digilent USB Device") => (0x2088, 0x308b),
+            (0x0403, 0x6014, "Digilent USB Device") => &gpio::DIGILENT_HS3,
             // Digilent HS2
-            (0x0403, 0x6014, "Digilent Adept USB Device") => (0x00e8, 0x60eb),
+            (0x0403, 0x6014, "Digilent Adept USB Device") => &gpio::DIGILENT_HS2,
             // Digilent HS1
-            (0x0403, 0x6010, "Digilent Adept USB Device") => (0x0088, 0x008b),
+            (0x0403, 0x6010, "Digilent Adept USB Device") => &gpio::DIGILENT_HS1,
             // Built-in Digilent HS1 (on-board)
-            (0x0403, 0x6010, "Digilent USB Device") => (0x0088, 0x008b),
-            // Other devices:
-            // TMS starts high
-            // TMS, TDO and TCK are outputs
-            _ => (0x0008, 0x000b),
+            (0x0403, 0x6010, "Digilent USB Device") => &gpio::DIGILENT_HS1,
+            _ => return,
         };
-        (output, direction)
+        self.layout = layout;
+    }
+
+    /// Asserts a signal (drives it to its active state).
+    ///
+    /// Returns `Ok(())` if the signal was found and asserted, or
+    /// `Err` if the signal doesn't exist in the current layout.
+    fn assert_signal(&mut self, signal: SignalType) -> Result<(), FtdiError> {
+        let signal_def = self.layout.signal(signal).ok_or_else(|| {
+            FtdiError::Other(format!("Signal '{:?}' not found in layout", signal))
+        })?;
+
+        signal_def.assert(&mut self.gpio_state);
+        let (output, direction) = self.gpio_state.as_u16();
+        self.device.set_pins(output, direction)?;
+        Ok(())
+    }
+
+    /// Deasserts a signal (drives it to its inactive state).
+    ///
+    /// Returns `Ok(())` if the signal was found and deasserted, or
+    /// `Err` if the signal doesn't exist in the current layout.
+    fn deassert_signal(&mut self, signal: SignalType) -> Result<(), FtdiError> {
+        let signal_def = self.layout.signal(signal).ok_or_else(|| {
+            FtdiError::Other(format!("Signal '{:?}' not found in layout", signal))
+        })?;
+
+        signal_def.deassert(&mut self.gpio_state);
+        let (output, direction) = self.gpio_state.as_u16();
+        self.device.set_pins(output, direction)?;
+        Ok(())
+    }
+
+    /// Checks if a signal is available in the current layout.
+    fn has_signal(&self, signal: SignalType) -> bool {
+        self.layout.signal(signal).is_some()
+    }
+
+    /// Resets the JTAG TAP state machine.
+    ///
+    /// If TRST signal is available, pulses it. Otherwise, clocks TMS=1
+    /// for 5 cycles to reach Test-Logic-Reset state.
+    fn jtag_reset(&mut self) -> Result<(), DebugProbeError> {
+        if self.has_signal(SignalType::Trst) {
+            self.assert_signal(SignalType::Trst)?;
+            std::thread::sleep(Duration::from_millis(10));
+            self.deassert_signal(SignalType::Trst)?;
+        } else {
+            for _ in 0..5 {
+                self.shift_bit(true, false, false)?;
+            }
+            self.flush()?;
+        }
+        Ok(())
     }
 
     fn speed_khz(&self) -> u32 {
@@ -323,6 +397,21 @@ pub struct FtdiProbe {
     swd_settings: SwdSettings,
 }
 
+impl FtdiProbe {
+    /// Resets the JTAG TAP state machine.
+    ///
+    /// If the probe has a TRST signal, it will be pulsed. Otherwise,
+    /// TMS=1 is clocked for 5 cycles to reach Test-Logic-Reset state.
+    pub fn jtag_reset(&mut self) -> Result<(), DebugProbeError> {
+        self.adapter.jtag_reset()
+    }
+
+    /// Returns true if this probe has a hardware TRST signal available.
+    pub fn has_trst(&self) -> bool {
+        self.adapter.has_signal(SignalType::Trst)
+    }
+}
+
 impl DebugProbe for FtdiProbe {
     fn get_name(&self) -> &str {
         "FTDI"
@@ -348,23 +437,29 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        // TODO we could add this by using a GPIO. However, different probes may connect
-        // different pins (if any) to the reset line, so we would need to make this configurable.
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset",
-        })
+        // Check if this probe has an SRST signal
+        if !self.adapter.has_signal(SignalType::Srst) {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "target_reset",
+            });
+        }
+
+        self.target_reset_assert()?;
+        std::thread::sleep(Duration::from_millis(100));
+        self.target_reset_deassert()?;
+        Ok(())
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset_assert",
-        })
+        self.adapter
+            .assert_signal(SignalType::Srst)
+            .map_err(|e| DebugProbeError::Other(e.to_string()))
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented {
-            function_name: "target_reset_deassert",
-        })
+        self.adapter
+            .deassert_signal(SignalType::Srst)
+            .map_err(|e| DebugProbeError::Other(e.to_string()))
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -547,6 +642,13 @@ struct FtdiDevice {
     /// we still try the same `bcdDevice` based detection, but if it fails, we fall back
     /// to this chip type.
     fallback_chip_type: ChipType,
+
+    /// GPIO layout for this device.
+    ///
+    /// This defines the initial pin state and available signals.
+    /// For devices that need product string matching (like Digilent), this is
+    /// the default layout; product string matching happens in `JtagAdapter::attach()`.
+    layout: &'static ProbeLayout,
 }
 
 impl FtdiDevice {
@@ -561,42 +663,50 @@ static FTDI_COMPAT_DEVICES: &[FtdiDevice] = &[
     // --- FTDI VID/PID pairs ---
     //
     // FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
+    // Used by Digilent HS1 and other generic FTDI adapters.
+    // Product string matching is used in attach() to select Digilent layouts.
     FtdiDevice {
         id: (0x0403, 0x6010),
         fallback_chip_type: ChipType::FT2232C,
+        layout: &gpio::GENERIC_FTDI,
     },
     // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
     FtdiDevice {
         id: (0x0403, 0x6011),
         fallback_chip_type: ChipType::FT4232H,
+        layout: &gpio::GENERIC_FTDI,
     },
     // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
+    // Used by Digilent HS2/HS3 and other generic FTDI adapters.
+    // Product string matching is used in attach() to select Digilent layouts.
     FtdiDevice {
         id: (0x0403, 0x6014),
         fallback_chip_type: ChipType::FT232H,
+        layout: &gpio::GENERIC_FTDI,
     },
-    //
-    // --- Third-party VID/PID pairs ---
-    //
     // Olimex Ltd. ARM-USB-OCD
     FtdiDevice {
         id: (0x15ba, 0x0003),
         fallback_chip_type: ChipType::FT2232C,
+        layout: &gpio::OLIMEX_ARM_USB_OCD,
     },
     // Olimex Ltd. ARM-USB-TINY
     FtdiDevice {
         id: (0x15ba, 0x0004),
         fallback_chip_type: ChipType::FT2232C,
+        layout: &gpio::OLIMEX_ARM_USB_TINY,
     },
     // Olimex Ltd. ARM-USB-TINY-H
     FtdiDevice {
         id: (0x15ba, 0x002a),
         fallback_chip_type: ChipType::FT2232H,
+        layout: &gpio::OLIMEX_ARM_USB_TINY_H,
     },
     // Olimex Ltd. ARM-USB-OCD-H
     FtdiDevice {
         id: (0x15ba, 0x002b),
         fallback_chip_type: ChipType::FT2232H,
+        layout: &gpio::OLIMEX_ARM_USB_OCD_H,
     },
 ];
 
