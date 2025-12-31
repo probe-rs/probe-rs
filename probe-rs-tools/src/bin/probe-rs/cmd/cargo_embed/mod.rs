@@ -3,7 +3,6 @@ mod rttui;
 
 use crate::cmd::gdb_server::GdbInstanceConfiguration;
 use anyhow::{Context, Result, anyhow};
-use clap::Parser;
 use colored::Colorize;
 use parking_lot::FairMutex;
 use probe_rs::config::Registry;
@@ -24,7 +23,6 @@ use std::{
 };
 use time::{OffsetDateTime, UtcOffset};
 
-use crate::FormatOptions;
 use crate::util::cargo::target_instruction_set;
 use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
@@ -32,6 +30,7 @@ use crate::util::logging::setup_logging;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
+use crate::{Config, FormatOptions, parse_and_resolve_cli_args};
 
 #[derive(Debug, clap::Parser)]
 #[clap(
@@ -68,10 +67,21 @@ struct CliOptions {
     path: Option<PathBuf>,
     #[clap(flatten)]
     cargo_options: CargoOptions,
+
+    /// A configuration preset to apply.
+    ///
+    /// A preset is a list of command line arguments, that can be defined in the configuration file.
+    /// Presets can be used as a shortcut to specify any number of options, e.g. they can be used to
+    /// assign a name to a specific probe-chip pair.
+    ///
+    /// Manually specified command line arguments take overwrite presets, but presets
+    /// take precedence over environment variables.
+    #[arg(long, global = true, env = "PROBE_RS_CONFIG_PRESET")]
+    preset: Option<String>,
 }
 
-pub async fn main(args: &[OsString], offset: UtcOffset) {
-    match main_try(args, offset).await {
+pub async fn main(args: Vec<OsString>, config: Config, offset: UtcOffset) {
+    match main_try(args, config, offset).await {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling proces::exit,
@@ -106,9 +116,9 @@ pub async fn main(args: &[OsString], offset: UtcOffset) {
     }
 }
 
-async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
+async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Result<()> {
     // Parse the commandline options.
-    let opt = CliOptions::parse_from(args);
+    let opt = parse_and_resolve_cli_args::<CliOptions>(args, &config)?;
 
     // Change the work dir if the user asked to do so.
     if let Some(ref work_dir) = opt.work_dir {
@@ -259,7 +269,8 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
         Err(e) => return Err(e.into()),
     };
 
-    let format = FormatKind::from(FormatOptions::default().to_format_kind(session.target()));
+    let format_options = FormatOptions::default();
+    let format = FormatKind::from(format_options.to_format_kind(session.target()));
     let elf = if matches!(format, FormatKind::Elf | FormatKind::Idf) {
         Some(fs::read(&path)?)
     } else {
@@ -292,7 +303,6 @@ async fn main_try(args: &[OsString], offset: UtcOffset) -> Result<()> {
             verify: config.flashing.verify,
             chip_erase: config.flashing.do_chip_erase,
         };
-        let format_options = FormatOptions::default();
         let loader = build_loader(&mut session, &path, format_options, image_instr_set)?;
 
         rtt_client.configure_from_loader(&loader);
@@ -424,13 +434,16 @@ async fn run_rttui_app(
         let mut session_handle = session.lock();
         let mut core = session_handle.core(core_id)?;
 
-        if client.try_attach(&mut core)? {
+        if let Ok(true) = client.try_attach(&mut core) {
             break client;
         }
 
         if start.elapsed() > config.rtt.timeout {
             return Err(anyhow!("Failed to attach to RTT: Timeout"));
         }
+
+        // Throttle attaching. If the target requires stop-mode RTT, this sleep will improve the boot time.
+        std::thread::sleep(Duration::from_millis(10));
     };
 
     tracing::info!("RTT initialized.");

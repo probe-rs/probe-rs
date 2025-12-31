@@ -3,7 +3,7 @@
 use std::{sync::Arc, time::Duration};
 
 use crate::{
-    Core, MemoryInterface,
+    MemoryInterface,
     architecture::riscv::{
         Dmcontrol,
         communication_interface::{
@@ -12,7 +12,6 @@ use crate::{
         },
         sequences::RiscvDebugSequence,
     },
-    vendor::espressif::sequences::esp::EspFlashSizeDetector,
 };
 
 const DR_REG_LP_WDT_BASE: u64 = 0x5011_6000;
@@ -75,18 +74,12 @@ const LP_PERI_RESET_EN: ResetRegister = ResetRegister::new(0x5012_0008, 0xfffc_0
 
 /// The debug sequence implementation for the ESP32P4.
 #[derive(Debug)]
-pub struct ESP32P4 {
-    inner: EspFlashSizeDetector,
-}
+pub struct ESP32P4 {}
 
 impl ESP32P4 {
     /// Creates a new debug sequence handle for the ESP32P4.
     pub fn create() -> Arc<dyn RiscvDebugSequence> {
-        Arc::new(Self {
-            inner: EspFlashSizeDetector {
-                spiflash_peripheral: 0x5008_D000,
-            },
-        })
+        Arc::new(Self {})
     }
 
     fn disable_wdts(
@@ -247,9 +240,5 @@ impl RiscvDebugSequence for ESP32P4 {
         self.on_connect(interface)?;
 
         Ok(())
-    }
-
-    fn detect_flash_size(&self, core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(core)
     }
 }

@@ -206,9 +206,9 @@ impl CoreHandle<'_> {
             return Ok(());
         }
 
-        if !client.try_attach(&mut self.core)? {
+        let Ok(true) = client.try_attach(&mut self.core) else {
             return Ok(());
-        }
+        };
 
         // Now that we're attached, we can transform our state.
         let Some(client) = self.core_data.rtt_client.take() else {

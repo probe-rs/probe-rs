@@ -16,7 +16,6 @@ use super::{
     extract_from_elf,
 };
 use crate::Target;
-use crate::config::DebugSequence;
 use crate::flashing::progress::ProgressOperation;
 use crate::flashing::{FlashLayout, FlashProgress, Format};
 use crate::memory::MemoryInterface;
@@ -233,8 +232,6 @@ impl ImageLoader for IdfLoader {
         let mut algo = Flasher::new(target, 0, &target.flash_algorithms[0])
             .map_err(FileDownloadError::Flash)?;
 
-        let debug_sequence = target.debug_sequence.clone();
-
         session
             .core(0)
             .unwrap()
@@ -244,30 +241,22 @@ impl ImageLoader for IdfLoader {
 
         let flash_size_result = algo
             .run_verify(session, &mut FlashProgress::empty(), |flasher, _| {
-                // Figure out flash size from the memory map. We need a different bootloader for each size.
-                match debug_sequence {
-                    DebugSequence::Riscv(sequence) => sequence.detect_flash_size(&mut flasher.core),
-                    DebugSequence::Xtensa(sequence) => {
-                        sequence.detect_flash_size(&mut flasher.core)
-                    }
-                    DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
-                }
-                .map_err(FlashError::Run)
+                flasher.read_flash_size()
             })
             .map_err(FileDownloadError::FlashSizeDetection)?;
 
         let flash_size = match flash_size_result {
-            Some(0x40000) => Some(FlashSize::_256Kb),
-            Some(0x80000) => Some(FlashSize::_512Kb),
-            Some(0x100000) => Some(FlashSize::_1Mb),
-            Some(0x200000) => Some(FlashSize::_2Mb),
-            Some(0x400000) => Some(FlashSize::_4Mb),
-            Some(0x800000) => Some(FlashSize::_8Mb),
-            Some(0x1000000) => Some(FlashSize::_16Mb),
-            Some(0x2000000) => Some(FlashSize::_32Mb),
-            Some(0x4000000) => Some(FlashSize::_64Mb),
-            Some(0x8000000) => Some(FlashSize::_128Mb),
-            Some(0x10000000) => Some(FlashSize::_256Mb),
+            0x40000 => Some(FlashSize::_256Kb),
+            0x80000 => Some(FlashSize::_512Kb),
+            0x100000 => Some(FlashSize::_1Mb),
+            0x200000 => Some(FlashSize::_2Mb),
+            0x400000 => Some(FlashSize::_4Mb),
+            0x800000 => Some(FlashSize::_8Mb),
+            0x1000000 => Some(FlashSize::_16Mb),
+            0x2000000 => Some(FlashSize::_32Mb),
+            0x4000000 => Some(FlashSize::_64Mb),
+            0x8000000 => Some(FlashSize::_128Mb),
+            0x10000000 => Some(FlashSize::_256Mb),
             _ => None,
         };
 

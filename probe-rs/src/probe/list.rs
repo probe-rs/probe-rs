@@ -210,7 +210,14 @@ mod linux {
 
     /// Returns the groups assigned to the current user.
     fn user_groups() -> Vec<String> {
-        let output = match Command::new("id").arg("-Gn").output() {
+        let username = match std::env::var("USER") {
+            Err(error) => {
+                tracing::debug!("Gathering information about user failed: {error}");
+                return Vec::new();
+            }
+            Ok(username) => username,
+        };
+        let output = match Command::new("id").arg("-Gn").arg(&username).output() {
             Err(error) => {
                 tracing::debug!("Gathering information about relevant user groups failed: {error}");
                 return Vec::new();

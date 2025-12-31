@@ -553,6 +553,7 @@ fn read_c_string(core: &mut Core, ptr: NonZeroU64) -> Result<Option<String>, Err
         )));
     };
 
+    tracing::trace!("read_c_string() ptr = {ptr:#X}");
     // Read up to 128 bytes not going past the end of the region
     let mut bytes = vec![0u8; min(128, (range.end - ptr) as usize)];
     core.read(ptr, bytes.as_mut())?;

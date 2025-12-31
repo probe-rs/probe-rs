@@ -5,9 +5,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use super::esp::EspFlashSizeDetector;
 use crate::{
-    Core, MemoryInterface,
+    MemoryInterface,
     architecture::xtensa::{
         Xtensa,
         communication_interface::{
@@ -22,9 +21,7 @@ use crate::{
 
 /// The debug sequence implementation for the ESP32-S3.
 #[derive(Debug)]
-pub struct ESP32S3 {
-    inner: EspFlashSizeDetector,
-}
+pub struct ESP32S3 {}
 
 impl ESP32S3 {
     const SWD_BASE: u64 = 0x60008000;
@@ -35,11 +32,7 @@ impl ESP32S3 {
 
     /// Creates a new debug sequence handle for the ESP32-S3.
     pub fn create() -> Arc<dyn XtensaDebugSequence> {
-        Arc::new(Self {
-            inner: EspFlashSizeDetector {
-                spiflash_peripheral: 0x6000_2000,
-            },
-        })
+        Arc::new(Self {})
     }
 
     fn disable_wdts(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
@@ -134,10 +127,6 @@ impl XtensaDebugSequence for ESP32S3 {
 
     fn on_halt(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
         self.disable_wdts(interface)
-    }
-
-    fn detect_flash_size(&self, core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(core)
     }
 
     fn reset_system_and_halt(

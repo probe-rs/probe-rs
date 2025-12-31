@@ -7,10 +7,21 @@ use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_wait_for_reset};
 use crate::architecture::arm::{ApV2Address, ArmError, FullyQualifiedApAddress};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 const SIO_CPUID_OFFSET: u64 = 0xd000_0000;
 const RP_AP: FullyQualifiedApAddress =
     FullyQualifiedApAddress::v2_with_dp(DpAddress::Default, ApV2Address(Some(0x80000)));
+
+/// An address in RAM, used for validating that the core is working.
+const RAM_ADDRESS: u64 = 0x2000_0000;
+
+/// Resetting the core can sometimes take multiple attempts. Abandon reset
+/// if it takes longer than this duration. During testing of over 5000 reset-
+/// program cycles, the longest observed reset cycle was 465 ms after 114
+/// reset attempts. It may be that this is attempting to disable XIP on the SPI
+/// flash, but it is ultimately unclear what's causing the delay.
+const RESET_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Debug implementation for RP235x
 #[derive(Debug)]
@@ -84,9 +95,8 @@ impl Rp235x {
         // Wait for the core to finish resetting
         cortex_m_wait_for_reset(core)?;
 
-        core.read_word_32(0x2000_0000)
-            .map(|_| ())
-            .inspect_err(|e| tracing::error!("Reset failed -- trying again: {e}"))
+        // As a final check, make sure we can read from RAM.
+        core.read_word_32(RAM_ADDRESS).map(|_| ())
     }
 }
 
@@ -115,15 +125,26 @@ impl ArmDebugSequence for Rp235x {
         // board into a state where it's functioning. Note that a full reset is required
         // in this case -- simply resetting the core does not get it into a functioning
         // state.
-        let mut result;
-        for _ in 0..10 {
-            result = self.perform_reset(core, core_type, debug_base, should_catch_reset);
-            if result.is_ok() {
-                break;
+        let start = Instant::now();
+        let mut attempt = 0;
+        loop {
+            attempt += 1;
+            tracing::debug!("Performing reset (attempt {attempt})...");
+            let Err(e) = self.perform_reset(core, core_type, debug_base, should_catch_reset) else {
+                tracing::info!(
+                    "Finished RP235x reset sequence after {attempt} attempts and {} ms",
+                    start.elapsed().as_millis()
+                );
+                return Ok(());
+            };
+
+            if start.elapsed() > RESET_TIMEOUT {
+                tracing::error!(
+                    "Reset failed after {attempt} attempts and {} ms: {e}",
+                    start.elapsed().as_millis()
+                );
+                return Err(e);
             }
         }
-
-        tracing::trace!("Finished RP235x reset sequence");
-        Ok(())
     }
 }

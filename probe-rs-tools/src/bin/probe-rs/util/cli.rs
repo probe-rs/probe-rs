@@ -330,6 +330,7 @@ pub async fn flash(
     format: FormatOptions,
     download_options: BinaryDownloadOptions,
     rtt_client: Option<&mut CliRttClient>,
+    image_target: Option<String>,
 ) -> anyhow::Result<BootInfo> {
     // Start timer.
     let flash_timer = Instant::now();
@@ -343,7 +344,7 @@ pub async fn flash(
     };
 
     let loader = session
-        .build_flash_loader(path.to_path_buf(), format)
+        .build_flash_loader(path.to_path_buf(), format, image_target)
         .await?;
 
     let mut flash_layout = None;

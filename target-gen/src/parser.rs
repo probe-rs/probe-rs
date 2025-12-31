@@ -91,11 +91,17 @@ pub fn extract_flash_algo(
             "EraseSector" => algo.pc_erase_sector = sym.st_value - code_section_offset as u64,
             "ProgramPage" => algo.pc_program_page = sym.st_value - code_section_offset as u64,
             "Verify" => algo.pc_verify = Some(sym.st_value - code_section_offset as u64),
-            "ReadFlash" => algo.pc_read = Some(sym.st_value - code_section_offset as u64),
             "BlankCheck" => algo.pc_blank_check = Some(sym.st_value - code_section_offset as u64),
+            // probe-rs additions
+            "ReadFlash" => algo.pc_read = Some(sym.st_value - code_section_offset as u64),
+            "FlashSize" => algo.pc_flash_size = Some(sym.st_value - code_section_offset as u64),
             "_SEGGER_RTT" => {
                 algo.rtt_location = Some(sym.st_value);
                 log::debug!("Found RTT control block at address {:#010x}", sym.st_value);
+            }
+            "PAGE_BUFFER" => {
+                algo.data_load_address = Some(sym.st_value);
+                log::debug!("Found PAGE_BUFFER at address {:#010x}", sym.st_value);
             }
 
             _ => {}

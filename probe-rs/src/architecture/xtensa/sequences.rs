@@ -1,6 +1,5 @@
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
-use crate::Core;
 use crate::architecture::xtensa::Xtensa;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::semihosting::{SemihostingCommand, UnknownCommandDetails};
@@ -20,11 +19,6 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
     /// Executed when the target is halted.
     fn on_halt(&self, _interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
         Ok(())
-    }
-
-    /// Detects the flash size of the target.
-    fn detect_flash_size(&self, _core: &mut Core<'_>) -> Result<Option<usize>, crate::Error> {
-        Ok(None)
     }
 
     /// Executes a system-wide reset without debug domain (or warm-reset that preserves debug connection) via software mechanisms.

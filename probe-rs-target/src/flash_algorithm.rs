@@ -63,12 +63,15 @@ pub struct RawFlashAlgorithm {
     /// Address of the `Verify()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_verify: Option<u64>,
-    /// Address of the (non-standard) `ReadFlash()` entry point. Optional.
-    #[serde(serialize_with = "hex_option")]
-    pub pc_read: Option<u64>,
     /// Address of the `BlankCheck()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_blank_check: Option<u64>,
+    /// Address of the (non-standard) `ReadFlash(adr: u32, sz: u32, buf: *mut u8)` entry point. Optional.
+    #[serde(serialize_with = "hex_option")]
+    pub pc_read: Option<u64>,
+    /// Address of the (non-standard) `FlashSize()` entry point. Optional.
+    #[serde(serialize_with = "hex_option")]
+    pub pc_flash_size: Option<u64>,
     /// The offset from the start of RAM to the data section.
     #[serde(serialize_with = "hex_u_int")]
     pub data_section_offset: u64,
