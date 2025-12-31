@@ -64,8 +64,6 @@ pub struct FlashAlgorithm {
     pub rtt_control_block: Option<u64>,
 
     /// Milliseconds between RTT polls.
-    ///
-    /// Set to 0 to only read output when the flasher function has returned.
     pub rtt_poll_interval: u64,
 
     /// The properties of the flash on the device.

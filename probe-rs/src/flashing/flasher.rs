@@ -1054,7 +1054,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
             let now = Instant::now();
 
-            if poll_interval != Duration::ZERO && now - last_read >= poll_interval {
+            if now - last_read >= poll_interval {
                 self.read_rtt()?;
                 last_read = now;
             }

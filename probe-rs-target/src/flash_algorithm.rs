@@ -83,7 +83,7 @@ pub struct RawFlashAlgorithm {
     pub rtt_location: Option<u64>,
     /// Milliseconds between RTT polls.
     ///
-    /// Defaults to 20ms. Set to 0 to only read output when the flasher function has returned.
+    /// Defaults to 20ms.
     #[serde(default = "default_rtt_poll_interval")]
     pub rtt_poll_interval: u64,
     /// The properties of the flash on the device.
