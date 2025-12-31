@@ -5,6 +5,8 @@ written in Rust
 
 [![crates.io](https://img.shields.io/crates/v/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://img.shields.io/github/actions/workflow/status/probe-rs/probe-rs/ci.yml?branch=master)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org) ![GitHub Sponsors](https://img.shields.io/github/sponsors/probe-rs)
 
+This repository is a fork of the original [probe-rs](https://github.com/probe-rs/probe-rs) maintained by OpenSiFli.
+
 The goal of this library is to provide a toolkit to interact with a variety of embedded MCUs and debug probes and provides a direct interface to the debug probe,
 which then enables other software to use its debug functionality.
 

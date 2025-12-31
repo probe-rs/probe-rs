@@ -1,5 +1,5 @@
 # This Action is triggered when a PR with the label 'release' is closed and merged into 'master'.
-# It publishes the crates in the repo to crates.io, and will create a tag in the probe-rs repo.
+# It creates and pushes release tags (no crates.io publishing).
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ on:
 permissions:
   contents: write
 
-name: Release on crates.io
+name: Tag release
 
 jobs:
   release:
@@ -61,7 +61,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
         # The tag prefix is set to an empty string, so that the tag is just the version number, and doesn't contain the crate name.
-      - name: release to crates.io
+      - name: Tag and push release
         run: |
           # Checkout appropriate branch based on trigger type
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -72,14 +72,6 @@ jobs:
             # For workflow_dispatch, stay on current branch (let user choose)
             echo "Running on current branch: $(git branch --show-current)"
           fi
-
-          echo "::group::Setup auth for crates.io"
-          cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
-          echo "::endgroup::"
-
-          echo "::group::Publishing on crates.io using 'cargo release publish'"
-          cargo release publish --no-confirm --execute
-          echo "::endgroup::"
 
           echo "::group::Tagging release using 'cargo release tag'"
           cargo release tag --no-confirm --execute --sign-tag --tag-prefix "" --exclude probe-rs-mi
