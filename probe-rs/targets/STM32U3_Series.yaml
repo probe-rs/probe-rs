@@ -5,7 +5,13 @@ manufacturer:
 generated_from_pack: true
 pack_file_release: 1.1.0
 variants:
-- name: STM32U375CETx
+- name: STM32U375CE
+  package_variants:
+  - STM32U375CETx
+  - STM32U375CETxQ
+  - STM32U375CEUx
+  - STM32U375CEUxQ
+  - STM32U375CEYxQ
   cores:
   - name: main
     type: armv8m
@@ -13,7 +19,67 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: Flash_NS
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8010000
+      end: 0x8050000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U375CG
+  package_variants:
+  - STM32U375CGTx
+  - STM32U375CGTxQ
+  - STM32U375CGUx
+  - STM32U375CGUxQ
+  - STM32U375CGYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -22,47 +88,46 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: Flash_S
+  - !Nvm
+    name: BANK_2
     range:
-      start: 0xc000000
-      end: 0xc080000
+      start: 0x8010000
+      end: 0x8090000
     cores:
     - main
     access:
       write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_NS
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Ram
-    name: SRAM2_NS
+    name: SRAM2
     range:
       start: 0x20030000
       end: 0x20040000
     cores:
     - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
-- name: STM32U375CETxQ
+- name: STM32U375KE
+  package_variants:
+  - STM32U375KEUx
   cores:
   - name: main
     type: armv8m
@@ -70,7 +135,63 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: Flash_NS
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8010000
+      end: 0x8050000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U375KG
+  package_variants:
+  - STM32U375KGUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -79,47 +200,51 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: Flash_S
+  - !Nvm
+    name: BANK_2
     range:
-      start: 0xc000000
-      end: 0xc080000
+      start: 0x8010000
+      end: 0x8090000
     cores:
     - main
     access:
       write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_NS
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Ram
-    name: SRAM2_NS
+    name: SRAM2
     range:
       start: 0x20030000
       end: 0x20040000
     cores:
     - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
-- name: STM32U375CEUx
+- name: STM32U375RE
+  package_variants:
+  - STM32U375REIx
+  - STM32U375REIxQ
+  - STM32U375RETx
+  - STM32U375RETxQ
+  - STM32U375REYxG
+  - STM32U375REYxQ
   cores:
   - name: main
     type: armv8m
@@ -127,7 +252,68 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: Flash_NS
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8010000
+      end: 0x8050000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U375RG
+  package_variants:
+  - STM32U375RGIx
+  - STM32U375RGIxQ
+  - STM32U375RGTx
+  - STM32U375RGTxQ
+  - STM32U375RGYxG
+  - STM32U375RGYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -136,47 +322,49 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: Flash_S
+  - !Nvm
+    name: BANK_2
     range:
-      start: 0xc000000
-      end: 0xc080000
+      start: 0x8010000
+      end: 0x8090000
     cores:
     - main
     access:
       write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_NS
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Ram
-    name: SRAM2_NS
+    name: SRAM2
     range:
       start: 0x20030000
       end: 0x20040000
     cores:
     - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
-- name: STM32U375CEUxQ
+- name: STM32U375VE
+  package_variants:
+  - STM32U375VEIx
+  - STM32U375VEIxQ
+  - STM32U375VETx
+  - STM32U375VETxQ
   cores:
   - name: main
     type: armv8m
@@ -184,7 +372,66 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: Flash_NS
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: BANK_2
+    range:
+      start: 0x8010000
+      end: 0x8050000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  - !Ram
+    name: SRAM2
+    range:
+      start: 0x20030000
+      end: 0x20040000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32u3xx_1m_0800
+  - stm32u3xx_1m_0c00
+- name: STM32U375VG
+  package_variants:
+  - STM32U375VGIx
+  - STM32U375VGIxQ
+  - STM32U375VGTx
+  - STM32U375VGTxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -193,47 +440,50 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: Flash_S
+  - !Nvm
+    name: BANK_2
     range:
-      start: 0xc000000
-      end: 0xc080000
+      start: 0x8010000
+      end: 0x8090000
     cores:
     - main
     access:
       write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_NS
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Ram
-    name: SRAM2_NS
+    name: SRAM2
     range:
       start: 0x20030000
       end: 0x20040000
     cores:
     - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
-- name: STM32U375CEYxQ
+- name: STM32U385CG
+  package_variants:
+  - STM32U385CGTx
+  - STM32U385CGTxQ
+  - STM32U385CGUx
+  - STM32U385CGUxQ
+  - STM32U385CGYxQ
   cores:
   - name: main
     type: armv8m
@@ -241,7 +491,7 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: Flash_NS
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -250,104 +500,46 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375CGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
   - !Nvm
-    name: Flash_NS
+    name: BANK_2
     range:
-      start: 0x8000000
-      end: 0x8100000
+      start: 0x8010000
+      end: 0x8090000
     cores:
     - main
     access:
       write: false
       boot: true
-  - !Generic
-    name: Flash_S
+  - !Nvm
+    name: OTP
     range:
-      start: 0xc000000
-      end: 0xc100000
+      start: 0xbfa0000
+      end: 0xbfa0200
     cores:
     - main
     access:
       write: false
+      execute: false
   - !Ram
-    name: SRAM1_NS
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Ram
-    name: SRAM2_NS
+    name: SRAM2
     range:
       start: 0x20030000
       end: 0x20040000
     cores:
     - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
-- name: STM32U375CGTxQ
+- name: STM32U385KG
+  package_variants:
+  - STM32U385KGUx
   cores:
   - name: main
     type: armv8m
@@ -355,235 +547,7 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375CGUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375CGUxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375CGYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375KEUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -592,104 +556,51 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375KGUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
   - !Nvm
-    name: Flash_NS
+    name: BANK_2
     range:
-      start: 0x8000000
-      end: 0x8100000
+      start: 0x8010000
+      end: 0x8090000
     cores:
     - main
     access:
       write: false
       boot: true
-  - !Generic
-    name: Flash_S
+  - !Nvm
+    name: OTP
     range:
-      start: 0xc000000
-      end: 0xc100000
+      start: 0xbfa0000
+      end: 0xbfa0200
     cores:
     - main
     access:
       write: false
+      execute: false
   - !Ram
-    name: SRAM1_NS
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Ram
-    name: SRAM2_NS
+    name: SRAM2
     range:
       start: 0x20030000
       end: 0x20040000
     cores:
     - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
-- name: STM32U375REIx
+- name: STM32U385RG
+  package_variants:
+  - STM32U385RGIx
+  - STM32U385RGIxQ
+  - STM32U385RGTx
+  - STM32U385RGTxQ
+  - STM32U385RGYxG
+  - STM32U385RGYxQ
   cores:
   - name: main
     type: armv8m
@@ -697,7 +608,7 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: Flash_NS
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -706,47 +617,49 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: Flash_S
+  - !Nvm
+    name: BANK_2
     range:
-      start: 0xc000000
-      end: 0xc080000
+      start: 0x8010000
+      end: 0x8090000
     cores:
     - main
     access:
       write: false
+      boot: true
+  - !Nvm
+    name: OTP
+    range:
+      start: 0xbfa0000
+      end: 0xbfa0200
+    cores:
+    - main
+    access:
+      write: false
+      execute: false
   - !Ram
-    name: SRAM1_NS
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Ram
-    name: SRAM2_NS
+    name: SRAM2
     range:
       start: 0x20030000
       end: 0x20040000
     cores:
     - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
   flash_algorithms:
   - stm32u3xx_1m_0800
   - stm32u3xx_1m_0c00
-- name: STM32U375REIxQ
+- name: STM32U385VG
+  package_variants:
+  - STM32U385VGIx
+  - STM32U385VGIxQ
+  - STM32U385VGTx
+  - STM32U385VGTxQ
   cores:
   - name: main
     type: armv8m
@@ -754,7 +667,7 @@ variants:
       ap: !v1 0
   memory_map:
   - !Nvm
-    name: Flash_NS
+    name: BANK_1
     range:
       start: 0x8000000
       end: 0x8080000
@@ -763,1979 +676,38 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375RETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
   - !Nvm
-    name: Flash_NS
+    name: BANK_2
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0x8010000
+      end: 0x8090000
     cores:
     - main
     access:
       write: false
       boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375RETxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
   - !Nvm
-    name: Flash_NS
+    name: OTP
     range:
-      start: 0x8000000
-      end: 0x8080000
+      start: 0xbfa0000
+      end: 0xbfa0200
     cores:
     - main
     access:
       write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
+      execute: false
   - !Ram
-    name: SRAM1_NS
+    name: SRAM
     range:
       start: 0x20000000
       end: 0x20030000
     cores:
     - main
   - !Ram
-    name: SRAM2_NS
+    name: SRAM2
     range:
       start: 0x20030000
       end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375REYxG
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375REYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375RGIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375RGIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375RGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375RGTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375RGYxG
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375RGYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375VEIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375VEIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375VETx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375VETxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8080000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc080000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375VGIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375VGIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375VGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U375VGTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385CGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385CGTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385CGUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385CGUxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385CGYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385KGUx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385RGIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385RGIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385RGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385RGTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385RGYxG
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385RGYxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385VGIx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385VGIxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385VGTx
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
-    cores:
-    - main
-  flash_algorithms:
-  - stm32u3xx_1m_0800
-  - stm32u3xx_1m_0c00
-- name: STM32U385VGTxQ
-  cores:
-  - name: main
-    type: armv8m
-    core_access_options: !Arm
-      ap: !v1 0
-  memory_map:
-  - !Nvm
-    name: Flash_NS
-    range:
-      start: 0x8000000
-      end: 0x8100000
-    cores:
-    - main
-    access:
-      write: false
-      boot: true
-  - !Generic
-    name: Flash_S
-    range:
-      start: 0xc000000
-      end: 0xc100000
-    cores:
-    - main
-    access:
-      write: false
-  - !Ram
-    name: SRAM1_NS
-    range:
-      start: 0x20000000
-      end: 0x20030000
-    cores:
-    - main
-  - !Ram
-    name: SRAM2_NS
-    range:
-      start: 0x20030000
-      end: 0x20040000
-    cores:
-    - main
-  - !Generic
-    name: SRAM1_S
-    range:
-      start: 0x30000000
-      end: 0x30030000
-    cores:
-    - main
-  - !Generic
-    name: SRAM2_S
-    range:
-      start: 0x30030000
-      end: 0x30040000
     cores:
     - main
   flash_algorithms:
