@@ -4,6 +4,7 @@ use std::sync::LazyLock;
 
 use crate::{
     CoreRegister, CoreRegisters, RegisterRole,
+    architecture::xtensa::arch::SpecialRegister,
     core::{RegisterDataType, UnwindRule},
 };
 
@@ -55,9 +56,17 @@ pub const PS: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Clear,
 };
 
-/// XTENSA core registers
-pub static XTENSA_CORE_REGISTERS: LazyLock<CoreRegisters> =
-    LazyLock::new(|| CoreRegisters::new(XTENSA_REGISTERS_SET.iter().collect()));
+/// Xtensa core registers
+pub static XTENSA_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
+    CoreRegisters::new(
+        XTENSA_REGISTERS_SET
+            .iter()
+            // Occasionally very useful to observe, but way too much to always include:
+            //.chain(XTENSA_EXCEPTION_OPTION_REGISTERS.iter())
+            //.chain(XTENSA_HP_INTERRUPT_OPTION_REGISTERS.iter())
+            .collect(),
+    )
+});
 
 static XTENSA_REGISTERS_SET: &[CoreRegister] = &[
     RA,
@@ -159,4 +168,149 @@ static XTENSA_REGISTERS_SET: &[CoreRegister] = &[
     },
     PC,
     PS,
+];
+
+#[allow(unused)]
+static XTENSA_EXCEPTION_OPTION_REGISTERS: &[CoreRegister] = &[
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPC1")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Epc1 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EXCCAUSE")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::ExcCause as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EXCSAVE1")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::ExcSave1 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EXCVADDR")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::ExcVaddr as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("DEPC")],
+        id: crate::RegisterId(0x0100 | 192),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+];
+#[allow(unused)]
+static XTENSA_HP_INTERRUPT_OPTION_REGISTERS: &[CoreRegister] = &[
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPC2")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Epc2 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPC3")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Epc3 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPC4")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Epc4 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPC5")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Epc5 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPC6")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Epc6 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPC7")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Epc7 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPS2")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Eps2 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPS3")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Eps3 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPS4")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Eps4 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPS5")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Eps5 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPS6")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Eps6 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EPS7")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::Eps7 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EXCSAVE2")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::ExcSave2 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EXCSAVE3")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::ExcSave3 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EXCSAVE4")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::ExcSave4 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EXCSAVE5")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::ExcSave5 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EXCSAVE6")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::ExcSave6 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Other("EXCSAVE7")],
+        id: crate::RegisterId(0x0100 | SpecialRegister::ExcSave7 as u16),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    },
 ];
