@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   build-smoke-tester:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04-armn
 
     steps:
       - name: Checkout sources
@@ -86,6 +86,10 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
+        with:
+          # There is a conflict between the probe-rs/ subfolder and the probe-rs binary artifact, if the
+          # checkout is done into the workspace root.
+          path: src/
 
       - uses: taiki-e/install-action@nextest
 
@@ -95,7 +99,7 @@ jobs:
 
       - name: Run smoke-tester
         run: |
-          cargo-nextest nextest run --archive-file smoke_tester.tar.zst --profile ci-hardware --workspace-remap $GITHUB_WORKSPACE
+          cargo-nextest nextest run --archive-file smoke_tester.tar.zst --profile ci-hardware --workspace-remap $GITHUB_WORKSPACE/src
 
   embedded-test:
     runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
@@ -106,6 +110,10 @@ jobs:
     needs: build-probe-rs
 
     steps:
+      # Avoid conficts when downloading the probe-rs artifact
+      - name: Clean workspace
+        run: rm -rf "${GITHUB_WORKSPACE}/*"
+
       - uses: actions/download-artifact@v7
         with:
           name: probe-rs
