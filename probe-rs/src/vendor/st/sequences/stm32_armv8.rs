@@ -1,4 +1,4 @@
-//! Sequences for ARMv8 STM32s: STM32H5, STM32L5, STM32U5
+//! Sequences for ARMv8 STM32s: STM32H5, STM32L5, STM32U3, STM32U5
 //!
 //! This covers devices where DBGMCU is at 0xE004400 and has the TRACE_MODE, TRACE_EN,
 //! TRACE_IOEN, DBG_STANDBY, DBG_STOP bits.
