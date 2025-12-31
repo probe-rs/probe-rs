@@ -178,7 +178,7 @@ fn monitor_impl(
     request: MonitorRequest,
     sender: MonitorSender,
 ) -> anyhow::Result<MonitorExitReason> {
-    let mut session = ctx.session_blocking(request.sessid);
+    let shared_session = ctx.shared_session(request.sessid);
 
     let mut semihosting_sink =
         MonitorEventHandler::new(request.options.semihosting_options, |event| {
@@ -197,9 +197,9 @@ fn monitor_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
+    let mut session = shared_session.session_blocking();
     request.mode.prepare(&mut session, run_loop.core_id)?;
 
-    let mut core = session.core(run_loop.core_id)?;
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
         clear_control_block: request.mode.should_clear_rtt_header(),
@@ -211,7 +211,7 @@ fn monitor_impl(
     });
 
     let exit_reason = run_loop.run_until(
-        &mut core,
+        &shared_session,
         request.options.catch_hardfault,
         request.options.catch_reset,
         poller,

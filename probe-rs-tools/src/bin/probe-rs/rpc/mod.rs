@@ -179,14 +179,35 @@ impl ConnectionState {
         key
     }
 
-    pub fn session_blocking(
-        &self,
-        sid: Key<Session>,
-    ) -> impl DerefMut<Target = Session> + Send + use<> {
-        self.object_mut_blocking(sid)
+    pub fn shared_session(&self, sid: Key<Session>) -> SessionState<'_> {
+        SessionState {
+            object_storage: self.object_storage.as_ref(),
+            session: sid,
+            dry_run: self.dry_run_sessions.contains(&sid),
+        }
+    }
+}
+
+/// A shared handle for the [`Session`].
+#[derive(Clone)]
+pub struct SessionState<'a> {
+    object_storage: &'a Mutex<ObjectStorage>,
+    session: Key<Session>,
+    dry_run: bool,
+}
+
+impl SessionState<'_> {
+    /// Returns a handle to the session.
+    ///
+    /// This function blocks while other users hold the session.
+    pub fn session_blocking(&self) -> impl DerefMut<Target = Session> + Send + use<> {
+        self.object_storage
+            .blocking_lock()
+            .object_mut_blocking(self.session)
     }
 
-    pub fn dry_run(&self, sid: Key<Session>) -> bool {
-        self.dry_run_sessions.contains(&sid)
+    /// Returns whether the session is in dry-run mode.
+    pub fn dry_run(&self) -> bool {
+        self.dry_run
     }
 }

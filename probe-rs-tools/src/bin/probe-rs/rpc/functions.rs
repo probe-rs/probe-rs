@@ -1,6 +1,7 @@
 use std::{any::Any, ops::DerefMut};
 use std::{convert::Infallible, future::Future};
 
+use crate::rpc::SessionState;
 use crate::rpc::functions::file::{
     AppendFileRequest, CreateFileResponse, append_temp_file, create_temp_file,
 };
@@ -209,11 +210,15 @@ where
 
 impl RpcSpawnContext {
     fn dry_run(&self, sessid: Key<Session>) -> bool {
-        self.state.dry_run(sessid)
+        self.shared_session(sessid).dry_run()
     }
 
     fn session_blocking(&self, sessid: Key<Session>) -> impl DerefMut<Target = Session> + use<> {
-        self.state.session_blocking(sessid)
+        self.shared_session(sessid).session_blocking()
+    }
+
+    fn shared_session(&self, sessid: Key<Session>) -> SessionState<'_> {
+        self.state.shared_session(sessid)
     }
 
     pub fn object_mut_blocking<T: Any + Send>(
