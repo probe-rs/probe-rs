@@ -54,6 +54,7 @@ pub struct Flashing {
     pub disable_double_buffering: bool,
     pub preverify: bool,
     pub verify: bool,
+    pub read_flasher_rtt: bool,
 }
 
 /// The reset config struct holding all the possible reset options.

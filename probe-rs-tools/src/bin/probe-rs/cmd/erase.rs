@@ -10,6 +10,10 @@ pub struct Cmd {
 
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub disable_progressbars: bool,
+
+    /// Whether to read the RTT output from the flash loader, if available.
+    #[clap(long)]
+    pub read_flasher_rtt: bool,
 }
 
 impl Cmd {
@@ -23,11 +27,15 @@ impl Cmd {
         };
 
         session
-            .erase(EraseCommand::All, async move |event| {
-                if let Some(pb) = pb.as_ref() {
-                    pb.handle(event);
-                }
-            })
+            .erase(
+                EraseCommand::All,
+                self.read_flasher_rtt,
+                async move |event| {
+                    if let Some(pb) = pb.as_ref() {
+                        pb.handle(event);
+                    }
+                },
+            )
             .await?;
 
         Ok(())

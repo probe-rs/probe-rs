@@ -172,6 +172,7 @@ pub fn cmd_test(
         &mut progress,
         test_start_sector_address,
         test_start_sector_address + sector_size * 2,
+        true,
     )?;
 
     println!("{test}: Writing two pages ...");
@@ -197,6 +198,7 @@ pub fn cmd_test(
         &mut progress,
         test_start_sector_address,
         test_start_sector_address + sector_size * 2,
+        true,
     )?;
 
     println!("{test}: Writing two pages ...");
@@ -228,6 +230,7 @@ pub fn cmd_test(
         &mut progress,
         test_start_sector_address,
         test_start_sector_address + sector_size * 2,
+        true,
     )?;
 
     println!("{test}: Writing two pages ...");
@@ -316,9 +319,9 @@ pub enum EraseType {
 pub fn run_flash_erase(session: &mut Session, erase_type: EraseType) -> Result<()> {
     let mut progress = progress_callbacks();
     if let EraseType::EraseRange(start, end) = erase_type {
-        erase(session, &mut progress, start, end)?;
+        erase(session, &mut progress, start, end, true)?;
     } else {
-        erase_all(session, &mut progress)?;
+        erase_all(session, &mut progress, true)?;
     }
 
     Ok(())

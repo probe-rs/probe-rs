@@ -344,7 +344,12 @@ pub async fn flash(
     };
 
     let loader = session
-        .build_flash_loader(path.to_path_buf(), format, image_target)
+        .build_flash_loader(
+            path.to_path_buf(),
+            format,
+            image_target,
+            download_options.read_flasher_rtt,
+        )
         .await?;
 
     let mut flash_layout = None;

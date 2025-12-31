@@ -447,6 +447,7 @@ impl SessionInterface {
         mut path: PathBuf,
         mut format: FormatOptions,
         image_target: Option<String>,
+        read_flasher_rtt: bool,
     ) -> anyhow::Result<BuildResult> {
         path = self.client.upload_file(&path).await?;
 
@@ -474,6 +475,7 @@ impl SessionInterface {
                 path: path.display().to_string(),
                 format,
                 image_target,
+                read_flasher_rtt,
             })
             .await
     }
@@ -501,6 +503,7 @@ impl SessionInterface {
     pub async fn erase(
         &self,
         command: EraseCommand,
+        read_flasher_rtt: bool,
         on_msg: impl AsyncFnMut(ProgressEvent),
     ) -> anyhow::Result<()> {
         self.client
@@ -508,6 +511,7 @@ impl SessionInterface {
                 &EraseRequest {
                     sessid: self.sessid,
                     command,
+                    read_flasher_rtt,
                 },
                 on_msg,
             )

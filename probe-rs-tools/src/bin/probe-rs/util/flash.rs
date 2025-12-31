@@ -306,7 +306,9 @@ impl CliProgressBars {
             ProgressEvent::Finished(operation) => {
                 progress_bars.get_mut(operation).finish();
             }
-            ProgressEvent::DiagnosticMessage { .. } => {}
+            ProgressEvent::DiagnosticMessage { message } => {
+                logging::println(message);
+            }
         }
     }
 }

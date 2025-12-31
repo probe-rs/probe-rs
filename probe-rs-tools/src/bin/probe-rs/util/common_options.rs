@@ -42,6 +42,10 @@ pub struct BinaryDownloadOptions {
     /// Whether to erase the entire chip before downloading
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub chip_erase: bool,
+
+    /// Whether to read the RTT output from the flash loader, if available.
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub read_flasher_rtt: bool,
 }
 
 /// Supported bit-widths for read/write commands (not every device may support each width).

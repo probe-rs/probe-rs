@@ -46,6 +46,7 @@ pub struct BuildRequest {
     pub path: String,
     pub format: FormatOptions,
     pub image_target: Option<String>,
+    pub read_flasher_rtt: bool,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -63,7 +64,7 @@ pub async fn build(
 ) -> BuildResponse {
     // build loader
     let mut session = ctx.session(request.sessid).await;
-    let loader = build_loader(
+    let mut loader = build_loader(
         &mut session,
         &request.path,
         request.format,
@@ -72,6 +73,8 @@ pub async fn build(
             .as_deref()
             .and_then(InstructionSet::from_target_triple),
     )?;
+
+    loader.read_rtt_output(request.read_flasher_rtt);
 
     Ok(BuildResult {
         boot_info: loader.boot_info().into(),
@@ -385,6 +388,7 @@ fn flash_impl(
 pub struct EraseRequest {
     pub sessid: Key<Session>,
     pub command: EraseCommand,
+    pub read_flasher_rtt: bool,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -414,7 +418,9 @@ fn erase_impl(
     });
 
     match request.command {
-        EraseCommand::All => flashing::erase_all(&mut session, &mut progress)?,
+        EraseCommand::All => {
+            flashing::erase_all(&mut session, &mut progress, request.read_flasher_rtt)?
+        }
     }
 
     Ok(())
@@ -454,7 +460,9 @@ fn verify_impl(
     let mut progress = FlashProgress::new(move |event| {
         ProgressEvent::from_library_event(event, |event| {
             // Only emit Verify-related events.
-            if event.is_operation(Operation::Verify) {
+            if event.is_operation(Operation::Verify)
+                || matches!(event, ProgressEvent::DiagnosticMessage { .. })
+            {
                 sender.blocking_send(event).unwrap()
             }
         });
