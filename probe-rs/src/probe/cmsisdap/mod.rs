@@ -823,6 +823,8 @@ impl DebugProbe for CmsisDap {
                 handle.descriptor()
             )
             .leak(),
+
+            #[cfg(feature = "cmsisdap_v1")]
             _ => "CMSIS-DAP V1",
         }
     }
