@@ -693,6 +693,11 @@ impl CoreHandle<'_> {
 
         Ok(result_buffer)
     }
+
+    /// Writes memory of the target core.
+    pub(crate) fn write_memory(&mut self, address: u64, data_bytes: &[u8]) -> Result<(), Error> {
+        self.core.write_8(address, &data_bytes)
+    }
 }
 
 /// Return a Vec of memory ranges that consolidate the adjacent memory ranges of the input ranges.

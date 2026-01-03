@@ -245,11 +245,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 );
             }
         };
-        match target_core
-            .core
-            .write_8(address, &data_bytes)
-            .map_err(DebuggerError::ProbeRs)
-        {
+        match target_core.write_memory(address, &data_bytes) {
             Ok(_) => {
                 self.send_response(
                     request,
@@ -269,7 +265,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }),
                 )
             }
-            Err(error) => self.send_response::<()>(request, Err(&error)),
+            Err(error) => self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error))),
         }
     }
 
