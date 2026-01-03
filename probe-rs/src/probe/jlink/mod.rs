@@ -1293,6 +1293,7 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
                 info.serial_number().map(|s| s.to_string()),
                 &JLinkFactory,
                 None,
+                false,
             )
         })
         .collect()

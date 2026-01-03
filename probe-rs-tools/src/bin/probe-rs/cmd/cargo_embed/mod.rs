@@ -196,6 +196,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
                 vendor_id: u16::from_str_radix(vid, 16)?,
                 product_id: u16::from_str_radix(pid, 16)?,
                 serial_number: config.probe.serial.clone(),
+                interface: config.probe.interface,
             }),
             (vid, pid) => {
                 if vid.is_some() {

@@ -8,6 +8,8 @@ use hidapi::HidApi;
 use nusb::{DeviceInfo, MaybeFuture, descriptors::TransferType, transfer::Direction};
 
 const USB_CLASS_HID: u8 = 0x03;
+const USB_CMSIS_DAP_CLASS: u8 = 0xFF;
+const USB_CMSIS_DAP_SUBCLASS: u8 = 0;
 
 /// Finds all CMSIS-DAP devices, either v1 (HID) or v2 (WinUSB Bulk).
 ///
@@ -21,7 +23,7 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
     #[cfg_attr(not(feature = "cmsisdap_v1"), expect(unused_mut))]
     let mut probes = match nusb::list_devices().wait() {
         Ok(devices) => devices
-            .filter_map(|device| get_cmsisdap_info(&device))
+            .flat_map(|device| get_cmsisdap_info(&device))
             .collect(),
         Err(e) => {
             tracing::warn!("error listing devices with nusb: {e}");
@@ -58,7 +60,8 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
 }
 
 /// Checks if a given Device is a CMSIS-DAP probe, returning Some(DebugProbeInfo) if so.
-fn get_cmsisdap_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
+fn get_cmsisdap_info(device: &DeviceInfo) -> Vec<DebugProbeInfo> {
+    let mut results = vec![];
     // Open device handle and read basic information
     let prod_str = device.product_string().unwrap_or("");
     let sn_str = device.serial_number();
@@ -70,8 +73,7 @@ fn get_cmsisdap_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
     // 1. Any with CMSIS-DAP in their interface string
     // 2. Any that are HID, if the product string says CMSIS-DAP,
     //    to save for potential HID-only operation.
-    let mut cmsis_dap_interface = false;
-    let mut hid_interface = None;
+    let mut has_found_hid_interface = None;
     for interface in device.interfaces() {
         let Some(interface_desc) = interface.interface_string() else {
             tracing::trace!(
@@ -84,40 +86,56 @@ fn get_cmsisdap_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             tracing::trace!(
                 "  Interface {}: {}",
                 interface.interface_number(),
-                interface_desc
+                interface_desc,
             );
-            cmsis_dap_interface = true;
-            if interface.class() == USB_CLASS_HID {
+            let selected_interface = Some(interface.interface_number());
+            let is_hid_interface = if interface.class() == USB_CLASS_HID {
                 tracing::trace!("    HID interface found");
-                hid_interface = Some(interface.interface_number());
-            }
+                has_found_hid_interface = selected_interface;
+                true
+            } else if (interface.class(), interface.subclass())
+                != (USB_CMSIS_DAP_CLASS, USB_CMSIS_DAP_SUBCLASS)
+            {
+                tracing::trace!(
+                    "Interface {} has a cmsis-dap description but wrong classes ({}, {}), skipping",
+                    interface.interface_number(),
+                    interface.class(),
+                    interface.subclass(),
+                );
+                // Not a CMSIS-DAP v2 interface, skip.
+                continue;
+            } else {
+                false
+            };
+
+            results.push(DebugProbeInfo::new(
+                prod_str.to_string(),
+                device.vendor_id(),
+                device.product_id(),
+                sn_str.map(Into::into),
+                &CmsisDapFactory,
+                selected_interface,
+                is_hid_interface,
+            ));
         }
     }
 
-    if cmsis_dap_interface || cmsis_dap_product {
+    if cmsis_dap_product {
         tracing::trace!(
             "{}: CMSIS-DAP device with {} interfaces",
             prod_str,
             device.interfaces().count()
         );
 
-        if let Some(interface) = hid_interface {
+        if let Some(interface) = has_found_hid_interface {
             tracing::trace!("Will use interface number {} for CMSIS-DAPv1", interface);
         } else {
             tracing::trace!("No HID interface for CMSIS-DAP found.")
         }
-
-        Some(DebugProbeInfo::new(
-            prod_str.to_string(),
-            device.vendor_id(),
-            device.product_id(),
-            sn_str.map(Into::into),
-            &CmsisDapFactory,
-            hid_interface,
-        ))
-    } else {
-        None
     }
+    // Make sure cmsis-dap v2 interfaces are tried first
+    results.sort_by_key(|dpi| dpi.is_hid_interface);
+    results
 }
 
 /// Checks if a given HID device is a CMSIS-DAP v1 probe, returning Some(DebugProbeInfo) if so.
@@ -140,6 +158,7 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
             device.serial_number().map(|s| s.to_owned()),
             &CmsisDapFactory,
             Some(device.interface_number() as u8),
+            true,
         ))
     } else {
         None
@@ -149,10 +168,17 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
 /// Attempt to open the given device in CMSIS-DAP v2 mode
 pub fn open_v2_device(
     device_info: &DeviceInfo,
+    selected_interface: Option<u8>,
 ) -> Result<Option<CmsisDapDevice>, ProbeCreationError> {
     // Open device handle and read basic information
     let vid = device_info.vendor_id();
     let pid = device_info.product_id();
+
+    tracing::trace!(
+        "Trying to open {:04x}:{:04x} in cmsis-dap v2 mode",
+        vid,
+        pid
+    );
 
     let device = match device_info.open().wait() {
         Ok(device) => device,
@@ -174,9 +200,21 @@ pub fn open_v2_device(
     // interface whose string like "CMSIS-DAP" and has two or three
     // endpoints of the correct type and direction.
     let Some(c_desc) = device.configurations().next() else {
+        tracing::trace!("No cmsis-dap v2 interface found");
         return Ok(None);
     };
     for interface in c_desc.interfaces() {
+        tracing::trace!("Checking interface {}", interface.interface_number());
+        if let Some(iface) = selected_interface
+            && interface.interface_number() != iface
+        {
+            tracing::trace!(
+                "Interface number does not match selector {} != {}",
+                iface,
+                interface.interface_number()
+            );
+            continue;
+        }
         for i_desc in interface.alt_settings() {
             // Skip interfaces without "CMSIS-DAP" like pattern in their string
             let Some(interface_str) = device_info
@@ -184,15 +222,21 @@ pub fn open_v2_device(
                 .find(|i| i.interface_number() == interface.interface_number())
                 .and_then(|i| i.interface_string())
             else {
+                tracing::trace!("Interface does not have interface string");
                 continue;
             };
             if !is_cmsis_dap(interface_str) {
+                tracing::trace!("Interface does not have 'CMSIS-DAP' in string");
                 continue;
             }
 
             // Skip interfaces without 2 or 3 endpoints
             let n_ep = i_desc.num_endpoints();
             if !(2..=3).contains(&n_ep) {
+                tracing::trace!(
+                    "Interface does not have the correct number of endpoints ({})",
+                    n_ep
+                );
                 continue;
             }
 
@@ -201,11 +245,13 @@ pub fn open_v2_device(
             // Check the first endpoint is bulk out
             if eps[0].transfer_type() != TransferType::Bulk || eps[0].direction() != Direction::Out
             {
+                tracing::trace!("First interface endpoint is not bulk out");
                 continue;
             }
 
             // Check the second endpoint is bulk in
             if eps[1].transfer_type() != TransferType::Bulk || eps[1].direction() != Direction::In {
+                tracing::trace!("Second interface endpoint is not bulk in");
                 continue;
             }
 
@@ -218,7 +264,6 @@ pub fn open_v2_device(
             {
                 swo_ep = Some((eps[2].address(), eps[2].max_packet_size()));
             }
-
             // Attempt to claim this interface
             match device.claim_interface(interface.interface_number()).wait() {
                 Ok(handle) => {
@@ -308,18 +353,25 @@ pub fn open_device_from_selector(
             for device in devices {
                 tracing::trace!("Trying device {:?}", device);
 
-                if selector.matches(&device) {
-                    hid_device_info = get_cmsisdap_info(&device);
-
-                    if hid_device_info.is_some() {
-                        // If the VID, PID, and potentially SN all match,
-                        // and the device is a valid CMSIS-DAP probe,
-                        // attempt to open the device in v2 mode.
-                        if let Some(device) = open_v2_device(&device)? {
-                            return Ok(device);
-                        }
+                if selector.matches(&device)
+                    && let Some(device_info) = get_cmsisdap_info(&device).into_iter().find(|dpi| {
+                        tracing::trace!("DebugProbeInfo: {:?}", dpi);
+                        // Only compare if the selector has an interface to compare to
+                        selector.interface.is_none_or(|i| Some(i) == dpi.interface)
+                    })
+                {
+                    // If the VID, PID, and potentially SN all match,
+                    // and the device is a valid CMSIS-DAP probe,
+                    // attempt to open the device in v2 mode.
+                    if let Some(device) = open_v2_device(&device, device_info.interface)? {
+                        return Ok(device);
+                    } else {
+                        // Otherwise, save as a potential CMSIS-DAP v1 HID device and continue.
+                        hid_device_info = Some(device_info);
                     }
                 }
+
+                tracing::trace!("Device did not match");
             }
         }
         Err(e) => {
@@ -362,8 +414,9 @@ pub fn open_device_from_selector(
                     device_match &= Some(sn) == info.serial_number();
                 }
 
-                if let Some(hid_interface) =
-                    hid_device_info.as_ref().and_then(|info| info.hid_interface)
+                if let Some(hid_interface) = hid_device_info
+                    .as_ref()
+                    .and_then(|info| info.interface.filter(|_| info.is_hid_interface))
                 {
                     device_match &= info.interface_number() == hid_interface as i32;
                 }

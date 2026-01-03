@@ -34,6 +34,7 @@ pub(super) fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                 read_serial_number(&device),
                 &StLinkFactory,
                 None,
+                false,
             )
         })
         .collect()

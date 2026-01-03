@@ -530,6 +530,7 @@ fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             device.serial_number().map(|s| s.to_string()),
             &WchLinkFactory,
             None,
+            false,
         ))
     } else {
         None

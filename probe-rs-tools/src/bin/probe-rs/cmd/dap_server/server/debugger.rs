@@ -1270,6 +1270,7 @@ mod test {
             Some("mock_serial".to_owned()),
             &MockProbeFactory,
             None,
+            false,
         );
 
         let fake_probe = FakeProbe::with_mocked_core_and_binary(program_binary().as_path());
