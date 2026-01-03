@@ -951,8 +951,7 @@ impl DebugProbeSelector {
         interface: Option<u8>,
         serial_number: Option<&str>,
     ) -> bool {
-        // TODO: change to trace when debugging is done
-        tracing::info!(
+        tracing::trace!(
             "Matching probe selector:\nVendor ID: {vendor_id:04x} == {:04x}\nProduct ID: {product_id:04x} = {:04x}\nInterface: {interface:?} == {:?}\nSerial Number: {serial_number:?} == {:?}",
             self.vendor_id,
             self.product_id,
