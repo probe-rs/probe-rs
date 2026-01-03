@@ -164,7 +164,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let memory_offset = arguments.offset.unwrap_or(0);
         let address: u64 = match parse::<u64>(arguments.memory_reference.as_ref()) {
-            Ok(address) => address + memory_offset as u64,
+            Ok(address) => address.wrapping_add(memory_offset as u64), // handles negative offsets
             Err(err) => {
                 return self.send_response::<()>(
                     request,
