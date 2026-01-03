@@ -197,8 +197,10 @@ fn monitor_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let mut session = shared_session.session_blocking();
-    request.mode.prepare(&mut session, run_loop.core_id)?;
+    {
+        let mut session = shared_session.session_blocking();
+        request.mode.prepare(&mut session, run_loop.core_id)?;
+    }
 
     let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
         rtt_client: client,
