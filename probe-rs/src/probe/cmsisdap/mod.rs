@@ -440,9 +440,10 @@ impl CmsisDap {
     /// as an alternative to [`Self::process_batch()`]. This function will return any errors,
     /// and not retry any transfers.
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
+        let mut request = TransferRequest::read(Ctrl::ADDRESS);
+        request.dap_index = self.jtag_state.chain_params.index as u8;
         let response =
-            commands::send_command(&mut self.device, &TransferRequest::read(Ctrl::ADDRESS))
-                .map_err(DebugProbeError::from)?;
+            commands::send_command(&mut self.device, &request).map_err(DebugProbeError::from)?;
 
         // We can assume that the single transfer is always executed,
         // no need to check here.
@@ -477,11 +478,10 @@ impl CmsisDap {
     }
 
     fn write_abort(&mut self, abort: Abort) -> Result<(), ArmError> {
-        let response = commands::send_command(
-            &mut self.device,
-            &TransferRequest::write(Abort::ADDRESS, abort.into()),
-        )
-        .map_err(DebugProbeError::from)?;
+        let mut request = TransferRequest::write(Abort::ADDRESS, abort.into());
+        request.dap_index = self.jtag_state.chain_params.index as u8;
+        let response =
+            commands::send_command(&mut self.device, &request).map_err(DebugProbeError::from)?;
 
         // We can assume that the single transfer is always executed,
         // no need to check here.
@@ -521,6 +521,7 @@ impl CmsisDap {
         tracing::debug!("{} items in batch", batch.len());
 
         let mut transfers = TransferRequest::empty();
+        transfers.dap_index = self.jtag_state.chain_params.index as u8;
         for command in batch.iter().cloned() {
             match command {
                 BatchCommand::Read(port) => {
@@ -1050,7 +1051,8 @@ impl RawDapAccess for CmsisDap {
         let data_chunk_len = max_packet_size_words as usize;
 
         for (i, chunk) in values.chunks(data_chunk_len).enumerate() {
-            let request = TransferBlockRequest::write_request(address, Vec::from(chunk));
+            let mut request = TransferBlockRequest::write_request(address, Vec::from(chunk));
+            request.dap_index = self.jtag_state.chain_params.index as u8;
 
             tracing::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
@@ -1094,7 +1096,8 @@ impl RawDapAccess for CmsisDap {
         let data_chunk_len = max_packet_size_words as usize;
 
         for (i, chunk) in values.chunks_mut(data_chunk_len).enumerate() {
-            let request = TransferBlockRequest::read_request(address, chunk.len() as u16);
+            let mut request = TransferBlockRequest::read_request(address, chunk.len() as u16);
+            request.dap_index = self.jtag_state.chain_params.index as u8;
 
             tracing::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
