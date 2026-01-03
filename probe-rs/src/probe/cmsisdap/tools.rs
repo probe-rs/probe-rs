@@ -151,7 +151,7 @@ fn get_cmsisdap_info(device: &DeviceInfo, list_both_versions: bool) -> Vec<Debug
     }
     // Make sure cmsis-dap v2 interfaces are tried first
     let mut results = v2_ifaces;
-    if list_both_versions || v2_ifaces.is_empty() {
+    if list_both_versions || results.is_empty() {
         results.extend(v1_ifaces);
     }
     results
@@ -361,7 +361,7 @@ pub fn open_device_from_selector(
     //
     // If nusb cannot be used, we will just use the first HID interface and
     // try to open that.
-    #[cfg_attr(not(feature = "cmsisdap_v1"), expect(unused_assignments))]
+    #[cfg(feature = "cmsisdap_v1")]
     let mut hid_device_info = None;
 
     // Try using nusb to open a v2 device. This might fail if
@@ -386,8 +386,11 @@ pub fn open_device_from_selector(
                     if let Some(device) = open_v2_device(&device, device_info.interface)? {
                         return Ok(device);
                     } else {
-                        // Otherwise, save as a potential CMSIS-DAP v1 HID device and continue.
-                        hid_device_info = Some(device_info);
+                        #[cfg(feature = "cmsisdap_v1")]
+                        {
+                            // Otherwise, save as a potential CMSIS-DAP v1 HID device and continue.
+                            hid_device_info = Some(device_info);
+                        }
                     }
                 }
 
