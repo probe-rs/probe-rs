@@ -23,7 +23,7 @@ use crate::{
 };
 use anyhow::{Result, anyhow};
 use probe_rs::semihosting::SemihostingCommand;
-use probe_rs::{BreakpointCause, BreakpointError};
+use probe_rs::{BreakpointCause, BreakpointError, Error, MemoryInterface as _};
 use probe_rs::{Core, CoreStatus, HaltReason, rtt::ScanRegion};
 use probe_rs_debug::VerifiedBreakpoint;
 use probe_rs_debug::{
@@ -645,6 +645,53 @@ impl CoreHandle<'_> {
         tracing::trace!("Notified DAP client that the core halted: {:?}", status);
 
         Ok(())
+    }
+
+    /// Reads memory from the target.
+    ///
+    /// Returns a vector containing as many bytes as possible to read, stopping at the first error.
+    ///
+    /// If we can't read any bytes, returns an error.
+    pub(crate) fn read_memory_lossy(
+        &mut self,
+        mut address: u64,
+        count: usize,
+    ) -> Result<Vec<u8>, Error> {
+        let mut num_bytes_unread = count;
+        // The probe-rs API does not return partially read data.
+        // It either succeeds for the whole buffer or not. However, doing single byte reads is slow, so we will
+        // do reads in larger chunks, until we get an error, and then do smaller reads, then smaller, as long as
+        // we get any data, to make sure we get all the data we can.
+        let mut result_buffer = vec![];
+
+        // Get a suitable chunk size. It needs to be a power of two, at most 256, at most the count.
+        fn chunk_size(count: usize, max_chunk_size: usize) -> usize {
+            (max_chunk_size.min(count) / 2).next_power_of_two()
+        }
+
+        let mut fast_buff = [0u8; 256];
+        let mut max_chunk_size = fast_buff.len();
+
+        while num_bytes_unread > 0 && max_chunk_size > 0 {
+            let chunk_size = chunk_size(num_bytes_unread, max_chunk_size);
+            let buffer = &mut fast_buff[..chunk_size];
+
+            if let Err(e) = self.core.read(address, buffer) {
+                // If we haven't read any data yet, and we could not read a single byte, return an error.
+                if result_buffer.is_empty() && chunk_size == 1 {
+                    return Err(e);
+                }
+
+                // Failed to read chunk, try smaller chunk size.
+                max_chunk_size = chunk_size / 2;
+            } else {
+                result_buffer.extend_from_slice(buffer);
+                address += chunk_size as u64;
+                num_bytes_unread -= chunk_size;
+            }
+        }
+
+        Ok(result_buffer)
     }
 }
 

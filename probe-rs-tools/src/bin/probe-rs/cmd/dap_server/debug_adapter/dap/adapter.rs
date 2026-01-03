@@ -163,7 +163,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: ReadMemoryArguments = get_arguments(self, request)?;
 
         let memory_offset = arguments.offset.unwrap_or(0);
-        let mut address: u64 = match parse::<u64>(arguments.memory_reference.as_ref()) {
+        let address: u64 = match parse::<u64>(arguments.memory_reference.as_ref()) {
             Ok(address) => address + memory_offset as u64,
             Err(err) => {
                 return self.send_response::<()>(
@@ -175,34 +175,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 );
             }
         };
-        let mut num_bytes_unread = arguments.count as usize;
-        // The probe-rs API does not return partially read data.
-        // It either succeeds for the whole buffer or not. However, doing single byte reads is slow, so we will
-        // do reads in larger chunks, until we get an error, and then do single byte reads for the last few bytes, to make
-        // sure we get all the data we can.
-        let mut result_buffer = vec![];
-        let large_read_byte_count = 8usize;
-        let mut fast_buff = vec![0u8; large_read_byte_count];
-        // Read as many large chunks as possible.
-        while num_bytes_unread > 0 {
-            if let Ok(()) = target_core.core.read(address, &mut fast_buff) {
-                result_buffer.extend_from_slice(&fast_buff);
-                address += large_read_byte_count as u64;
-                num_bytes_unread -= large_read_byte_count;
-            } else {
-                break;
-            }
-        }
-        // Read the remaining bytes one by one.
-        while num_bytes_unread > 0 {
-            if let Ok(good_byte) = target_core.core.read_word_8(address) {
-                result_buffer.push(good_byte);
-                address += 1;
-                num_bytes_unread -= 1;
-            } else {
-                break;
-            }
-        }
+        let result_buffer = target_core
+            .read_memory_lossy(address, arguments.count as usize)
+            .unwrap_or_default();
+        let num_bytes_unread = arguments.count as usize - result_buffer.len();
         // Currently, VSCode sends a request with count=0 after the last successful one ... so
         // let's ignore it.
         if !result_buffer.is_empty() || (self.vscode_quirks && arguments.count == 0) {
