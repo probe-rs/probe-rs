@@ -23,7 +23,7 @@ use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
     Architecture::Riscv,
-    CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
+    CoreStatus, Error, HaltReason, RegisterValue,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
