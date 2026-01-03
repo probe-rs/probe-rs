@@ -89,7 +89,7 @@ fn rustc_binary() -> std::ffi::OsString {
 }
 
 pub(crate) fn disassemble_target_memory(
-    target_core: &mut CoreHandle,
+    target_core: &mut CoreHandle<'_>,
     instruction_offset: i64,
     byte_offset: i64,
     memory_reference: u64,
@@ -381,7 +381,7 @@ pub(crate) fn disassemble_target_memory(
     Ok(disassembled_instructions)
 }
 
-fn get_capstone_le(target_core: &mut CoreHandle) -> Result<Capstone, DebuggerError> {
+fn get_capstone_le(target_core: &mut CoreHandle<'_>) -> Result<Capstone, DebuggerError> {
     let mut cs = match target_core.core.instruction_set()? {
         InstructionSet::Thumb2 => {
             let mut capstone_builder = Capstone::new()
@@ -566,7 +566,7 @@ pub(crate) fn get_svd_variable_reference(
 /// A helper function to set and return a [`Breakpoint`] struct from a [`InstructionBreakpoint`]
 pub(crate) fn set_instruction_breakpoint(
     requested_breakpoint: InstructionBreakpoint,
-    target_core: &mut CoreHandle,
+    target_core: &mut CoreHandle<'_>,
 ) -> Breakpoint {
     let mut breakpoint_response = Breakpoint {
         column: None,
