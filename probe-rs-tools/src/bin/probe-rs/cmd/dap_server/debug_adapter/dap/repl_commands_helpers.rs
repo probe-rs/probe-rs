@@ -17,7 +17,7 @@ use super::{
 /// - If the `variable_name` is `VariableName::LocalScopeRoot`, then all local variables will be printed.
 pub(crate) fn get_local_variable(
     evaluate_arguments: &EvaluateArguments,
-    target_core: &mut CoreHandle,
+    target_core: &mut CoreHandle<'_>,
     variable_name: VariableName,
     gdb_nuf: GdbNuf,
 ) -> Result<Response, DebuggerError> {
@@ -110,7 +110,7 @@ pub(crate) fn get_local_variable(
 pub(crate) fn memory_read(
     address: u64,
     gdb_nuf: GdbNuf,
-    target_core: &mut CoreHandle,
+    target_core: &mut CoreHandle<'_>,
 ) -> Result<Response, DebuggerError> {
     let mut response = Response {
         command: "readMemory".to_string(),

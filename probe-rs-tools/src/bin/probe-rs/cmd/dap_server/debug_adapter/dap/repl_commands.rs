@@ -34,7 +34,7 @@ use std::{
 //
 // TODO: Make this less confusing by having a different struct for this.
 pub(crate) type ReplHandler = fn(
-    target_core: &mut CoreHandle,
+    target_core: &mut CoreHandle<'_>,
     command_arguments: &str,
     evaluate_arguments: &EvaluateArguments,
 ) -> Result<Response, DebuggerError>;

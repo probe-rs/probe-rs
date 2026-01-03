@@ -23,7 +23,7 @@ use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
     Architecture::Riscv,
-    CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
+    CoreStatus, Error, HaltReason, RegisterValue,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
@@ -95,7 +95,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.configuration_done
     }
 
-    pub(crate) fn pause(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
+    pub(crate) fn pause(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+        request: &Request,
+    ) -> Result<()> {
         match target_core.core.halt(Duration::from_millis(500)) {
             Ok(cpu_info) => {
                 let new_status = match target_core.core.status() {
@@ -135,7 +139,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn disconnect(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: DisconnectArguments = get_arguments(self, request)?;
@@ -153,14 +157,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn read_memory(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: ReadMemoryArguments = get_arguments(self, request)?;
 
         let memory_offset = arguments.offset.unwrap_or(0);
-        let mut address: u64 = match parse::<u64>(arguments.memory_reference.as_ref()) {
-            Ok(address) => address + memory_offset as u64,
+        let address: u64 = match parse::<u64>(arguments.memory_reference.as_ref()) {
+            Ok(address) => address.wrapping_add(memory_offset as u64), // handles negative offsets
             Err(err) => {
                 return self.send_response::<()>(
                     request,
@@ -171,34 +175,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 );
             }
         };
-        let mut num_bytes_unread = arguments.count as usize;
-        // The probe-rs API does not return partially read data.
-        // It either succeeds for the whole buffer or not. However, doing single byte reads is slow, so we will
-        // do reads in larger chunks, until we get an error, and then do single byte reads for the last few bytes, to make
-        // sure we get all the data we can.
-        let mut result_buffer = vec![];
-        let large_read_byte_count = 8usize;
-        let mut fast_buff = vec![0u8; large_read_byte_count];
-        // Read as many large chunks as possible.
-        while num_bytes_unread > 0 {
-            if let Ok(()) = target_core.core.read(address, &mut fast_buff) {
-                result_buffer.extend_from_slice(&fast_buff);
-                address += large_read_byte_count as u64;
-                num_bytes_unread -= large_read_byte_count;
-            } else {
-                break;
-            }
-        }
-        // Read the remaining bytes one by one.
-        while num_bytes_unread > 0 {
-            if let Ok(good_byte) = target_core.core.read_word_8(address) {
-                result_buffer.push(good_byte);
-                address += 1;
-                num_bytes_unread -= 1;
-            } else {
-                break;
-            }
-        }
+        let result_buffer = target_core
+            .read_memory_lossy(address, arguments.count as usize)
+            .unwrap_or_default();
+        let num_bytes_unread = arguments.count as usize - result_buffer.len();
         // Currently, VSCode sends a request with count=0 after the last successful one ... so
         // let's ignore it.
         if !result_buffer.is_empty() || (self.vscode_quirks && arguments.count == 0) {
@@ -227,7 +207,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn write_memory(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: WriteMemoryArguments = get_arguments(self, request)?;
@@ -265,11 +245,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 );
             }
         };
-        match target_core
-            .core
-            .write_8(address, &data_bytes)
-            .map_err(DebuggerError::ProbeRs)
-        {
+        match target_core.write_memory(address, &data_bytes) {
             Ok(_) => {
                 self.send_response(
                     request,
@@ -289,7 +265,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }),
                 )
             }
-            Err(error) => self.send_response::<()>(request, Err(&error)),
+            Err(error) => self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error))),
         }
     }
 
@@ -297,7 +273,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// The expression has access to any variables and arguments that are in scope.
     pub(crate) fn evaluate(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
@@ -618,7 +594,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     /// Works in tandem with the `evaluate` request, to provide possible completions in the Debug Console REPL window.
-    pub(crate) fn completions(&mut self, _: &mut CoreHandle, request: &Request) -> Result<()> {
+    pub(crate) fn completions(&mut self, _: &mut CoreHandle<'_>, request: &Request) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
 
         let arguments: CompletionsArguments = get_arguments(self, request)?;
@@ -633,7 +609,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Set the variable with the given name in the variable container to a new value.
     pub(crate) fn set_variable(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: SetVariableArguments = get_arguments(self, request)?;
@@ -748,7 +724,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn restart(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: Option<&Request>,
     ) -> Result<()> {
         match target_core.core.halt(Duration::from_millis(500)) {
@@ -871,7 +847,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     #[tracing::instrument(level = "debug", skip_all, name = "Handle configuration done")]
     pub(crate) fn configuration_done(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let current_core_status = target_core.core.status()?;
@@ -914,7 +890,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn set_breakpoints(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let args: SetBreakpointsArguments = get_arguments(self, request)?;
@@ -1020,7 +996,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn set_instruction_breakpoints(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: SetInstructionBreakpointsArguments = get_arguments(self, request)?;
@@ -1056,7 +1032,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn threads(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
@@ -1081,7 +1057,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn stack_trace(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         match target_core.core.status() {
@@ -1242,7 +1218,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// - static scope  : Variables with `static` modifier
     /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
     /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
-    pub(crate) fn scopes(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
+    pub(crate) fn scopes(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+        request: &Request,
+    ) -> Result<()> {
         let arguments: ScopesArguments = get_arguments(self, request)?;
 
         let mut dap_scopes: Vec<Scope> = vec![];
@@ -1339,7 +1319,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Attempt to extract disassembled source code to supply the instruction_count required.
     pub(crate) fn get_disassembled_source(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         // The program_counter where our desired instruction range is based.
         memory_reference: i64,
         // The number of bytes offset from the memory reference. Can be zero.
@@ -1383,7 +1363,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ///     - In this case, pad the results with, as the api requires, "implementation defined invalid instructions"
     pub(crate) fn disassemble(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: DisassembleArguments = get_arguments(self, request)?;
@@ -1429,7 +1409,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
     pub(crate) fn variables(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: VariablesArguments = get_arguments(self, request)?;
@@ -1639,7 +1619,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn r#continue(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         if let Err(error) = target_core.core.run() {
@@ -1688,7 +1668,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Steps through the code at the requested granularity.
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::OverStatement]: In all other cases.
-    pub(crate) fn next(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
+    pub(crate) fn next(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+        request: &Request,
+    ) -> Result<()> {
         let arguments: NextArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
@@ -1704,7 +1688,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// - [SteppingMode::IntoStatement]: In all other cases.
     pub(crate) fn step_in(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: StepInArguments = get_arguments(self, request)?;
@@ -1721,7 +1705,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// - [SteppingMode::OutOfStatement]: In all other cases.
     pub(crate) fn step_out(
         &mut self,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
         let arguments: StepOutArguments = get_arguments(self, request)?;
@@ -1738,7 +1722,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     fn debug_step(
         &mut self,
         stepping_granularity: SteppingMode,
-        target_core: &mut CoreHandle,
+        target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<(), anyhow::Error> {
         target_core.reset_core_status(self);
