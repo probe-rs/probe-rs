@@ -818,13 +818,19 @@ impl std::fmt::Display for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{} -- {:04x}:{:04x}-{}:{} ({})",
-            self.identifier,
-            self.vendor_id,
-            self.product_id,
-            self.interface.unwrap_or(0),
+            "{} -- {:04x}:{:04x}",
+            self.identifier, self.vendor_id, self.product_id,
+        )?;
+
+        if let Some(interface) = self.interface {
+            write!(f, "-{}", interface)?;
+        }
+
+        write!(
+            f,
+            ":{} ({})",
             self.serial_number.as_deref().unwrap_or(""),
-            self.probe_factory,
+            self.probe_factory
         )
     }
 }
