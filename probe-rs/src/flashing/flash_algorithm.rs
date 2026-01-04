@@ -188,8 +188,10 @@ impl FlashAlgorithm {
     // On ARMv8-A and -R, `BKPT` does not enter debug state, but the debug exception,
     // so use `HLT`.
     // For ARMv7 and ARMv8-M, `HLT` does not exist.
-    const ARM_FLASH_BLOB_HEADER_BKPT_LE: [u32; 1] = [arm::assembly::BKPT];
-    const ARM_FLASH_BLOB_HEADER_BKPT_BE: [u32; 1] = [arm::assembly::BKPT.swap_bytes()];
+    const ARM_FLASH_BLOB_HEADER_BKPT_T32_LE: [u32; 1] = [arm::assembly::BKPT_T32];
+    const ARM_FLASH_BLOB_HEADER_BKPT_T32_BE: [u32; 1] = [arm::assembly::BKPT_T32.swap_bytes()];
+    const ARM_FLASH_BLOB_HEADER_BKPT_A32_LE: [u32; 1] = [arm::assembly::BKPT_A32];
+    const ARM_FLASH_BLOB_HEADER_BKPT_A32_BE: [u32; 1] = [arm::assembly::BKPT_A32.swap_bytes()];
     const ARM_FLASH_BLOB_HEADER_HLT_LE: [u32; 1] = [arm::assembly::HLT];
     const ARM_FLASH_BLOB_HEADER_HLT_BE: [u32; 1] = [arm::assembly::HLT.swap_bytes()];
 
@@ -223,13 +225,15 @@ impl FlashAlgorithm {
 
     fn algorithm_header(core_type: CoreType, endian: Endian) -> &'static [u32] {
         match core_type {
-            CoreType::Armv6m
-            | CoreType::Armv7m
-            | CoreType::Armv7em
-            | CoreType::Armv8m
-            | CoreType::Armv7a => match endian {
-                Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_BKPT_LE,
-                Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_BKPT_BE,
+            CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
+                match endian {
+                    Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_BKPT_T32_LE,
+                    Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_BKPT_T32_BE,
+                }
+            }
+            CoreType::Armv7a => match endian {
+                Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_BKPT_A32_LE,
+                Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_BKPT_A32_BE,
             },
             CoreType::Armv8a => match endian {
                 Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_HLT_LE,

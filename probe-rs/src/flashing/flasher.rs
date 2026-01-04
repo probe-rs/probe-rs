@@ -960,11 +960,8 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             (
                 self.core.return_address(),
                 // For ARM Cortex-M cores, we have to add 1 to the return address,
-                // to ensure that we stay in Thumb mode. A32 also generally supports
-                // Thumb and uses the same `BKPT` instruction when in this mode.
-                if self.instruction_set == InstructionSet::Thumb2
-                    || self.instruction_set == InstructionSet::A32
-                {
+                // to ensure that we stay in Thumb mode.
+                if self.instruction_set == InstructionSet::Thumb2 {
                     Some(into_reg(algo.load_address + 1)?)
                 } else {
                     Some(into_reg(algo.load_address)?)
