@@ -1,0 +1,132 @@
+name: CH32F1 Series
+variants:
+- name: CH32F103C6
+  package_variants:
+  - CH32F103C6Tx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20002800
+    cores:
+    - main
+  flash_algorithms:
+  - ch32f10x_128
+  - ch32f10x_opt
+- name: CH32F103C8
+  package_variants:
+  - CH32F103C8Tx
+  - CH32F103C8Ux
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  flash_algorithms:
+  - ch32f10x_128
+  - ch32f10x_opt
+- name: CH32F103R8
+  package_variants:
+  - CH32F103R8Tx
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  flash_algorithms:
+  - ch32f10x_128
+  - ch32f10x_opt
+flash_algorithms:
+- name: ch32f10x_128
+  description: CH32F10x Med-density Flash
+  default: true
+  instructions: ELUDRgAgREwgYERIYGBESGBgIEbAaRDwBA8I0UXyVVBATCBgBiBgYED2/3CgYAAgEL0BRjhIAGlA8IAANkoQYQAgcEc0SABpQPAEADJJCGEIRgBpQPBAAAhhA+BK9qogMEkIYCxIwGgQ8AEP9tEqSABpIPAEAChJCGEAIHBHAUYlSABpQPACACNKEGEQRkFhAGlA8EAAEGED4Er2qiAhShBgHUjAaBDwAQ/20RpIAGkg8AIAGEoQYQAgcEcQtQNGSBwg8AEBIuATSABpQPABABFMIGEQiBiAAL8PSMBoEPABD/rRDEgAaSDwAQAKTCBhIEbAaBDwFA8G0CBGwGhA8BQA4GABIBC9mxySHIkeACna0QAg9+cAAAAgAkAjAWdFq4nvzQAwAEAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x33
+  pc_program_page: 0xbd
+  pc_erase_sector: 0x7f
+  pc_erase_all: 0x45
+  data_section_offset: 0x128
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8020000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 2000
+    erase_sector_timeout: 500
+    sectors:
+    - size: 0x400
+      address: 0x0
+- name: ch32f10x_opt
+  description: CH32F10x Flash Options
+  instructions: ELUDRgAgXkwgYF5IYGBeSGBgXEigYFxIoGAgRsBpEPAEDwjRRfJVUFhMIGAGIGBgQPb/cKBgACAQvQFGUEgAaSD0gHBOShBhEEYAaUDwgAAQYQAgcEdKSABpQPAgAEhJCGEIRgBpQPBAAAhhA+BK9qogRkkIYEJIwGgQ8AEP9tE/SABpIPAgAD1JCGEIRgBpQPAQAAhhRfalID1JCIAD4Er2qiA5SQhgNUjAaBDwAQ/20TNIAGkg8BAAMUkIYQhGwGgQ8BQPBtAIRsBoQPAUAMhgASBwRwAg/OcBRihIAGlA8CAAJkoQYRBGAGlA8EAAEGED4Er2qiAkShBgIEjAaBDwAQ/20R5IAGkg8CAAHEoQYQAgcEcDRgEgcEcQtQNGSBwg8AEBJuAVSABpQPAQABNMIGEQiBiAA+BK9qogE0wgYA9IwGgQ8AEP9tEMSABpIPAQAApMIGEgRsBoEPAUDwbQIEbAaEDwFADgYAEgEL2bHJIciR4AKdbRACD35wAAACACQCMBZ0Wrie/NADAAQAD4/x8AAAAA
+  pc_init: 0x1
+  pc_uninit: 0x3b
+  pc_program_page: 0x11d
+  pc_erase_sector: 0xdb
+  pc_erase_all: 0x57
+  data_section_offset: 0x194
+  flash_properties:
+    address_range:
+      start: 0x1ffff800
+      end: 0x1ffff810
+    page_size: 0x10
+    erased_byte_value: 0xff
+    program_page_timeout: 3000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x10
+      address: 0x0
