@@ -637,11 +637,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         sub_commands: &[],
         args: &[],
         handler: |target_core, _, _| {
-            let core_info = target_core
-                .core
-                .reset_and_halt(Duration::from_millis(500))?;
-
-            target_core.recompute_breakpoints()?;
+            let core_info = target_core.reset_and_halt()?;
 
             Ok(Response {
                 command: "pause".to_string(),

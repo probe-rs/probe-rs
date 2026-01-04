@@ -738,30 +738,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
             // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
-            if let Err(error) = target_core.core.reset_and_halt(Duration::from_millis(500)) {
+            if let Err(error) = target_core.reset_and_halt() {
                 return self
                     .send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))));
             }
 
-            // For RISC-V, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
-            if target_core.core.architecture() == Architecture::Riscv {
-                let saved_breakpoints = std::mem::take(&mut target_core.core_data.breakpoints);
-
-                for breakpoint in saved_breakpoints {
-                    if let Err(error) = target_core
-                        .set_breakpoint(breakpoint.address, breakpoint.breakpoint_type.clone())
-                    {
-                        // This will cause the debugger to show the user an error, but not stop the debugger.
-                        tracing::error!(
-                            "Failed to re-enable breakpoint {:?} after reset. {}",
-                            breakpoint,
-                            error
-                        );
-                    }
-                }
-            }
-
-            // Now that we have the breakpoints re-enabled, we can decide if it is appropriate to resume the core.
+            // Now we can decide if it is appropriate to resume the core.
             if !self.halt_after_reset {
                 match self.r#continue(target_core, request) {
                     Ok(_) => {

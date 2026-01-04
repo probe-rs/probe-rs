@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::num::NonZeroU32;
+use std::time::Duration;
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
@@ -23,7 +24,9 @@ use crate::{
 };
 use anyhow::{Result, anyhow};
 use probe_rs::semihosting::SemihostingCommand;
-use probe_rs::{BreakpointCause, BreakpointError, Error, MemoryInterface as _};
+use probe_rs::{
+    Architecture, BreakpointCause, BreakpointError, CoreInformation, Error, MemoryInterface as _,
+};
 use probe_rs::{Core, CoreStatus, HaltReason, rtt::ScanRegion};
 use probe_rs_debug::VerifiedBreakpoint;
 use probe_rs_debug::{
@@ -703,6 +706,34 @@ impl CoreHandle<'_> {
     /// Writes memory of the target core.
     pub(crate) fn write_memory(&mut self, address: u64, data_bytes: &[u8]) -> Result<(), Error> {
         self.core.write_8(address, data_bytes)
+    }
+
+    pub(crate) fn reapply_breakpoints(&mut self) {
+        if [Architecture::Riscv, Architecture::Xtensa].contains(&self.core.architecture()) {
+            let saved_breakpoints = std::mem::take(&mut self.core_data.breakpoints);
+
+            for breakpoint in saved_breakpoints {
+                if let Err(error) =
+                    self.set_breakpoint(breakpoint.address, breakpoint.breakpoint_type.clone())
+                {
+                    // This will cause the debugger to show the user an error, but not stop the debugger.
+                    tracing::error!(
+                        "Failed to re-enable breakpoint {:?} after reset. {}",
+                        breakpoint,
+                        error
+                    );
+                }
+            }
+        }
+    }
+
+    pub(crate) fn reset_and_halt(&mut self) -> Result<CoreInformation, Error> {
+        let core_info = self.core.reset_and_halt(Duration::from_millis(500))?;
+
+        // On some architectures, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
+        self.reapply_breakpoints();
+
+        Ok(core_info)
     }
 }
 
