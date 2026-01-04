@@ -151,11 +151,6 @@ pub trait CoreInterface: MemoryInterface {
     /// Called when we stop debugging a core.
     fn debug_core_stop(&mut self) -> Result<(), Error>;
 
-    /// Called during session stop to do any pending cleanup
-    fn on_session_stop(&mut self) -> Result<(), Error> {
-        Ok(())
-    }
-
     /// Enables vector catching for the given `condition`
     fn enable_vector_catch(&mut self, _condition: VectorCatchCondition) -> Result<(), Error> {
         Err(Error::NotImplemented("vector catch"))
