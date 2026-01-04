@@ -265,7 +265,7 @@ impl SessionData {
         }
     }
 
-    /// Do a 'light weight'(just get references to existing data structures) attach to the core and return relevant debug data.
+    /// Do a 'light weight' (just get references to existing data structures) attach to the core and return relevant debug data.
     pub(crate) fn attach_core(
         &mut self,
         core_index: usize,
@@ -277,6 +277,7 @@ impl SessionData {
                 .find(|core_data| core_data.core_index == core_index),
         ) {
             Ok(CoreHandle {
+                core_id: core_index,
                 core: target_core,
                 core_data,
             })
@@ -395,7 +396,7 @@ impl SessionData {
                 let _stackframe_span = tracing::debug_span!("Update Stack Frames").entered();
                 tracing::debug!(
                     "Updating the stack frame data for core #{}",
-                    target_core.core.id()
+                    target_core.id()
                 );
 
                 let initial_registers = DebugRegisters::from_core(&mut target_core.core);

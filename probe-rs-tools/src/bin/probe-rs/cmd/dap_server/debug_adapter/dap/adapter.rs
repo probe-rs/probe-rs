@@ -119,7 +119,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let event_body = Some(StoppedEventBody {
                     reason: "pause".to_owned(),
                     description: Some(new_status.short_long_status(Some(cpu_info.pc)).1),
-                    thread_id: Some(target_core.core.id() as i64),
+                    thread_id: Some(target_core.id() as i64),
                     preserve_focus_hint: Some(false),
                     text: None,
                     all_threads_stopped: Some(self.all_cores_halted),
@@ -779,7 +779,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         self.send_response::<()>(request, Ok(None))?;
                         let event_body = Some(ContinuedEventBody {
                             all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                            thread_id: target_core.core.id() as i64,
+                            thread_id: target_core.id() as i64,
                         });
                         self.send_event("continued", event_body)?;
                         Ok(())
@@ -798,7 +798,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             .short_long_status(None)
                             .1,
                     ),
-                    thread_id: Some(target_core.core.id() as i64),
+                    thread_id: Some(target_core.id() as i64),
                     preserve_focus_hint: None,
                     text: None,
                     all_threads_stopped: Some(self.all_cores_halted),
@@ -826,7 +826,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             .short_long_status(Some(core_info.pc))
                             .1,
                     ),
-                    thread_id: Some(target_core.core.id() as i64),
+                    thread_id: Some(target_core.id() as i64),
                     preserve_focus_hint: None,
                     text: None,
                     all_threads_stopped: Some(self.all_cores_halted),
@@ -863,7 +863,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .0
                         .to_owned(),
                     description: Some(current_core_status.short_long_status(program_counter).1),
-                    thread_id: Some(target_core.core.id() as i64),
+                    thread_id: Some(target_core.id() as i64),
                     preserve_focus_hint: None,
                     text: None,
                     all_threads_stopped: Some(self.all_cores_halted),
@@ -1035,7 +1035,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if self.configuration_is_done() {
             // We can handle this request normally.
             let single_thread = Thread {
-                id: target_core.core.id() as i64,
+                id: target_core.id() as i64,
                 name: target_core.core_data.target_name.clone(),
             };
             threads.push(single_thread);
@@ -1757,7 +1757,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .short_long_status(Some(program_counter))
                         .1,
                 ),
-                thread_id: Some(target_core.core.id() as i64),
+                thread_id: Some(target_core.id() as i64),
                 preserve_focus_hint: None,
                 text: None,
                 all_threads_stopped: Some(self.all_cores_halted),
