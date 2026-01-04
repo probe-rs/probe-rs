@@ -22,7 +22,6 @@ use base64::{Engine as _, engine::general_purpose as base64_engine};
 use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
-    Architecture::Riscv,
     CoreStatus, Error, HaltReason, RegisterValue,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
@@ -707,19 +706,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
 
-        if response_body.value.is_empty() {
+        let response = if response_body.value.is_empty() {
             // If we get here, it is a bug.
-            self.send_response::<SetVariableResponseBody>(
-                                request,
-                                Err(&DebuggerError::Other(anyhow!(
-                                    "Failed to update variable: {}, with new value {:?} : Please report this as a bug.",
-                                    arguments.name,
-                                    arguments.value
-                                ))),
-                            )
+            Err(&DebuggerError::Other(anyhow!(
+                "Failed to update variable: {}, with new value {:?} : Please report this as a bug.",
+                arguments.name,
+                arguments.value
+            )))
         } else {
-            self.send_response(request, Ok(Some(response_body)))
-        }
+            Ok(Some(response_body))
+        };
+        self.send_response(request, response)
     }
 
     pub(crate) fn restart(
@@ -727,18 +724,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle<'_>,
         request: Option<&Request>,
     ) -> Result<()> {
-        match target_core.core.halt(Duration::from_millis(500)) {
-            Ok(_) => {}
-            Err(error) => {
-                if let Some(request) = request {
-                    return self.send_response::<()>(
-                        request,
-                        Err(&DebuggerError::Other(anyhow!("{error}"))),
-                    );
-                } else {
-                    return self.show_error_message(&DebuggerError::Other(anyhow!("{error}")));
-                }
-            }
+        if let Err(error) = target_core.core.halt(Duration::from_millis(500)) {
+            let error = DebuggerError::Other(anyhow!("{error}"));
+            return if let Some(request) = request {
+                self.send_response::<()>(request, Err(&error))
+            } else {
+                self.show_error_message(&error)
+            };
         }
 
         target_core.reset_core_status(self);
@@ -752,22 +744,19 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
 
             // For RISC-V, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
-            if target_core.core.architecture() == Riscv {
+            if target_core.core.architecture() == Architecture::Riscv {
                 let saved_breakpoints = std::mem::take(&mut target_core.core_data.breakpoints);
 
                 for breakpoint in saved_breakpoints {
-                    match target_core
+                    if let Err(error) = target_core
                         .set_breakpoint(breakpoint.address, breakpoint.breakpoint_type.clone())
                     {
-                        Ok(_) => {}
-                        Err(error) => {
-                            //This will cause the debugger to show the user an error, but not stop the debugger.
-                            tracing::error!(
-                                "Failed to re-enable breakpoint {:?} after reset. {}",
-                                breakpoint,
-                                error
-                            );
-                        }
+                        // This will cause the debugger to show the user an error, but not stop the debugger.
+                        tracing::error!(
+                            "Failed to re-enable breakpoint {:?} after reset. {}",
+                            breakpoint,
+                            error
+                        );
                     }
                 }
             }
