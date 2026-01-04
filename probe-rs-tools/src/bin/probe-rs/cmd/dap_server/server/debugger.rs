@@ -507,10 +507,6 @@ impl Debugger {
             debug_adapter
                 .restart(&mut target_core, None)
                 .context("Failed to restart core")?;
-        } else {
-            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-            // For LaunchRequest, this is done in the `restart` above.
-            target_core.core.debug_on_sw_breakpoint(true)?;
         }
 
         drop(target_core);

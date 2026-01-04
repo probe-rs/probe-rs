@@ -328,6 +328,8 @@ pub struct RiscvCommunicationInterfaceState {
     current_dmcontrol: Dmcontrol,
 
     memory_access_config: MemoryAccessConfig,
+
+    sw_breakpoint_debug_enabled: bool,
 }
 
 /// Timeout for RISC-V operations.
@@ -377,6 +379,8 @@ impl RiscvCommunicationInterfaceState {
             current_dmcontrol: Dmcontrol(0),
 
             memory_access_config: MemoryAccessConfig::default(),
+
+            sw_breakpoint_debug_enabled: false,
         }
     }
 
@@ -820,6 +824,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
         // clear the halt request
         dmcontrol.set_haltreq(false);
         self.write_dm_register(dmcontrol)?;
+
+        if !self.state.sw_breakpoint_debug_enabled {
+            self.debug_on_sw_breakpoint(true)?;
+        }
 
         Ok(())
     }
@@ -1974,7 +1982,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    pub(crate) fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
+    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), RiscvError> {
         let mut dcsr = Dcsr(self.read_csr(0x7b0)?);
 
         dcsr.set_ebreakm(enabled);
@@ -1982,6 +1990,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dcsr.set_ebreaku(enabled);
 
         match self.abstract_cmd_register_write(0x7b0, dcsr.0) {
+            Ok(()) => {
+                self.state.sw_breakpoint_debug_enabled = enabled;
+                Ok(())
+            }
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
                 tracing::debug!(
                     "Could not write core register {:#x} with abstract command, falling back to program buffer",

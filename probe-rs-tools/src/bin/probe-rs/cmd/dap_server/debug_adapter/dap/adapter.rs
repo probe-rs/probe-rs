@@ -751,9 +751,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     .send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))));
             }
 
-            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-            target_core.core.debug_on_sw_breakpoint(true)?;
-
             // For RISC-V, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
             if target_core.core.architecture() == Riscv {
                 let saved_breakpoints = std::mem::take(&mut target_core.core_data.breakpoints);
@@ -819,9 +816,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     return self.show_error_message(&DebuggerError::Other(anyhow!("{error}")));
                 }
             };
-
-            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-            target_core.core.debug_on_sw_breakpoint(true)?;
 
             // Only notify the DAP client if we are NOT in initialization stage ([`DebugAdapter::configuration_done`]).
             if self.configuration_is_done() {
