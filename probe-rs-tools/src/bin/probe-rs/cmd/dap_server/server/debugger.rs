@@ -296,7 +296,7 @@ impl Debugger {
     /// All requests are interpreted, actions taken, and responses formulated here.
     /// This function is self contained and returns only status data to control what happens after the session completes.
     /// The [`DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
-    pub(crate) async fn debug_session<P: ProtocolAdapter + 'static>(
+    pub(crate) async fn debug_session<P: ProtocolAdapter>(
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
         lister: &Lister,
@@ -419,7 +419,7 @@ impl Debugger {
 
     /// Process launch or attach request
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
-    pub(crate) async fn handle_launch_attach<P: ProtocolAdapter + 'static>(
+    pub(crate) async fn handle_launch_attach<P: ProtocolAdapter>(
         &mut self,
         registry: &mut Registry,
         launch_attach_request: &Request,
@@ -522,7 +522,7 @@ impl Debugger {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn restart<P: ProtocolAdapter + 'static>(
+    async fn restart<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
         session_data: &mut SessionData,
@@ -591,7 +591,7 @@ impl Debugger {
     /// Flash the given binary, and report the progress to the
     /// debug adapter.
     // Note: This function consumes the 'debug_adapter', so all error reporting via that handle must be done before returning from this function.
-    fn flash<P: ProtocolAdapter + 'static>(
+    fn flash<P: ProtocolAdapter>(
         config: &SessionConfig,
         path_to_elf: &Path,
         debug_adapter: &mut DebugAdapter<P>,
