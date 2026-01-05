@@ -12,7 +12,7 @@ variants:
     core_access_options: !Arm
       ap: !v1 0
   memory_map:
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
       start: 0x1010000
@@ -26,7 +26,7 @@ variants:
       end: 0x20008000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x40100000
