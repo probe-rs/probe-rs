@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   build-smoke-tester:
-    runs-on: ubuntu-24.04-armn
+    runs-on: ubuntu-24.04-arm
 
     steps:
       - name: Checkout sources
