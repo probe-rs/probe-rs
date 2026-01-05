@@ -350,17 +350,17 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                         .filter_map(|(idx, bpt)| bpt.map(|bpt| (idx, bpt)));
 
                     let mut response_message = String::new();
-                    if breakpoint_addrs.clone().count() == 0 {
+
+                    for (idx, bpt) in breakpoint_addrs {
+                        #[expect(
+                            clippy::unwrap_used,
+                            reason = "Writing to a string is infallible"
+                        )]
+                        writeln!(&mut response_message, "Breakpoint #{idx} @ {bpt:#010X}").unwrap();
+                    }
+
+                    if response_message.is_empty() {
                         response_message.push_str("No breakpoints set.");
-                    } else {
-                        for (idx, bpt) in breakpoint_addrs {
-                            #[expect(
-                                clippy::unwrap_used,
-                                reason = "Writing to a string is infallible"
-                            )]
-                            writeln!(&mut response_message, "Breakpoint #{idx} @ {bpt:#010X}\n")
-                                .unwrap();
-                        }
                     }
 
                     Ok(Response {
@@ -532,21 +532,16 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 args
                 .chunks(2)
                 .map(|c| {
-                    let start = if let Some(start) = c.first() {
-                        parse_int::parse::<u64>(start)
-                            .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
-                    } else {
-                        unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
+                    let &[start, size] = c else {
+                        unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.");
                     };
 
-                    let size = if let Some(size) = c.get(1) {
-                        parse_int::parse::<u64>(size)
-                            .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
-                    } else {
-                        unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
-                    };
+                    let start = parse_int::parse::<u64>(start)
+                        .map_err(|e| DebuggerError::UserMessage(e.to_string()))?;
+                    let size = parse_int::parse::<u64>(size)
+                        .map_err(|e| DebuggerError::UserMessage(e.to_string()))?;
 
-                    Ok::<_, DebuggerError>(Range {start,end: start + size})
+                    Ok::<_, DebuggerError>(Range { start, end: start + size })
                 })
                 .collect::<Result<Vec<Range<u64>>, _>>()?
             };
