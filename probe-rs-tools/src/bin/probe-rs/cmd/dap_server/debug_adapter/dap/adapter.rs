@@ -22,14 +22,14 @@ use base64::{Engine as _, engine::general_purpose as base64_engine};
 use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
-    CoreStatus, Error, HaltReason, RegisterValue,
+    CoreStatus, Error, HaltReason,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
     },
 };
 use probe_rs_debug::{
-    ColumnType, ObjectRef, SourceLocation, SteppingMode, VariableName, VerifiedBreakpoint,
+    ColumnType, ObjectRef, SteppingMode, VariableName, VerifiedBreakpoint,
     stack_frame::StackFrameInfo,
 };
 use serde::{Serialize, de::DeserializeOwned};
@@ -945,9 +945,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: SetInstructionBreakpointsArguments = get_arguments(self, request)?;
 
         // Always clear existing breakpoints before setting new ones.
-        match target_core.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
-            Ok(_) => {}
-            Err(error) => tracing::warn!("Failed to clear instruction breakpoints. {}", error),
+        if let Err(error) = target_core.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
+            tracing::warn!("Failed to clear instruction breakpoints. {}", error)
         }
 
         let instruction_breakpoint_body = SetInstructionBreakpointsResponseBody {
@@ -978,24 +977,25 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
-        // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
-        let current_core_status = target_core.core.status()?;
-        let mut threads: Vec<Thread> = vec![];
-        if self.configuration_is_done() {
-            // We can handle this request normally.
-            let single_thread = Thread {
-                id: target_core.id() as i64,
-                name: target_core.core_data.target_name.clone(),
-            };
-            threads.push(single_thread);
-            return self.send_response(request, Ok(Some(ThreadsResponseBody { threads })));
+        if !self.configuration_is_done() {
+            let current_core_status = target_core.core.status()?;
+
+            return
+                self.send_response::<()>(
+                    request,
+                    Err(&DebuggerError::Other(anyhow!(
+                        "Received request for `threads`, while last known core status was {current_core_status:?}",
+                    ))),
+                );
         }
-        self.send_response::<()>(
-            request,
-            Err(&DebuggerError::Other(anyhow!(
-                "Received request for `threads`, while last known core status was {current_core_status:?}",
-            ))),
-        )
+
+        // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
+
+        let threads = vec![Thread {
+            id: target_core.id() as i64,
+            name: target_core.core_data.target_name.clone(),
+        }];
+        self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
     }
 
     pub(crate) fn stack_trace(
@@ -1021,86 +1021,45 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let arguments: StackTraceArguments = get_arguments(self, request)?;
 
-        // If the core is halted, and we have no available strackframes, we can get out of here early.
-        if target_core.core_data.stack_frames.is_empty() {
-            let body = StackTraceResponseBody {
-                stack_frames: Vec::new(),
-                total_frames: Some(0),
-            };
-            return self.send_response(request, Ok(Some(body)));
-        }
+        // Determine the correct 'slice' of available [StackFrame]s to serve up ...
+        let total_frames = target_core.core_data.stack_frames.len() as i64;
 
         // The DAP spec says that the `levels` is optional if `None` or `Some(0)`, then all available frames should be returned.
         let mut levels = arguments.levels.unwrap_or(0);
         // The DAP spec says that the `startFrame` is optional and should be 0 if not specified.
         let start_frame = arguments.start_frame.unwrap_or(0);
 
+        tracing::warn!("Start frame: {} Levels: {}", start_frame, levels);
+
         // Update the `levels` to the number of available frames if it is 0.
         if levels == 0 {
-            levels = target_core.core_data.stack_frames.len() as i64;
+            levels = total_frames;
         }
 
-        // Determine the correct 'slice' of available [StackFrame]s to serve up ...
-        let total_frames = target_core.core_data.stack_frames.len() as i64;
+        const PAGE_SIZE: i64 = 50;
 
-        // We need to copy some parts of StackFrame so that we can re-use it later without references to target_core.
-        struct PartialStackFrameData {
-            id: ObjectRef,
-            function_name: String,
-            source_location: Option<SourceLocation>,
-            pc: RegisterValue,
-            is_inlined: bool,
-        }
-
-        let frame_set = if levels == 1 && start_frame == 0 {
-            // Just the first frame - use the LHS of the split at `levels`
-            target_core
-                .core_data
-                .stack_frames
-                .split_at(levels as usize)
-                .0
-        } else if total_frames <= 20 && start_frame >= 0 && start_frame <= total_frames {
-            // When we have less than 20 frames - use the RHS of of the split at `start_frame`
-            target_core
-                .core_data
-                .stack_frames
-                .split_at(start_frame as usize)
-                .1
-        } else if total_frames > 20 && start_frame + levels <= total_frames {
-            // When we have more than 20 frames - we can safely split twice
-            target_core
-                .core_data
-                .stack_frames
-                .split_at(start_frame as usize)
-                .1
-                .split_at(levels as usize)
-                .0
-        } else if total_frames > 20 && start_frame + levels > total_frames {
-            // The MS DAP spec may also ask for more frames than what we reported.
-            target_core
-                .core_data
-                .stack_frames
-                .split_at(start_frame as usize)
-                .1
+        // If we have less than PAGE_SIZE frames in total, return all of them
+        let first_frame = start_frame as usize;
+        let last_frame = if total_frames < PAGE_SIZE {
+            total_frames
         } else {
+            start_frame + levels
+        } as usize;
+
+        let Some(frames) = target_core
+            .core_data
+            .stack_frames
+            .get(first_frame..last_frame)
+        else {
             return self.send_response::<()>(
                 request,
                 Err(&DebuggerError::Other(anyhow!(
                     "Request for stack trace failed with invalid arguments: {arguments:?}"
                 ))),
             );
-        }
-        .iter()
-        .map(|stack_frame| PartialStackFrameData {
-            id: stack_frame.id,
-            function_name: stack_frame.function_name.clone(),
-            source_location: stack_frame.source_location.clone(),
-            pc: stack_frame.pc,
-            is_inlined: stack_frame.is_inlined,
-        })
-        .collect::<Vec<PartialStackFrameData>>();
+        };
 
-        let frame_list: Vec<StackFrame> = frame_set
+        let frame_list: Vec<StackFrame> = frames
             .iter()
             .map(|frame| {
                 let column = frame
@@ -1150,6 +1109,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             })
             .collect();
 
+        // Return the frame list. NOTE: we could manipulate total_frames to page results instead of returning all frames at once
         let body = StackTraceResponseBody {
             stack_frames: frame_list,
             total_frames: Some(total_frames),
