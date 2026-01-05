@@ -1271,13 +1271,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         let arguments: DisassembleArguments = get_arguments(self, request)?;
 
-        if let Ok(memory_reference) = if arguments.memory_reference.starts_with("0x")
+        let address = if arguments.memory_reference.starts_with("0x")
             || arguments.memory_reference.starts_with("0X")
         {
             u32::from_str_radix(&arguments.memory_reference[2..], 16)
         } else {
             arguments.memory_reference.parse()
-        } {
+        };
+
+        if let Ok(memory_reference) = address {
             match self.get_disassembled_source(
                 target_core,
                 memory_reference as i64,
