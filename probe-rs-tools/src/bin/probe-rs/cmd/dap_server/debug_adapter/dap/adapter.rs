@@ -211,25 +211,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         let arguments: WriteMemoryArguments = get_arguments(self, request)?;
         let memory_offset = arguments.offset.unwrap_or(0);
-        let address: u64 = if let Ok(address) = parse::<i64>(arguments.memory_reference.as_ref()) {
-            match (address + memory_offset).try_into() {
-                    Ok(modified_address) => modified_address,
-                    Err(error) => return self.send_response::<()>(
+        let address: u64 = match parse::<u64>(arguments.memory_reference.as_ref()) {
+            Ok(address) => address.wrapping_add(memory_offset as u64), // handles negative offsets
+            Err(err) => {
+                return self.send_response::<()>(
                     request,
                     Err(&DebuggerError::Other(anyhow!(
-                        "Could not convert memory_reference: {} and offset: {:?} into a 32-bit memory address: {:?}",
-                        arguments.memory_reference, arguments.offset, error
+                        "Failed to parse memory reference {:?}: {err}",
+                        arguments.memory_reference
                     ))),
-                ),
-                }
-        } else {
-            return self.send_response::<()>(
-                request,
-                Err(&DebuggerError::Other(anyhow!(
-                    "Could not read any data at address {:?}",
-                    arguments.memory_reference
-                ))),
-            );
+                );
+            }
         };
         let data_bytes = match base64_engine::STANDARD.decode(&arguments.data) {
             Ok(decoded_bytes) => decoded_bytes,
@@ -244,28 +236,28 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 );
             }
         };
-        match target_core.write_memory(address, &data_bytes) {
-            Ok(_) => {
-                self.send_response(
-                    request,
-                    Ok(Some(WriteMemoryResponseBody {
-                        bytes_written: Some(data_bytes.len() as i64),
-                        offset: None,
-                    })),
-                )?;
-                // TODO: This doesn't trigger the VSCode UI to reload the variables effected.
-                // Investigate if we can force it in some other way, or if it is a known issue.
-                self.send_event(
-                    "memory",
-                    Some(MemoryEventBody {
-                        count: data_bytes.len() as i64,
-                        memory_reference: format!("{address:#010x}"),
-                        offset: 0,
-                    }),
-                )
-            }
-            Err(error) => self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error))),
+
+        if let Err(error) = target_core.write_memory(address, &data_bytes) {
+            return self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error)));
         }
+
+        self.send_response(
+            request,
+            Ok(Some(WriteMemoryResponseBody {
+                bytes_written: Some(data_bytes.len() as i64),
+                offset: None,
+            })),
+        )?;
+        // TODO: This doesn't trigger the VSCode UI to reload the variables affected.
+        // Investigate if we can force it in some other way, or if it is a known issue.
+        self.send_event(
+            "memory",
+            Some(MemoryEventBody {
+                count: data_bytes.len() as i64,
+                memory_reference: format!("{address:#010x}"),
+                offset: 0,
+            }),
+        )
     }
 
     /// Evaluates the given expression in the context of the top most stack frame.
