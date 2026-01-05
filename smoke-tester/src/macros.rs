@@ -1,44 +1,14 @@
+/// Temporary macro for skipping tests.
+///
+/// This should be done by marking the test as `#[ignore]` ,
+/// until skipping at runtime gets possible.
 #[macro_export]
-macro_rules! print_dut_status {
-    ($tracker:expr, $color:ident,$($arg:tt)*) => ({
-        let prefix = format!("[{}/{}]({})", $tracker.current_dut(), $tracker.num_duts(), $tracker.current_dut_name()).$color();
-        print!("{} - ", prefix);
-        print!($($arg)*);
-    })
-}
-
-#[macro_export]
-macro_rules! print_test_status {
-    ($tracker:expr, $color:ident,$($arg:tt)*) => ({
-        let prefix = format!("[{}/{}]({})", $tracker.current_dut(), $tracker.num_duts(), $tracker.current_dut_name()).$color();
-        print!("{} - ", prefix);
-        print!($($arg)*);
-    })
-}
-
-#[macro_export]
-macro_rules! println_status {
-    ($tracker:expr, $color:ident,$($arg:tt)*) => ({
-        let prefix = format!("[{}]", "DONE".$color());
-        print!("{} - ", prefix);
-        println!($($arg)*);
-    })
-}
-
-#[macro_export]
-macro_rules! println_dut_status {
-    ($tracker:expr, $color:ident,$($arg:tt)*) => ({
-        let prefix = format!("[{}/{}]({})", $tracker.current_dut(), $tracker.num_duts(), $tracker.current_dut_name()).$color();
-        print!("{} - ", prefix);
-        println!($($arg)*);
-    })
-}
-
-#[macro_export]
-macro_rules! println_test_status {
-    ($tracker:expr, $color:ident,$($arg:tt)*) => ({
-        let prefix = format!("[{}/{}]({}) - Test [{}]", $tracker.current_dut(), $tracker.num_duts(), $tracker.current_dut_name(), $tracker.current_test()).$color();
-        print!("{} - ", prefix);
-        println!($($arg)*);
-    })
+macro_rules! skip_test {
+    ($reason:expr) => {
+        println!("Skipping test: {}", $reason);
+        return Ok(());
+    };
+    () => {
+        return Ok(());
+    };
 }

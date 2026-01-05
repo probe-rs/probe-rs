@@ -19,6 +19,9 @@ concurrency:
 
 name: Run CI
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   check:
     name: Check
@@ -76,8 +79,10 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.8.2
 
+      - uses: taiki-e/install-action@nextest
+
       - name: Run cargo test
-        run: cargo test --all-features --locked
+        run: cargo nextest run --all-features --locked --profile ci-unit
 
   fmt:
     name: Rustfmt

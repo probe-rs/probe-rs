@@ -19,7 +19,33 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  build:
+  build-smoke-tester:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Install target for cross-compilation
+        run: rustup target add aarch64-unknown-linux-musl
+
+      - uses: taiki-e/install-action@nextest
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2.8.2
+
+      - name: Show rust info
+        run: rustup show
+
+      - name: Build smoke-tester
+        run: cargo nextest archive --release --target aarch64-unknown-linux-musl -p smoke_tester --archive-file smoke_tester.tar.zst
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: smoke_tester
+          path: smoke_tester.tar.zst
+
+  build-probe-rs:
     runs-on: ubuntu-latest
 
     steps:
@@ -37,14 +63,6 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.8.2
 
-      - name: Build smoke-tester
-        run: cross build --release --target aarch64-unknown-linux-gnu -p smoke_tester
-
-      - uses: actions/upload-artifact@v6
-        with:
-          name: smoke_tester
-          path: target/aarch64-unknown-linux-gnu/release/smoke_tester
-
       - name: Build probe-rs
         run: cross build --release --target aarch64-unknown-linux-gnu -p probe-rs-tools --features remote
 
@@ -56,20 +74,32 @@ jobs:
   test:
     runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
     strategy:
+      fail-fast: false
       matrix:
         runner: ["smoke-test", "smoke-tester-2"]
 
-    needs: build
+    needs: build-smoke-tester
+
+    env:
+      CARGO_TERM_COLOR: always
 
     steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+        with:
+          # There is a conflict between the probe-rs/ subfolder and the probe-rs binary artifact, if the
+          # checkout is done into the workspace root.
+          path: src/
+
+      - uses: taiki-e/install-action@nextest
+
       - uses: actions/download-artifact@v7
         with:
           name: smoke_tester
 
       - name: Run smoke-tester
         run: |
-          chmod +x smoke_tester
-          ./smoke_tester test --dut-definitions $SMOKE_TESTER_CONFIG --markdown-summary $GITHUB_STEP_SUMMARY
+          cargo-nextest nextest run --archive-file smoke_tester.tar.zst --profile ci-hardware --workspace-remap $GITHUB_WORKSPACE/src
 
   embedded-test:
     runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
@@ -77,9 +107,13 @@ jobs:
       matrix:
         runner: ["smoke-tester-2"]
 
-    needs: build
+    needs: build-probe-rs
 
     steps:
+      # Avoid conficts when downloading the probe-rs artifact
+      - name: Clean workspace
+        run: rm -rf "${GITHUB_WORKSPACE}/*"
+
       - uses: actions/download-artifact@v7
         with:
           name: probe-rs
