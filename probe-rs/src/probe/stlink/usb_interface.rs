@@ -129,7 +129,11 @@ impl StLinkUsbDevice {
         let mut endpoint_in = false;
         let mut endpoint_swo = false;
 
-        let config = device_handle.configurations().next().unwrap();
+        let Some(config) = device_handle.configurations().next() else {
+            tracing::warn!("Unable to get configurations of ST-Link USB device");
+            return Err(ProbeCreationError::CouldNotOpen);
+        };
+
         if let Some(interface) = config.interfaces().next()
             && let Some(descriptor) = interface.alt_settings().next()
         {
