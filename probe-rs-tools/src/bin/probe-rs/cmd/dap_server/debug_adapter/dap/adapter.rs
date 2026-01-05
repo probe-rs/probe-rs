@@ -724,42 +724,34 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle<'_>,
         request: Option<&Request>,
     ) -> Result<()> {
-        if let Err(error) = target_core.core.halt(Duration::from_millis(500)) {
-            let error = DebuggerError::Other(anyhow!("{error}"));
-            return if let Some(request) = request {
-                self.send_response::<()>(request, Err(&error))
-            } else {
-                self.show_error_message(&error)
-            };
-        }
+        // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
+        // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
+        let core_info = match target_core.reset_and_halt() {
+            Ok(core_info) => core_info,
+            Err(error) => {
+                return self.show_error_message(&DebuggerError::Other(anyhow!("{error}")));
+            }
+        };
 
         target_core.reset_core_status(self);
 
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
-            // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
-            if let Err(error) = target_core.reset_and_halt() {
-                return self
-                    .send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))));
-            }
-
             // Now we can decide if it is appropriate to resume the core.
             if !self.halt_after_reset {
-                match self.r#continue(target_core, request) {
-                    Ok(_) => {
-                        self.send_response::<()>(request, Ok(None))?;
-                        let event_body = Some(ContinuedEventBody {
-                            all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                            thread_id: target_core.id() as i64,
-                        });
-                        self.send_event("continued", event_body)?;
-                        Ok(())
-                    }
-                    Err(error) => self.send_response::<()>(
+                if let Err(error) = self.r#continue(target_core, request) {
+                    return self.send_response::<()>(
                         request,
                         Err(&DebuggerError::Other(anyhow!("{error}"))),
-                    ),
+                    );
                 }
+
+                self.send_response::<()>(request, Ok(None))?;
+                let event_body = Some(ContinuedEventBody {
+                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
+                    thread_id: target_core.id() as i64,
+                });
+                self.send_event("continued", event_body)?;
             } else {
                 self.send_response::<()>(request, Ok(None))?;
                 let event_body = Some(StoppedEventBody {
@@ -776,37 +768,25 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     hit_breakpoint_ids: None,
                 });
                 self.send_event("stopped", event_body)?;
-                Ok(())
             }
-        } else {
-            // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
-            // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
-            let core_info = match target_core.core.reset_and_halt(Duration::from_millis(500)) {
-                Ok(core_info) => core_info,
-                Err(error) => {
-                    return self.show_error_message(&DebuggerError::Other(anyhow!("{error}")));
-                }
-            };
-
+        } else if self.configuration_is_done() {
             // Only notify the DAP client if we are NOT in initialization stage ([`DebugAdapter::configuration_done`]).
-            if self.configuration_is_done() {
-                let event_body = Some(StoppedEventBody {
-                    reason: "restart".to_owned(),
-                    description: Some(
-                        CoreStatus::Halted(HaltReason::External)
-                            .short_long_status(Some(core_info.pc))
-                            .1,
-                    ),
-                    thread_id: Some(target_core.id() as i64),
-                    preserve_focus_hint: None,
-                    text: None,
-                    all_threads_stopped: Some(self.all_cores_halted),
-                    hit_breakpoint_ids: None,
-                });
-                self.send_event("stopped", event_body)?;
-            }
-            Ok(())
+            let event_body = Some(StoppedEventBody {
+                reason: "restart".to_owned(),
+                description: Some(
+                    CoreStatus::Halted(HaltReason::External)
+                        .short_long_status(Some(core_info.pc))
+                        .1,
+                ),
+                thread_id: Some(target_core.id() as i64),
+                preserve_focus_hint: None,
+                text: None,
+                all_threads_stopped: Some(self.all_cores_halted),
+                hit_breakpoint_ids: None,
+            });
+            self.send_event("stopped", event_body)?;
         }
+        Ok(())
     }
 
     #[tracing::instrument(level = "debug", skip_all, name = "Handle configuration done")]
@@ -865,19 +845,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(source_path) = args.source.path.as_ref() {
             // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
             // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
-            match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint {
+            if let Err(error) = target_core.clear_breakpoints(BreakpointType::SourceBreakpoint {
                 source: Box::new(args.source.clone()),
                 location: SourceLocationScope::All,
             }) {
-                Ok(_) => {}
-                Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(&DebuggerError::Other(anyhow!(
-                            "Failed to clear existing breakpoints before setting new ones: {error}"
-                        ))),
-                    );
-                }
+                return self.send_response::<()>(
+                    request,
+                    Err(&DebuggerError::Other(anyhow!(
+                        "Failed to clear existing breakpoints before setting new ones: {error}"
+                    ))),
+                );
             }
 
             // Assume that the path is native to the current OS
@@ -901,7 +878,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         Some(bp.column.unwrap_or(0) as u64 + 1)
                     };
 
-                    match target_core.verify_and_set_breakpoint(
+                    let bp = match target_core.verify_and_set_breakpoint(
                         source_path.to_path(),
                         requested_breakpoint_line,
                         requested_breakpoint_column,
@@ -910,7 +887,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         Ok(VerifiedBreakpoint {
                             address,
                             source_location,
-                        }) => created_breakpoints.push(Breakpoint {
+                        }) => Breakpoint {
                             column: source_location.column.map(|col| match col {
                                 ColumnType::LeftEdge => 0_i64,
                                 ColumnType::Column(c) => c as i64,
@@ -927,8 +904,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             offset: None,
                             verified: true,
                             reason: None,
-                        }),
-                        Err(error) => created_breakpoints.push(Breakpoint {
+                        },
+                        Err(error) => Breakpoint {
                             column: None,
                             end_column: None,
                             end_line: None,
@@ -940,8 +917,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             offset: None,
                             verified: false,
                             reason: Some("failed".to_string()),
-                        }),
+                        },
                     };
+
+                    created_breakpoints.push(bp);
                 }
             }
 
