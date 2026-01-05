@@ -55,7 +55,7 @@ impl StLinkInfo {
 pub(crate) struct StLinkUsbDevice {
     device_handle: nusb::Device,
     interface: nusb::Interface,
-    pub(crate) info: StLinkInfo,
+    pub(crate) info: &'static StLinkInfo,
 }
 
 impl std::fmt::Debug for StLinkUsbDevice {
@@ -106,18 +106,14 @@ fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
 impl StLinkUsbDevice {
     /// Creates and initializes a new USB device.
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        let device_iter = nusb::list_devices()
+        let device = nusb::list_devices()
             .wait()
             .map_err(|e| ProbeCreationError::Usb(e.into()))?
             .filter(is_stlink_device)
-            .collect::<Vec<_>>();
-
-        let device = device_iter
-            .into_iter()
             .find(|device| selector_matches(selector, device))
             .ok_or(ProbeCreationError::NotFound)?;
 
-        let info = USB_PID_EP_MAP[&device.product_id()].clone();
+        let info = &USB_PID_EP_MAP[&device.product_id()];
 
         let device_handle = device
             .open()
