@@ -1056,6 +1056,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 last_read = now;
             }
             if now - start >= timeout {
+                self.read_rtt()?;
                 return Err(FlashError::Core(Error::Timeout));
             }
         }
