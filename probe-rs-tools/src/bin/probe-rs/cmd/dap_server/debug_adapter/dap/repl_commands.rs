@@ -206,9 +206,9 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 "path (e.g. my_dir/backtrace.yaml)",
             )],
             handler: |target_core, command_arguments, _| {
-                let args = command_arguments.split_whitespace().collect_vec();
+                let mut args = command_arguments.split_whitespace();
 
-                let write_to_file = args.first().map(Path::new);
+                let write_to_file = args.next().map(Path::new);
 
                 // Using the `insta` crate to serialize, because they add a couple of transformations to the yaml output,
                 // presumeably to make it easier to read.
@@ -246,11 +246,14 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             let mut response_message = String::new();
 
             for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
-                response_message.push_str(&format!(
-                    "Frame #{}: {}\n",
+                #[allow(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+                writeln!(
+                    &mut response_message,
+                    "Frame #{}: {}",
                     i + 1,
                     ReplStackFrame(frame)
-                ));
+                )
+                .unwrap();
             }
 
             Ok(Response {
