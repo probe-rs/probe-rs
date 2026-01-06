@@ -142,7 +142,7 @@ impl RttChannelBuffer {
             ),
             RttChannelBuffer::Buffer64(h64) => Operation::new(
                 ptr + h64.read_buffer_ptr_offset() as u64,
-                OperationKind::WriteWord64(buffer_ptr.try_into().unwrap()),
+                OperationKind::WriteWord64(buffer_ptr),
             ),
         }
     }
@@ -412,7 +412,7 @@ impl UpChannel {
     /// This method will not block waiting for data in the target buffer, and may read less bytes
     /// than would fit in `buf`.
     pub fn read(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        Ok(self.read_core(core, buf, true)?)
+        self.read_core(core, buf, true)
     }
 
     /// Peeks at the current data in the channel buffer, copies data into the specified buffer and
@@ -421,7 +421,7 @@ impl UpChannel {
     /// The difference from [`read`](UpChannel::read) is that this does not discard the data in the
     /// buffer.
     pub fn peek(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        Ok(self.read_core(core, buf, false)?)
+        self.read_core(core, buf, false)
     }
 
     /// Calculates amount of contiguous data available for reading
