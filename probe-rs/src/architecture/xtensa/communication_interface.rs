@@ -569,15 +569,10 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(entry.current_value());
         }
 
-        match self.schedule_read_register(register)? {
-            MaybeDeferredResultIndex::Value(value) => Ok(value),
-            MaybeDeferredResultIndex::Deferred(reader) => {
-                // We need to read the register value from the target.
-                let value = self.xdm.read_deferred_result(reader)?.into_u32();
-                self.state.register_cache.store(register, value);
-                Ok(value)
-            }
-        }
+        let reader = self.schedule_read_register(register)?;
+        let value = self.read_deferred_result(reader)?;
+        self.state.register_cache.store(register, value);
+        Ok(value)
     }
 
     /// Schedules writing a register.
