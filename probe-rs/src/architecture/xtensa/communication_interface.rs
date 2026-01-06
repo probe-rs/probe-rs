@@ -542,8 +542,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         register: impl Into<Register>,
     ) -> Result<MaybeDeferredResultIndex, XtensaError> {
         let register = register.into();
-        if let Some(entry) = self.state.register_cache.get_mut(register) {
-            return Ok(MaybeDeferredResultIndex::Value(entry.current_value()));
+        if let Some(value) = self.state.register_cache.current_value_of(register) {
+            return Ok(MaybeDeferredResultIndex::Value(value));
         }
 
         let reader = match register {
@@ -556,7 +556,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
                 self.schedule_read_special_register(self.core_properties.debug_level.ps())?
             }
         };
-        Ok(MaybeDeferredResultIndex::Deferred(reader))
+        Ok(MaybeDeferredResultIndex::Deferred(register, reader))
     }
 
     /// Read a register.
@@ -564,15 +564,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         &mut self,
         register: impl Into<Register>,
     ) -> Result<u32, XtensaError> {
-        let register = register.into();
-        if let Some(entry) = self.state.register_cache.get_mut(register) {
-            return Ok(entry.current_value());
-        }
-
         let reader = self.schedule_read_register(register)?;
-        let value = self.read_deferred_result(reader)?;
-        self.state.register_cache.store(register, value);
-        Ok(value)
+        self.read_deferred_result(reader)
     }
 
     /// Schedules writing a register.
@@ -638,21 +631,19 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             let dirty_regs = self
                 .state
                 .register_cache
-                .iter_mut()
+                .iter()
                 .filter(|(r, entry)| entry.is_dirty() && filter(r))
                 .map(|(r, _)| r)
                 .collect::<Vec<_>>();
 
-            // First, restore special registers
             for register in dirty_regs {
-                let entry = self
+                let restore_value = self
                     .state
                     .register_cache
-                    .get_mut(register)
+                    .original_value_of(register)
                     .unwrap_or_else(|| panic!("Register {register:?} is not in the cache"));
 
-                let value = entry.original_value();
-                self.schedule_write_register_untyped(register, value)?;
+                self.schedule_write_register_untyped(register, restore_value)?;
             }
         }
 
@@ -886,10 +877,14 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     ) -> Result<u32, XtensaError> {
         match result {
             MaybeDeferredResultIndex::Value(value) => Ok(value),
-            MaybeDeferredResultIndex::Deferred(deferred_result_index) => self
-                .xdm
-                .read_deferred_result(deferred_result_index)
-                .map(|r| r.into_u32()),
+            MaybeDeferredResultIndex::Deferred(register, deferred_result_index) => {
+                let value = self
+                    .xdm
+                    .read_deferred_result(deferred_result_index)
+                    .map(|r| r.into_u32())?;
+                self.state.register_cache.store(register, value);
+                Ok(value)
+            }
         }
     }
 }
@@ -1425,5 +1420,5 @@ pub(crate) enum MaybeDeferredResultIndex {
     Value(u32),
 
     /// The result is deferred.
-    Deferred(DeferredResultIndex),
+    Deferred(Register, DeferredResultIndex),
 }

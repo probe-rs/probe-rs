@@ -26,14 +26,9 @@ impl RegisterCache {
         );
     }
 
-    /// Loads a register value from the cache.
-    pub fn get_mut(&mut self, id: Register) -> Option<&mut CacheEntry> {
-        self.entries.get_mut(&id)
-    }
-
     /// Iterates over all entries in the cache.
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (Register, &mut CacheEntry)> {
-        self.entries.iter_mut().map(|(k, v)| (*k, v))
+    pub fn iter(&self) -> impl Iterator<Item = (Register, &CacheEntry)> {
+        self.entries.iter().map(|(k, v)| (*k, v))
     }
 
     pub(crate) fn mark_dirty(&mut self, register: Register) {
@@ -43,6 +38,16 @@ impl RegisterCache {
             .unwrap_or_else(|| panic!("Register {register:?} is not in cache"));
 
         entry.dirty = true;
+    }
+
+    pub(crate) fn current_value_of(&self, register: Register) -> Option<u32> {
+        self.entries.get(&register).map(|entry| entry.current_value)
+    }
+
+    pub(crate) fn original_value_of(&self, register: Register) -> Option<u32> {
+        self.entries
+            .get(&register)
+            .map(|entry| entry.original_value)
     }
 
     pub(crate) fn remove(&mut self, register: Register) {
@@ -69,15 +74,5 @@ impl CacheEntry {
     /// but not yet committed.
     pub fn is_dirty(&self) -> bool {
         self.original_value != self.current_value || self.dirty
-    }
-
-    /// Returns the current value of the register.
-    pub fn current_value(&self) -> u32 {
-        self.current_value
-    }
-
-    /// Returns the current value of the register.
-    pub fn original_value(&self) -> u32 {
-        self.original_value
     }
 }

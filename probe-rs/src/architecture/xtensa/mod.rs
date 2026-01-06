@@ -606,12 +606,6 @@ impl RegisterFile {
         // Restore registers before reading them, as reading a special
         // register overwrote scratch registers.
         interface.restore_registers()?;
-        // The window registers alias each other, so we need to make sure we don't read
-        // the cached values. We'll then use the registers we read here to prime the cache.
-        for ar in ar0..ar0 + xtensa.window_regs {
-            let reg = CpuRegister::try_from(ar)?;
-            interface.state.register_cache.remove(reg.into());
-        }
 
         for _ in 0..xtensa.num_aregs / xtensa.window_regs {
             // Read registers visible in the current window
@@ -627,6 +621,13 @@ impl RegisterFile {
             interface
                 .xdm
                 .schedule_execute_instruction(Instruction::Rotw(rotw_arg));
+
+            // The window registers alias each other, so we need to make sure we don't read
+            // the cached values. We'll then use the registers we read here to prime the cache.
+            for ar in ar0..ar0 + xtensa.window_regs {
+                let reg = CpuRegister::try_from(ar)?;
+                interface.state.register_cache.remove(reg.into());
+            }
         }
 
         // Now do the actual read.
