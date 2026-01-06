@@ -383,16 +383,16 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         // various errors, but we will retry the operation.
         let result = op(self);
 
-        // If the core was running, resume it.
-        let before_status = DebugStatus(self.xdm.read_deferred_result(status_idx)?.into_u32());
-        if !before_status.stopped() {
-            self.resume_core()?;
-        }
-
         // If we did not manage to halt the core at once, let's retry using the slow path.
         let after_status = DebugStatus(self.xdm.read_deferred_result(is_halted_idx)?.into_u32());
 
         if after_status.stopped() {
+            // If the core was running, resume it.
+            let before_status = DebugStatus(self.xdm.read_deferred_result(status_idx)?.into_u32());
+            if !before_status.stopped() {
+                self.resume_core()?;
+            }
+
             return result;
         }
         self.state.is_halted = false;
@@ -1059,6 +1059,9 @@ impl MemoryInterface for XtensaCommunicationInterface<'_> {
     }
 
     fn execute_memory_operations(&mut self, operations: &mut [Operation<'_>]) {
+        if operations.is_empty() {
+            return;
+        }
         let result = self.fast_halted_access(|this| {
             for operation in operations.iter_mut() {
                 let result = this.execute_single_memory_operation_halted(operation.reborrow());
