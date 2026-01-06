@@ -1,3 +1,4 @@
+use crate::memory::{Operation, OperationKind};
 use crate::rtt::Error;
 use crate::{Core, MemoryInterface};
 use probe_rs_target::RegionMergeIterator;
@@ -133,24 +134,17 @@ impl RttChannelBuffer {
         Ok(())
     }
 
-    pub fn write_read_buffer_ptr(
-        &self,
-        core: &mut Core,
-        ptr: u64,
-        buffer_ptr: u64,
-    ) -> Result<(), Error> {
+    fn write_read_buffer_ptr_operation(&self, ptr: u64, buffer_ptr: u64) -> Operation<'_> {
         match self {
-            RttChannelBuffer::Buffer32(h32) => {
-                core.write_word_32(
-                    ptr + h32.read_buffer_ptr_offset() as u64,
-                    buffer_ptr.try_into().unwrap(),
-                )?;
-            }
-            RttChannelBuffer::Buffer64(h64) => {
-                core.write_word_64(ptr + h64.read_buffer_ptr_offset() as u64, buffer_ptr)?;
-            }
-        };
-        Ok(())
+            RttChannelBuffer::Buffer32(h32) => Operation::new(
+                ptr + h32.read_buffer_ptr_offset() as u64,
+                OperationKind::WriteWord32(buffer_ptr.try_into().unwrap()),
+            ),
+            RttChannelBuffer::Buffer64(h64) => Operation::new(
+                ptr + h64.read_buffer_ptr_offset() as u64,
+                OperationKind::WriteWord64(buffer_ptr.try_into().unwrap()),
+            ),
+        }
     }
 
     pub fn read_flags(&self, core: &mut Core, ptr: u64) -> Result<u64, Error> {
@@ -367,6 +361,8 @@ impl UpChannel {
             }
         }
 
+        let mut operations = Vec::with_capacity(3);
+
         // Read while buffer contains data and output buffer has space (maximum of two iterations)
         while !buf.is_empty() {
             let count = min(self.readable_contiguous(write, read), buf.len());
@@ -374,7 +370,9 @@ impl UpChannel {
                 break;
             }
 
-            core.read(self.0.info.buffer_start_pointer() + read, &mut buf[..count])?;
+            let address = self.0.info.buffer_start_pointer() + read;
+            let (buffer, remaining) = buf.split_at_mut(count);
+            operations.push(Operation::new(address, OperationKind::Read(buffer)));
 
             total += count;
             read += count as u64;
@@ -384,15 +382,25 @@ impl UpChannel {
                 read = 0;
             }
 
-            buf = &mut buf[count..];
+            buf = remaining;
         }
         self.0.last_read_ptr = Some(read);
 
         if consume && total > 0 {
             // Write read pointer back to target if something was read
-            self.0
-                .info
-                .write_read_buffer_ptr(core, self.0.metadata_ptr, read)?;
+            operations.push(
+                self.0
+                    .info
+                    .write_read_buffer_ptr_operation(self.0.metadata_ptr, read),
+            );
+        }
+
+        core.execute_memory_operations(&mut operations);
+
+        for op in operations.into_iter() {
+            if let Some(result) = op.result {
+                result?;
+            }
         }
 
         Ok(total)
