@@ -688,7 +688,6 @@ impl<'probe> Xdm<'probe> {
             let mut status = DebugStatus(0);
 
             status.set_exec_exception(true);
-            status.set_exec_done(true);
             status.set_exec_overrun(true);
 
             status
