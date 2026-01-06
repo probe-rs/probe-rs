@@ -350,7 +350,12 @@ impl UpChannel {
         self.0.set_mode(core, mode)
     }
 
-    fn read_core(&mut self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u64, usize), Error> {
+    fn read_core(
+        &mut self,
+        core: &mut Core,
+        mut buf: &mut [u8],
+        consume: bool,
+    ) -> Result<usize, Error> {
         let (write, mut read) = self.0.read_pointers(core, "up ")?;
 
         let mut total = 0;
@@ -383,18 +388,7 @@ impl UpChannel {
         }
         self.0.last_read_ptr = Some(read);
 
-        Ok((read, total))
-    }
-
-    /// Reads some bytes from the channel to the specified buffer and returns how many bytes were
-    /// read.
-    ///
-    /// This method will not block waiting for data in the target buffer, and may read less bytes
-    /// than would fit in `buf`.
-    pub fn read(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        let (read, total) = self.read_core(core, buf)?;
-
-        if total > 0 {
+        if consume && total > 0 {
             // Write read pointer back to target if something was read
             self.0
                 .info
@@ -404,13 +398,22 @@ impl UpChannel {
         Ok(total)
     }
 
+    /// Reads some bytes from the channel to the specified buffer and returns how many bytes were
+    /// read.
+    ///
+    /// This method will not block waiting for data in the target buffer, and may read less bytes
+    /// than would fit in `buf`.
+    pub fn read(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
+        Ok(self.read_core(core, buf, true)?)
+    }
+
     /// Peeks at the current data in the channel buffer, copies data into the specified buffer and
     /// returns how many bytes were read.
     ///
     /// The difference from [`read`](UpChannel::read) is that this does not discard the data in the
     /// buffer.
     pub fn peek(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        Ok(self.read_core(core, buf)?.1)
+        Ok(self.read_core(core, buf, false)?)
     }
 
     /// Calculates amount of contiguous data available for reading
