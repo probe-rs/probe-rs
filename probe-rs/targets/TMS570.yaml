@@ -3,11 +3,10 @@ manufacturer:
   id: 0x17
   cc: 0x0
 variants:
-- name: TMS570LC4357
+- name: TMS570LC43X
   cores:
   - name: core0
     type: armv7a
-    # DPv0
     core_access_options: !Arm
       ap: !v1 1
       debug_base: 0x80001000
@@ -28,7 +27,7 @@ variants:
     - core0
   jtag:
     scan_chain:
-    - name: core0
-      ir_len: 4
+    # At boot, only the ICEPICK is visible on the scan chain. The chain
+    # will be updated by the sequence when the CPU core debug is enabled.
     - name: ICEPICK
       ir_len: 6
