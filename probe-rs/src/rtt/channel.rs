@@ -180,7 +180,6 @@ impl RttChannelBuffer {
 #[derive(Debug)]
 pub(crate) struct Channel {
     number: usize,
-    core_id: usize,
     name: Option<String>,
     metadata_ptr: u64,
     info: RttChannelBuffer,
@@ -215,7 +214,6 @@ impl Channel {
 
         let mut this = Channel {
             number,
-            core_id: core.id(),
             metadata_ptr,
             name: None,
             info,
@@ -237,15 +235,6 @@ impl Channel {
         Ok(Some(this))
     }
 
-    /// Validate that the Core id of a request is the same as the Core id against which the Channel was created.
-    pub(crate) fn validate_core_id(&self, core: &mut Core) -> Result<(), Error> {
-        if core.id() != self.core_id {
-            return Err(Error::IncorrectCoreSpecified(self.core_id, core.id()));
-        }
-
-        Ok(())
-    }
-
     pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
@@ -258,7 +247,6 @@ impl Channel {
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
-        self.validate_core_id(core)?;
         let flags = self.info.read_flags(core, self.metadata_ptr)?;
 
         ChannelMode::try_from(flags & ChannelMode::MASK)
@@ -269,7 +257,6 @@ impl Channel {
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
         tracing::debug!("Setting RTT channel {} mode to {:?}", self.number, mode);
-        self.validate_core_id(core)?;
         let flags = self.info.read_flags(core, self.metadata_ptr)?;
 
         let new_flags = ChannelMode::set(mode, flags);
@@ -279,8 +266,6 @@ impl Channel {
     }
 
     fn read_pointers(&self, core: &mut Core, channel_kind: &str) -> Result<(u64, u64), Error> {
-        self.validate_core_id(core)?;
-
         let (write, read) = self.info.read_buffer_offsets(core, self.metadata_ptr)?;
 
         // Validate whether the buffers are sensible

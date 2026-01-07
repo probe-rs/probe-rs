@@ -68,17 +68,10 @@ pub trait CoreInterface: MemoryInterface {
     fn step(&mut self) -> Result<CoreInformation, Error>;
 
     /// Read the value of a core register.
-    fn read_core_reg(
-        &mut self,
-        address: registers::RegisterId,
-    ) -> Result<registers::RegisterValue, Error>;
+    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error>;
 
     /// Write the value of a core register.
-    fn write_core_reg(
-        &mut self,
-        address: registers::RegisterId,
-        value: registers::RegisterValue,
-    ) -> Result<(), Error>;
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error>;
 
     /// Returns all the available breakpoint units of the core.
     fn available_breakpoint_units(&mut self) -> Result<u32, Error>;
@@ -98,7 +91,7 @@ pub trait CoreInterface: MemoryInterface {
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error>;
 
     /// Returns a list of all the registers of this core.
-    fn registers(&self) -> &'static registers::CoreRegisters;
+    fn registers(&self) -> &'static CoreRegisters;
 
     /// Returns the program counter register.
     fn program_counter(&self) -> &'static CoreRegister;
@@ -114,12 +107,6 @@ pub trait CoreInterface: MemoryInterface {
 
     /// Returns `true` if hardware breakpoints are enabled, `false` otherwise.
     fn hw_breakpoints_enabled(&self) -> bool;
-
-    /// Configure the target to ensure software breakpoints will enter Debug Mode.
-    fn debug_on_sw_breakpoint(&mut self, _enabled: bool) -> Result<(), Error> {
-        // This default will have override methods for architectures that require special behavior, e.g. RISC-V.
-        Ok(())
-    }
 
     /// Get the `Architecture` of the Core.
     fn architecture(&self) -> Architecture;
@@ -163,11 +150,6 @@ pub trait CoreInterface: MemoryInterface {
 
     /// Called when we stop debugging a core.
     fn debug_core_stop(&mut self) -> Result<(), Error>;
-
-    /// Called during session stop to do any pending cleanup
-    fn on_session_stop(&mut self) -> Result<(), Error> {
-        Ok(())
-    }
 
     /// Enables vector catching for the given `condition`
     fn enable_vector_catch(&mut self, _condition: VectorCatchCondition) -> Result<(), Error> {
@@ -335,13 +317,10 @@ impl<'probe> Core<'probe> {
     ///
     /// If `T` isn't large enough to hold the register value an error will be raised.
     #[tracing::instrument(skip(self, address), fields(address))]
-    pub fn read_core_reg<T>(
-        &mut self,
-        address: impl Into<registers::RegisterId>,
-    ) -> Result<T, Error>
+    pub fn read_core_reg<T>(&mut self, address: impl Into<RegisterId>) -> Result<T, Error>
     where
-        registers::RegisterValue: TryInto<T>,
-        Result<T, <registers::RegisterValue as TryInto<T>>::Error>: RegisterValueResultExt<T>,
+        RegisterValue: TryInto<T>,
+        Result<T, <RegisterValue as TryInto<T>>::Error>: RegisterValueResultExt<T>,
     {
         let address = address.into();
 
@@ -360,11 +339,11 @@ impl<'probe> Core<'probe> {
     #[tracing::instrument(skip(self, address, value))]
     pub fn write_core_reg<T>(
         &mut self,
-        address: impl Into<registers::RegisterId>,
+        address: impl Into<RegisterId>,
         value: T,
     ) -> Result<(), Error>
     where
-        T: Into<registers::RegisterValue>,
+        T: Into<RegisterValue>,
     {
         let address = address.into();
 
@@ -381,14 +360,8 @@ impl<'probe> Core<'probe> {
         self.inner.enable_breakpoints(state)
     }
 
-    /// Configure the debug module to ensure software breakpoints will enter Debug Mode.
-    #[tracing::instrument(skip(self))]
-    pub fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), Error> {
-        self.inner.debug_on_sw_breakpoint(enabled)
-    }
-
     /// Returns a list of all the registers of this core.
-    pub fn registers(&self) -> &'static registers::CoreRegisters {
+    pub fn registers(&self) -> &'static CoreRegisters {
         self.inner.registers()
     }
 
@@ -599,18 +572,11 @@ impl CoreInterface for Core<'_> {
         self.step()
     }
 
-    fn read_core_reg(
-        &mut self,
-        address: registers::RegisterId,
-    ) -> Result<registers::RegisterValue, Error> {
+    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
         self.read_core_reg(address)
     }
 
-    fn write_core_reg(
-        &mut self,
-        address: registers::RegisterId,
-        value: registers::RegisterValue,
-    ) -> Result<(), Error> {
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         self.write_core_reg(address, value)
     }
 
@@ -635,7 +601,7 @@ impl CoreInterface for Core<'_> {
         Ok(())
     }
 
-    fn registers(&self) -> &'static registers::CoreRegisters {
+    fn registers(&self) -> &'static CoreRegisters {
         self.registers()
     }
 

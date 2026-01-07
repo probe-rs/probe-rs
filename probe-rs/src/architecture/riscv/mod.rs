@@ -603,11 +603,6 @@ impl CoreInterface for Riscv32<'_> {
         self.state.hw_breakpoints_enabled
     }
 
-    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), Error> {
-        self.interface.debug_on_sw_breakpoint(enabled)?;
-        Ok(())
-    }
-
     fn architecture(&self) -> Architecture {
         Architecture::Riscv
     }

@@ -5,7 +5,7 @@ use crate::{
     unwind_pc_without_debuginfo,
 };
 
-use probe_rs::{MemoryInterface, RegisterRole, RegisterValue};
+use probe_rs::{InstructionSet, MemoryInterface, RegisterRole, RegisterValue};
 
 pub struct RiscvExceptionHandler;
 
@@ -59,7 +59,7 @@ impl ExceptionInterface for RiscvExceptionHandler {
         unwind_registers: &mut DebugRegisters,
         frame_pc: u64,
         _stack_frames: &[StackFrame],
-        instruction_set: Option<probe_rs::InstructionSet>,
+        instruction_set: Option<InstructionSet>,
         memory: &mut dyn MemoryInterface,
     ) -> ControlFlow<Option<DebugError>> {
         // Use the default method to unwind PC.

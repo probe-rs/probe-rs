@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::num::NonZeroU32;
+use std::time::Duration;
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
@@ -23,7 +24,9 @@ use crate::{
 };
 use anyhow::{Result, anyhow};
 use probe_rs::semihosting::SemihostingCommand;
-use probe_rs::{BreakpointCause, BreakpointError, Error, MemoryInterface as _};
+use probe_rs::{
+    Architecture, BreakpointCause, BreakpointError, CoreInformation, Error, MemoryInterface as _,
+};
 use probe_rs::{Core, CoreStatus, HaltReason, rtt::ScanRegion};
 use probe_rs_debug::VerifiedBreakpoint;
 use probe_rs_debug::{
@@ -70,11 +73,16 @@ pub struct SemihostingFile {
 ///
 /// Usage: To get access to this structure please use the [session_data::SessionData::attach_core] method. Please keep access/locks to this to a minimum duration.
 pub struct CoreHandle<'p> {
+    pub(crate) core_id: usize,
     pub(crate) core: Core<'p>,
     pub(crate) core_data: &'p mut CoreData,
 }
 
 impl CoreHandle<'_> {
+    pub(crate) fn id(&self) -> usize {
+        self.core_id
+    }
+
     /// Some MS DAP requests (e.g. `step`) implicitly expect the core to resume processing and then to optionally halt again, before the request completes.
     ///
     /// This method is used to set the `last_known_status` to [`CoreStatus::Unknown`] (because we cannot verify that it will indeed resume running until we have polled it again),
@@ -124,7 +132,7 @@ impl CoreHandle<'_> {
             CoreStatus::Running | CoreStatus::Sleeping => {
                 let event_body = Some(ContinuedEventBody {
                     all_threads_continued: Some(true), // TODO: Implement multi-core awareness here
-                    thread_id: self.core.id() as i64,
+                    thread_id: self.id() as i64,
                 });
                 debug_adapter.send_event("continued", event_body)?;
                 tracing::trace!("Notified DAP client that the core continued: {:?}", status);
@@ -184,6 +192,7 @@ impl CoreHandle<'_> {
             return Ok(());
         }
 
+        let core_id = self.id();
         let client = if let Some(client) = self.core_data.rtt_client.as_mut() {
             client
         } else {
@@ -195,7 +204,7 @@ impl CoreHandle<'_> {
             ))
         };
 
-        if client.core_id() != self.core.id() {
+        if client.core_id() != core_id {
             return Ok(());
         }
 
@@ -635,7 +644,7 @@ impl CoreHandle<'_> {
         let event_body = Some(StoppedEventBody {
             reason: reason.to_string(),
             description: Some(description),
-            thread_id: Some(self.core.id() as i64),
+            thread_id: Some(self.id() as i64),
             preserve_focus_hint: Some(false),
             text: None,
             all_threads_stopped: Some(debug_adapter.all_cores_halted),
@@ -697,6 +706,34 @@ impl CoreHandle<'_> {
     /// Writes memory of the target core.
     pub(crate) fn write_memory(&mut self, address: u64, data_bytes: &[u8]) -> Result<(), Error> {
         self.core.write_8(address, data_bytes)
+    }
+
+    pub(crate) fn reapply_breakpoints(&mut self) {
+        if [Architecture::Riscv, Architecture::Xtensa].contains(&self.core.architecture()) {
+            let saved_breakpoints = std::mem::take(&mut self.core_data.breakpoints);
+
+            for breakpoint in saved_breakpoints {
+                if let Err(error) =
+                    self.set_breakpoint(breakpoint.address, breakpoint.breakpoint_type.clone())
+                {
+                    // This will cause the debugger to show the user an error, but not stop the debugger.
+                    tracing::error!(
+                        "Failed to re-enable breakpoint {:?} after reset. {}",
+                        breakpoint,
+                        error
+                    );
+                }
+            }
+        }
+    }
+
+    pub(crate) fn reset_and_halt(&mut self) -> Result<CoreInformation, Error> {
+        let core_info = self.core.reset_and_halt(Duration::from_millis(500))?;
+
+        // On some architectures, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
+        self.reapply_breakpoints();
+
+        Ok(core_info)
     }
 }
 
