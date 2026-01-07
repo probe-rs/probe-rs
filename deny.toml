@@ -77,11 +77,11 @@ yanked = "warn"
 ignore = [
     # dependencies use paste and it's impossible to get rid of it for now
     "RUSTSEC-2024-0436",
-    # This is patched upstream and can be removed one `espflash` is released and updated.
-    "RUSTSEC-2025-0018",
     # Dependency from heapless 0.7, showing up in Cargo.lock but not used on std platforms.
     "RUSTSEC-2023-0089",
 
+    # bincode is unmaintained, but there's no reason currently to replace it
+    "RUSTSEC-2025-0141",
 ]
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
