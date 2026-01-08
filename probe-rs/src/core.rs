@@ -165,6 +165,13 @@ pub trait CoreInterface: MemoryInterface {
     fn is_64_bit(&self) -> bool {
         false
     }
+
+    /// Spill registers into memory.
+    fn spill_registers(&mut self) -> Result<(), Error> {
+        // For most architectures, this is not necessary. Use cases include processors
+        // that have a windowed register file, where the whole register file is not visible at once.
+        Ok(())
+    }
 }
 
 /// Generic core handle representing a physical core on an MCU.
@@ -537,6 +544,11 @@ impl<'probe> Core<'probe> {
     pub fn is_64_bit(&self) -> bool {
         self.inner.is_64_bit()
     }
+
+    /// Spill registers into memory.
+    pub fn spill_registers(&mut self) -> Result<(), Error> {
+        self.inner.spill_registers()
+    }
 }
 
 impl CoreInterface for Core<'_> {
@@ -665,6 +677,10 @@ impl CoreInterface for Core<'_> {
 
     fn is_64_bit(&self) -> bool {
         self.is_64_bit()
+    }
+
+    fn spill_registers(&mut self) -> Result<(), Error> {
+        self.spill_registers()
     }
 }
 
