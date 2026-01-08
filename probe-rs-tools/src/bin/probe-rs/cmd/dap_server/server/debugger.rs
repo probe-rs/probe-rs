@@ -110,34 +110,7 @@ impl Debugger {
     ) -> Result<DebugSessionStatus, DebuggerError> {
         self.debug_logger.flush_to_dap(debug_adapter)?;
         let Some(request) = debug_adapter.listen_for_request()? else {
-            let _poll_span = tracing::trace_span!("Polling for core status").entered();
-            let mut delay = Duration::ZERO;
-            if debug_adapter.all_cores_halted {
-                // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
-                tracing::trace!(
-                    "Sleeping (all cores are halted) for 100ms to reduce polling overheaads."
-                );
-                // Medium delay to reduce fast looping costs.
-                delay = Duration::from_millis(100);
-            } else {
-                // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-                let (_, suggest_delay_required) =
-                    session_data.poll_cores(&self.config, debug_adapter).await?;
-                // If there are no requests from the DAP Client, and there was no RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
-                if debug_adapter.configuration_is_done() && suggest_delay_required {
-                    tracing::trace!(
-                        "Sleeping (core is running) for 50ms to reduce polling overheads."
-                    );
-                    // Small delay to reduce fast looping costs.
-                    delay = Duration::from_millis(50);
-                } else {
-                    tracing::trace!(
-                        "Retrieving data from the core, no delay required between iterations of polling the core."
-                    );
-                };
-            }
-
-            return Ok(DebugSessionStatus::Continue(delay));
+            return self.no_request_poll(session_data, debug_adapter).await;
         };
 
         let _req_span = tracing::info_span!("Handling request", request = ?request).entered();
@@ -290,6 +263,47 @@ impl Debugger {
         }
 
         Ok(debug_session)
+    }
+
+    async fn no_request_poll<P: ProtocolAdapter>(
+        &mut self,
+        session_data: &mut SessionData,
+        debug_adapter: &mut DebugAdapter<P>,
+    ) -> Result<DebugSessionStatus, DebuggerError> {
+        let _poll_span = tracing::trace_span!("Polling for core status").entered();
+        let delay;
+
+        if debug_adapter.all_cores_halted {
+            // Medium delay to reduce fast looping costs.
+            delay = Duration::from_millis(100);
+
+            // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
+            tracing::trace!(
+                "Sleeping (all cores are halted) for {delay:?} to reduce polling overheaads."
+            );
+        } else {
+            // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
+            let (_, suggest_delay_required) =
+                session_data.poll_cores(&self.config, debug_adapter).await?;
+
+            // If there are no requests from the DAP Client, and there was no RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
+            if debug_adapter.configuration_is_done() && suggest_delay_required {
+                // Small delay to reduce fast looping costs.
+                delay = Duration::from_millis(50);
+
+                tracing::trace!(
+                    "Sleeping (core is running) for {delay:?} to reduce polling overheads."
+                );
+            } else {
+                delay = Duration::ZERO;
+
+                tracing::trace!(
+                    "Retrieving data from the core, no delay required between iterations of polling the core."
+                );
+            };
+        }
+
+        Ok(DebugSessionStatus::Continue(delay))
     }
 
     /// `debug_session` is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
