@@ -313,44 +313,12 @@ impl Debugger {
             return Ok(());
         }
 
-        let expected_commands = ["launch", "attach"];
-
-        let launch_attach_request = loop {
-            if let Some(request) = debug_adapter.listen_for_request()? {
-                if expected_commands.contains(&request.command.as_str()) {
-                    self.debug_logger.flush_to_dap(&mut debug_adapter)?;
-                    break request;
-                } else if request.command == "disconnect" {
-                    debug_adapter.send_response::<DisconnectResponse>(&request, Ok(None))?;
-
-                    return Ok(());
-                } else {
-                    debug_adapter.log_to_console(format!(
-                        "Ignoring request with command '{}', we can only handle 'launch' and 'attach' commands.", request.command
-                    ));
-
-                    let err = DebuggerError::Other(anyhow!(
-                        "Unable to process request with command {} before an attach or launch request is received",
-                        request.command
-                    ));
-
-                    debug_adapter.send_response::<()>(&request, Err(&err))?;
-
-                    // Continue listening for requests
-                }
-            }
-        };
-
-        // Process either the Launch or Attach request.
-        let mut session_data = match self
-            .handle_launch_attach(registry, &launch_attach_request, &mut debug_adapter, lister)
-            .await
-        {
-            Ok(session_data) => session_data,
-            Err(error) => {
-                debug_adapter.send_response::<()>(&launch_attach_request, Err(&error))?;
-                return Ok(());
-            }
+        let Some(mut session_data) = self
+            .start_session(registry, lister, &mut debug_adapter)
+            .await?
+        else {
+            // We got no error, but no SessionData, either
+            return Ok(());
         };
 
         if debug_adapter
@@ -404,31 +372,89 @@ impl Debugger {
         );
         debug_adapter.send_event("terminated", Some(TerminatedEventBody { restart: None }))?;
         debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
+
         // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         Err(error)
     }
 
+    /// Waits for the debug adapter to start a session.
+    ///
+    /// A session is started by the debug adapter sending a `launch` or `attach` request.
+    /// This function then handles this request and returns the session data.
+    ///
+    /// The function exits with no session if a "disconnect" request is received.
+    async fn start_session<P: ProtocolAdapter>(
+        &mut self,
+        registry: &mut Registry,
+        lister: &Lister,
+        debug_adapter: &mut DebugAdapter<P>,
+    ) -> Result<Option<SessionData>, DebuggerError> {
+        loop {
+            // Wait for a request
+            let Some(request) = debug_adapter.listen_for_request()? else {
+                continue;
+            };
+
+            let launch_attach_request = match request.command.as_str() {
+                "launch" => TargetSessionType::LaunchRequest,
+                "attach" => TargetSessionType::AttachRequest,
+                "disconnect" => {
+                    debug_adapter.send_response::<DisconnectResponse>(&request, Ok(None))?;
+                    return Ok(None);
+                }
+                _ => {
+                    debug_adapter.log_to_console(format!(
+                        "Ignoring request with command '{}', we can only handle 'launch' and 'attach' commands.", request.command
+                    ));
+
+                    let err = DebuggerError::Other(anyhow!(
+                        "Unable to process request with command {} before an attach or launch request is received",
+                        request.command
+                    ));
+
+                    debug_adapter.send_response::<()>(&request, Err(&err))?;
+
+                    // Continue listening for requests
+                    continue;
+                }
+            };
+
+            self.debug_logger.flush_to_dap(debug_adapter)?;
+
+            // Process either the Launch or Attach request.
+            let session = match self
+                .handle_launch_attach(
+                    registry,
+                    &request,
+                    launch_attach_request,
+                    debug_adapter,
+                    lister,
+                )
+                .await
+            {
+                Ok(session_data) => Some(session_data),
+                Err(error) => {
+                    debug_adapter.send_response::<()>(&request, Err(&error))?;
+                    None
+                }
+            };
+
+            return Ok(session);
+        }
+    }
+
     /// Process launch or attach request
     #[tracing::instrument(skip_all, name = "Handle Launch/Attach Request")]
-    pub(crate) async fn handle_launch_attach<P: ProtocolAdapter>(
+    async fn handle_launch_attach<P: ProtocolAdapter>(
         &mut self,
         registry: &mut Registry,
         launch_attach_request: &Request,
+        requested_target_session_type: TargetSessionType,
         debug_adapter: &mut DebugAdapter<P>,
         lister: &Lister,
     ) -> Result<SessionData, DebuggerError> {
-        let requested_target_session_type = match launch_attach_request.command.as_str() {
-            "attach" => TargetSessionType::AttachRequest,
-            "launch" => TargetSessionType::LaunchRequest,
-            other => {
-                return Err(DebuggerError::Other(anyhow!(
-                    "Expected request 'launch' or 'attach', but received '{other}'"
-                )));
-            }
-        };
-
         self.config = get_arguments(debug_adapter, launch_attach_request)?;
 
         self.config
