@@ -7,7 +7,7 @@ use crate::{
     cmd::dap_server::{
         DebuggerError,
         debug_adapter::{
-            dap::{adapter::DebugAdapter, dap_types::Source},
+            dap::{adapter::DebugAdapter, dap_types::Source, repl_commands::REPL_COMMANDS},
             protocol::ProtocolAdapter,
         },
         server::startup::TargetSessionType,
@@ -162,6 +162,9 @@ impl SessionData {
                 }
             }
 
+            let repl_commands = REPL_COMMANDS.to_vec();
+            // TODO: detect test framework, add test commands
+
             core_data_vec.push(CoreData {
                 core_index: core_configuration.core_index,
                 last_known_status: CoreStatus::Unknown,
@@ -186,6 +189,8 @@ impl SessionData {
                 // Let's assume there are less than 1024 RTT channels.
                 next_semihosting_handle: 1024,
                 semihosting_handles: HashMap::new(),
+
+                repl_commands,
             })
         }
 

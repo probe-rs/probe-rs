@@ -4,6 +4,7 @@ use std::time::Duration;
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
+use crate::cmd::dap_server::debug_adapter::dap::repl_commands::ReplCommand;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, DataFormat, DefmtProcessor, DefmtState};
 use crate::{
@@ -60,6 +61,7 @@ pub struct CoreData {
     pub rtt_header_cleared: bool,
     pub next_semihosting_handle: u32,
     pub semihosting_handles: HashMap<u32, SemihostingFile>,
+    pub repl_commands: Vec<ReplCommand>,
 }
 
 /// File descriptor for files opened by the target.

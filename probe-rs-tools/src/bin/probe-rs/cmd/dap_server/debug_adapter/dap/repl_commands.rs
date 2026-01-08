@@ -39,6 +39,7 @@ pub(crate) type ReplHandler = fn(
     evaluate_arguments: &EvaluateArguments,
 ) -> Result<Response, DebuggerError>;
 
+#[derive(Clone, Copy)]
 pub(crate) struct ReplCommand {
     /// The text that the user will type to invoke the command.
     /// - This is case sensitive.
