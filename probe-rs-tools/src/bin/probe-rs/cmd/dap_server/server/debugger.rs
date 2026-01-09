@@ -298,10 +298,10 @@ impl Debugger {
     /// The [`DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
     pub(crate) async fn debug_session<P: ProtocolAdapter>(
         &mut self,
+        registry: &mut Registry,
         mut debug_adapter: DebugAdapter<P>,
         lister: &Lister,
     ) -> Result<(), DebuggerError> {
-        let mut registry = Registry::from_builtin_families();
         // The DapClient startup process has a specific sequence.
         // Handle it here before starting a probe-rs session and looping through user generated requests.
         // Handling the initialize, and Attach/Launch requests here in this method,
@@ -343,12 +343,7 @@ impl Debugger {
 
         // Process either the Launch or Attach request.
         let mut session_data = match self
-            .handle_launch_attach(
-                &mut registry,
-                &launch_attach_request,
-                &mut debug_adapter,
-                lister,
-            )
+            .handle_launch_attach(registry, &launch_attach_request, &mut debug_adapter, lister)
             .await
         {
             Ok(session_data) => session_data,
@@ -410,9 +405,7 @@ impl Debugger {
         debug_adapter.send_event("terminated", Some(TerminatedEventBody { restart: None }))?;
         debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
         // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
-        for _loop_count in 0..10 {
-            tokio::time::sleep(Duration::from_millis(50)).await;
-        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
 
         Err(error)
     }
@@ -877,6 +870,7 @@ mod test {
     };
     use probe_rs::{
         architecture::arm::FullyQualifiedApAddress,
+        config::Registry,
         integration::{FakeProbe, Operation},
         probe::{
             DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
@@ -1293,8 +1287,11 @@ mod test {
         }
         let lister = Lister::with_lister(Box::new(lister));
 
+        let mut registry = Registry::from_builtin_families();
         let mut debugger = Debugger::new(UtcOffset::UTC, None)?;
-        debugger.debug_session(debug_adapter, &lister).await
+        debugger
+            .debug_session(&mut registry, debug_adapter, &lister)
+            .await
     }
 
     #[tokio::test]

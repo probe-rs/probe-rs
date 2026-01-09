@@ -1,7 +1,7 @@
 use super::debugger::Debugger;
 use crate::cmd::dap_server::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
 use anyhow::{Context, Result};
-use probe_rs::probe::list::Lister;
+use probe_rs::{config::Registry, probe::list::Lister};
 use serde::Deserialize;
 use std::{
     fs,
@@ -83,7 +83,11 @@ pub async fn debug(
                 // Flush any pending log messages to the debug adapter Console Log.
                 debugger.debug_logger.flush_to_dap(&mut debug_adapter)?;
 
-                let end_message = match debugger.debug_session(debug_adapter, lister).await {
+                let mut registry = Registry::from_builtin_families();
+                let end_message = match debugger
+                    .debug_session(&mut registry, debug_adapter, lister)
+                    .await
+                {
                     // We no longer have a reference to the `debug_adapter`, so errors need
                     // special handling to ensure they are displayed to the user.
                     Err(error) => {
