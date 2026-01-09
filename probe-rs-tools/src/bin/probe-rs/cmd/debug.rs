@@ -1,9 +1,11 @@
 use std::collections::HashMap;
+use std::env::VarError;
 use std::io::Write;
 use std::path::PathBuf;
 
 use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
+use ratatui::crossterm::style::Stylize;
 use rustyline_async::SharedWriter;
 use rustyline_async::{Readline, ReadlineEvent};
 use time::UtcOffset;
@@ -195,7 +197,17 @@ impl Cmd {
         utc_offset: UtcOffset,
     ) -> anyhow::Result<()> {
         let (sender, receiver) = mpsc::channel(5);
-        let (mut rl, mut writer) = Readline::new(">> ".to_string()).unwrap();
+
+        let prompt = if matches!(
+            std::env::var("PROBE_RS_COLOR").as_deref(),
+            Err(VarError::NotPresent) | Ok("true" | "1" | "yes" | "on")
+        ) {
+            "> ".bold().dark_green().to_string()
+        } else {
+            ">> ".to_string()
+        };
+
+        let (mut rl, mut writer) = Readline::new(prompt).unwrap();
 
         // TODO: properly introduce a response/event channel, react to terminated event
         let cancellation = CancellationToken::new();
