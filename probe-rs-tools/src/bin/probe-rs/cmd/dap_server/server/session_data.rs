@@ -4,13 +4,16 @@ use super::{
 };
 use crate::{
     FormatKind,
-    cmd::dap_server::{
-        DebuggerError,
-        debug_adapter::{
-            dap::{adapter::DebugAdapter, dap_types::Source, repl_commands::REPL_COMMANDS},
-            protocol::ProtocolAdapter,
+    cmd::{
+        dap_server::{
+            DebuggerError,
+            debug_adapter::{
+                dap::{adapter::DebugAdapter, dap_types::Source, repl_commands::REPL_COMMANDS},
+                protocol::ProtocolAdapter,
+            },
+            server::startup::TargetSessionType,
         },
-        server::startup::TargetSessionType,
+        run::EmbeddedTestElfInfo,
     },
     util::{common_options::OperationError, rtt},
 };
@@ -162,8 +165,18 @@ impl SessionData {
                 }
             }
 
+            // Load debug info first, which also validates the accessibility of the elf.
+            let debug_info = debug_info_from_binary(core_configuration)?;
+
             let repl_commands = REPL_COMMANDS.to_vec();
-            // TODO: detect test framework, add test commands
+            if let Some(path_to_elf) = core_configuration.program_binary.as_deref()
+                && let Some(elf_info) = EmbeddedTestElfInfo::from_elf(&path_to_elf)?
+            {
+                tracing::info!("Detected embedded-test in ELF file. Running as test");
+                tracing::debug!("Embedded Test Metadata: {:?}", elf_info);
+
+                // TODO: add command
+            }
 
             core_data_vec.push(CoreData {
                 core_index: core_configuration.core_index,
@@ -173,7 +186,7 @@ impl SessionData {
                     core_configuration.core_index,
                     target_session.target().name
                 ),
-                debug_info: debug_info_from_binary(core_configuration)?,
+                debug_info,
                 static_variables: None,
                 core_peripherals: None,
                 stack_frames: vec![],

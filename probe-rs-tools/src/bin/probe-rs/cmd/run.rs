@@ -423,7 +423,7 @@ impl<'a> ElfReader<'a> {
 }
 
 impl EmbeddedTestElfInfo {
-    fn from_elf(path: &Path) -> anyhow::Result<Option<Self>> {
+    pub(crate) fn from_elf(path: &Path) -> anyhow::Result<Option<Self>> {
         let mut file = File::open(path).map_err(FileDownloadError::IO)?;
 
         let mut buffer = Vec::new();
