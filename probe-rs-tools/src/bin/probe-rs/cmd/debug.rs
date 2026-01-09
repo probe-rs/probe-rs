@@ -210,6 +210,13 @@ impl Cmd {
         });
         let mut debugger = Debugger::new(utc_offset, None)?;
 
+        let mut seq = 0;
+        let mut next_seq = move || {
+            let r = seq;
+            seq += 1;
+            r
+        };
+
         sender
             .send(Request {
                 command: "initialize".to_string(),
@@ -233,7 +240,7 @@ impl Cmd {
                     supports_ansi_styling: None,
                 })
                 .ok(),
-                seq: 0,
+                seq: next_seq(),
                 type_: "request".to_string(),
             })
             .await
@@ -265,7 +272,7 @@ impl Cmd {
                     }],
                 })
                 .ok(),
-                seq: 1,
+                seq: next_seq(),
                 type_: "request".to_string(),
             })
             .await
@@ -274,7 +281,7 @@ impl Cmd {
             .send(Request {
                 command: "configurationDone".to_string(),
                 arguments: serde_json::to_value(()).ok(),
-                seq: 2,
+                seq: next_seq(),
                 type_: "request".to_string(),
             })
             .await
@@ -288,7 +295,6 @@ impl Cmd {
         };
 
         let readline = async {
-            let mut seq = 3;
             loop {
                 let read_line = tokio::select! {
                     line = rl.readline() => line,
@@ -311,11 +317,7 @@ impl Cmd {
                                 source: None,
                             })
                             .ok(),
-                            seq: {
-                                let s = seq;
-                                seq += 1;
-                                s
-                            },
+                            seq: next_seq(),
                             type_: "request".to_string(),
                         };
 
@@ -340,7 +342,7 @@ impl Cmd {
                         terminate_debuggee: None,
                     })
                     .ok(),
-                    seq,
+                    seq: next_seq(),
                     type_: "request".to_string(),
                 })
                 .await
