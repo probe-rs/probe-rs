@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::time::Duration;
@@ -62,6 +63,7 @@ pub struct CoreData {
     pub next_semihosting_handle: u32,
     pub semihosting_handles: HashMap<u32, SemihostingFile>,
     pub repl_commands: Vec<ReplCommand>,
+    pub test_data: Box<dyn Any>,
 }
 
 /// File descriptor for files opened by the target.
@@ -617,7 +619,7 @@ impl CoreHandle<'_> {
                 )));
             }
             SemihostingCommand::ExitError(details) => {
-                debug_adapter.log_to_console(format!("Application has exited with  {details}"));
+                debug_adapter.log_to_console(format!("Application has exited with {details}"));
                 return Ok(CoreStatus::Halted(HaltReason::Breakpoint(
                     BreakpointCause::Semihosting(command),
                 )));

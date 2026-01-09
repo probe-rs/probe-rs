@@ -289,6 +289,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             } else if context == "repl" {
                 match self.handle_repl(target_core, &arguments) {
                     Ok(repl_response) => {
+                        // TODO: the REPL handlers should do all of this work, no post-processing should be done here.
+                        if target_core.core_data.last_known_status == CoreStatus::Running {
+                            self.all_cores_halted = false;
+                        }
                         // In all other cases, the response would have been updated by the repl command handler.
                         response_body.result = if repl_response.success {
                             repl_response

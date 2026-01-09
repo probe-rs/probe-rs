@@ -8,7 +8,11 @@ use crate::{
         dap_server::{
             DebuggerError,
             debug_adapter::{
-                dap::{adapter::DebugAdapter, dap_types::Source, repl_commands::REPL_COMMANDS},
+                dap::{
+                    adapter::DebugAdapter,
+                    dap_types::Source,
+                    repl_commands::{EMBEDDED_TEST, REPL_COMMANDS},
+                },
                 protocol::ProtocolAdapter,
             },
             server::startup::TargetSessionType,
@@ -27,7 +31,7 @@ use probe_rs::{
 use probe_rs_debug::{
     DebugRegisters, SourceLocation, debug_info::DebugInfo, exception_handler_for_core,
 };
-use std::{collections::HashMap, env::set_current_dir, time::Duration};
+use std::{any::Any, collections::HashMap, env::set_current_dir, time::Duration};
 use time::UtcOffset;
 
 /// The supported breakpoint types
@@ -168,14 +172,22 @@ impl SessionData {
             // Load debug info first, which also validates the accessibility of the elf.
             let debug_info = debug_info_from_binary(core_configuration)?;
 
-            let repl_commands = REPL_COMMANDS.to_vec();
+            let mut repl_commands = REPL_COMMANDS.to_vec();
+            let mut test_data: Box<dyn Any> = Box::new(());
             if let Some(path_to_elf) = core_configuration.program_binary.as_deref()
                 && let Some(elf_info) = EmbeddedTestElfInfo::from_elf(&path_to_elf)?
             {
-                tracing::info!("Detected embedded-test in ELF file. Running as test");
                 tracing::debug!("Embedded Test Metadata: {:?}", elf_info);
+                if elf_info.version != 1 {
+                    tracing::info!("Detected unsupported embedded-test version in ELF file.");
+                } else {
+                    tracing::info!(
+                        "Detected embedded-test in ELF file. Adding `test` command to Debug Console."
+                    );
 
-                // TODO: add command
+                    repl_commands.push(EMBEDDED_TEST);
+                    test_data = Box::new(elf_info);
+                }
             }
 
             core_data_vec.push(CoreData {
@@ -204,6 +216,7 @@ impl SessionData {
                 semihosting_handles: HashMap::new(),
 
                 repl_commands,
+                test_data,
             })
         }
 

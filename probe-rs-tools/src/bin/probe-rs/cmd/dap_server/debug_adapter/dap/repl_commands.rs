@@ -7,11 +7,17 @@ use super::{
     repl_types::*,
     request_helpers::set_instruction_breakpoint,
 };
-use crate::cmd::dap_server::{
-    DebuggerError, debug_adapter::dap::dap_types::Breakpoint, server::core_data::CoreHandle,
+use crate::cmd::{
+    dap_server::{
+        DebuggerError, debug_adapter::dap::dap_types::Breakpoint, server::core_data::CoreHandle,
+    },
+    run::EmbeddedTestElfInfo,
 };
 use itertools::Itertools;
-use probe_rs::{CoreDump, CoreInterface, CoreStatus, HaltReason, RegisterValue};
+use probe_rs::{
+    BreakpointCause, CoreDump, CoreInterface, CoreStatus, HaltReason, RegisterValue,
+    semihosting::SemihostingCommand,
+};
 use probe_rs_debug::{ColumnType, ObjectRef, StackFrame, VariableName};
 use std::{
     fmt::{Display, Write as _},
@@ -76,14 +82,14 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand] = &[
         help_text: "Information about available commands and how to use them.",
         sub_commands: &[],
         args: &[],
-        handler: |_, _, _| {
+        handler: |target_core, _, _| {
             let mut help_text =
                 "Usage:\t- Use <Ctrl+Space> to get a list of available commands.".to_string();
             help_text.push_str("\n\t- Use <Up/DownArrows> to navigate through the command list.");
             help_text.push_str("\n\t- Use <Hab> to insert the currently selected command.");
             help_text.push_str("\n\t- Note: This implementation is a subset of gdb commands, and is intended to behave similarly.");
             help_text.push_str("\nAvailable commands:");
-            for command in REPL_COMMANDS {
+            for command in target_core.core_data.repl_commands.iter() {
                 help_text.push_str(&format!("\n{command}"));
             }
             Ok(Response {
@@ -677,6 +683,110 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand] = &[
         },
     },
 ];
+
+pub(crate) static EMBEDDED_TEST: ReplCommand = ReplCommand {
+    command: "test",
+    help_text: "Interact with embedded-test test cases",
+    sub_commands: &[
+        ReplCommand {
+            command: "list",
+            help_text: "List all test cases.",
+            sub_commands: &[],
+            args: &[],
+            handler: |target_core, _, _| {
+                let test_data = target_core
+                    .core_data
+                    .test_data
+                    .downcast_ref::<EmbeddedTestElfInfo>()
+                    .unwrap();
+
+                let mut tests = test_data
+                    .tests
+                    .iter()
+                    .map(|t| t.name.as_str())
+                    .collect::<Vec<&str>>();
+                tests.sort();
+
+                Ok(Response {
+                    command: "tests".to_string(),
+                    success: true,
+                    message: Some(tests.join("\n")),
+                    type_: "response".to_string(),
+                    request_seq: 0,
+                    seq: 0,
+                    body: None,
+                })
+            },
+        },
+        ReplCommand {
+            command: "run",
+            help_text: "Starts running a test case.",
+            sub_commands: &[],
+            args: &[ReplCommandArgs::Required("test_name")],
+            handler: |target_core, test_name, _| {
+                let test_data = target_core
+                    .core_data
+                    .test_data
+                    .downcast_ref::<EmbeddedTestElfInfo>()
+                    .unwrap();
+
+                let Some(test) = test_data.tests.iter().find(|test| test.name == test_name) else {
+                    return Err(DebuggerError::UserMessage(format!(
+                        "Test '{test_name}' not found"
+                    )));
+                };
+
+                let Some(address) = test.address else {
+                    return Err(DebuggerError::UserMessage(format!(
+                        "Test '{test_name}' has no address"
+                    )));
+                };
+
+                target_core.reset_and_halt()?;
+                target_core.core.run()?;
+                target_core
+                    .core
+                    .wait_for_core_halted(Duration::from_secs(1))?;
+
+                let CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                    SemihostingCommand::GetCommandLine(request),
+                ))) = target_core.core.status()?
+                else {
+                    return Err(DebuggerError::UserMessage(
+                        "Could not start test".to_string(),
+                    ));
+                };
+
+                // Select and start the test
+                request.write_command_line_to_target(
+                    &mut target_core.core,
+                    &format!("run_addr {}", address),
+                )?;
+                target_core.core.run()?;
+
+                target_core.core_data.last_known_status = CoreStatus::Running;
+
+                // TODO: wait for a bit (while polling RTT) for the test to either complete
+                // or the target to halt again? That way we could print the _actual_ test result
+                // based on the expectation.
+
+                Ok(Response {
+                    command: "continue".to_string(),
+                    success: true,
+                    message: Some(CoreStatus::Running.short_long_status(None).1),
+                    type_: "response".to_string(),
+                    request_seq: 0,
+                    seq: 0,
+                    body: None,
+                })
+            },
+        },
+    ],
+    args: &[],
+    handler: |_, _, _| {
+        Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
+    },
+};
 
 struct ReplStackFrame<'a>(&'a StackFrame);
 

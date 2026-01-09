@@ -74,10 +74,21 @@ pub struct ExitErrorDetails {
 
 impl std::fmt::Display for ExitErrorDetails {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "reason: {:#x}", self.reason)?;
-        if let Some(exit_status) = self.exit_status {
-            write!(f, ", exit_status: {exit_status}")?;
+        match self.reason {
+            0x20026 => match self.exit_status {
+                Some(0) => write!(f, "success")?,
+                Some(134) => write!(f, "exit_status: aborted")?,
+                Some(other) => write!(f, "exit_status: {other:#x}")?,
+                None => write!(f, "exit_status: unknown")?,
+            },
+            reason => {
+                write!(f, "reason: {reason:#x}")?;
+                if let Some(exit_status) = self.exit_status {
+                    write!(f, ", exit_status: {exit_status}")?;
+                }
+            }
         }
+
         if let Some(subcode) = self.subcode {
             write!(f, ", subcode: {subcode:#x}")?;
         }
