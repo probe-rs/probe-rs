@@ -1,15 +1,13 @@
-# MANUAL EDIT: stm32c0x_64 flash algorithm region modified
----
 name: STM32C0 Series
 manufacturer:
   id: 0x20
   cc: 0x0
 generated_from_pack: true
-pack_file_release: 2.0.0
+pack_file_release: 2.4.0
 variants:
 - name: STM32C011D6
   package_variants:
-  - STM32C011D6Yx
+  - STM32C011D6YxTR
   cores:
   - name: main
     type: armv6m
@@ -38,6 +36,7 @@ variants:
 - name: STM32C011F4
   package_variants:
   - STM32C011F4Ux
+  - STM32C011F4UxTR
   - STM32C011F4Px
   cores:
   - name: main
@@ -63,10 +62,11 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_32
+  - stm32c0x_16
 - name: STM32C011F6
   package_variants:
   - STM32C011F6Ux
+  - STM32C011F6UxTR
   - STM32C011F6Px
   cores:
   - name: main
@@ -120,7 +120,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_32
+  - stm32c0x_16
 - name: STM32C011J6
   package_variants:
   - STM32C011J6Mx
@@ -177,7 +177,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_32
+  - stm32c0x_16
 - name: STM32C031C6
   package_variants:
   - STM32C031C6Tx
@@ -234,7 +234,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_32
+  - stm32c0x_16
 - name: STM32C031F6
   package_variants:
   - STM32C031F6Px
@@ -290,7 +290,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_32
+  - stm32c0x_16
 - name: STM32C031G6
   package_variants:
   - STM32C031G6Ux
@@ -347,7 +347,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_32
+  - stm32c0x_16
 - name: STM32C031K6
   package_variants:
   - STM32C031K6Tx
@@ -377,11 +377,266 @@ variants:
     - main
   flash_algorithms:
   - stm32c0x_32
+- name: STM32C051C6
+  package_variants:
+  - STM32C051C6Tx
+  - STM32C051C6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_32
+- name: STM32C051C8
+  package_variants:
+  - STM32C051C8Tx
+  - STM32C051C8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C051D8
+  package_variants:
+  - STM32C051D8YxTR
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C051F6
+  package_variants:
+  - STM32C051F6Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_32
+- name: STM32C051F8
+  package_variants:
+  - STM32C051F8Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C051G6
+  package_variants:
+  - STM32C051G6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_32
+- name: STM32C051G8
+  package_variants:
+  - STM32C051G8Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
+- name: STM32C051K6
+  package_variants:
+  - STM32C051K6Tx
+  - STM32C051K6Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_32
+- name: STM32C051K8
+  package_variants:
+  - STM32C051K8Tx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_64
 - name: STM32C071C8
   package_variants:
   - STM32C071C8Tx
-  - STM32C071C8Ux
   - STM32C071C8TxN
+  - STM32C071C8Ux
   - STM32C071C8UxN
   cores:
   - name: main
@@ -411,8 +666,8 @@ variants:
 - name: STM32C071CB
   package_variants:
   - STM32C071CBTx
-  - STM32C071CBUx
   - STM32C071CBTxN
+  - STM32C071CBUx
   - STM32C071CBUxN
   cores:
   - name: main
@@ -438,7 +693,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071F8
   package_variants:
   - STM32C071F8Px
@@ -471,8 +726,8 @@ variants:
 - name: STM32C071FB
   package_variants:
   - STM32C071FBPx
-  - STM32C071FBYx
   - STM32C071FBPxN
+  - STM32C071FBYxTR
   cores:
   - name: main
     type: armv6m
@@ -497,7 +752,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071G8
   package_variants:
   - STM32C071G8Ux
@@ -555,12 +810,12 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071K8
   package_variants:
   - STM32C071K8Tx
-  - STM32C071K8Ux
   - STM32C071K8TxN
+  - STM32C071K8Ux
   - STM32C071K8UxN
   cores:
   - name: main
@@ -590,8 +845,8 @@ variants:
 - name: STM32C071KB
   package_variants:
   - STM32C071KBTx
-  - STM32C071KBUx
   - STM32C071KBTxN
+  - STM32C071KBUx
   - STM32C071KBUxN
   cores:
   - name: main
@@ -617,13 +872,13 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
 - name: STM32C071R8
   package_variants:
-  - STM32C071R8Tx
   - STM32C071R8Ix
-  - STM32C071R8TxN
   - STM32C071R8IxN
+  - STM32C071R8Tx
+  - STM32C071R8TxN
   cores:
   - name: main
     type: armv6m
@@ -652,8 +907,8 @@ variants:
 - name: STM32C071RB
   package_variants:
   - STM32C071RBTx
-  - STM32C071RBTxN
   - STM32C071RBIxN
+  - STM32C071RBTxN
   cores:
   - name: main
     type: armv6m
@@ -678,12 +933,354 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32c0x_64
+  - stm32c0x_128
+- name: STM32C091CB
+  package_variants:
+  - STM32C091CBTx
+  - STM32C091CBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20009000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_128
+- name: STM32C091CC
+  package_variants:
+  - STM32C091CCTx
+  - STM32C091CCUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20009000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_256
+- name: STM32C091EC
+  package_variants:
+  - STM32C091ECYxTR
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20009000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_256
+- name: STM32C091FB
+  package_variants:
+  - STM32C091FBPx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20009000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_128
+- name: STM32C091FC
+  package_variants:
+  - STM32C091FCPx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20009000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_256
+- name: STM32C091GB
+  package_variants:
+  - STM32C091GBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20009000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_128
+- name: STM32C091GC
+  package_variants:
+  - STM32C091GCUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20009000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_256
+- name: STM32C091KB
+  package_variants:
+  - STM32C091KBTx
+  - STM32C091KBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20009000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_128
+- name: STM32C091KC
+  package_variants:
+  - STM32C091KCTx
+  - STM32C091KCUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20009000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_256
+- name: STM32C091RB
+  package_variants:
+  - STM32C091RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20009000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_128
+- name: STM32C091RC
+  package_variants:
+  - STM32C091RCIx
+  - STM32C091RCTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20009000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_256
+- name: STM32C092CB
+  package_variants:
+  - STM32C092CBTx
+  - STM32C092CBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20007800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_128
 - name: STM32C092CC
   package_variants:
-  - STM32C092CCUx
   - STM32C092CCTx
   - STM32C092CCTxTR
+  - STM32C092CCUx
   cores:
   - name: main
     type: armv6m
@@ -709,8 +1306,235 @@ variants:
     - main
   flash_algorithms:
   - stm32c0x_256
+- name: STM32C092EC
+  package_variants:
+  - STM32C092ECYxTR
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20007800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_256
+- name: STM32C092FB
+  package_variants:
+  - STM32C092FBPx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20007800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_128
+- name: STM32C092FC
+  package_variants:
+  - STM32C092FCPx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20007800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_256
+- name: STM32C092GB
+  package_variants:
+  - STM32C092GBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20007800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_128
+- name: STM32C092GC
+  package_variants:
+  - STM32C092GCUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20007800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_256
+- name: STM32C092KB
+  package_variants:
+  - STM32C092KBTx
+  - STM32C092KBUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20007800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_128
+- name: STM32C092KC
+  package_variants:
+  - STM32C092KCTx
+  - STM32C092KCUx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20007800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_256
+- name: STM32C092RB
+  package_variants:
+  - STM32C092RBTx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: BANK_1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20007800
+    cores:
+    - main
+  flash_algorithms:
+  - stm32c0x_128
 - name: STM32C092RC
   package_variants:
+  - STM32C092RCIx
   - STM32C092RCUx
   - STM32C092RCTx
   - STM32C092RCTxTR
@@ -740,16 +1564,41 @@ variants:
   flash_algorithms:
   - stm32c0x_256
 flash_algorithms:
+- name: stm32c0x_16
+  description: STM32C0x_16
+  default: true
+  instructions: crYRSBFJgWCBackDBNXBaAApEtQAIHBHDUkOSgpgDkoKYAYiSmANSopgDUkNSkpgfyIKYMFoACns1QtJAWALSQFgACBwR8BGCCACQPrDAAAAMABAqqoAAFVVAAD/DwAAACwAQP8BAAAjAWdFq4nvzQEgwAcCSQpoAkMKYAAgcEcUIAJAASBwR3C1crYBIAMEHEkKaBpCCNAKaBpCBdAKaBpCAtAKaBpC89EXSgpghAQNaCVCCNANaCVCBdANaCVCAtANaCVC89FOaAQlLkNOYE5oHkNOYAtoI0II0AtoI0IF0AtoI0IC0AtoI0Lz0QtoE0IB0ApgcL1IaKhDSGAAIHC9wEYQIAJA+sMAAPC1AUZytgEgAgQsSxtoGwVeDStLHGgUQgjQHGgUQgXQHGgUQgLQHGgUQvPRJUwcYIUEH2gvQgjQH2gvQgXQH2gvQgLQH2gvQvPRX2h0HuYAt0NfYB8n/wbJGckKIUDJAFxoDEMCIQxDXGBcaBRDXGD2QxxoLEII0BxoLEIF0BxoLEIC0BxoLELz0RxoDU0sQgHQHWDwvVhoMEBYYFhoiENYYAEgwAYBaAAgSRwA0PC9EDsZaBFDGWDwvcBGoHX/HxAgAkD6wwAA8LWOsAZGcrbPHQEkIARmSQtoA0II0AtoA0IF0AtoA0IC0AtoA0Lz0WBICGAAlKUECGgoQgjQCGgoQgXQCGgoQgLQCGgoQvPRSGgAmxhDSGAHIDxGApCEQwaogDABkAngA5gwYAGYAGhwYAAkCGjABwDQk+AALADRgOAILBbTEGgwYFBocGAIMghoKEII0AhoKEIF0AhoKEIC0AhoKELz0Qg8CDYIaMAH5NB34BB4A5AGkAEsAdFSHCDgUHgHkAIsAdGSHBrgkHgIkAMsAdHSHBTg0HgJkAQsAdESHQ7gEHkKkAUsAdFSHQjgUHkLkAYsAdGSHQLgkHkMkNIdBJYFkgggABsjRgKaU0ADKwLSIkYAJA/gDCcHQCJGowAGrOMYACT/Jh5gXmCeYN5gEDMkHadC9tEDIxhADtCiGJMABqr/JNRQASgH0AaqmhhUYAIoAtAGqBgYhGAFmgSeCGgoQgDRfecIaChCANF55whoKEIA0XXnCGgoQvDRcedKaAEjmkNKYNoGEmgAIFIcBNAbBBA5CmiaQwpgDrDwvQNICGAAmA6w8L3ARhAgAkD6wwAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x71
+  pc_program_page: 0x1d5
+  pc_erase_sector: 0x10d
+  pc_erase_all: 0x89
+  pc_blank_check: 0x85
+  data_section_offset: 0x384
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8004000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x800
+      address: 0x0
 - name: stm32c0x_32
   description: STM32C0x_32
   default: true
-  instructions: crZlSGVJCGEIasADDdRlSGNKAmBSEAJgBiJCYGJKgmBiSNIQQmB/IgJgSGkAKAPaX0iIYF9IiGBitgAgcEdXSEFpggQRQ0FhACBwRwEgcEdytlJIAWnJA/zUQmkEIQpDQmFCaYsDGkNCYQJp0gP81ANpSUoTQgLQAmEBIHBHQmmKQ0JhYrYAIHBHELVytkJKQkkKYUtp/yTkAKNDS2EjBsAYTGkACgIjGEMEQ0xhTGnYAwRDTGEMaeQD/NQMaRRCAtAKYQEgEL1KaZpDSmEBItIGEmhSHALRCmgCQwpgYrYAIBC98LWIsIRGcrbJHcsIKknbAAhpwAP81C9ICGFIaQEkIENIYW1GMuAIKwzTYEYUaARgVGhEYAgwCDKERgg7CGnAA/zUG+AAIATghgAUeEAcrFFSHJhC+NMAJP8nCCDGGgPg4BiAAC9QZBymQvnYCGnAA/zUYEYAmwNgQ2AAIwhpwAcE0AxICGEBIAiw8L0AK8rRSGlACEAASGEBIMAGAGhAHATQCGgBIhIEkEMIYGK2ACDq5wAA+sMAAAAgAkCqqgAAADAAQP8PAAAALABAIwFnRauJ783/AQAAAAAAAA==
+  instructions: crYRSBFJgWCBackDBNXBaAApEtQAIHBHDUkOSgpgDkoKYAYiSmANSopgDUkNSkpgfyIKYMFoACns1QtJAWALSQFgACBwR8BGCCACQPrDAAAAMABAqqoAAFVVAAD/DwAAACwAQP8BAAAjAWdFq4nvzQEgwAcCSQpoAkMKYAAgcEcUIAJAASBwR3C1crYBIAMEHEkKaBpCCNAKaBpCBdAKaBpCAtAKaBpC89EXSgpghAQNaCVCCNANaCVCBdANaCVCAtANaCVC89FOaAQlLkNOYE5oHkNOYAtoI0II0AtoI0IF0AtoI0IC0AtoI0Lz0QtoE0IB0ApgcL1IaKhDSGAAIHC9wEYQIAJA+sMAAPC1AUZytgEgAgQsSxtoGwVeDStLHGgUQgjQHGgUQgXQHGgUQgLQHGgUQvPRJUwcYIUEH2gvQgjQH2gvQgXQH2gvQgLQH2gvQvPRX2h0HuYAt0NfYB8n/wbJGckKIUDJAFxoDEMCIQxDXGBcaBRDXGD2QxxoLEII0BxoLEIF0BxoLEIC0BxoLELz0RxoDU0sQgHQHWDwvVhoMEBYYFhoiENYYAEgwAYBaAAgSRwA0PC9EDsZaBFDGWDwvcBGoHX/HxAgAkD6wwAA8LWOsAZGcrbPHQEkIARmSQtoA0II0AtoA0IF0AtoA0IC0AtoA0Lz0WBICGAAlKUECGgoQgjQCGgoQgXQCGgoQgLQCGgoQvPRSGgAmxhDSGAHIDxGApCEQwaogDABkAngA5gwYAGYAGhwYAAkCGjABwDQk+AALADRgOAILBbTEGgwYFBocGAIMghoKEII0AhoKEIF0AhoKEIC0AhoKELz0Qg8CDYIaMAH5NB34BB4A5AGkAEsAdFSHCDgUHgHkAIsAdGSHBrgkHgIkAMsAdHSHBTg0HgJkAQsAdESHQ7gEHkKkAUsAdFSHQjgUHkLkAYsAdGSHQLgkHkMkNIdBJYFkgggABsjRgKaU0ADKwLSIkYAJA/gDCcHQCJGowAGrOMYACT/Jh5gXmCeYN5gEDMkHadC9tEDIxhADtCiGJMABqr/JNRQASgH0AaqmhhUYAIoAtAGqBgYhGAFmgSeCGgoQgDRfecIaChCANF55whoKEIA0XXnCGgoQvDRcedKaAEjmkNKYNoGEmgAIFIcBNAbBBA5CmiaQwpgDrDwvQNICGAAmA6w8L3ARhAgAkD6wwAAAAAAAA==
   pc_init: 0x1
-  pc_uninit: 0x3f
-  pc_program_page: 0xe5
-  pc_erase_sector: 0x8b
-  pc_erase_all: 0x51
-  data_section_offset: 0x1bc
+  pc_uninit: 0x71
+  pc_program_page: 0x1d5
+  pc_erase_sector: 0x10d
+  pc_erase_all: 0x89
+  pc_blank_check: 0x85
+  data_section_offset: 0x384
+  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x8000000
@@ -764,17 +1613,41 @@ flash_algorithms:
 - name: stm32c0x_64
   description: STM32C0x_64
   default: true
-  instructions: 7/MQgHK2EUgRSYFggWnJAwTVwWgAKRLUACBwRw1JDkoKYA5KCmAGIkpgDUqKYA1JDUpKYH8iCmDBaAAp7NULSQFgC0kBYAAgcEfARgggAkD6wwAAADAAQKqqAABVVQAA/w8AAAAsAED/AQAAIwFnRauJ780BIMAHAkkKaAJDCmAAIHBHFCACQAEgcEcQte/zEIBytgEgAgQVSQtoE0II0AtoE0IF0AtoE0IC0AtoE0Lz0UxoBCMcQ0xgTGgUQ0xgDGgUQgjQDGgUQgXQDGgUQgLQDGgUQvPRDGgGShRCAdAKYBC9SGiYQ0hgACAQvcBGECACQPrDAABwte/zEIFythtJCh8bSxNg/yTkAA1opUMNYB8k5AYAGQAKDGgEQwIlLEMMYAEgBAQOaCZDDmAWaCZCCNAWaCZCBdAWaCZCAtAWaCZC89EWaB5CAdATYHC9CGioQwhgASDABgJoACBSHADQcL0UOQpoIkMKYHC9wEYUIAJA+sMAAPC1jrATRgVG7/MQgHK2zh0BIACQBARbSQhoIEII0AhoIEIF0AhoIEIC0AhoIELz0VVICGBIaACaEENIYAcghkMGqIAwAZAF4Ag+CDUIaMAHANCB4AAuANGD4AguEdMYaChgWGhoYAgzCGggQuzQCGggQunQCGggQubQCGggQvPR4ucYeAOQBpABLgHRWxwg4Fh4B5ACLgHRmxwa4Jh4CJADLgHR2xwU4Nh4CZAELgHRGx0O4Bh5CpAFLgHRWx0I4Fh5C5AGLgHRmx0C4Jh5DJDbHQWTBJUIIIMbAyAEKwKQAdIAJw7gHUaFQ7AABq84GAAn/yICYEJggmDCYBAwPx29QvbRApgDQA7QuBmAAAat/yIqUAErB9AGrUUZamACKwLQBqvAGIJgCGggQgjQCGggQgXQCGggQgLQCGggQvPRBJ0DmChgAZgAaGhgACYFmwhowAcA0X3nDEgIYACYDrDwvUpoASOaQ0pg2gYSaAAgUhwE0BsEEDkKaJpDCmAOsPC9wEYQIAJA/wEAAPrDAAAAAAAA
+  instructions: crYRSBFJgWCBackDBNXBaAApEtQAIHBHDUkOSgpgDkoKYAYiSmANSopgDUkNSkpgfyIKYMFoACns1QtJAWALSQFgACBwR8BGCCACQPrDAAAAMABAqqoAAFVVAAD/DwAAACwAQP8BAAAjAWdFq4nvzQEgwAcCSQpoAkMKYAAgcEcUIAJAASBwR3C1crYBIAMEHEkKaBpCCNAKaBpCBdAKaBpCAtAKaBpC89EXSgpghAQNaCVCCNANaCVCBdANaCVCAtANaCVC89FOaAQlLkNOYE5oHkNOYAtoI0II0AtoI0IF0AtoI0IC0AtoI0Lz0QtoE0IB0ApgcL1IaKhDSGAAIHC9wEYQIAJA+sMAAPC1AUZytgEgAgQsSxtoGwVeDStLHGgUQgjQHGgUQgXQHGgUQgLQHGgUQvPRJUwcYIUEH2gvQgjQH2gvQgXQH2gvQgLQH2gvQvPRX2h0HuYAt0NfYB8n/wbJGckKIUDJAFxoDEMCIQxDXGBcaBRDXGD2QxxoLEII0BxoLEIF0BxoLEIC0BxoLELz0RxoDU0sQgHQHWDwvVhoMEBYYFhoiENYYAEgwAYBaAAgSRwA0PC9EDsZaBFDGWDwvcBGoHX/HxAgAkD6wwAA8LWOsAZGcrbPHQEkIARmSQtoA0II0AtoA0IF0AtoA0IC0AtoA0Lz0WBICGAAlKUECGgoQgjQCGgoQgXQCGgoQgLQCGgoQvPRSGgAmxhDSGAHIDxGApCEQwaogDABkAngA5gwYAGYAGhwYAAkCGjABwDQk+AALADRgOAILBbTEGgwYFBocGAIMghoKEII0AhoKEIF0AhoKEIC0AhoKELz0Qg8CDYIaMAH5NB34BB4A5AGkAEsAdFSHCDgUHgHkAIsAdGSHBrgkHgIkAMsAdHSHBTg0HgJkAQsAdESHQ7gEHkKkAUsAdFSHQjgUHkLkAYsAdGSHQLgkHkMkNIdBJYFkgggABsjRgKaU0ADKwLSIkYAJA/gDCcHQCJGowAGrOMYACT/Jh5gXmCeYN5gEDMkHadC9tEDIxhADtCiGJMABqr/JNRQASgH0AaqmhhUYAIoAtAGqBgYhGAFmgSeCGgoQgDRfecIaChCANF55whoKEIA0XXnCGgoQvDRcedKaAEjmkNKYNoGEmgAIFIcBNAbBBA5CmiaQwpgDrDwvQNICGAAmA6w8L3ARhAgAkD6wwAAAAAAAA==
   pc_init: 0x1
-  pc_uninit: 0x75
-  pc_program_page: 0x179
-  pc_erase_sector: 0xf9
-  pc_erase_all: 0x8d
-  data_section_offset: 0x308
+  pc_uninit: 0x71
+  pc_program_page: 0x1d5
+  pc_erase_sector: 0x10d
+  pc_erase_all: 0x89
+  pc_blank_check: 0x85
+  data_section_offset: 0x384
+  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x8000000
-      # MANUAL EDIT: extended region from 64KB to 128KB
+      end: 0x8010000
+    page_size: 0x800
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x800
+      address: 0x0
+- name: stm32c0x_128
+  description: STM32C0x_128
+  default: true
+  instructions: crYRSBFJgWCBackDBNXBaAApEtQAIHBHDUkOSgpgDkoKYAYiSmANSopgDUkNSkpgfyIKYMFoACns1QtJAWALSQFgACBwR8BGCCACQPrDAAAAMABAqqoAAFVVAAD/DwAAACwAQP8BAAAjAWdFq4nvzQEgwAcCSQpoAkMKYAAgcEcUIAJAASBwR3C1crYBIAMEHEkKaBpCCNAKaBpCBdAKaBpCAtAKaBpC89EXSgpghAQNaCVCCNANaCVCBdANaCVCAtANaCVC89FOaAQlLkNOYE5oHkNOYAtoI0II0AtoI0IF0AtoI0IC0AtoI0Lz0QtoE0IB0ApgcL1IaKhDSGAAIHC9wEYQIAJA+sMAAPC1AUZytgEgAgQsSxtoGwVeDStLHGgUQgjQHGgUQgXQHGgUQgLQHGgUQvPRJUwcYIUEH2gvQgjQH2gvQgXQH2gvQgLQH2gvQvPRX2h0HuYAt0NfYB8n/wbJGckKIUDJAFxoDEMCIQxDXGBcaBRDXGD2QxxoLEII0BxoLEIF0BxoLEIC0BxoLELz0RxoDU0sQgHQHWDwvVhoMEBYYFhoiENYYAEgwAYBaAAgSRwA0PC9EDsZaBFDGWDwvcBGoHX/HxAgAkD6wwAA8LWOsAZGcrbPHQEkIARmSQtoA0II0AtoA0IF0AtoA0IC0AtoA0Lz0WBICGAAlKUECGgoQgjQCGgoQgXQCGgoQgLQCGgoQvPRSGgAmxhDSGAHIDxGApCEQwaogDABkAngA5gwYAGYAGhwYAAkCGjABwDQk+AALADRgOAILBbTEGgwYFBocGAIMghoKEII0AhoKEIF0AhoKEIC0AhoKELz0Qg8CDYIaMAH5NB34BB4A5AGkAEsAdFSHCDgUHgHkAIsAdGSHBrgkHgIkAMsAdHSHBTg0HgJkAQsAdESHQ7gEHkKkAUsAdFSHQjgUHkLkAYsAdGSHQLgkHkMkNIdBJYFkgggABsjRgKaU0ADKwLSIkYAJA/gDCcHQCJGowAGrOMYACT/Jh5gXmCeYN5gEDMkHadC9tEDIxhADtCiGJMABqr/JNRQASgH0AaqmhhUYAIoAtAGqBgYhGAFmgSeCGgoQgDRfecIaChCANF55whoKEIA0XXnCGgoQvDRcedKaAEjmkNKYNoGEmgAIFIcBNAbBBA5CmiaQwpgDrDwvQNICGAAmA6w8L3ARhAgAkD6wwAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x71
+  pc_program_page: 0x1d5
+  pc_erase_sector: 0x10d
+  pc_erase_all: 0x89
+  pc_blank_check: 0x85
+  data_section_offset: 0x384
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x8000000
       end: 0x8020000
     page_size: 0x800
     erased_byte_value: 0xff
@@ -786,13 +1659,15 @@ flash_algorithms:
 - name: stm32c0x_256
   description: STM32C0x_256
   default: true
-  instructions: crYRSBFJgWCBackDBNXBaAApEtQAIHBHDUkOSgpgDkoKYAYiSmANSopgDUkNSkpgfyIKYMFoACns1QtJAWALSQFgACBwR8BGCCACQPrDAAAAMABAqqoAAFVVAAD/DwAAACwAQP8BAAAjAWdFq4nvzQEgwAcCSQpoAkMKYAAgcEcUIAJAASBwRxC1crYBIAIEFUkLaBNCCNALaBNCBdALaBNCAtALaBNC89FMaAQjHENMYExoFENMYAxoFEII0AxoFEIF0AxoFEIC0AxoFELz0QxoBkoUQgHQCmAQvUhomENIYAAgEL3ARhAgAkD6wwAA8LVyth9JDGgfSQofH0sTYKQAH00lQAckZRsMaCxADGAfJOQGABkACgxoBEMCJjRDDGABIAQED2gnQw9gF2gnQgjQF2gnQgXQF2gnQgLQF2gnQvPRF2gfQgHQE2DwvQhoKEAIYAhosEMIYAEgwAYCaAAgUhwA0PC9FDkKaCJDCmDwvcBGoHX/HxQgAkD6wwAA+D8AAPC1jbAFRnK2zh0BIACQBARbSQhoIEII0AhoIEIF0AhoIEIC0AhoIELz0VZICGBIaACbGENIYAcghkMFqIAwAZAL4AOdApgoYAGYAGhoYAAmBJoIaMAHANCM4AAuetAILhbTEGgoYFBoaGAIMghoIEII0AhoIEIF0AhoIEIC0AhoIELz0Qg+CDUIaMAH5dBx4BB4ApAFkAEuA5UB0VIcIOBQeAaQAi4B0ZIcGuCQeAeQAy4B0dIcFODQeAiQBC4B0RIdDuAQeQmQBS4B0VIdCOBQeQqQBi4B0ZIdAuCQeQuQ0h0EkggghRsELgLZMkYAIA/gDCcvQDJGsAAFqxsYACD/Jh5gXmCeYN5gEDMAHYdC9tEDIx1ADtCAGIAABar/IxNQAS0H0AWqghhTYAItAtAFqoAYg2AIaCBCgtAIaCBCANF+5whoIEIA0XrnCGggQvHRdudKaAEjmkNKYNoGEmgAIFIcBNAbBBA5CmiaQwpgDbDwvQRICGAAmA2w8L3ARhAgAkD/AQAA+sMAAAAAAAA=
+  instructions: crYRSBFJgWCBackDBNXBaAApEtQAIHBHDUkOSgpgDkoKYAYiSmANSopgDUkNSkpgfyIKYMFoACns1QtJAWALSQFgACBwR8BGCCACQPrDAAAAMABAqqoAAFVVAAD/DwAAACwAQP8BAAAjAWdFq4nvzQEgwAcCSQpoAkMKYAAgcEcUIAJAASBwR3C1crYBIAMEHEkKaBpCCNAKaBpCBdAKaBpCAtAKaBpC89EXSgpghAQNaCVCCNANaCVCBdANaCVCAtANaCVC89FOaAQlLkNOYE5oHkNOYAtoI0II0AtoI0IF0AtoI0IC0AtoI0Lz0QtoE0IB0ApgcL1IaKhDSGAAIHC9wEYQIAJA+sMAAPC1AUZytgEgAgQsSxtoGwVeDStLHGgUQgjQHGgUQgXQHGgUQgLQHGgUQvPRJUwcYIUEH2gvQgjQH2gvQgXQH2gvQgLQH2gvQvPRX2h0HuYAt0NfYB8n/wbJGckKIUDJAFxoDEMCIQxDXGBcaBRDXGD2QxxoLEII0BxoLEIF0BxoLEIC0BxoLELz0RxoDU0sQgHQHWDwvVhoMEBYYFhoiENYYAEgwAYBaAAgSRwA0PC9EDsZaBFDGWDwvcBGoHX/HxAgAkD6wwAA8LWOsAZGcrbPHQEkIARmSQtoA0II0AtoA0IF0AtoA0IC0AtoA0Lz0WBICGAAlKUECGgoQgjQCGgoQgXQCGgoQgLQCGgoQvPRSGgAmxhDSGAHIDxGApCEQwaogDABkAngA5gwYAGYAGhwYAAkCGjABwDQk+AALADRgOAILBbTEGgwYFBocGAIMghoKEII0AhoKEIF0AhoKEIC0AhoKELz0Qg8CDYIaMAH5NB34BB4A5AGkAEsAdFSHCDgUHgHkAIsAdGSHBrgkHgIkAMsAdHSHBTg0HgJkAQsAdESHQ7gEHkKkAUsAdFSHQjgUHkLkAYsAdGSHQLgkHkMkNIdBJYFkgggABsjRgKaU0ADKwLSIkYAJA/gDCcHQCJGowAGrOMYACT/Jh5gXmCeYN5gEDMkHadC9tEDIxhADtCiGJMABqr/JNRQASgH0AaqmhhUYAIoAtAGqBgYhGAFmgSeCGgoQgDRfecIaChCANF55whoKEIA0XXnCGgoQvDRcedKaAEjmkNKYNoGEmgAIFIcBNAbBBA5CmiaQwpgDrDwvQNICGAAmA6w8L3ARhAgAkD6wwAAAAAAAA==
   pc_init: 0x1
   pc_uninit: 0x71
-  pc_program_page: 0x185
-  pc_erase_sector: 0xf1
+  pc_program_page: 0x1d5
+  pc_erase_sector: 0x10d
   pc_erase_all: 0x89
-  data_section_offset: 0x310
+  pc_blank_check: 0x85
+  data_section_offset: 0x384
+  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x8000000
