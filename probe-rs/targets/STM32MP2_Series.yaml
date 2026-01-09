@@ -85,6 +85,24 @@ variants:
     - ca35_1
     - cm33
   - !Ram
+    name: SYSRAM_SECA
+    range:
+      start: 0x0E000000
+      end: 0x0E040000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: SYSRAM_NSECA
+    range:
+      start: 0x0A000000
+      end: 0x0A040000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
     name: SRAM1
     range:
       start: 0x20040000
@@ -107,6 +125,24 @@ variants:
     range:
       start: 0x20080000
       end: 0x200A0000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: RETRAM_SECA
+    range:
+      start: 0x0E080000
+      end: 0x0E0A0000
+    cores:
+    - ca35_0
+    - ca35_1
+    - cm33
+  - !Ram
+    name: RETRAM_NSECA
+    range:
+      start: 0x0A080000
+      end: 0x0A0A0000
     cores:
     - ca35_0
     - ca35_1
