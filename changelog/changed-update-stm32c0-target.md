@@ -1,0 +1,2 @@
+Updated target for STM32C0 family with the new flashing algorithms in version 2.4.0 of STM32C0xx_DFP.  This fixes the SwdDpWait warning during the erase phase (#3505).
+Also added support for the STM32C051 and STM32C091.
