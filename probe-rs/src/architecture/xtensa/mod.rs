@@ -599,13 +599,14 @@ impl RegisterFile {
         let window_base_result = interface.schedule_read_register(SpecialRegister::Windowbase)?;
         let window_start_result = interface.schedule_read_register(SpecialRegister::Windowstart)?;
 
-        let mut register_results = Vec::with_capacity(xtensa.num_aregs as usize);
+        let mut register_values = Vec::with_capacity(xtensa.num_aregs as usize);
 
         let ar0 = arch::CpuRegister::A0 as u8;
 
         // Restore registers before reading them, as reading a special
         // register overwrote scratch registers.
         interface.restore_registers()?;
+
         // The window registers alias each other, so we need to make sure we don't read
         // the cached values. We'll then use the registers we read here to prime the cache.
         for ar in ar0..ar0 + xtensa.window_regs {
@@ -613,13 +614,13 @@ impl RegisterFile {
             interface.state.register_cache.remove(reg.into());
         }
 
+        let mut regs = Vec::with_capacity(xtensa.window_regs as usize);
         for _ in 0..xtensa.num_aregs / xtensa.window_regs {
             // Read registers visible in the current window
             for ar in ar0..ar0 + xtensa.window_regs {
                 let reg = CpuRegister::try_from(ar)?;
-                let result = interface.schedule_read_register(reg)?;
-
-                register_results.push(result);
+                let deferred_result = interface.schedule_read_register(reg)?;
+                regs.push(deferred_result);
             }
 
             // Rotate window to see the next `window_regs` registers
@@ -627,6 +628,19 @@ impl RegisterFile {
             interface
                 .xdm
                 .schedule_execute_instruction(Instruction::Rotw(rotw_arg));
+
+            // Pull out values from cache before we clear the cache
+            for deferred in regs.drain(..) {
+                let result = interface.read_deferred_result(deferred)?;
+                register_values.push(result);
+            }
+
+            // The window registers alias each other, so we need to make sure we don't read
+            // the cached values. We'll then use the registers we read here to prime the cache.
+            for ar in ar0..ar0 + xtensa.window_regs {
+                let reg = CpuRegister::try_from(ar)?;
+                interface.state.register_cache.remove(reg.into());
+            }
         }
 
         // Now do the actual read.
@@ -634,11 +648,6 @@ impl RegisterFile {
             .xdm
             .execute()
             .expect("Failed to execute read. This shouldn't happen.");
-
-        let mut register_values = register_results
-            .into_iter()
-            .map(|result| interface.read_deferred_result(result))
-            .collect::<Result<Vec<_>, _>>()?;
 
         // WindowBase points to the first register of the current window in the register file.
         // In essence, it selects which 16 registers are visible out of the 64 physical registers.
