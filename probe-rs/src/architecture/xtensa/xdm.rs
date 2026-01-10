@@ -324,7 +324,6 @@ impl<'probe> Xdm<'probe> {
                     return Ok(());
                 }
                 Err(e) => {
-                    let mut to_consume = e.results.len();
                     match e.error {
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm {
                             source: DebugRegisterError::Busy,
@@ -334,9 +333,8 @@ impl<'probe> Xdm<'probe> {
                             // retry, but we should probably add some no-ops later.
                         }
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)) => {
-                            // The instruction is still executing. Clear ExecBusy and retry the Debug Status read.
-                            self.clear_exception_state()?;
-                            to_consume -= 1;
+                            // The instruction is still executing. Retry the Debug Status read.
+                            // Do not decrement `to_consume`, it will not include the failed command.
                         }
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecException)) => {
                             // Clear exception to allow executing further instructions.
@@ -353,7 +351,7 @@ impl<'probe> Xdm<'probe> {
                     }
 
                     // queue up the remaining commands when we retry
-                    queue.consume(to_consume);
+                    queue.consume(e.results.len());
                     self.state.jtag_results.merge_from(e.results);
                 }
             }
