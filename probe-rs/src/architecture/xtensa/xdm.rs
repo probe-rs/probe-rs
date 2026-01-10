@@ -324,7 +324,9 @@ impl<'probe> Xdm<'probe> {
                     return Ok(());
                 }
                 Err(e) => {
-                    let mut to_consume = e.results.len();
+                    // Consume the successful commands.
+                    queue.consume(e.results.len());
+
                     match e.error {
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm {
                             source: DebugRegisterError::Busy,
@@ -334,9 +336,21 @@ impl<'probe> Xdm<'probe> {
                             // retry, but we should probably add some no-ops later.
                         }
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)) => {
-                            // The instruction is still executing. Clear ExecBusy and retry the Debug Status read.
+                            // The instruction is still executing. Retry the Debug Status read.
+                            // Do not rewind the queue, it will not include the failed command.
+                            // Retrying the failed command will just shift the DSR out of the
+                            // JTAG DR again, re-attempting the read.
+                        }
+                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecOverrun)) => {
+                            // Clear exception/overrun to allow executing further instructions.
                             self.clear_exception_state()?;
-                            to_consume -= 1;
+                            // This state is reported by a DebugStatus read. We need to rewind this read and
+                            // the previous commands that attempted to execute an instruction. Commands come in NAR-NDR
+                            // pairs, and we don't have to rewind the last NDR, because the failed instruction is not
+                            // part of the returned results, hence it is not consumed.
+                            if !queue.rewind(3) {
+                                return Err(XtensaError::XdmError(Error::ExecOverrun));
+                            }
                         }
                         ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecException)) => {
                             // Clear exception to allow executing further instructions.
@@ -352,8 +366,6 @@ impl<'probe> Xdm<'probe> {
                         other => panic!("Unexpected error: {other}"),
                     }
 
-                    // queue up the remaining commands when we retry
-                    queue.consume(to_consume);
                     self.state.jtag_results.merge_from(e.results);
                 }
             }

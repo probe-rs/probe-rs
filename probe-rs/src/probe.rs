@@ -1629,12 +1629,13 @@ impl CommandResult {
 /// can be used to skip capturing or processing certain parts of the response.
 pub struct CommandQueue<T> {
     commands: Vec<(DeferredResultIndex, T)>,
+    cursor: usize,
 }
 
 impl<T: std::fmt::Debug> std::fmt::Debug for CommandQueue<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CommandQueue")
-            .field("commands", &self.commands)
+            .field("commands", &self.len())
             .finish()
     }
 }
@@ -1643,6 +1644,7 @@ impl<T> Default for CommandQueue<T> {
     fn default() -> Self {
         Self {
             commands: Vec::new(),
+            cursor: 0,
         }
     }
 }
@@ -1664,21 +1666,34 @@ impl<T> CommandQueue<T> {
 
     /// Returns the number of commands in the queue.
     pub fn len(&self) -> usize {
-        self.commands.len()
+        self.commands[self.cursor..].len()
     }
 
     /// Returns whether the queue is empty.
     pub fn is_empty(&self) -> bool {
-        self.commands.is_empty()
+        self.len() == 0
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, T)> {
-        self.commands.iter()
+        self.commands[self.cursor..].iter()
+    }
+
+    /// Rewinds the cursor by the specified number of commands.
+    ///
+    /// Returns `true` if the cursor was successfully rewound, `false` if more commands were requested than available.
+    pub(crate) fn rewind(&mut self, by: usize) -> bool {
+        if self.cursor >= by {
+            self.cursor -= by;
+            true
+        } else {
+            false
+        }
     }
 
     /// Removes the first `len` number of commands from the batch.
     pub(crate) fn consume(&mut self, len: usize) {
-        self.commands.drain(..len);
+        debug_assert!(self.len() >= len);
+        self.cursor += len;
     }
 }
 
