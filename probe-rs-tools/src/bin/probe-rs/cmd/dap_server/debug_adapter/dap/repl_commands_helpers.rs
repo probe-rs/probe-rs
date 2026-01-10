@@ -8,7 +8,7 @@ use super::{
         CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
         EvaluateArguments, EvaluateResponseBody, Response,
     },
-    repl_commands::{REPL_COMMANDS, ReplCommand, ReplHandler},
+    repl_commands::{REPL_COMMANDS, ReplCommand},
     repl_types::*,
     request_helpers::disassemble_target_memory,
 };
@@ -163,26 +163,24 @@ pub(crate) fn memory_read(
 /// Get a list of command matches, based on the given command piece.
 /// The `command_piece` is a valid [`ReplCommand`], which can be either a command or a sub_command.
 pub(crate) fn find_commands<'a>(
-    repl_commands: &[&'a ReplCommand<ReplHandler>],
+    repl_commands: &[&'a ReplCommand],
     command_piece: &'a str,
-) -> Vec<&'a ReplCommand<ReplHandler>> {
+) -> Vec<&'a ReplCommand> {
     repl_commands
         .iter()
         .filter(move |command| command.command.starts_with(command_piece))
         .copied()
-        .collect::<Vec<&ReplCommand<ReplHandler>>>()
+        .collect::<Vec<&ReplCommand>>()
 }
 
 /// Iteratively builds a list of command matches, based on the given filter.
 /// If multiple levels of commands are involved, the ReplCommand::command will be concatenated.
-pub(crate) fn build_expanded_commands(
-    command_filter: &str,
-) -> (String, Vec<&ReplCommand<ReplHandler>>) {
+pub(crate) fn build_expanded_commands(command_filter: &str) -> (String, Vec<&ReplCommand>) {
     // Split the given text into a command, optional sub-command, and optional arguments.
     let command_pieces = command_filter.split(&[' ', '/', '*'][..]);
 
     // Always start building from the top-level commands.
-    let mut repl_commands: Vec<&ReplCommand<ReplHandler>> = REPL_COMMANDS.iter().collect();
+    let mut repl_commands: Vec<&ReplCommand> = REPL_COMMANDS.iter().collect();
 
     let mut command_root = "".to_string();
     let piece_count = command_pieces.clone().count();
@@ -223,9 +221,7 @@ pub(crate) fn command_completions(arguments: CompletionsArguments) -> Vec<Comple
         // If the filter is empty, then we can return all commands.
         (
             arguments.text,
-            REPL_COMMANDS
-                .iter()
-                .collect::<Vec<&ReplCommand<ReplHandler>>>(),
+            REPL_COMMANDS.iter().collect::<Vec<&ReplCommand>>(),
         )
     } else {
         // Iterate over the command pieces, and find the matching commands.

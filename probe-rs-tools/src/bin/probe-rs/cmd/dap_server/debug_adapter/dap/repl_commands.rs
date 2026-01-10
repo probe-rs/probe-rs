@@ -39,17 +39,17 @@ pub(crate) type ReplHandler = fn(
     evaluate_arguments: &EvaluateArguments,
 ) -> Result<Response, DebuggerError>;
 
-pub(crate) struct ReplCommand<H: 'static> {
+pub(crate) struct ReplCommand {
     /// The text that the user will type to invoke the command.
     /// - This is case sensitive.
     pub(crate) command: &'static str,
     pub(crate) help_text: &'static str,
-    pub(crate) sub_commands: &'static [ReplCommand<H>],
+    pub(crate) sub_commands: &'static [ReplCommand],
     pub(crate) args: &'static [ReplCommandArgs],
-    pub(crate) handler: H,
+    pub(crate) handler: ReplHandler,
 }
 
-impl<H> Display for ReplCommand<H> {
+impl Display for ReplCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.command)?;
         if !self.sub_commands.is_empty() {
@@ -69,7 +69,7 @@ impl<H> Display for ReplCommand<H> {
     }
 }
 
-pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
+pub(crate) static REPL_COMMANDS: &[ReplCommand] = &[
     ReplCommand {
         command: "help",
         help_text: "Information about available commands and how to use them.",

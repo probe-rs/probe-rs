@@ -1021,7 +1021,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The DAP spec says that the `startFrame` is optional and should be 0 if not specified.
         let start_frame = arguments.start_frame.unwrap_or(0);
 
-        tracing::warn!("Start frame: {} Levels: {}", start_frame, levels);
+        tracing::debug!("Start frame: {} Levels: {}", start_frame, levels);
 
         // Update the `levels` to the number of available frames if it is 0.
         if levels == 0 {

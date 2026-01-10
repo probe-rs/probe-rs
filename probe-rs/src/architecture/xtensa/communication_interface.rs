@@ -495,7 +495,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self), level = "debug")]
     fn schedule_write_cpu_register(
         &mut self,
         register: CpuRegister,
@@ -616,7 +616,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
     }
 
     /// Ensures that a scratch register is saved in the register cache before overwriting it.
-    #[tracing::instrument(skip(self, register), fields(register))]
+    #[tracing::instrument(skip(self, register), fields(register), level = "debug")]
     fn ensure_register_saved(&mut self, register: impl Into<Register>) -> Result<(), XtensaError> {
         let register = register.into();
 
@@ -626,7 +626,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self), level = "debug")]
     pub(super) fn restore_registers(&mut self) -> Result<(), XtensaError> {
         tracing::debug!("Restoring registers");
 
