@@ -162,7 +162,7 @@ pub(crate) fn memory_read(
 
 /// Get a list of command matches, based on the given command piece.
 /// The `command_piece` is a valid [`ReplCommand`], which can be either a command or a sub_command.
-pub(crate) fn find_commands<'a>(
+pub(crate) fn find_commands(
     repl_commands: &[ReplCommand],
     command_piece: &str,
 ) -> Vec<ReplCommand> {

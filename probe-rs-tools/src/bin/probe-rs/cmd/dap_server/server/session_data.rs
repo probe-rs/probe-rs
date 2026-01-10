@@ -175,7 +175,7 @@ impl SessionData {
             let mut repl_commands = REPL_COMMANDS.to_vec();
             let mut test_data: Box<dyn Any> = Box::new(());
             if let Some(path_to_elf) = core_configuration.program_binary.as_deref()
-                && let Some(elf_info) = EmbeddedTestElfInfo::from_elf(&path_to_elf)?
+                && let Some(elf_info) = EmbeddedTestElfInfo::from_elf(path_to_elf)?
             {
                 tracing::debug!("Embedded Test Metadata: {:?}", elf_info);
                 if elf_info.version != 1 {

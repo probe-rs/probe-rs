@@ -694,11 +694,15 @@ pub(crate) static EMBEDDED_TEST: ReplCommand = ReplCommand {
             sub_commands: &[],
             args: &[],
             handler: |target_core, _, _| {
-                let test_data = target_core
+                let Some(test_data) = target_core
                     .core_data
                     .test_data
                     .downcast_ref::<EmbeddedTestElfInfo>()
-                    .unwrap();
+                else {
+                    return Err(DebuggerError::UserMessage(
+                        "Internal error while trying to access test data".to_string(),
+                    ));
+                };
 
                 let mut tests = test_data
                     .tests
@@ -724,11 +728,15 @@ pub(crate) static EMBEDDED_TEST: ReplCommand = ReplCommand {
             sub_commands: &[],
             args: &[ReplCommandArgs::Required("test_name")],
             handler: |target_core, test_name, _| {
-                let test_data = target_core
+                let Some(test_data) = target_core
                     .core_data
                     .test_data
                     .downcast_ref::<EmbeddedTestElfInfo>()
-                    .unwrap();
+                else {
+                    return Err(DebuggerError::UserMessage(
+                        "Internal error while trying to access test data".to_string(),
+                    ));
+                };
 
                 let Some(test) = test_data.tests.iter().find(|test| test.name == test_name) else {
                     return Err(DebuggerError::UserMessage(format!(
