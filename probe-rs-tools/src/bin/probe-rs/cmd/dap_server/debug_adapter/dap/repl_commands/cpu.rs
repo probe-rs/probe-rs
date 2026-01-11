@@ -12,7 +12,7 @@ static CONTINUE: ReplCommand = ReplCommand {
     help_text: "Continue running the program on the target.",
     sub_commands: &[],
     args: &[],
-    handler: |target_core, _, _| {
+    handler: |target_core, _, _, _| {
         target_core.core.run()?;
         Ok(Response {
             command: "continue".to_string(),
@@ -32,7 +32,7 @@ static RESET: ReplCommand = ReplCommand {
     help_text: "Reset the target",
     sub_commands: &[],
     args: &[],
-    handler: |target_core, _, _| {
+    handler: |target_core, _, _, _| {
         let core_info = target_core.reset_and_halt()?;
 
         Ok(Response {
@@ -57,7 +57,7 @@ static STEP: ReplCommand = ReplCommand {
     help_text: "Step one instruction",
     sub_commands: &[],
     args: &[],
-    handler: |target_core, _, _| {
+    handler: |target_core, _, _, _| {
         let core_info = target_core.core.step()?;
 
         Ok(Response {

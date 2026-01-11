@@ -24,7 +24,7 @@ static PRINT: ReplCommand = ReplCommand {
         ReplCommandArgs::Optional("/f (f=format[n|v])"),
         ReplCommandArgs::Required("<local variable name>"),
     ],
-    handler: |target_core, command_arguments, evaluate_arguments| {
+    handler: |target_core, command_arguments, evaluate_arguments, _| {
         let input_arguments = command_arguments.split_whitespace();
         let mut gdb_nuf = GdbNuf {
             format_specifier: GdbFormat::Native,
@@ -65,7 +65,7 @@ static EXAMINE: ReplCommand = ReplCommand {
         ReplCommandArgs::Optional("/Nuf (N=count, u=unit[b|h|w|g], f=format[t|x|i])"),
         ReplCommandArgs::Optional("address (hex)"),
     ],
-    handler: |target_core, command_arguments, request_arguments| {
+    handler: |target_core, command_arguments, request_arguments, _| {
         let input_arguments = command_arguments.split_whitespace();
         let mut gdb_nuf = GdbNuf {
             ..Default::default()
@@ -142,7 +142,7 @@ static DUMP: ReplCommand = ReplCommand {
         ReplCommandArgs::Optional("memory size in bytes"),
         ReplCommandArgs::Optional("path (default: ./coredump)"),
     ],
-    handler: |target_core, command_arguments, _| {
+    handler: |target_core, command_arguments, _, _| {
         let mut args = command_arguments.split_whitespace().collect::<Vec<_>>();
 
         // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks

@@ -2,7 +2,11 @@ use super::{
     dap_types::{EvaluateArguments, Response},
     repl_types::*,
 };
-use crate::cmd::dap_server::{DebuggerError, server::core_data::CoreHandle};
+use crate::cmd::dap_server::{
+    DebuggerError,
+    debug_adapter::{dap::adapter::DebugAdapter, protocol::ProtocolAdapter},
+    server::core_data::CoreHandle,
+};
 use linkme::distributed_slice;
 use std::{fmt::Display, time::Duration};
 
@@ -29,6 +33,7 @@ pub(crate) type ReplHandler = fn(
     target_core: &mut CoreHandle<'_>,
     command_arguments: &str,
     evaluate_arguments: &EvaluateArguments,
+    adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
 ) -> Result<Response, DebuggerError>;
 
 #[derive(Clone, Copy)]
@@ -71,7 +76,7 @@ static HELP: ReplCommand = ReplCommand {
     help_text: "Information about available commands and how to use them.",
     sub_commands: &[],
     args: &[],
-    handler: |target_core, _, _| {
+    handler: |target_core, _, _, _| {
         let mut help_text =
             "Usage:\t- Use <Ctrl+Space> to get a list of available commands.".to_string();
         help_text.push_str("\n\t- Use <Up/DownArrows> to navigate through the command list.");
@@ -99,7 +104,7 @@ static QUIT: ReplCommand = ReplCommand {
     help_text: "Disconnect (and suspend) the target.",
     sub_commands: &[],
     args: &[],
-    handler: |target_core, _, _| {
+    handler: |target_core, _, _, _| {
         target_core.core.halt(Duration::from_millis(500))?;
         Ok(Response {
             command: "terminate".to_string(),

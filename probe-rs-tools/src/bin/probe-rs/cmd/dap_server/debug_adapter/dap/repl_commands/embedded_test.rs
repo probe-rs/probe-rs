@@ -22,7 +22,7 @@ pub(crate) static EMBEDDED_TEST: ReplCommand = ReplCommand {
             help_text: "List all test cases.",
             sub_commands: &[],
             args: &[],
-            handler: |target_core, _, _| {
+            handler: |target_core, _, _, _| {
                 let Some(test_data) = target_core
                     .core_data
                     .test_data
@@ -56,7 +56,7 @@ pub(crate) static EMBEDDED_TEST: ReplCommand = ReplCommand {
             help_text: "Starts running a test case.",
             sub_commands: &[],
             args: &[ReplCommandArgs::Required("test_name")],
-            handler: |target_core, test_name, _| {
+            handler: |target_core, test_name, _, _| {
                 let Some(test_data) = target_core
                     .core_data
                     .test_data
@@ -120,7 +120,7 @@ pub(crate) static EMBEDDED_TEST: ReplCommand = ReplCommand {
         },
     ],
     args: &[],
-    handler: |_, _, _| {
+    handler: |_, _, _, _| {
         Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
     },
 };

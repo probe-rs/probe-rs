@@ -25,14 +25,14 @@ static INFO: ReplCommand = ReplCommand {
             sub_commands: &[],
             args: &[ReplCommandArgs::Optional("address")],
             // TODO: This is easy to implement ... just requires deciding how to format the output.
-            handler: |_, _, _| Err(DebuggerError::Unimplemented),
+            handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
         },
         ReplCommand {
             command: "locals",
             help_text: "List local variables of the selected frame.",
             sub_commands: &[],
             args: &[],
-            handler: |target_core, _, evaluate_arguments| {
+            handler: |target_core, _, evaluate_arguments, _| {
                 let gdb_nuf = GdbNuf {
                     format_specifier: GdbFormat::Native,
                     ..Default::default()
@@ -46,7 +46,7 @@ static INFO: ReplCommand = ReplCommand {
             help_text: "List registers in the selected frame.",
             sub_commands: &[],
             args: &[ReplCommandArgs::Optional("register name")],
-            handler: |target_core, command_arguments, _| {
+            handler: |target_core, command_arguments, _, _| {
                 let register_name = command_arguments.trim();
                 let regs = target_core.core.registers().all_registers().filter(|reg| {
                     if register_name.is_empty() {
@@ -85,14 +85,14 @@ static INFO: ReplCommand = ReplCommand {
             sub_commands: &[],
             args: &[],
             // TODO: This is easy to implement ... just requires deciding how to format the output.
-            handler: |_, _, _| Err(DebuggerError::Unimplemented),
+            handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
         },
         ReplCommand {
             command: "break",
             help_text: "List all breakpoints.",
             sub_commands: &[],
             args: &[],
-            handler: |target_core, _, _| {
+            handler: |target_core, _, _, _| {
                 let breakpoint_addrs = target_core
                     .core
                     .hw_breakpoints()?
@@ -124,7 +124,7 @@ static INFO: ReplCommand = ReplCommand {
         },
     ],
     args: &[],
-    handler: |_, _, _| {
+    handler: |_, _, _, _| {
         Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
     },
 };

@@ -42,7 +42,7 @@ type ProgressId = i64;
 
 /// A Debug Adapter Protocol "Debug Adapter",
 /// see <https://microsoft.github.io/debug-adapter-protocol/overview>
-pub struct DebugAdapter<P: ProtocolAdapter> {
+pub struct DebugAdapter<P: ProtocolAdapter + ?Sized> {
     pub(crate) halt_after_reset: bool,
     /// NOTE: VSCode sends a 'threads' request when it receives the response from the `ConfigurationDone` request, irrespective of target state.
     /// This can lead to duplicate `threads->stacktrace->etc.` sequences if & when the target halts and sends a 'stopped' event.
@@ -588,7 +588,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .trim_start_matches(repl_command.command)
             .trim_start();
 
-        (repl_command.handler)(target_core, argument_string, arguments)
+        (repl_command.handler)(target_core, argument_string, arguments, self)
     }
 
     /// Works in tandem with the `evaluate` request, to provide possible completions in the Debug Console REPL window.

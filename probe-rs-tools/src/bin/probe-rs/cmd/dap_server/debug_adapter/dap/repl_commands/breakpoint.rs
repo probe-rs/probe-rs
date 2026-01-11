@@ -23,7 +23,7 @@ static BREAK: ReplCommand = ReplCommand {
     help_text: "Sets a breakpoint specified location, or next instruction if unspecified.",
     sub_commands: &[],
     args: &[ReplCommandArgs::Optional("*address")],
-    handler: |target_core, command_arguments, _| {
+    handler: |target_core, command_arguments, _, _| {
         if command_arguments.is_empty() {
             let core_info = target_core.core.halt(Duration::from_millis(500))?;
             return Ok(Response {
@@ -87,7 +87,7 @@ static CLEAR: ReplCommand = ReplCommand {
     help_text: "Clear a breakpoint",
     sub_commands: &[],
     args: &[ReplCommandArgs::Required("*address")],
-    handler: |target_core, args, _| {
+    handler: |target_core, args, _, _| {
         let mut input_arguments = args.split_whitespace();
         let Some(input_argument) = input_arguments.next() else {
             return Err(DebuggerError::UserMessage(

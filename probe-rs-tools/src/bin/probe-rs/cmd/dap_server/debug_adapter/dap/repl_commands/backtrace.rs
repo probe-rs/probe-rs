@@ -25,7 +25,7 @@ static BACKTRACE: ReplCommand = ReplCommand {
         args: &[ReplCommandArgs::Required(
             "path (e.g. my_dir/backtrace.yaml)",
         )],
-        handler: |target_core, command_arguments, _| {
+        handler: |target_core, command_arguments, _, _| {
             let mut args = command_arguments.split_whitespace();
 
             let write_to_file = args.next().map(Path::new);
@@ -62,7 +62,7 @@ static BACKTRACE: ReplCommand = ReplCommand {
     }],
     help_text: "Print the backtrace of the current thread.",
     args: &[],
-    handler: |target_core, _, _| {
+    handler: |target_core, _, _, _| {
         let mut response_message = String::new();
 
         for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
