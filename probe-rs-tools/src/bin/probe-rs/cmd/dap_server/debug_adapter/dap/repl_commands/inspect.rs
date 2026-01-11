@@ -19,6 +19,7 @@ static PRINT: ReplCommand = ReplCommand {
     command: "p",
     // Stricly speaking, gdb refers to this as an expression, but we only support variables.
     help_text: "Print known information about variable.",
+    requires_target_halted: true,
     sub_commands: &[],
     args: &[
         ReplCommandArgs::Optional("/f (f=format[n|v])"),
@@ -60,6 +61,7 @@ static PRINT: ReplCommand = ReplCommand {
 static EXAMINE: ReplCommand = ReplCommand {
     command: "x",
     help_text: "Examine Memory, using format specifications, at the specified address.",
+    requires_target_halted: true,
     sub_commands: &[],
     args: &[
         ReplCommandArgs::Optional("/Nuf (N=count, u=unit[b|h|w|g], f=format[t|x|i])"),
@@ -136,6 +138,7 @@ static EXAMINE: ReplCommand = ReplCommand {
 static DUMP: ReplCommand = ReplCommand {
     command: "dump",
     help_text: "Create a core dump at a target location. Specify memory ranges to dump, or leave blank to dump in-scope memory regions.",
+    requires_target_halted: true,
     sub_commands: &[],
     args: &[
         ReplCommandArgs::Optional("memory start address"),

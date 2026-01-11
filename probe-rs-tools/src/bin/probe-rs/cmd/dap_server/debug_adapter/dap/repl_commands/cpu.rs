@@ -10,6 +10,7 @@ use probe_rs::{CoreStatus, HaltReason};
 static CONTINUE: ReplCommand = ReplCommand {
     command: "c",
     help_text: "Continue running the program on the target.",
+    requires_target_halted: true,
     sub_commands: &[],
     args: &[],
     handler: |target_core, _, _, _| {
@@ -30,6 +31,7 @@ static CONTINUE: ReplCommand = ReplCommand {
 static RESET: ReplCommand = ReplCommand {
     command: "reset",
     help_text: "Reset the target",
+    requires_target_halted: false,
     sub_commands: &[],
     args: &[],
     handler: |target_core, _, _, _| {
@@ -55,6 +57,7 @@ static RESET: ReplCommand = ReplCommand {
 static STEP: ReplCommand = ReplCommand {
     command: "step",
     help_text: "Step one instruction",
+    requires_target_halted: true,
     sub_commands: &[],
     args: &[],
     handler: |target_core, _, _, _| {

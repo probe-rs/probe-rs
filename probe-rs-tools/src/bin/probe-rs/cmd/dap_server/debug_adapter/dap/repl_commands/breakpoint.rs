@@ -21,6 +21,7 @@ static BREAK: ReplCommand = ReplCommand {
     command: "break",
     // Stricly speaking, gdb refers to this as an expression, but we only support variables.
     help_text: "Sets a breakpoint specified location, or next instruction if unspecified.",
+    requires_target_halted: false,
     sub_commands: &[],
     args: &[ReplCommandArgs::Optional("*address")],
     handler: |target_core, command_arguments, _, _| {
@@ -85,6 +86,7 @@ static BREAK: ReplCommand = ReplCommand {
 static CLEAR: ReplCommand = ReplCommand {
     command: "clear",
     help_text: "Clear a breakpoint",
+    requires_target_halted: false,
     sub_commands: &[],
     args: &[ReplCommandArgs::Required("*address")],
     handler: |target_core, args, _, _| {

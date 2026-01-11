@@ -18,10 +18,12 @@ use crate::cmd::dap_server::{
 static INFO: ReplCommand = ReplCommand {
     command: "info",
     help_text: "Information of specified program data.",
+    requires_target_halted: false,
     sub_commands: &[
         ReplCommand {
             command: "frame",
             help_text: "Describe the current frame, or the frame at the specified (hex) address.",
+            requires_target_halted: true,
             sub_commands: &[],
             args: &[ReplCommandArgs::Optional("address")],
             // TODO: This is easy to implement ... just requires deciding how to format the output.
@@ -30,6 +32,7 @@ static INFO: ReplCommand = ReplCommand {
         ReplCommand {
             command: "locals",
             help_text: "List local variables of the selected frame.",
+            requires_target_halted: true,
             sub_commands: &[],
             args: &[],
             handler: |target_core, _, evaluate_arguments, _| {
@@ -44,6 +47,7 @@ static INFO: ReplCommand = ReplCommand {
         ReplCommand {
             command: "reg",
             help_text: "List registers in the selected frame.",
+            requires_target_halted: true,
             sub_commands: &[],
             args: &[ReplCommandArgs::Optional("register name")],
             handler: |target_core, command_arguments, _, _| {
@@ -82,6 +86,7 @@ static INFO: ReplCommand = ReplCommand {
         ReplCommand {
             command: "var",
             help_text: "List all static variables.",
+            requires_target_halted: true,
             sub_commands: &[],
             args: &[],
             // TODO: This is easy to implement ... just requires deciding how to format the output.
@@ -90,6 +95,7 @@ static INFO: ReplCommand = ReplCommand {
         ReplCommand {
             command: "break",
             help_text: "List all breakpoints.",
+            requires_target_halted: false,
             sub_commands: &[],
             args: &[],
             handler: |target_core, _, _, _| {

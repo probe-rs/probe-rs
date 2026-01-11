@@ -16,10 +16,12 @@ use crate::cmd::{
 pub(crate) static EMBEDDED_TEST: ReplCommand = ReplCommand {
     command: "test",
     help_text: "Interact with embedded-test test cases",
+    requires_target_halted: false,
     sub_commands: &[
         ReplCommand {
             command: "list",
             help_text: "List all test cases.",
+            requires_target_halted: false,
             sub_commands: &[],
             args: &[],
             handler: |target_core, _, _, _| {
@@ -54,6 +56,7 @@ pub(crate) static EMBEDDED_TEST: ReplCommand = ReplCommand {
         ReplCommand {
             command: "run",
             help_text: "Starts running a test case.",
+            requires_target_halted: false,
             sub_commands: &[],
             args: &[ReplCommandArgs::Required("test_name")],
             handler: |target_core, test_name, _, adapter| {

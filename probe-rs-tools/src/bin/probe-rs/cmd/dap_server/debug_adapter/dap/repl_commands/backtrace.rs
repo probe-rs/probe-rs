@@ -18,9 +18,11 @@ use crate::cmd::dap_server::{
 #[distributed_slice(REPL_COMMANDS)]
 static BACKTRACE: ReplCommand = ReplCommand {
     command: "bt",
+    requires_target_halted: true,
     sub_commands: &[ReplCommand {
         command: "yaml",
         help_text: "Print all information about the backtrace of the current thread to a local file in YAML format.",
+        requires_target_halted: true,
         sub_commands: &[],
         args: &[ReplCommandArgs::Required(
             "path (e.g. my_dir/backtrace.yaml)",

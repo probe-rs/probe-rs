@@ -550,17 +550,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle<'_>,
         arguments: &EvaluateArguments,
     ) -> Result<Response, DebuggerError> {
-        if !target_core.core.core_halted()?
-            && !arguments.expression.starts_with("break")
-            && !arguments.expression.starts_with("quit")
-            && !arguments.expression.starts_with("help")
-        {
-            return Err(DebuggerError::UserMessage(
-                "The target is running. Only the 'break', 'help' or 'quit' commands are allowed."
-                    .to_string(),
-            ));
-        }
-
         // The target is halted, so we can allow any repl command.
         //TODO: Do we need to look for '/' in the expression, before we split it?
         // Now we can make sure we have a valid expression and evaluate it.
@@ -574,6 +563,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 "Invalid REPL command: {command_root:?}."
             )));
         };
+
+        if repl_command.requires_target_halted && !target_core.core.core_halted()? {
+            return Err(DebuggerError::UserMessage(
+                "The target is running. Only the 'break', 'help' or 'quit' commands are allowed."
+                    .to_string(),
+            ));
+        }
 
         // We have a valid repl command, so we can evaluate it.
         // First, let's extract the remainder of the arguments, so that we can pass them to the handler.

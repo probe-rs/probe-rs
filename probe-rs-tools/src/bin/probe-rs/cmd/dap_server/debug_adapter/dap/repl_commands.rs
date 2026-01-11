@@ -44,6 +44,7 @@ pub(crate) struct ReplCommand {
     pub(crate) help_text: &'static str,
     pub(crate) sub_commands: &'static [ReplCommand],
     pub(crate) args: &'static [ReplCommandArgs],
+    pub(crate) requires_target_halted: bool,
     pub(crate) handler: ReplHandler,
 }
 
@@ -74,6 +75,7 @@ pub(crate) static REPL_COMMANDS: [ReplCommand];
 static HELP: ReplCommand = ReplCommand {
     command: "help",
     help_text: "Information about available commands and how to use them.",
+    requires_target_halted: false,
     sub_commands: &[],
     args: &[],
     handler: |target_core, _, _, _| {
@@ -102,6 +104,7 @@ static HELP: ReplCommand = ReplCommand {
 static QUIT: ReplCommand = ReplCommand {
     command: "quit",
     help_text: "Disconnect (and suspend) the target.",
+    requires_target_halted: false,
     sub_commands: &[],
     args: &[],
     handler: |target_core, _, _, _| {
