@@ -215,6 +215,10 @@ pub(crate) fn build_expanded_commands(
             break;
         }
     }
+
+    // Sort. This will ensure that if there is an exact match, it will be executed.
+    repl_commands.sort_by_key(|c| c.command);
+
     (command_root, repl_commands)
 }
 
