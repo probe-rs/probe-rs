@@ -11,7 +11,7 @@ use crate::{
                 dap::{
                     adapter::DebugAdapter,
                     dap_types::Source,
-                    repl_commands::{EMBEDDED_TEST, REPL_COMMANDS},
+                    repl_commands::{REPL_COMMANDS, embedded_test::EMBEDDED_TEST},
                 },
                 protocol::ProtocolAdapter,
             },
