@@ -139,6 +139,9 @@ impl CmsisDap {
         // opening the probe to ensure all future communication uses the correct size.
         let packet_size = device.find_packet_size()? as u16;
 
+        // Re-drain anything leftover from finding packet size.
+        device.drain();
+
         // Read remaining probe information.
         let packet_count = commands::send_command(&mut device, &PacketCountCommand {})?;
         let caps: Capabilities = commands::send_command(&mut device, &CapabilitiesCommand {})?;
@@ -812,13 +815,7 @@ impl CmsisDap {
 impl DebugProbe for CmsisDap {
     fn get_name(&self) -> &str {
         match &self.device {
-            CmsisDapDevice::V2 {
-                handle,
-                out_ep: _,
-                in_ep: _,
-                max_packet_size: _,
-                swo_ep: _,
-            } => format!(
+            CmsisDapDevice::V2 { handle, .. } => format!(
                 "CMSIS-DAP V2 IF: {} DESC: {:?}",
                 handle.interface_number(),
                 handle.descriptor()

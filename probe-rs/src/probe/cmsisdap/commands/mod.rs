@@ -16,7 +16,7 @@ use self::general::host_status::HostStatusRequest;
 use self::swj::clock::SWJClockRequest;
 use self::transfer::InnerTransferBlockRequest;
 
-const USB_TIMEOUT: Duration = Duration::from_millis(1000);
+pub(crate) const DEFAULT_USB_TIMEOUT: Duration = Duration::from_millis(1000);
 
 #[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum CmsisDapError {
@@ -177,6 +177,7 @@ pub enum CmsisDapDevice {
     V1 {
         handle: hidapi::HidDevice,
         report_size: usize,
+        usb_timeout: Duration,
     },
 
     /// CMSIS-DAP v2 over WinUSB/Bulk.
@@ -188,23 +189,38 @@ pub enum CmsisDapDevice {
         in_ep: u8,
         max_packet_size: usize,
         swo_ep: Option<(u8, usize)>,
+        usb_timeout: Duration,
     },
 }
 
 impl CmsisDapDevice {
+    fn usb_timeout(&self) -> Duration {
+        match self {
+            Self::V1 { usb_timeout, .. } => *usb_timeout,
+            Self::V2 { usb_timeout, .. } => *usb_timeout,
+        }
+    }
+
+    fn set_usb_timeout(&mut self, timeout: Duration) {
+        match self {
+            Self::V1 { usb_timeout, .. } => *usb_timeout = timeout,
+            Self::V2 { usb_timeout, .. } => *usb_timeout = timeout,
+        }
+    }
+
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
         match self {
             #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { handle, .. } => {
-                match handle.read_timeout(buf, USB_TIMEOUT.as_millis() as i32)? {
+                match handle.read_timeout(buf, self.usb_timeout().as_millis() as i32)? {
                     // Timeout is not indicated by error, but by returning 0 read bytes
                     0 => Err(SendError::Timeout),
                     n => Ok(n),
                 }
             }
             CmsisDapDevice::V2 { handle, in_ep, .. } => {
-                Ok(handle.read_bulk(*in_ep, buf, USB_TIMEOUT)?)
+                Ok(handle.read_bulk(*in_ep, buf, self.usb_timeout())?)
             }
         }
     }
@@ -216,7 +232,7 @@ impl CmsisDapDevice {
             CmsisDapDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
             CmsisDapDevice::V2 { handle, out_ep, .. } => {
                 // Skip first byte as it's set to 0 for HID transfers
-                Ok(handle.write_bulk(*out_ep, &buf[1..], USB_TIMEOUT)?)
+                Ok(handle.write_bulk(*out_ep, &buf[1..], self.usb_timeout())?)
             }
         }
     }
@@ -289,9 +305,14 @@ impl CmsisDapDevice {
     pub(super) fn find_packet_size(&mut self) -> Result<usize, CmsisDapError> {
         for repeat in 0..16 {
             tracing::debug!("Attempt {} to find packet size", repeat + 1);
+            // Use a short USB timeout when determining packet size as otherwise we wait
+            // several seconds each time for enough data to accumulate.
+            let old_timeout = self.usb_timeout();
+            self.set_usb_timeout(Duration::from_millis(30));
             match send_command(self, &PacketSizeCommand {}) {
                 Ok(size) => {
                     tracing::debug!("Success: packet size is {}", size);
+                    self.set_usb_timeout(old_timeout);
                     self.set_packet_size(size as usize);
                     return Ok(size as usize);
                 }

@@ -1,7 +1,7 @@
 use super::CmsisDapDevice;
 use crate::probe::{
     BoxedProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
-    cmsisdap::{CmsisDapFactory, commands::CmsisDapError},
+    cmsisdap::{CmsisDapFactory, commands::CmsisDapError, commands::DEFAULT_USB_TIMEOUT},
 };
 #[cfg(feature = "cmsisdap_v1")]
 use hidapi::HidApi;
@@ -298,6 +298,7 @@ pub fn open_v2_device(
                         in_ep: eps[1].address(),
                         swo_ep,
                         max_packet_size: eps[1].max_packet_size(),
+                        usb_timeout: DEFAULT_USB_TIMEOUT,
                     }));
                 }
                 Err(e) => {
@@ -465,6 +466,7 @@ pub fn open_device_from_selector(
                     // common size for CMSIS-DAPv1 HID devices. We'll request the
                     // actual size to use from the probe later.
                     report_size: 64,
+                    usb_timeout: DEFAULT_USB_TIMEOUT,
                 })
             }
             _ => {
