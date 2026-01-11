@@ -334,16 +334,16 @@ impl SessionData {
     ///   - While the core is NOT halted, because core processing can generate new data at any time.
     ///   - The first time we have entered halted status, to ensure the buffers are drained. After that, for as long as we remain in halted state, we don't need to check RTT again.
     ///
-    /// Return a Vec of [`CoreStatus`] (one entry per core) after this process has completed, as well as a boolean indicating whether we should consider a short delay before the next poll.
+    /// Return a boolean indicating whether we should consider a short delay before the next poll.
     #[tracing::instrument(level = "trace", skip_all)]
     pub(crate) async fn poll_cores<P: ProtocolAdapter>(
         &mut self,
         session_config: &SessionConfig,
         debug_adapter: &mut DebugAdapter<P>,
-    ) -> Result<(Vec<CoreStatus>, bool), DebuggerError> {
-        // By default, we will have a small delay between polls, and will disable it if we know the last poll returned data, on the assumption that there might be at least one more batch of data.
+    ) -> Result<bool, DebuggerError> {
+        // By default, we will have a small delay between polls, and will disable it if
+        // we know the last poll returned data, on the assumption that there might be at least one more batch of data.
         let mut suggest_delay_required = true;
-        let mut status_of_cores: Vec<CoreStatus> = vec![];
 
         let timestamp_offset = self.timestamp_offset;
 
@@ -446,9 +446,8 @@ impl SessionData {
                     instruction_set,
                 )?;
             }
-            status_of_cores.push(current_core_status);
         }
-        Ok((status_of_cores, suggest_delay_required))
+        Ok(suggest_delay_required)
     }
 
     pub(crate) fn clean_up(&mut self, session_config: &SessionConfig) -> Result<(), DebuggerError> {
