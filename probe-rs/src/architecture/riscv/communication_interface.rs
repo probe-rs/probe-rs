@@ -2330,13 +2330,6 @@ impl MemoryInterface for RiscvCommunicationInterface<'_> {
         self.read_multiple(address, data)
     }
 
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
-        let address = valid_32bit_address(address)?;
-        tracing::debug!("read from {:#08x}", address);
-
-        self.read_multiple(address, data)
-    }
-
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
         let address = valid_32bit_address(address)?;
         let low_word = data as u32;
