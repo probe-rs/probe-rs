@@ -56,7 +56,7 @@ pub(crate) static EMBEDDED_TEST: ReplCommand = ReplCommand {
             help_text: "Starts running a test case.",
             sub_commands: &[],
             args: &[ReplCommandArgs::Required("test_name")],
-            handler: |target_core, test_name, _, _| {
+            handler: |target_core, test_name, _, adapter| {
                 let Some(test_data) = target_core
                     .core_data
                     .test_data
@@ -101,7 +101,7 @@ pub(crate) static EMBEDDED_TEST: ReplCommand = ReplCommand {
                 )?;
                 target_core.core.run()?;
 
-                target_core.core_data.last_known_status = CoreStatus::Running;
+                target_core.reset_core_status(adapter);
 
                 // TODO: wait for a bit (while polling RTT) for the test to either complete
                 // or the target to halt again? That way we could print the _actual_ test result
