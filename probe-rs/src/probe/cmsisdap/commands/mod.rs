@@ -308,7 +308,7 @@ impl CmsisDapDevice {
             // Use a short USB timeout when determining packet size as otherwise we wait
             // several seconds each time for enough data to accumulate.
             let old_timeout = self.usb_timeout();
-            self.set_usb_timeout(Duration::from_millis(30));
+            self.set_usb_timeout(Duration::from_millis(50));
             match send_command(self, &PacketSizeCommand {}) {
                 Ok(size) => {
                     tracing::debug!("Success: packet size is {}", size);
