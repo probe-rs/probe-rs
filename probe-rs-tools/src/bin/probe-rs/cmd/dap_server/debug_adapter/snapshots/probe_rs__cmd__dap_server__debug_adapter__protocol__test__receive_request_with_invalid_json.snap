@@ -1,11 +1,11 @@
 ---
-source: probe-rs/src/bin/probe-rs/cmd/dap_server/debug_adapter/protocol.rs
+source: probe-rs-tools/src/bin/probe-rs/cmd/dap_server/debug_adapter/protocol.rs
 expression: output_str
 ---
 Content-Length: 156
 
-{"body":{"category":"console","group":"probe-rs-debug","output":"EOF while parsing a string at line 1 column 49\n"},"event":"output","seq":1,"type":"event"}Content-Length: 145
+{"body":{"category":"console","group":"probe-rs-debug","output":"EOF while parsing a string at line 1 column 49\n"},"event":"output","seq":1,"type":"event"}Content-Length: 154
 
-{"body":{"message":"EOF while parsing a string at line 1 column 49\n","severity":"error"},"event":"probe-rs-show-message","seq":2,"type":"event"}Content-Length: 154
+{"body":{"category":"console","group":"probe-rs-debug","output":"\nTriggered DAP Event: probe-rs-show-message\n"},"event":"output","seq":3,"type":"event"}Content-Length: 145
 
-{"body":{"category":"console","group":"probe-rs-debug","output":"\nTriggered DAP Event: probe-rs-show-message\n"},"event":"output","seq":3,"type":"event"}
+{"body":{"message":"EOF while parsing a string at line 1 column 49\n","severity":"error"},"event":"probe-rs-show-message","seq":2,"type":"event"}
