@@ -41,21 +41,23 @@ pub struct Riscv32<'state> {
 impl<'state> Riscv32<'state> {
     /// Create a new RISC-V interface for a particular hart.
     pub fn new(
-        interface: RiscvCommunicationInterface<'state>,
+        mut interface: RiscvCommunicationInterface<'state>,
         state: &'state mut RiscvCoreState,
         sequence: Arc<dyn RiscvDebugSequence>,
     ) -> Result<Self, RiscvError> {
-        // Determine FPU presence from MISA extensions (F, D, or Q)
-        let mut tmp_interface = interface;
-        let misa_val = tmp_interface
-            .read_csr(Misa::get_mmio_address() as u16)
-            .unwrap_or(0);
-        let isa_extensions = Misa::from(misa_val).extensions();
-        let fp_mask = (1 << 3) | (1 << 5) | (1 << 16);
-        state.fp_present = isa_extensions & fp_mask != 0;
+        if !state.misa_read {
+            // Determine FPU presence from MISA extensions (F, D, or Q)
+            let misa_val = interface
+                .read_csr(Misa::get_mmio_address() as u16)
+                .unwrap_or(0);
+            let isa_extensions = Misa::from(misa_val).extensions();
+            let fp_mask = (1 << 3) | (1 << 5) | (1 << 16);
+            state.fp_present = isa_extensions & fp_mask != 0;
+            state.misa_read = true;
+        }
 
         Ok(Self {
-            interface: tmp_interface,
+            interface,
             state,
             sequence,
         })
@@ -679,6 +681,9 @@ pub struct RiscvCoreState {
 
     /// Whether the core has FPU support (F, D, or Q extensions present)
     fp_present: bool,
+
+    /// Whether the MISA CSR has been read.
+    misa_read: bool,
 }
 
 impl RiscvCoreState {
@@ -689,6 +694,7 @@ impl RiscvCoreState {
             pc_written: false,
             semihosting_command: None,
             fp_present: false,
+            misa_read: false,
         }
     }
 }
