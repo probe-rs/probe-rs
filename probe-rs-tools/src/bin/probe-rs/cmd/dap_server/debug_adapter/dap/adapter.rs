@@ -553,7 +553,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The target is halted, so we can allow any repl command.
         //TODO: Do we need to look for '/' in the expression, before we split it?
         // Now we can make sure we have a valid expression and evaluate it.
-        let (command_root, repl_commands) = build_expanded_commands(
+        let (command_root, last_piece, repl_commands) = build_expanded_commands(
             &target_core.core_data.repl_commands,
             arguments.expression.trim(),
         );
@@ -577,7 +577,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .expression
             .trim_start_matches(&command_root)
             .trim_start()
-            .trim_start_matches(repl_command.command)
+            .trim_start_matches(last_piece)
             .trim_start();
 
         (repl_command.handler)(target_core, argument_string, arguments, self)

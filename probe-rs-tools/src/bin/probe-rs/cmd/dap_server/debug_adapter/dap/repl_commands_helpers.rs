@@ -166,26 +166,37 @@ pub(crate) fn find_commands(
     repl_commands: &[ReplCommand],
     command_piece: &str,
 ) -> Vec<ReplCommand> {
-    repl_commands
+    let mut matches = repl_commands
         .iter()
         .filter(move |command| command.command.starts_with(command_piece))
         .copied()
-        .collect()
+        .collect::<Vec<_>>();
+
+    // Sort. This will ensure that if there is an exact match, it will be executed.
+    matches.sort_by_key(|c| c.command);
+
+    matches
 }
 
 /// Iteratively builds a list of command matches, based on the given filter.
 /// If multiple levels of commands are involved, the ReplCommand::command will be concatenated.
-pub(crate) fn build_expanded_commands(
+pub(crate) fn build_expanded_commands<'f>(
     commands: &[ReplCommand],
-    command_filter: &str,
-) -> (String, Vec<ReplCommand>) {
+    command_filter: &'f str,
+) -> (String, &'f str, Vec<ReplCommand>) {
     // Split the given text into a command, optional sub-command, and optional arguments.
     let command_pieces = command_filter.split(&[' ', '/', '*'][..]);
 
     // Always start building from the top-level commands.
-    let mut repl_commands: Vec<ReplCommand> = commands.to_vec();
+    let mut repl_commands = commands.to_vec();
 
-    let mut command_root = "".to_string();
+    // The prefix before the command. Does not include the last command piece.
+    let mut command_root = String::new();
+    // The last command piece.
+    let mut last_piece = "";
+
+    // command_root and last_piece are separate to support both command matching and completion listing.
+
     let piece_count = command_pieces.clone().count();
     for (piece_idx, command_piece) in command_pieces.enumerate() {
         // Find the matching commands.
@@ -193,10 +204,27 @@ pub(crate) fn build_expanded_commands(
 
         // If there is only one match, and it has sub-commands, then we can continue iterating (implicit recursion with new sub-command).
         let Some(parent_command) = matches.first() else {
-            // If there are no matches, then we can keep the matches from the previous
-            // iteration (if there were any) but we can't continue;
+            // If there are no matches, then we can remove some non-matching commands, then we need to stop.
+            repl_commands.retain(|cmd| {
+                // The first round is special because we have a full set of commands as input, even if the first characters don't match anything.
+                let mandatory_prefix = if last_piece.is_empty() {
+                    command_piece
+                } else {
+                    last_piece
+                };
+                cmd.command.starts_with(mandatory_prefix)
+                    && (cmd
+                        .sub_commands
+                        .iter()
+                        .any(|sub_cmd| sub_cmd.command.starts_with(command_piece))
+                        || !cmd.args.is_empty())
+            });
             break;
         };
+
+        last_piece = command_piece;
+
+        // Since this function is also responsible for generating completions, we need to return all matches.
 
         if matches.len() == 1
             && !parent_command.sub_commands.is_empty()
@@ -206,7 +234,7 @@ pub(crate) fn build_expanded_commands(
             if !command_root.is_empty() {
                 command_root.push(' ');
             }
-            command_root.push_str(parent_command.command);
+            command_root.push_str(command_piece);
             repl_commands = parent_command.sub_commands.to_vec();
         } else {
             // If there are multiple matches, or there is only one match with no
@@ -216,10 +244,26 @@ pub(crate) fn build_expanded_commands(
         }
     }
 
-    // Sort. This will ensure that if there is an exact match, it will be executed.
-    repl_commands.sort_by_key(|c| c.command);
+    if !command_root.is_empty() {
+        command_root.push(' ');
+    }
 
-    (command_root, repl_commands)
+    (command_root, last_piece, repl_commands)
+}
+
+fn build_completions(commands: &[ReplCommand], partial: &str) -> Vec<(String, String)> {
+    let (command_root, _last_piece, command_list) = build_expanded_commands(commands, partial);
+    // Add a space after the command, so that the user can start typing the next command.
+    // This space will be trimmed if the user selects to evaluate the command as is.
+    command_list
+        .iter()
+        .map(|command| {
+            (
+                format!("{command_root}{} ", command.command),
+                command.to_string(),
+            )
+        })
+        .collect()
 }
 
 /// Returns a list of completion items for the REPL, based on matches to the given filter.
@@ -227,24 +271,13 @@ pub(crate) fn command_completions(
     commands: &[ReplCommand],
     arguments: CompletionsArguments,
 ) -> Vec<CompletionItem> {
-    // TODO: merge branches?
-    let (command_root, command_list) = if arguments.text.is_empty() {
-        // If the filter is empty, then we can return all commands.
-        (arguments.text, commands.to_vec())
-    } else {
-        // Iterate over the command pieces, and find the matching commands.
-        let (command_root, command_list) = build_expanded_commands(commands, &arguments.text);
-        (format!("{command_root} "), command_list)
-    };
-    command_list
-        .iter()
-        .map(|command| CompletionItem {
-            // Add a space after the command, so that the user can start typing the next command.
-            // This space will be trimmed if the user selects to evaluate the command as is.
-            label: format!("{command_root}{} ", command.command),
+    build_completions(commands, &arguments.text)
+        .into_iter()
+        .map(|(label, detail)| CompletionItem {
+            label,
             text: None,
             sort_text: None,
-            detail: Some(command.to_string()),
+            detail: Some(detail),
             type_: Some(CompletionItemType::Keyword),
             start: None,
             length: None, //Some(arguments.column),
@@ -252,4 +285,101 @@ pub(crate) fn command_completions(
             selection_length: None,
         })
         .collect()
+}
+
+#[cfg(test)]
+mod test {
+    use crate::cmd::dap_server::debug_adapter::dap::{
+        repl_commands::REPL_COMMANDS,
+        repl_commands_helpers::{build_completions, build_expanded_commands},
+    };
+
+    #[test]
+    fn finds_matching_command_by_shorthand() {
+        let (_root, last_piece, commands) = build_expanded_commands(&REPL_COMMANDS, "4256");
+        assert_eq!(commands.len(), 0);
+        assert_eq!(last_piece, "");
+
+        let (_root, last_piece, commands) = build_expanded_commands(&REPL_COMMANDS, "br");
+        assert_eq!(commands.len(), 1);
+        assert_eq!(last_piece, "br");
+        assert_eq!(commands[0].command, "break");
+
+        let (_root, last_piece, commands) = build_expanded_commands(&REPL_COMMANDS, "b");
+        assert_eq!(commands.len(), 2);
+        assert_eq!(last_piece, "b");
+        assert_eq!(commands[0].command, "break");
+
+        let (_root, last_piece, commands) = build_expanded_commands(&REPL_COMMANDS, "bt");
+        assert_eq!(commands.len(), 1);
+        assert_eq!(last_piece, "bt");
+        assert_eq!(commands[0].command, "bt");
+
+        let (root, last_piece, commands) = build_expanded_commands(&REPL_COMMANDS, "bt yaml");
+        assert_eq!(commands.len(), 1);
+        assert_eq!(last_piece, "yaml");
+        assert_eq!(commands[0].command, "yaml");
+        assert_eq!(root, "bt ");
+
+        // Must not match as "bt yaml"
+        let (root, last_piece, commands) = build_expanded_commands(&REPL_COMMANDS, "b yaml");
+        assert_eq!(last_piece, "b");
+        assert_eq!(commands[0].command, "break");
+        assert_eq!(root, ""); // yaml is not a subcommand so we don't include "b" in the command root.
+    }
+
+    #[test]
+    fn completions() {
+        #[track_caller]
+        fn assert_completion_result(input: &str, expectation: &[(&str, &str)]) {
+            let completions = build_completions(&REPL_COMMANDS, input);
+            assert_eq!(completions.len(), expectation.len());
+            for (i, (command, description)) in expectation.iter().enumerate() {
+                assert_eq!(completions[i].0, *command);
+                assert_eq!(completions[i].1, *description);
+            }
+        }
+
+        assert!(!build_completions(&REPL_COMMANDS, "").is_empty());
+        assert!(build_completions(&REPL_COMMANDS, "1234").is_empty());
+
+        assert_completion_result(
+            "b",
+            &[
+                (
+                    "break ",
+                    "break [*address]: Sets a breakpoint specified location, or next instruction if unspecified.",
+                ),
+                (
+                    "bt ",
+                    r#"bt <subcommand>: Print the backtrace of the current thread.
+  Subcommands:
+  - yaml path (e.g. my_dir/backtrace.yaml): Print all information about the backtrace of the current thread to a local file in YAML format."#,
+                ),
+            ],
+        );
+        assert_completion_result(
+            "br",
+            &[(
+                "break ",
+                "break [*address]: Sets a breakpoint specified location, or next instruction if unspecified.",
+            )],
+        );
+        assert_completion_result(
+            "break",
+            &[(
+                "break ",
+                "break [*address]: Sets a breakpoint specified location, or next instruction if unspecified.",
+            )],
+        );
+        assert_completion_result(
+            "bt yaml",
+            &[(
+                "bt yaml ",
+                "yaml path (e.g. my_dir/backtrace.yaml): Print all information about the backtrace of the current thread to a local file in YAML format.",
+            )],
+        );
+        assert_completion_result("bt garbo", &[]);
+        assert_completion_result("foo", &[]);
+    }
 }
