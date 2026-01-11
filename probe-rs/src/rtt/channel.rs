@@ -384,7 +384,6 @@ impl UpChannel {
 
             buf = remaining;
         }
-        self.0.last_read_ptr = Some(read);
 
         if consume && total > 0 {
             // Write read pointer back to target if something was read
@@ -401,6 +400,11 @@ impl UpChannel {
             if let Some(result) = op.result {
                 result?;
             }
+        }
+
+        if consume {
+            // Pointer was successfully written, update stored value
+            self.0.last_read_ptr = Some(read);
         }
 
         Ok(total)
