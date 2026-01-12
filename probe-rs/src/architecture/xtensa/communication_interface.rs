@@ -15,6 +15,7 @@ use crate::{
         register_cache::RegisterCache,
         xdm::{DebugStatus, XdmState},
     },
+    memory::{Operation, OperationKind},
     probe::{DebugProbeError, DeferredResultIndex, JtagAccess},
 };
 
@@ -382,16 +383,16 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         // various errors, but we will retry the operation.
         let result = op(self);
 
-        // If the core was running, resume it.
-        let before_status = DebugStatus(self.xdm.read_deferred_result(status_idx)?.into_u32());
-        if !before_status.stopped() {
-            self.resume_core()?;
-        }
-
         // If we did not manage to halt the core at once, let's retry using the slow path.
         let after_status = DebugStatus(self.xdm.read_deferred_result(is_halted_idx)?.into_u32());
 
         if after_status.stopped() {
+            // If the core was running, resume it.
+            let before_status = DebugStatus(self.xdm.read_deferred_result(status_idx)?.into_u32());
+            if !before_status.stopped() {
+                self.resume_core()?;
+            }
+
             return result;
         }
         self.state.is_halted = false;
@@ -767,6 +768,81 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         })
     }
 
+    /// Executes a single memory operation when the processor is halted.
+    fn execute_single_memory_operation_halted(
+        &mut self,
+        operation: Operation<'_>,
+    ) -> Result<(), ProbeRsError> {
+        enum Op<'a> {
+            Read(&'a mut [u8]),
+            Write(&'a [u8]),
+        }
+        impl Op<'_> {
+            fn data_len(&self) -> usize {
+                match self {
+                    Op::Read(bytes) => bytes.len(),
+                    Op::Write(bytes) => bytes.len(),
+                }
+            }
+        }
+
+        let mut temp_bytes = [0; 8];
+        let op = match operation.operation {
+            OperationKind::Read(data) => Op::Read(data),
+            OperationKind::Read8(data) => Op::Read(data),
+            OperationKind::Read16(data) => Op::Read(data.as_mut_bytes()),
+            OperationKind::Read32(data) => Op::Read(data.as_mut_bytes()),
+            OperationKind::Read64(data) => Op::Read(data.as_mut_bytes()),
+            OperationKind::Write(data) => Op::Write(data),
+            OperationKind::Write8(data) => Op::Write(data),
+            OperationKind::Write16(data) => Op::Write(data.as_bytes()),
+            OperationKind::Write32(data) => Op::Write(data.as_bytes()),
+            OperationKind::Write64(data) => Op::Write(data.as_bytes()),
+            OperationKind::WriteWord8(word) => {
+                let word_bytes = size_of_val(&word);
+                let bytes = &mut temp_bytes[..word_bytes];
+                bytes.copy_from_slice(&word.to_le_bytes());
+                Op::Write(bytes)
+            }
+            OperationKind::WriteWord16(word) => {
+                let word_bytes = size_of_val(&word);
+                let bytes = &mut temp_bytes[..word_bytes];
+                bytes.copy_from_slice(&word.to_le_bytes());
+                Op::Write(bytes)
+            }
+            OperationKind::WriteWord32(word) => {
+                let word_bytes = size_of_val(&word);
+                let bytes = &mut temp_bytes[..word_bytes];
+                bytes.copy_from_slice(&word.to_le_bytes());
+                Op::Write(bytes)
+            }
+            OperationKind::WriteWord64(word) => {
+                let word_bytes = size_of_val(&word);
+                let bytes = &mut temp_bytes[..word_bytes];
+                bytes.copy_from_slice(&word.to_le_bytes());
+                Op::Write(bytes)
+            }
+        };
+
+        if op.data_len() == 0 {
+            return Ok(());
+        }
+
+        let address = operation.address;
+
+        let mut memory_access = self.memory_access_for(address, op.data_len());
+        memory_access.save_scratch_registers(self)?;
+
+        match op {
+            Op::Read(dst) => self
+                .read_memory_impl(memory_access.as_mut(), address, dst)
+                .map_err(ProbeRsError::Xtensa),
+            Op::Write(buffer) => self
+                .write_memory_impl(memory_access.as_mut(), address, buffer)
+                .map_err(ProbeRsError::Xtensa),
+        }
+    }
+
     fn write_memory_impl(
         &mut self,
         memory_access: &mut dyn MemoryAccess,
@@ -980,6 +1056,29 @@ impl MemoryInterface for XtensaCommunicationInterface<'_> {
 
     fn flush(&mut self) -> Result<(), crate::Error> {
         Ok(())
+    }
+
+    fn execute_memory_operations(&mut self, operations: &mut [Operation<'_>]) {
+        if operations.is_empty() {
+            return;
+        }
+        let result = self.fast_halted_access(|this| {
+            for operation in operations.iter_mut() {
+                let result = this.execute_single_memory_operation_halted(operation.reborrow());
+                let success = result.is_ok();
+                operation.result = Some(result);
+                if !success {
+                    break;
+                }
+            }
+            Ok(())
+        });
+
+        if result.is_err()
+            && let Some(op) = operations.get_mut(0)
+        {
+            op.result = Some(result.map_err(ProbeRsError::Xtensa));
+        }
     }
 }
 

@@ -1697,9 +1697,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::WaitingProgramBuffer => {
                 self.perform_memory_read_progbuf(address, true)?
             }
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_read_sysbus(address))?
-            }
             MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
             MemoryAccessMethod::AbstractCommand => {
                 unimplemented!("Memory access using abstract commands is not implemted")
@@ -1733,9 +1730,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
             MemoryAccessMethod::WaitingProgramBuffer => {
                 self.perform_memory_read_multiple_progbuf(address, data, true)?;
             }
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_read_multiple_sysbus(address, data))?
-            }
             MemoryAccessMethod::SystemBus => {
                 self.perform_memory_read_multiple_sysbus(address, data)?;
             }
@@ -1754,9 +1748,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::WaitingProgramBuffer => {
                 self.perform_memory_write_progbuf(address, data, true)?
-            }
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_write_sysbus(address, &[data]))?
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
@@ -1778,9 +1769,6 @@ impl<'state> RiscvCommunicationInterface<'state> {
             .state
             .memory_range_access_method(V::WIDTH, address_range);
         match access_method {
-            MemoryAccessMethod::HaltedSystemBus => {
-                self.halted_access(|this| this.perform_memory_write_sysbus(address, data))?
-            }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, data)?,
             MemoryAccessMethod::ProgramBuffer => {
                 self.perform_memory_write_multiple_progbuf(address, data, false)?
@@ -2342,13 +2330,6 @@ impl MemoryInterface for RiscvCommunicationInterface<'_> {
         self.read_multiple(address, data)
     }
 
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
-        let address = valid_32bit_address(address)?;
-        tracing::debug!("read from {:#08x}", address);
-
-        self.read_multiple(address, data)
-    }
-
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
         let address = valid_32bit_address(address)?;
         let low_word = data as u32;
@@ -2462,8 +2443,6 @@ pub enum MemoryAccessMethod {
     WaitingProgramBuffer,
     /// Memory access using the program buffer is supported
     ProgramBuffer,
-    /// Memory access using system bus access supported, but only when the core is halted
-    HaltedSystemBus,
     /// Memory access using system bus access supported
     SystemBus,
 }

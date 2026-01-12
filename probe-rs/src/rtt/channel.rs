@@ -1,3 +1,4 @@
+use crate::memory::{Operation, OperationKind};
 use crate::rtt::Error;
 use crate::{Core, MemoryInterface};
 use probe_rs_target::RegionMergeIterator;
@@ -133,24 +134,17 @@ impl RttChannelBuffer {
         Ok(())
     }
 
-    pub fn write_read_buffer_ptr(
-        &self,
-        core: &mut Core,
-        ptr: u64,
-        buffer_ptr: u64,
-    ) -> Result<(), Error> {
+    fn write_read_buffer_ptr_operation(&self, ptr: u64, buffer_ptr: u64) -> Operation<'_> {
         match self {
-            RttChannelBuffer::Buffer32(h32) => {
-                core.write_word_32(
-                    ptr + h32.read_buffer_ptr_offset() as u64,
-                    buffer_ptr.try_into().unwrap(),
-                )?;
-            }
-            RttChannelBuffer::Buffer64(h64) => {
-                core.write_word_64(ptr + h64.read_buffer_ptr_offset() as u64, buffer_ptr)?;
-            }
-        };
-        Ok(())
+            RttChannelBuffer::Buffer32(h32) => Operation::new(
+                ptr + h32.read_buffer_ptr_offset() as u64,
+                OperationKind::WriteWord32(buffer_ptr.try_into().unwrap()),
+            ),
+            RttChannelBuffer::Buffer64(h64) => Operation::new(
+                ptr + h64.read_buffer_ptr_offset() as u64,
+                OperationKind::WriteWord64(buffer_ptr),
+            ),
+        }
     }
 
     pub fn read_flags(&self, core: &mut Core, ptr: u64) -> Result<u64, Error> {
@@ -350,7 +344,12 @@ impl UpChannel {
         self.0.set_mode(core, mode)
     }
 
-    fn read_core(&mut self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u64, usize), Error> {
+    fn read_core(
+        &mut self,
+        core: &mut Core,
+        mut buf: &mut [u8],
+        consume: bool,
+    ) -> Result<usize, Error> {
         let (write, mut read) = self.0.read_pointers(core, "up ")?;
 
         let mut total = 0;
@@ -362,6 +361,8 @@ impl UpChannel {
             }
         }
 
+        let mut operations = Vec::with_capacity(3);
+
         // Read while buffer contains data and output buffer has space (maximum of two iterations)
         while !buf.is_empty() {
             let count = min(self.readable_contiguous(write, read), buf.len());
@@ -369,7 +370,9 @@ impl UpChannel {
                 break;
             }
 
-            core.read(self.0.info.buffer_start_pointer() + read, &mut buf[..count])?;
+            let address = self.0.info.buffer_start_pointer() + read;
+            let (buffer, remaining) = buf.split_at_mut(count);
+            operations.push(Operation::new(address, OperationKind::Read(buffer)));
 
             total += count;
             read += count as u64;
@@ -379,11 +382,32 @@ impl UpChannel {
                 read = 0;
             }
 
-            buf = &mut buf[count..];
+            buf = remaining;
         }
-        self.0.last_read_ptr = Some(read);
 
-        Ok((read, total))
+        if consume && total > 0 {
+            // Write read pointer back to target if something was read
+            operations.push(
+                self.0
+                    .info
+                    .write_read_buffer_ptr_operation(self.0.metadata_ptr, read),
+            );
+        }
+
+        core.execute_memory_operations(&mut operations);
+
+        for op in operations.into_iter() {
+            if let Some(result) = op.result {
+                result?;
+            }
+        }
+
+        if consume {
+            // Pointer was successfully written, update stored value
+            self.0.last_read_ptr = Some(read);
+        }
+
+        Ok(total)
     }
 
     /// Reads some bytes from the channel to the specified buffer and returns how many bytes were
@@ -392,16 +416,7 @@ impl UpChannel {
     /// This method will not block waiting for data in the target buffer, and may read less bytes
     /// than would fit in `buf`.
     pub fn read(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        let (read, total) = self.read_core(core, buf)?;
-
-        if total > 0 {
-            // Write read pointer back to target if something was read
-            self.0
-                .info
-                .write_read_buffer_ptr(core, self.0.metadata_ptr, read)?;
-        }
-
-        Ok(total)
+        self.read_core(core, buf, true)
     }
 
     /// Peeks at the current data in the channel buffer, copies data into the specified buffer and
@@ -410,7 +425,7 @@ impl UpChannel {
     /// The difference from [`read`](UpChannel::read) is that this does not discard the data in the
     /// buffer.
     pub fn peek(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        Ok(self.read_core(core, buf)?.1)
+        self.read_core(core, buf, false)
     }
 
     /// Calculates amount of contiguous data available for reading
