@@ -11,13 +11,9 @@ use crate::{
     vendor::Vendor,
 };
 
+/// Holtek
+#[derive(docsplay::Display)]
 pub struct Holtek;
-
-impl std::fmt::Display for Holtek {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Holtek")
-    }
-}
 
 const HOLTEK: JEP106Code = JEP106Code { id: 0x76, cc: 0x6 };
 
