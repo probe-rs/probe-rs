@@ -74,10 +74,28 @@ pub struct ExitErrorDetails {
 
 impl std::fmt::Display for ExitErrorDetails {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "reason: {:#x}", self.reason)?;
-        if let Some(exit_status) = self.exit_status {
-            write!(f, ", exit_status: {exit_status}")?;
+        // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#651entry-32-bit>
+        const REASON_APPLICATION_EXIT: u32 = 0x20026;
+
+        // exit() codes
+        const EXIT_SUCCESS: u32 = 0;
+        const EXIT_ABORTED: u32 = 134;
+
+        match self.reason {
+            REASON_APPLICATION_EXIT => match self.exit_status {
+                Some(EXIT_SUCCESS) => write!(f, "success")?,
+                Some(EXIT_ABORTED) => write!(f, "exit_status: aborted")?,
+                Some(other) => write!(f, "exit_status: {other:#x}")?,
+                None => write!(f, "exit_status: unknown")?,
+            },
+            reason => {
+                write!(f, "reason: {reason:#x}")?;
+                if let Some(exit_status) = self.exit_status {
+                    write!(f, ", exit_status: {exit_status}")?;
+                }
+            }
         }
+
         if let Some(subcode) = self.subcode {
             write!(f, ", subcode: {subcode:#x}")?;
         }

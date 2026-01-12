@@ -289,6 +289,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             } else if context == "repl" {
                 match self.handle_repl(target_core, &arguments) {
                     Ok(repl_response) => {
+                        // TODO: the REPL handlers should do all of this work, no post-processing should be done here.
+                        if target_core.core_data.last_known_status == CoreStatus::Running {
+                            self.all_cores_halted = false;
+                        }
                         // In all other cases, the response would have been updated by the repl command handler.
                         response_body.result = if repl_response.success {
                             repl_response
@@ -564,7 +568,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The target is halted, so we can allow any repl command.
         //TODO: Do we need to look for '/' in the expression, before we split it?
         // Now we can make sure we have a valid expression and evaluate it.
-        let (command_root, repl_commands) = build_expanded_commands(arguments.expression.trim());
+        let (command_root, repl_commands) = build_expanded_commands(
+            &target_core.core_data.repl_commands,
+            arguments.expression.trim(),
+        );
 
         let Some(repl_command) = repl_commands.first() else {
             return Err(DebuggerError::UserMessage(format!(
@@ -585,13 +592,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     /// Works in tandem with the `evaluate` request, to provide possible completions in the Debug Console REPL window.
-    pub(crate) fn completions(&mut self, _: &mut CoreHandle<'_>, request: &Request) -> Result<()> {
+    pub(crate) fn completions(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+        request: &Request,
+    ) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
 
         let arguments: CompletionsArguments = get_arguments(self, request)?;
 
         let response_body = CompletionsResponseBody {
-            targets: command_completions(arguments),
+            targets: command_completions(&target_core.core_data.repl_commands, arguments),
         };
 
         self.send_response(request, Ok(Some(response_body)))

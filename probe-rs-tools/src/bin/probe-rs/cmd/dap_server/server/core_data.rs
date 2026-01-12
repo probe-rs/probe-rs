@@ -1,9 +1,11 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::time::Duration;
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
+use crate::cmd::dap_server::debug_adapter::dap::repl_commands::ReplCommand;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, DataFormat, DefmtProcessor, DefmtState};
 use crate::{
@@ -60,6 +62,8 @@ pub struct CoreData {
     pub rtt_header_cleared: bool,
     pub next_semihosting_handle: u32,
     pub semihosting_handles: HashMap<u32, SemihostingFile>,
+    pub repl_commands: Vec<ReplCommand>,
+    pub test_data: Box<dyn Any>,
 }
 
 /// File descriptor for files opened by the target.
@@ -615,7 +619,7 @@ impl CoreHandle<'_> {
                 )));
             }
             SemihostingCommand::ExitError(details) => {
-                debug_adapter.log_to_console(format!("Application has exited with  {details}"));
+                debug_adapter.log_to_console(format!("Application has exited with {details}"));
                 return Ok(CoreStatus::Halted(HaltReason::Breakpoint(
                     BreakpointCause::Semihosting(command),
                 )));

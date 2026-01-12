@@ -8,7 +8,7 @@ use super::{
         CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
         EvaluateArguments, EvaluateResponseBody, Response,
     },
-    repl_commands::{REPL_COMMANDS, ReplCommand},
+    repl_commands::ReplCommand,
     repl_types::*,
     request_helpers::disassemble_target_memory,
 };
@@ -162,25 +162,28 @@ pub(crate) fn memory_read(
 
 /// Get a list of command matches, based on the given command piece.
 /// The `command_piece` is a valid [`ReplCommand`], which can be either a command or a sub_command.
-pub(crate) fn find_commands<'a>(
-    repl_commands: &[&'a ReplCommand],
-    command_piece: &'a str,
-) -> Vec<&'a ReplCommand> {
+pub(crate) fn find_commands(
+    repl_commands: &[ReplCommand],
+    command_piece: &str,
+) -> Vec<ReplCommand> {
     repl_commands
         .iter()
         .filter(move |command| command.command.starts_with(command_piece))
         .copied()
-        .collect::<Vec<&ReplCommand>>()
+        .collect()
 }
 
 /// Iteratively builds a list of command matches, based on the given filter.
 /// If multiple levels of commands are involved, the ReplCommand::command will be concatenated.
-pub(crate) fn build_expanded_commands(command_filter: &str) -> (String, Vec<&ReplCommand>) {
+pub(crate) fn build_expanded_commands(
+    commands: &[ReplCommand],
+    command_filter: &str,
+) -> (String, Vec<ReplCommand>) {
     // Split the given text into a command, optional sub-command, and optional arguments.
     let command_pieces = command_filter.split(&[' ', '/', '*'][..]);
 
     // Always start building from the top-level commands.
-    let mut repl_commands: Vec<&ReplCommand> = REPL_COMMANDS.iter().collect();
+    let mut repl_commands: Vec<ReplCommand> = commands.to_vec();
 
     let mut command_root = "".to_string();
     let piece_count = command_pieces.clone().count();
@@ -204,7 +207,7 @@ pub(crate) fn build_expanded_commands(command_filter: &str) -> (String, Vec<&Rep
                 command_root.push(' ');
             }
             command_root.push_str(parent_command.command);
-            repl_commands = parent_command.sub_commands.iter().collect();
+            repl_commands = parent_command.sub_commands.to_vec();
         } else {
             // If there are multiple matches, or there is only one match with no
             // sub-commands, then we can use the matches.
@@ -216,16 +219,17 @@ pub(crate) fn build_expanded_commands(command_filter: &str) -> (String, Vec<&Rep
 }
 
 /// Returns a list of completion items for the REPL, based on matches to the given filter.
-pub(crate) fn command_completions(arguments: CompletionsArguments) -> Vec<CompletionItem> {
+pub(crate) fn command_completions(
+    commands: &[ReplCommand],
+    arguments: CompletionsArguments,
+) -> Vec<CompletionItem> {
+    // TODO: merge branches?
     let (command_root, command_list) = if arguments.text.is_empty() {
         // If the filter is empty, then we can return all commands.
-        (
-            arguments.text,
-            REPL_COMMANDS.iter().collect::<Vec<&ReplCommand>>(),
-        )
+        (arguments.text, commands.to_vec())
     } else {
         // Iterate over the command pieces, and find the matching commands.
-        let (command_root, command_list) = build_expanded_commands(&arguments.text);
+        let (command_root, command_list) = build_expanded_commands(commands, &arguments.text);
         (format!("{command_root} "), command_list)
     };
     command_list

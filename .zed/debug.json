@@ -11,7 +11,10 @@
     "args": ["dap-server", "--single-session", "--port", "50000"],
     "build": {
       "command": "cargo",
-      "args": ["build", "--bin", "probe-rs"]
-    }
-  }
+      "args": ["build", "--bin", "probe-rs"],
+    },
+    "env": {
+      "RUST_LOG": "warn",
+    },
+  },
 ]
