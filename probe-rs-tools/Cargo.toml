@@ -44,7 +44,7 @@ itertools = "0.14"
 # CLI-only
 addr2line = "0.25"
 bytesize = "2"
-capstone = "0.13"
+capstone = "0.14"
 cargo_metadata = "0.23"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "3"
