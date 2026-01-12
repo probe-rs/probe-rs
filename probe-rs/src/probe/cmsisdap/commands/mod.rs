@@ -196,6 +196,7 @@ pub enum CmsisDapDevice {
 impl CmsisDapDevice {
     fn usb_timeout(&self) -> Duration {
         match self {
+            #[cfg(feature = "cmsisdap_v1")]
             Self::V1 { usb_timeout, .. } => *usb_timeout,
             Self::V2 { usb_timeout, .. } => *usb_timeout,
         }
@@ -203,6 +204,7 @@ impl CmsisDapDevice {
 
     fn set_usb_timeout(&mut self, timeout: Duration) {
         match self {
+            #[cfg(feature = "cmsisdap_v1")]
             Self::V1 { usb_timeout, .. } => *usb_timeout = timeout,
             Self::V2 { usb_timeout, .. } => *usb_timeout = timeout,
         }

@@ -506,13 +506,15 @@ fn is_known_cmsis_dap_dev(device: &DeviceInfo) -> bool {
 ///
 /// Devices not on this list will still work but with a slow startup time
 /// as the packet size is auto-determined.
+#[cfg(feature = "cmsisdap_v1")]
 fn hid_report_size(device: &hidapi::DeviceInfo) -> usize {
-    if device.vendor_id() == 0x03eb && let Some(s) = device.product_string() {
-        // EDBG are 512-bytes and don't respond until you give them 512 bytes.
-        if s.contains("EDBG") {
-            tracing::debug!("Overriding packet size to 512 bytes for EDBG device");
-            return 512;
-        }
+    // EDBG are 512-bytes and don't respond until you give them 512 bytes.
+    if device.vendor_id() == 0x03eb
+        && let Some(s) = device.product_string()
+        && s.contains("EDBG")
+    {
+        tracing::debug!("Overriding packet size to 512 bytes for EDBG device");
+        return 512;
     }
 
     // Default for almost all CMSIS-DAPv1 devices.
