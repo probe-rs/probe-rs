@@ -341,7 +341,7 @@ impl CoreHandle<'_> {
     }
 
     /// Clear a single breakpoint from target configuration.
-    pub(crate) fn clear_breakpoint(&mut self, address: u64) -> Result<()> {
+    pub(crate) fn clear_breakpoint(&mut self, address: u64) -> Result<bool> {
         match self.core.clear_hw_breakpoint(address) {
             Ok(_) => {}
             Err(probe_rs::Error::BreakpointOperation(BreakpointError::NotFound(_addr))) => {}
@@ -349,8 +349,10 @@ impl CoreHandle<'_> {
         }
         if let Some((breakpoint_position, _)) = self.find_breakpoint_in_cache(address) {
             self.core_data.breakpoints.remove(breakpoint_position);
+            Ok(true)
+        } else {
+            Ok(false)
         }
-        Ok(())
     }
 
     /// Clear all breakpoints of a specified [`super::session_data::BreakpointType`].

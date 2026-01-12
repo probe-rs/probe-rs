@@ -897,7 +897,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }),
                     end_column: None,
                     end_line: None,
-                    id: None,
+                    id: Some(address as i64),
                     line: source_location.line.map(|line| line as i64),
                     message: Some(format!(
                         "Source breakpoint at memory address: {address:#010X}"

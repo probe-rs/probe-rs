@@ -130,7 +130,12 @@ fn clear_breakpoint(
             "Invalid memory address {address_str}. See the `help` command for more information."
         )));
     };
-    target_core.clear_breakpoint(address)?;
+
+    if !target_core.clear_breakpoint(address)? {
+        return Err(DebuggerError::UserMessage(format!(
+            "Breakpoint not found at address {address:#x}."
+        )));
+    };
 
     let response = Response {
         command: "setBreakpoints".to_string(),
