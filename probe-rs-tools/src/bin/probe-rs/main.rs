@@ -486,7 +486,7 @@ async fn main() -> Result<()> {
 
     let result = run_app(connection_params, async |client| {
         anyhow::ensure!(
-            client.is_local_session() || !cli.subcommand.is_remote_cmd(),
+            client.is_local_session() || cli.subcommand.is_remote_cmd(),
             "The subcommand is not supported in remote mode."
         );
 
