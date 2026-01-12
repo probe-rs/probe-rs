@@ -8,11 +8,16 @@ use probe_rs_debug::{ColumnType, StackFrame};
 
 use crate::cmd::dap_server::{
     DebuggerError,
-    debug_adapter::dap::{
-        dap_types::Response,
-        repl_commands::{REPL_COMMANDS, ReplCommand},
-        repl_types::ReplCommandArgs,
+    debug_adapter::{
+        dap::{
+            adapter::DebugAdapter,
+            dap_types::{EvaluateArguments, Response},
+            repl_commands::{REPL_COMMANDS, ReplCommand},
+            repl_types::ReplCommandArgs,
+        },
+        protocol::ProtocolAdapter,
     },
+    server::core_data::CoreHandle,
 };
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -27,67 +32,11 @@ static BACKTRACE: ReplCommand = ReplCommand {
         args: &[ReplCommandArgs::Required(
             "path (e.g. my_dir/backtrace.yaml)",
         )],
-        handler: |target_core, command_arguments, _, _| {
-            let mut args = command_arguments.split_whitespace();
-
-            let write_to_file = args.next().map(Path::new);
-
-            // Using the `insta` crate to serialize, because they add a couple of transformations to the yaml output,
-            // presumeably to make it easier to read.
-            // In our case, we want this backtrace format to be comparable to the unwind tests
-            // in `probe-rs::debug::debuginfo`.
-            // The reason for this is that these 'live' backtraces are used to create the 'master' snapshots,
-            // which is used to compare against backtraces generated from coredumps.
-            use insta::_macro_support as insta_yaml;
-            let yaml_data = insta_yaml::serialize_value(
-                &target_core.core_data.stack_frames,
-                insta_yaml::SerializationFormat::Yaml,
-            );
-
-            let response_message = if let Some(location) = write_to_file {
-                std::fs::write(location, yaml_data)
-                    .map_err(|e| DebuggerError::UserMessage(format!("{e:?}")))?;
-                format!("Stacktrace successfully stored at {location:?}.")
-            } else {
-                yaml_data
-            };
-            Ok(Response {
-                command: "backtrace".to_string(),
-                success: true,
-                message: Some(response_message),
-                type_: "response".to_string(),
-                request_seq: 0,
-                seq: 0,
-                body: None,
-            })
-        },
+        handler: save_backtrace_to_yaml,
     }],
     help_text: "Print the backtrace of the current thread.",
     args: &[],
-    handler: |target_core, _, _, _| {
-        let mut response_message = String::new();
-
-        for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
-            #[allow(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-            writeln!(
-                &mut response_message,
-                "Frame #{}: {}",
-                i + 1,
-                ReplStackFrame(frame)
-            )
-            .unwrap();
-        }
-
-        Ok(Response {
-            command: "backtrace".to_string(),
-            success: true,
-            message: Some(response_message),
-            type_: "response".to_string(),
-            request_seq: 0,
-            seq: 0,
-            body: None,
-        })
-    },
+    handler: print_backtrace,
 };
 
 struct ReplStackFrame<'a>(&'a StackFrame);
@@ -108,4 +57,74 @@ impl Display for ReplStackFrame<'_> {
         }
         Ok(())
     }
+}
+
+fn save_backtrace_to_yaml(
+    target_core: &mut CoreHandle<'_>,
+    command_arguments: &str,
+    _: &EvaluateArguments,
+    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> Result<Response, DebuggerError> {
+    let mut args = command_arguments.split_whitespace();
+
+    let write_to_file = args.next().map(Path::new);
+
+    // Using the `insta` crate to serialize, because they add a couple of transformations to the yaml output,
+    // presumeably to make it easier to read.
+    // In our case, we want this backtrace format to be comparable to the unwind tests
+    // in `probe-rs::debug::debuginfo`.
+    // The reason for this is that these 'live' backtraces are used to create the 'master' snapshots,
+    // which is used to compare against backtraces generated from coredumps.
+    use insta::_macro_support as insta_yaml;
+    let yaml_data = insta_yaml::serialize_value(
+        &target_core.core_data.stack_frames,
+        insta_yaml::SerializationFormat::Yaml,
+    );
+
+    let response_message = if let Some(location) = write_to_file {
+        std::fs::write(location, yaml_data)
+            .map_err(|e| DebuggerError::UserMessage(format!("{e:?}")))?;
+        format!("Stacktrace successfully stored at {location:?}.")
+    } else {
+        yaml_data
+    };
+    Ok(Response {
+        command: "backtrace".to_string(),
+        success: true,
+        message: Some(response_message),
+        type_: "response".to_string(),
+        request_seq: 0,
+        seq: 0,
+        body: None,
+    })
+}
+
+fn print_backtrace(
+    target_core: &mut CoreHandle<'_>,
+    _: &str,
+    _: &EvaluateArguments,
+    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> Result<Response, DebuggerError> {
+    let mut response_message = String::new();
+
+    for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
+        #[allow(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+        writeln!(
+            &mut response_message,
+            "Frame #{}: {}",
+            i + 1,
+            ReplStackFrame(frame)
+        )
+        .unwrap();
+    }
+
+    Ok(Response {
+        command: "backtrace".to_string(),
+        success: true,
+        message: Some(response_message),
+        type_: "response".to_string(),
+        request_seq: 0,
+        seq: 0,
+        body: None,
+    })
 }

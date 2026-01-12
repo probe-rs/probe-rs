@@ -6,12 +6,17 @@ use probe_rs_debug::VariableName;
 
 use crate::cmd::dap_server::{
     DebuggerError,
-    debug_adapter::dap::{
-        dap_types::Response,
-        repl_commands::{REPL_COMMANDS, ReplCommand},
-        repl_commands_helpers::get_local_variable,
-        repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
+    debug_adapter::{
+        dap::{
+            adapter::DebugAdapter,
+            dap_types::{EvaluateArguments, Response},
+            repl_commands::{REPL_COMMANDS, ReplCommand, need_subcommand},
+            repl_commands_helpers::get_local_variable,
+            repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
+        },
+        protocol::ProtocolAdapter,
     },
+    server::core_data::CoreHandle,
 };
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -50,38 +55,7 @@ static INFO: ReplCommand = ReplCommand {
             requires_target_halted: true,
             sub_commands: &[],
             args: &[ReplCommandArgs::Optional("register name")],
-            handler: |target_core, command_arguments, _, _| {
-                let register_name = command_arguments.trim();
-                let regs = target_core.core.registers().all_registers().filter(|reg| {
-                    if register_name.is_empty() {
-                        true
-                    } else {
-                        reg.name().eq_ignore_ascii_case(register_name)
-                    }
-                });
-
-                let mut results = vec![];
-                for reg in regs {
-                    let reg_value: RegisterValue = target_core.core.read_core_reg(reg.id())?;
-                    results.push((format!("{reg}:"), reg_value.to_string()));
-                }
-
-                if results.is_empty() {
-                    return Err(DebuggerError::UserMessage(format!(
-                        "No registers found matching {register_name:?}. See the `help` command for more information."
-                    )));
-                }
-
-                Ok(Response {
-                    command: "registers".to_string(),
-                    success: true,
-                    message: Some(reg_table(&results, 80)),
-                    type_: "response".to_string(),
-                    request_seq: 0,
-                    seq: 0,
-                    body: None,
-                })
-            },
+            handler: print_registers,
         },
         ReplCommand {
             command: "var",
@@ -98,42 +72,85 @@ static INFO: ReplCommand = ReplCommand {
             requires_target_halted: false,
             sub_commands: &[],
             args: &[],
-            handler: |target_core, _, _, _| {
-                let breakpoint_addrs = target_core
-                    .core
-                    .hw_breakpoints()?
-                    .into_iter()
-                    .enumerate()
-                    .filter_map(|(idx, bpt)| bpt.map(|bpt| (idx, bpt)));
-
-                let mut response_message = String::new();
-
-                for (idx, bpt) in breakpoint_addrs {
-                    #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
-                    writeln!(&mut response_message, "Breakpoint #{idx} @ {bpt:#010X}").unwrap();
-                }
-
-                if response_message.is_empty() {
-                    response_message.push_str("No breakpoints set.");
-                }
-
-                Ok(Response {
-                    command: "breakpoints".to_string(),
-                    success: true,
-                    message: Some(response_message),
-                    type_: "response".to_string(),
-                    request_seq: 0,
-                    seq: 0,
-                    body: None,
-                })
-            },
+            handler: print_breakpoints,
         },
     ],
     args: &[],
-    handler: |_, _, _, _| {
-        Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
-    },
+    handler: need_subcommand,
 };
+
+fn print_registers(
+    target_core: &mut CoreHandle<'_>,
+    command_arguments: &str,
+    _: &EvaluateArguments,
+    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> Result<Response, DebuggerError> {
+    let register_name = command_arguments.trim();
+    let regs = target_core.core.registers().all_registers().filter(|reg| {
+        if register_name.is_empty() {
+            true
+        } else {
+            reg.name().eq_ignore_ascii_case(register_name)
+        }
+    });
+
+    let mut results = vec![];
+    for reg in regs {
+        let reg_value: RegisterValue = target_core.core.read_core_reg(reg.id())?;
+        results.push((format!("{reg}:"), reg_value.to_string()));
+    }
+
+    if results.is_empty() {
+        return Err(DebuggerError::UserMessage(format!(
+            "No registers found matching {register_name:?}. See the `help` command for more information."
+        )));
+    }
+
+    Ok(Response {
+        command: "registers".to_string(),
+        success: true,
+        message: Some(reg_table(&results, 80)),
+        type_: "response".to_string(),
+        request_seq: 0,
+        seq: 0,
+        body: None,
+    })
+}
+
+fn print_breakpoints(
+    target_core: &mut CoreHandle<'_>,
+    _: &str,
+    _: &EvaluateArguments,
+    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> Result<Response, DebuggerError> {
+    let breakpoint_addrs = target_core
+        .core
+        .hw_breakpoints()?
+        .into_iter()
+        .enumerate()
+        .filter_map(|(idx, bpt)| bpt.map(|bpt| (idx, bpt)));
+
+    let mut response_message = String::new();
+
+    for (idx, bpt) in breakpoint_addrs {
+        #[expect(clippy::unwrap_used, reason = "Writing to a string is infallible")]
+        writeln!(&mut response_message, "Breakpoint #{idx} @ {bpt:#010X}").unwrap();
+    }
+
+    if response_message.is_empty() {
+        response_message.push_str("No breakpoints set.");
+    }
+
+    Ok(Response {
+        command: "breakpoints".to_string(),
+        success: true,
+        message: Some(response_message),
+        type_: "response".to_string(),
+        request_seq: 0,
+        seq: 0,
+        body: None,
+    })
+}
 
 fn reg_table(results: &[(String, String)], max_line_length: usize) -> String {
     let mut max_reg_name_width = 0;

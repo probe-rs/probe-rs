@@ -78,26 +78,7 @@ static HELP: ReplCommand = ReplCommand {
     requires_target_halted: false,
     sub_commands: &[],
     args: &[],
-    handler: |target_core, _, _, _| {
-        let mut help_text =
-            "Usage:\t- Use <Ctrl+Space> to get a list of available commands.".to_string();
-        help_text.push_str("\n\t- Use <Up/DownArrows> to navigate through the command list.");
-        help_text.push_str("\n\t- Use <Hab> to insert the currently selected command.");
-        help_text.push_str("\n\t- Note: This implementation is a subset of gdb commands, and is intended to behave similarly.");
-        help_text.push_str("\nAvailable commands:");
-        for command in target_core.core_data.repl_commands.iter() {
-            help_text.push_str(&format!("\n{command}"));
-        }
-        Ok(Response {
-            command: "help".to_string(),
-            success: true,
-            message: Some(help_text),
-            type_: "response".to_string(),
-            request_seq: 0,
-            seq: 0,
-            body: None,
-        })
-    },
+    handler: print_help,
 };
 
 #[distributed_slice(REPL_COMMANDS)]
@@ -107,16 +88,58 @@ static QUIT: ReplCommand = ReplCommand {
     requires_target_halted: false,
     sub_commands: &[],
     args: &[],
-    handler: |target_core, _, _, _| {
-        target_core.core.halt(Duration::from_millis(500))?;
-        Ok(Response {
-            command: "terminate".to_string(),
-            success: true,
-            message: Some("Debug Session Terminated".to_string()),
-            type_: "response".to_string(),
-            request_seq: 0,
-            seq: 0,
-            body: None,
-        })
-    },
+    handler: quit,
 };
+
+fn print_help(
+    target_core: &mut CoreHandle<'_>,
+    _: &str,
+    _: &EvaluateArguments,
+    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> Result<Response, DebuggerError> {
+    let mut help_text =
+        "Usage:\t- Use <Ctrl+Space> to get a list of available commands.".to_string();
+    help_text.push_str("\n\t- Use <Up/DownArrows> to navigate through the command list.");
+    help_text.push_str("\n\t- Use <Hab> to insert the currently selected command.");
+    help_text.push_str("\n\t- Note: This implementation is a subset of gdb commands, and is intended to behave similarly.");
+    help_text.push_str("\nAvailable commands:");
+    for command in target_core.core_data.repl_commands.iter() {
+        help_text.push_str(&format!("\n{command}"));
+    }
+    Ok(Response {
+        command: "help".to_string(),
+        success: true,
+        message: Some(help_text),
+        type_: "response".to_string(),
+        request_seq: 0,
+        seq: 0,
+        body: None,
+    })
+}
+
+fn need_subcommand(
+    _: &mut CoreHandle<'_>,
+    _: &str,
+    _: &EvaluateArguments,
+    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> Result<Response, DebuggerError> {
+    Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
+}
+
+fn quit(
+    target_core: &mut CoreHandle<'_>,
+    _: &str,
+    _: &EvaluateArguments,
+    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> Result<Response, DebuggerError> {
+    target_core.core.halt(Duration::from_millis(500))?;
+    Ok(Response {
+        command: "terminate".to_string(),
+        success: true,
+        message: Some("Debug Session Terminated".to_string()),
+        type_: "response".to_string(),
+        request_seq: 0,
+        seq: 0,
+        body: None,
+    })
+}
