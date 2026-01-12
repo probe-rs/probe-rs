@@ -38,6 +38,28 @@ pub struct DownloadOptions {
     pub verify: bool,
     /// Disable double buffering when loading flash.
     pub disable_double_buffering: bool,
+    /// If there are multiple valid flash algorithms for a memory region, this list allows
+    /// overriding the default selection.
+    pub preferred_algos: Vec<String>,
+}
+
+impl DownloadOptions {
+    pub fn sanitize(&mut self) {
+        // Remove surrounding quotes and whitespaces from list.
+        if !self.preferred_algos.is_empty() {
+            // Iterate over the vector and modify each string in place
+            for algo in self.preferred_algos.iter_mut() {
+                *algo = algo
+                    .trim()
+                    .trim_matches(|c| c == '\'' || c == '"')
+                    .chars()
+                    .filter(|c| !c.is_whitespace())
+                    .collect();
+            }
+            // Remove any empty strings resulting from inputs like ",," or ", ,"
+            self.preferred_algos.retain(|s| !s.is_empty());
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -99,6 +121,7 @@ impl FlashRequest {
         options.preverify = false;
         options.verify = self.options.verify;
         options.disable_double_buffering = self.options.disable_double_buffering;
+        options.preferred_algos = self.options.preferred_algos.clone();
 
         options
     }

@@ -1,6 +1,7 @@
 use espflash::flasher::{FlashData, FlashSettings, FlashSize};
 use espflash::image_format::idf::{IdfBootloaderFormat, check_idf_bootloader};
 use ihex::Record;
+use itertools::Itertools as _;
 use probe_rs_target::{
     InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
     TargetDescriptionSource,
@@ -481,7 +482,7 @@ impl FlashLoader {
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
     ) -> Result<(), FlashError> {
-        let mut algos = self.prepare_plan(session, false)?;
+        let mut algos = self.prepare_plan(session, false, &[])?;
 
         for flasher in algos.iter_mut() {
             let mut program_size = 0;
@@ -520,7 +521,11 @@ impl FlashLoader {
         mut options: DownloadOptions,
     ) -> Result<(), FlashError> {
         tracing::debug!("Committing FlashLoader!");
-        let mut algos = self.prepare_plan(session, options.keep_unwritten_bytes)?;
+        let mut algos = self.prepare_plan(
+            session,
+            options.keep_unwritten_bytes,
+            &options.preferred_algos,
+        )?;
 
         if options.dry_run {
             tracing::info!("Skipping programming, dry run!");
@@ -655,6 +660,7 @@ impl FlashLoader {
         &self,
         session: &mut Session,
         restore_unwritten_bytes: bool,
+        opt_preferred_algos: &[String],
     ) -> Result<Vec<Flasher>, FlashError> {
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
@@ -725,7 +731,12 @@ impl FlashLoader {
 
             let target = session.target();
             let core = target.core_index_by_name(core_name).unwrap();
-            let algo = Self::get_flash_algorithm_for_region(&region, target, core_name)?;
+            let algo = Self::get_flash_algorithm_for_region(
+                &region,
+                target,
+                core_name,
+                opt_preferred_algos,
+            )?;
 
             // We don't usually have more than a handful of regions, linear search should be fine.
             tracing::debug!("     -- using algorithm: {}", algo.name);
@@ -865,6 +876,7 @@ impl FlashLoader {
         region: &NvmRegion,
         target: &'a Target,
         core_name: &String,
+        preferred_algos: &[String],
     ) -> Result<&'a RawFlashAlgorithm, FlashError> {
         let available = &target.flash_algorithms;
         tracing::debug!("Available algorithms:");
@@ -902,6 +914,27 @@ impl FlashLoader {
                     .iter()
                     .filter(|&fa| fa.default)
                     .collect::<Vec<_>>();
+
+                if !preferred_algos.is_empty() {
+                    tracing::debug!("selecting preferred algorithm from: {:?}", preferred_algos);
+                    let mut preferred_and_valid_algos = Vec::new();
+                    // Check whether there are any preferred algorithms which are valid and which
+                    // override the default algo(s).
+                    for algo in algorithms.iter() {
+                        if preferred_algos.iter().contains(&algo.name) {
+                            preferred_and_valid_algos.push(algo);
+                        }
+                    }
+                    if preferred_and_valid_algos.len() > 1 {
+                        return Err(FlashError::MultiplePreferredAlgos {
+                            region: region.clone(),
+                        });
+                    }
+                    // Preferred algo overrides default.
+                    if preferred_and_valid_algos.len() == 1 {
+                        return Ok(preferred_and_valid_algos[0]);
+                    }
+                }
 
                 match defaults.len() {
                     0 => Err(FlashError::MultipleFlashLoaderAlgorithmsNoDefault {

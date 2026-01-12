@@ -46,6 +46,17 @@ pub struct BinaryDownloadOptions {
     /// Whether to read the RTT output from the flash loader, if available.
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub read_flasher_rtt: bool,
+    /// The preferred flash algorithms for specific memory regions can be overriden.
+    ///
+    /// Multiple algorithms can be specified as a comma-separated list, e.g. --prefer-flash-algorithm=algo1,algo2
+    #[arg(
+        long,
+        env = "PROBE_RS_PREFER_FLASH_ALGO",
+        value_delimiter = ',',
+        num_args = 1..,
+        help_heading = "PROBE CONFIGURATION"
+    )]
+    pub prefer_flash_algorithm: Vec<String>,
 }
 
 /// Supported bit-widths for read/write commands (not every device may support each width).
@@ -115,6 +126,7 @@ pub struct ProbeOptions {
         help_heading = "PROBE CONFIGURATION"
     )]
     pub connect_under_reset: bool,
+
     #[arg(long, env = "PROBE_RS_DRY_RUN", help_heading = "PROBE CONFIGURATION")]
     pub dry_run: bool,
     /// Use this flag to allow all memory, including security keys and 3rd party

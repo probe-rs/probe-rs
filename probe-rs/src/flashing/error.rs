@@ -13,6 +13,12 @@ pub enum FlashError {
         /// The name of the algorithm that was not found.
         algo_name: String,
     },
+    /// Detected multiple preferred algorithms for the same flash region.
+    #[error("detected multiple preferred algorithms for a flash region {region:?}")]
+    MultiplePreferredAlgos {
+        /// The region which matched multiple preferred flash algorithms.
+        region: NvmRegion,
+    },
     /// No flash memory contains the entire requested memory range.
     #[error("No flash memory contains the entire requested memory range {range:#010X?}.")]
     NoSuitableNvm {
