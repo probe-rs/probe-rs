@@ -74,10 +74,17 @@ pub struct ExitErrorDetails {
 
 impl std::fmt::Display for ExitErrorDetails {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#651entry-32-bit>
+        const REASON_APPLICATION_EXIT: u32 = 0x20026;
+
+        // exit() codes
+        const EXIT_SUCCESS: u32 = 0;
+        const EXIT_ABORTED: u32 = 134;
+
         match self.reason {
-            0x20026 => match self.exit_status {
-                Some(0) => write!(f, "success")?,
-                Some(134) => write!(f, "exit_status: aborted")?,
+            REASON_APPLICATION_EXIT => match self.exit_status {
+                Some(EXIT_SUCCESS) => write!(f, "success")?,
+                Some(EXIT_ABORTED) => write!(f, "exit_status: aborted")?,
                 Some(other) => write!(f, "exit_status: {other:#x}")?,
                 None => write!(f, "exit_status: unknown")?,
             },
