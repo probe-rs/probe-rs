@@ -812,13 +812,7 @@ impl CmsisDap {
 impl DebugProbe for CmsisDap {
     fn get_name(&self) -> &str {
         match &self.device {
-            CmsisDapDevice::V2 {
-                handle,
-                out_ep: _,
-                in_ep: _,
-                max_packet_size: _,
-                swo_ep: _,
-            } => format!(
+            CmsisDapDevice::V2 { handle, .. } => format!(
                 "CMSIS-DAP V2 IF: {} DESC: {:?}",
                 handle.interface_number(),
                 handle.descriptor()

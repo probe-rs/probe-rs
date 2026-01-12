@@ -1,7 +1,7 @@
 use super::CmsisDapDevice;
 use crate::probe::{
     BoxedProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
-    cmsisdap::{CmsisDapFactory, commands::CmsisDapError},
+    cmsisdap::{CmsisDapFactory, commands::CmsisDapError, commands::DEFAULT_USB_TIMEOUT},
 };
 #[cfg(feature = "cmsisdap_v1")]
 use hidapi::HidApi;
@@ -298,6 +298,7 @@ pub fn open_v2_device(
                         in_ep: eps[1].address(),
                         swo_ep,
                         max_packet_size: eps[1].max_packet_size(),
+                        usb_timeout: DEFAULT_USB_TIMEOUT,
                     }));
                 }
                 Err(e) => {
@@ -461,10 +462,8 @@ pub fn open_device_from_selector(
                 )?;
                 Ok(CmsisDapDevice::V1 {
                     handle: device,
-                    // Start with a default 64-byte report size, which is the most
-                    // common size for CMSIS-DAPv1 HID devices. We'll request the
-                    // actual size to use from the probe later.
-                    report_size: 64,
+                    report_size: hid_report_size(device_info),
+                    usb_timeout: DEFAULT_USB_TIMEOUT,
                 })
             }
             _ => {
@@ -494,4 +493,32 @@ fn is_known_cmsis_dap_dev(device: &DeviceInfo) -> bool {
     KNOWN_DAPS
         .iter()
         .any(|&(vid, pid)| device.vendor_id() == vid && device.product_id() == pid)
+}
+
+/// Manual override of HID report size
+///
+/// This is only needed for devices which:
+///
+/// 1. Don't use the default 64 bytes, and
+/// 2. Don't respond to being asked the report size until they've received a full packet,
+///    causing a long delay at startup as many 64-byte packets must be sent with a timeout
+///    between each one.
+///
+/// Devices not on this list will still work but with a slow startup time
+/// as the packet size is auto-determined.
+#[cfg(feature = "cmsisdap_v1")]
+fn hid_report_size(device: &hidapi::DeviceInfo) -> usize {
+    // EDBG are 512-bytes and don't respond until you give them 512 bytes.
+    if device.vendor_id() == 0x03eb
+        && let Some(s) = device.product_string()
+        && s.contains("EDBG")
+    {
+        tracing::debug!("Overriding packet size to 512 bytes for EDBG device");
+        return 512;
+    }
+
+    // Default for almost all CMSIS-DAPv1 devices.
+    // Devices are queried at startup for their packet size so it can usually be increased quickly
+    // if needed; only some devices are annoying to query the packet size so are worth an override.
+    64
 }
