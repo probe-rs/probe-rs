@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use probe_rs::{Core, Error, HaltReason, VectorCatchCondition};
 
-use crate::rpc::SessionState;
+use crate::rpc::{ObjectStorage, SessionState};
 
 pub struct RunLoop {
     pub core_id: usize,
@@ -70,7 +70,8 @@ impl RunLoop {
                 }
             }
 
-            poller.start(&mut core)?;
+            let object_storage = shared_session.object_storage();
+            poller.start(&object_storage, &mut core)?;
 
             if core.core_halted()? {
                 core.run()?;
@@ -82,8 +83,9 @@ impl RunLoop {
         // Clean up run loop
         let mut session = shared_session.session_blocking();
         let mut core = session.core(self.core_id)?;
+        let object_storage = shared_session.object_storage();
         // Always clean up after RTT but don't overwrite the original result.
-        let poller_exit_result = poller.exit(&mut core);
+        let poller_exit_result = poller.exit(&object_storage, &mut core);
         if result.is_ok() {
             // If the result is Ok, we return the potential error during cleanup.
             poller_exit_result?;
@@ -135,6 +137,7 @@ impl RunLoop {
         let mut core = session.core(self.core_id)?;
 
         let mut next_poll = Duration::from_millis(100);
+        let object_storage = shared_session.object_storage();
 
         // check for halt first, poll rtt after.
         // this is important so we do one last poll after halt, so we flush all messages
@@ -161,7 +164,7 @@ impl RunLoop {
             probe_rs::CoreStatus::LockedUp => Some(Ok(ReturnReason::LockedUp)),
         };
 
-        let poller_result = poller.poll(&mut core);
+        let poller_result = poller.poll(&object_storage, &mut core);
 
         if let Some(reason) = return_reason {
             return reason.map(ControlFlow::Break);
@@ -179,23 +182,23 @@ impl RunLoop {
 }
 
 pub trait RunLoopPoller {
-    fn start(&mut self, core: &mut Core<'_>) -> Result<()>;
-    fn poll(&mut self, core: &mut Core<'_>) -> Result<Duration>;
-    fn exit(&mut self, core: &mut Core<'_>) -> Result<()>;
+    fn start(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> Result<()>;
+    fn poll(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> Result<Duration>;
+    fn exit(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> Result<()>;
 }
 
 pub struct NoopPoller;
 
 impl RunLoopPoller for NoopPoller {
-    fn start(&mut self, _core: &mut Core<'_>) -> Result<()> {
+    fn start(&mut self, _: &ObjectStorage, _core: &mut Core<'_>) -> Result<()> {
         Ok(())
     }
 
-    fn poll(&mut self, _core: &mut Core<'_>) -> Result<Duration> {
+    fn poll(&mut self, _: &ObjectStorage, _core: &mut Core<'_>) -> Result<Duration> {
         Ok(Duration::from_secs(u64::MAX))
     }
 
-    fn exit(&mut self, _core: &mut Core<'_>) -> Result<()> {
+    fn exit(&mut self, _: &ObjectStorage, _core: &mut Core<'_>) -> Result<()> {
         Ok(())
     }
 }
@@ -204,27 +207,27 @@ impl<T> RunLoopPoller for Option<T>
 where
     T: RunLoopPoller,
 {
-    fn start(&mut self, core: &mut Core<'_>) -> Result<()> {
+    fn start(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> Result<()> {
         if let Some(poller) = self {
-            poller.start(core)
+            poller.start(objs, core)
         } else {
-            NoopPoller.start(core)
+            NoopPoller.start(objs, core)
         }
     }
 
-    fn poll(&mut self, core: &mut Core<'_>) -> Result<Duration> {
+    fn poll(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> Result<Duration> {
         if let Some(poller) = self {
-            poller.poll(core)
+            poller.poll(objs, core)
         } else {
-            NoopPoller.poll(core)
+            NoopPoller.poll(objs, core)
         }
     }
 
-    fn exit(&mut self, core: &mut Core<'_>) -> Result<()> {
+    fn exit(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> Result<()> {
         if let Some(poller) = self {
-            poller.exit(core)
+            poller.exit(objs, core)
         } else {
-            NoopPoller.exit(core)
+            NoopPoller.exit(objs, core)
         }
     }
 }

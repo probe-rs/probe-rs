@@ -21,6 +21,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::cmd::run::EmbeddedTestElfInfo;
 use crate::rpc::functions::monitor::MonitorExitReason;
+use crate::rpc::functions::rtt_client::RttClientKey;
 use crate::rpc::utils::semihosting::SemihostingOptions;
 use crate::util::rtt::{ChannelMode, RttChannelConfig};
 use crate::{
@@ -341,7 +342,6 @@ pub async fn rtt_client(
         channel_processors: vec![],
         defmt_data,
         log_format,
-        down_channels: vec![],
     })
 }
 
@@ -501,7 +501,7 @@ pub async fn monitor(
     target_output_files: &mut TargetOutputFiles,
     stack_frame_limit: u32,
 ) -> anyhow::Result<()> {
-    let (sender, receiver) = oneshot::channel::<Vec<String>>();
+    let (sender, receiver) = oneshot::channel::<(Key<RttClient>, Vec<String>)>();
     let (writer_sender, writer_receiver) = oneshot::channel::<SharedWriter>();
     let mut sender = Some((sender, writer_receiver));
 
@@ -510,10 +510,11 @@ pub async fn monitor(
 
         let sw = if let MonitorEvent::Rtt(RttEvent::Discovered { down_channels, .. }) = &msg
             && !down_channels.is_empty()
-            && let Some((sender, mut writer_receiver)) = sender.take()
+            && let Some((sender, writer_receiver)) = sender.take()
             && !sender.is_closed()
+            && let Some(client) = client.as_ref()
         {
-            _ = sender.send(down_channels.clone());
+            _ = sender.send((client.handle(), down_channels.clone()));
             writer_receiver.await.ok()
         } else {
             None
@@ -548,7 +549,7 @@ pub async fn monitor(
             },
             channels = receiver => {
                 // Send down channels to the Readline future.
-                down_channels_sender.send(channels).unwrap();
+                _ = down_channels_sender.send(channels);
             }
         }
         pending().await
@@ -557,9 +558,10 @@ pub async fn monitor(
     // The Readline future. Gets activated when the RTT client discovers down channels.
     // Takes over from the previous future. Displays a prompt and waits for user input.
     let input = async {
-        let channels = down_channels_receiver.await.flatten().unwrap_or_default();
+        let (rtt_client_handle, channels) = down_channels_receiver.await.flatten().unwrap();
 
-        let mut selected_channel: usize = 0;
+        let channel_count = channels.len() as u32;
+        let mut selected_channel: u32 = 0;
 
         let prompt = Prompt(format!("{}> ", &channels[0])).to_string();
         if let Ok((mut rl, sw)) = Readline::new(prompt) {
@@ -569,13 +571,22 @@ pub async fn monitor(
                     match rl.readline().await {
                         Ok(ReadlineEvent::Line(line)) => {
                             rl.add_history_entry(line.clone());
-                            // TODO: send to device
+                            if let Err(error) = session
+                                .send_to_rtt(rtt_client_handle, selected_channel, line.into_bytes())
+                                .await
+                            {
+                                eprintln!("Error sending data to RTT: {:?}", error);
+                                break;
+                            }
                         }
                         Ok(ReadlineEvent::Eof) => {
-                            if channels.len() > 1 {
-                                selected_channel = (selected_channel + 1) % channels.len();
-                                let p = format!("{}> ", &channels[selected_channel]);
-                                rl.update_prompt(&Prompt(&p).to_string());
+                            if channel_count > 1 {
+                                selected_channel = (selected_channel + 1) % channel_count;
+                                let p = format!("{}> ", &channels[selected_channel as usize]);
+                                if let Err(error) = rl.update_prompt(&Prompt(&p).to_string()) {
+                                    eprintln!("Error updating prompt: {:?}", error);
+                                    break;
+                                }
                             }
                         }
                         Ok(ReadlineEvent::Interrupted) => {
@@ -592,8 +603,8 @@ pub async fn monitor(
             }
             _ = rl.flush();
         } else {
-            eprintln("Failed to create readline");
-            tokio::signal::ctrl_c().await;
+            eprintln!("Failed to create readline");
+            _ = tokio::signal::ctrl_c().await;
 
             eprintln!("Received Ctrl+C, exiting");
         };
@@ -779,7 +790,7 @@ pub async fn test(
 fn create_trial(
     session: &SessionInterface,
     path: &Path,
-    rtt_client: Option<Key<RttClient>>,
+    rtt_client: Option<RttClientKey>,
     semihosting_options: SemihostingOptions,
     sender: UnboundedSender<MonitorEvent>,
     token: &CancellationToken,
@@ -886,9 +897,8 @@ where
 }
 
 pub struct CliRttClient {
-    handle: Key<RttClient>,
+    handle: RttClientKey,
     channel_processors: Vec<Channel>,
-    down_channels: Vec<String>,
 
     // Data necessary to create the channel processors once we know the channel names.
     log_format: Option<String>,
@@ -899,14 +909,13 @@ pub struct CliRttClient {
 }
 
 impl CliRttClient {
-    pub fn handle(&self) -> Key<RttClient> {
+    pub fn handle(&self) -> RttClientKey {
         self.handle
     }
 
     fn on_channels_discovered(
         &mut self,
         up_channels: &[String],
-        down_channels: &[String],
         shared_writer: Option<SharedWriter>,
     ) {
         // Already configured.
@@ -962,15 +971,12 @@ async fn handle_monitor_event(
     shared_writer: Option<SharedWriter>,
 ) {
     match event {
-        MonitorEvent::Rtt(RttEvent::Discovered {
-            up_channels,
-            down_channels,
-        }) => {
+        MonitorEvent::Rtt(RttEvent::Discovered { up_channels, .. }) => {
             let Some(client) = rtt_client else {
                 return;
             };
 
-            client.on_channels_discovered(&up_channels, &down_channels, shared_writer);
+            client.on_channels_discovered(&up_channels, shared_writer);
         }
         MonitorEvent::Rtt(RttEvent::Output { channel, bytes }) => {
             let Some(client) = rtt_client else {
