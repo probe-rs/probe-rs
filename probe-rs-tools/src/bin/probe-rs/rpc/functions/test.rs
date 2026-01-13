@@ -6,20 +6,18 @@ use postcard_schema::Schema;
 use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    rpc::{
-        Key,
-        functions::{
-            ListTestsEndpoint, RpcResult, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
-            flash::BootInfo,
-            monitor::{MonitorSender, RttPoller, SemihostingEvent},
-        },
-        utils::{
-            run_loop::{ReturnReason, RunLoop},
-            semihosting::{SemihostingFileManager, SemihostingOptions},
-        },
+use crate::rpc::{
+    Key,
+    functions::{
+        ListTestsEndpoint, RpcResult, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
+        flash::BootInfo,
+        monitor::{MonitorSender, RttPoller, SemihostingEvent},
+        rtt_client::RttClientKey,
     },
-    util::rtt::client::RttClient,
+    utils::{
+        run_loop::{ReturnReason, RunLoop},
+        semihosting::{SemihostingFileManager, SemihostingOptions},
+    },
 };
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
@@ -106,7 +104,7 @@ pub struct ListTestsRequest {
     pub sessid: Key<Session>,
     pub boot_info: BootInfo,
     /// RTT client if used.
-    pub rtt_client: Option<Key<RttClient>>,
+    pub rtt_client: Option<RttClientKey>,
     pub semihosting_options: SemihostingOptions,
 }
 
@@ -139,11 +137,10 @@ fn list_tests_impl(
         sender.send_semihosting_event(event).unwrap()
     });
 
-    let mut rtt_client = request
+    let core_id = request
         .rtt_client
-        .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
-
-    let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
+        .map(|rtt_client| ctx.object_mut_blocking(rtt_client).core_id())
+        .unwrap_or(0);
 
     let mut run_loop = RunLoop {
         core_id,
@@ -155,7 +152,7 @@ fn list_tests_impl(
         request.boot_info.prepare(&mut session, run_loop.core_id)?;
     }
 
-    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
+    let poller = request.rtt_client.map(|client| RttPoller {
         rtt_client: client,
         clear_control_block: true,
         sender: |message| {
@@ -192,7 +189,7 @@ pub struct RunTestRequest {
     pub sessid: Key<Session>,
     pub test: Test,
     /// RTT client if used.
-    pub rtt_client: Option<Key<RttClient>>,
+    pub rtt_client: Option<RttClientKey>,
     pub semihosting_options: SemihostingOptions,
 }
 
@@ -227,11 +224,10 @@ fn run_test_impl(
 
     let shared_session = ctx.shared_session(request.sessid);
 
-    let mut rtt_client = request
+    let core_id = request
         .rtt_client
-        .map(|rtt_client| ctx.object_mut_blocking(rtt_client));
-
-    let core_id = rtt_client.as_ref().map(|rtt| rtt.core_id()).unwrap_or(0);
+        .map(|rtt_client| ctx.object_mut_blocking(rtt_client).core_id())
+        .unwrap_or(0);
 
     {
         let mut session = shared_session.session_blocking();
@@ -250,7 +246,7 @@ fn run_test_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let poller = rtt_client.as_deref_mut().map(|client| RttPoller {
+    let poller = request.rtt_client.map(|client| RttPoller {
         rtt_client: client,
         clear_control_block: true,
         sender: |message| {
