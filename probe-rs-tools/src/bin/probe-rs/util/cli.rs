@@ -523,6 +523,8 @@ pub async fn monitor(
         handle_monitor_event(&mut client, msg, target_output_files, sw).await;
     });
 
+    // FIXME: respect --non-interactive. We should maybe add --ignore-down-channels or similar option?
+
     // SIGTERM handler on *nix systems
     let terminate = async {
         #[cfg(unix)]
