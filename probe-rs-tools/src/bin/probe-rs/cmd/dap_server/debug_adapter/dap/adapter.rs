@@ -897,7 +897,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }),
                     end_column: None,
                     end_line: None,
-                    id: None,
+                    id: Some(address as i64),
                     line: source_location.line.map(|line| line as i64),
                     message: Some(format!(
                         "Source breakpoint at memory address: {address:#010X}"
@@ -1266,15 +1266,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         let arguments: DisassembleArguments = get_arguments(self, request)?;
 
-        let address = if arguments.memory_reference.starts_with("0x")
-            || arguments.memory_reference.starts_with("0X")
-        {
-            u32::from_str_radix(&arguments.memory_reference[2..], 16)
-        } else {
-            arguments.memory_reference.parse()
-        };
-
-        if let Ok(memory_reference) = address {
+        if let Ok(memory_reference) = parse_int::parse::<u64>(&arguments.memory_reference) {
             match self.get_disassembled_source(
                 target_core,
                 memory_reference as i64,

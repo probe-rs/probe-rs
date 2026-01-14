@@ -113,8 +113,8 @@ fn examine_memory(
     let mut input_address = 0_u64;
 
     for input_argument in input_arguments {
-        if input_argument.starts_with("0x") || input_argument.starts_with("0X") {
-            MemoryAddress(input_address) = input_argument.try_into()?;
+        if let Ok(MemoryAddress(addr)) = MemoryAddress::try_from(input_argument) {
+            input_address = addr;
         } else if input_argument.starts_with('/') {
             let Some(gdb_nuf_string) = input_argument.strip_prefix('/') else {
                 return Err(DebuggerError::UserMessage(
