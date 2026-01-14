@@ -16,20 +16,12 @@ impl TryFrom<&str> for MemoryAddress {
     type Error = DebuggerError;
     /// Convert either a decimal or hexadecimal string into a `MemoryAddress(u64)`.
     fn try_from(string_address: &str) -> Result<Self, Self::Error> {
-        Ok(MemoryAddress(
-            if let Some(addr) = string_address.strip_prefix("0x") {
-                u64::from_str_radix(addr, 16)
-            } else if let Some(addr) = string_address.strip_prefix("0X") {
-                u64::from_str_radix(addr, 16)
-            } else {
-                string_address.parse()
-            }
-            .map_err(|error| {
-                DebuggerError::UserMessage(format!(
-                    "Invalid memory address: {string_address:?}: {error:?}"
-                ))
-            })?,
-        ))
+        let address = parse_int::parse(string_address).map_err(|error| {
+            DebuggerError::UserMessage(format!(
+                "Invalid memory address: {string_address:?}: {error:?}"
+            ))
+        })?;
+        Ok(MemoryAddress(address))
     }
 }
 
