@@ -341,6 +341,8 @@ impl CoreHandle<'_> {
     }
 
     /// Clear a single breakpoint from target configuration.
+    ///
+    /// Returns whether the breakpoint was successfully cleared.
     pub(crate) fn clear_breakpoint(&mut self, address: u64) -> Result<bool> {
         match self.core.clear_hw_breakpoint(address) {
             Ok(_) => {}
