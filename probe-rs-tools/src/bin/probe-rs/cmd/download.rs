@@ -29,7 +29,6 @@ impl Cmd {
         cli::flash(
             &session,
             &self.path,
-            self.download_options.chip_erase,
             self.format_options,
             self.download_options,
             None,

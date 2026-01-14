@@ -326,7 +326,6 @@ pub async fn rtt_client(
 pub async fn flash(
     session: &SessionInterface,
     path: &Path,
-    chip_erase: bool,
     format: FormatOptions,
     download_options: BinaryDownloadOptions,
     rtt_client: Option<&mut CliRttClient>,
@@ -337,7 +336,7 @@ pub async fn flash(
 
     let mut options = DownloadOptions {
         keep_unwritten_bytes: download_options.restore_unwritten,
-        do_chip_erase: chip_erase,
+        do_chip_erase: download_options.chip_erase,
         skip_erase: false,
         verify: download_options.verify,
         disable_double_buffering: download_options.disable_double_buffering,

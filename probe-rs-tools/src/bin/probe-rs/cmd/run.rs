@@ -224,7 +224,6 @@ impl Cmd {
         let boot_info = cli::flash(
             &session,
             &self.path,
-            self.download_options.chip_erase,
             self.format_options,
             self.download_options,
             Some(&mut rtt_client),
