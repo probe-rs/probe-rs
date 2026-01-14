@@ -143,8 +143,8 @@ impl Cli {
     fn elf(&self) -> Option<PathBuf> {
         match self.subcommand {
             Subcommand::Download(ref cmd) => Some(cmd.path.clone()),
-            Subcommand::Run(ref cmd) => Some(cmd.shared_options.path.clone()),
-            Subcommand::Attach(ref cmd) => Some(cmd.run.shared_options.path.clone()),
+            Subcommand::Run(ref cmd) => Some(cmd.path.clone()),
+            Subcommand::Attach(ref cmd) => Some(cmd.run.path.clone()),
             Subcommand::Verify(ref cmd) => Some(cmd.path.clone()),
             _ => None,
         }

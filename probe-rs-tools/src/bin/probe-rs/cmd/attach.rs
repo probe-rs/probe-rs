@@ -2,6 +2,7 @@ use time::UtcOffset;
 
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
+use crate::rpc::functions::rtt_client::ScanRegion;
 use crate::util::cli::{self, connect_target_output_files, parse_semihosting_options, rtt_client};
 
 #[derive(clap::Parser)]
@@ -13,35 +14,34 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
-        let session =
-            cli::attach_probe(&client, self.run.shared_options.probe_options, true).await?;
+        let session = cli::attach_probe(&client, self.run.probe_options, true).await?;
 
         let rtt_client = rtt_client(
             &session,
-            &self.run.shared_options.path,
-            match self.run.shared_options.rtt_scan_memory {
-                true => crate::rpc::functions::rtt_client::ScanRegion::TargetDefault,
-                false => crate::rpc::functions::rtt_client::ScanRegion::Ranges(vec![]),
+            &self.run.path,
+            match self.run.monitor_options.rtt_scan_memory {
+                true => ScanRegion::TargetDefault,
+                false => ScanRegion::Ranges(vec![]),
             },
-            self.run.shared_options.log_format,
-            !self.run.shared_options.no_timestamps,
-            !self.run.shared_options.no_location,
+            self.run.monitor_options.log_format,
+            !self.run.monitor_options.no_timestamps,
+            !self.run.monitor_options.no_location,
             Some(utc_offset),
         )
         .await?;
 
         let mut target_output_files =
-            connect_target_output_files(self.run.shared_options.target_output_file).await?;
+            connect_target_output_files(self.run.monitor_options.target_output_file).await?;
 
         let semihosting_options =
-            parse_semihosting_options(self.run.shared_options.semihosting_file)?;
+            parse_semihosting_options(self.run.monitor_options.semihosting_file)?;
 
         let client_handle = rtt_client.handle();
 
         cli::monitor(
             &session,
             MonitorMode::AttachToRunning,
-            &self.run.shared_options.path,
+            &self.run.path,
             Some(rtt_client),
             MonitorOptions {
                 catch_reset: !self.run.run_options.no_catch_reset,
@@ -49,9 +49,9 @@ impl Cmd {
                 rtt_client: Some(client_handle),
                 semihosting_options,
             },
-            self.run.shared_options.always_print_stacktrace,
+            self.run.monitor_options.always_print_stacktrace,
             &mut target_output_files,
-            self.run.shared_options.stack_frame_limit,
+            self.run.monitor_options.stack_frame_limit,
         )
         .await?;
 
