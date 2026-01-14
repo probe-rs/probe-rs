@@ -3011,6 +3011,7 @@ dependencies = [
  "itm",
  "jep106",
  "libtest-mimic",
+ "linkme",
  "num-traits",
  "parking_lot",
  "parse_int",

@@ -91,7 +91,7 @@ impl CoreHandle<'_> {
     ///
     /// This method is used to set the `last_known_status` to [`CoreStatus::Unknown`] (because we cannot verify that it will indeed resume running until we have polled it again),
     ///   as well as [`DebugAdapter::all_cores_halted`] = `false`, without notifying the client of any status changes.
-    pub(crate) fn reset_core_status<P: ProtocolAdapter>(
+    pub(crate) fn reset_core_status<P: ProtocolAdapter + ?Sized>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) {

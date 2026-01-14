@@ -59,10 +59,10 @@ impl ProtocolAdapter for CliAdapter {
         Ok(None)
     }
 
-    fn send_event<S: serde::Serialize>(
+    fn dyn_send_event(
         &mut self,
         event_type: &str,
-        event_body: Option<S>,
+        event_body: Option<serde_json::Value>,
     ) -> anyhow::Result<()> {
         let serialized_body = event_body.as_ref().map(serde_json::to_string).transpose()?;
 

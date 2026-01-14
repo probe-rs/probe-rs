@@ -42,7 +42,7 @@ type ProgressId = i64;
 
 /// A Debug Adapter Protocol "Debug Adapter",
 /// see <https://microsoft.github.io/debug-adapter-protocol/overview>
-pub struct DebugAdapter<P: ProtocolAdapter> {
+pub struct DebugAdapter<P: ProtocolAdapter + ?Sized> {
     pub(crate) halt_after_reset: bool,
     /// NOTE: VSCode sends a 'threads' request when it receives the response from the `ConfigurationDone` request, irrespective of target state.
     /// This can lead to duplicate `threads->stacktrace->etc.` sequences if & when the target halts and sends a 'stopped' event.
@@ -289,10 +289,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             } else if context == "repl" {
                 match self.handle_repl(target_core, &arguments) {
                     Ok(repl_response) => {
-                        // TODO: the REPL handlers should do all of this work, no post-processing should be done here.
-                        if target_core.core_data.last_known_status == CoreStatus::Running {
-                            self.all_cores_halted = false;
-                        }
                         // In all other cases, the response would have been updated by the repl command handler.
                         response_body.result = if repl_response.success {
                             repl_response
@@ -554,21 +550,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle<'_>,
         arguments: &EvaluateArguments,
     ) -> Result<Response, DebuggerError> {
-        if !target_core.core.core_halted()?
-            && !arguments.expression.starts_with("break")
-            && !arguments.expression.starts_with("quit")
-            && !arguments.expression.starts_with("help")
-        {
-            return Err(DebuggerError::UserMessage(
-                "The target is running. Only the 'break', 'help' or 'quit' commands are allowed."
-                    .to_string(),
-            ));
-        }
-
         // The target is halted, so we can allow any repl command.
         //TODO: Do we need to look for '/' in the expression, before we split it?
         // Now we can make sure we have a valid expression and evaluate it.
-        let (command_root, repl_commands) = build_expanded_commands(
+        let (command_root, last_piece, repl_commands) = build_expanded_commands(
             &target_core.core_data.repl_commands,
             arguments.expression.trim(),
         );
@@ -579,16 +564,23 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             )));
         };
 
+        if repl_command.requires_target_halted && !target_core.core.core_halted()? {
+            return Err(DebuggerError::UserMessage(
+                "The target is running. Only the 'break', 'help' or 'quit' commands are allowed."
+                    .to_string(),
+            ));
+        }
+
         // We have a valid repl command, so we can evaluate it.
         // First, let's extract the remainder of the arguments, so that we can pass them to the handler.
         let argument_string = arguments
             .expression
             .trim_start_matches(&command_root)
             .trim_start()
-            .trim_start_matches(repl_command.command)
+            .trim_start_matches(last_piece)
             .trim_start();
 
-        (repl_command.handler)(target_core, argument_string, arguments)
+        (repl_command.handler)(target_core, argument_string, arguments, self)
     }
 
     /// Works in tandem with the `evaluate` request, to provide possible completions in the Debug Console REPL window.

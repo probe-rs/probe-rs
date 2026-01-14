@@ -1178,13 +1178,11 @@ mod test {
             Ok(Some(next_request))
         }
 
-        fn send_event<S: serde::Serialize>(
+        fn dyn_send_event(
             &mut self,
             event_type: &str,
-            event_body: Option<S>,
+            event_body: Option<serde_json::Value>,
         ) -> anyhow::Result<()> {
-            let event_body = event_body.map(|s| serde_json::to_value(s).unwrap());
-
             if self.event_index >= self.expected_events.len() {
                 panic!(
                     "No more events expected, but got event_type={event_type:?}, event_body={event_body:?}"
