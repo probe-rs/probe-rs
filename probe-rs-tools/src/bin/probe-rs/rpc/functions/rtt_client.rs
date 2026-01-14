@@ -18,9 +18,6 @@ pub enum ScanRegion {
     #[default]
     Ram,
 
-    /// Limit scanning to the memory addresses covered by the default region of the target.
-    TargetDefault,
-
     /// Limit scanning to the memory addresses covered by all of the given ranges. It is up to the
     /// user to ensure that reading from this range will not read from undefined memory.
     Ranges(Vec<(u64, u64)>),
@@ -58,7 +55,6 @@ pub async fn create_rtt_client(
 
     let rtt_scan_regions = match request.scan_regions {
         ScanRegion::Ram => rtt::ScanRegion::Ram,
-        ScanRegion::TargetDefault => session.target().rtt_scan_regions.clone(),
         ScanRegion::Ranges(ranges) => {
             rtt::ScanRegion::Ranges(ranges.into_iter().map(|(start, end)| start..end).collect())
         }

@@ -201,9 +201,9 @@ impl Cmd {
 
         let mut rtt_client = rtt_client(
             &session,
-            &self.path,
+            Some(&self.path),
             match self.monitor_options.rtt_scan_memory {
-                true => ScanRegion::TargetDefault,
+                true => ScanRegion::Ram,
                 false => ScanRegion::Ranges(vec![]),
             },
             self.monitor_options.log_format,
@@ -265,7 +265,7 @@ impl Cmd {
             cli::monitor(
                 &session,
                 MonitorMode::Run(boot_info),
-                &self.path,
+                Some(&self.path),
                 Some(rtt_client),
                 MonitorOptions {
                     catch_reset: !self.run_options.no_catch_reset,

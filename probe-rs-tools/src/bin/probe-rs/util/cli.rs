@@ -277,16 +277,20 @@ pub(crate) fn parse_semihosting_options(arg: Vec<String>) -> anyhow::Result<Semi
 
 pub async fn rtt_client(
     session: &SessionInterface,
-    path: &Path,
+    path: Option<&Path>,
     mut scan_regions: ScanRegion,
     log_format: Option<String>,
     show_timestamps: bool,
     show_location: bool,
     timestamp_offset: Option<UtcOffset>,
 ) -> anyhow::Result<CliRttClient> {
-    let elf = tokio::fs::read(path)
-        .await
-        .with_context(|| format!("Failed to read firmware from {}", path.display()))?;
+    let elf = if let Some(path) = path {
+        tokio::fs::read(path)
+            .await
+            .with_context(|| format!("Failed to read firmware from {}", path.display()))?
+    } else {
+        vec![]
+    };
 
     let mut load_defmt_data = false;
     match rtt::get_rtt_symbol_from_bytes(&elf) {
@@ -296,7 +300,7 @@ pub async fn rtt_client(
             load_defmt_data = true;
         }
         Err(RttSymbolError::RttSymbolNotFound) => {
-            load_defmt_data = true;
+            load_defmt_data = !elf.is_empty();
         }
         _ => {}
     }
@@ -472,7 +476,7 @@ impl MultiSubscription for MonitorSubscription {
 pub async fn monitor(
     session: &SessionInterface,
     mode: MonitorMode,
-    path: &Path,
+    path: Option<&Path>,
     mut rtt_client: Option<CliRttClient>,
     options: MonitorOptions,
     print_stack_trace: bool,
@@ -548,7 +552,11 @@ pub async fn monitor(
     };
 
     if print_stack_trace {
-        display_stack_trace(session, path, stack_frame_limit).await?;
+        if let Some(path) = path {
+            display_stack_trace(session, path, stack_frame_limit).await?;
+        } else {
+            eprintln!("Can not print stack trace because firmware is not available");
+        }
     }
 
     result
