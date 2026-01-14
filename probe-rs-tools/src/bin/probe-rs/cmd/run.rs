@@ -159,9 +159,16 @@ pub(crate) struct MonitoringOptions {
     #[clap(long)]
     pub(crate) target_output_file: Vec<String>,
 
-    /// Scan the memory to find the RTT control block
-    #[clap(long)]
-    pub(crate) rtt_scan_memory: bool,
+    /// Memory region to scan for control block.
+    ///
+    /// If probe-rs finds the exact location in the binary, that location will be used. If probe-rs does not find the exact location,
+    /// it will scan the specified region for the control block.
+    ///
+    /// You can specify either 'ram' to scan the whole memory, an exact starting address '0x1000' or a range such as '0x0000..0x1000'. Both decimal and hex are accepted.
+    ///
+    /// If no region is specified, probe-rs will not scan and will not poll RTT.
+    #[clap(long, default_value = "", value_parser = parse_scan_region)]
+    pub(crate) scan_region: ScanRegion,
 
     /// Always print the stacktrace on ctrl + c.
     #[clap(long)]
@@ -202,10 +209,7 @@ impl Cmd {
         let mut rtt_client = rtt_client(
             &session,
             Some(&self.path),
-            match self.monitor_options.rtt_scan_memory {
-                true => ScanRegion::Ram,
-                false => ScanRegion::Ranges(vec![]),
-            },
+            self.monitor_options.scan_region,
             self.monitor_options.log_format,
             !self.monitor_options.no_timestamps,
             !self.monitor_options.no_location,
@@ -464,5 +468,27 @@ fn detect_run_mode(cmd: &Cmd) -> anyhow::Result<RunMode> {
 
         tracing::debug!("No embedded-test in ELF file. Running as normal");
         Ok(RunMode::Normal)
+    }
+}
+
+fn parse_scan_region(mut src: &str) -> anyhow::Result<ScanRegion> {
+    src = src.trim();
+    if src.is_empty() {
+        return Ok(ScanRegion::Ranges(vec![]));
+    }
+
+    if src.eq_ignore_ascii_case("ram") {
+        return Ok(ScanRegion::Ram);
+    }
+
+    let parts = src
+        .split("..")
+        .map(parse_int::parse::<u64>)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    match *parts.as_slice() {
+        [addr] => Ok(ScanRegion::Exact(addr)),
+        [start, end] => Ok(ScanRegion::Ranges(vec![(start, end)])),
+        _ => anyhow::bail!("Invalid range: multiple '..'s"),
     }
 }

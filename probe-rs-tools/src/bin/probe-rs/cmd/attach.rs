@@ -6,7 +6,6 @@ use crate::FormatOptions;
 use crate::cmd::run::{MonitoringOptions, NormalRunOptions};
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
-use crate::rpc::functions::rtt_client::ScanRegion;
 use crate::util::cli::{self, connect_target_output_files, parse_semihosting_options, rtt_client};
 use crate::util::common_options::ProbeOptions;
 
@@ -38,7 +37,7 @@ impl Cmd {
         let rtt_client = rtt_client(
             &session,
             self.path.as_deref(),
-            ScanRegion::Ram, // TODO: specify scanned range
+            self.monitor_options.scan_region,
             self.monitor_options.log_format,
             !self.monitor_options.no_timestamps,
             !self.monitor_options.no_location,
