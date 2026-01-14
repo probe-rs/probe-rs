@@ -16,6 +16,7 @@ use tokio_util::sync::CancellationToken;
 use crate::cmd::run::EmbeddedTestElfInfo;
 use crate::rpc::functions::monitor::MonitorExitReason;
 use crate::rpc::utils::semihosting::SemihostingOptions;
+use crate::util::rtt::{ChannelMode, RttChannelConfig};
 use crate::{
     FormatOptions,
     rpc::{
@@ -275,6 +276,7 @@ pub(crate) fn parse_semihosting_options(arg: Vec<String>) -> anyhow::Result<Semi
     Ok(options)
 }
 
+#[expect(clippy::too_many_arguments)]
 pub async fn rtt_client(
     session: &SessionInterface,
     path: Option<&Path>,
@@ -282,6 +284,7 @@ pub async fn rtt_client(
     log_format: Option<String>,
     show_timestamps: bool,
     show_location: bool,
+    rtt_channel_mode: ChannelMode,
     timestamp_offset: Option<UtcOffset>,
 ) -> anyhow::Result<CliRttClient> {
     let elf = if let Some(path) = path {
@@ -311,9 +314,17 @@ pub async fn rtt_client(
         None
     };
 
-    // We don't really know what to configure here, so we just use the defaults: Defmt channels
-    // will be set to BlockIfFull, others will not be changed.
-    let rtt_client = session.create_rtt_client(scan_regions, vec![]).await?;
+    // We don't really know what to configure here, so we set a default configuration if we can, but that's it.
+    let rtt_client = session
+        .create_rtt_client(
+            scan_regions,
+            vec![],
+            RttChannelConfig {
+                mode: Some(rtt_channel_mode),
+                ..Default::default()
+            },
+        )
+        .await?;
 
     // The actual data processor objects will be created once we have the channel names.
     Ok(CliRttClient {

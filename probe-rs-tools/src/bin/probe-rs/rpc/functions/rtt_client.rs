@@ -37,6 +37,9 @@ pub struct CreateRttClientRequest {
 
     /// Channel configuration.
     pub config: Vec<RttChannelConfig>,
+
+    /// Default channel configuration.
+    pub default_config: RttChannelConfig,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -65,6 +68,7 @@ pub async fn create_rtt_client(
         RttConfig {
             enabled: true,
             channels: request.config,
+            default_config: request.default_config,
         },
         rtt_scan_regions,
         session.target(),

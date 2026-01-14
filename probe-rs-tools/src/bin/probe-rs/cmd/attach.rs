@@ -41,6 +41,7 @@ impl Cmd {
             self.monitor_options.log_format,
             !self.monitor_options.no_timestamps,
             !self.monitor_options.no_location,
+            self.monitor_options.rtt_channel_mode,
             Some(utc_offset),
         )
         .await?;

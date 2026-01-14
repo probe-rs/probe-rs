@@ -8,6 +8,7 @@ use crate::rpc::functions::test::{Test, TestDefinition};
 use crate::FormatOptions;
 use crate::util::cli::{self, connect_target_output_files, parse_semihosting_options, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
+use crate::util::rtt::ChannelMode;
 
 use anyhow::{Context, anyhow};
 use goblin::elf::Elf;
@@ -170,6 +171,12 @@ pub(crate) struct MonitoringOptions {
     #[clap(long, default_value = "", value_parser = parse_scan_region)]
     pub(crate) scan_region: ScanRegion,
 
+    /// RTT channel mode to use.
+    ///
+    /// By default, probe-rs will configure RTT to block when the buffer is full, to avoid losing data. This option can override that behavior.
+    #[clap(long, default_value = "block-if-full")]
+    pub(crate) rtt_channel_mode: ChannelMode,
+
     /// Always print the stacktrace on ctrl + c.
     #[clap(long)]
     pub(crate) always_print_stacktrace: bool,
@@ -213,6 +220,7 @@ impl Cmd {
             self.monitor_options.log_format,
             !self.monitor_options.no_timestamps,
             !self.monitor_options.no_location,
+            self.monitor_options.rtt_channel_mode,
             Some(utc_offset),
         )
         .await?;

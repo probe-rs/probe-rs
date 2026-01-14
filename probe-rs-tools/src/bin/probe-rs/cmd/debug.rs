@@ -278,6 +278,7 @@ impl Cmd {
                         rtt_config: RttConfig {
                             enabled: false,
                             channels: vec![],
+                            default_config: Default::default(),
                         },
                         catch_hardfault: !self.no_catch_hardfault,
                         catch_reset: !self.no_catch_reset,
