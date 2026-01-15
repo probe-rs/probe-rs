@@ -2998,6 +2998,7 @@ dependencies = [
  "directories",
  "docsplay",
  "dunce",
+ "espflash",
  "fastrand",
  "figment",
  "futures-util",

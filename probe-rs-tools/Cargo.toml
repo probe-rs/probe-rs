@@ -38,6 +38,7 @@ thiserror = { workspace = true }
 tracing = "0.1"
 typed-path = "0.12"
 probe-rs-mi = { workspace = true }
+espflash = { version = "4", default-features = false }
 
 itertools = "0.14"
 

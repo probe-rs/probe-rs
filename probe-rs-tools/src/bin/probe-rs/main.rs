@@ -11,7 +11,7 @@ use std::str::FromStr;
 use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::{Context, Result};
-use clap::{ArgMatches, CommandFactory, FromArgMatches};
+use clap::{ArgMatches, CommandFactory, FromArgMatches, ValueEnum};
 use colored::Colorize;
 use figment::Figment;
 use figment::providers::{Data, Format as _, Json, Toml, Yaml};
@@ -236,6 +236,96 @@ pub struct BinaryCliOptions {
     skip: u32,
 }
 
+/// Supported flash frequencies
+///
+/// Note that not all frequencies are supported by each target device.
+#[derive(
+    Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ValueEnum, Schema,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum EspFlashFrequency {
+    /// 12 MHz
+    #[serde(rename = "12MHz")]
+    _12Mhz,
+    /// 15 MHz
+    #[serde(rename = "15MHz")]
+    _15Mhz,
+    /// 16 MHz
+    #[serde(rename = "16MHz")]
+    _16Mhz,
+    /// 20 MHz
+    #[serde(rename = "20MHz")]
+    _20Mhz,
+    /// 24 MHz
+    #[serde(rename = "24MHz")]
+    _24Mhz,
+    /// 26 MHz
+    #[serde(rename = "26MHz")]
+    _26Mhz,
+    /// 30 MHz
+    #[serde(rename = "30MHz")]
+    _30Mhz,
+    /// 40 MHz
+    #[serde(rename = "40MHz")]
+    #[default]
+    _40Mhz,
+    /// 48 MHz
+    #[serde(rename = "48MHz")]
+    _48Mhz,
+    /// 60 MHz
+    #[serde(rename = "60MHz")]
+    _60Mhz,
+    /// 80 MHz
+    #[serde(rename = "80MHz")]
+    _80Mhz,
+}
+
+impl From<EspFlashFrequency> for espflash::flasher::FlashFrequency {
+    fn from(freq: EspFlashFrequency) -> Self {
+        match freq {
+            EspFlashFrequency::_12Mhz => espflash::flasher::FlashFrequency::_12Mhz,
+            EspFlashFrequency::_15Mhz => espflash::flasher::FlashFrequency::_15Mhz,
+            EspFlashFrequency::_16Mhz => espflash::flasher::FlashFrequency::_16Mhz,
+            EspFlashFrequency::_20Mhz => espflash::flasher::FlashFrequency::_20Mhz,
+            EspFlashFrequency::_24Mhz => espflash::flasher::FlashFrequency::_24Mhz,
+            EspFlashFrequency::_26Mhz => espflash::flasher::FlashFrequency::_26Mhz,
+            EspFlashFrequency::_30Mhz => espflash::flasher::FlashFrequency::_30Mhz,
+            EspFlashFrequency::_40Mhz => espflash::flasher::FlashFrequency::_40Mhz,
+            EspFlashFrequency::_48Mhz => espflash::flasher::FlashFrequency::_48Mhz,
+            EspFlashFrequency::_60Mhz => espflash::flasher::FlashFrequency::_60Mhz,
+            EspFlashFrequency::_80Mhz => espflash::flasher::FlashFrequency::_80Mhz,
+        }
+    }
+}
+
+/// Supported flash modes
+#[derive(
+    Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ValueEnum, Schema,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum EspFlashMode {
+    /// Quad I/O (4 pins used for address & data)
+    Qio,
+    /// Quad Output (4 pins used for data)
+    Qout,
+    /// Dual I/O (2 pins used for address & data)
+    #[default]
+    Dio,
+    /// Dual Output (2 pins used for data)
+    Dout,
+}
+
+impl From<EspFlashMode> for espflash::flasher::FlashMode {
+    fn from(mode: EspFlashMode) -> Self {
+        match mode {
+            EspFlashMode::Qio => espflash::flasher::FlashMode::Qio,
+            EspFlashMode::Qout => espflash::flasher::FlashMode::Qout,
+            EspFlashMode::Dio => espflash::flasher::FlashMode::Dio,
+            EspFlashMode::Dout => espflash::flasher::FlashMode::Dout,
+        }
+    }
+}
+
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]
 #[serde(default)]
 pub struct IdfCliOptions {
@@ -248,6 +338,12 @@ pub struct IdfCliOptions {
     /// The idf target app partition
     #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
     idf_target_app_partition: Option<String>,
+    /// Flash SPI mode
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    idf_flash_mode: Option<EspFlashMode>,
+    /// Flash SPI frequency
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    idf_flash_freq: Option<EspFlashFrequency>,
 }
 
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]

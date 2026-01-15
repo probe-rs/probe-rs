@@ -1,3 +1,4 @@
+use espflash::flasher::{FlashFrequency, FlashMode};
 use object::{
     Endianness, Object, ObjectSection, elf::FileHeader32, elf::FileHeader64, elf::PT_LOAD,
     read::elf::ElfFile, read::elf::FileHeader, read::elf::ProgramHeader,
@@ -32,6 +33,10 @@ pub struct IdfOptions {
     pub partition_table: Option<PathBuf>,
     /// The target app partition
     pub target_app_partition: Option<String>,
+    /// Flash SPI mode
+    pub flash_mode: Option<FlashMode>,
+    /// Flash SPI frequency
+    pub flash_frequency: Option<FlashFrequency>,
 }
 
 /// Extended options for flashing an ELF file.
