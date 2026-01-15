@@ -1,6 +1,7 @@
 //! Types and functions for interacting with CoreSight Components
 
 mod dwt;
+mod etm;
 mod itm;
 mod scs;
 mod swo;
@@ -20,6 +21,7 @@ use crate::{
 
 pub use self::itm::Itm;
 pub use dwt::Dwt;
+pub use etm::{Etm, EtmDecoder};
 pub use scs::Scs;
 pub use swo::Swo;
 pub use tmc::TraceMemoryController;
@@ -273,6 +275,7 @@ pub(crate) fn setup_tracing(
 /// # Args
 /// * `interface` - The interface with the debug probe.
 /// * `components` - The CoreSight debug components identified in the system.
+/// * `trace_id` - The formatted frames id. This depends on whether you want ETM or ITM.
 ///
 /// # Note
 /// This function will read any available trace data in trace memory without blocking. At most,
@@ -285,6 +288,7 @@ pub(crate) fn setup_tracing(
 pub(crate) fn read_trace_memory(
     interface: &mut dyn ArmDebugInterface,
     components: &[CoresightComponent],
+    trace_id: Option<u8>,
 ) -> Result<Vec<u8>, ArmError> {
     let mut tmc =
         TraceMemoryController::new(interface, find_component(components, PeripheralType::Tmc)?);
@@ -323,23 +327,24 @@ pub(crate) fn read_trace_memory(
     // we care about is the ITM data.
 
     let mut id = 0.into();
-    let mut itm_trace = Vec::new();
+    let mut trace_data = Vec::new();
+    // Default to the ITM unless specified.
+    let trace_id = trace_id.unwrap_or(13);
 
     // Process each formatted frame and extract the multiplexed trace data.
     for frame_buffer in etf_trace.chunks_exact(16) {
         let mut frame = tmc::Frame::new(frame_buffer, id);
         for (id, data) in &mut frame {
-            match id.into() {
-                // ITM ATID, see Itm::tx_enable()
-                13 => itm_trace.push(data),
-                0 => (),
-                id => tracing::warn!("Unexpected trace source ATID {id}: {data}, ignoring"),
+            if trace_id == u8::from(id) {
+                trace_data.push(data);
+            } else {
+                tracing::warn!("Unexpected trace source ATID {:?}: {data}, ignoring", id);
             }
         }
         id = frame.id();
     }
 
-    Ok(itm_trace)
+    Ok(trace_data)
 }
 
 /// Configures DWT trace unit `unit` to begin tracing `address`.
