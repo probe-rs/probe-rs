@@ -266,6 +266,8 @@ impl ImageLoader for IdfLoader {
                 let mut settings = FlashSettings::default();
 
                 settings.size = flash_size;
+                settings.freq = self.0.flash_frequency;
+                settings.mode = self.0.flash_mode;
 
                 settings
             },
