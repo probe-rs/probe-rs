@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{collections::HashMap, ops::Range};
 
 use super::{
     DebugError, DebugRegisters, EndianReader, SourceLocation, VariableCache, debug_info::*,
@@ -23,6 +23,8 @@ pub struct UnitInfo {
     pub(crate) unit: gimli::Unit<GimliReader, usize>,
     dwarf_language: gimli::DwLang,
     language: Box<dyn language::ProgrammingLanguage>,
+    // A mapping from child die to parent die.
+    parents: HashMap<UnitOffset, UnitOffset>,
 }
 
 impl UnitInfo {
@@ -38,11 +40,49 @@ impl UnitInfo {
             gimli::DW_LANG_Rust
         };
 
+        let parents = Self::extract_parents(&unit);
+
         Self {
             unit,
             dwarf_language,
             language: language::from_dwarf(dwarf_language),
+            parents,
         }
+    }
+
+    fn extract_parents(unit: &gimli::Unit<GimliReader, usize>) -> HashMap<UnitOffset, UnitOffset> {
+        let mut parents = HashMap::new();
+        let mut entries_cursor = unit.entries();
+
+        let mut prev_offset = None;
+        while let Ok(Some((depth, current))) = entries_cursor.next_dfs() {
+            let parent_offset = match depth {
+                1 => {
+                    // Previous die is our parent.
+                    prev_offset
+                }
+                x if x <= 0 => {
+                    let walk_up = |mut levels| {
+                        // If 0:  Previous die is a sibling, we have the same parent.
+                        // If <0: Previous die is a child of one of our siblings. Trace back as many levels as needed, and grab the parent.
+                        let mut cursor = prev_offset.map(|off| parents.get(&off).copied())?;
+                        while levels != 0 {
+                            cursor = cursor.map(|off| parents.get(&off).copied())?;
+                            levels += 1;
+                        }
+                        cursor
+                    };
+                    walk_up(x)
+                }
+                _ => unreachable!("DFS algorithms never jump down multiple levels in the graph"),
+            };
+            if let Some(offset) = parent_offset {
+                parents.insert(current.offset(), offset);
+            }
+            prev_offset = Some(current.offset());
+        }
+
+        parents
     }
 
     /// Retrieve the value of the `DW_AT_language` attribute of the compilation unit.
