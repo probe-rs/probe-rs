@@ -55,7 +55,8 @@ ihex = "3.0"
 indicatif = "0.18"
 insta = { version = "1.38", default-features = false, features = ["yaml"] }
 itm = { version = "0.9.0-rc.1", default-features = false }
-parse_int = "0.9"
+# FIXME: Get the fix upstream and use next release of parse_int.
+parse_int = { git = "https://gitlab.com/sirhcel/parse_int.git", rev = "ec973a4a7adaf8c01ef6a43ed308b24a36608b51", features = ["ranges"] }
 libtest-mimic = "0.8.0"
 fastrand = "2.1"
 object = { version = "0.38", default-features = false, features = [
