@@ -1,3 +1,5 @@
+use probe_rs::architecture::riscv::communication_interface::RiscvError;
+use probe_rs::architecture::xtensa::communication_interface::XtensaError;
 use tokio_util::sync::CancellationToken;
 
 use std::ops::ControlFlow;
@@ -10,7 +12,6 @@ use probe_rs::{Core, Error, HaltReason, VectorCatchCondition};
 use crate::rpc::SessionState;
 
 pub struct RunLoop {
-    pub core_id: usize,
     pub cancellation_token: CancellationToken,
 }
 
@@ -47,33 +48,40 @@ impl RunLoop {
     where
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
-        // Prepare run loop
+        let core_count = 1; // shared_session.session_blocking().target().cores.len();
+
         {
             let mut session = shared_session.session_blocking();
-            let mut core = session.core(self.core_id)?;
-            if catch_hardfault || catch_reset {
-                if !core.core_halted()? {
-                    core.halt(Duration::from_millis(100))?;
-                }
+            for idx in 0..core_count {
+                let mut core = match session.core(idx) {
+                    Ok(core) => core,
+                    Err(Error::Xtensa(XtensaError::CoreDisabled)) => continue,
+                    Err(Error::Riscv(RiscvError::HartUnavailable)) => continue,
+                    Err(e) => return Err(e.into()),
+                };
+                if catch_hardfault || catch_reset {
+                    if !core.core_halted()? {
+                        core.halt(Duration::from_millis(100))?;
+                    }
 
-                if catch_hardfault {
-                    match core.enable_vector_catch(VectorCatchCondition::HardFault) {
-                        Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    if catch_hardfault {
+                        match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+                            Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                            Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                        }
+                    }
+                    if catch_reset {
+                        match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                            Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                            Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                        }
                     }
                 }
-                if catch_reset {
-                    match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
-                        Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                    }
+                poller.start(&mut core)?;
+
+                if core.core_halted()? {
+                    core.run()?;
                 }
-            }
-
-            poller.start(&mut core)?;
-
-            if core.core_halted()? {
-                core.run()?;
             }
         }
 
@@ -81,12 +89,19 @@ impl RunLoop {
 
         // Clean up run loop
         let mut session = shared_session.session_blocking();
-        let mut core = session.core(self.core_id)?;
         // Always clean up after RTT but don't overwrite the original result.
-        let poller_exit_result = poller.exit(&mut core);
-        if result.is_ok() {
-            // If the result is Ok, we return the potential error during cleanup.
-            poller_exit_result?;
+        for idx in 0..core_count {
+            let mut core = match session.core(idx) {
+                Ok(core) => core,
+                Err(Error::Xtensa(XtensaError::CoreDisabled)) => continue,
+                Err(Error::Riscv(RiscvError::HartUnavailable)) => continue,
+                Err(e) => return Err(e.into()),
+            };
+            let poller_exit_result = poller.exit(&mut core);
+            if result.is_ok() {
+                // If the result is Ok, we return the potential error during cleanup.
+                poller_exit_result?;
+            }
         }
 
         result
@@ -103,44 +118,63 @@ impl RunLoop {
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
         let start = Instant::now();
+        let core_count = 1; // shared_session.session_blocking().target().cores.len();
+
+        let mut next_wakeup = {
+            let now = Instant::now();
+            vec![now; core_count]
+        };
 
         loop {
-            match self.poll_once(shared_session, poller, predicate)? {
-                ControlFlow::Break(reason) => return Ok(reason),
-                ControlFlow::Continue(next_poll) => {
-                    if let Some(timeout) = timeout
-                        && start.elapsed() >= timeout
-                    {
-                        return Ok(ReturnReason::Timeout);
-                    }
+            let now = Instant::now();
+            let mut session = shared_session.session_blocking();
+            for idx in 0..core_count {
+                if now < next_wakeup[idx] {
+                    continue;
+                }
 
-                    // If the polling frequency is too high, the USB connection to the probe
-                    // can become unstable. Hence we only poll as little as necessary.
-                    thread::sleep(next_poll);
+                let mut core = match session.core(idx) {
+                    Ok(core) => core,
+                    Err(Error::Xtensa(XtensaError::CoreDisabled)) => continue,
+                    Err(Error::Riscv(RiscvError::HartUnavailable)) => continue,
+                    Err(e) => return Err(e.into()),
+                };
+                match self.poll_once(&mut core, poller, predicate)? {
+                    ControlFlow::Break(reason) => return Ok(reason),
+                    ControlFlow::Continue(next_poll) => {
+                        if let Some(timeout) = timeout
+                            && start.elapsed() >= timeout
+                        {
+                            return Ok(ReturnReason::Timeout);
+                        }
+
+                        next_wakeup[idx] = Instant::now() + next_poll;
+                    }
                 }
             }
+
+            // If the polling frequency is too high, the USB connection to the probe
+            // can become unstable. Hence we only poll as little as necessary.
+            thread::sleep(*next_wakeup.iter().min().unwrap() - Instant::now());
         }
     }
 
     fn poll_once<F, R>(
         &self,
-        shared_session: &SessionState<'_>,
+        core: &mut Core<'_>,
         poller: &mut impl RunLoopPoller,
         predicate: &mut F,
     ) -> Result<ControlFlow<ReturnReason<R>, Duration>>
     where
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
-        let mut session = shared_session.session_blocking();
-        let mut core = session.core(self.core_id)?;
-
         let mut next_poll = Duration::from_millis(100);
 
         // check for halt first, poll rtt after.
         // this is important so we do one last poll after halt, so we flush all messages
         // the core printed before halting, such as a panic message.
         let return_reason = match core.status()? {
-            probe_rs::CoreStatus::Halted(reason) => match predicate(reason, &mut core) {
+            probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core) {
                 Ok(Some(r)) => Some(Ok(ReturnReason::Predicate(r))),
                 Err(e) => Some(Err(e)),
                 Ok(None) => {
@@ -161,7 +195,7 @@ impl RunLoop {
             probe_rs::CoreStatus::LockedUp => Some(Ok(ReturnReason::LockedUp)),
         };
 
-        let poller_result = poller.poll(&mut core);
+        let poller_result = poller.poll(core);
 
         if let Some(reason) = return_reason {
             return reason.map(ControlFlow::Break);
