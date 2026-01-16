@@ -1,4 +1,4 @@
-use gimli::RunTimeEndian;
+use gimli::{RunTimeEndian, UnitOffset};
 use std::ops::Range;
 
 use crate::{MemoryInterface, stack_frame::StackFrameInfo};
@@ -142,7 +142,12 @@ impl<'a> FunctionDie<'a> {
             return None;
         };
         match debug_info.dwarf.string(fn_name_ref) {
-            Ok(fn_name_raw) => Some(String::from_utf8_lossy(&fn_name_raw).to_string()),
+            Ok(fn_name_raw) => {
+                let function_name = String::from_utf8_lossy(&fn_name_raw);
+
+                let language = crate::language::from_dwarf(self.unit_info.get_language());
+                Some(language.format_function_name(function_name.as_ref(), self, debug_info))
+            }
             Err(error) => {
                 tracing::debug!("No value for DW_AT_name: {:?}: error", error);
 
@@ -239,6 +244,11 @@ impl<'a> FunctionDie<'a> {
             }
             _ => Ok(None),
         }
+    }
+
+    #[expect(unused)]
+    pub(crate) fn parent_offset(&self) -> Option<UnitOffset> {
+        self.unit_info.parent_offset(self.function_die.offset())
     }
 }
 

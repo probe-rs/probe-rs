@@ -24,6 +24,7 @@ pub struct UnitInfo {
     dwarf_language: gimli::DwLang,
     language: Box<dyn language::ProgrammingLanguage>,
     // A mapping from child die to parent die.
+    #[expect(unused)]
     parents: HashMap<UnitOffset, UnitOffset>,
 }
 
@@ -2133,7 +2134,7 @@ impl UnitInfo {
     }
 
     /// Returns the `DW_AT_name` attribute in the subtree of a given node or recurses into the node referenced by the `DW_AT_type` attribute.
-    fn extract_type_name(
+    pub(crate) fn extract_type_name(
         &self,
         debug_info: &DebugInfo,
         entry: &gimli::DebuggingInformationEntry<GimliReader>,
@@ -2317,6 +2318,11 @@ impl UnitInfo {
         }
 
         Ok(Some(source_location))
+    }
+
+    #[expect(unused)]
+    pub(crate) fn parent_offset(&self, offset: UnitOffset) -> Option<UnitOffset> {
+        self.parents.get(&offset).copied()
     }
 }
 

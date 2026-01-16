@@ -1,6 +1,7 @@
 use crate::{
     DebugError, DebugInfo, GimliReader, ObjectRef, Variable, VariableCache, VariableLocation,
     VariableName, VariableNodeType, VariableType, VariableValue,
+    function_die::Die,
     language::{
         ProgrammingLanguage,
         value::{Value, format_float},
@@ -217,6 +218,15 @@ impl ProgrammingLanguage for Rust {
         }
     }
 
+    fn format_function_name(
+        &self,
+        function_name: &str,
+        _function_die: &crate::function_die::FunctionDie<'_>,
+        _debug_info: &super::DebugInfo,
+    ) -> String {
+        function_name.to_string()
+    }
+
     fn auto_resolve_children(&self, name: &str) -> bool {
         name.starts_with("&str")
             || name.starts_with("&[")
@@ -245,4 +255,9 @@ impl ProgrammingLanguage for Rust {
 
         Ok(())
     }
+}
+
+#[expect(unused)]
+fn is_datatype(entry: &Die) -> bool {
+    [gimli::DW_TAG_structure_type, gimli::DW_TAG_enumeration_type].contains(&entry.tag())
 }
