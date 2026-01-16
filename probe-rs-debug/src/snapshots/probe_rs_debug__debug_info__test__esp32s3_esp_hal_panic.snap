@@ -3257,7 +3257,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: ~
-- function_name: "poll<s3::____embassy_main_task::{async_fn_env#0}>"
+- function_name: "TaskStorage<s3::____embassy_main_task::{async_fn_env#0}>::poll<s3::____embassy_main_task::{async_fn_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 214
@@ -4818,7 +4818,7 @@ expression: stack_frames
                                 Base: u8
                               value: "0"
   canonical_frame_address: ~
-- function_name: "dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
+- function_name: "RunQueue::dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
     line: 85
@@ -5354,7 +5354,7 @@ expression: stack_frames
                                         Base: u8
                                       value: "0"
   canonical_frame_address: ~
-- function_name: poll
+- function_name: "SyncExecutor::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 423
@@ -5628,7 +5628,7 @@ expression: stack_frames
                         Pointer: "*mut ()"
                       value: "*mut () @ 0x00000004"
   canonical_frame_address: ~
-- function_name: poll
+- function_name: "Executor::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 533
@@ -5908,7 +5908,7 @@ expression: stack_frames
                             Pointer: "*mut ()"
                           value: "*mut () @ 0x00000004"
   canonical_frame_address: ~
-- function_name: "run<s3::__xtensa_lx_rt_main::{closure_env#0}>"
+- function_name: "Executor::run<s3::__xtensa_lx_rt_main::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
     line: 111

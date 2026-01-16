@@ -221,10 +221,19 @@ impl ProgrammingLanguage for Rust {
     fn format_function_name(
         &self,
         function_name: &str,
-        _function_die: &crate::function_die::FunctionDie<'_>,
-        _debug_info: &super::DebugInfo,
+        function_die: &crate::function_die::FunctionDie<'_>,
+        debug_info: &super::DebugInfo,
     ) -> String {
-        function_name.to_string()
+        let parent = function_die.parent_offset();
+        if let Some(parent_offset) = parent
+            && let Ok(die) = function_die.unit_info.unit.entry(parent_offset)
+            && is_datatype(&die)
+            && let Ok(Some(typename)) = function_die.unit_info.extract_type_name(debug_info, &die)
+        {
+            format!("{typename}::{function_name}")
+        } else {
+            function_name.to_string()
+        }
     }
 
     fn auto_resolve_children(&self, name: &str) -> bool {
@@ -257,7 +266,6 @@ impl ProgrammingLanguage for Rust {
     }
 }
 
-#[expect(unused)]
 fn is_datatype(entry: &Die) -> bool {
     [gimli::DW_TAG_structure_type, gimli::DW_TAG_enumeration_type].contains(&entry.tag())
 }

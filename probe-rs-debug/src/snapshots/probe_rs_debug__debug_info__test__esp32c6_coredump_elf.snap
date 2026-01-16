@@ -1906,7 +1906,7 @@ expression: stack_frames
                     Enum: Unit
                   value: "Unit::Unit0"
   canonical_frame_address: 1082582304
-- function_name: "poll<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+- function_name: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 214
@@ -2790,7 +2790,7 @@ expression: stack_frames
                     Enum: Unit
                   value: "Unit::Unit0"
   canonical_frame_address: 1082582432
-- function_name: "poll<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+- function_name: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 214
@@ -3230,7 +3230,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: 1082582432
-- function_name: "unwrap_unchecked<unsafe fn(embassy_executor::raw::TaskRef)>"
+- function_name: "Option<unsafe fn(embassy_executor::raw::TaskRef)>::unwrap_unchecked<unsafe fn(embassy_executor::raw::TaskRef)>"
   source_location:
     path: "C:\\Users\\bugad\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\lib\\rustlib\\src\\rust\\library\\core\\src\\option.rs"
     line: 1084
@@ -3907,7 +3907,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: 1082582448
-- function_name: "dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
+- function_name: "RunQueue::dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
     line: 85
@@ -4275,7 +4275,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: 1082582448
-- function_name: poll
+- function_name: "SyncExecutor::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 423
@@ -4609,7 +4609,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: 1082582448
-- function_name: poll
+- function_name: "Executor::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 533
@@ -4943,7 +4943,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: 1082582448
-- function_name: "run<coredump_c6::__risc_v_rt__main::{closure_env#0}>"
+- function_name: "Executor::run<coredump_c6::__risc_v_rt__main::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
     line: 111

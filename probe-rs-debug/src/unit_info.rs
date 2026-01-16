@@ -24,7 +24,6 @@ pub struct UnitInfo {
     dwarf_language: gimli::DwLang,
     language: Box<dyn language::ProgrammingLanguage>,
     // A mapping from child die to parent die.
-    #[expect(unused)]
     parents: HashMap<UnitOffset, UnitOffset>,
 }
 
@@ -2320,7 +2319,6 @@ impl UnitInfo {
         Ok(Some(source_location))
     }
 
-    #[expect(unused)]
     pub(crate) fn parent_offset(&self, offset: UnitOffset) -> Option<UnitOffset> {
         self.parents.get(&offset).copied()
     }

@@ -246,9 +246,15 @@ impl<'a> FunctionDie<'a> {
         }
     }
 
-    #[expect(unused)]
     pub(crate) fn parent_offset(&self) -> Option<UnitOffset> {
-        self.unit_info.parent_offset(self.function_die.offset())
+        self.unit_info.parent_offset(self.spec_offset())
+    }
+
+    pub(crate) fn spec_offset(&self) -> UnitOffset {
+        self.specification_die
+            .as_ref()
+            .map(|d| d.offset())
+            .unwrap_or(self.function_die.offset())
     }
 }
 
