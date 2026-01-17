@@ -10,7 +10,7 @@ Frame:
   column: Some(Column(12))
  frame_base:      Some(20003ff0)
 Frame:
- function:        Timer<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>::delay<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ function:        Timer<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>::delay
  source_location:
   path: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(145)

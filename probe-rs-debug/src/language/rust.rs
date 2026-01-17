@@ -230,7 +230,16 @@ impl ProgrammingLanguage for Rust {
             && is_datatype(&die)
             && let Ok(Some(typename)) = function_die.unit_info.extract_type_name(debug_info, &die)
         {
-            format!("{typename}::{function_name}")
+            // TODO: apply better heuristics to clean up the final function name
+            if let Some((_, type_generic)) = typename.split_once('<')
+                && let Some((function_without_generic, function_generic)) =
+                    function_name.split_once('<')
+                && type_generic == function_generic
+            {
+                format!("{typename}::{function_without_generic}")
+            } else {
+                format!("{typename}::{function_name}")
+            }
         } else {
             function_name.to_string()
         }

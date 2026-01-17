@@ -1906,7 +1906,7 @@ expression: stack_frames
                     Enum: Unit
                   value: "Unit::Unit0"
   canonical_frame_address: 1082582304
-- function_name: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+- function_name: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 214
@@ -2790,7 +2790,7 @@ expression: stack_frames
                     Enum: Unit
                   value: "Unit::Unit0"
   canonical_frame_address: 1082582432
-- function_name: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+- function_name: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 214
@@ -3230,7 +3230,7 @@ expression: stack_frames
             column: ~
             address: ~
   canonical_frame_address: 1082582432
-- function_name: "Option<unsafe fn(embassy_executor::raw::TaskRef)>::unwrap_unchecked<unsafe fn(embassy_executor::raw::TaskRef)>"
+- function_name: "Option<unsafe fn(embassy_executor::raw::TaskRef)>::unwrap_unchecked"
   source_location:
     path: "C:\\Users\\bugad\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\lib\\rustlib\\src\\rust\\library\\core\\src\\option.rs"
     line: 1084

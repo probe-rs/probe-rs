@@ -1577,7 +1577,7 @@ expression: stack_frames
                     Enum: Unit
                   value: "Unit::Unit0"
   canonical_frame_address: ~
-- function_name: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+- function_name: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 214
