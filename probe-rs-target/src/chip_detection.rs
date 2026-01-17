@@ -202,6 +202,13 @@ pub struct InfineonPsocSiidDetection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RenesasFmifrtDetection {
+    /// Part number from `TARGETID`
+    pub target_id: u16,
+
+    /// Location of the MCU Information registers
+    /// <https://en-support.renesas.com/knowledgeBase/21397541>
+    pub mcu_info_base: u32,
+
     /// Chip part number
     pub variants: IndexMap<String, Vec<String>>,
 }

@@ -29,15 +29,7 @@ impl Vendor for Renesas {
         // FIXME: This is a bit shaky but good enough for now.
         let access_port = &FullyQualifiedApAddress::v1_with_default_dp(0);
 
-        const FMIFRT_BASE: u64 = 0x0100_3C00;
-
         let mut part_number = [0_u8; 16];
-
-        interface
-            .memory_interface(access_port)?
-            .read_8(FMIFRT_BASE + 0x24, &mut part_number)?;
-
-        let part_number = std::str::from_utf8(&part_number).unwrap().trim();
 
         for family in registry.families() {
             for info in family
@@ -45,6 +37,20 @@ impl Vendor for Renesas {
                 .iter()
                 .filter_map(ChipDetectionMethod::as_renesas_fmifrt)
             {
+                if chip_info.part != info.target_id {
+                    continue;
+                }
+
+                interface
+                    .memory_interface(access_port)?
+                    .read_8((info.mcu_info_base + 0x24) as _, &mut part_number)?;
+
+                let Ok(part_number) = std::str::from_utf8(&part_number) else {
+                    continue;
+                };
+
+                let part_number = part_number.trim();
+
                 for (target, variants) in info.variants.iter() {
                     if variants.iter().any(|v| v == part_number) {
                         return Ok(Some(target.clone()));

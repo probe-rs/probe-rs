@@ -4,6 +4,8 @@ manufacturer:
   cc: 0x4
 chip_detection:
 - !RenesasFmifrt
+  target_id: 0x160
+  mcu_info_base: 0x01003C00
   variants:
     R7FA4M1AB:
       - R7FA4M1AB2CLJ
