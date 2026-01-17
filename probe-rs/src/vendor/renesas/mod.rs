@@ -45,7 +45,7 @@ impl Vendor for Renesas {
 
                 interface
                     .memory_interface(access_port)?
-                    .read_8((info.mcu_info_base + 0x24) as _, &mut part_number)?;
+                    .read_8(info.mcu_pn_base as _, &mut part_number)?;
 
                 let Ok(part_number) = std::str::from_utf8(&part_number) else {
                     continue;
