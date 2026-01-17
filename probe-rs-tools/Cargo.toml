@@ -9,6 +9,7 @@ homepage = "https://probe.rs"
 repository.workspace = true
 readme.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 description = "A collection of on chip debugging tools to communicate with microchips."
 
