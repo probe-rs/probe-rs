@@ -590,13 +590,18 @@ impl SessionInterface {
             .await
     }
 
-    pub async fn stack_trace(&self, path: PathBuf) -> anyhow::Result<StackTraces> {
+    pub async fn stack_trace(
+        &self,
+        path: PathBuf,
+        stack_frame_limit: u32,
+    ) -> anyhow::Result<StackTraces> {
         let path = self.client.upload_file(&path).await?;
 
         self.client
             .send_resp::<TakeStackTraceEndpoint, _>(&TakeStackTraceRequest {
                 sessid: self.sessid,
                 path: path.display().to_string(),
+                stack_frame_limit,
             })
             .await
     }

@@ -543,8 +543,15 @@ impl DebugInfo {
         initial_registers: DebugRegisters,
         exception_handler: &dyn ExceptionInterface,
         instruction_set: Option<InstructionSet>,
+        max_stack_frame_count: usize,
     ) -> Result<Vec<StackFrame>, Error> {
-        self.unwind_impl(initial_registers, core, exception_handler, instruction_set)
+        self.unwind_impl(
+            initial_registers,
+            core,
+            exception_handler,
+            instruction_set,
+            max_stack_frame_count,
+        )
     }
 
     pub(crate) fn unwind_impl(
@@ -553,6 +560,7 @@ impl DebugInfo {
         memory: &mut impl MemoryInterface,
         exception_handler: &dyn ExceptionInterface,
         instruction_set: Option<InstructionSet>,
+        max_stack_frame_count: usize,
     ) -> Result<Vec<StackFrame>, Error> {
         let mut stack_frames = Vec::<StackFrame>::new();
 
@@ -570,6 +578,10 @@ impl DebugInfo {
                 }
             })
         {
+            if stack_frames.len() >= max_stack_frame_count {
+                tracing::warn!("Stopped unwinding the stack after {max_stack_frame_count} frames");
+                break;
+            }
             let frame_pc = frame_pc_register_value.try_into().map_err(|error| {
                 let message = format!("Cannot convert register value for program counter to a 64-bit integer value: {error:?}");
                 Error::Register(message)
@@ -1546,6 +1558,7 @@ mod test {
                 &mut mocked_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1698,6 +1711,7 @@ mod test {
                 &mut dummy_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1824,6 +1838,7 @@ mod test {
                 &mut dummy_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1916,6 +1931,7 @@ mod test {
                 &mut dummy_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1946,6 +1962,7 @@ mod test {
                 initial_registers,
                 exception_handler.as_ref(),
                 Some(instruction_set),
+                1000,
             )
             .unwrap();
 
@@ -1991,6 +2008,7 @@ mod test {
                 initial_registers,
                 exception_handler.as_ref(),
                 Some(instruction_set),
+                1000,
             )
             .unwrap();
 
