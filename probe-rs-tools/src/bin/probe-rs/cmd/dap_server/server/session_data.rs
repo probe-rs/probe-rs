@@ -444,6 +444,7 @@ impl SessionData {
                     initial_registers,
                     exception_interface.as_ref(),
                     instruction_set,
+                    500, // TODO: we should be able to unwind incrementally as the user requests more frames on the UI
                 )?;
             }
         }

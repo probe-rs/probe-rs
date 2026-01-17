@@ -469,6 +469,7 @@ impl MultiSubscription for MonitorSubscription {
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 pub async fn monitor(
     session: &SessionInterface,
     mode: MonitorMode,
@@ -477,6 +478,7 @@ pub async fn monitor(
     options: MonitorOptions,
     print_stack_trace: bool,
     target_output_files: &mut TargetOutputFiles,
+    stack_frame_limit: u32,
 ) -> anyhow::Result<()> {
     let monitor = session.monitor(mode, options, async |msg| {
         print_monitor_event(&mut rtt_client.as_mut(), msg, target_output_files).await;
@@ -547,13 +549,13 @@ pub async fn monitor(
     };
 
     if print_stack_trace {
-        display_stack_trace(session, path).await?;
+        display_stack_trace(session, path, stack_frame_limit).await?;
     }
 
     result
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub async fn test(
     session: &SessionInterface,
     boot_info: BootInfo,
@@ -564,6 +566,7 @@ pub async fn test(
     mut rtt_client: Option<CliRttClient>,
     target_output_files: &mut TargetOutputFiles,
     semihosting_options: SemihostingOptions,
+    stack_frame_limit: u32,
 ) -> anyhow::Result<()> {
     tracing::info!("libtest args {:?}", libtest_args);
     let token = CancellationToken::new();
@@ -603,6 +606,7 @@ pub async fn test(
                     sender.clone(),
                     &token,
                     test,
+                    stack_frame_limit,
                 )
             })
             .collect::<Vec<_>>();
@@ -638,12 +642,13 @@ pub async fn test(
     .await;
 
     if token.is_cancelled() && print_stack_trace {
-        display_stack_trace(session, path).await?;
+        display_stack_trace(session, path, stack_frame_limit).await?;
     }
 
     result
 }
 
+#[expect(clippy::too_many_arguments)]
 fn create_trial(
     session: &SessionInterface,
     path: &Path,
@@ -652,6 +657,7 @@ fn create_trial(
     sender: UnboundedSender<MonitorEvent>,
     token: &CancellationToken,
     test: Test,
+    stack_frame_limit: u32,
 ) -> Trial {
     let name = test.name.clone();
     let ignored = test.ignored;
@@ -680,7 +686,7 @@ fn create_trial(
                         std::process::exit(0);
                     }
                     Ok(TestResult::Failed(message)) => {
-                        display_stack_trace(&session, &path).await?;
+                        display_stack_trace(&session, &path, stack_frame_limit).await?;
 
                         Err(Failed::from(message))
                     }
@@ -697,13 +703,22 @@ fn create_trial(
     .with_ignored_flag(ignored)
 }
 
-async fn display_stack_trace(session: &SessionInterface, path: &Path) -> anyhow::Result<()> {
-    let stack_trace = session.stack_trace(path.to_path_buf()).await?;
+async fn display_stack_trace(
+    session: &SessionInterface,
+    path: &Path,
+    stack_frame_limit: u32,
+) -> anyhow::Result<()> {
+    let stack_trace = session
+        .stack_trace(path.to_path_buf(), stack_frame_limit)
+        .await?;
 
     for StackTrace { core, frames } in stack_trace.cores.iter() {
         println!("Core {core}");
         for frame in frames {
             println!("    {frame}");
+        }
+        if frames.len() >= stack_frame_limit as usize {
+            println!("Use `--stack-frame-limit` to increase the number of frames displayed.");
         }
     }
 
