@@ -62,11 +62,17 @@ impl Vendor for Renesas {
 
                 let part_number = part_number.trim();
 
-                for (target, variants) in info.variants.iter() {
-                    if variants.iter().any(|v| v == part_number) {
-                        return Ok(Some(target.clone()));
+                for variant in info.variants.keys() {
+                    if part_number.starts_with(variant) {
+                        return Ok(Some(variant.clone()));
                     }
                 }
+
+                // for (target, variants) in info.variants.iter() {
+                //     if variants.iter().any(|v| v == part_number) {
+                //         return Ok(Some(target.clone()));
+                //     }
+                // }
             }
         }
 
