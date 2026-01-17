@@ -1,0 +1,1 @@
+Added `MemoryInterface::execute_memory_operations` and associated types to support executing multiple memory operations in a single batch, which is useful for architectures that don't support background memory access.

@@ -1,0 +1,1 @@
+Added support for the STM32WB0 series.

@@ -1,0 +1,1 @@
+When enabling data tracing in a DWT unit, access matches on word size, not byte size.
