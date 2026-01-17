@@ -1,0 +1,7 @@
+Bug fixes for ARMv7A debug:
+- Only read MVFR0 when CP10/11 are enabled
+- Consider UND_L an abort alongside data/prefetch aborts
+- Disable ITR before sending RRQ as required by the architecture
+- Use reset vector catch for reset-halt instead of requesting halt then
+  resetting
+- Warn if core isn't halted after reset-halt
