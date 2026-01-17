@@ -29,6 +29,7 @@ pub mod microchip;
 pub mod nordicsemi;
 pub mod nxp;
 pub mod raspberrypi;
+pub mod renesas;
 pub mod sifli;
 pub mod silabs;
 pub mod st;
@@ -86,6 +87,7 @@ static VENDORS: LazyLock<RwLock<Vec<Box<dyn Vendor>>>> = LazyLock::new(|| {
         Box::new(st::St),
         Box::new(vorago::Vorago),
         Box::new(sifli::Sifli),
+        Box::new(renesas::Renesas),
     ];
 
     RwLock::new(vendors)
