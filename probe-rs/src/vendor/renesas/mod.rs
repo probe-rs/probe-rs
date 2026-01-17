@@ -1,3 +1,5 @@
+//! Renesas vendor support.
+
 use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
@@ -12,7 +14,7 @@ use crate::{
 pub struct Renesas;
 
 impl Vendor for Renesas {
-    fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
+    fn try_create_debug_sequence(&self, _chip: &Chip) -> Option<DebugSequence> {
         None
     }
 
