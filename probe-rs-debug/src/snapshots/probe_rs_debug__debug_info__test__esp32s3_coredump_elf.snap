@@ -1577,7 +1577,7 @@ expression: stack_frames
                     Enum: Unit
                   value: "Unit::Unit0"
   canonical_frame_address: ~
-- function_name: "poll<coredump_c6::____embassy_main_task::{async_fn_env#0}>"
+- function_name: "TaskStorage<coredump_c6::____embassy_main_task::{async_fn_env#0}>::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 214
@@ -2459,7 +2459,7 @@ expression: stack_frames
                   type_name: Unknown
                   value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
   canonical_frame_address: ~
-- function_name: "dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
+- function_name: "RunQueue::dequeue_all<embassy_executor::raw::{impl#9}::poll::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\run_queue_atomics.rs"
     line: 85
@@ -2790,7 +2790,7 @@ expression: stack_frames
                           type_name: Unknown
                           value: "< Failed to read referenced variable address from memory location 0x00000000 : The coredump does not include the memory for address 0x0 of size 0x4. >"
   canonical_frame_address: ~
-- function_name: poll
+- function_name: "SyncExecutor::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 423
@@ -3064,7 +3064,7 @@ expression: stack_frames
                         Pointer: "*mut ()"
                       value: "*mut () @ 0x00000004"
   canonical_frame_address: ~
-- function_name: poll
+- function_name: "Executor::poll"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\embassy-executor-0.7.0\\src\\raw\\mod.rs"
     line: 533
@@ -3344,7 +3344,7 @@ expression: stack_frames
                             Pointer: "*mut ()"
                           value: "*mut () @ 0x00000004"
   canonical_frame_address: ~
-- function_name: "run<coredump_c6::__xtensa_lx_rt_main::{closure_env#0}>"
+- function_name: "Executor::run<coredump_c6::__xtensa_lx_rt_main::{closure_env#0}>"
   source_location:
     path: "C:\\Users\\bugad\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\esp-hal-embassy-0.7.0\\src\\executor\\thread.rs"
     line: 111
