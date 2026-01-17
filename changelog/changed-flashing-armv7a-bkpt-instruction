@@ -1,1 +1,0 @@
-The flashing code now uses a A32-encoded BKPT instruction for ARMv7A targets.

@@ -1,2 +1,0 @@
-Fixed ATSAMV71 flash corruption by offsetting the flash algorithm instructions,
-see target file for details.
