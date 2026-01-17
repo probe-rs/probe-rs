@@ -584,12 +584,12 @@ fn write_changelog_section(
             anyhow::bail!("Empty changelog fragment {}", fragment.path.display());
         };
 
-        write!(writer, " - {first_line}")?;
+        write!(writer, "- {first_line}")?;
 
         // Write remaining lines
         for line in lines {
             writeln!(writer)?;
-            write!(writer, "   {line}")?;
+            write!(writer, "  {line}")?;
         }
 
         if let Some(pr_number) = &fragment.pr_number {
