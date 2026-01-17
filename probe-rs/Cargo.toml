@@ -15,6 +15,7 @@ readme.workspace = true
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
 license.workspace = true
+rust-version.workspace = true
 
 # Don't include test binaries in published crate
 exclude = ["tests/"]
