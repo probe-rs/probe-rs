@@ -9,6 +9,7 @@ use super::{
 use crate::{SourceLocation, VerifiedBreakpoint, stack_frame::StackFrameInfo, unit_info::RangeExt};
 use gimli::{
     BaseAddresses, DebugFrame, RunTimeEndian, UnwindContext, UnwindSection, UnwindTableRow,
+    read::RegisterRule,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs::{
@@ -1147,8 +1148,6 @@ pub fn unwind_register(
     unwind_cfa: Option<u64>,
     memory: &mut dyn MemoryInterface,
 ) -> Result<Option<RegisterValue>, Error> {
-    use gimli::read::RegisterRule;
-
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
     let register_rule = debug_register
         .dwarf_id
@@ -1348,7 +1347,7 @@ fn unwind_program_counter_register(
     register_rule_string: &mut String,
 ) -> Option<RegisterValue> {
     if return_address.is_max_value() || return_address.is_zero() {
-        tracing::warn!(
+        tracing::debug!(
             "No reliable return address is available, so we cannot determine the program counter to unwind the previous frame."
         );
         return None;
