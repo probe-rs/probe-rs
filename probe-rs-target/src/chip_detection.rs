@@ -27,6 +27,9 @@ pub enum ChipDetectionMethod {
 
     /// Infineon PSOC silicon ID chip detection information.
     InfineonPsocSiid(InfineonPsocSiidDetection),
+
+    /// Renesas RA chip detection information.
+    RenesasFmifrt(RenesasFmifrtDetection),
 }
 
 impl ChipDetectionMethod {
@@ -78,6 +81,15 @@ impl ChipDetectionMethod {
     /// Returns the Infineon PSOC silicon ID detection information if available.
     pub fn as_infineon_psoc_siid(&self) -> Option<&InfineonPsocSiidDetection> {
         if let Self::InfineonPsocSiid(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the Renesas detection information if available.
+    pub fn as_renesas_fmifrt(&self) -> Option<&RenesasFmifrtDetection> {
+        if let Self::RenesasFmifrt(v) = self {
             Some(v)
         } else {
             None
@@ -184,4 +196,12 @@ pub struct InfineonPsocSiidDetection {
     #[serde(serialize_with = "hex_keys_indexmap")]
     #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
     pub silicon_ids: IndexMap<u16, String>,
+}
+
+/// Renesas RA chip detection information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RenesasFmifrtDetection {
+    /// Chip part number
+    pub variants: IndexMap<String, Vec<String>>,
 }
