@@ -24,8 +24,7 @@ use crate::{
     probe::{
         AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeError, ProbeFactory,
-        ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
-        blackmagic::arm::BlackMagicProbeArmDebug,
+        RawJtagIo, RawSwdIo, SwdSettings, WireProtocol, blackmagic::arm::BlackMagicProbeArmDebug,
     },
 };
 use bitvec::vec::BitVec;
@@ -618,7 +617,6 @@ pub struct BlackMagicProbe {
     remote_protocol: ProtocolVersion,
     speed_khz: u32,
     jtag_state: JtagDriverState,
-    probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
     in_bits: BitVec,
     swd_direction: SwdDirection,
@@ -694,7 +692,6 @@ impl BlackMagicProbe {
             remote_protocol,
             jtag_state: JtagDriverState::default(),
             swd_settings: SwdSettings::default(),
-            probe_statistics: ProbeStatistics::default(),
             in_bits: BitVec::new(),
             swd_direction: SwdDirection::Output,
         };
@@ -1195,7 +1192,6 @@ impl RawSwdIo for BlackMagicProbe {
     where
         S: IntoIterator<Item = IoSequenceItem>,
     {
-        self.probe_statistics.report_io();
         self.perform_swdio_transfer(swdio)
     }
 
@@ -1221,10 +1217,6 @@ impl RawSwdIo for BlackMagicProbe {
 
     fn swd_settings(&self) -> &SwdSettings {
         &self.swd_settings
-    }
-
-    fn probe_statistics(&mut self) -> &mut ProbeStatistics {
-        &mut self.probe_statistics
     }
 }
 

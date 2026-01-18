@@ -13,8 +13,8 @@ use crate::{
 };
 
 use super::{
-    AutoImplementJtagAccess, DebugProbeError, IoSequenceItem, JtagDriverState, ProbeStatistics,
-    RawJtagIo, RawSwdIo, SwdSettings,
+    AutoImplementJtagAccess, DebugProbeError, IoSequenceItem, JtagDriverState, RawJtagIo, RawSwdIo,
+    SwdSettings,
 };
 
 /// A factory for creating [`Ch347UsbJtag`] instances.
@@ -32,7 +32,6 @@ impl std::fmt::Display for Ch347UsbJtagFactory {
 pub struct Ch347UsbJtag {
     device: Ch347UsbJtagDevice,
     jtag_state: JtagDriverState,
-    probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
 }
 
@@ -47,7 +46,6 @@ impl ProbeFactory for Ch347UsbJtagFactory {
         Ok(Box::new(Ch347UsbJtag {
             device: ch347,
             jtag_state: JtagDriverState::default(),
-            probe_statistics: ProbeStatistics::default(),
             swd_settings: SwdSettings::default(),
         }))
     }
@@ -106,10 +104,6 @@ impl RawSwdIo for Ch347UsbJtag {
 
     fn swd_settings(&self) -> &SwdSettings {
         &self.swd_settings
-    }
-
-    fn probe_statistics(&mut self) -> &mut ProbeStatistics {
-        &mut self.probe_statistics
     }
 }
 

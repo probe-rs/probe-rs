@@ -15,8 +15,8 @@ use crate::{
     },
     probe::{
         AutoImplementJtagAccess, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeFactory,
-        ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
+        IoSequenceItem, JtagAccess, JtagDriverState, ProbeCreationError, ProbeFactory, RawJtagIo,
+        RawSwdIo, SwdSettings, WireProtocol,
     },
 };
 use bitvec::prelude::*;
@@ -303,7 +303,6 @@ impl ProbeFactory for FtdiProbeFactory {
             adapter: JtagAdapter::open(ftdi, probes.pop().unwrap())?,
             jtag_state: JtagDriverState::default(),
             swd_settings: SwdSettings::default(),
-            probe_statistics: ProbeStatistics::default(),
         };
         tracing::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -319,7 +318,6 @@ impl ProbeFactory for FtdiProbeFactory {
 pub struct FtdiProbe {
     adapter: JtagAdapter,
     jtag_state: JtagDriverState,
-    probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
 }
 
@@ -447,10 +445,6 @@ impl RawSwdIo for FtdiProbe {
 
     fn swd_settings(&self) -> &SwdSettings {
         &self.swd_settings
-    }
-
-    fn probe_statistics(&mut self) -> &mut ProbeStatistics {
-        &mut self.probe_statistics
     }
 }
 
