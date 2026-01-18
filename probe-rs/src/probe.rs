@@ -16,7 +16,7 @@ pub mod stlink;
 pub mod wlink;
 
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::{ArmDebugInterface, ArmError, DapError};
+use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::architecture::arm::{RegisterAddress, SwoAccess, communication_interface::DapProbe};
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
@@ -1124,8 +1124,6 @@ pub(crate) trait RawSwdIo: DebugProbe {
     ) -> Result<u32, DebugProbeError>;
 
     fn swd_settings(&self) -> &SwdSettings;
-
-    fn probe_statistics(&mut self) -> &mut ProbeStatistics;
 }
 
 /// A trait for implementing low-level JTAG interface operations.
@@ -1262,59 +1260,6 @@ impl Default for JtagDriverState {
             scan_chain: Vec::new(),
             chain_params: ChainParams::default(),
             jtag_idle_cycles: 0,
-        }
-    }
-}
-
-#[derive(Default, Debug)]
-pub(crate) struct ProbeStatistics {
-    /// Number of protocol transfers performed.
-    ///
-    /// This includes repeated transfers, and transfers
-    /// which are automatically added to fulfill
-    /// protocol requirements, e.g. a read from a
-    /// DP register will result in two transfers,
-    /// because the read value is returned in the
-    /// second transfer
-    num_transfers: usize,
-
-    /// Number of extra transfers added to fullfil protocol
-    /// requirements. Ideally as low as possible.
-    num_extra_transfers: usize,
-
-    /// Number of calls to the probe IO function.
-    ///
-    /// A single call can perform multiple SWD transfers,
-    /// so this number is ideally a lot lower than then
-    /// number of SWD transfers.
-    num_io_calls: usize,
-
-    /// Number of SWD wait responses encountered.
-    num_wait_resp: usize,
-
-    /// Number of SWD FAULT responses encountered.
-    num_faults: usize,
-}
-
-impl ProbeStatistics {
-    pub fn record_extra_transfer(&mut self) {
-        self.num_extra_transfers += 1;
-    }
-
-    pub fn record_transfers(&mut self, num_transfers: usize) {
-        self.num_transfers += num_transfers;
-    }
-
-    pub fn report_io(&mut self) {
-        self.num_io_calls += 1;
-    }
-
-    pub fn report_swd_response<T>(&mut self, response: &Result<T, DapError>) {
-        match response {
-            Err(DapError::FaultResponse) => self.num_faults += 1,
-            Err(DapError::WaitResponse) => self.num_wait_resp += 1,
-            // Other errors are not counted right now.
-            _ => (),
         }
     }
 }

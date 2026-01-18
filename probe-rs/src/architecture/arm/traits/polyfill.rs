@@ -267,8 +267,6 @@ fn perform_swd_transfers<P: RawSwdIo>(
         let response_offset = 8;
         let response = parse_swd_response(&result_bits[response_offset..], transfer.direction);
 
-        probe.probe_statistics().report_swd_response(&response);
-
         transfer.status = match response {
             Ok(response) => {
                 transfer.value = response;
@@ -389,7 +387,6 @@ fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
             // buffer is not empty.
             // This is an extra transfer, which doesn't have a reponse on it's own.
             final_transfers.push(DapTransfer::read(RdBuff::ADDRESS));
-            probe.probe_statistics().record_extra_transfer();
         }
     }
 
@@ -403,8 +400,6 @@ fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
         num_transfers,
         num_transfers - transfers.len()
     );
-
-    probe.probe_statistics().record_transfers(num_transfers);
 
     perform_raw_transfers_retry(probe, &mut final_transfers)?;
 
@@ -1216,8 +1211,8 @@ mod test {
         },
         error::Error,
         probe::{
-            DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess, JtagSequence, ProbeStatistics,
-            RawSwdIo, SwdSettings, WireProtocol,
+            DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess, JtagSequence, RawSwdIo,
+            SwdSettings, WireProtocol,
         },
     };
     use probe_rs_target::ScanChainElement;
@@ -1256,7 +1251,6 @@ mod test {
         performed_transfer_count: usize,
 
         swd_settings: SwdSettings,
-        probe_statistics: ProbeStatistics,
 
         protocol: WireProtocol,
 
@@ -1274,7 +1268,6 @@ mod test {
                 performed_transfer_count: 0,
 
                 swd_settings: SwdSettings::default(),
-                probe_statistics: ProbeStatistics::default(),
 
                 protocol: WireProtocol::Swd,
 
@@ -1535,10 +1528,6 @@ mod test {
 
         fn swd_settings(&self) -> &SwdSettings {
             &self.swd_settings
-        }
-
-        fn probe_statistics(&mut self) -> &mut ProbeStatistics {
-            &mut self.probe_statistics
         }
     }
 
