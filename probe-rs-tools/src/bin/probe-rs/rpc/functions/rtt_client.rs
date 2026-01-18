@@ -42,11 +42,9 @@ pub struct CreateRttClientRequest {
     pub default_config: RttChannelConfig,
 }
 
-pub type RttClientKey = Key<RttClient>;
-
 #[derive(Serialize, Deserialize, Schema)]
 pub struct RttClientData {
-    pub handle: RttClientKey,
+    pub handle: Key<RttClient>,
 }
 
 pub type CreateRttClientResponse = RpcResult<RttClientData>;
@@ -84,7 +82,7 @@ pub async fn create_rtt_client(
 #[derive(Serialize, Deserialize, Schema)]
 pub struct RttDownRequest {
     pub sessid: Key<Session>,
-    pub rtt_client: RttClientKey,
+    pub rtt_client: Key<RttClient>,
     pub channel: u32,
     pub data: Vec<u8>,
 }

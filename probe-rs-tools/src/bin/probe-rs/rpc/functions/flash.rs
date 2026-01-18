@@ -13,12 +13,9 @@ use crate::{
     FormatOptions,
     rpc::{
         Key,
-        functions::{
-            NoResponse, ProgressEventTopic, RpcContext, RpcResult, RpcSpawnContext,
-            rtt_client::RttClientKey,
-        },
+        functions::{NoResponse, ProgressEventTopic, RpcContext, RpcResult, RpcSpawnContext},
     },
-    util::flash::build_loader,
+    util::{flash::build_loader, rtt::client::RttClient},
 };
 
 #[derive(Serialize, Deserialize, Default, Schema)]
@@ -112,7 +109,7 @@ pub struct FlashRequest {
     pub sessid: Key<Session>,
     pub loader: Key<FlashLoader>,
     pub options: DownloadOptions,
-    pub rtt_client: Option<RttClientKey>,
+    pub rtt_client: Option<Key<RttClient>>,
 }
 impl FlashRequest {
     fn download_options<'a>(&self) -> flashing::DownloadOptions<'a> {

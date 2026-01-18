@@ -5,7 +5,7 @@ use crate::{
         Key, ObjectStorage,
         functions::{
             MonitorEndpoint, MultiTopicPublisher, MultiTopicWriter, RpcResult, RpcSpawnContext,
-            RttTopic, SemihostingTopic, WireTxImpl, flash::BootInfo, rtt_client::RttClientKey,
+            RttTopic, SemihostingTopic, WireTxImpl, flash::BootInfo,
         },
         utils::{
             run_loop::{ReturnReason, RunLoop, RunLoopPoller},
@@ -237,7 +237,7 @@ pub struct RttPoller<S>
 where
     S: FnMut(RttEvent) -> anyhow::Result<()>,
 {
-    pub rtt_client: RttClientKey,
+    pub rtt_client: Key<RttClient>,
     pub clear_control_block: bool,
     pub sender: S,
 }

@@ -9,26 +9,25 @@ use anyhow::Context;
 use libtest_mimic::{Failed, Trial};
 use postcard_rpc::host_client::HostClient;
 use postcard_schema::Schema;
-use probe_rs::rtt::find_rtt_control_block_in_raw_file;
+use probe_rs::rtt::{self, find_rtt_control_block_in_raw_file};
 use ratatui::crossterm::style::Stylize;
 use rustyline_async::{Readline, ReadlineError, ReadlineEvent, SharedWriter};
 use serde::de::DeserializeOwned;
 use std::env::VarError;
 use time::UtcOffset;
 use tokio::io::AsyncWriteExt;
-use tokio::sync::oneshot;
+use tokio::sync::futures::Notified;
+use tokio::sync::{Mutex, MutexGuard, Notify};
 use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
+use crate::rpc::Key;
 use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
-use crate::rpc::functions::rtt_client::RttClientKey;
 use crate::rpc::utils::semihosting::SemihostingOptions;
-use crate::util::rtt::RttChannelConfig;
 use crate::{
     FormatOptions,
     rpc::{
-        Key,
         client::{MultiSubscribeError, MultiSubscription, MultiTopic, RpcClient, SessionInterface},
         functions::{
             CancelTopic, RttTopic, SemihostingTopic,
@@ -46,7 +45,10 @@ use crate::{
         common_options::{BinaryDownloadOptions, ProbeOptions},
         flash::CliProgressBars,
         logging,
-        rtt::{DefmtProcessor, DefmtState, RttDataHandler, RttDecoder, client::RttClient},
+        rtt::{
+            DefmtProcessor, DefmtState, RttChannelConfig, RttDataHandler, RttDecoder,
+            client::RttClient,
+        },
     },
 };
 
@@ -482,7 +484,76 @@ impl MultiSubscription for MonitorSubscription {
     }
 }
 
-#[expect(clippy::too_many_arguments)]
+// Monitor starts in read-only mode: it outputs logs, but has no prompt to type into.
+// When channels are discovered, it can either stay in read-only mode, or switch to interactive mode if down channels are available.
+// Interactive mode allows the user to type into the prompt, and send data to the target.
+
+struct MonitorUiContext {
+    change_notifier: Notify,
+    ui_state: Mutex<MonitorUiState>,
+}
+
+impl MonitorUiContext {
+    pub fn new(selected_down_channel: u32) -> Self {
+        let change_notifier = Notify::new();
+        let ui_state = Mutex::new(MonitorUiState {
+            exited: false,
+            rtt_client: None,
+            up_channels: Vec::new(),
+            down_channels: Vec::new(),
+            selected_down_channel,
+            shared_writer: None,
+        });
+        Self {
+            change_notifier,
+            ui_state,
+        }
+    }
+
+    async fn exit(&self) {
+        self.ui_state.lock().await.exit();
+        self.change_notifier.notify_waiters();
+    }
+
+    async fn update(&self, with: impl FnOnce(&mut MonitorUiState)) {
+        let mut ui_state = self.ui_state.lock().await;
+        with(&mut ui_state);
+        self.change_notifier.notify_waiters();
+    }
+
+    fn subscribe(&self) -> Notified<'_> {
+        self.change_notifier.notified()
+    }
+
+    fn lock(&self) -> impl Future<Output = MutexGuard<'_, MonitorUiState>> {
+        self.ui_state.lock()
+    }
+}
+
+#[derive(Clone)]
+struct MonitorUiState {
+    exited: bool,
+    rtt_client: Option<Key<RttClient>>,
+    up_channels: Vec<ChannelInfo>,
+    down_channels: Vec<ChannelInfo>,
+    selected_down_channel: u32,
+    shared_writer: Option<SharedWriter>,
+}
+impl MonitorUiState {
+    fn print(&mut self, message: &str) {
+        if let Some(writer) = self.shared_writer.as_mut() {
+            _ = writer.write_all(message.as_bytes());
+        } else {
+            print!("{message}");
+        }
+    }
+
+    fn exit(&mut self) {
+        self.exited = true;
+        self.shared_writer = None;
+    }
+}
+
 pub async fn monitor(
     session: &SessionInterface,
     mode: MonitorMode,
@@ -503,34 +574,31 @@ pub async fn monitor(
         semihosting_options,
     };
 
-    let (sender, receiver) =
-        oneshot::channel::<(Key<RttClient>, Vec<ChannelInfo>, Vec<ChannelInfo>)>();
-    let (writer_sender, writer_receiver) = oneshot::channel::<SharedWriter>();
-    let mut sender = Some((sender, writer_receiver));
+    // The mutex around the context should only be held for a short period of time.
+    let ui_context = MonitorUiContext::new(monitor_options.rtt_down_channel);
 
     let monitor = session.monitor(mode, options, async |msg| {
         let mut client = rtt_client.as_mut();
 
-        let sw = if let MonitorEvent::Rtt(RttEvent::Discovered {
+        if let MonitorEvent::Rtt(RttEvent::Discovered {
             down_channels,
             up_channels,
         }) = &msg
             && !down_channels.is_empty()
-            && let Some((sender, writer_receiver)) = sender.take()
-            && !sender.is_closed()
-            && let Some(client) = client.as_ref()
         {
-            _ = sender.send((client.handle(), up_channels.clone(), down_channels.clone()));
-            writer_receiver.await.ok()
-        } else {
-            None
+            ui_context
+                .update(|state| {
+                    state.up_channels = up_channels.clone();
+                    state.down_channels = down_channels.clone();
+                })
+                .await
         };
 
         handle_monitor_event(
             &mut client,
             msg,
             &mut target_output_files,
-            sw,
+            &async |message| ui_context.lock().await.print(message),
             &monitor_options.rtt_up_channels,
         )
         .await;
@@ -550,100 +618,136 @@ pub async fn monitor(
         pending().await
     };
 
-    let (channels_sender, channels_receiver) = oneshot::channel();
+    // Gets activated when the RTT client discovers down channels.
+    // Displays a prompt and waits for user input.
+    async fn cli_with_prompt(session: &SessionInterface, context: &MonitorUiContext) {
+        let data = context.lock().await.clone();
 
-    // This future waits for down channels, or ctrl-c.
-    // This is the main handler if there are no down channels. No prompt is displayed.
-    let wait_for_down_channel = async {
-        tokio::select! {
-            _ = tokio::signal::ctrl_c() => {
-                eprintln!("Received Ctrl+C, exiting");
-                session.client().publish::<CancelTopic>(&()).await.unwrap();
-            },
-            channels = receiver => {
-                // Send down channels to the Readline future.
-                _ = channels_sender.send(channels);
-            }
-        }
-        pending().await
-    };
-
-    // The Readline future. Gets activated when the RTT client discovers down channels.
-    // Takes over from the previous future. Displays a prompt and waits for user input.
-    let input = async {
-        let (rtt_client_handle, up_channels, down_channels) =
-            channels_receiver.await.flatten().unwrap();
-
-        let channel_count = down_channels.len() as u32;
-        let mut selected_channel: u32 = monitor_options.rtt_down_channel.min(channel_count - 1);
+        let channel_count = data.down_channels.len() as u32;
+        let mut selected_channel = data.selected_down_channel % channel_count;
 
         let prompt = |channel_idx| {
-            Prompt(format!("{}> ", &down_channels[channel_idx as usize].name)).to_string()
+            Prompt(format!(
+                "{}> ",
+                &data.down_channels[channel_idx as usize].name
+            ))
+            .to_string()
         };
-        if monitor_options.list_rtt {
-            println!("Up channels:");
-            for (i, channel) in up_channels.iter().enumerate() {
-                println!("  {}: {}", i, ChannelInfoPrinter(channel));
-            }
-            println!("Down channels:");
-            for (i, channel) in down_channels.iter().enumerate() {
-                println!("  {}: {}", i, ChannelInfoPrinter(channel));
-            }
-        } else if let Ok((mut rl, sw)) = Readline::new(prompt(selected_channel)) {
-            rl.should_print_line_on(true, false);
-            if writer_sender.send(sw).is_ok() {
-                loop {
-                    match rl.readline().await {
-                        Ok(ReadlineEvent::Line(line)) => {
-                            rl.add_history_entry(line.clone());
-                            if let Err(error) = session
-                                .send_to_rtt(rtt_client_handle, selected_channel, line.into_bytes())
-                                .await
-                            {
-                                eprintln!("Error sending data to RTT: {:?}", error);
-                                break;
-                            }
-                        }
-                        Ok(ReadlineEvent::Eof) => {
-                            if channel_count > 1 {
-                                selected_channel = (selected_channel + 1) % channel_count;
-                                if let Err(error) = rl.update_prompt(&prompt(selected_channel)) {
-                                    eprintln!("Error updating prompt: {:?}", error);
-                                    break;
-                                }
-                            }
-                        }
-                        Ok(ReadlineEvent::Interrupted) => {
-                            eprintln!("Received Ctrl+C, exiting");
-                            break;
-                        }
-                        Err(ReadlineError::Closed) => break,
-                        Err(ReadlineError::IO(err)) => {
-                            eprintln!("IO error: {}", err);
-                            break;
-                        }
-                    }
-                }
-            }
-            _ = rl.flush();
-        } else {
+
+        let Ok((mut rl, sw)) = Readline::new(prompt(selected_channel)) else {
             eprintln!("Failed to create readline");
             _ = tokio::signal::ctrl_c().await;
 
             eprintln!("Received Ctrl+C, exiting");
+            return;
         };
 
+        context
+            .update(|data| data.shared_writer = Some(sw.clone()))
+            .await;
+
+        rl.should_print_line_on(true, false);
+        loop {
+            match rl.readline().await {
+                Ok(ReadlineEvent::Line(line)) => {
+                    rl.add_history_entry(line.clone());
+                    if let Some(client) = data.rtt_client
+                        && let Err(error) = session
+                            .send_to_rtt(client, selected_channel, line.into_bytes())
+                            .await
+                    {
+                        eprintln!("Error sending data to RTT: {:?}", error);
+                        break;
+                    }
+                }
+                Ok(ReadlineEvent::Eof) => {
+                    if channel_count > 1 {
+                        selected_channel = (selected_channel + 1) % channel_count;
+                        if let Err(error) = rl.update_prompt(&prompt(selected_channel)) {
+                            eprintln!("Error updating prompt: {:?}", error);
+                            break;
+                        }
+                    }
+                }
+                Ok(ReadlineEvent::Interrupted) => {
+                    eprintln!("Received Ctrl+C, exiting");
+                    break;
+                }
+                Err(ReadlineError::Closed) => break,
+                Err(ReadlineError::IO(err)) => {
+                    eprintln!("IO error: {}", err);
+                    break;
+                }
+            }
+        }
+
+        context.exit().await;
+
+        _ = rl.flush();
+    }
+
+    // Main UI loop. Detects changes generated either by the user or received from
+    // the server, and decides what to display based on the current state.
+    let ui = async {
+        loop {
+            enum DisplayMode {
+                OutputOnly,
+                CliWithPrompt,
+                ListChannelsAndQuit,
+                Exited,
+            }
+
+            let state = {
+                let locked = ui_context.lock().await;
+
+                if locked.exited {
+                    DisplayMode::Exited
+                } else if locked.down_channels.is_empty() {
+                    DisplayMode::OutputOnly
+                } else if monitor_options.list_rtt {
+                    DisplayMode::ListChannelsAndQuit
+                } else {
+                    DisplayMode::CliWithPrompt
+                }
+            };
+            match state {
+                DisplayMode::OutputOnly => {
+                    tokio::select! {
+                        _ = tokio::signal::ctrl_c() => {
+                            eprintln!("Received Ctrl+C, exiting");
+                            ui_context.exit().await;
+                        },
+                        _ = ui_context.subscribe() => {}
+                    }
+                }
+                DisplayMode::CliWithPrompt => cli_with_prompt(session, &ui_context).await,
+                DisplayMode::ListChannelsAndQuit => {
+                    let mut data = ui_context.lock().await;
+                    println!("Up channels:");
+                    for (i, channel) in data.up_channels.iter().enumerate() {
+                        println!("  {}: {}", i, ChannelInfoPrinter(channel));
+                    }
+                    println!("Down channels:");
+                    for (i, channel) in data.down_channels.iter().enumerate() {
+                        println!("  {}: {}", i, ChannelInfoPrinter(channel));
+                    }
+                    data.exit();
+                }
+                DisplayMode::Exited => break,
+            }
+        }
         session.client().publish::<CancelTopic>(&()).await.unwrap();
         pending().await
     };
 
     // We exit when one of the futures cancels the session and the monitor exits.
+    // TODO: this should be a loop
     let result = tokio::select! {
         result = monitor => result,
 
-        // These futures are never supposed to resolve.
-        _ = input => unreachable!(),
-        _ = wait_for_down_channel => unreachable!(),
+        // These futures are never supposed to resolve. They shall trigger
+        // a cancellation event, then the monitor future will handle the rest.
+        _ = ui => unreachable!(),
         _ = terminate => unreachable!(),
     };
 
@@ -717,7 +821,6 @@ pub async fn monitor(
     result
 }
 
-#[expect(clippy::too_many_arguments)]
 pub async fn test(
     session: &SessionInterface,
     boot_info: BootInfo,
@@ -791,7 +894,7 @@ pub async fn test(
                 &mut rtt_client.as_mut(),
                 event,
                 &mut target_output_files,
-                None,
+                &async |message| print!("{message}"),
                 &monitor_options.rtt_up_channels,
             )
             .await;
@@ -823,7 +926,7 @@ pub async fn test(
 fn create_trial(
     session: &SessionInterface,
     path: &Path,
-    rtt_client: Option<RttClientKey>,
+    rtt_client: Option<Key<RttClient>>,
     semihosting_options: SemihostingOptions,
     sender: UnboundedSender<MonitorEvent>,
     token: &CancellationToken,
@@ -930,7 +1033,7 @@ where
 }
 
 pub struct CliRttClient {
-    handle: RttClientKey,
+    handle: Key<RttClient>,
     channel_processors: Vec<Channel>,
 
     // Data necessary to create the channel processors once we know the channel names.
@@ -942,15 +1045,11 @@ pub struct CliRttClient {
 }
 
 impl CliRttClient {
-    pub fn handle(&self) -> RttClientKey {
+    pub fn handle(&self) -> Key<RttClient> {
         self.handle
     }
 
-    fn on_channels_discovered(
-        &mut self,
-        up_channels: &[ChannelInfo],
-        shared_writer: Option<SharedWriter>,
-    ) {
+    fn on_channels_discovered(&mut self, up_channels: &[ChannelInfo]) {
         // Already configured.
         if !self.channel_processors.is_empty() {
             return;
@@ -980,11 +1079,8 @@ impl CliRttClient {
                 }
             };
 
-            self.channel_processors.push(Channel::new(
-                channel.name.clone(),
-                decoder,
-                shared_writer.clone(),
-            ));
+            self.channel_processors
+                .push(Channel::new(channel.name.clone(), decoder));
         }
 
         // If there are multiple channels, print the channel names.
@@ -1001,7 +1097,7 @@ async fn handle_monitor_event(
     rtt_client: &mut Option<impl DerefMut<Target = CliRttClient>>,
     event: MonitorEvent,
     target_output_files: &mut TargetOutputFiles,
-    shared_writer: Option<SharedWriter>,
+    shared_writer: &impl AsyncFn(&str),
     up_channels: &[u32],
 ) {
     match event {
@@ -1010,7 +1106,7 @@ async fn handle_monitor_event(
                 return;
             };
 
-            client.on_channels_discovered(&up_channels, shared_writer);
+            client.on_channels_discovered(&up_channels);
         }
         MonitorEvent::Rtt(RttEvent::Output { channel, bytes }) => {
             let Some(client) = rtt_client else {
@@ -1029,6 +1125,7 @@ async fn handle_monitor_event(
             processor
                 .process(
                     &bytes,
+                    shared_writer,
                     // See ChannelIdentifier on why we access with clones here; also, while it'd be
                     // more efficient to resolve those lookups at channel discovery, it doesn't really
                     // matter, and again, ease of maintenance beats theoretical performance unless
@@ -1066,16 +1163,14 @@ struct Channel {
     channel: String,
     decoder: RttDecoder,
     printer_prefix: String,
-    shared_writer: Option<SharedWriter>,
 }
 
 impl Channel {
-    fn new(channel: String, decoder: RttDecoder, shared_writer: Option<SharedWriter>) -> Self {
+    fn new(channel: String, decoder: RttDecoder) -> Self {
         Self {
             channel,
             decoder,
             printer_prefix: String::new(),
-            shared_writer,
         }
     }
 
@@ -1083,28 +1178,30 @@ impl Channel {
         self.printer_prefix = format!("[{:width$}] ", self.channel, width = width);
     }
 
-    async fn process(&mut self, bytes: &[u8], copy_to: Option<&mut tokio::fs::File>) {
+    async fn process(
+        &mut self,
+        bytes: &[u8],
+        shared_writer: &impl AsyncFn(&str),
+        copy_to: Option<&mut tokio::fs::File>,
+    ) {
         let mut printer = Printer {
             prefix: &self.printer_prefix,
             copy_to,
-            shared_writer: self.shared_writer.as_mut(),
+            shared_writer,
         };
         let _ = self.decoder.process(bytes, &mut printer).await;
     }
 }
 
-struct Printer<'a> {
+struct Printer<'a, P: AsyncFn(&str)> {
     prefix: &'a str,
     copy_to: Option<&'a mut tokio::fs::File>,
-    shared_writer: Option<&'a mut SharedWriter>,
+    shared_writer: &'a P,
 }
-impl RttDataHandler for Printer<'_> {
-    async fn on_string_data(&mut self, data: String) -> Result<(), probe_rs::rtt::Error> {
-        if let Some(ref mut shared_writer) = self.shared_writer {
-            _ = write!(shared_writer, "{}{}", self.prefix, data);
-        } else {
-            print!("{}{}", self.prefix, data);
-        }
+impl<P: AsyncFn(&str)> RttDataHandler for Printer<'_, P> {
+    async fn on_string_data(&mut self, data: String) -> Result<(), rtt::Error> {
+        let message = format!("{}{}", self.prefix, data);
+        (self.shared_writer)(&message).await;
         if let Some(copy_to) = &mut self.copy_to {
             // Silently discarding output file errors
             _ = copy_to.write_all(data.as_bytes()).await;

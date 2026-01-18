@@ -6,18 +6,20 @@ use postcard_schema::Schema;
 use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
 use serde::{Deserialize, Serialize};
 
-use crate::rpc::{
-    Key,
-    functions::{
-        ListTestsEndpoint, RpcResult, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
-        flash::BootInfo,
-        monitor::{MonitorSender, RttPoller, SemihostingEvent},
-        rtt_client::RttClientKey,
+use crate::{
+    rpc::{
+        Key,
+        functions::{
+            ListTestsEndpoint, RpcResult, RpcSpawnContext, RunTestEndpoint, WireTxImpl,
+            flash::BootInfo,
+            monitor::{MonitorSender, RttPoller, SemihostingEvent},
+        },
+        utils::{
+            run_loop::{ReturnReason, RunLoop},
+            semihosting::{SemihostingFileManager, SemihostingOptions},
+        },
     },
-    utils::{
-        run_loop::{ReturnReason, RunLoop},
-        semihosting::{SemihostingFileManager, SemihostingOptions},
-    },
+    util::rtt::client::RttClient,
 };
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
@@ -104,7 +106,7 @@ pub struct ListTestsRequest {
     pub sessid: Key<Session>,
     pub boot_info: BootInfo,
     /// RTT client if used.
-    pub rtt_client: Option<RttClientKey>,
+    pub rtt_client: Option<Key<RttClient>>,
     pub semihosting_options: SemihostingOptions,
 }
 
@@ -189,7 +191,7 @@ pub struct RunTestRequest {
     pub sessid: Key<Session>,
     pub test: Test,
     /// RTT client if used.
-    pub rtt_client: Option<RttClientKey>,
+    pub rtt_client: Option<Key<RttClient>>,
     pub semihosting_options: SemihostingOptions,
 }
 
