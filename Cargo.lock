@@ -2974,7 +2974,6 @@ dependencies = [
  "jep106",
  "serde",
  "serde_with",
- "url",
 ]
 
 [[package]]
@@ -4802,7 +4801,6 @@ dependencies = [
  "idna",
  "percent-encoding",
  "serde",
- "serde_derive",
 ]
 
 [[package]]
