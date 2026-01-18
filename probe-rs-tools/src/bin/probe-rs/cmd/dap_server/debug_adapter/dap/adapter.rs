@@ -758,6 +758,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
 
         self.configuration_done = true;
+
+        // We don't have time to clear the RTT header before firmware initializes it.
+        if !self.halt_after_reset {
+            target_core.core_data.clear_rtt_header = false;
+        }
+
         self.send_response::<()>(request, Ok(None))
     }
 
