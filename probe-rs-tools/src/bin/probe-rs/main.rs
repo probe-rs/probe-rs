@@ -395,7 +395,7 @@ pub enum FormatKind {
     #[default]
     Elf,
 
-    /// The image is an ESP-IDF bootloader compatible application. For more information, see https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures
+    /// The image is an ELF file containing an ESP-IDF bootloader compatible application. For more information, see https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures
     #[value(aliases(["esp-idf", "espidf"]))]
     Idf,
 
