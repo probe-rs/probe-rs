@@ -20,11 +20,11 @@ use tokio::sync::oneshot;
 use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
-use crate::cmd::run::EmbeddedTestElfInfo;
+use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
 use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
 use crate::rpc::functions::rtt_client::RttClientKey;
 use crate::rpc::utils::semihosting::SemihostingOptions;
-use crate::util::rtt::{ChannelMode, RttChannelConfig};
+use crate::util::rtt::RttChannelConfig;
 use crate::{
     FormatOptions,
     rpc::{
@@ -221,7 +221,7 @@ impl ChannelIdentifier {
 /// [`CatchAll`][ChannelIdentifier::CatchAll] when no key present) and opening the values as files
 /// in append mode.
 pub(crate) async fn connect_target_output_files(
-    arg: Vec<String>,
+    arg: &[String],
 ) -> anyhow::Result<TargetOutputFiles> {
     let mut map = TargetOutputFiles::new();
     for component in arg {
@@ -252,7 +252,7 @@ pub(crate) async fn connect_target_output_files(
     Ok(map)
 }
 
-pub(crate) fn parse_semihosting_options(arg: Vec<String>) -> anyhow::Result<SemihostingOptions> {
+pub(crate) fn parse_semihosting_options(arg: &[String]) -> anyhow::Result<SemihostingOptions> {
     let mut options = SemihostingOptions::new();
     for component in arg {
         let parts: Vec<&str> = component.splitn(2, "=").collect();
@@ -281,15 +281,10 @@ pub(crate) fn parse_semihosting_options(arg: Vec<String>) -> anyhow::Result<Semi
     Ok(options)
 }
 
-#[expect(clippy::too_many_arguments)]
 pub async fn rtt_client(
     session: &SessionInterface,
     path: Option<&Path>,
-    mut scan_regions: ScanRegion,
-    log_format: Option<String>,
-    show_timestamps: bool,
-    show_location: bool,
-    rtt_channel_mode: ChannelMode,
+    monitor_options: &MonitoringOptions,
     timestamp_offset: Option<UtcOffset>,
 ) -> anyhow::Result<CliRttClient> {
     let elf = if let Some(path) = path {
@@ -300,6 +295,7 @@ pub async fn rtt_client(
         vec![]
     };
 
+    let mut scan_regions = monitor_options.scan_region.clone();
     let mut load_defmt_data = false;
     if let Ok(opt_address) = find_rtt_control_block_in_raw_file(&elf) {
         match opt_address {
@@ -323,7 +319,7 @@ pub async fn rtt_client(
             scan_regions,
             vec![],
             RttChannelConfig {
-                mode: Some(rtt_channel_mode),
+                mode: Some(monitor_options.rtt_channel_mode),
                 ..Default::default()
             },
         )
@@ -333,11 +329,11 @@ pub async fn rtt_client(
     Ok(CliRttClient {
         handle: rtt_client.handle,
         timestamp_offset,
-        show_timestamps,
-        show_location,
+        show_timestamps: !monitor_options.no_timestamps,
+        show_location: !monitor_options.no_location,
         channel_processors: vec![],
         defmt_data,
-        log_format,
+        log_format: monitor_options.log_format.clone(),
     })
 }
 
@@ -491,14 +487,22 @@ pub async fn monitor(
     session: &SessionInterface,
     mode: MonitorMode,
     path: Option<&Path>,
+    monitor_options: &MonitoringOptions,
     mut rtt_client: Option<CliRttClient>,
-    options: MonitorOptions,
-    rtt_down_channel: u32,
-    list_only: bool,
-    print_stack_trace: bool,
-    target_output_files: &mut TargetOutputFiles,
-    stack_frame_limit: u32,
+    catch_reset: bool,
+    catch_hardfault: bool,
 ) -> anyhow::Result<()> {
+    let semihosting_options = parse_semihosting_options(&monitor_options.semihosting_file)?;
+    let mut target_output_files =
+        connect_target_output_files(&monitor_options.target_output_file).await?;
+
+    let options = MonitorOptions {
+        catch_reset,
+        catch_hardfault,
+        rtt_client: rtt_client.as_ref().map(|client| client.handle()),
+        semihosting_options,
+    };
+
     let (sender, receiver) =
         oneshot::channel::<(Key<RttClient>, Vec<ChannelInfo>, Vec<ChannelInfo>)>();
     let (writer_sender, writer_receiver) = oneshot::channel::<SharedWriter>();
@@ -522,7 +526,7 @@ pub async fn monitor(
             None
         };
 
-        handle_monitor_event(&mut client, msg, target_output_files, sw).await;
+        handle_monitor_event(&mut client, msg, &mut target_output_files, sw).await;
     });
 
     // SIGTERM handler on *nix systems
@@ -564,12 +568,12 @@ pub async fn monitor(
             channels_receiver.await.flatten().unwrap();
 
         let channel_count = down_channels.len() as u32;
-        let mut selected_channel: u32 = rtt_down_channel.max(channel_count - 1);
+        let mut selected_channel: u32 = monitor_options.rtt_down_channel.max(channel_count - 1);
 
         let prompt = |channel_idx| {
             Prompt(format!("{}> ", &down_channels[channel_idx as usize].name)).to_string()
         };
-        if list_only {
+        if monitor_options.list_rtt {
             println!("Up channels:");
             for (i, channel) in up_channels.iter().enumerate() {
                 println!("  {}: {}", i, ChannelInfoPrinter(channel));
@@ -640,12 +644,12 @@ pub async fn monitor(
         Ok(MonitorExitReason::Success | MonitorExitReason::SemihostingExit(Ok(_))) => {
             println!("Firmware exited successfully");
             // On success, we only print if the user asked for it.
-            (print_stack_trace, Ok(()))
+            (monitor_options.always_print_stacktrace, Ok(()))
         }
         Ok(MonitorExitReason::UserExit) => {
             println!("Exited by user request");
             // On ctrl-c, we only print if the user asked for it.
-            (print_stack_trace, Ok(()))
+            (monitor_options.always_print_stacktrace, Ok(()))
         }
         Ok(MonitorExitReason::UnexpectedExit(reason)) => {
             println!("Firmware exited unexpectedly: {reason}");
@@ -697,7 +701,7 @@ pub async fn monitor(
 
     if print_stack_trace {
         if let Some(path) = path {
-            display_stack_trace(session, path, stack_frame_limit).await?;
+            display_stack_trace(session, path, monitor_options.stack_frame_limit).await?;
         } else {
             eprintln!("Can not print stack trace because firmware is not available");
         }
