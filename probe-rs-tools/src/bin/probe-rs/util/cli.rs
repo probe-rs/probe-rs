@@ -568,7 +568,7 @@ pub async fn monitor(
             channels_receiver.await.flatten().unwrap();
 
         let channel_count = down_channels.len() as u32;
-        let mut selected_channel: u32 = monitor_options.rtt_down_channel.max(channel_count - 1);
+        let mut selected_channel: u32 = monitor_options.rtt_down_channel.min(channel_count - 1);
 
         let prompt = |channel_idx| {
             Prompt(format!("{}> ", &down_channels[channel_idx as usize].name)).to_string()
