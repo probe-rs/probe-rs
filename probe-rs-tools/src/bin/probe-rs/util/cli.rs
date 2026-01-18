@@ -493,6 +493,7 @@ pub async fn monitor(
     path: Option<&Path>,
     mut rtt_client: Option<CliRttClient>,
     options: MonitorOptions,
+    rtt_down_channel: u32,
     print_stack_trace: bool,
     target_output_files: &mut TargetOutputFiles,
     stack_frame_limit: u32,
@@ -559,9 +560,9 @@ pub async fn monitor(
         let (rtt_client_handle, channels) = down_channels_receiver.await.flatten().unwrap();
 
         let channel_count = channels.len() as u32;
-        let mut selected_channel: u32 = 0;
+        let mut selected_channel: u32 = rtt_down_channel.max(channel_count - 1);
 
-        let prompt = Prompt(format!("{}> ", &channels[0])).to_string();
+        let prompt = Prompt(format!("{}> ", &channels[selected_channel as usize])).to_string();
         if let Ok((mut rl, sw)) = Readline::new(prompt) {
             rl.should_print_line_on(true, false);
             if writer_sender.send(sw).is_ok() {

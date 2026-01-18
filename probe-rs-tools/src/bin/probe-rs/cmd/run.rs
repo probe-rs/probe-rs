@@ -177,6 +177,12 @@ pub(crate) struct MonitoringOptions {
     #[clap(long, default_value = "block-if-full")]
     pub(crate) rtt_channel_mode: ChannelMode,
 
+    /// RTT down channel to use.
+    ///
+    /// By default, probe-rs will select the first available channel. This option can override that behavior.
+    #[clap(long, default_value = "0")]
+    pub(crate) rtt_down_channel: u32,
+
     /// Always print the stacktrace on ctrl + c.
     #[clap(long)]
     pub(crate) always_print_stacktrace: bool,
@@ -285,6 +291,7 @@ impl Cmd {
                     rtt_client: Some(client_handle),
                     semihosting_options,
                 },
+                self.monitor_options.rtt_down_channel,
                 self.monitor_options.always_print_stacktrace,
                 &mut target_output_files,
                 self.monitor_options.stack_frame_limit,
