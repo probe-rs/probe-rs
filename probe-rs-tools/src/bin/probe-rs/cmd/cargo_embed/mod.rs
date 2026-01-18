@@ -510,6 +510,7 @@ fn create_rtt_config(config: &config::Config) -> RttConfig {
     let mut rtt_config = RttConfig {
         enabled: true,
         channels: vec![],
+        default_config: Default::default(),
     };
 
     // Make sure our defaults are the same as the ones intended in the config struct.

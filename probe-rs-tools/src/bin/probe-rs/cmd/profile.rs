@@ -72,20 +72,12 @@ impl std::fmt::Display for ProfileMethod {
 
 impl ProfileCmd {
     pub fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, probe_options) = self
-            .run
-            .shared_options
-            .probe_options
-            .simple_attach(registry, lister)?;
+        let (mut session, probe_options) =
+            self.run.probe_options.simple_attach(registry, lister)?;
 
-        let loader = build_loader(
-            &mut session,
-            &self.run.shared_options.path,
-            self.run.shared_options.format_options,
-            None,
-        )?;
+        let loader = build_loader(&mut session, &self.run.path, self.run.format_options, None)?;
 
-        let file_location = self.run.shared_options.path.as_path();
+        let file_location = self.run.path.as_path();
 
         // The error returned from try_from cannot be converted directly to anyhow::Error unfortunately,
         // due to a limitation in addr2line.
@@ -101,7 +93,7 @@ impl ProfileCmd {
             run_flash_download(
                 &mut session,
                 file_location,
-                &self.run.shared_options.download_options,
+                &self.run.download_options,
                 &probe_options,
                 loader,
             )?;

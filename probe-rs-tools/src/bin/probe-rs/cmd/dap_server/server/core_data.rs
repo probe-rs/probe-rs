@@ -235,10 +235,7 @@ impl CoreHandle<'_> {
         for up_channel in client.up_channels() {
             let number = up_channel.up_channel.number();
 
-            let mut channel_config = rtt_config
-                .channel_config(number as u32)
-                .cloned()
-                .unwrap_or_default();
+            let mut channel_config = rtt_config.channel_config(number as u32).clone();
 
             if up_channel.channel_name() == "defmt" {
                 channel_config.data_format = DataFormat::Defmt;
