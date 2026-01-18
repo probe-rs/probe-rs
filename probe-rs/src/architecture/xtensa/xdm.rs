@@ -524,7 +524,7 @@ impl<'probe> Xdm<'probe> {
         self.schedule_write_nexus_register(DebugControlSet({
             let mut control = DebugControlBits(0);
 
-            control.set_enable_ocd(true);
+            control.set_enable_ocd(true); // TODO why does this bit matter?!
             control.set_debug_interrupt(true);
 
             control
