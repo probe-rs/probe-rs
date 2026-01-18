@@ -26,7 +26,10 @@ use crate::{
             },
             reset::{ResetCoreAndHaltRequest, ResetCoreRequest, reset, reset_and_halt},
             resume::{ResumeAllCoresRequest, resume_all_cores},
-            rtt_client::{CreateRttClientRequest, CreateRttClientResponse, create_rtt_client},
+            rtt_client::{
+                CreateRttClientRequest, CreateRttClientResponse, RttDownRequest, create_rtt_client,
+                write_rtt_down,
+            },
             stack_trace::{TakeStackTraceRequest, TakeStackTraceResponse, take_stack_trace},
             test::{
                 ListTestsRequest, ListTestsResponse, RunTestRequest, RunTestResponse, list_tests,
@@ -463,6 +466,7 @@ endpoints! {
 
     | ResumeAllCoresEndpoint    | ResumeAllCoresRequest   | NoResponse              | "resume"           |
     | CreateRttClientEndpoint   | CreateRttClientRequest  | CreateRttClientResponse | "create_rtt"       |
+    | RttDownEndpoint           | RttDownRequest          | NoResponse              | "rtt/down"         |
     | TakeStackTraceEndpoint    | TakeStackTraceRequest   | TakeStackTraceResponse  | "stack_trace"      |
     | BuildEndpoint             | BuildRequest            | BuildResponse           | "flash/build"      |
     | FlashEndpoint             | FlashRequest            | NoResponse              | "flash/flash"      |
@@ -538,6 +542,7 @@ postcard_rpc::define_dispatch! {
         | EraseEndpoint             | async     | erase             |
         | VerifyEndpoint            | async     | verify            |
         | MonitorEndpoint           | spawn     | monitor           |
+        | RttDownEndpoint           | async     | write_rtt_down    |
 
         | ListTestsEndpoint         | spawn     | list_tests        |
         | RunTestEndpoint           | spawn     | run_test          |

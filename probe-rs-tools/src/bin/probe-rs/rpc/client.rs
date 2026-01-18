@@ -36,10 +36,10 @@ use crate::{
             ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint,
             ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
             ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
-            ResumeAllCoresEndpoint, RpcResult, RunTestEndpoint, SelectProbeEndpoint,
-            TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint,
-            TokioSpawner, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
-            WriteMemory32Endpoint, WriteMemory64Endpoint,
+            ResumeAllCoresEndpoint, RpcResult, RttDownEndpoint, RunTestEndpoint,
+            SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
+            TempFileDataEndpoint, TokioSpawner, VerifyEndpoint, WriteMemory8Endpoint,
+            WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
             flash::{
@@ -55,7 +55,9 @@ use crate::{
             },
             reset::{ResetCoreAndHaltRequest, ResetCoreRequest},
             resume::ResumeAllCoresRequest,
-            rtt_client::{CreateRttClientRequest, RttClientData, ScanRegion},
+            rtt_client::{
+                CreateRttClientRequest, RttClientData, RttClientKey, RttDownRequest, ScanRegion,
+            },
             stack_trace::{StackTraces, TakeStackTraceRequest},
             test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
         },
@@ -536,10 +538,26 @@ impl SessionInterface {
             .await
     }
 
+    pub async fn send_to_rtt(
+        &self,
+        rtt_client: RttClientKey,
+        channel: u32,
+        data: Vec<u8>,
+    ) -> anyhow::Result<()> {
+        self.client
+            .send_resp::<RttDownEndpoint, _>(&RttDownRequest {
+                sessid: self.sessid,
+                rtt_client,
+                channel,
+                data,
+            })
+            .await
+    }
+
     pub async fn list_tests(
         &self,
         boot_info: BootInfo,
-        rtt_client: Option<Key<RttClient>>,
+        rtt_client: Option<RttClientKey>,
         semihosting_options: SemihostingOptions,
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<Tests> {
@@ -559,7 +577,7 @@ impl SessionInterface {
     pub async fn run_test(
         &self,
         test: Test,
-        rtt_client: Option<Key<RttClient>>,
+        rtt_client: Option<RttClientKey>,
         semihosting_options: SemihostingOptions,
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<TestResult> {
