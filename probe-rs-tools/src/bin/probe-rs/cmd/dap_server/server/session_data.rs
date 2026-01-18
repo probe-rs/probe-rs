@@ -3,7 +3,6 @@ use super::{
     core_data::{CoreData, CoreHandle},
 };
 use crate::{
-    FormatKind,
     cmd::{
         dap_server::{
             DebuggerError,
@@ -25,6 +24,7 @@ use anyhow::{Result, anyhow};
 use probe_rs::{
     BreakpointCause, CoreStatus, HaltReason, Session, VectorCatchCondition,
     config::{Registry, TargetSelector},
+    flashing::FormatKind,
     probe::list::Lister,
     rtt::ScanRegion,
 };

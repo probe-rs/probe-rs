@@ -7,7 +7,6 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use std::str::FromStr;
 use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::{Context, Result};
@@ -358,16 +357,15 @@ pub struct ElfCliOptions {
 #[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default, Schema)]
 #[serde(default)]
 pub struct FormatOptions {
-    /// If a format is provided, use it.
-    /// If a target has a preferred format, we use that.
-    /// Finally, if neither of the above cases are true, we default to ELF.
+    /// The format of the firmware image.
     #[clap(
         value_enum,
         ignore_case = true,
+        default_value_t = FormatKind::Target,
         long,
         help_heading = "DOWNLOAD CONFIGURATION"
     )]
-    binary_format: Option<FormatKind>,
+    binary_format: FormatKind,
 
     #[clap(flatten)]
     bin_options: BinaryCliOptions,
@@ -380,54 +378,42 @@ pub struct FormatOptions {
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Schema)]
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, ValueEnum, Schema)]
 pub enum FormatKind {
-    /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
-    /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
-    /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
+    /// The image format is determined by the target chip's preference, which is usually ELF.
+    Target,
+
+    /// The image is in binary format. This means that the file contains the contents of the flash 1:1.
+    #[value(alias("binary"))]
     Bin,
-    /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
+
+    /// The image is in Intel HEX format. For more information, see https://en.wikipedia.org/wiki/Intel_HEX
+    #[value(aliases(["ihex", "intelhex"]))]
     Hex,
-    /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
+
+    /// The image is in the Executable and Linkable Format (ELF). For more information, see https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
     #[default]
     Elf,
-    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
-    /// Use [IdfOptions] to configure flashing.
+
+    /// The image is an ESP-IDF bootloader compatible application. For more information, see https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures
+    #[value(aliases(["esp-idf", "espidf"]))]
     Idf,
-    /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
+
+    /// The image is in the Universal Flash Storage (UF2) format. For more information, see https://github.com/microsoft/uf2
     Uf2,
 }
 
 impl FormatKind {
-    /// Creates a new Format from an optional string.
-    ///
-    /// If the string is `None`, the default format is returned.
-    pub fn from_optional(s: Option<&str>) -> Result<Self, String> {
-        match s {
-            Some(format) => Self::from_str(format),
-            None => Ok(Self::default()),
-        }
-    }
-}
+    fn to_probe_rs(self, target: &Target) -> probe_rs::flashing::FormatKind {
+        let this = if self == FormatKind::Target {
+            FormatKind::from_optional(target.default_format.as_deref())
+                .expect("Failed to parse a default binary format. This shouldn't happen.")
+        } else {
+            self
+        };
 
-impl FromStr for FormatKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match &s.to_lowercase()[..] {
-            "bin" | "binary" => Ok(Self::Bin),
-            "hex" | "ihex" | "intelhex" => Ok(Self::Hex),
-            "elf" => Ok(Self::Elf),
-            "uf2" => Ok(Self::Uf2),
-            "idf" | "esp-idf" | "espidf" => Ok(Self::Idf),
-            _ => Err(format!("Format '{s}' is unknown.")),
-        }
-    }
-}
-
-impl From<FormatKind> for probe_rs::flashing::FormatKind {
-    fn from(kind: FormatKind) -> Self {
-        match kind {
+        match this {
+            FormatKind::Target => unreachable!(),
             FormatKind::Bin => probe_rs::flashing::FormatKind::Bin,
             FormatKind::Hex => probe_rs::flashing::FormatKind::Hex,
             FormatKind::Elf => probe_rs::flashing::FormatKind::Elf,
@@ -437,15 +423,24 @@ impl From<FormatKind> for probe_rs::flashing::FormatKind {
     }
 }
 
+impl FormatKind {
+    /// Creates a new Format from an optional string.
+    ///
+    /// If the string is `None`, the default format is returned.
+    pub fn from_optional(s: Option<&str>) -> Result<Self, String> {
+        match s {
+            Some(format) => Self::from_str(format, true),
+            None => Ok(Self::default()),
+        }
+    }
+}
+
 impl FormatOptions {
     /// If a format is provided, use it.
     /// If a target has a preferred format, we use that.
     /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
-    pub fn to_format_kind(&self, target: &Target) -> FormatKind {
-        self.binary_format.unwrap_or_else(|| {
-            FormatKind::from_optional(target.default_format.as_deref())
-                .expect("Failed to parse a default binary format. This shouldn't happen.")
-        })
+    pub fn to_format_kind(&self, target: &Target) -> probe_rs::flashing::FormatKind {
+        self.binary_format.to_probe_rs(target)
     }
 }
 
