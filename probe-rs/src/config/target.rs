@@ -1,5 +1,4 @@
 use super::{Core, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
-use crate::flashing::FlashLoader;
 use crate::{
     architecture::{
         arm::{
@@ -172,12 +171,14 @@ impl Target {
         &self.source
     }
 
+    #[cfg(feature = "flashing")]
     /// Create a [FlashLoader] for this target, which can be used
     /// to program its non-volatile memory.
-    pub fn flash_loader(&self) -> FlashLoader {
-        FlashLoader::new(self.memory_map.clone(), self.source.clone())
+    pub fn flash_loader(&self) -> crate::flashing::FlashLoader {
+        crate::flashing::FlashLoader::new(self.memory_map.clone(), self.source.clone())
     }
 
+    #[cfg(feature = "flashing")]
     /// Returns a [RawFlashAlgorithm] by name.
     pub(crate) fn flash_algorithm_by_name(&self, name: &str) -> Option<&RawFlashAlgorithm> {
         self.flash_algorithms.iter().find(|a| a.name == name)

@@ -2,7 +2,6 @@
 
 #[macro_use]
 pub mod ap;
-pub(crate) mod assembly;
 pub(crate) mod communication_interface;
 pub mod component;
 // TODO: Check if this should be public.

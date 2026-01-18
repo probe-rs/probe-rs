@@ -75,6 +75,7 @@ pub mod vendor;
 
 mod core;
 mod error;
+#[cfg(feature = "flashing")]
 pub mod flashing;
 pub mod integration;
 mod memory;
@@ -88,8 +89,8 @@ mod session;
 pub mod test;
 
 pub use crate::config::{CoreType, Endian, InstructionSet, Target};
-pub use crate::core::dump::CoreDump;
-pub use crate::core::dump::CoreDumpError;
+#[cfg(feature = "coredump")]
+pub use crate::core::dump::{CoreDump, CoreDumpError};
 pub use crate::core::registers::RegisterDataType;
 pub use crate::core::registers::UnwindRule;
 pub use crate::core::{
