@@ -104,11 +104,17 @@ pub async fn monitor(
         .unwrap();
 }
 
+#[derive(Serialize, Deserialize, Clone, Schema)]
+pub struct ChannelInfo {
+    pub name: String,
+    pub buffer_size: u64,
+}
+
 #[derive(Serialize, Deserialize, Schema)]
 pub enum RttEvent {
     Discovered {
-        up_channels: Vec<String>,
-        down_channels: Vec<String>,
+        up_channels: Vec<ChannelInfo>,
+        down_channels: Vec<ChannelInfo>,
     },
     Output {
         channel: u32,
@@ -255,12 +261,18 @@ where
             let up_channels = rtt_client
                 .up_channels()
                 .iter()
-                .map(|c| c.channel_name())
+                .map(|c| ChannelInfo {
+                    name: c.channel_name(),
+                    buffer_size: c.buffer_size() as u64,
+                })
                 .collect::<Vec<_>>();
             let down_channels = rtt_client
                 .down_channels()
                 .iter()
-                .map(|c| c.channel_name())
+                .map(|c| ChannelInfo {
+                    name: c.channel_name(),
+                    buffer_size: c.buffer_size() as u64,
+                })
                 .collect::<Vec<_>>();
             (self.sender)(RttEvent::Discovered {
                 up_channels,

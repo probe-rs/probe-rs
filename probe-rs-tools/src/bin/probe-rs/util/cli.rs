@@ -21,7 +21,7 @@ use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
 use crate::cmd::run::EmbeddedTestElfInfo;
-use crate::rpc::functions::monitor::MonitorExitReason;
+use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
 use crate::rpc::functions::rtt_client::RttClientKey;
 use crate::rpc::utils::semihosting::SemihostingOptions;
 use crate::util::rtt::{ChannelMode, RttChannelConfig};
@@ -494,24 +494,29 @@ pub async fn monitor(
     mut rtt_client: Option<CliRttClient>,
     options: MonitorOptions,
     rtt_down_channel: u32,
+    list_only: bool,
     print_stack_trace: bool,
     target_output_files: &mut TargetOutputFiles,
     stack_frame_limit: u32,
 ) -> anyhow::Result<()> {
-    let (sender, receiver) = oneshot::channel::<(Key<RttClient>, Vec<String>)>();
+    let (sender, receiver) =
+        oneshot::channel::<(Key<RttClient>, Vec<ChannelInfo>, Vec<ChannelInfo>)>();
     let (writer_sender, writer_receiver) = oneshot::channel::<SharedWriter>();
     let mut sender = Some((sender, writer_receiver));
 
     let monitor = session.monitor(mode, options, async |msg| {
         let mut client = rtt_client.as_mut();
 
-        let sw = if let MonitorEvent::Rtt(RttEvent::Discovered { down_channels, .. }) = &msg
+        let sw = if let MonitorEvent::Rtt(RttEvent::Discovered {
+            down_channels,
+            up_channels,
+        }) = &msg
             && !down_channels.is_empty()
             && let Some((sender, writer_receiver)) = sender.take()
             && !sender.is_closed()
             && let Some(client) = client.as_ref()
         {
-            _ = sender.send((client.handle(), down_channels.clone()));
+            _ = sender.send((client.handle(), up_channels.clone(), down_channels.clone()));
             writer_receiver.await.ok()
         } else {
             None
@@ -519,8 +524,6 @@ pub async fn monitor(
 
         handle_monitor_event(&mut client, msg, target_output_files, sw).await;
     });
-
-    // FIXME: respect --non-interactive. We should maybe add --ignore-down-channels or similar option?
 
     // SIGTERM handler on *nix systems
     let terminate = async {
@@ -536,7 +539,7 @@ pub async fn monitor(
         pending().await
     };
 
-    let (down_channels_sender, down_channels_receiver) = oneshot::channel();
+    let (channels_sender, channels_receiver) = oneshot::channel();
 
     // This future waits for down channels, or ctrl-c.
     // This is the main handler if there are no down channels. No prompt is displayed.
@@ -548,7 +551,7 @@ pub async fn monitor(
             },
             channels = receiver => {
                 // Send down channels to the Readline future.
-                _ = down_channels_sender.send(channels);
+                _ = channels_sender.send(channels);
             }
         }
         pending().await
@@ -557,13 +560,25 @@ pub async fn monitor(
     // The Readline future. Gets activated when the RTT client discovers down channels.
     // Takes over from the previous future. Displays a prompt and waits for user input.
     let input = async {
-        let (rtt_client_handle, channels) = down_channels_receiver.await.flatten().unwrap();
+        let (rtt_client_handle, up_channels, down_channels) =
+            channels_receiver.await.flatten().unwrap();
 
-        let channel_count = channels.len() as u32;
+        let channel_count = down_channels.len() as u32;
         let mut selected_channel: u32 = rtt_down_channel.max(channel_count - 1);
 
-        let prompt = Prompt(format!("{}> ", &channels[selected_channel as usize])).to_string();
-        if let Ok((mut rl, sw)) = Readline::new(prompt) {
+        let prompt = |channel_idx| {
+            Prompt(format!("{}> ", &down_channels[channel_idx as usize].name)).to_string()
+        };
+        if list_only {
+            println!("Up channels:");
+            for (i, channel) in up_channels.iter().enumerate() {
+                println!("  {}: {}", i, ChannelInfoPrinter(channel));
+            }
+            println!("Down channels:");
+            for (i, channel) in down_channels.iter().enumerate() {
+                println!("  {}: {}", i, ChannelInfoPrinter(channel));
+            }
+        } else if let Ok((mut rl, sw)) = Readline::new(prompt(selected_channel)) {
             rl.should_print_line_on(true, false);
             if writer_sender.send(sw).is_ok() {
                 loop {
@@ -581,8 +596,7 @@ pub async fn monitor(
                         Ok(ReadlineEvent::Eof) => {
                             if channel_count > 1 {
                                 selected_channel = (selected_channel + 1) % channel_count;
-                                let p = format!("{}> ", &channels[selected_channel as usize]);
-                                if let Err(error) = rl.update_prompt(&Prompt(&p).to_string()) {
+                                if let Err(error) = rl.update_prompt(&prompt(selected_channel)) {
                                     eprintln!("Error updating prompt: {:?}", error);
                                     break;
                                 }
@@ -914,7 +928,7 @@ impl CliRttClient {
 
     fn on_channels_discovered(
         &mut self,
-        up_channels: &[String],
+        up_channels: &[ChannelInfo],
         shared_writer: Option<SharedWriter>,
     ) {
         // Already configured.
@@ -924,7 +938,7 @@ impl CliRttClient {
 
         // Apply our heuristics based on channel names.
         for channel in up_channels.iter() {
-            let decoder = if channel == "defmt" {
+            let decoder = if channel.name == "defmt" {
                 if let Some(defmt_data) = self.defmt_data.clone() {
                     RttDecoder::Defmt {
                         processor: DefmtProcessor::new(
@@ -947,7 +961,7 @@ impl CliRttClient {
             };
 
             self.channel_processors.push(Channel::new(
-                channel.clone(),
+                channel.name.clone(),
                 decoder,
                 shared_writer.clone(),
             ));
@@ -955,7 +969,7 @@ impl CliRttClient {
 
         // If there are multiple channels, print the channel names.
         if up_channels.len() > 1 {
-            let width = up_channels.iter().map(|c| c.len()).max().unwrap();
+            let width = up_channels.iter().map(|c| c.name.len()).max().unwrap();
             for processor in self.channel_processors.iter_mut() {
                 processor.print_channel_name(width);
             }
@@ -1012,6 +1026,14 @@ async fn handle_monitor_event(
                 _ = remote_processor.write_all(data.as_bytes()).await;
             };
         }
+    }
+}
+
+struct ChannelInfoPrinter<'a>(&'a ChannelInfo);
+
+impl<'a> std::fmt::Display for ChannelInfoPrinter<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} (buffer size {})", self.0.name, self.0.buffer_size)
     }
 }
 

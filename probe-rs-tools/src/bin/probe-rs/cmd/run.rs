@@ -183,6 +183,10 @@ pub(crate) struct MonitoringOptions {
     #[clap(long, default_value = "0")]
     pub(crate) rtt_down_channel: u32,
 
+    /// List RTT channels and exit.
+    #[clap(long, default_value = "false")]
+    pub(crate) list_rtt: bool,
+
     /// Always print the stacktrace on ctrl + c.
     #[clap(long)]
     pub(crate) always_print_stacktrace: bool,
@@ -292,6 +296,7 @@ impl Cmd {
                     semihosting_options,
                 },
                 self.monitor_options.rtt_down_channel,
+                self.monitor_options.list_rtt,
                 self.monitor_options.always_print_stacktrace,
                 &mut target_output_files,
                 self.monitor_options.stack_frame_limit,

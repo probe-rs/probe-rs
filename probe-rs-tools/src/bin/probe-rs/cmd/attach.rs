@@ -65,6 +65,7 @@ impl Cmd {
                 semihosting_options,
             },
             self.monitor_options.rtt_down_channel,
+            self.monitor_options.list_rtt,
             self.monitor_options.always_print_stacktrace,
             &mut target_output_files,
             self.monitor_options.stack_frame_limit,
