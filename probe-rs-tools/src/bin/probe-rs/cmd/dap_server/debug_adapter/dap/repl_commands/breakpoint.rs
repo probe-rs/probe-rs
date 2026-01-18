@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use linkme::distributed_slice;
 use probe_rs::{CoreStatus, HaltReason};
 
@@ -47,10 +45,10 @@ fn create_breakpoint(
     target_core: &mut CoreHandle<'_>,
     command_arguments: &str,
     _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+    adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
 ) -> Result<Response, DebuggerError> {
     if command_arguments.is_empty() {
-        let core_info = target_core.core.halt(Duration::from_millis(500))?;
+        let core_info = adapter.pause_impl(target_core)?;
         return Ok(Response {
             command: "pause".to_string(),
             success: true,

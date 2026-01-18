@@ -22,7 +22,7 @@ use base64::{Engine as _, engine::general_purpose as base64_engine};
 use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
-    CoreStatus, Error, HaltReason,
+    CoreInformation, CoreStatus, Error, HaltReason,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
@@ -33,6 +33,7 @@ use probe_rs_debug::{
     stack_frame::StackFrameInfo,
 };
 use serde::{Serialize, de::DeserializeOwned};
+use serde_json::Value;
 use typed_path::NativePathBuf;
 
 use std::{fmt::Display, str, time::Duration};
@@ -99,41 +100,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
-        match target_core.core.halt(Duration::from_millis(500)) {
-            Ok(cpu_info) => {
-                let new_status = match target_core.core.status() {
-                    Ok(new_status) => new_status,
-                    Err(error) => {
-                        self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error)))?;
-                        return Err(anyhow!("Failed to retrieve core status"));
-                    }
-                };
-                self.send_response(
-                    request,
-                    Ok(Some(format!(
-                        "Core stopped at address {:#010x}",
-                        cpu_info.pc
-                    ))),
-                )?;
-                let event_body = Some(StoppedEventBody {
-                    reason: "pause".to_owned(),
-                    description: Some(new_status.short_long_status(Some(cpu_info.pc)).1),
-                    thread_id: Some(target_core.id() as i64),
-                    preserve_focus_hint: Some(false),
-                    text: None,
-                    all_threads_stopped: Some(self.all_cores_halted),
-                    hit_breakpoint_ids: None,
-                });
-                // We override the halt reason to prevent duplicate stopped events.
-                target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Request);
+        let response = match self.pause_impl(target_core) {
+            Ok(cpu_info) => Ok(Some(format!(
+                "Core stopped at address {:#010x}",
+                cpu_info.pc
+            ))),
+            Err(error) => Err(&DebuggerError::Other(anyhow!("{error}"))),
+        };
 
-                self.send_event("stopped", event_body)?;
-                Ok(())
-            }
-            Err(error) => {
-                self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))))
-            }
-        }
+        self.send_response(request, response)
     }
 
     pub(crate) fn disconnect(
@@ -1851,6 +1826,40 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {
         self.adapter.set_console_log_level(error)
+    }
+}
+
+impl<P: ProtocolAdapter + ?Sized> DebugAdapter<P> {
+    pub(crate) fn pause_impl(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+    ) -> Result<CoreInformation> {
+        let cpu_info = target_core.core.halt(Duration::from_millis(500))?;
+
+        let new_status = target_core.core.status()?;
+        let event_body = Some(StoppedEventBody {
+            reason: "pause".to_owned(),
+            description: Some(new_status.short_long_status(Some(cpu_info.pc)).1),
+            thread_id: Some(target_core.id() as i64),
+            preserve_focus_hint: Some(false),
+            text: None,
+            all_threads_stopped: Some(self.all_cores_halted),
+            hit_breakpoint_ids: None,
+        });
+        // We override the halt reason to prevent duplicate stopped events.
+        target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Request);
+
+        self.dyn_send_event(
+            "stopped",
+            event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
+        )?;
+        Ok(cpu_info)
+    }
+
+    #[tracing::instrument(level = "trace", skip_all)]
+    pub fn dyn_send_event(&mut self, event_type: &str, event_body: Option<Value>) -> Result<()> {
+        tracing::debug!("Sending event: {}", event_type);
+        self.adapter.dyn_send_event(event_type, event_body)
     }
 }
 
