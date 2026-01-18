@@ -84,13 +84,13 @@ fn step(
     target_core: &mut CoreHandle<'_>,
     _: &str,
     _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+    adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
 ) -> EvalResult {
-    let core_info = target_core.core.step()?;
+    let pc = adapter.step_impl(probe_rs_debug::SteppingMode::StepInstruction, target_core)?;
 
     Ok(EvalResponse::Message(
         CoreStatus::Halted(HaltReason::Request)
-            .short_long_status(Some(core_info.pc))
+            .short_long_status(Some(pc))
             .1,
     ))
 }

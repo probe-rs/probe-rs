@@ -1460,7 +1460,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Ok(_) => Ok(()),
             Err(error) => {
                 self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))))?;
-                return Err(error.into());
+                Err(error)
             }
         }
     }
@@ -1521,56 +1521,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Common code for the `next`, `step_in`, and `step_out` methods.
     fn debug_step(
         &mut self,
-        stepping_granularity: SteppingMode,
+        stepping_mode: SteppingMode,
         target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<(), anyhow::Error> {
-        target_core.reset_core_status(self);
-        let (new_status, program_counter) = match stepping_granularity
-            .step(&mut target_core.core, &target_core.core_data.debug_info)
-        {
-            Ok((new_status, program_counter)) => (new_status, program_counter),
-            Err(probe_rs_debug::DebugError::WarnAndContinue { message }) => {
-                let pc_at_error = target_core
-                    .core
-                    .read_core_reg(target_core.core.program_counter())?;
-                self.show_message(
-                    MessageSeverity::Information,
-                    format!("Step error @{pc_at_error:#010X}: {message}"),
-                );
-                (target_core.core.status()?, pc_at_error)
-            }
-            Err(other_error) => {
-                target_core.core.halt(Duration::from_millis(100)).ok();
-                return Err(other_error).context("Unexpected error during stepping");
-            }
-        };
-
+        self.step_impl(stepping_mode, target_core)?;
         self.send_response::<()>(request, Ok(None))?;
 
-        // We override the halt reason because our implementation of stepping uses breakpoints and results in a "BreakPoint" halt reason, which is not appropriate here.
-        target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Step);
-        if matches!(new_status, CoreStatus::Halted(_)) {
-            let event_body = Some(StoppedEventBody {
-                reason: target_core
-                    .core_data
-                    .last_known_status
-                    .short_long_status(None)
-                    .0
-                    .to_string(),
-                description: Some(
-                    CoreStatus::Halted(HaltReason::Step)
-                        .short_long_status(Some(program_counter))
-                        .1,
-                ),
-                thread_id: Some(target_core.id() as i64),
-                preserve_focus_hint: None,
-                text: None,
-                all_threads_stopped: Some(self.all_cores_halted),
-                hit_breakpoint_ids: None,
-            });
-            self.send_event("stopped", event_body)?;
-        }
         Ok(())
     }
 
@@ -1821,10 +1778,67 @@ impl<P: ProtocolAdapter + ?Sized> DebugAdapter<P> {
         }
     }
 
+    pub(crate) fn step_impl(
+        &mut self,
+        stepping_mode: SteppingMode,
+        target_core: &mut CoreHandle<'_>,
+    ) -> Result<u64> {
+        target_core.reset_core_status(self);
+        let (new_status, program_counter) =
+            match stepping_mode.step(&mut target_core.core, &target_core.core_data.debug_info) {
+                Ok((new_status, program_counter)) => (new_status, program_counter),
+                Err(probe_rs_debug::DebugError::WarnAndContinue { message }) => {
+                    let pc_at_error = target_core
+                        .core
+                        .read_core_reg(target_core.core.program_counter())?;
+                    self.dyn_show_message(
+                        MessageSeverity::Information,
+                        format!("Step error @{pc_at_error:#010X}: {message}"),
+                    );
+                    (target_core.core.status()?, pc_at_error)
+                }
+                Err(other_error) => {
+                    target_core.core.halt(Duration::from_millis(100)).ok();
+                    return Err(other_error).context("Unexpected error during stepping");
+                }
+            };
+
+        // We override the halt reason because our implementation of stepping uses breakpoints and results in a "BreakPoint" halt reason, which is not appropriate here.
+        target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Step);
+        if matches!(new_status, CoreStatus::Halted(_)) {
+            let event_body = StoppedEventBody {
+                reason: target_core
+                    .core_data
+                    .last_known_status
+                    .short_long_status(None)
+                    .0
+                    .to_string(),
+                description: Some(
+                    CoreStatus::Halted(HaltReason::Step)
+                        .short_long_status(Some(program_counter))
+                        .1,
+                ),
+                thread_id: Some(target_core.id() as i64),
+                preserve_focus_hint: None,
+                text: None,
+                all_threads_stopped: Some(self.all_cores_halted),
+                hit_breakpoint_ids: None,
+            };
+            self.dyn_send_event("stopped", serde_json::to_value(event_body).ok())?;
+        }
+        Ok(program_counter)
+    }
+
     #[tracing::instrument(level = "trace", skip_all)]
     pub fn dyn_send_event(&mut self, event_type: &str, event_body: Option<Value>) -> Result<()> {
         tracing::debug!("Sending event: {}", event_type);
         self.adapter.dyn_send_event(event_type, event_body)
+    }
+
+    /// Send a custom "probe-rs-show-message" event to the MS DAP Client.
+    /// The `severity` field can be one of `information`, `warning`, or `error`.
+    pub fn dyn_show_message(&mut self, severity: MessageSeverity, message: String) -> bool {
+        self.adapter.dyn_show_message(severity, message)
     }
 }
 
