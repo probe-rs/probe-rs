@@ -71,7 +71,7 @@ fn reset(
     adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
 ) -> EvalResult {
     let core_info = target_core.reset_and_halt()?;
-    adapter.pause_impl(target_core)?;
+    target_core.reset_core_status(adapter);
 
     Ok(EvalResponse::Message(
         CoreStatus::Halted(HaltReason::Request)
