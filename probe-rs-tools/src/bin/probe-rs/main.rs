@@ -228,10 +228,10 @@ pub(crate) struct CoreOptions {
 #[serde(default)]
 pub struct BinaryCliOptions {
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION / BIN IMAGE")]
     base_address: Option<u64>,
     /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u32, default_value = "0", help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, value_parser = parse_u32, default_value = "0", help_heading = "DOWNLOAD CONFIGURATION / BIN IMAGE")]
     skip: u32,
 }
 
@@ -329,19 +329,19 @@ impl From<EspFlashMode> for espflash::flasher::FlashMode {
 #[serde(default)]
 pub struct IdfCliOptions {
     /// The idf bootloader path
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")]
     idf_bootloader: Option<String>,
     /// The idf partition table path
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")]
     idf_partition_table: Option<String>,
     /// The idf target app partition
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")]
     idf_target_app_partition: Option<String>,
     /// Flash SPI mode
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")]
     idf_flash_mode: Option<EspFlashMode>,
     /// Flash SPI frequency
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")]
     idf_flash_freq: Option<EspFlashFrequency>,
 }
 
@@ -350,7 +350,7 @@ pub struct IdfCliOptions {
 pub struct ElfCliOptions {
     /// Section name to skip flashing. This option may be specified multiple times, and is only
     /// considered when `elf` is selected as the format.
-    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION / ELF IMAGE")]
     skip_section: Vec<String>,
 }
 

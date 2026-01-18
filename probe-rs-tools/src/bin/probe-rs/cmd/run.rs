@@ -150,14 +150,14 @@ pub(crate) struct MonitoringOptions {
     /// You can also use one of two presets: oneline (default) and full.
     ///
     /// See <https://defmt.ferrous-systems.com/custom-log-output>
-    #[clap(long)]
+    #[clap(long, help_heading = "LOG CONFIGURATION")]
     pub(crate) log_format: Option<String>,
 
     /// File name to store formatted output at. Different channels can be assigned to different
     /// files using channel=file arguments to multiple occurrences (eg. `--target-output-file
     /// defmt=out/defmt.txt --target-output-file out/default`). Channel names can be prefixed with
     /// `rtt:` or `semihosting:` (eg. `semihosting:stdout`) to disambiguate.
-    #[clap(long)]
+    #[clap(long, help_heading = "LOG CONFIGURATION")]
     pub(crate) target_output_file: Vec<String>,
 
     /// Memory region to scan for control block.
@@ -168,39 +168,51 @@ pub(crate) struct MonitoringOptions {
     /// You can specify either 'ram' to scan the whole memory, an exact starting address '0x1000' or a range such as '0x0000..0x1000'. Both decimal and hex are accepted.
     ///
     /// If no region is specified, probe-rs will not scan and will not poll RTT.
-    #[clap(long, default_value = "", value_parser = parse_scan_region)]
+    #[clap(long, default_value = "", value_parser = parse_scan_region, help_heading = "LOG CONFIGURATION / RTT")]
     pub(crate) scan_region: ScanRegion,
 
     /// RTT channel mode to use.
     ///
     /// By default, probe-rs will configure RTT to block when the buffer is full, to avoid losing data. This option can override that behavior.
-    #[clap(long, default_value = "block-if-full")]
+    #[clap(
+        long,
+        default_value = "block-if-full",
+        help_heading = "LOG CONFIGURATION / RTT"
+    )]
     pub(crate) rtt_channel_mode: ChannelMode,
 
     /// RTT down channel to use.
     ///
     /// By default, probe-rs will select the first available channel. This option can override that behavior.
-    #[clap(long, default_value = "0")]
+    #[clap(long, default_value = "0", help_heading = "LOG CONFIGURATION / RTT")]
     pub(crate) rtt_down_channel: u32,
 
     /// List RTT channels and exit.
-    #[clap(long, default_value = "false")]
+    #[clap(
+        long,
+        default_value = "false",
+        help_heading = "LOG CONFIGURATION / RTT"
+    )]
     pub(crate) list_rtt: bool,
 
     /// Always print the stacktrace on ctrl + c.
-    #[clap(long)]
+    #[clap(long, help_heading = "LOG CONFIGURATION / STACK TRACE")]
     pub(crate) always_print_stacktrace: bool,
 
     /// Limit the number of stack frames to print.
-    #[clap(long, default_value = "500")]
+    #[clap(
+        long,
+        default_value = "500",
+        help_heading = "LOG CONFIGURATION / STACK TRACE"
+    )]
     pub(crate) stack_frame_limit: u32,
 
-    /// Suppress filename and line number information from the rtt log
-    #[clap(long)]
+    /// Suppress filename and line number information
+    #[clap(long, help_heading = "LOG CONFIGURATION")]
     pub(crate) no_location: bool,
 
-    /// Suppress timestamps from the rtt log
-    #[clap(long)]
+    /// Suppress timestamps
+    #[clap(long, help_heading = "LOG CONFIGURATION")]
     pub(crate) no_timestamps: bool,
 
     /// File name to expose via semihosting. Values ending with a slash expose the whole directory.
