@@ -526,7 +526,14 @@ pub async fn monitor(
             None
         };
 
-        handle_monitor_event(&mut client, msg, &mut target_output_files, sw).await;
+        handle_monitor_event(
+            &mut client,
+            msg,
+            &mut target_output_files,
+            sw,
+            &monitor_options.rtt_up_channels,
+        )
+        .await;
     });
 
     // SIGTERM handler on *nix systems
@@ -716,15 +723,17 @@ pub async fn test(
     boot_info: BootInfo,
     elf_info: EmbeddedTestElfInfo,
     libtest_args: libtest_mimic::Arguments,
-    print_stack_trace: bool,
+    monitor_options: &MonitoringOptions,
     path: &Path,
     mut rtt_client: Option<CliRttClient>,
-    target_output_files: &mut TargetOutputFiles,
-    semihosting_options: SemihostingOptions,
-    stack_frame_limit: u32,
 ) -> anyhow::Result<()> {
     tracing::info!("libtest args {:?}", libtest_args);
     let token = CancellationToken::new();
+
+    let mut target_output_files =
+        connect_target_output_files(&monitor_options.target_output_file).await?;
+
+    let semihosting_options = parse_semihosting_options(&monitor_options.semihosting_file)?;
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<MonitorEvent>();
 
@@ -761,7 +770,7 @@ pub async fn test(
                     sender.clone(),
                     &token,
                     test,
-                    stack_frame_limit,
+                    monitor_options.stack_frame_limit,
                 )
             })
             .collect::<Vec<_>>();
@@ -778,7 +787,14 @@ pub async fn test(
 
     let log = async {
         while let Some(event) = receiver.recv().await {
-            handle_monitor_event(&mut rtt_client.as_mut(), event, target_output_files, None).await;
+            handle_monitor_event(
+                &mut rtt_client.as_mut(),
+                event,
+                &mut target_output_files,
+                None,
+                &monitor_options.rtt_up_channels,
+            )
+            .await;
         }
         futures_util::future::pending().await
     };
@@ -796,8 +812,8 @@ pub async fn test(
     })
     .await;
 
-    if token.is_cancelled() && print_stack_trace {
-        display_stack_trace(session, path, stack_frame_limit).await?;
+    if token.is_cancelled() && monitor_options.always_print_stacktrace {
+        display_stack_trace(session, path, monitor_options.stack_frame_limit).await?;
     }
 
     result
@@ -986,6 +1002,7 @@ async fn handle_monitor_event(
     event: MonitorEvent,
     target_output_files: &mut TargetOutputFiles,
     shared_writer: Option<SharedWriter>,
+    up_channels: &[u32],
 ) {
     match event {
         MonitorEvent::Rtt(RttEvent::Discovered { up_channels, .. }) => {
@@ -999,6 +1016,10 @@ async fn handle_monitor_event(
             let Some(client) = rtt_client else {
                 return;
             };
+
+            if !up_channels.is_empty() && !up_channels.contains(&channel) {
+                return;
+            }
 
             let channel = channel as usize;
             let Some(processor) = client.channel_processors.get_mut(channel) else {

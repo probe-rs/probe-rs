@@ -6,7 +6,7 @@ use crate::rpc::functions::rtt_client::ScanRegion;
 use crate::rpc::functions::test::{Test, TestDefinition};
 
 use crate::FormatOptions;
-use crate::util::cli::{self, connect_target_output_files, parse_semihosting_options, rtt_client};
+use crate::util::cli::{self, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::rtt::ChannelMode;
 
@@ -181,6 +181,12 @@ pub(crate) struct MonitoringOptions {
     )]
     pub(crate) rtt_channel_mode: ChannelMode,
 
+    /// RTT up channels to display.
+    ///
+    /// By default, probe-rs will read and display data from all available up channels. This option can override that behavior.
+    #[clap(long, help_heading = "LOG CONFIGURATION / RTT")]
+    pub(crate) rtt_up_channels: Vec<u32>,
+
     /// RTT down channel to use.
     ///
     /// By default, probe-rs will select the first available channel. This option can override that behavior.
@@ -256,12 +262,6 @@ impl Cmd {
 
         // Run firmware based on run mode
         if let RunMode::Test(elf_info) = run_mode {
-            let mut target_output_files =
-                connect_target_output_files(&self.monitor_options.target_output_file).await?;
-
-            let semihosting_options =
-                parse_semihosting_options(&self.monitor_options.semihosting_file)?;
-
             cli::test(
                 &session,
                 boot_info,
@@ -282,12 +282,9 @@ impl Cmd {
                     },
                     ..Arguments::default()
                 },
-                self.monitor_options.always_print_stacktrace,
+                &self.monitor_options,
                 &self.path,
                 Some(rtt_client),
-                &mut target_output_files,
-                semihosting_options,
-                self.monitor_options.stack_frame_limit,
             )
             .await
         } else {
