@@ -11,8 +11,8 @@ use crate::cmd::dap_server::{
     debug_adapter::{
         dap::{
             adapter::DebugAdapter,
-            dap_types::{EvaluateArguments, Response},
-            repl_commands::{REPL_COMMANDS, ReplCommand},
+            dap_types::EvaluateArguments,
+            repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand},
             repl_types::ReplCommandArgs,
         },
         protocol::ProtocolAdapter,
@@ -64,7 +64,7 @@ fn save_backtrace_to_yaml(
     command_arguments: &str,
     _: &EvaluateArguments,
     _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> Result<Response, DebuggerError> {
+) -> EvalResult {
     let mut args = command_arguments.split_whitespace();
 
     let write_to_file = args.next().map(Path::new);
@@ -88,15 +88,8 @@ fn save_backtrace_to_yaml(
     } else {
         yaml_data
     };
-    Ok(Response {
-        command: "backtrace".to_string(),
-        success: true,
-        message: Some(response_message),
-        type_: "response".to_string(),
-        request_seq: 0,
-        seq: 0,
-        body: None,
-    })
+
+    Ok(EvalResponse::Message(response_message))
 }
 
 fn print_backtrace(
@@ -104,7 +97,7 @@ fn print_backtrace(
     _: &str,
     _: &EvaluateArguments,
     _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> Result<Response, DebuggerError> {
+) -> EvalResult {
     let mut response_message = String::new();
 
     for (i, frame) in target_core.core_data.stack_frames.iter().enumerate() {
@@ -118,13 +111,5 @@ fn print_backtrace(
         .unwrap();
     }
 
-    Ok(Response {
-        command: "backtrace".to_string(),
-        success: true,
-        message: Some(response_message),
-        type_: "response".to_string(),
-        request_seq: 0,
-        seq: 0,
-        body: None,
-    })
+    Ok(EvalResponse::Message(response_message))
 }

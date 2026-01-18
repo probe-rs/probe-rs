@@ -9,7 +9,10 @@ use super::{
 };
 use crate::cmd::dap_server::{
     DebuggerError,
-    debug_adapter::protocol::{ProtocolAdapter, ProtocolHelper},
+    debug_adapter::{
+        dap::repl_commands::{EvalResponse, EvalResult},
+        protocol::{ProtocolAdapter, ProtocolHelper},
+    },
     server::{
         configuration::ConsoleLog,
         core_data::CoreHandle,
@@ -263,56 +266,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 response_body.result = arguments.expression;
             } else if context == "repl" {
                 match self.handle_repl(target_core, &arguments) {
-                    Ok(repl_response) => {
-                        // In all other cases, the response would have been updated by the repl command handler.
-                        response_body.result = if repl_response.success {
-                            repl_response
-                                .message
-                                // This should always have a value, but just in case someone was lazy ...
-                                .unwrap_or_else(|| "Success.".to_string())
-                        } else {
-                            format!(
-                                "Error: {:?} {:?}",
-                                repl_response.command, repl_response.message
-                            )
-                        };
-
-                        // Perform any special post-processing of the response.
-                        match repl_response.command.as_str() {
-                            "terminate" => {
-                                // This is a special case, where a repl command has requested that the debug session be terminated.
-                                self.send_event(
-                                    "terminated",
-                                    Some(TerminatedEventBody { restart: None }),
-                                )?;
-                            }
-                            "variables" => {
-                                // This is a special case, where a repl command has requested that the variables be displayed.
-                                if let Some(repl_response_body) = repl_response.body {
-                                    if let Ok(evaluate_response) =
-                                        serde_json::from_value(repl_response_body.clone())
-                                    {
-                                        response_body = evaluate_response;
-                                    } else {
-                                        response_body.result = format!(
-                                            "Error: Could not parse response body: {repl_response_body:?}"
-                                        );
-                                    }
-                                }
-                            }
-                            "setBreakpoints" => {
-                                // This is a special case, where we've added a breakpoint, and need to synch the DAP client UI.
-                                self.send_event("breakpoint", repl_response.body)?;
-                            }
-                            _other_commands => {}
-                        }
-                    }
-                    Err(error) => {
-                        response_body.result = match error {
-                            DebuggerError::UserMessage(repl_message) => repl_message,
-                            other_error => format!("{other_error:?}"),
-                        };
-                    }
+                    Ok(EvalResponse::Body(body)) => response_body = body,
+                    Ok(EvalResponse::Message(message)) => response_body.result = message,
+                    Err(DebuggerError::UserMessage(message)) => response_body.result = message,
+                    Err(error) => response_body.result = format!("{error:?}"),
                 }
             } else {
                 // Handle other contexts: 'watch', 'hover', etc.
@@ -524,7 +481,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         &mut self,
         target_core: &mut CoreHandle<'_>,
         arguments: &EvaluateArguments,
-    ) -> Result<Response, DebuggerError> {
+    ) -> EvalResult {
         // The target is halted, so we can allow any repl command.
         //TODO: Do we need to look for '/' in the expression, before we split it?
         // Now we can make sure we have a valid expression and evaluate it.
