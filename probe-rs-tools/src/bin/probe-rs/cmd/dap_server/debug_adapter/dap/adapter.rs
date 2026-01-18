@@ -492,7 +492,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let Some(repl_command) = repl_commands.first() else {
             return Err(DebuggerError::UserMessage(format!(
-                "Invalid REPL command: {command_root:?}."
+                "Unknown REPL command: {}.",
+                command_root.trim()
             )));
         };
 

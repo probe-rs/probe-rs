@@ -202,6 +202,9 @@ pub(crate) fn build_expanded_commands<'f>(
                         .any(|sub_cmd| sub_cmd.command.starts_with(command_piece))
                         || !cmd.args.is_empty())
             });
+            if command_root.is_empty() {
+                command_root = command_piece.to_string();
+            }
             break;
         };
 
