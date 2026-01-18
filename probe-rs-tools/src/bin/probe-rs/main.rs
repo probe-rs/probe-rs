@@ -381,6 +381,7 @@ pub struct FormatOptions {
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, ValueEnum, Schema)]
 pub enum FormatKind {
     /// The image format is determined by the target chip's preference, which is usually ELF.
+    #[default]
     Target,
 
     /// The image is in binary format. This means that the file contains the contents of the flash 1:1.
@@ -392,7 +393,6 @@ pub enum FormatKind {
     Hex,
 
     /// The image is in the Executable and Linkable Format (ELF). For more information, see https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
-    #[default]
     Elf,
 
     /// The image is an ELF file containing an ESP-IDF bootloader compatible application. For more information, see https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures
@@ -430,7 +430,7 @@ impl FormatKind {
     pub fn from_optional(s: Option<&str>) -> Result<Self, String> {
         match s {
             Some(format) => Self::from_str(format, true),
-            None => Ok(Self::default()),
+            None => Ok(Self::Elf),
         }
     }
 }
