@@ -1447,46 +1447,21 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
-        if let Err(error) = target_core.core.run() {
-            self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))))?;
-            return Err(error.into());
-        }
-
-        target_core.reset_core_status(self);
-
-        if request.command.as_str() == "continue" {
-            // If this continue was initiated as part of some other request, then do not respond.
-            self.send_response(
-                request,
-                Ok(Some(ContinueResponseBody {
-                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                })),
-            )?;
-        }
-        // We have to consider the fact that sometimes the `run()` is successfull,
-        // but "immediately" afterwards, the MCU hits a breakpoint or exception.
-        // So we have to check the status again to be sure.
-
-        // If there are breakpoints configured, we wait a bit longer
-        let wait_timeout = if target_core.core_data.breakpoints.is_empty() {
-            Duration::from_millis(200)
-        } else {
-            Duration::from_millis(500)
-        };
-
-        tracing::trace!("Checking if core halts again after continue, timeout = {wait_timeout:?}");
-
-        match target_core.core.wait_for_core_halted(wait_timeout) {
-            // The core has halted, so we can proceed.
+        match self.continue_impl(target_core) {
+            Ok(all_continued) if request.command == "continue" => {
+                // If this continue was initiated as part of some other request, then do not respond.
+                self.send_response(
+                    request,
+                    Ok(Some(ContinueResponseBody {
+                        all_threads_continued: Some(all_continued),
+                    })),
+                )
+            }
             Ok(_) => Ok(()),
-            // The core is still running.
-            Err(
-                Error::Arm(ArmError::Timeout)
-                | Error::Riscv(RiscvError::Timeout)
-                | Error::Xtensa(XtensaError::Timeout),
-            ) => Ok(()),
-            // Some other error occurred, so we have to send an error response.
-            Err(wait_error) => Err(wait_error.into()),
+            Err(error) => {
+                self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))))?;
+                return Err(error.into());
+            }
         }
     }
 
@@ -1812,6 +1787,38 @@ impl<P: ProtocolAdapter + ?Sized> DebugAdapter<P> {
             event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
         )?;
         Ok(cpu_info)
+    }
+
+    /// Returns whether all cores are halted.
+    pub(crate) fn continue_impl(&mut self, target_core: &mut CoreHandle<'_>) -> Result<bool> {
+        target_core.core.run()?;
+        target_core.reset_core_status(self);
+
+        // We have to consider the fact that sometimes the `run()` is successful,
+        // but "immediately" afterwards, the MCU hits a breakpoint or exception.
+        // So we have to check the status again to be sure.
+
+        // If there are breakpoints configured, we wait a bit longer
+        let wait_timeout = if target_core.core_data.breakpoints.is_empty() {
+            Duration::from_millis(200)
+        } else {
+            Duration::from_millis(500)
+        };
+
+        tracing::trace!("Checking if core halts again after continue, timeout = {wait_timeout:?}");
+
+        match target_core.core.wait_for_core_halted(wait_timeout) {
+            // The core has halted, so we can proceed.
+            Ok(_) => Ok(false),
+            // The core is still running.
+            Err(
+                Error::Arm(ArmError::Timeout)
+                | Error::Riscv(RiscvError::Timeout)
+                | Error::Xtensa(XtensaError::Timeout),
+            ) => Ok(true), // TODO: somehow query the other cores' status
+            // Some other error occurred, so we have to send an error response.
+            Err(wait_error) => Err(wait_error.into()),
+        }
     }
 
     #[tracing::instrument(level = "trace", skip_all)]

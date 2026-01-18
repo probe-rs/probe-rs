@@ -48,13 +48,20 @@ fn r#continue(
     target_core: &mut CoreHandle<'_>,
     _: &str,
     _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+    adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
 ) -> EvalResult {
-    target_core.core.run()?;
+    adapter.continue_impl(target_core)?;
+    let status = target_core.core.status()?;
+    let pc = if status != CoreStatus::Running {
+        let pc = target_core
+            .core
+            .read_core_reg::<u64>(target_core.core.program_counter().id)?;
+        Some(pc)
+    } else {
+        None
+    };
 
-    Ok(EvalResponse::Message(
-        CoreStatus::Running.short_long_status(None).1,
-    ))
+    Ok(EvalResponse::Message(status.short_long_status(pc).1))
 }
 
 fn reset(
