@@ -134,6 +134,7 @@ git-version = "0.3"
 [dev-dependencies]
 pretty_assertions = "1.4.0"
 test-case = "3"
+probe-rs = { version = "0.31.0", path = "../probe-rs", features = ["test"] }
 
 # Set the proper name for the homebrew formula
 [package.metadata.dist]
