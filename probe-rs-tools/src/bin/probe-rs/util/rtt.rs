@@ -1,3 +1,4 @@
+use clap::ValueEnum;
 use postcard_schema::Schema;
 use probe_rs::rtt::{self, DownChannel, Error, Rtt, UpChannel};
 use probe_rs::{Core, MemoryInterface};
@@ -28,7 +29,7 @@ pub enum DataFormat {
 
 /// Specifies what to do when a channel doesn't have enough buffer space for a complete write on the
 /// target side.
-#[derive(Clone, Copy, Eq, PartialEq, Debug, Serialize, Deserialize, Schema)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug, Serialize, Deserialize, Schema, ValueEnum)]
 #[repr(u32)]
 pub enum ChannelMode {
     /// Skip writing the data completely if it doesn't fit in its entirety.
@@ -72,14 +73,19 @@ pub struct RttConfig {
     /// Configure data_format and show_timestamps for select channels
     #[serde(default = "Vec::new", rename = "rttChannelFormats")]
     pub channels: Vec<RttChannelConfig>,
+
+    /// Default channel configuration.
+    #[serde(default)]
+    pub default_config: RttChannelConfig,
 }
 
 impl RttConfig {
     /// Returns the configuration for the specified channel number, if it exists.
-    pub fn channel_config(&self, channel_number: u32) -> Option<&RttChannelConfig> {
+    pub fn channel_config(&self, channel_number: u32) -> &RttChannelConfig {
         self.channels
             .iter()
             .find(|ch| ch.channel_number == Some(channel_number))
+            .unwrap_or(&self.default_config)
     }
 }
 

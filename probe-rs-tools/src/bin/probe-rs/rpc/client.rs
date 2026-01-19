@@ -580,12 +580,14 @@ impl SessionInterface {
         &self,
         scan_regions: ScanRegion,
         config: Vec<RttChannelConfig>,
+        default_config: RttChannelConfig,
     ) -> anyhow::Result<RttClientData> {
         self.client
             .send_resp::<CreateRttClientEndpoint, _>(&CreateRttClientRequest {
                 sessid: self.sessid,
                 scan_regions,
                 config,
+                default_config,
             })
             .await
     }

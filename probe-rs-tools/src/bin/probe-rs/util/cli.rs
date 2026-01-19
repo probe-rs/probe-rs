@@ -16,6 +16,7 @@ use tokio_util::sync::CancellationToken;
 use crate::cmd::run::EmbeddedTestElfInfo;
 use crate::rpc::functions::monitor::MonitorExitReason;
 use crate::rpc::utils::semihosting::SemihostingOptions;
+use crate::util::rtt::{ChannelMode, RttChannelConfig};
 use crate::{
     FormatOptions,
     rpc::{
@@ -275,18 +276,24 @@ pub(crate) fn parse_semihosting_options(arg: Vec<String>) -> anyhow::Result<Semi
     Ok(options)
 }
 
+#[expect(clippy::too_many_arguments)]
 pub async fn rtt_client(
     session: &SessionInterface,
-    path: &Path,
+    path: Option<&Path>,
     mut scan_regions: ScanRegion,
     log_format: Option<String>,
     show_timestamps: bool,
     show_location: bool,
+    rtt_channel_mode: ChannelMode,
     timestamp_offset: Option<UtcOffset>,
 ) -> anyhow::Result<CliRttClient> {
-    let elf = tokio::fs::read(path)
-        .await
-        .with_context(|| format!("Failed to read firmware from {}", path.display()))?;
+    let elf = if let Some(path) = path {
+        tokio::fs::read(path)
+            .await
+            .with_context(|| format!("Failed to read firmware from {}", path.display()))?
+    } else {
+        vec![]
+    };
 
     let mut load_defmt_data = false;
     match rtt::get_rtt_symbol_from_bytes(&elf) {
@@ -296,7 +303,7 @@ pub async fn rtt_client(
             load_defmt_data = true;
         }
         Err(RttSymbolError::RttSymbolNotFound) => {
-            load_defmt_data = true;
+            load_defmt_data = !elf.is_empty();
         }
         _ => {}
     }
@@ -307,9 +314,17 @@ pub async fn rtt_client(
         None
     };
 
-    // We don't really know what to configure here, so we just use the defaults: Defmt channels
-    // will be set to BlockIfFull, others will not be changed.
-    let rtt_client = session.create_rtt_client(scan_regions, vec![]).await?;
+    // We don't really know what to configure here, so we set a default configuration if we can, but that's it.
+    let rtt_client = session
+        .create_rtt_client(
+            scan_regions,
+            vec![],
+            RttChannelConfig {
+                mode: Some(rtt_channel_mode),
+                ..Default::default()
+            },
+        )
+        .await?;
 
     // The actual data processor objects will be created once we have the channel names.
     Ok(CliRttClient {
@@ -326,7 +341,6 @@ pub async fn rtt_client(
 pub async fn flash(
     session: &SessionInterface,
     path: &Path,
-    chip_erase: bool,
     format: FormatOptions,
     download_options: BinaryDownloadOptions,
     rtt_client: Option<&mut CliRttClient>,
@@ -337,7 +351,7 @@ pub async fn flash(
 
     let mut options = DownloadOptions {
         keep_unwritten_bytes: download_options.restore_unwritten,
-        do_chip_erase: chip_erase,
+        do_chip_erase: download_options.chip_erase,
         skip_erase: false,
         verify: download_options.verify,
         disable_double_buffering: download_options.disable_double_buffering,
@@ -473,7 +487,7 @@ impl MultiSubscription for MonitorSubscription {
 pub async fn monitor(
     session: &SessionInterface,
     mode: MonitorMode,
-    path: &Path,
+    path: Option<&Path>,
     mut rtt_client: Option<CliRttClient>,
     options: MonitorOptions,
     print_stack_trace: bool,
@@ -549,7 +563,11 @@ pub async fn monitor(
     };
 
     if print_stack_trace {
-        display_stack_trace(session, path, stack_frame_limit).await?;
+        if let Some(path) = path {
+            display_stack_trace(session, path, stack_frame_limit).await?;
+        } else {
+            eprintln!("Can not print stack trace because firmware is not available");
+        }
     }
 
     result

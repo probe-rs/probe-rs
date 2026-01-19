@@ -2,11 +2,13 @@ use std::path::{Path, PathBuf};
 
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
+use crate::rpc::functions::rtt_client::ScanRegion;
 use crate::rpc::functions::test::{Test, TestDefinition};
 
 use crate::FormatOptions;
 use crate::util::cli::{self, connect_target_output_files, parse_semihosting_options, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
+use crate::util::rtt::ChannelMode;
 
 use anyhow::{Context, anyhow};
 use goblin::elf::Elf;
@@ -119,13 +121,6 @@ pub struct Cmd {
     #[clap(flatten)]
     pub(crate) test_options: TestOptions,
 
-    /// Options shared by all run modes
-    #[clap(flatten)]
-    pub(crate) shared_options: SharedOptions,
-}
-
-#[derive(Debug, clap::Parser)]
-pub struct SharedOptions {
     #[clap(flatten)]
     pub(crate) probe_options: ProbeOptions,
 
@@ -140,6 +135,47 @@ pub struct SharedOptions {
     If the binary does not use `embedded-test` the binary will be flashed and run normally. See `RUN OPTIONS` for more configuration options exclusive to this mode."
     )]
     pub(crate) path: PathBuf,
+
+    #[clap(flatten)]
+    pub(crate) format_options: FormatOptions,
+
+    #[clap(flatten)]
+    pub(crate) monitor_options: MonitoringOptions,
+}
+
+#[derive(Debug, Clone, clap::Args)]
+pub(crate) struct MonitoringOptions {
+    /// The format string to use when printing defmt encoded log messages from the target.
+    ///
+    /// You can also use one of two presets: oneline (default) and full.
+    ///
+    /// See <https://defmt.ferrous-systems.com/custom-log-output>
+    #[clap(long)]
+    pub(crate) log_format: Option<String>,
+
+    /// File name to store formatted output at. Different channels can be assigned to different
+    /// files using channel=file arguments to multiple occurrences (eg. `--target-output-file
+    /// defmt=out/defmt.txt --target-output-file out/default`). Channel names can be prefixed with
+    /// `rtt:` or `semihosting:` (eg. `semihosting:stdout`) to disambiguate.
+    #[clap(long)]
+    pub(crate) target_output_file: Vec<String>,
+
+    /// Memory region to scan for control block.
+    ///
+    /// If probe-rs finds the exact location in the binary, that location will be used. If probe-rs does not find the exact location,
+    /// it will scan the specified region for the control block.
+    ///
+    /// You can specify either 'ram' to scan the whole memory, an exact starting address '0x1000' or a range such as '0x0000..0x1000'. Both decimal and hex are accepted.
+    ///
+    /// If no region is specified, probe-rs will not scan and will not poll RTT.
+    #[clap(long, default_value = "", value_parser = parse_scan_region)]
+    pub(crate) scan_region: ScanRegion,
+
+    /// RTT channel mode to use.
+    ///
+    /// By default, probe-rs will configure RTT to block when the buffer is full, to avoid losing data. This option can override that behavior.
+    #[clap(long, default_value = "block-if-full")]
+    pub(crate) rtt_channel_mode: ChannelMode,
 
     /// Always print the stacktrace on ctrl + c.
     #[clap(long)]
@@ -156,28 +192,6 @@ pub struct SharedOptions {
     /// Suppress timestamps from the rtt log
     #[clap(long)]
     pub(crate) no_timestamps: bool,
-
-    #[clap(flatten)]
-    pub(crate) format_options: FormatOptions,
-
-    /// The format string to use when printing defmt encoded log messages from the target.
-    ///
-    /// You can also use one of two presets: oneline (default) and full.
-    ///
-    /// See <https://defmt.ferrous-systems.com/custom-log-output>
-    #[clap(long)]
-    pub(crate) log_format: Option<String>,
-
-    /// File name to store formatted output at. Different channels can be assigned to different
-    /// files using channel=file arguments to multiple occurrences (eg. `--target-output-file
-    /// defmt=out/defmt.txt --target-output-file out/default`). Channel names can be prefixed with
-    /// `rtt:` or `semihosting:` (eg. `semihosting:stdout`) to disambiguate.
-    #[clap(long)]
-    pub(crate) target_output_file: Vec<String>,
-
-    /// Scan the memory to find the RTT control block
-    #[clap(long)]
-    pub(crate) rtt_scan_memory: bool,
 
     /// File name to expose via semihosting. Values ending with a slash expose the whole directory.
     /// By using `target=host` arguments the names can differ between the host and the target.
@@ -197,36 +211,33 @@ impl Cmd {
 
         // TODO: Skip attach_probe & flashing, if user only wants to list tests (only possible when using embedded_test with protocol version >= 1)
 
-        let session = cli::attach_probe(&client, self.shared_options.probe_options, false).await?;
+        let session = cli::attach_probe(&client, self.probe_options, false).await?;
 
         let mut rtt_client = rtt_client(
             &session,
-            &self.shared_options.path,
-            match self.shared_options.rtt_scan_memory {
-                true => crate::rpc::functions::rtt_client::ScanRegion::TargetDefault,
-                false => crate::rpc::functions::rtt_client::ScanRegion::Ranges(vec![]),
-            },
-            self.shared_options.log_format,
-            !self.shared_options.no_timestamps,
-            !self.shared_options.no_location,
+            Some(&self.path),
+            self.monitor_options.scan_region,
+            self.monitor_options.log_format,
+            !self.monitor_options.no_timestamps,
+            !self.monitor_options.no_location,
+            self.monitor_options.rtt_channel_mode,
             Some(utc_offset),
         )
         .await?;
 
         let mut target_output_files =
-            connect_target_output_files(self.shared_options.target_output_file).await?;
+            connect_target_output_files(self.monitor_options.target_output_file).await?;
 
-        let semihosting_options = parse_semihosting_options(self.shared_options.semihosting_file)?;
+        let semihosting_options = parse_semihosting_options(self.monitor_options.semihosting_file)?;
 
         let client_handle = rtt_client.handle();
 
         // Flash firmware
         let boot_info = cli::flash(
             &session,
-            &self.shared_options.path,
-            self.shared_options.download_options.chip_erase,
-            self.shared_options.format_options,
-            self.shared_options.download_options,
+            &self.path,
+            self.format_options,
+            self.download_options,
             Some(&mut rtt_client),
             None,
         )
@@ -254,19 +265,19 @@ impl Cmd {
                     },
                     ..Arguments::default()
                 },
-                self.shared_options.always_print_stacktrace,
-                &self.shared_options.path,
+                self.monitor_options.always_print_stacktrace,
+                &self.path,
                 Some(rtt_client),
                 &mut target_output_files,
                 semihosting_options,
-                self.shared_options.stack_frame_limit,
+                self.monitor_options.stack_frame_limit,
             )
             .await
         } else {
             cli::monitor(
                 &session,
                 MonitorMode::Run(boot_info),
-                &self.shared_options.path,
+                Some(&self.path),
                 Some(rtt_client),
                 MonitorOptions {
                     catch_reset: !self.run_options.no_catch_reset,
@@ -274,9 +285,9 @@ impl Cmd {
                     rtt_client: Some(client_handle),
                     semihosting_options,
                 },
-                self.shared_options.always_print_stacktrace,
+                self.monitor_options.always_print_stacktrace,
                 &mut target_output_files,
-                self.shared_options.stack_frame_limit,
+                self.monitor_options.stack_frame_limit,
             )
             .await
         }
@@ -445,7 +456,7 @@ impl EmbeddedTestElfInfo {
 }
 
 fn detect_run_mode(cmd: &Cmd) -> anyhow::Result<RunMode> {
-    if let Some(elf_info) = EmbeddedTestElfInfo::from_elf(&cmd.shared_options.path)? {
+    if let Some(elf_info) = EmbeddedTestElfInfo::from_elf(&cmd.path)? {
         // We tolerate the run options, even in test mode so that you can set
         // `probe-rs run --catch-hardfault` as cargo runner (used for both unit tests and normal binaries)
         tracing::info!("Detected embedded-test in ELF file. Running as test");
@@ -465,5 +476,27 @@ fn detect_run_mode(cmd: &Cmd) -> anyhow::Result<RunMode> {
 
         tracing::debug!("No embedded-test in ELF file. Running as normal");
         Ok(RunMode::Normal)
+    }
+}
+
+fn parse_scan_region(mut src: &str) -> anyhow::Result<ScanRegion> {
+    src = src.trim();
+    if src.is_empty() {
+        return Ok(ScanRegion::Ranges(vec![]));
+    }
+
+    if src.eq_ignore_ascii_case("ram") {
+        return Ok(ScanRegion::Ram);
+    }
+
+    let parts = src
+        .split("..")
+        .map(parse_int::parse::<u64>)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    match *parts.as_slice() {
+        [addr] => Ok(ScanRegion::Exact(addr)),
+        [start, end] => Ok(ScanRegion::Ranges(vec![(start, end)])),
+        _ => anyhow::bail!("Invalid range: multiple '..'s"),
     }
 }
