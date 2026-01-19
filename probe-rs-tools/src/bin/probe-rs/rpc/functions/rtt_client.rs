@@ -1,7 +1,7 @@
 use crate::{
     rpc::{
         Key,
-        functions::{RpcContext, RpcResult},
+        functions::{NoResponse, RpcContext, RpcResult},
     },
     util::rtt::{RttChannelConfig, RttConfig, client::RttClient},
 };
@@ -42,9 +42,11 @@ pub struct CreateRttClientRequest {
     pub default_config: RttChannelConfig,
 }
 
+pub type RttClientKey = Key<RttClient>;
+
 #[derive(Serialize, Deserialize, Schema)]
 pub struct RttClientData {
-    pub handle: Key<RttClient>,
+    pub handle: RttClientKey,
 }
 
 pub type CreateRttClientResponse = RpcResult<RttClientData>;
@@ -77,4 +79,27 @@ pub async fn create_rtt_client(
     Ok(RttClientData {
         handle: ctx.store_object(client).await,
     })
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct RttDownRequest {
+    pub sessid: Key<Session>,
+    pub rtt_client: RttClientKey,
+    pub channel: u32,
+    pub data: Vec<u8>,
+}
+
+pub async fn write_rtt_down(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: RttDownRequest,
+) -> NoResponse {
+    let mut session = ctx.session(request.sessid).await;
+    let mut rtt_client = ctx.object_mut(request.rtt_client).await;
+
+    let core_id = rtt_client.core_id();
+    let mut core = session.core(core_id)?;
+    rtt_client.write_down_channel(&mut core, request.channel, &request.data)?;
+
+    Ok(())
 }
