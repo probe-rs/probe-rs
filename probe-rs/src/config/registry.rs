@@ -396,6 +396,7 @@ fn validate_family(family: &ChipFamily) -> Result<(), String> {
 
     // We can't have this in the `validate` method as we need information that is not available in
     // probe-rs-target.
+    #[cfg(feature = "flashing")]
     for target in family.variants() {
         crate::flashing::FormatKind::from_optional(target.default_binary_format.as_deref())?;
     }
@@ -405,8 +406,6 @@ fn validate_family(family: &ChipFamily) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::flashing::FlashAlgorithm;
-
     use super::*;
     type TestResult = Result<(), RegistryError>;
 
@@ -488,17 +487,26 @@ mod tests {
             })
             .for_each(|target| {
                 // Walk through the flash algorithms and cores and try to create each one.
+                #[cfg(feature = "flashing")]
                 for raw_flash_algo in target.flash_algorithms.iter() {
                     for core in raw_flash_algo.cores.iter() {
-                        FlashAlgorithm::assemble_from_raw_with_core(raw_flash_algo, core, &target)
-                            .unwrap_or_else(|error| {
-                                panic!(
-                                    "Failed to initialize flash algorithm ({}, {}, {core}): {}",
-                                    &target.name, &raw_flash_algo.name, error
-                                )
-                            });
+                        crate::flashing::FlashAlgorithm::assemble_from_raw_with_core(
+                            raw_flash_algo,
+                            core,
+                            &target,
+                        )
+                        .unwrap_or_else(|error| {
+                            panic!(
+                                "Failed to initialize flash algorithm ({}, {}, {core}): {}",
+                                &target.name, &raw_flash_algo.name, error
+                            )
+                        });
                     }
                 }
+
+                // Avoid warning when `flashing` feature is not enabled
+                #[cfg(not(feature = "flashing"))]
+                let _ = target;
             });
     }
 

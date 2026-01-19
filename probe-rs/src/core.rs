@@ -16,6 +16,7 @@ use std::{sync::Arc, time::Duration};
 
 pub mod core_state;
 pub mod core_status;
+#[cfg(feature = "coredump")]
 pub mod dump;
 pub mod memory_mapped_registers;
 pub mod registers;
