@@ -172,7 +172,7 @@ impl Target {
     }
 
     #[cfg(feature = "flashing")]
-    /// Create a [FlashLoader] for this target, which can be used
+    /// Create a [FlashLoader](crate::flashing::FlashLoader) for this target, which can be used
     /// to program its non-volatile memory.
     pub fn flash_loader(&self) -> crate::flashing::FlashLoader {
         crate::flashing::FlashLoader::new(self.memory_map.clone(), self.source.clone())
