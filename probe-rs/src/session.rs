@@ -706,10 +706,14 @@ impl Session {
     }
 
     /// This function can be used to set up an application which was flashed to RAM.
-    pub fn prepare_running_on_ram(&mut self, vector_table_addr: u64) -> Result<(), crate::Error> {
+    pub fn prepare_running_on_ram(
+        &mut self,
+        vector_table_addr: u64,
+        core_id: usize,
+    ) -> Result<(), crate::Error> {
         match &self.target.debug_sequence.clone() {
             crate::config::DebugSequence::Arm(arm) => {
-                arm.prepare_running_on_ram(vector_table_addr, self)
+                arm.prepare_running_on_ram(vector_table_addr, self, core_id)
             }
             _ => Err(crate::Error::NotImplemented(
                 "ram flash non-ARM architectures",

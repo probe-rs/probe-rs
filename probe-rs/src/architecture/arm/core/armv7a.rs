@@ -485,7 +485,10 @@ pub(crate) fn wait_for_core_halted(
 }
 
 /// Return whether or not the core is halted.
-fn core_halted(memory: &mut dyn ArmMemoryInterface, base_address: u64) -> Result<bool, ArmError> {
+pub(crate) fn core_halted(
+    memory: &mut dyn ArmMemoryInterface,
+    base_address: u64,
+) -> Result<bool, ArmError> {
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
     let dbgdscr = Dbgdscr(memory.read_word_32(address)?);
 

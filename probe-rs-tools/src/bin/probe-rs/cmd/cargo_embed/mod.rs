@@ -325,7 +325,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
                 vector_table_addr, ..
             } => {
                 // core should be already reset and halt by this point.
-                session.prepare_running_on_ram(vector_table_addr)?;
+                session.prepare_running_on_ram(vector_table_addr, core_id)?;
             }
             BootInfo::Other => {
                 // reset the core to leave it in a consistent state after flashing
