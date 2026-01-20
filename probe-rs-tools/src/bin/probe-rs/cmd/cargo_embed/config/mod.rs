@@ -56,6 +56,7 @@ pub struct Flashing {
     pub preverify: bool,
     pub verify: bool,
     pub read_flasher_rtt: bool,
+    pub skip_reset: bool,
 }
 
 /// The reset config struct holding all the possible reset options.

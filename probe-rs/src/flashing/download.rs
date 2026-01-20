@@ -234,6 +234,9 @@ pub struct DownloadOptions<'p> {
     pub verify: bool,
     /// Disable double buffering when loading flash.
     pub disable_double_buffering: bool,
+    /// Skip resetting and halting the processor cores. This can be useful if there is other
+    /// tooling in place which performs this task before flashing.
+    pub skip_reset: bool,
     /// If there are multiple valid flash algorithms for a memory region, this list allows
     /// overriding the default selection.
     pub preferred_algos: Vec<String>,

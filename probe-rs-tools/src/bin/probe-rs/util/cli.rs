@@ -356,6 +356,7 @@ pub async fn flash(
         verify: download_options.verify,
         disable_double_buffering: download_options.disable_double_buffering,
         preferred_algos: download_options.prefer_flash_algorithm,
+        skip_reset: download_options.skip_reset,
     };
 
     options.sanitize();

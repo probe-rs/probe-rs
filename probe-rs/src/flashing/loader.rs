@@ -592,7 +592,13 @@ impl FlashLoader {
             {
                 session
                     .core(core_to_reset_index)
-                    .and_then(|mut core| core.reset_and_halt(Duration::from_millis(500)))
+                    .and_then(|mut core| {
+                        if options.skip_reset {
+                            core.halt(Duration::from_millis(500))
+                        } else {
+                            core.reset_and_halt(Duration::from_millis(500))
+                        }
+                    })
                     .map_err(FlashError::Core)?;
             }
         }
