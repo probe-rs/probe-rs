@@ -908,10 +908,10 @@ mod test {
             dap::{
                 adapter::DebugAdapter,
                 dap_types::{
-                    Capabilities, DisassembleArguments, DisassembleResponseBody,
-                    DisassembledInstruction, DisconnectArguments, ErrorResponseBody,
-                    InitializeRequestArguments, Message, Request, Response, Source, Thread,
-                    ThreadsResponseBody,
+                    Capabilities, ContinuedEventBody, DisassembleArguments,
+                    DisassembleResponseBody, DisassembledInstruction, DisconnectArguments,
+                    ErrorResponseBody, InitializeRequestArguments, Message, Request, Response,
+                    Source, Thread, ThreadsResponseBody,
                 },
             },
             protocol::ProtocolAdapter,
@@ -1470,6 +1470,14 @@ mod test {
             .add_request("configurationDone")
             .and_succesful_response();
 
+        protocol_adapter.expect_event(
+            "continued",
+            Some(ContinuedEventBody {
+                all_threads_continued: Some(true),
+                thread_id: 0,
+            }),
+        );
+
         protocol_adapter
             .add_request("threads")
             .and_succesful_response()
@@ -1552,6 +1560,14 @@ mod test {
         protocol_adapter
             .add_request("configurationDone")
             .and_succesful_response();
+
+        protocol_adapter.expect_event(
+            "continued",
+            Some(ContinuedEventBody {
+                all_threads_continued: Some(true),
+                thread_id: 0,
+            }),
+        );
 
         let default_instruction_fields = DisassembledInstruction {
             address: "".to_string(),

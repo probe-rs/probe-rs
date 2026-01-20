@@ -1,10 +1,13 @@
-use super::{
-    dap_types::{EvaluateArguments, Response},
-    repl_types::*,
-};
+use super::{dap_types::EvaluateArguments, repl_types::*};
 use crate::cmd::dap_server::{
     DebuggerError,
-    debug_adapter::{dap::adapter::DebugAdapter, protocol::ProtocolAdapter},
+    debug_adapter::{
+        dap::{
+            adapter::DebugAdapter,
+            dap_types::{EvaluateResponseBody, TerminatedEventBody},
+        },
+        protocol::ProtocolAdapter,
+    },
     server::core_data::CoreHandle,
 };
 use linkme::distributed_slice;
@@ -34,7 +37,7 @@ pub(crate) type ReplHandler = fn(
     command_arguments: &str,
     evaluate_arguments: &EvaluateArguments,
     adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> Result<Response, DebuggerError>;
+) -> EvalResult;
 
 #[derive(Clone, Copy)]
 pub(crate) struct ReplCommand {
@@ -96,7 +99,7 @@ fn print_help(
     _: &str,
     _: &EvaluateArguments,
     _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> Result<Response, DebuggerError> {
+) -> EvalResult {
     let mut help_text =
         "Usage:\t- Use <Ctrl+Space> to get a list of available commands.".to_string();
     help_text.push_str("\n\t- Use <Up/DownArrows> to navigate through the command list.");
@@ -106,15 +109,7 @@ fn print_help(
     for command in target_core.core_data.repl_commands.iter() {
         help_text.push_str(&format!("\n{command}"));
     }
-    Ok(Response {
-        command: "help".to_string(),
-        success: true,
-        message: Some(help_text),
-        type_: "response".to_string(),
-        request_seq: 0,
-        seq: 0,
-        body: None,
-    })
+    Ok(EvalResponse::Message(help_text))
 }
 
 fn need_subcommand(
@@ -122,7 +117,7 @@ fn need_subcommand(
     _: &str,
     _: &EvaluateArguments,
     _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> Result<Response, DebuggerError> {
+) -> EvalResult {
     Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
 }
 
@@ -130,16 +125,25 @@ fn quit(
     target_core: &mut CoreHandle<'_>,
     _: &str,
     _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> Result<Response, DebuggerError> {
+    adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> EvalResult {
     target_core.core.halt(Duration::from_millis(500))?;
-    Ok(Response {
-        command: "terminate".to_string(),
-        success: true,
-        message: Some("Debug Session Terminated".to_string()),
-        type_: "response".to_string(),
-        request_seq: 0,
-        seq: 0,
-        body: None,
-    })
+    adapter.dyn_send_event(
+        "terminated",
+        serde_json::to_value(TerminatedEventBody { restart: None }).ok(),
+    )?;
+
+    Ok(EvalResponse::Message(
+        "Debug Session Terminated".to_string(),
+    ))
 }
+
+pub enum EvalResponse {
+    /// Successful evaluation, the result is a string.
+    Message(String),
+
+    /// Successful evaluation, the result is a complete evaluation response.
+    Body(EvaluateResponseBody),
+}
+
+pub type EvalResult = Result<EvalResponse, DebuggerError>;

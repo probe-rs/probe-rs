@@ -95,7 +95,7 @@ impl CoreHandle<'_> {
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) {
-        self.core_data.last_known_status = CoreStatus::Running;
+        self.core_data.last_known_status = CoreStatus::Unknown;
         debug_adapter.all_cores_halted = false;
     }
 

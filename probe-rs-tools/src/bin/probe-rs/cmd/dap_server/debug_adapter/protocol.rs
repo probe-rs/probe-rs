@@ -59,41 +59,51 @@ pub trait ProtocolAdapter {
 }
 
 pub trait ProtocolHelper {
-    fn show_message(&mut self, severity: MessageSeverity, message: impl AsRef<str>) -> bool;
+    fn show_message(&mut self, severity: MessageSeverity, message: impl AsRef<str>) -> bool
+    where
+        Self: Sized,
+    {
+        self.dyn_show_message(severity, message.as_ref().to_string())
+    }
+
+    fn dyn_show_message(&mut self, severity: MessageSeverity, message: String) -> bool;
 
     /// Log a message to the console. Returns false if logging the message failed.
-    fn log_to_console(&mut self, message: impl AsRef<str>) -> bool;
+    fn log_to_console(&mut self, message: impl AsRef<str>) -> bool
+    where
+        Self: Sized;
 
     fn send_response<S: Serialize + std::fmt::Debug>(
         &mut self,
         request: &Request,
         response: Result<Option<S>, &DebuggerError>,
-    ) -> Result<(), anyhow::Error>;
+    ) -> Result<(), anyhow::Error>
+    where
+        Self: Sized;
 }
 
 impl<P> ProtocolHelper for P
 where
-    P: ProtocolAdapter,
+    P: ProtocolAdapter + ?Sized,
 {
-    fn show_message(&mut self, severity: MessageSeverity, message: impl AsRef<str>) -> bool {
-        let msg = message.as_ref();
+    fn dyn_show_message(&mut self, severity: MessageSeverity, message: String) -> bool {
+        tracing::debug!("show_message: {message}");
 
-        tracing::debug!("show_message: {msg}");
-
-        let event_body = match serde_json::to_value(ShowMessageEventBody {
+        match serde_json::to_value(ShowMessageEventBody {
             severity,
-            message: format!("{msg}\n"),
+            message: format!("{message}\n"),
         }) {
-            Ok(event_body) => event_body,
-            Err(_) => {
-                return false;
-            }
-        };
-        self.send_event("probe-rs-show-message", Some(event_body))
-            .is_ok()
+            Ok(event_body) => self
+                .dyn_send_event("probe-rs-show-message", Some(event_body))
+                .is_ok(),
+            Err(_) => false,
+        }
     }
 
-    fn log_to_console(&mut self, message: impl AsRef<str>) -> bool {
+    fn log_to_console(&mut self, message: impl AsRef<str>) -> bool
+    where
+        Self: Sized,
+    {
         let event_body = match serde_json::to_value(OutputEventBody {
             output: format!("{}\n", message.as_ref()),
             category: Some("console".to_owned()),
@@ -117,7 +127,10 @@ where
         &mut self,
         request: &Request,
         response: Result<Option<S>, &DebuggerError>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), anyhow::Error>
+    where
+        Self: Sized,
+    {
         let response_is_ok = response.is_ok();
 
         // The encoded response will be constructed from dap::Response for Ok, and dap::ErrorResponse for Err, to ensure VSCode doesn't lose the details of the error.

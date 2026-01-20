@@ -1,12 +1,16 @@
 use probe_rs::MemoryInterface;
 use probe_rs_debug::{ObjectRef, VariableName};
 
-use crate::cmd::dap_server::{DebuggerError, server::core_data::CoreHandle};
+use crate::cmd::dap_server::{
+    DebuggerError,
+    debug_adapter::dap::repl_commands::{EvalResponse, EvalResult},
+    server::core_data::CoreHandle,
+};
 
 use super::{
     dap_types::{
-        CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
-        EvaluateArguments, EvaluateResponseBody, Response,
+        CompletionItem, CompletionItemType, CompletionsArguments, EvaluateArguments,
+        EvaluateResponseBody,
     },
     repl_commands::ReplCommand,
     repl_types::*,
@@ -20,7 +24,7 @@ pub(crate) fn get_local_variable(
     target_core: &mut CoreHandle<'_>,
     variable_name: VariableName,
     gdb_nuf: GdbNuf,
-) -> Result<Response, DebuggerError> {
+) -> EvalResult {
     let frame_ref = evaluate_arguments.frame_id.map(ObjectRef::from);
 
     let stack_frame = match frame_ref {
@@ -53,15 +57,7 @@ pub(crate) fn get_local_variable(
             variable_name, stack_frame.function_name
         )));
     };
-    let mut response = Response {
-        command: "variables".to_string(),
-        success: true,
-        message: None,
-        type_: "response".to_string(),
-        request_seq: 0,
-        seq: 0,
-        body: None,
-    };
+
     let variable_list = if variable.name == VariableName::LocalScopeRoot {
         variable_cache
             .get_children(variable.variable_key())
@@ -101,9 +97,8 @@ pub(crate) fn get_local_variable(
             ));
         }
     }
-    response.message = Some(response_body.result.clone());
-    response.body = serde_json::to_value(response_body).ok();
-    Ok(response)
+
+    Ok(EvalResponse::Body(response_body))
 }
 
 /// Read memory at the specified address (hex), using the [`GdbNuf`] specifiers to determine size and format.
@@ -111,18 +106,9 @@ pub(crate) fn memory_read(
     address: u64,
     gdb_nuf: GdbNuf,
     target_core: &mut CoreHandle<'_>,
-) -> Result<Response, DebuggerError> {
-    let mut response = Response {
-        command: "readMemory".to_string(),
-        success: true,
-        message: None,
-        type_: "response".to_string(),
-        request_seq: 0,
-        seq: 0,
-        body: None,
-    };
+) -> EvalResult {
     if gdb_nuf.format_specifier == GdbFormat::Instruction {
-        let assembly_lines: Vec<DisassembledInstruction> = disassemble_target_memory(
+        let assembly_lines = disassemble_target_memory(
             target_core,
             0_i64,
             0_i64,
@@ -138,26 +124,23 @@ pub(crate) fn memory_read(
         for assembly_line in &assembly_lines {
             formatted_output.push_str(&assembly_line.to_string());
         }
-        response.message = Some(formatted_output);
+
+        Ok(EvalResponse::Message(formatted_output))
     } else {
         let mut memory_result = vec![0u8; gdb_nuf.get_size()];
         match target_core.core.read_8(address, &mut memory_result) {
-            Ok(()) => {
-                let formatted_output = GdbNufMemoryResult {
+            Ok(()) => Ok(EvalResponse::Message(
+                GdbNufMemoryResult {
                     nuf: &gdb_nuf,
                     memory: &memory_result,
                 }
-                .to_string();
-                response.message = Some(formatted_output);
-            }
-            Err(err) => {
-                return Err(DebuggerError::UserMessage(format!(
-                    "Cannot read memory at address {address:#010x}: {err:?}"
-                )));
-            }
+                .to_string(),
+            )),
+            Err(err) => Err(DebuggerError::UserMessage(format!(
+                "Cannot read memory at address {address:#010x}: {err:?}"
+            ))),
         }
     }
-    Ok(response)
 }
 
 /// Get a list of command matches, based on the given command piece.
@@ -219,6 +202,9 @@ pub(crate) fn build_expanded_commands<'f>(
                         .any(|sub_cmd| sub_cmd.command.starts_with(command_piece))
                         || !cmd.args.is_empty())
             });
+            if command_root.is_empty() {
+                command_root = command_piece.to_string();
+            }
             break;
         };
 

@@ -9,7 +9,10 @@ use super::{
 };
 use crate::cmd::dap_server::{
     DebuggerError,
-    debug_adapter::protocol::{ProtocolAdapter, ProtocolHelper},
+    debug_adapter::{
+        dap::repl_commands::{EvalResponse, EvalResult},
+        protocol::{ProtocolAdapter, ProtocolHelper},
+    },
     server::{
         configuration::ConsoleLog,
         core_data::CoreHandle,
@@ -22,7 +25,7 @@ use base64::{Engine as _, engine::general_purpose as base64_engine};
 use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
-    CoreStatus, Error, HaltReason,
+    CoreInformation, CoreStatus, Error, HaltReason,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
@@ -33,6 +36,7 @@ use probe_rs_debug::{
     stack_frame::StackFrameInfo,
 };
 use serde::{Serialize, de::DeserializeOwned};
+use serde_json::Value;
 use typed_path::NativePathBuf;
 
 use std::{fmt::Display, str, time::Duration};
@@ -99,41 +103,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
-        match target_core.core.halt(Duration::from_millis(500)) {
-            Ok(cpu_info) => {
-                let new_status = match target_core.core.status() {
-                    Ok(new_status) => new_status,
-                    Err(error) => {
-                        self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error)))?;
-                        return Err(anyhow!("Failed to retrieve core status"));
-                    }
-                };
-                self.send_response(
-                    request,
-                    Ok(Some(format!(
-                        "Core stopped at address {:#010x}",
-                        cpu_info.pc
-                    ))),
-                )?;
-                let event_body = Some(StoppedEventBody {
-                    reason: "pause".to_owned(),
-                    description: Some(new_status.short_long_status(Some(cpu_info.pc)).1),
-                    thread_id: Some(target_core.id() as i64),
-                    preserve_focus_hint: Some(false),
-                    text: None,
-                    all_threads_stopped: Some(self.all_cores_halted),
-                    hit_breakpoint_ids: None,
-                });
-                // We override the halt reason to prevent duplicate stopped events.
-                target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Request);
+        let response = match self.pause_impl(target_core) {
+            Ok(cpu_info) => Ok(Some(format!(
+                "Core stopped at address {:#010x}",
+                cpu_info.pc
+            ))),
+            Err(error) => Err(&DebuggerError::Other(anyhow!("{error}"))),
+        };
 
-                self.send_event("stopped", event_body)?;
-                Ok(())
-            }
-            Err(error) => {
-                self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))))
-            }
-        }
+        self.send_response(request, response)
     }
 
     pub(crate) fn disconnect(
@@ -288,56 +266,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 response_body.result = arguments.expression;
             } else if context == "repl" {
                 match self.handle_repl(target_core, &arguments) {
-                    Ok(repl_response) => {
-                        // In all other cases, the response would have been updated by the repl command handler.
-                        response_body.result = if repl_response.success {
-                            repl_response
-                                .message
-                                // This should always have a value, but just in case someone was lazy ...
-                                .unwrap_or_else(|| "Success.".to_string())
-                        } else {
-                            format!(
-                                "Error: {:?} {:?}",
-                                repl_response.command, repl_response.message
-                            )
-                        };
-
-                        // Perform any special post-processing of the response.
-                        match repl_response.command.as_str() {
-                            "terminate" => {
-                                // This is a special case, where a repl command has requested that the debug session be terminated.
-                                self.send_event(
-                                    "terminated",
-                                    Some(TerminatedEventBody { restart: None }),
-                                )?;
-                            }
-                            "variables" => {
-                                // This is a special case, where a repl command has requested that the variables be displayed.
-                                if let Some(repl_response_body) = repl_response.body {
-                                    if let Ok(evaluate_response) =
-                                        serde_json::from_value(repl_response_body.clone())
-                                    {
-                                        response_body = evaluate_response;
-                                    } else {
-                                        response_body.result = format!(
-                                            "Error: Could not parse response body: {repl_response_body:?}"
-                                        );
-                                    }
-                                }
-                            }
-                            "setBreakpoints" => {
-                                // This is a special case, where we've added a breakpoint, and need to synch the DAP client UI.
-                                self.send_event("breakpoint", repl_response.body)?;
-                            }
-                            _other_commands => {}
-                        }
-                    }
-                    Err(error) => {
-                        response_body.result = match error {
-                            DebuggerError::UserMessage(repl_message) => repl_message,
-                            other_error => format!("{other_error:?}"),
-                        };
-                    }
+                    Ok(EvalResponse::Body(body)) => response_body = body,
+                    Ok(EvalResponse::Message(message)) => response_body.result = message,
+                    Err(DebuggerError::UserMessage(message)) => response_body.result = message,
+                    Err(error) => response_body.result = format!("{error:?}"),
                 }
             } else {
                 // Handle other contexts: 'watch', 'hover', etc.
@@ -549,7 +481,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         &mut self,
         target_core: &mut CoreHandle<'_>,
         arguments: &EvaluateArguments,
-    ) -> Result<Response, DebuggerError> {
+    ) -> EvalResult {
         // The target is halted, so we can allow any repl command.
         //TODO: Do we need to look for '/' in the expression, before we split it?
         // Now we can make sure we have a valid expression and evaluate it.
@@ -560,7 +492,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let Some(repl_command) = repl_commands.first() else {
             return Err(DebuggerError::UserMessage(format!(
-                "Invalid REPL command: {command_root:?}."
+                "Unknown REPL command: {}.",
+                command_root.trim()
             )));
         };
 
@@ -825,6 +758,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
 
         self.configuration_done = true;
+
+        // We don't have time to clear the RTT header before firmware initializes it.
+        if !self.halt_after_reset {
+            target_core.core_data.clear_rtt_header = false;
+        }
+
         self.send_response::<()>(request, Ok(None))
     }
 
@@ -1514,46 +1453,21 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
-        if let Err(error) = target_core.core.run() {
-            self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))))?;
-            return Err(error.into());
-        }
-
-        target_core.reset_core_status(self);
-
-        if request.command.as_str() == "continue" {
-            // If this continue was initiated as part of some other request, then do not respond.
-            self.send_response(
-                request,
-                Ok(Some(ContinueResponseBody {
-                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                })),
-            )?;
-        }
-        // We have to consider the fact that sometimes the `run()` is successfull,
-        // but "immediately" afterwards, the MCU hits a breakpoint or exception.
-        // So we have to check the status again to be sure.
-
-        // If there are breakpoints configured, we wait a bit longer
-        let wait_timeout = if target_core.core_data.breakpoints.is_empty() {
-            Duration::from_millis(200)
-        } else {
-            Duration::from_millis(500)
-        };
-
-        tracing::trace!("Checking if core halts again after continue, timeout = {wait_timeout:?}");
-
-        match target_core.core.wait_for_core_halted(wait_timeout) {
-            // The core has halted, so we can proceed.
+        match self.continue_impl(target_core) {
+            Ok(all_continued) if request.command == "continue" => {
+                // If this continue was initiated as part of some other request, then do not respond.
+                self.send_response(
+                    request,
+                    Ok(Some(ContinueResponseBody {
+                        all_threads_continued: Some(all_continued),
+                    })),
+                )
+            }
             Ok(_) => Ok(()),
-            // The core is still running.
-            Err(
-                Error::Arm(ArmError::Timeout)
-                | Error::Riscv(RiscvError::Timeout)
-                | Error::Xtensa(XtensaError::Timeout),
-            ) => Ok(()),
-            // Some other error occurred, so we have to send an error response.
-            Err(wait_error) => Err(wait_error.into()),
+            Err(error) => {
+                self.send_response::<()>(request, Err(&DebuggerError::Other(anyhow!("{error}"))))?;
+                Err(error)
+            }
         }
     }
 
@@ -1613,56 +1527,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Common code for the `next`, `step_in`, and `step_out` methods.
     fn debug_step(
         &mut self,
-        stepping_granularity: SteppingMode,
+        stepping_mode: SteppingMode,
         target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<(), anyhow::Error> {
-        target_core.reset_core_status(self);
-        let (new_status, program_counter) = match stepping_granularity
-            .step(&mut target_core.core, &target_core.core_data.debug_info)
-        {
-            Ok((new_status, program_counter)) => (new_status, program_counter),
-            Err(probe_rs_debug::DebugError::WarnAndContinue { message }) => {
-                let pc_at_error = target_core
-                    .core
-                    .read_core_reg(target_core.core.program_counter())?;
-                self.show_message(
-                    MessageSeverity::Information,
-                    format!("Step error @{pc_at_error:#010X}: {message}"),
-                );
-                (target_core.core.status()?, pc_at_error)
-            }
-            Err(other_error) => {
-                target_core.core.halt(Duration::from_millis(100)).ok();
-                return Err(other_error).context("Unexpected error during stepping");
-            }
-        };
-
+        self.step_impl(stepping_mode, target_core)?;
         self.send_response::<()>(request, Ok(None))?;
 
-        // We override the halt reason because our implementation of stepping uses breakpoints and results in a "BreakPoint" halt reason, which is not appropriate here.
-        target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Step);
-        if matches!(new_status, CoreStatus::Halted(_)) {
-            let event_body = Some(StoppedEventBody {
-                reason: target_core
-                    .core_data
-                    .last_known_status
-                    .short_long_status(None)
-                    .0
-                    .to_string(),
-                description: Some(
-                    CoreStatus::Halted(HaltReason::Step)
-                        .short_long_status(Some(program_counter))
-                        .1,
-                ),
-                thread_id: Some(target_core.id() as i64),
-                preserve_focus_hint: None,
-                text: None,
-                all_threads_stopped: Some(self.all_cores_halted),
-                hit_breakpoint_ids: None,
-            });
-            self.send_event("stopped", event_body)?;
-        }
         Ok(())
     }
 
@@ -1851,6 +1722,129 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {
         self.adapter.set_console_log_level(error)
+    }
+}
+
+impl<P: ProtocolAdapter + ?Sized> DebugAdapter<P> {
+    pub(crate) fn pause_impl(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+    ) -> Result<CoreInformation> {
+        let cpu_info = target_core.core.halt(Duration::from_millis(500))?;
+
+        let new_status = target_core.core.status()?;
+        let event_body = Some(StoppedEventBody {
+            reason: "pause".to_owned(),
+            description: Some(new_status.short_long_status(Some(cpu_info.pc)).1),
+            thread_id: Some(target_core.id() as i64),
+            preserve_focus_hint: Some(false),
+            text: None,
+            all_threads_stopped: Some(self.all_cores_halted),
+            hit_breakpoint_ids: None,
+        });
+        // We override the halt reason to prevent duplicate stopped events.
+        target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Request);
+
+        self.dyn_send_event(
+            "stopped",
+            event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
+        )?;
+        Ok(cpu_info)
+    }
+
+    /// Returns whether all cores are halted.
+    pub(crate) fn continue_impl(&mut self, target_core: &mut CoreHandle<'_>) -> Result<bool> {
+        target_core.core.run()?;
+        target_core.reset_core_status(self);
+
+        // We have to consider the fact that sometimes the `run()` is successful,
+        // but "immediately" afterwards, the MCU hits a breakpoint or exception.
+        // So we have to check the status again to be sure.
+
+        // If there are breakpoints configured, we wait a bit longer
+        let wait_timeout = if target_core.core_data.breakpoints.is_empty() {
+            Duration::from_millis(200)
+        } else {
+            Duration::from_millis(500)
+        };
+
+        tracing::trace!("Checking if core halts again after continue, timeout = {wait_timeout:?}");
+
+        match target_core.core.wait_for_core_halted(wait_timeout) {
+            // The core has halted, so we can proceed.
+            Ok(_) => Ok(false),
+            // The core is still running.
+            Err(
+                Error::Arm(ArmError::Timeout)
+                | Error::Riscv(RiscvError::Timeout)
+                | Error::Xtensa(XtensaError::Timeout),
+            ) => Ok(true), // TODO: somehow query the other cores' status
+            // Some other error occurred, so we have to send an error response.
+            Err(wait_error) => Err(wait_error.into()),
+        }
+    }
+
+    pub(crate) fn step_impl(
+        &mut self,
+        stepping_mode: SteppingMode,
+        target_core: &mut CoreHandle<'_>,
+    ) -> Result<u64> {
+        target_core.reset_core_status(self);
+        let (new_status, program_counter) =
+            match stepping_mode.step(&mut target_core.core, &target_core.core_data.debug_info) {
+                Ok((new_status, program_counter)) => (new_status, program_counter),
+                Err(probe_rs_debug::DebugError::WarnAndContinue { message }) => {
+                    let pc_at_error = target_core
+                        .core
+                        .read_core_reg(target_core.core.program_counter())?;
+                    self.dyn_show_message(
+                        MessageSeverity::Information,
+                        format!("Step error @{pc_at_error:#010X}: {message}"),
+                    );
+                    (target_core.core.status()?, pc_at_error)
+                }
+                Err(other_error) => {
+                    target_core.core.halt(Duration::from_millis(100)).ok();
+                    return Err(other_error).context("Unexpected error during stepping");
+                }
+            };
+
+        // We override the halt reason because our implementation of stepping uses breakpoints and results in a "BreakPoint" halt reason, which is not appropriate here.
+        target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Step);
+        if matches!(new_status, CoreStatus::Halted(_)) {
+            let event_body = StoppedEventBody {
+                reason: target_core
+                    .core_data
+                    .last_known_status
+                    .short_long_status(None)
+                    .0
+                    .to_string(),
+                description: Some(
+                    CoreStatus::Halted(HaltReason::Step)
+                        .short_long_status(Some(program_counter))
+                        .1,
+                ),
+                thread_id: Some(target_core.id() as i64),
+                preserve_focus_hint: None,
+                text: None,
+                all_threads_stopped: Some(self.all_cores_halted),
+                hit_breakpoint_ids: None,
+            };
+            self.dyn_send_event("stopped", serde_json::to_value(event_body).ok())?;
+        }
+        Ok(program_counter)
+    }
+
+    #[tracing::instrument(level = "trace", skip_all)]
+    pub fn dyn_send_event(&mut self, event_type: &str, event_body: Option<Value>) -> Result<()> {
+        tracing::debug!("Sending event: {}", event_type);
+        self.adapter.dyn_send_event(event_type, event_body)
+    }
+
+    /// Send a custom "probe-rs-show-message" event to the MS DAP Client.
+    /// The `severity` field can be one of `information`, `warning`, or `error`.
+    pub fn dyn_show_message(&mut self, severity: MessageSeverity, message: String) -> bool {
+        self.adapter.dyn_show_message(severity, message)
     }
 }
 
