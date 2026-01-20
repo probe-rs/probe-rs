@@ -1065,14 +1065,24 @@ pub trait JtagAccess: DebugProbe {
     /// position and IR lengths.
     ///
     /// If the scan chain is provided, and the selected protocol is JTAG, the
-    /// probe will automatically configure the JTAG interface to match the
-    /// scan chain configuration without trying to determine the chain at
-    /// runtime.
+    /// probe will use this information to validate that the scan chain is
+    /// what is expected.
     ///
     /// This is called by the `Session` when attaching to a target.
     /// So this does not need to be called manually, unless you want to
     /// modify the scan chain. You must be attached to a target to set the
     /// scan_chain since the scan chain only applies to the attached target.
+    fn set_expected_scan_chain(
+        &mut self,
+        scan_chain: &[ScanChainElement],
+    ) -> Result<(), DebugProbeError>;
+
+    /// Set the JTAG scan chain information for the target under debug.
+    ///
+    /// If the scan chain is provided, and the selected protocol is JTAG, the
+    /// probe will automatically configure the JTAG interface to match the
+    /// scan chain configuration without trying to determine the chain at
+    /// runtime.
     fn set_scan_chain(&mut self, scan_chain: &[ScanChainElement]) -> Result<(), DebugProbeError>;
 
     /// Scans `IDCODE` and `IR` length information about the devices on the JTAG chain.

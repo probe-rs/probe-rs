@@ -4,7 +4,7 @@
 //! [JTAG Programmer Overview for Hercules-based Microcontrollers](https://www.ti.com/lit/an/spna230/spna230.pdf),
 //! and largely involves creating a breakpoint, issuing some sort of reset,
 //! then clearing memory using platform-specific register writes.
-use super::icepick::Icepick;
+use super::icepick::{DefaultProtocol, Icepick};
 use crate::architecture::arm::armv7a::{
     clear_hw_breakpoint, core_halted, get_hw_breakpoint, read_word_32, request_halt, run,
     set_hw_breakpoint, wait_for_core_halted, write_word_32,
@@ -185,8 +185,8 @@ impl ArmDebugSequence for TMS570 {
         // reset.
         ensure_ntrst(interface, false)?;
         ensure_ntrst(interface, true)?;
-        let mut icepick = Icepick::new(interface)?;
-        icepick.select_tap(TMS570_TAP_INDEX)?;
+        let mut icepick = Icepick::new(interface, DefaultProtocol::Jtag)?;
+        icepick.select_tap(TMS570_TAP_INDEX, "TMS570")?;
         Err(ArmError::DebugPort(DebugPortError::Unsupported(
             "Hardware reset is not supported by TMS570".to_owned(),
         )))
@@ -287,8 +287,8 @@ impl ArmDebugSequence for TMS570 {
 
         match interface.active_protocol() {
             Some(WireProtocol::Jtag) => {
-                let mut icepick = Icepick::new(interface)?;
-                icepick.select_tap(TMS570_TAP_INDEX)?;
+                let mut icepick = Icepick::new(interface, DefaultProtocol::Jtag)?;
+                icepick.select_tap(TMS570_TAP_INDEX, "TMS570")?;
 
                 // Call the configure JTAG function. We don't derive the scan chain at runtime
                 // for these devices, but regardless the scan chain must be told to the debug probe
