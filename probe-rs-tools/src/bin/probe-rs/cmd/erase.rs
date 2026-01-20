@@ -1,5 +1,5 @@
 use crate::{
-    rpc::{client::RpcClient, functions::flash::EraseCommand},
+    rpc::{client::RpcClient, functions::flash::EraseCommand, functions::flash::EraseRange},
     util::{cli, common_options::ProbeOptions, flash::CliProgressBars, parse_range_exclusive_u64},
 };
 
@@ -24,7 +24,7 @@ pub struct Cmd {
     /// Erase the nonvolatile menory pages containing this address range (an exclusive
     /// range like START..END where END is not included).
     #[arg(long, group = "mode", value_parser = parse_range_exclusive_u64)]
-    pub range: Option<std::ops::Range<u64>>,
+    pub range: Option<EraseRange>,
 }
 
 impl Cmd {
