@@ -176,6 +176,7 @@ where
             rtt_scan_ranges: None,
             jtag: None, // TODO, parse scan chain from sdf
             default_binary_format: None,
+            skip_reset_on_ram_boot: false,
         });
     }
 

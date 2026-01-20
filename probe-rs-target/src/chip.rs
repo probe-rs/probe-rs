@@ -120,6 +120,14 @@ pub struct Chip {
     // TODO: rename to default_platform
     #[serde(default)]
     pub default_binary_format: Option<String>,
+    /// Skip the reset that normally precedes RAM flashing when booting from RAM.
+    ///
+    /// Normally, before writing the image into RAM, probe-rs resets and halts the core to
+    /// guarantee a clear state. Some targets (e.g. the Zynq-7000 series) are expected to
+    /// already be reset by other tooling before RAM flashing runs, and resetting them again
+    /// would undo that setup. In that case, the core is only halted, not reset.
+    #[serde(default)]
+    pub skip_reset_on_ram_boot: bool,
 }
 
 impl Chip {
@@ -143,6 +151,7 @@ impl Chip {
             rtt_scan_ranges: None,
             jtag: None,
             default_binary_format: None,
+            skip_reset_on_ram_boot: false,
         }
     }
 
