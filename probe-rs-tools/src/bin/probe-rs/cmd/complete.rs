@@ -32,6 +32,9 @@ impl Cmd {
             .ok_or_else(|| anyhow!("The current shell could not be determined. Please specify a shell with the --shell argument."))?;
 
         match &self.kind {
+            CompleteKind::Print => {
+                println!("{}", self.script(shell)?);
+            }
             CompleteKind::Install { manual } => {
                 self.install(shell, *manual)?;
             }
@@ -46,11 +49,7 @@ impl Cmd {
         Ok(())
     }
 
-    /// Installs the autocompletion script for the currently active shell.
-    ///
-    /// If the shell cannot be determined or the auto-install is not implemented yet,
-    /// the function prints the script with instructions for the user.
-    pub fn install(&self, shell: Shell, manual: bool) -> Result<()> {
+    fn script(&self, shell: Shell) -> Result<String> {
         let mut command = <Cli as CommandFactory>::command();
         let path: PathBuf = std::env::args_os().next().unwrap().into();
         let name = path.file_name().unwrap().to_str().unwrap();
@@ -59,7 +58,15 @@ impl Cmd {
         generate(shell, &mut command, name, &mut script);
         let mut script = String::from_utf8_lossy(&script).to_string();
         inject_dynamic_completions(shell, name, &mut script)?;
+        Ok(script)
+    }
 
+    /// Installs the autocompletion script for the currently active shell.
+    ///
+    /// If the shell cannot be determined or the auto-install is not implemented yet,
+    /// the function prints the script with instructions for the user.
+    pub fn install(&self, shell: Shell, manual: bool) -> Result<()> {
+        let script = self.script(shell)?;
         let file_name = shell.file_name(BIN_NAME);
 
         if manual {
@@ -103,6 +110,8 @@ impl Cmd {
 #[derive(Clone, Debug, Eq, Hash, PartialEq, clap::Subcommand)]
 #[clap(verbatim_doc_comment)]
 pub enum CompleteKind {
+    /// Print the autocomplete script for the correct shell.
+    Print,
     /// Installs the autocomplete script for the correct shell.
     Install {
         /// Just print the script to stdout if this flag is active.
