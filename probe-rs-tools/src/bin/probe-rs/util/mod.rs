@@ -115,6 +115,7 @@ mod test {
         ));
     }
 
+    #[allow(clippy::reversed_empty_ranges)]
     #[test]
     fn parse_range_valid_bounds_and_separator() {
         // Some valid non-empty ranges with decimal bounds.
