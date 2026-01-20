@@ -1206,7 +1206,7 @@ dependencies = [
  "csv",
  "deku",
  "md-5",
- "parse_int 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parse_int",
  "regex",
  "serde",
  "serde_plain",
@@ -2607,14 +2607,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "parse_int"
-version = "0.9.0"
-source = "git+https://gitlab.com/sirhcel/parse_int.git?rev=ec973a4a7adaf8c01ef6a43ed308b24a36608b51#ec973a4a7adaf8c01ef6a43ed308b24a36608b51"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2890,7 +2882,7 @@ dependencies = [
  "insta",
  "itertools 0.14.0",
  "object 0.38.1",
- "parse_int 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parse_int",
  "pretty_assertions",
  "probe-rs",
  "probe-rs-target",
@@ -2968,7 +2960,7 @@ dependencies = [
  "num-traits",
  "object 0.38.1",
  "parking_lot",
- "parse_int 0.9.0 (git+https://gitlab.com/sirhcel/parse_int.git?rev=ec973a4a7adaf8c01ef6a43ed308b24a36608b51)",
+ "parse_int",
  "postcard",
  "postcard-rpc",
  "postcard-schema",
@@ -4067,7 +4059,7 @@ dependencies = [
  "insta",
  "jep106",
  "log",
- "parse_int 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parse_int",
  "probe-rs",
  "probe-rs-espressif",
  "probe-rs-target",
