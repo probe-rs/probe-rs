@@ -580,12 +580,15 @@ impl Session {
             })
     }
 
-    /// Read available trace data from the specified data sink.
+    /// Read available trace data from the specified data sink. If the
+    /// sink type is [`TraceSink::TraceMemory`], then you should also supply
+    /// the trace_id for the required component.
+    /// The default trace id is 13 for ITM and 62 for ETM.
     ///
     /// This method is only supported for ARM-based targets, and will
     /// return [ArmError::ArchitectureRequired] otherwise.
     #[tracing::instrument(skip(self))]
-    pub fn read_trace_data(&mut self) -> Result<Vec<u8>, ArmError> {
+    pub fn read_trace_data(&mut self, trace_id: Option<u8>) -> Result<Vec<u8>, ArmError> {
         let sink = self
             .configured_trace_sink
             .as_ref()
@@ -604,7 +607,11 @@ impl Session {
             TraceSink::TraceMemory => {
                 let components = self.get_arm_components(DpAddress::Default)?;
                 let interface = self.get_arm_interface()?;
-                crate::architecture::arm::component::read_trace_memory(interface, &components)
+                crate::architecture::arm::component::read_trace_memory(
+                    interface,
+                    &components,
+                    trace_id,
+                )
             }
         }
     }
