@@ -110,7 +110,7 @@ jobs:
     needs: build-probe-rs
 
     steps:
-      # Avoid conficts when downloading the probe-rs artifact
+      # Avoid conflicts when downloading the probe-rs artifact
       - name: Clean workspace
         run: rm -rf "${GITHUB_WORKSPACE}/*"
 

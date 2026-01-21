@@ -18,7 +18,7 @@ impl LPC80x {
         Arc::new(Self(()))
     }
 
-    // copy-paste of set_hw_breakpoint since we dont' have access to core :(
+    // copy-paste of set_hw_breakpoint since we don't have access to core :(
     fn set_hw_breakpoint(
         interface: &mut dyn ArmMemoryInterface,
         bp_register_index: usize,
@@ -47,7 +47,7 @@ impl LPC80x {
         Ok(())
     }
 
-    // copy-paste of clear_hw_breakpoint since we dont' have access to core :(
+    // copy-paste of clear_hw_breakpoint since we don't have access to core :(
     fn clear_hw_breakpoint(
         interface: &mut dyn ArmMemoryInterface,
         bp_unit_index: usize,

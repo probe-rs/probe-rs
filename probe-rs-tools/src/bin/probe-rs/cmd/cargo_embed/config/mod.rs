@@ -252,7 +252,7 @@ impl Configs {
             Ok(config) => {
                 // Gross errors (e.g. config file syntax problems) have already been caught by the
                 // other match arm.  Guard against Figment coercing previously undefined profiles
-                // into existance.
+                // into existence.
                 if !requested_profile_defined {
                     bail!(
                         "the requested configuration profile \"{}\" hasn't been defined (defined profiles: {})",
@@ -291,10 +291,10 @@ mod test {
         let _config = configs.select_defined("default").unwrap();
     }
     #[test]
-    fn non_existant_profile_is_error() {
-        // Selecting a non-existant profile.
+    fn non_existent_profile_is_error() {
+        // Selecting a non-existent profile.
         let configs = Configs::new(std::env::current_dir().unwrap());
-        let _noprofile = configs.select_defined("nonexxistantprofle").unwrap_err();
+        let _noprofile = configs.select_defined("nonexistentprofile").unwrap_err();
     }
     #[test]
     fn unknown_config_items_in_config_fail() {

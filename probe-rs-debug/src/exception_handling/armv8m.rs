@@ -386,7 +386,7 @@ impl ExceptionReason {
     }
 }
 
-//TODO don't copy paste this
+// TODO don't copy paste this
 pub enum SecurityExtension {
     NotImplemented,
     Implemented,
@@ -548,7 +548,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
                 canonical_frame_address: None,
             };
 
-            //TODO update SP as in v6m+v7m?
+            // TODO update SP as in v6m+v7m?
 
             Ok(Some(ExceptionInfo {
                 raw_exception,

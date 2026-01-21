@@ -82,7 +82,7 @@ static VENDORS: LazyLock<RwLock<Vec<Box<dyn Vendor>>>> = LazyLock::new(|| {
         Box::new(espressif::Espressif),
         Box::new(nordicsemi::NordicSemi),
         Box::new(nxp::Nxp),
-        Box::new(raspberrypi::RaspberyPi),
+        Box::new(raspberrypi::RaspberryPi),
         Box::new(st::St),
         Box::new(vorago::Vorago),
         Box::new(sifli::Sifli),

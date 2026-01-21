@@ -280,7 +280,7 @@ where
         if start_extra_count != 0 || end_extra_count != 0 {
             // If we do not support 8 bit transfers we have to bail
             // because we have to do unaligned writes but can only do
-            // 32 bit word aligned transers.
+            // 32 bit word aligned transfers.
             if !self.supports_8bit_transfers()? {
                 return Err(MemoryNotAlignedError {
                     address,

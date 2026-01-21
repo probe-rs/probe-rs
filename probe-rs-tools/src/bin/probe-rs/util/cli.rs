@@ -644,7 +644,7 @@ pub async fn monitor(
             let reason = match details.reason {
                 // HW vector reason codes
                 0x20000 => String::from("Branch through zero"),
-                0x20001 => String::from("Undefined instrution"),
+                0x20001 => String::from("Undefined instruction"),
                 0x20002 => String::from("Software interrupt"),
                 0x20003 => String::from("Prefetch abort"),
                 0x20004 => String::from("Data abort"),
@@ -865,7 +865,7 @@ async fn display_stack_trace(
     Ok(())
 }
 
-/// Runs a future until complation, running another future when Ctrl+C is received.
+/// Runs a future until completion, running another future when Ctrl+C is received.
 ///
 /// This function enables cooperative asynchronous cancellation without dropping the future.
 async fn with_ctrl_c<F, I>(f: F, on_ctrl_c: I) -> F::Output

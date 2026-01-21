@@ -85,7 +85,7 @@ impl ArmDebugSequence for Nrf54L {
             }
             status => {
                 return Err(ArmError::Other(format!(
-                    "Erase all failed with unexpected status codee {status}"
+                    "Erase all failed with unexpected status code {status}"
                 )));
             }
         }

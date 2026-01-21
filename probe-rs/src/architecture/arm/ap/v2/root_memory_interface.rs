@@ -103,7 +103,7 @@ impl<ADI: ArmDebugInterface> ArmMemoryInterface for RootMemoryInterface<'_, ADI>
     }
 
     fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
-        // This is not a memory AP, so there's no logicl CSW associated with it.
+        // This is not a memory AP, so there's no logic CSW associated with it.
         unimplemented!()
     }
 }

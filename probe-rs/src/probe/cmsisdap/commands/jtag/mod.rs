@@ -50,7 +50,7 @@ impl CmsisDap {
             self.jtag_buffer.complete_sequences.push(seq);
         }
 
-        // Flush was called but not neeed.
+        // Flush was called but not need.
         if self.jtag_buffer.complete_sequences.is_empty() {
             return Ok(());
         }

@@ -106,7 +106,7 @@ impl SessionData {
                         }
                         other_attach_error => other_attach_error.into(),
                     },
-                    // Return the orginal error.
+                    // Return the original error.
                     other => other.into(),
                 }
             })?;

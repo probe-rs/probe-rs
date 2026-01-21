@@ -25,7 +25,7 @@ enum TargetGen {
         #[clap(
             value_name = "INPUT",
             value_parser,
-            help = "A Pack file or the unziped Pack directory."
+            help = "A Pack file or the unzipped Pack directory."
         )]
         input: PathBuf,
         #[clap(

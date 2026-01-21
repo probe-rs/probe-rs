@@ -213,7 +213,7 @@ where
                 .cloned()
                 .collect::<Vec<_>>();
 
-            // Do not return inaccessable regions.
+            // Do not return inaccessible regions.
             if common_cores.is_empty() {
                 break;
             }

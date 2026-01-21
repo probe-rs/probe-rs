@@ -60,7 +60,7 @@ impl<'a> FunctionDie<'a> {
         let mut die_ranges = Vec::new();
         while let Ok(Some(gimli_range)) = gimli_ranges.next() {
             if gimli_range.begin == 0 {
-                //TODO: The DW_AT_subprograms with low_pc == 0 cause overlapping ranges with other 'valid' function dies, and obscures the correct function die.
+                // TODO: The DW_AT_subprograms with low_pc == 0 cause overlapping ranges with other 'valid' function dies, and obscures the correct function die.
                 // We need to understand what those mean, and how to handle them correctly.
                 return Ok(None);
             }

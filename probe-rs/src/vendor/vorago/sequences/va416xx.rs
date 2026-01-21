@@ -44,7 +44,7 @@ impl ArmDebugSequence for Va416xx {
         // Disable watchdog
         // WDOGLOCK = 0x1ACCE551
         core.write_32(0x400210C0, &[0x1ACCE551])?;
-        // WDOGCONTROL = 0x0 (diable)
+        // WDOGCONTROL = 0x0 (disable)
         core.write_32(0x40021008, &[0])?;
         Ok(())
     }

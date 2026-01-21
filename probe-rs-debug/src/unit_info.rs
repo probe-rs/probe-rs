@@ -177,7 +177,7 @@ impl UnitInfo {
                 continue;
             };
 
-            // Everytime we find a qualifying inlined-function, we set the abort depth
+            // Every time we find a qualifying inlined-function, we set the abort depth
             // to ensure the `cursor.next_dfs()` will be prevented from reversing the depth traversal to search for peers.
             abort_depth = current_depth;
 
@@ -361,7 +361,7 @@ impl UnitInfo {
                     }
                     gimli::DW_AT_artificial => {
                         // These are references for entries like discriminant values of `VariantParts`.
-                        child_variable.name = VariableName::Artifical;
+                        child_variable.name = VariableName::Artificial;
                     }
                     gimli::DW_AT_discr => match attr.value() {
                         // This calculates the active discriminant value for the `VariantPart`.
@@ -416,7 +416,7 @@ impl UnitInfo {
                         // Unimplemented.
                     }
                     gimli::DW_AT_encoding => {
-                        // Ignore these. RUST data types handle this intrinsicly.
+                        // Ignore these. RUST data types handle this intrinsically.
                     }
                     gimli::DW_AT_discr_value => {
                         // Processed by `extract_variant_discriminant()`.
@@ -599,7 +599,7 @@ impl UnitInfo {
                     // Do not keep or process PhantomData nodes, or variant parts that we have already used.
                     if is_declaration
                         || child_variable.type_name.is_phantom_data()
-                        || child_variable.name == VariableName::Artifical
+                        || child_variable.name == VariableName::Artificial
                     {
                         cache.remove_cache_entry(child_variable.variable_key)?;
                     } else if child_variable.is_valid() {
@@ -651,7 +651,7 @@ impl UnitInfo {
                         frame_info,
                     )?;
                     // At this point we have everything we need (It has updated the parent's `role`) from the
-                    // child_variable, so elimnate it before we continue ...
+                    // child_variable, so eliminate it before we continue ...
                     cache.remove_cache_entry(child_variable.variable_key)?;
                     self.process_tree(
                         debug_info,
@@ -1061,7 +1061,7 @@ impl UnitInfo {
                             let mut referenced_variable =
                                 cache.create_variable(child_variable.variable_key, Some(self))?;
 
-                            // TODO: This is langauge specific, and should be moved to the language implementations.
+                            // TODO: This is language specific, and should be moved to the language implementations.
                             referenced_variable.name = match &child_variable.name {
                                 VariableName::Named(name) if name.starts_with("Some ") => {
                                     VariableName::Named(name.replacen('&', "*", 1))
@@ -1459,7 +1459,7 @@ impl UnitInfo {
             memory.read(address, std::slice::from_mut(&mut buff))?;
             let this_enum_const_value = buff.to_string();
 
-            let enumumerator_value = match enumerator_values
+            let enumerator_value = match enumerator_values
                 .iter()
                 .find(|(_name, value)| value.to_string() == this_enum_const_value)
             {
@@ -1468,7 +1468,7 @@ impl UnitInfo {
             };
 
             self.language
-                .format_enum_value(&child_variable.type_name, enumumerator_value)
+                .format_enum_value(&child_variable.type_name, enumerator_value)
         } else {
             VariableValue::Error(format!(
                 "Unsupported variable location {:?}",
@@ -2053,7 +2053,7 @@ impl UnitInfo {
                 match &parent_variable.memory_location {
                     address @ (VariableLocation::Address(_)
                     | VariableLocation::RegisterValue(_)) => {
-                        // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                        // Now, retrieve the location by reading the address pointed to by the parent variable.
                         match memory.read_word_32(address.memory_address().unwrap()) {
                             Ok(memory_location) => {
                                 VariableLocation::Address(memory_location as u64)
@@ -2098,7 +2098,7 @@ impl UnitInfo {
         // 2. Pointer names that start with '*' (e.g. '*const u8')
         // 3. Pointers to base types (includes &str types)
         // 4. Pointers to variable names that start with `*`
-        // 5. Pointers to types with refrenced memory addresses (e.g. variants, generics, arrays, etc.)
+        // 5. Pointers to types with referenced memory addresses (e.g. variants, generics, arrays, etc.)
         (matches!(child_variable.name, VariableName::Named(ref var_name) if var_name.starts_with('*'))
                 && matches!(parent_variable.role, VariantRole::VariantPart(_)))
             || matches!(&parent_variable.type_name, VariableType::Pointer(Some(pointer_name)) if pointer_name.starts_with('*'))

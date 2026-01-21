@@ -282,7 +282,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
                 ErrorKind::WouldBlock if self.input_buffer.is_empty() => return Ok(None),
                 // No new data is here but we have some buffered, so go to work the data and produce frames.
                 ErrorKind::WouldBlock if !self.input_buffer.is_empty() => {}
-                // An error ocurred, report it.
+                // An error occurred, report it.
                 _ => return Err(error.into()),
             },
         };

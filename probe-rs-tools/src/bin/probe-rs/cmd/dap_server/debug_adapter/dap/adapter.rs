@@ -483,7 +483,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         arguments: &EvaluateArguments,
     ) -> EvalResult {
         // The target is halted, so we can allow any repl command.
-        //TODO: Do we need to look for '/' in the expression, before we split it?
+        // TODO: Do we need to look for '/' in the expression, before we split it?
         // Now we can make sure we have a valid expression and evaluate it.
         let (command_root, last_piece, repl_commands) = build_expanded_commands(
             &target_core.core_data.repl_commands,
@@ -558,7 +558,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let parent_key: ObjectRef = arguments.variables_reference.into();
         let new_value = &arguments.value;
 
-        //TODO: Check for, and prevent SVD Peripheral/Register/Field values from being updated, until such time as we can do it safely.
+        // TODO: Check for, and prevent SVD Peripheral/Register/Field values from being updated, until such time as we can do it safely.
 
         match target_core
             .core_data
@@ -1368,7 +1368,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
 
-        // During the intial stack unwind operation, if encounter [Variable]'s with [VariableNodeType::is_deferred()], they will not be auto-expanded and included in the variable cache.
+        // During the initial stack unwind operation, if encounter [Variable]'s with [VariableNodeType::is_deferred()], they will not be auto-expanded and included in the variable cache.
         // TODO: Use the DAP "Invalidated" event to refresh the variables for this stackframe. It will allow the UI to see updated compound values for pointer variables based on the newly resolved children.
         if let Some(variable_cache) = variable_cache {
             if let Some(parent_variable) = parent_variable.as_mut()

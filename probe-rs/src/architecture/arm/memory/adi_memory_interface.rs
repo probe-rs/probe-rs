@@ -412,7 +412,7 @@ where
             );
 
             // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
-            // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+            // All bytes are transferred in their lane, so when we do an access at an address that is not divisible by 4,
             // we have to shift the word (one or two bytes) to it's correct position.
             let values = data[..chunk_size]
                 .iter()
@@ -466,7 +466,7 @@ where
             );
 
             // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
-            // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+            // All bytes are transferred in their lane, so when we do an access at an address that is not divisible by 4,
             // we have to shift the word (one or two bytes) to it's correct position.
             let values = data[..chunk_size]
                 .iter()

@@ -1046,7 +1046,7 @@ Child Variables:
             column:
               Column: 3
             address: ~
-        - name: Artifical
+        - name: Artificial
           type_name: Unknown
           value: "... and 974 more"
     - name:

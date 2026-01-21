@@ -70,7 +70,7 @@ impl WchLinkUsbDevice {
             return Err(WchLinkError::EndpointNotFound.into());
         }
 
-        tracing::trace!("Aquired handle for probe");
+        tracing::trace!("Acquired handle for probe");
         let device_handle = device
             .claim_interface(interface.interface_number())
             .wait()
@@ -79,7 +79,7 @@ impl WchLinkUsbDevice {
 
         let usb_wlink = Self { device_handle };
 
-        tracing::debug!("Succesfully attached to WCH-Link.");
+        tracing::debug!("Successfully attached to WCH-Link.");
 
         Ok(usb_wlink)
     }

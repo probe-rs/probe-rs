@@ -548,7 +548,7 @@ fn prepare_write_register(
     let ir_len = protocol.state().chain_params.irlen;
     shift_ir(protocol, &address.to_le_bytes(), ir_len, false)?;
 
-    // read DR register by transfering len bits to the chain
+    // read DR register by transferring len bits to the chain
     shift_dr(protocol, data, len as usize, capture)
 }
 
@@ -700,7 +700,7 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
 
         let response = self.read_captured_bits()?;
 
-        tracing::trace!("recieve_write_dr result: {:?}", response);
+        tracing::trace!("receive_write_dr result: {:?}", response);
         Ok(response)
     }
 
