@@ -13,10 +13,11 @@ mod amba_axi3_axi4;
 mod amba_axi5;
 
 use crate::architecture::arm::ap::{
-    AddressIncrement, ApRegister, BASE, BASE2, BaseAddrFormat, DRW, DataSize, TAR, TAR2,
+    AccessPortError, AddressIncrement, ApRegister, BASE, BASE2, BaseAddrFormat, DRW, DataSize, TAR,
+    TAR2,
 };
 
-use super::{AccessPortError, AccessPortType, ApAccess, ApRegAccess};
+use super::{AccessPortType, ApAccess, ApRegAccess};
 use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress, ap::CSW};
 
 /// Implements all default registers of a memory AP to the given type.
@@ -203,7 +204,11 @@ macro_rules! memory_aps {
                 address: &FullyQualifiedApAddress,
             ) -> Result<Self, ArmError> {
                 use $crate::architecture::arm::ap::{IDR, ApRegister};
-                let idr: IDR = interface.read_raw_ap_register(address, IDR::ADDRESS)?.try_into()?;
+                let idr_raw = interface.read_raw_ap_register(address, IDR::ADDRESS)?;
+                if idr_raw == 0 {
+                    return Err(ArmError::InvalidIdrValue);
+                }
+                let idr: IDR = idr_raw.try_into()?;
                 tracing::debug!("reading IDR: {:x?}", idr);
                 use crate::architecture::arm::ap::ApType;
                 Ok(match idr.TYPE {
