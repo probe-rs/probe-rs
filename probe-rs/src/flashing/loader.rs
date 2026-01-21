@@ -368,9 +368,19 @@ impl FlashLoader {
         }
     }
 
+    /// Retrieve the internal flash builder instance which contains tha raw memory regions to
+    /// flash.
+    pub fn flash_builder(&self) -> &FlashBuilder {
+        &self.builder
+    }
+
     /// Enable reading RTT output from the flasher.
     pub fn read_rtt_output(&mut self, read: bool) {
         self.read_flasher_rtt = read;
+    }
+
+    pub fn vector_table_addr(&self) -> Option<u64> {
+        self.vector_table_addr
     }
 
     fn set_vector_table_addr(&mut self, vector_table_addr: u64) {
