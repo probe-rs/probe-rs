@@ -364,7 +364,7 @@ impl RiscvCommunicationInterfaceState {
             // Assume maximum value, will be determined exactly alter.
             hartsellen: 20,
 
-            // We assume only a singe hart exisits initially
+            // We assume only a singe hart exists initially
             num_harts: 1,
 
             abstract_cmd_register_info: HashMap::new(),
@@ -1063,7 +1063,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let mut results = vec![];
         self.schedule_read_large_dtm_register::<V, Sbdata>(&mut results)?;
 
-        // Check that the read was succesful
+        // Check that the read was successful
         let sbcs = self.read_dm_register::<Sbcs>()?;
 
         if sbcs.sberror() != 0 {
@@ -1116,7 +1116,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             *out = V::read_scheduled_result(self, &mut read_results)?;
         }
 
-        // Check that the read was succesful
+        // Check that the read was successful
         if sbcs.sberror() != 0 {
             Err(RiscvError::SystemBusAccess)
         } else {
@@ -1308,7 +1308,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             self.schedule_write_large_dtm_register::<V, Sbdata>(*value)?;
         }
 
-        // Check that the write was succesful
+        // Check that the write was successful
         let sbcs = self.read_dm_register::<Sbcs>()?;
 
         if sbcs.sberror() != 0 {
@@ -1451,7 +1451,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     pub(crate) fn execute_abstract_command(&mut self, command: u32) -> Result<(), RiscvError> {
-        // ensure that preconditions are fullfileld
+        // ensure that preconditions are fulfilled
         // haltreq      = 0
         // resumereq    = 0
         // ackhavereset = 0
@@ -1699,7 +1699,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_read_sysbus(address)?,
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemted")
+                unimplemented!("Memory access using abstract commands is not implemented")
             }
         };
 
@@ -1734,7 +1734,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_read_multiple_sysbus(address, data)?;
             }
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemted")
+                unimplemented!("Memory access using abstract commands is not implemented")
             }
         };
 
@@ -1751,7 +1751,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             MemoryAccessMethod::SystemBus => self.perform_memory_write_sysbus(address, &[data])?,
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemted")
+                unimplemented!("Memory access using abstract commands is not implemented")
             }
         };
 
@@ -1777,7 +1777,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.perform_memory_write_multiple_progbuf(address, data, true)?
             }
             MemoryAccessMethod::AbstractCommand => {
-                unimplemented!("Memory access using abstract commands is not implemted")
+                unimplemented!("Memory access using abstract commands is not implemented")
             }
         }
 
@@ -1884,7 +1884,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         dmcontrol.set_resumereq(true);
         self.schedule_write_dm_register(dmcontrol)?;
 
-        // check if request has been acknowleged.
+        // check if request has been acknowledge.
         let status_idx = self.schedule_read_dm_register::<Dmstatus>()?;
 
         // clear resume request.
@@ -2207,7 +2207,7 @@ impl RiscvValue for u64 {
         let upper_bits = (value >> 32) as u32;
         let lower_bits = (value & 0xffff_ffff) as u32;
 
-        // R0 has to be written last, side effects are triggerd by writes from
+        // R0 has to be written last, side effects are triggered by writes from
         // this register.
 
         interface.schedule_write_dm_register_untyped(R::R1_ADDRESS as u64, upper_bits)?;
@@ -2259,7 +2259,7 @@ impl RiscvValue for u128 {
         let bits_1 = (value >> 32) as u32;
         let bits_0 = (value & 0xffff_ffff) as u32;
 
-        // R0 has to be written last, side effects are triggerd by writes from
+        // R0 has to be written last, side effects are triggered by writes from
         // this register.
 
         interface.schedule_write_dm_register_untyped(R::R3_ADDRESS as u64, bits_3)?;

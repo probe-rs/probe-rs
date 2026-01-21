@@ -23,7 +23,7 @@ use crate::cmd::dap_server::{
 #[distributed_slice(REPL_COMMANDS)]
 static BREAK: ReplCommand = ReplCommand {
     command: "break",
-    // Stricly speaking, gdb refers to this as an expression, but we only support variables.
+    // Strictly speaking, gdb refers to this as an expression, but we only support variables.
     help_text: "Sets a breakpoint specified location, or next instruction if unspecified.",
     requires_target_halted: false,
     sub_commands: &[],

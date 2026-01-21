@@ -143,7 +143,7 @@ impl CoreHandle<'_> {
             }
 
             CoreStatus::Halted(HaltReason::Step) => {
-                // HaltReason::Step is a special case, where we have to send a custome event to the client that the core halted.
+                // HaltReason::Step is a special case, where we have to send a custom event to the client that the core halted.
                 // In this case, we don't re-send the "stopped" event, but further down, we will
                 // update the `last_known_status` to the actual HaltReason returned by the core.
             }
@@ -162,7 +162,7 @@ impl CoreHandle<'_> {
             }
             CoreStatus::Unknown => {
                 let error =
-                    DebuggerError::Other(anyhow!("Unknown Device status reveived from Probe-rs"));
+                    DebuggerError::Other(anyhow!("Unknown Device status received from Probe-rs"));
                 debug_adapter.show_error_message(&error)?;
 
                 return Err(error);
@@ -755,15 +755,15 @@ fn consolidate_memory_ranges(
     let mut condensed_range: Option<Range<u64>> = None;
 
     for memory_range in discrete_memory_ranges.iter() {
-        if let Some(range_comparitor) = condensed_range {
-            if memory_range.start <= range_comparitor.end + include_bytes_between_ranges + 1 {
-                let new_end = std::cmp::max(range_comparitor.end, memory_range.end);
+        if let Some(range_comparator) = condensed_range {
+            if memory_range.start <= range_comparator.end + include_bytes_between_ranges + 1 {
+                let new_end = std::cmp::max(range_comparator.end, memory_range.end);
                 condensed_range = Some(Range {
-                    start: range_comparitor.start,
+                    start: range_comparator.start,
                     end: new_end,
                 });
             } else {
-                consolidated_memory_ranges.push(range_comparitor);
+                consolidated_memory_ranges.push(range_comparator);
                 condensed_range = Some(memory_range.clone());
             }
         } else {
@@ -771,8 +771,8 @@ fn consolidate_memory_ranges(
         }
     }
 
-    if let Some(range_comparitor) = condensed_range {
-        consolidated_memory_ranges.push(range_comparitor);
+    if let Some(range_comparator) = condensed_range {
+        consolidated_memory_ranges.push(range_comparator);
     }
 
     consolidated_memory_ranges

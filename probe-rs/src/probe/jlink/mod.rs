@@ -743,7 +743,7 @@ impl JLink {
 
         self.write_cmd(&buf)?;
 
-        // Round bit count up to multple of 8 to get the number of response bytes.
+        // Round bit count up to multiple of 8 to get the number of response bytes.
         let num_resp_bytes = tms_bit_count.div_ceil(8);
         tracing::trace!(
             "{} TMS/TDI bits sent; reading {} response bytes",
@@ -1060,7 +1060,7 @@ impl DebugProbe for JLink {
             self.set_speed(400)?;
         }
 
-        tracing::debug!("Attached succesfully");
+        tracing::debug!("Attached successfully");
 
         Ok(())
     }

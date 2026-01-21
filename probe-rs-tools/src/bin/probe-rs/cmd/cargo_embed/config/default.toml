@@ -103,5 +103,5 @@ tabs = [
 [default.gdb]
 # Whether or not a GDB server should be opened after flashing.
 enabled = false
-# The connection string in host:port format wher the GDB server will open a socket.
+# The connection string in host:port format where the GDB server will open a socket.
 gdb_connection_string = "127.0.0.1:1337"

@@ -146,7 +146,7 @@ impl ArmDebugSequence for TMS570 {
                 // for these devices, but regardless the scan chain must be told to the debug probe
                 // We avoid the live scan for the following reasons:
                 // 1. Only the ICEPICK is connected at boot so we need to manually the CPU to the scan chain
-                // 2. Entering test logic reset disconects the CPU again
+                // 2. Entering test logic reset disconnects the CPU again
                 interface.configure_jtag(true)?;
             }
             Some(WireProtocol::Swd) => {

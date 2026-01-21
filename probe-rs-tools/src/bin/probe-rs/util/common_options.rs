@@ -46,7 +46,7 @@ pub struct BinaryDownloadOptions {
     /// Whether to read the RTT output from the flash loader, if available.
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub read_flasher_rtt: bool,
-    /// The preferred flash algorithms for specific memory regions can be overriden.
+    /// The preferred flash algorithms for specific memory regions can be overridden.
     ///
     /// Multiple algorithms can be specified as a comma-separated list, e.g. --prefer-flash-algorithm=algo1,algo2
     #[arg(

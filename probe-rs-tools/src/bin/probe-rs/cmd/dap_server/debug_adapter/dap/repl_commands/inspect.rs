@@ -22,7 +22,7 @@ use crate::cmd::dap_server::{
 #[distributed_slice(REPL_COMMANDS)]
 static PRINT: ReplCommand = ReplCommand {
     command: "p",
-    // Stricly speaking, gdb refers to this as an expression, but we only support variables.
+    // Strictly speaking, gdb refers to this as an expression, but we only support variables.
     help_text: "Print known information about variable.",
     requires_target_halted: true,
     sub_commands: &[],

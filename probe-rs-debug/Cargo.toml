@@ -9,7 +9,7 @@ readme.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
-description = "Debugging functionlity built on top of the probe-rs crate"
+description = "Debugging functionality built on top of the probe-rs crate"
 
 exclude = ["tests/debug-unwind-tests"]
 

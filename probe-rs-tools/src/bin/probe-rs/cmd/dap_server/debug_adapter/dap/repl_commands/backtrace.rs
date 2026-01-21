@@ -70,7 +70,7 @@ fn save_backtrace_to_yaml(
     let write_to_file = args.next().map(Path::new);
 
     // Using the `insta` crate to serialize, because they add a couple of transformations to the yaml output,
-    // presumeably to make it easier to read.
+    // presumably to make it easier to read.
     // In our case, we want this backtrace format to be comparable to the unwind tests
     // in `probe-rs::debug::debuginfo`.
     // The reason for this is that these 'live' backtraces are used to create the 'master' snapshots,

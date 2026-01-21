@@ -532,7 +532,7 @@ impl CoreInterface for Armv6m<'_> {
             if self.state.current_state.is_halted() {
                 // There shouldn't be any bits set, otherwise it means
                 // that the reason for the halt has changed. No bits set
-                // means that we have an unkown HaltReason.
+                // means that we have an unknown HaltReason.
                 if reason == HaltReason::Unknown {
                     tracing::debug!("Cached halt reason: {:?}", self.state.current_state);
                     return Ok(self.state.current_state);

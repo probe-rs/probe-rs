@@ -154,7 +154,7 @@ impl<T: DapAccess> ApAccess for T {
 
         tracing::Span::current().record("value", raw_value);
 
-        tracing::debug!("Register read succesful");
+        tracing::debug!("Register read successful");
 
         Ok(raw_value.try_into()?)
     }

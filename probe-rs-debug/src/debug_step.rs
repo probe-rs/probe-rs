@@ -178,7 +178,7 @@ impl SteppingMode {
             SteppingMode::OverStatement => {
                 // Find the "step over location"
                 // - The instructions in a sequence do not necessarily have contiguous addresses,
-                //   and the next instruction address may be affected by conditonal branching at runtime.
+                //   and the next instruction address may be affected by conditional branching at runtime.
                 // - Therefore, in order to find the correct "step over location", we iterate through the
                 //   instructions to find the starting address of the next halt location, ie. the address
                 //   is greater than the current program counter.
@@ -425,7 +425,7 @@ fn step_to_address(
                     });
                 }
             },
-            // This is not a recoverable error, and will result in the debug session ending (we have no predicatable way of successfully continuing the session)
+            // This is not a recoverable error, and will result in the debug session ending (we have no predictable way of successfully continuing the session)
             other_status => {
                 return Err(DebugError::Other(format!(
                     "Target failed to reach the destination address of a step operation: {other_status:?}"

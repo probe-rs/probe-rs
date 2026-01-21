@@ -56,7 +56,7 @@ impl TargetDescription {
     /// # Arguments
     ///
     /// * core_type - CPU type
-    /// * isa - CPU instruciton set
+    /// * isa - CPU instruction set
     pub fn new(core_type: CoreType, isa: InstructionSet) -> Self {
         let arch = match core_type {
             CoreType::Armv6m => "armv6-m",

@@ -589,9 +589,9 @@ impl ArmDebugSequence for MCX {
         let mut assert_n_reset = || probe.swj_pins(n_reset, n_reset, 0);
         if can_read_pins {
             let start = Instant::now();
-            let timeout_occured = || start.elapsed() > Duration::from_millis(1000);
+            let timeout_occurred = || start.elapsed() > Duration::from_millis(1000);
 
-            while assert_n_reset()? & n_reset == 0 && !timeout_occured() {}
+            while assert_n_reset()? & n_reset == 0 && !timeout_occurred() {}
         } else {
             assert_n_reset()?;
             let recovery_time = if self.is_variant(Self::VARIANT_N0) {

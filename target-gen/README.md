@@ -21,12 +21,12 @@ Arguments:
                                 e.g. `STM32H7xx` or `LPC55S69_DFP`.
                                 See `target-gen arm --list` for a list of available Pack files
 
-### If you already have a pack file, you use the `pack` submcommand:
+### If you already have a pack file, you use the `pack` subcommand:
 
 `cargo run --release -- pack [OPTIONS] <OUTPUT>`
 
     Arguments:
-    <INPUT>   A Pack file or the unziped Pack directory.
+    <INPUT>   A Pack file or the unzipped Pack directory.
     <OUTPUT>  An output directory where all the generated .yaml files are put in.
 
 This wil generate YAML files containing the target descriptions, which can be used with probe-rs.
@@ -34,7 +34,7 @@ This wil generate YAML files containing the target descriptions, which can be us
 ## Usage with ELF files
 
 The target-gen tool can also be used to create a target description based on an ELF file. This
-requires that the ELF file adhers to the ARM CMSIS standard for flash algorithms, which
+requires that the ELF file adheres to the ARM CMSIS standard for flash algorithms, which
 can be found at: https://arm-software.github.io/CMSIS_5/Pack/html/algorithmFunc.html
 
 Running

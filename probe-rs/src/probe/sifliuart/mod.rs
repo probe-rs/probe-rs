@@ -19,9 +19,9 @@ use std::{env, fmt};
 
 const START_WORD: [u8; 2] = [0x7E, 0x79];
 
-const DEFUALT_RECV_TIMEOUT: Duration = Duration::from_secs(3);
+const DEFAULT_RECV_TIMEOUT: Duration = Duration::from_secs(3);
 
-const DEFUALT_UART_BAUD: u32 = 1000000;
+const DEFAULT_UART_BAUD: u32 = 1000000;
 
 #[derive(Debug)]
 pub(crate) enum SifliUartCommand<'a> {
@@ -136,7 +136,7 @@ impl SifliUart {
         let probe = SifliUart {
             reader,
             writer,
-            baud: DEFUALT_UART_BAUD,
+            baud: DEFAULT_UART_BAUD,
             _serial_port: port,
         };
         Ok(probe)
@@ -202,7 +202,7 @@ impl SifliUart {
         let mut recv_data = vec![];
 
         loop {
-            if start_time.elapsed() >= DEFUALT_RECV_TIMEOUT {
+            if start_time.elapsed() >= DEFAULT_RECV_TIMEOUT {
                 return Err(CommandError::ParameterError(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
                     "Timeout",
@@ -411,7 +411,7 @@ impl SifliUartFactory {
     }
 
     fn open_port(&self, port_name: &str) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let mut port = serialport::new(port_name, DEFUALT_UART_BAUD)
+        let mut port = serialport::new(port_name, DEFAULT_UART_BAUD)
             .dtr_on_open(false)
             .timeout(Duration::from_secs(3))
             .open()

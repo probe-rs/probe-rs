@@ -260,7 +260,7 @@ impl Cmd {
                     filter: if self.test_options.filter.is_empty() {
                         None
                     } else {
-                        //TODO: Fix libtest-mimic so that it allows multiple filters (same as std test runners)
+                        // TODO: Fix libtest-mimic so that it allows multiple filters (same as std test runners)
                         Some(self.test_options.filter.join(" "))
                     },
                     ..Arguments::default()

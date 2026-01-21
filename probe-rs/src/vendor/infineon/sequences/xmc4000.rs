@@ -182,7 +182,7 @@ impl ArmDebugSequence for XMC4000 {
         // § 27.3.1 describes the normal boot mode, which happens after firmware initialization:
         //
         // > Firmware essentially reprograms the Cortex M4’s SCB.VTOR register with the start
-        // > address of flash (0C000000H) and passes control to user application by programing
+        // > address of flash (0C000000H) and passes control to user application by programming
         // > register R15 (Program Counter) with reset vector contents. The reset vector contents
         // > point to a routine that could be in either the cached or the uncached address space of
         // > the flash.

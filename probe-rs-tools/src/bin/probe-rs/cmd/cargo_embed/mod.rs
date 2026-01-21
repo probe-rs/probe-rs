@@ -84,7 +84,7 @@ pub async fn main(args: Vec<OsString>, config: Config, offset: UtcOffset) {
     match main_try(args, config, offset).await {
         Ok(_) => (),
         Err(e) => {
-            // Ensure stderr is flushed before calling proces::exit,
+            // Ensure stderr is flushed before calling process::exit,
             // otherwise the process might panic, because it tries
             // to access stderr during shutdown.
             //

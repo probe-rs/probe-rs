@@ -551,7 +551,7 @@ memory_mapped_bitfield_register! {
     pub ms, set_ms : 10;
 
     // Local vector catch enable bits.
-    // On implementations with security extensions, for exceptiosn taken to Secure state that are
+    // On implementations with security extensions, for exception taken to Secure state that are
     // not taken to Monitor mode.
     /// FIQ interrupt exception Vector catch enable in Secure state
     pub sf, set_sf : 7;

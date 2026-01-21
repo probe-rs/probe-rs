@@ -197,7 +197,7 @@ impl Cmd {
                     iterations
                 )
             }
-            // Insert another blank line to visually seperate results
+            // Insert another blank line to visually separate results
             println!();
         } else {
             println!("failed to set speed {speed}");

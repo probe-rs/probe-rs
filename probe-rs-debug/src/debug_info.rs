@@ -177,7 +177,7 @@ impl DebugInfo {
                             // The address is after the current row, so we use the previous row data.
                             //
                             // (If we don't do this, you get the artificial effect where the debugger
-                            // steps to the top of the file when it is steppping out of a function.)
+                            // steps to the top of the file when it is stepping out of a function.)
                             if let Some(previous_row) = previous_row
                                 && let Some(path) =
                                     self.find_file_and_directory(unit, previous_row.file_index())
@@ -926,7 +926,7 @@ impl DebugInfo {
         })
     }
 
-    /// Search accross all compilation untis, and retrive the DIEs for the function containing the given address.
+    /// Search across all compilation units, and retrieve the DIEs for the function containing the given address.
     /// This is distinct from [`UnitInfo::get_function_dies`] in that it will search all compilation units.
     /// - The first entry in the vector will be the outermost function containing the address.
     /// - If the address is inlined, the innermost function will be the last entry in the vector.
@@ -1322,7 +1322,7 @@ fn unwind_register_using_rule(
                 }
             }
         }
-        //TODO: Implement the remainder of these `RegisterRule`s
+        // TODO: Implement the remainder of these `RegisterRule`s
         _ => unimplemented!(),
     };
 
@@ -2040,7 +2040,7 @@ mod test {
     #[test_case("RP2040_full_unwind"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA_full_unwind"; "Armv7-m using nRF52833_xxAA")]
     #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
-    //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
+    // TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
     fn static_variables(chip_name: &str) {
         // TODO: Add RISC-V tests.
 

@@ -1,4 +1,4 @@
-// Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
+// Bad things happen to the VSCode debug extension and debug_adapter if we panic at the wrong time.
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 pub(crate) mod debug_adapter;
 mod peripherals;
@@ -40,7 +40,7 @@ pub enum DebuggerError {
     DebugError(#[from] DebugError),
     #[error(transparent)]
     FileDownload(#[from] FileDownloadError),
-    #[error("Received an invalid requeset")]
+    #[error("Received an invalid request")]
     InvalidRequest,
     #[error("Command requires a value for argument '{argument_name}'")]
     MissingArgument { argument_name: String },
@@ -51,7 +51,7 @@ pub enum DebuggerError {
     #[error(transparent)]
     OperationError(#[from] OperationError),
     /// Errors related to the handling of core dumps.
-    #[error("An error with a CoreDump occured")]
+    #[error("An error with a CoreDump occurred")]
     CoreDump(#[from] CoreDumpError),
     #[error("{0}")]
     /// A message that is intended to be displayed to the user, and does not unwind nested errors.

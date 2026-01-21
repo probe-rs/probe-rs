@@ -559,7 +559,7 @@ impl CmsisDap {
                 // is not the response to the latest command from the batch.
                 //
                 // According to the CMSIS-DAP specification, this shouldn't happen,
-                // the only time when not all transfers were executed is when an error occured.
+                // the only time when not all transfers were executed is when an error occurred.
                 // Still, this seems to happen in practice.
 
                 if count < batch.len() {
