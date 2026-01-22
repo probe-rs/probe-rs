@@ -37,7 +37,8 @@ pub struct DownloadOptions {
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     pub verify: bool,
     /// Skip resetting and halting the processor cores. This can be useful if there is other
-    /// tooling in place which performs this task before flashing.
+    /// tooling in place which performs this task before flashing. It currently only works for RAM
+    /// flashing.
     pub skip_reset: bool,
     /// Disable double buffering when loading flash.
     pub disable_double_buffering: bool,

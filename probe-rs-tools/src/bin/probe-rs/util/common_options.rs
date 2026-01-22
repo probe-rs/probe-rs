@@ -44,7 +44,7 @@ pub struct BinaryDownloadOptions {
     pub chip_erase: bool,
 
     /// Skip the resetting of the chip. This can be useful if there is other tooling in place which
-    /// performs this task before flashing.
+    /// performs this task before flashing. It currently only works for RAM flashing.
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub skip_reset: bool,
     /// Whether to read the RTT output from the flash loader, if available.
