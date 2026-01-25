@@ -71,13 +71,11 @@ pub struct AllProbesLister;
 
 impl ProbeLister for AllProbesLister {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
-        let selector = selector.into();
-
         let mut open_error = None;
         let mut fallback_error = ProbeCreationError::NotFound;
 
         for probe_ctor in Self::DRIVERS {
-            match probe_ctor.open(&selector) {
+            match probe_ctor.open(selector) {
                 Ok(link) => return Ok(Probe::from_specific_probe(link)),
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::CouldNotOpen)) => {
