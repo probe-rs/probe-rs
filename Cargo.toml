@@ -8,7 +8,7 @@ repository = "https://github.com/probe-rs/probe-rs"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 
-# If this is increased, also update the minimum Rust version in .github/workflows/ci.yml
+# If this is increased, also update the checked minimum Rust version in the justfile
 rust-version = "1.89"
 
 

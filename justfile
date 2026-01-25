@@ -16,3 +16,6 @@ check:
 
 test:
   cargo nextest run --all-features --locked --profile ci-unit
+
+msrv:
+  cargo +1.89 check --all-features
