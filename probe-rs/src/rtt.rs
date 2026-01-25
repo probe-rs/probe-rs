@@ -46,6 +46,7 @@
 
 mod channel;
 pub use channel::*;
+#[cfg(feature = "object")]
 use object::{Object as _, ObjectSymbol as _};
 
 use crate::Session;
