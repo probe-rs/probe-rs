@@ -57,6 +57,7 @@ use std::time::Instant;
 use zerocopy::{FromBytes, IntoBytes};
 
 /// Extract the RTT control block from a raw given ELF file.
+#[cfg(feature = "object")]
 pub fn find_rtt_control_block_in_elf(raw_elf: &[u8]) -> Result<Option<u64>, object::Error> {
     let obj = object::File::parse(raw_elf)?;
 
