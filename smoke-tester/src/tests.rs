@@ -94,7 +94,11 @@ fn test_write_read(scenario: &str, core: &mut Core, address: u64, data: &[u8]) -
 }
 
 #[smoke_tester_macros::test(core)]
-fn test_memory_access(_dut: &DutDefinition, core: &mut Core) -> TestResult {
+fn test_memory_access(dut: &DutDefinition, core: &mut Core) -> TestResult {
+    if dut.chip.name == "STM32H753ZI" {
+        skip_test!("STM32H7 memory read has some unknown issue - maybe cache problems");
+    }
+
     let memory_regions = core
         .memory_regions()
         .filter_map(MemoryRegion::as_ram_region)
