@@ -259,7 +259,7 @@ impl From<Target> for TargetSelector {
 }
 
 /// This is the type to denote a general debug sequence.
-/// It can differentiate between ARM and RISC-V for now.
+/// It can differentiate between ARM, RISC-V and Xtensa for now.
 #[derive(Clone, Debug)]
 pub enum DebugSequence {
     /// An ARM debug sequence.

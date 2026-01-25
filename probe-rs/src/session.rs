@@ -711,13 +711,16 @@ impl Session {
         vector_table_addr: u64,
         core_id: usize,
     ) -> Result<(), crate::Error> {
-        match &self.target.debug_sequence.clone() {
-            crate::config::DebugSequence::Arm(arm) => {
-                arm.prepare_running_on_ram(vector_table_addr, self, core_id)
+        match self.target.debug_sequence.clone() {
+            DebugSequence::Arm(arm_debug_sequence) => {
+                arm_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
             }
-            _ => Err(crate::Error::NotImplemented(
-                "ram flash non-ARM architectures",
-            )),
+            DebugSequence::Riscv(riscv_debug_sequence) => {
+                riscv_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
+            }
+            DebugSequence::Xtensa(xtensa_debug_sequence) => {
+                xtensa_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
+            }
         }
     }
 

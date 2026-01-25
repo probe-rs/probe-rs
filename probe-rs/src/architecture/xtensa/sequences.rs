@@ -45,6 +45,21 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
     ) -> Result<Option<SemihostingCommand>, crate::Error> {
         Ok(Some(SemihostingCommand::Unknown(details)))
     }
+
+    /// This ARM sequence is called if an image was flashed to RAM directly. It should perform the
+    /// necessary preparation to run that image on the core with the ID passed to the function.
+    ///
+    /// The core should already be `reset_and_halt`ed right before this call.
+    fn prepare_running_on_ram(
+        &self,
+        _session: &mut crate::Session,
+        _vector_table_addr: u64,
+        _core_id: usize,
+    ) -> Result<(), crate::Error> {
+        Err(crate::Error::NotImplemented(
+            "RAM running on Xtensa targets",
+        ))
+    }
 }
 
 /// The default sequences that is used for Xtensa chips that do not specify a specific sequence.
