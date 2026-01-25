@@ -5,6 +5,7 @@ use std::time::Duration;
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::MessageSeverity;
 use crate::cmd::dap_server::debug_adapter::dap::repl_commands::ReplCommand;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, DataFormat, DefmtProcessor, DefmtState};
@@ -15,7 +16,7 @@ use crate::{
             dap::{
                 adapter::DebugAdapter,
                 core_status::DapStatus,
-                dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+                dap_types::{ContinuedEventBody, Source, StoppedEventBody},
             },
             protocol::ProtocolAdapter,
         },
@@ -156,9 +157,16 @@ impl CoreHandle<'_> {
 
             CoreStatus::Halted(_) => self.notify_halted(debug_adapter, status)?,
             CoreStatus::LockedUp => {
-                let (_, description) = status.short_long_status(None);
-                debug_adapter.show_message(MessageSeverity::Error, &description);
-                return Err(DebuggerError::Other(anyhow!(description)));
+                // TODO: We can't really continue here, but the debugger should remain working
+                //
+                // Maybe step should be prevented?
+
+                debug_adapter.show_message(
+                    MessageSeverity::Warning,
+                    format!("Core {} is in locked up state", self.core_id),
+                );
+
+                self.notify_halted(debug_adapter, status)?
             }
             CoreStatus::Unknown => {
                 let error =
