@@ -46,6 +46,7 @@
 
 mod channel;
 pub use channel::*;
+use object::{Object as _, ObjectSymbol as _};
 
 use crate::Session;
 use crate::{Core, MemoryInterface, config::MemoryRegion};
@@ -54,6 +55,25 @@ use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 use zerocopy::{FromBytes, IntoBytes};
+
+/// Extract the RTT control block from a raw given ELF file.
+pub fn find_rtt_control_block_in_elf(raw_elf: &[u8]) -> Result<Option<u64>, object::Error> {
+    let obj = object::File::parse(raw_elf)?;
+
+    for symbol in obj.symbols() {
+        // Get the symbol name
+        if let Ok(name) = symbol.name()
+            && name == "_SEGGER_RTT"
+        {
+            // Ensure it is a defined symbol (not undefined). Symbols with a section index are
+            // defined in the binary.
+            if symbol.section_index().is_some() {
+                return Ok(Some(symbol.address()));
+            }
+        }
+    }
+    Ok(None)
+}
 
 /// The RTT interface.
 ///

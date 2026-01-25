@@ -9,6 +9,7 @@ use anyhow::Context;
 use libtest_mimic::{Failed, Trial};
 use postcard_rpc::host_client::HostClient;
 use postcard_schema::Schema;
+use probe_rs::rtt::find_rtt_control_block_in_elf;
 use ratatui::crossterm::style::Stylize;
 use rustyline_async::{Readline, ReadlineError, ReadlineEvent, SharedWriter};
 use serde::de::DeserializeOwned;
@@ -45,10 +46,7 @@ use crate::{
         common_options::{BinaryDownloadOptions, ProbeOptions},
         flash::CliProgressBars,
         logging,
-        rtt::{
-            self, DefmtProcessor, DefmtState, RttDataHandler, RttDecoder, RttSymbolError,
-            client::RttClient,
-        },
+        rtt::{DefmtProcessor, DefmtState, RttDataHandler, RttDecoder, client::RttClient},
     },
 };
 
@@ -303,15 +301,12 @@ pub async fn rtt_client(
     };
 
     let mut load_defmt_data = false;
-    match rtt::get_rtt_symbol_from_bytes(&elf) {
+    match find_rtt_control_block_in_elf(&elf) {
         // Do not scan the memory for the control block.
-        Ok(address) => {
-            scan_regions = ScanRegion::Exact(address);
-            load_defmt_data = true;
-        }
-        Err(RttSymbolError::RttSymbolNotFound) => {
-            load_defmt_data = !elf.is_empty();
-        }
+        Ok(opt_address) => match opt_address {
+            Some(addr) => scan_regions = ScanRegion::Exact(addr),
+            None => load_defmt_data = !elf.is_empty(),
+        },
         _ => {}
     }
 
