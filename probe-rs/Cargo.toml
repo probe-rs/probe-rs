@@ -29,9 +29,8 @@ builtin-targets = ["dep:bincode", "dep:serde_yaml", "dep:probe-rs-target"]
 cmsisdap_v1 = ["dep:hidapi"]
 
 flashing = ["dep:espflash", "dep:uf2-decode", "object", "dep:flate2", "dep:ihex"]
-object = ["dep:object"]
 
-coredump = ["dep:object", "dep:rmp-serde", "dep:dunce"]
+coredump = ["object", "dep:rmp-serde", "dep:dunce"]
 
 # Enable helpers for testing
 test = ["object"]

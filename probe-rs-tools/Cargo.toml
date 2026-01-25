@@ -92,7 +92,7 @@ ratatui = { version = "0.30.0", default-features = false, features = [
 ansi-parser = "0.9.0"
 linkme = "0.3.25"
 
-probe-rs = { version = "0.31.0", path = "../probe-rs", features = ["object"] }
+probe-rs = { version = "0.31.0", path = "../probe-rs" }
 parking_lot = "0.12.2"
 cargo-config2 = "0.1.26"
 clap_complete = "4.5.2"
