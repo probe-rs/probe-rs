@@ -577,11 +577,10 @@ impl FlashLoader {
         tracing::debug!("Committing RAM!");
 
         if let BootInfo::FromRam { cores_to_reset, .. } = self.boot_info() {
-            // If we are booting from RAM, it is important to reset and halt to guarantee a clear state
-            // Normally, flash algorithm loader performs reset and halt - does not happen here.
-            tracing::debug!(
-                " -- action: vector table in RAM, assuming RAM boot, resetting and halting"
-            );
+            // If we are booting from RAM, it might be important to reset and halt to guarantee a
+            // clear state. Normally, flash algorithm loader performs reset and halt - does note
+            // happen here. The user can optionally disable the reset, and the core is only
+            // halted in that case.
             for (core_to_reset_index, _) in session
                 .target()
                 .cores
@@ -594,8 +593,14 @@ impl FlashLoader {
                     .core(core_to_reset_index)
                     .and_then(|mut core| {
                         if options.skip_reset {
+                            tracing::debug!(
+                                " -- action: vector table in RAM, assuming RAM boot, halting"
+                            );
                             core.halt(Duration::from_millis(500))
                         } else {
+                            tracing::debug!(
+                                " -- action: vector table in RAM, assuming RAM boot, resetting and halting"
+                            );
                             core.reset_and_halt(Duration::from_millis(500))
                         }
                     })
