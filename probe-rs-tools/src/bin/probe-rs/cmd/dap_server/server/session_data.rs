@@ -18,7 +18,7 @@ use crate::{
         },
         run::EmbeddedTestElfInfo,
     },
-    util::{common_options::OperationError, rtt},
+    util::common_options::OperationError,
 };
 use anyhow::{Result, anyhow};
 use probe_rs::{
@@ -26,7 +26,7 @@ use probe_rs::{
     config::{Registry, TargetSelector},
     flashing::FormatKind,
     probe::list::Lister,
-    rtt::ScanRegion,
+    rtt::{ScanRegion, find_rtt_control_block_in_raw_file},
 };
 use probe_rs_debug::{
     DebugRegisters, SourceLocation, debug_info::DebugInfo, exception_handler_for_core,
@@ -264,10 +264,11 @@ impl SessionData {
                     let elf = std::fs::read(program_binary)
                         .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
 
-                    match rtt::get_rtt_symbol_from_bytes(&elf) {
-                        Ok(address) => ScanRegion::Exact(address),
+                    if let Ok(Some(addr)) = find_rtt_control_block_in_raw_file(&elf) {
+                        ScanRegion::Exact(addr)
+                    } else {
                         // Do not scan the memory for the control block.
-                        _ => ScanRegion::Ranges(vec![]),
+                        ScanRegion::Ranges(vec![])
                     }
                 }
                 _ => ScanRegion::Ranges(vec![]),

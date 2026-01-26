@@ -8,7 +8,7 @@ use parking_lot::FairMutex;
 use probe_rs::config::Registry;
 use probe_rs::flashing::{BootInfo, FormatKind};
 use probe_rs::probe::list::Lister;
-use probe_rs::rtt::ScanRegion;
+use probe_rs::rtt::{ScanRegion, find_rtt_control_block_in_raw_file};
 use probe_rs::{Session, probe::DebugProbeSelector};
 use std::ffi::OsString;
 use std::time::Instant;
@@ -28,7 +28,7 @@ use crate::util::common_options::{BinaryDownloadOptions, OperationError, ProbeOp
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
 use crate::util::rtt::client::RttClient;
-use crate::util::rtt::{self, RttChannelConfig, RttConfig};
+use crate::util::rtt::{RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
 use crate::{Config, FormatOptions, parse_and_resolve_cli_args};
 
@@ -279,10 +279,11 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
     };
 
     let scan = if let Some(ref elf) = elf {
-        match rtt::get_rtt_symbol_from_bytes(elf) {
-            Ok(address) => ScanRegion::Exact(address),
+        if let Ok(Some(addr)) = find_rtt_control_block_in_raw_file(elf) {
+            ScanRegion::Exact(addr)
+        } else {
             // Do not scan the memory for the control block.
-            _ => ScanRegion::Ranges(vec![]),
+            ScanRegion::Ranges(vec![])
         }
     } else {
         ScanRegion::Ram

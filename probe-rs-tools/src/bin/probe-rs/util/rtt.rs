@@ -213,15 +213,6 @@ impl RttActiveDownChannel {
     }
 }
 
-/// Error type for RTT symbol lookup.
-#[derive(Debug, thiserror::Error, docsplay::Display)]
-pub enum RttSymbolError {
-    /// RTT symbol not found in the ELF file.
-    RttSymbolNotFound,
-    /// Failed to parse the firmware as an ELF file.
-    Goblin(#[source] goblin::error::Error),
-}
-
 /// Once an active connection with the Target RTT control block has been established, we configure
 /// each of the active channels, and hold essential state information for successful communication.
 #[derive(Debug)]
@@ -305,19 +296,5 @@ impl RttConnection {
         self.active_down_channels.clear();
         self.active_up_channels.clear();
         Ok(())
-    }
-}
-
-pub fn get_rtt_symbol_from_bytes(buffer: &[u8]) -> Result<u64, RttSymbolError> {
-    match goblin::elf::Elf::parse(buffer) {
-        Ok(binary) => {
-            for sym in &binary.syms {
-                if binary.strtab.get_at(sym.st_name) == Some("_SEGGER_RTT") {
-                    return Ok(sym.st_value);
-                }
-            }
-            Err(RttSymbolError::RttSymbolNotFound)
-        }
-        Err(err) => Err(RttSymbolError::Goblin(err)),
     }
 }
