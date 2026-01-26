@@ -579,6 +579,7 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
                         name: Some(region.name),
                         range: region.memory_start..region.memory_end,
                         cores,
+                        is_alias: false,
                     }));
                 }
             },
