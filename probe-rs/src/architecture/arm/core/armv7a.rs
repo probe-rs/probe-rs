@@ -51,9 +51,15 @@ struct BankedAccess<'a> {
 }
 
 impl<'a> BankedAccess<'a> {
+    #[allow(dead_code)]
     fn set_dtrtx(&mut self, value: u32) -> Result<(), ArmError> {
         self.interface
             .write_raw_ap_register(&self.ap, self.dtrtx, value)
+    }
+
+    fn set_dtrtx_repeated(&mut self, values: &[u32]) -> Result<(), ArmError> {
+        self.interface
+            .write_raw_ap_register_repeated(&self.ap, self.dtrtx, values)
     }
 
     fn dscr(&mut self) -> Result<Dbgdscr, ArmError> {
@@ -74,6 +80,12 @@ impl<'a> BankedAccess<'a> {
 
     fn dtrrx(&mut self) -> Result<u32, ArmError> {
         self.interface.read_raw_ap_register(&self.ap, self.dtrrx)
+    }
+
+    fn dtrrx_repeated(&mut self, buf: &mut [u32]) -> Result<(), ArmError> {
+        self.interface
+            .read_raw_ap_register_repeated(&self.ap, self.dtrrx, buf)?;
+        Ok(())
     }
 
     /// Operate the core in DCC Fast mode. For more information, see
@@ -1302,9 +1314,7 @@ impl MemoryInterface for Armv7a<'_> {
                         // Because reads lag by one instruction, we need to break before
                         // we read the final value. If we don't we will end up reading one
                         // extra word past the buffer, which may end up outside valid RAM.
-                        for word in data[0..count - 1].iter_mut() {
-                            *word = banked.dtrrx()?;
-                        }
+                        banked.dtrrx_repeated(&mut data[0..count - 1])?;
                         Ok(())
                     })
                     .is_ok()
@@ -1491,9 +1501,7 @@ impl MemoryInterface for Armv7a<'_> {
                         banked.set_itr(build_stc(14, 5, 0, 4))?;
 
                         // Continually write the tx register, which will auto-increment
-                        for word in data.iter() {
-                            banked.set_dtrtx(*word)?;
-                        }
+                        banked.set_dtrtx_repeated(data)?;
                         Ok(())
                     })
                     .ok();
