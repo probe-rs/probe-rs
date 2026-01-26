@@ -366,6 +366,7 @@ impl Rtt {
 
                 core.memory_regions()
                     .filter_map(MemoryRegion::as_ram_region)
+                    .filter(|r| !r.is_alias)
                     .map(|r| r.range.clone())
                     .collect()
             }
