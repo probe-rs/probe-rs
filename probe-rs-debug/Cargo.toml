@@ -14,7 +14,7 @@ description = "Debugging functionality built on top of the probe-rs crate"
 exclude = ["tests/debug-unwind-tests"]
 
 [dependencies]
-addr2line = "0.25.0"
+addr2line = "0.26.0"
 bitfield = "0.19.0"
 gimli = "0.32.0"
 itertools = "0.14.0"
