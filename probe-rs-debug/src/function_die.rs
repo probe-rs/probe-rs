@@ -1,4 +1,4 @@
-use gimli::{RunTimeEndian, UnitOffset};
+use gimli::UnitOffset;
 use std::ops::Range;
 
 use crate::{MemoryInterface, stack_frame::StackFrameInfo};
@@ -8,8 +8,7 @@ use super::{
     unit_info::{ExpressionResult, UnitInfo},
 };
 
-pub(crate) type Die<'abbrev, 'unit> =
-    gimli::DebuggingInformationEntry<'abbrev, 'unit, debug_info::GimliReader, usize>;
+pub(crate) type Die = gimli::DebuggingInformationEntry<debug_info::GimliReader, usize>;
 
 /// Reference to a DIE for a function
 #[derive(Clone)]
@@ -17,7 +16,7 @@ pub(crate) struct FunctionDie<'data> {
     /// A reference to the compilation unit this function belongs to.
     pub(crate) unit_info: &'data UnitInfo,
     /// The DIE (Debugging Information Entry) for the function.
-    pub(crate) function_die: Die<'data, 'data>,
+    pub(crate) function_die: Die,
     /// The optional specification DIE for the function, if it has one.
     /// - For regular functions, this applies to the `function_die`.
     /// - For inlined functions, this applies to the `abstract_die`.
@@ -25,10 +24,10 @@ pub(crate) struct FunctionDie<'data> {
     /// The specification DIE will contain separately declared attributes,
     /// e.g. for the function name.
     /// See DWARF spec, 2.13.2.
-    pub(crate) specification_die: Option<Die<'data, 'data>>,
+    pub(crate) specification_die: Option<Die>,
     /// Only present for inlined functions, where this is a reference
     /// to the declaration of the function.
-    pub(crate) abstract_die: Option<Die<'data, 'data>>,
+    pub(crate) abstract_die: Option<Die>,
     /// The address ranges for which this function is valid.
     pub(crate) ranges: Vec<Range<u64>>,
 }
@@ -39,7 +38,7 @@ impl<'a> FunctionDie<'a> {
     /// relevant to the address/program counter specified.
     /// Other DIE's will return None, and should be ignored.
     pub(crate) fn new(
-        function_die: Die<'a, 'a>,
+        function_die: Die,
         unit_info: &'a UnitInfo,
         debug_info: &'a DebugInfo,
         address: u64,
@@ -198,11 +197,14 @@ impl<'a> FunctionDie<'a> {
         debug_info: &super::DebugInfo,
         attribute_name: gimli::DwAt,
     ) -> Option<debug_info::GimliAttribute> {
-        let attribute =
-            collapsed_attribute(&self.function_die, &self.specification_die, attribute_name);
+        let attribute = collapsed_attribute(
+            &self.function_die,
+            self.specification_die.as_ref(),
+            attribute_name,
+        );
 
         if attribute.is_some() {
-            return attribute;
+            return attribute.cloned();
         }
 
         // For inlined function, the *abstract instance* has to be checked if we cannot find the
@@ -213,11 +215,14 @@ impl<'a> FunctionDie<'a> {
                 abstract_die,
                 self.unit_info,
             );
-            let inline_attribute =
-                collapsed_attribute(abstract_die, &inlined_specification_die, attribute_name);
+            let inline_attribute = collapsed_attribute(
+                abstract_die,
+                inlined_specification_die.as_ref(),
+                attribute_name,
+            );
 
             if inline_attribute.is_some() {
-                return inline_attribute;
+                return inline_attribute.cloned();
             }
         }
 
@@ -259,21 +264,13 @@ impl<'a> FunctionDie<'a> {
 }
 
 // Try to retrieve the attribute from the specification or the function DIE.
-fn collapsed_attribute(
-    function_die: &Die,
-    specification_die: &Option<Die>,
+fn collapsed_attribute<'a>(
+    function_die: &'a Die,
+    specification_die: Option<&'a Die>,
     attribute_name: gimli::DwAt,
-) -> Option<gimli::Attribute<gimli::EndianReader<RunTimeEndian, std::rc::Rc<[u8]>>>> {
+) -> Option<&'a debug_info::GimliAttribute> {
     specification_die
         .as_ref()
-        .and_then(|specification_die| {
-            specification_die
-                .attr(attribute_name)
-                .map_or(None, |attribute| attribute)
-        })
-        .or_else(|| {
-            function_die
-                .attr(attribute_name)
-                .map_or(None, |attribute| attribute)
-        })
+        .and_then(|specification_die| specification_die.attr(attribute_name))
+        .or_else(|| function_die.attr(attribute_name))
 }

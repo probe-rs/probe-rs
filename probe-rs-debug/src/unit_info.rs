@@ -30,9 +30,10 @@ pub struct UnitInfo {
 impl UnitInfo {
     /// Create a new `UnitInfo` from a `gimli::Unit`.
     pub fn new(unit: gimli::Unit<GimliReader, usize>) -> Self {
-        let dwarf_language = if let Ok(Some(AttributeValue::Language(unit_language))) = unit
-            .entries_tree(None)
-            .and_then(|mut tree| tree.root()?.entry().attr_value(gimli::DW_AT_language))
+        let dwarf_language = if let Some(AttributeValue::Language(unit_language)) = unit
+            .entry(unit.root_offset())
+            .ok()
+            .and_then(|root| root.attr_value(gimli::DW_AT_language))
         {
             unit_language
         } else {
@@ -55,8 +56,9 @@ impl UnitInfo {
         let mut entries_cursor = unit.entries();
 
         let mut prev_offset = None;
-        while let Ok(Some((depth, current))) = entries_cursor.next_dfs() {
-            let parent_offset = match depth {
+        let mut previous_depth = entries_cursor.depth();
+        while let Ok(Some(current)) = entries_cursor.next_dfs() {
+            let parent_offset = match current.depth() - previous_depth {
                 1 => {
                     // Previous die is our parent.
                     prev_offset
@@ -76,9 +78,11 @@ impl UnitInfo {
                 }
                 _ => unreachable!("DFS algorithms never jump down multiple levels in the graph"),
             };
+
             if let Some(offset) = parent_offset {
                 parents.insert(current.offset(), offset);
             }
+            previous_depth = current.depth();
             prev_offset = Some(current.offset());
         }
 
@@ -93,7 +97,7 @@ impl UnitInfo {
     }
 
     pub(crate) fn debug_info_offset(&self) -> Result<DebugInfoOffset, DebugError> {
-        self.unit.header.offset().as_debug_info_offset().ok_or_else(|| DebugError::Other(
+        self.unit.header.offset().to_debug_info_offset(&self.unit.header).ok_or_else(|| DebugError::Other(
             "Failed to convert unit header offset to debug info offset. This is a bug, please report it.".to_string()
         ))
     }
@@ -109,7 +113,7 @@ impl UnitInfo {
         tracing::trace!("Searching Function DIE for address {:#010x}", address);
 
         let mut entries_cursor = self.unit.entries();
-        while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
+        while let Ok(Some(current)) = entries_cursor.next_dfs() {
             let Some(die) = FunctionDie::new(current.clone(), self, debug_info, address)? else {
                 continue;
             };
@@ -149,24 +153,21 @@ impl UnitInfo {
             return Ok(vec![]);
         };
 
-        let mut current_depth = 0;
         // The abort depth is used to control navigation of `cursor.next_dfs()` tree that contains
         // the inlined functions for the current address.  It is set to the current depth when a
         // qualifying inlined function is found, and prevents the cursor from searching back up the
         // tree, for sibling branches.
         // This is a performance optimization only, and will not affect the correctness of the result.
-        let mut abort_depth = 0;
+        let mut abort_depth = cursor.depth();
         let mut functions = Vec::new();
 
-        while let Ok(Some((depth, current))) = cursor.next_dfs() {
-            current_depth += depth;
-
+        while let Ok(Some(current)) = cursor.next_dfs() {
             if current.offset() == parent_offset {
                 // We only want children of the non-inlined function DIE at the given `parent_offset`.
                 continue;
             }
 
-            if current_depth < abort_depth {
+            if current.depth() < abort_depth {
                 // We have found all the inlined functions for the current address
                 // so we can abort the search, before it starts searching other branches of the tree.
                 break;
@@ -179,7 +180,7 @@ impl UnitInfo {
 
             // Every time we find a qualifying inlined-function, we set the abort depth
             // to ensure the `cursor.next_dfs()` will be prevented from reversing the depth traversal to search for peers.
-            abort_depth = current_depth;
+            abort_depth = current.depth();
 
             functions.push(die);
         }
@@ -206,7 +207,7 @@ impl UnitInfo {
         let abstract_entry;
 
         // We need to determine if we are working with a 'abstract` location, and use that node for the attributes we need
-        let attributes_entry = if let Ok(Some(abstract_origin)) =
+        let attributes_entry = if let Some(abstract_origin) =
             tree_node.attr(gimli::DW_AT_abstract_origin)
         {
             match abstract_origin.value() {
@@ -241,7 +242,7 @@ impl UnitInfo {
 
         // We need to determine if we are working with a variable definition which refers to a declaration,
         // and use that node for the attributes we need
-        let attributes_entry = if let Ok(Some(specification)) =
+        let attributes_entry = if let Some(specification) =
             tree_node.attr(gimli::DW_AT_specification)
         {
             match specification.value() {
@@ -284,10 +285,8 @@ impl UnitInfo {
             child_variable.source_location =
                 self.extract_source_location(debug_info, attributes_entry)?;
 
-            let mut variable_attributes = attributes_entry.attrs();
-
             // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
-            while let Ok(Some(attr)) = variable_attributes.next() {
+            for attr in attributes_entry.attrs() {
                 match attr.name() {
                     gimli::DW_AT_location | gimli::DW_AT_data_member_location => {
                         // The child_variable.location is calculated with attribute gimli::DW_AT_type, to ensure it
@@ -315,7 +314,7 @@ impl UnitInfo {
                         // - The `DW_AT_byte_size` of the child.
                         // - The `DW_AT_name` of the data type node.
                         self.process_type_attribute(
-                            &attr,
+                            attr,
                             debug_info,
                             attributes_entry,
                             parent_variable,
@@ -588,7 +587,7 @@ impl UnitInfo {
 
                     // In the case of C code, we can have entries for both the declaration and the definition of a variable.
                     // We don't do anything with the declaration right now, so we remove it from the cache.
-                    let is_declaration = if let Ok(Some(AttributeValue::Flag(value))) =
+                    let is_declaration = if let Some(AttributeValue::Flag(value)) =
                         child_node.entry().attr_value(gimli::DW_AT_declaration)
                     {
                         value
@@ -736,12 +735,12 @@ impl UnitInfo {
                     // Determine the low and high ranges for which this DIE and children are in scope. These can be
                     // specified discreetly, or in ranges.
                     let mut in_scope = false;
-                    if let Ok(Some(low_pc_attr)) = child_node.entry().attr(gimli::DW_AT_low_pc) {
+                    if let Some(low_pc_attr) = child_node.entry().attr(gimli::DW_AT_low_pc) {
                         let low_pc = match low_pc_attr.value() {
                             gimli::AttributeValue::Addr(value) => value,
                             _other => u64::MAX,
                         };
-                        let high_pc = if let Ok(Some(high_pc_attr)) =
+                        let high_pc = if let Some(high_pc_attr) =
                             child_node.entry().attr(gimli::DW_AT_high_pc)
                         {
                             match high_pc_attr.value() {
@@ -769,8 +768,7 @@ impl UnitInfo {
                         // No scope info yet, so keep looking.
                     };
                     // Searching for ranges has a bit more overhead, so ONLY do this if do not have scope confirmed yet.
-                    if !in_scope
-                        && let Ok(Some(ranges)) = child_node.entry().attr(gimli::DW_AT_ranges)
+                    if !in_scope && let Some(ranges) = child_node.entry().attr(gimli::DW_AT_ranges)
                     {
                         match ranges.value() {
                             gimli::AttributeValue::RangeListsRef(raw_range_lists_offset) => {
@@ -898,13 +896,11 @@ impl UnitInfo {
         &self,
         entry: &gimli::DebuggingInformationEntry<GimliReader>,
     ) -> Result<Option<Range<u64>>, DebugError> {
-        let mut variable_attributes = entry.attrs();
-
         let mut lower_bound = None;
         let mut upper_bound = None;
 
         // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
-        while let Ok(Some(attr)) = variable_attributes.next() {
+        for attr in entry.attrs() {
             match attr.name() {
                 // Property of variables that are of DW_TAG_subrange_type.
                 gimli::DW_AT_lower_bound => match attr.value().udata_value() {
@@ -964,7 +960,7 @@ impl UnitInfo {
         variable: &mut Variable,
     ) -> Result<(), DebugError> {
         variable.role = match node.entry().attr(gimli::DW_AT_discr_value) {
-            Ok(Some(discr_value_attr)) => {
+            Some(discr_value_attr) => {
                 let attr_value = discr_value_attr.value();
                 let variant = if let Some(const_value) = attr_value.udata_value() {
                     const_value
@@ -978,16 +974,10 @@ impl UnitInfo {
 
                 VariantRole::Variant(variant)
             }
-            Ok(None) => {
+            None => {
                 // In the case where the variable is a DW_TAG_variant, but has NO DW_AT_discr_value, then this is the
                 // "default" to be used.
                 VariantRole::Variant(u64::MAX)
-            }
-            Err(_error) => {
-                variable.set_value(VariableValue::Error(format!(
-                    "Error: Retrieving DW_AT_discr_value for variable {variable:?}"
-                )));
-                VariantRole::NonVariant
             }
         };
 
@@ -1055,7 +1045,7 @@ impl UnitInfo {
 
                 // This needs to resolve the pointer before the regular recursion can continue.
                 match node.attr_value(gimli::DW_AT_type) {
-                    Ok(Some(gimli::AttributeValue::UnitRef(unit_ref))) => {
+                    Some(gimli::AttributeValue::UnitRef(unit_ref)) => {
                         // NOTE: surprisingly, as opposed to `void*`, this can be a `const void*`.
                         if !cache.has_children(child_variable) {
                             let mut referenced_variable =
@@ -1093,13 +1083,13 @@ impl UnitInfo {
                             }
                         }
                     }
-                    Ok(Some(other_attribute_value)) => {
+                    Some(other_attribute_value) => {
                         child_variable.set_value(VariableValue::Error(format!(
                             "Unimplemented: Attribute Value for DW_AT_type {:.100}",
                             format!("{other_attribute_value:?}")
                         )));
                     }
-                    Ok(None) => {
+                    None => {
                         // NOTE: this can be a `void*` pointer. Some C compilers model `void` as
                         // a type without `DW_AT_type`.
                         // FIXME: this differs from `const void*` which may be surprising. Should we
@@ -1110,11 +1100,6 @@ impl UnitInfo {
                                 gimli::DW_TAG_pointer_type,
                             ),
                         );
-                    }
-                    Err(error) => {
-                        child_variable.set_value(VariableValue::Error(format!(
-                            "Error: Failed to decode pointer reference: {error:?}"
-                        )));
                     }
                 }
             }
@@ -1184,7 +1169,7 @@ impl UnitInfo {
                 // The type_name will be found in the DW_AT_TYPE child of this entry.
                 // NOTE: There might be value in going beyond just getting the name, but also the parameters (children) and return type (extract_type()).
                 match node.attr(gimli::DW_AT_type) {
-                    Ok(Some(data_type_attribute)) => match data_type_attribute.value() {
+                    Some(data_type_attribute) => match data_type_attribute.value() {
                         gimli::AttributeValue::UnitRef(unit_ref) => {
                             let subroutine_type_node =
                                 self.unit.header.entry(&self.unit.abbreviations, unit_ref)?;
@@ -1206,17 +1191,11 @@ impl UnitInfo {
                         }
                     },
 
-                    Ok(None) => {
+                    None => {
                         // TODO: Better indication for no return value
                         child_variable
                             .set_value(VariableValue::Valid("<No Return Value>".to_string()));
                         child_variable.type_name = VariableType::Unknown;
-                    }
-
-                    Err(error) => {
-                        child_variable.set_value(VariableValue::Error(format!(
-                            "Error: Failed to decode subroutine type reference: {error:?}"
-                        )));
                     }
                 }
             }
@@ -1225,9 +1204,9 @@ impl UnitInfo {
             | gimli::DW_TAG_volatile_type
             | gimli::DW_TAG_restrict_type
             | gimli::DW_TAG_atomic_type) => match node.attr(gimli::DW_AT_type) {
-                Ok(Some(attr)) => {
+                Some(attr) => {
                     self.process_type_attribute(
-                        &attr,
+                        attr,
                         debug_info,
                         node,
                         parent_variable,
@@ -1264,14 +1243,10 @@ impl UnitInfo {
                     );
                 }
 
-                Ok(None) => child_variable.set_value(
+                None => child_variable.set_value(
                     self.language
                         .process_tag_with_no_type(child_variable, other),
                 ),
-
-                Err(error) => child_variable.set_value(VariableValue::Error(format!(
-                    "Error: Failed to decode {other:?} type reference: {error:?}"
-                ))),
             },
 
             // Do not expand this type.
@@ -1375,7 +1350,7 @@ impl UnitInfo {
         };
 
         match node.attr_value(gimli::DW_AT_type) {
-            Ok(Some(gimli::AttributeValue::UnitRef(unit_ref))) => {
+            Some(gimli::AttributeValue::UnitRef(unit_ref)) => {
                 // The memory location of array members build on top of the memory location of the child_variable.
                 self.process_memory_location(
                     debug_info,
@@ -1402,21 +1377,16 @@ impl UnitInfo {
                     )?;
                 };
             }
-            Ok(Some(other_attribute_value)) => {
+            Some(other_attribute_value) => {
                 child_variable.set_value(VariableValue::Error(format!(
                     "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
                 )));
             }
-            Ok(None) => {
+            None => {
                 child_variable.set_value(
                     self.language
                         .process_tag_with_no_type(child_variable, gimli::DW_TAG_array_type),
                 );
-            }
-            Err(error) => {
-                child_variable.set_value(VariableValue::Error(format!(
-                    "Error: Failed to decode pointer reference: {error:?}"
-                )));
             }
         }
 
@@ -1500,7 +1470,7 @@ impl UnitInfo {
 
                     let name_result = extract_name(debug_info, attributes_entry);
 
-                    let Some(attr_value) = attributes_entry.attr_value(gimli::DW_AT_const_value)?
+                    let Some(attr_value) = attributes_entry.attr_value(gimli::DW_AT_const_value)
                     else {
                         // Ignore enumerators without a value.
                         continue;
@@ -1756,8 +1726,7 @@ impl UnitInfo {
             }
         }
 
-        let mut attrs = node_die.attrs();
-        while let Ok(Some(attr)) = attrs.next() {
+        for attr in node_die.attrs() {
             let result = match attr.name() {
                 gimli::DW_AT_location
                 | gimli::DW_AT_frame_base
@@ -2139,7 +2108,7 @@ impl UnitInfo {
         entry: &gimli::DebuggingInformationEntry<GimliReader>,
     ) -> Result<Option<String>, gimli::Error> {
         match entry.attr(gimli::DW_AT_name) {
-            Ok(Some(attr)) => {
+            Some(attr) => {
                 let name = match attr.value() {
                     gimli::AttributeValue::DebugStrRef(name_ref) => {
                         if let Ok(name_raw) = debug_info.dwarf.string(name_ref) {
@@ -2156,8 +2125,8 @@ impl UnitInfo {
 
                 Ok(Some(name))
             }
-            Ok(None) => {
-                let Ok(Some(attr)) = entry.attr(gimli::DW_AT_type) else {
+            None => {
+                let Some(attr) = entry.attr(gimli::DW_AT_type) else {
                     // No type attribute.
                     return Ok(None);
                 };
@@ -2171,7 +2140,6 @@ impl UnitInfo {
                 let node = self.unit.header.entry(&self.unit.abbreviations, unit_ref)?;
                 self.extract_type_name(debug_info, &node)
             }
-            Err(error) => Err(error),
         }
     }
 
@@ -2220,7 +2188,7 @@ impl UnitInfo {
         child_variable: &mut Variable,
         entry: &gimli::DebuggingInformationEntry<GimliReader>,
     ) -> Result<Option<Bitfield>, gimli::Error> {
-        let offset = if let Some(attr) = entry.attr(gimli::DW_AT_data_bit_offset)? {
+        let offset = if let Some(attr) = entry.attr(gimli::DW_AT_data_bit_offset) {
             // Available since DWARF 4+
             match attr.value().udata_value() {
                 Some(offset) => Some(BitOffset::FromLsb(offset)),
@@ -2232,7 +2200,7 @@ impl UnitInfo {
                     return Ok(None);
                 }
             }
-        } else if let Some(attr) = entry.attr(gimli::DW_AT_bit_offset)? {
+        } else if let Some(attr) = entry.attr(gimli::DW_AT_bit_offset) {
             // Deprecated in DWARF 5, but still used by some compilers.
             // Specifies offset from MSB. We're handling this as a separate offset variant
             // because we haven't yet processed the byte size of the variable.
@@ -2249,7 +2217,7 @@ impl UnitInfo {
             None
         };
 
-        let size = if let Some(attr) = entry.attr(gimli::DW_AT_bit_size)? {
+        let size = if let Some(attr) = entry.attr(gimli::DW_AT_bit_size) {
             match attr.value().udata_value() {
                 Some(length) => Some(length),
                 None => {
@@ -2279,7 +2247,7 @@ impl UnitInfo {
         debug_info: &DebugInfo,
         entry: &gimli::DebuggingInformationEntry<GimliReader>,
     ) -> Result<Option<SourceLocation>, gimli::Error> {
-        let Some(file_attr) = entry.attr_value(gimli::DW_AT_decl_file)? else {
+        let Some(file_attr) = entry.attr_value(gimli::DW_AT_decl_file) else {
             return Ok(None);
         };
 
@@ -2294,9 +2262,8 @@ impl UnitInfo {
             address: None,
         };
 
-        let mut variable_attributes = entry.attrs();
         // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
-        while let Ok(Some(attr)) = variable_attributes.next() {
+        for attr in entry.attrs() {
             match attr.name() {
                 gimli::DW_AT_decl_line => {
                     if let Some(line_number) = extract_line(attr.value()) {
@@ -2328,7 +2295,7 @@ fn extract_name(
     debug_info: &DebugInfo,
     entry: &gimli::DebuggingInformationEntry<GimliReader>,
 ) -> Result<Option<String>, gimli::Error> {
-    let Some(attr) = entry.attr_value(gimli::DW_AT_name)? else {
+    let Some(attr) = entry.attr_value(gimli::DW_AT_name) else {
         return Ok(None);
     };
 
