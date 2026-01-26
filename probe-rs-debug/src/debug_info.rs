@@ -259,11 +259,14 @@ impl DebugInfo {
         match parent_variable.variable_node_type {
             VariableNodeType::TypeOffset(header_offset, unit_offset)
             | VariableNodeType::DirectLookup(header_offset, unit_offset) => {
-                let Some(unit_info) = self
-                    .unit_infos
-                    .iter()
-                    .find(|unit_info| unit_info.unit.header.offset() == header_offset.into())
-                else {
+                let Some(unit_info) = self.unit_infos.iter().find(|unit_info| {
+                    unit_info
+                        .unit
+                        .header
+                        .offset()
+                        .to_debug_info_offset(&unit_info.unit)
+                        == Some(header_offset)
+                }) else {
                     return Err(DebugError::Other(
                         "Failed to find unit info for offset lookup.".to_string(),
                     ));
@@ -294,7 +297,7 @@ impl DebugInfo {
 
                     // Only process statics for this unit header.
                     // Navigate the current unit from the header down.
-                    let (_, unit_node) = entries.next_dfs()?.unwrap();
+                    let unit_node = entries.next_dfs()?.unwrap();
                     let unit_offset = unit_node.offset();
 
                     let mut type_tree = unit_info.unit.entries_tree(Some(unit_offset))?;
@@ -952,13 +955,13 @@ impl DebugInfo {
         attribute: gimli::DwAt,
         die: &Die,
         unit_info: &'unit_info UnitInfo,
-    ) -> Option<Die<'debug_info, 'debug_info>>
+    ) -> Option<Die>
     where
         'unit_info: 'debug_info,
     {
-        let attr = die.attr(attribute).ok().flatten()?;
+        let attr = die.attr(attribute)?;
 
-        self.resolve_die_reference_with_unit(&attr, unit_info)
+        self.resolve_die_reference_with_unit(attr, unit_info)
             .ok()
             .map(|(_, die)| die)
     }
@@ -973,7 +976,7 @@ impl DebugInfo {
         &'debug_info self,
         attr: &gimli::Attribute<GimliReader>,
         unit_info: &'unit_info UnitInfo,
-    ) -> Result<(&'debug_info UnitInfo, Die<'debug_info, 'debug_info>), DebugError>
+    ) -> Result<(&'debug_info UnitInfo, Die), DebugError>
     where
         'unit_info: 'debug_info,
     {
@@ -1151,7 +1154,7 @@ pub fn unwind_register(
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
     let register_rule = debug_register
         .dwarf_id
-        .map(|register_position| unwind_info.register(gimli::Register(register_position)))
+        .and_then(|register_position| unwind_info.register(gimli::Register(register_position)))
         .unwrap_or(RegisterRule::Undefined);
 
     unwind_register_using_rule(

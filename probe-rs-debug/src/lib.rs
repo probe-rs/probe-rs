@@ -206,7 +206,7 @@ fn extract_file(
 /// If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return None
 fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Option<u64> {
     match node_die.attr(gimli::DW_AT_byte_size) {
-        Ok(Some(byte_size_attr)) => match byte_size_attr.value() {
+        Some(byte_size_attr) => match byte_size_attr.value() {
             AttributeValue::Udata(byte_size) => Some(byte_size),
             AttributeValue::Data1(byte_size) => Some(byte_size as u64),
             AttributeValue::Data2(byte_size) => Some(byte_size as u64),
@@ -217,14 +217,7 @@ fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Optio
                 None
             }
         },
-        Ok(None) => None,
-        Err(error) => {
-            tracing::warn!(
-                "Failed to extract byte_size: {error:?} for debug_entry {:?}",
-                node_die.tag().static_string()
-            );
-            None
-        }
+        None => None,
     }
 }
 
@@ -244,9 +237,7 @@ pub(crate) fn _print_all_attributes(
     tag: &gimli::DebuggingInformationEntry<DwarfReader>,
     print_depth: usize,
 ) {
-    let mut attrs = tag.attrs();
-
-    while let Some(attr) = attrs.next().unwrap() {
+    for attr in tag.attrs() {
         for _ in 0..print_depth {
             print!("\t");
         }
