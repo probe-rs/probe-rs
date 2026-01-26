@@ -51,7 +51,7 @@ struct BankedAccess<'a> {
 }
 
 impl<'a> BankedAccess<'a> {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn set_dtrtx(&mut self, value: u32) -> Result<(), ArmError> {
         self.interface
             .write_raw_ap_register(&self.ap, self.dtrtx, value)
