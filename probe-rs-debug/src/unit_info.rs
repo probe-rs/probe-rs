@@ -30,9 +30,10 @@ pub struct UnitInfo {
 impl UnitInfo {
     /// Create a new `UnitInfo` from a `gimli::Unit`.
     pub fn new(unit: gimli::Unit<GimliReader, usize>) -> Self {
-        let dwarf_language = if let Ok(Some(AttributeValue::Language(unit_language))) = unit
-            .entries_tree(None)
-            .and_then(|mut tree| Ok(tree.root()?.entry().attr_value(gimli::DW_AT_language)))
+        let dwarf_language = if let Some(AttributeValue::Language(unit_language)) = unit
+            .entry(unit.root_offset())
+            .ok()
+            .and_then(|root| root.attr_value(gimli::DW_AT_language))
         {
             unit_language
         } else {
