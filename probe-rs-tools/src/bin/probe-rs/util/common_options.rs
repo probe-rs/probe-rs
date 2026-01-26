@@ -267,7 +267,7 @@ impl<'r> LoadedProbeOptions<'r> {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
             match &self.0.probe {
-                Some(selector) => lister.open(selector)?,
+                Some(selector) => lister.open(selector.clone())?,
                 None => Self::select_probe(lister, self.0.non_interactive)?,
             }
         };
