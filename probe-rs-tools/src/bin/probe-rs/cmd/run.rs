@@ -348,13 +348,8 @@ impl<'a> ElfReader<'a> {
                 let mut tests = vec![];
 
                 for sym in self.elf.symbols() {
-                    if sym.is_global()
-                        && sym.kind() == SymbolKind::Data
-                        && sym.section_index() == Some(et_section.index())
-                        && sym.size() == 12
-                    // sizeof( (fn()->!, &'static str) )
-                    {
-                        tests.push(self.decode_testcase_sym(&sym, &et_section)?);
+                    if let Some(sym) = self.try_decode_testcase_sym(&sym, &et_section)? {
+                        tests.push(sym);
                     }
                 }
 
@@ -367,16 +362,29 @@ impl<'a> ElfReader<'a> {
         }
     }
 
-    fn decode_testcase_sym(
+    /// Attempts to decode a symbol as a testcase.
+    ///
+    /// A testcase is stored as tuple of testfunc + module_path
+    /// and has type `(fn()->!, &'static str)` which is 12 bytes.
+    /// The symbol name is a escaped json object containing info about the test
+    fn try_decode_testcase_sym(
         &self,
         sym: &Symbol<'_, '_>,
         et_section: &Section<'_, '_>,
-    ) -> anyhow::Result<Test> {
-        // A testcase is stored as tuple of testfunc + module_path
-        // and has type (fn()->!, &'static str) which is 12 bytes.
-        // The symbol name is a escaped json object containing info about the test
+    ) -> anyhow::Result<Option<Test>> {
+        const TESTCASE_SYM_SIZE: u64 = 12;
+        if !sym.is_global()
+            || sym.kind() != SymbolKind::Data
+            || sym.section_index() != Some(et_section.index())
+            || sym.size() != TESTCASE_SYM_SIZE
+        // sizeof( (fn()->!, &'static str) )
+        {
+            return Ok(None);
+        }
 
-        let sym_data = et_section.data_range(sym.address(), sym.size())?.unwrap();
+        let sym_data = et_section
+            .data_range(sym.address(), TESTCASE_SYM_SIZE)?
+            .unwrap();
 
         // Unwrap is okay, this function is only called when the symbol size is known to be 12 bytes.
         let test_fn_ptr = u32::from_le_bytes(sym_data[0..4].try_into().unwrap());
@@ -386,10 +394,11 @@ impl<'a> ElfReader<'a> {
         let mod_path = self.read_mod_path(mod_path_ptr, mod_path_len)?;
         let sym_name = sym.name()?;
         let def: TestDefinition = serde_json::from_str(sym_name)?;
+
         let mut test: Test = def.into();
         test.name = format!("{mod_path}::{}", test.name); //prepend mod path to test name
         test.address = Some(test_fn_ptr);
-        Ok(test)
+        Ok(Some(test))
     }
 
     #[inline]
