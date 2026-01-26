@@ -163,6 +163,12 @@ impl RttActiveUpChannel {
             .unwrap_or_else(|| format!("Unnamed RTT up channel - {}", self.up_channel.number()))
     }
 
+    /// Returns the buffer size in bytes. Note that the usable size is one byte less due to how the
+    /// ring buffer is implemented.
+    pub fn buffer_size(&self) -> usize {
+        self.up_channel.buffer_size()
+    }
+
     pub fn number(&self) -> u32 {
         self.up_channel.number() as u32
     }
@@ -202,6 +208,12 @@ impl RttActiveDownChannel {
             .name()
             .map(ToString::to_string)
             .unwrap_or_else(|| format!("Unnamed RTT down channel - {}", self.down_channel.number()))
+    }
+
+    /// Returns the buffer size in bytes. Note that the usable size is one byte less due to how the
+    /// ring buffer is implemented.
+    pub fn buffer_size(&self) -> usize {
+        self.down_channel.buffer_size()
     }
 
     pub fn number(&self) -> u32 {

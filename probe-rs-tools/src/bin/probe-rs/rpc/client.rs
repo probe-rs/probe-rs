@@ -55,9 +55,7 @@ use crate::{
             },
             reset::{ResetCoreAndHaltRequest, ResetCoreRequest},
             resume::ResumeAllCoresRequest,
-            rtt_client::{
-                CreateRttClientRequest, RttClientData, RttClientKey, RttDownRequest, ScanRegion,
-            },
+            rtt_client::{CreateRttClientRequest, RttClientData, RttDownRequest, ScanRegion},
             stack_trace::{StackTraces, TakeStackTraceRequest},
             test::{ListTestsRequest, RunTestRequest, Test, TestResult, Tests},
         },
@@ -540,7 +538,7 @@ impl SessionInterface {
 
     pub async fn send_to_rtt(
         &self,
-        rtt_client: RttClientKey,
+        rtt_client: Key<RttClient>,
         channel: u32,
         data: Vec<u8>,
     ) -> anyhow::Result<()> {
@@ -557,7 +555,7 @@ impl SessionInterface {
     pub async fn list_tests(
         &self,
         boot_info: BootInfo,
-        rtt_client: Option<RttClientKey>,
+        rtt_client: Option<Key<RttClient>>,
         semihosting_options: SemihostingOptions,
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<Tests> {
@@ -577,7 +575,7 @@ impl SessionInterface {
     pub async fn run_test(
         &self,
         test: Test,
-        rtt_client: Option<RttClientKey>,
+        rtt_client: Option<Key<RttClient>>,
         semihosting_options: SemihostingOptions,
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> anyhow::Result<TestResult> {
