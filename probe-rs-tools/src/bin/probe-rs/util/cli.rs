@@ -303,7 +303,10 @@ pub async fn rtt_client(
     let mut load_defmt_data = false;
     if let Ok(opt_address) = find_rtt_control_block_in_elf(&elf) {
         match opt_address {
-            Some(addr) => scan_regions = ScanRegion::Exact(addr),
+            Some(addr) => {
+                scan_regions = ScanRegion::Exact(addr);
+                load_defmt_data = true;
+            }
             None => load_defmt_data = !elf.is_empty(),
         }
     }
