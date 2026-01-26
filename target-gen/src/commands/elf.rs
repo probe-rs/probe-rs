@@ -129,6 +129,7 @@ pub fn cmd_elf(
                         range: 0x1_0000..0x2_0000,
                         cores: vec!["main".to_owned()],
                         name: None,
+                        is_alias: false,
                         access: Some(MemoryAccess {
                             boot: true,
                             ..Default::default()
@@ -374,11 +375,13 @@ mod test {
             cores: vec!["main".to_owned()],
             name: Some(String::from("SRAM")),
             access: Some(MemoryAccess::default()),
+            is_alias: false,
         }));
         chip.memory_map.push(MemoryRegion::Ram(RamRegion {
             range: 0x20004000..0x20008000,
             cores: vec!["main".to_owned()],
             name: Some(String::from("CCMRAM")),
+            is_alias: false,
             access: Some(MemoryAccess {
                 boot: false,
                 read: true,
