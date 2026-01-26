@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::BTreeMap, io};
 
-use crate::probe::{DebugProbeError, DebugProbeSelector, ProbeError};
+use crate::probe::{DebugProbeError, DebugProbeSelector, ProbeCreationError, ProbeError};
 
 use super::{net::GlasgowNetDevice, proto::Target, usb::GlasgowUsbDevice};
 
@@ -94,8 +94,9 @@ impl GlasgowDevice {
 
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, DebugProbeError> {
         let Some(ref serial) = selector.serial_number else {
-            unreachable!()
+            return Err(ProbeCreationError::NotFound.into());
         };
+
         if serial.starts_with("tcp:") || serial.starts_with("unix:") {
             Ok(Self::new(GlasgowDeviceInner::Net(
                 GlasgowNetDevice::new_from_selector(selector)?,
