@@ -9,7 +9,7 @@ use anyhow::Context;
 use libtest_mimic::{Failed, Trial};
 use postcard_rpc::host_client::HostClient;
 use postcard_schema::Schema;
-use probe_rs::rtt::find_rtt_control_block_in_elf;
+use probe_rs::rtt::find_rtt_control_block_in_raw_file;
 use ratatui::crossterm::style::Stylize;
 use rustyline_async::{Readline, ReadlineError, ReadlineEvent, SharedWriter};
 use serde::de::DeserializeOwned;
@@ -301,7 +301,7 @@ pub async fn rtt_client(
     };
 
     let mut load_defmt_data = false;
-    if let Ok(opt_address) = find_rtt_control_block_in_elf(&elf) {
+    if let Ok(opt_address) = find_rtt_control_block_in_raw_file(&elf) {
         match opt_address {
             Some(addr) => {
                 scan_regions = ScanRegion::Exact(addr);

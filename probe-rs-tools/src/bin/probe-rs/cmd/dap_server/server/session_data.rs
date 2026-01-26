@@ -26,7 +26,7 @@ use probe_rs::{
     config::{Registry, TargetSelector},
     flashing::FormatKind,
     probe::list::Lister,
-    rtt::{ScanRegion, find_rtt_control_block_in_elf},
+    rtt::{ScanRegion, find_rtt_control_block_in_raw_file},
 };
 use probe_rs_debug::{
     DebugRegisters, SourceLocation, debug_info::DebugInfo, exception_handler_for_core,
@@ -264,7 +264,7 @@ impl SessionData {
                     let elf = std::fs::read(program_binary)
                         .map_err(|error| anyhow!("Error attempting to attach to RTT: {error}"))?;
 
-                    if let Ok(Some(addr)) = find_rtt_control_block_in_elf(&elf) {
+                    if let Ok(Some(addr)) = find_rtt_control_block_in_raw_file(&elf) {
                         ScanRegion::Exact(addr)
                     } else {
                         // Do not scan the memory for the control block.

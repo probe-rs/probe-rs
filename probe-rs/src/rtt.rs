@@ -57,12 +57,17 @@ use std::time::Duration;
 use std::time::Instant;
 use zerocopy::{FromBytes, IntoBytes};
 
-/// Extract the RTT control block from a raw given ELF file.
+/// Extract the RTT control block from a raw file, usually an ELF file.
 #[cfg(feature = "object")]
-pub fn find_rtt_control_block_in_elf(raw_elf: &[u8]) -> Result<Option<u64>, object::Error> {
-    let obj = object::File::parse(raw_elf)?;
+pub fn find_rtt_control_block_in_raw_file(raw_file: &[u8]) -> Result<Option<u64>, object::Error> {
+    let obj = object::File::parse(raw_file)?;
+    Ok(find_rtt_control_block_in_file(&obj))
+}
 
-    for symbol in obj.symbols() {
+/// Extract the RTT control block from a parsed [object::File] file, usually a parsed ELF file.
+#[cfg(feature = "object")]
+pub fn find_rtt_control_block_in_file(file: &object::File) -> Option<u64> {
+    for symbol in file.symbols() {
         // Get the symbol name
         if let Ok(name) = symbol.name()
             && name == "_SEGGER_RTT"
@@ -70,11 +75,11 @@ pub fn find_rtt_control_block_in_elf(raw_elf: &[u8]) -> Result<Option<u64>, obje
             // Ensure it is a defined symbol (not undefined). Symbols with a section index are
             // defined in the binary.
             if symbol.section_index().is_some() {
-                return Ok(Some(symbol.address()));
+                return Some(symbol.address());
             }
         }
     }
-    Ok(None)
+    None
 }
 
 /// The RTT interface.

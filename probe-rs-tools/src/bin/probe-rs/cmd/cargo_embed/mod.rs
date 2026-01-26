@@ -8,7 +8,7 @@ use parking_lot::FairMutex;
 use probe_rs::config::Registry;
 use probe_rs::flashing::{BootInfo, FormatKind};
 use probe_rs::probe::list::Lister;
-use probe_rs::rtt::{ScanRegion, find_rtt_control_block_in_elf};
+use probe_rs::rtt::{ScanRegion, find_rtt_control_block_in_raw_file};
 use probe_rs::{Session, probe::DebugProbeSelector};
 use std::ffi::OsString;
 use std::time::Instant;
@@ -279,7 +279,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
     };
 
     let scan = if let Some(ref elf) = elf {
-        if let Ok(Some(addr)) = find_rtt_control_block_in_elf(elf) {
+        if let Ok(Some(addr)) = find_rtt_control_block_in_raw_file(elf) {
             ScanRegion::Exact(addr)
         } else {
             // Do not scan the memory for the control block.
