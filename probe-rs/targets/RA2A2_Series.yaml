@@ -8,7 +8,8 @@ chip_detection:
   reverse_string: true
   mcu_pn_base: 0x01001c10
   variants:
-    - R7FA2A2
+    - R7FA2A2AD
+    - R7FA2A2BD
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:
