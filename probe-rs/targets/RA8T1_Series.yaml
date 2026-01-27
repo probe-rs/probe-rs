@@ -5,6 +5,7 @@ manufacturer:
 chip_detection:
 - !RenesasPnr
   target_id: 0x3b0
+  reverse_string: true
   mcu_pn_base: 0x130080f0
   variants:
     - R7FA8T1AH
