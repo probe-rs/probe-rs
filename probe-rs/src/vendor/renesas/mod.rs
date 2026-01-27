@@ -1,5 +1,7 @@
 //! Renesas vendor support.
 
+use std::borrow::Cow;
+
 use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
@@ -60,10 +62,15 @@ impl Vendor for Renesas {
                     continue;
                 };
 
+                let part_number: Cow<str> = match info.reverse_string {
+                    true => Cow::Owned(part_number.chars().rev().collect()),
+                    false => Cow::Borrowed(part_number),
+                };
                 let part_number = part_number.trim();
 
                 for variant in info.variants.keys() {
                     if part_number.starts_with(variant) {
+                        tracing::info!("Variant match: {}", variant);
                         return Ok(Some(variant.clone()));
                     }
                 }

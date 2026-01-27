@@ -205,6 +205,10 @@ pub struct RenesasPnrDetection {
     /// Part number from `TARGETID`
     pub target_id: u16,
 
+    /// `true` if the part number is stored with the last character at the lowest address.
+    #[serde(default)]
+    pub reverse_string: bool,
+
     /// Location of the first MCU part number register
     /// <https://en-support.renesas.com/knowledgeBase/21397541>
     pub mcu_pn_base: u32,
