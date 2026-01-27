@@ -17,7 +17,6 @@ resolver = "2"
 members = [
     "probe-rs",
     "probe-rs-target",
-    "rtthost",
     "smoke-tester",
     "smoke-tester-macros",
     "xtask",
