@@ -29,7 +29,7 @@ pub enum ChipDetectionMethod {
     InfineonPsocSiid(InfineonPsocSiidDetection),
 
     /// Renesas RA chip detection information.
-    RenesasFmifrt(RenesasFmifrtDetection),
+    RenesasPnr(RenesasPnrDetection),
 }
 
 impl ChipDetectionMethod {
@@ -88,8 +88,8 @@ impl ChipDetectionMethod {
     }
 
     /// Returns the Renesas detection information if available.
-    pub fn as_renesas_fmifrt(&self) -> Option<&RenesasFmifrtDetection> {
-        if let Self::RenesasFmifrt(v) = self {
+    pub fn as_renesas_fmifrt(&self) -> Option<&RenesasPnrDetection> {
+        if let Self::RenesasPnr(v) = self {
             Some(v)
         } else {
             None
@@ -201,7 +201,7 @@ pub struct InfineonPsocSiidDetection {
 /// Renesas RA chip detection information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct RenesasFmifrtDetection {
+pub struct RenesasPnrDetection {
     /// Part number from `TARGETID`
     pub target_id: u16,
 
