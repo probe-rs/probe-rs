@@ -119,7 +119,7 @@ impl StLinkUsbDevice {
             .open()
             .wait()
             .map_err(|e| ProbeCreationError::Usb(e.into()))?;
-        tracing::debug!("Aquired handle for probe");
+        tracing::debug!("Acquired handle for probe");
 
         let mut endpoint_out = false;
         let mut endpoint_in = false;
@@ -167,7 +167,7 @@ impl StLinkUsbDevice {
             info,
         };
 
-        tracing::debug!("Succesfully attached to STLink.");
+        tracing::debug!("Successfully attached to STLink.");
 
         Ok(usb_stlink)
     }

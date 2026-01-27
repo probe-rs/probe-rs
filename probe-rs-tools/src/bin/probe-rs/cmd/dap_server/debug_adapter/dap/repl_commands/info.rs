@@ -9,8 +9,10 @@ use crate::cmd::dap_server::{
     debug_adapter::{
         dap::{
             adapter::DebugAdapter,
-            dap_types::{EvaluateArguments, Response},
-            repl_commands::{REPL_COMMANDS, ReplCommand, need_subcommand},
+            dap_types::EvaluateArguments,
+            repl_commands::{
+                EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand, need_subcommand,
+            },
             repl_commands_helpers::get_local_variable,
             repl_types::{GdbFormat, GdbNuf, ReplCommandArgs},
         },
@@ -84,7 +86,7 @@ fn print_registers(
     command_arguments: &str,
     _: &EvaluateArguments,
     _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> Result<Response, DebuggerError> {
+) -> EvalResult {
     let register_name = command_arguments.trim();
     let regs = target_core.core.registers().all_registers().filter(|reg| {
         if register_name.is_empty() {
@@ -106,15 +108,7 @@ fn print_registers(
         )));
     }
 
-    Ok(Response {
-        command: "registers".to_string(),
-        success: true,
-        message: Some(reg_table(&results, 80)),
-        type_: "response".to_string(),
-        request_seq: 0,
-        seq: 0,
-        body: None,
-    })
+    Ok(EvalResponse::Message(reg_table(&results, 80)))
 }
 
 fn print_breakpoints(
@@ -122,7 +116,7 @@ fn print_breakpoints(
     _: &str,
     _: &EvaluateArguments,
     _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> Result<Response, DebuggerError> {
+) -> EvalResult {
     let breakpoint_addrs = target_core
         .core
         .hw_breakpoints()?
@@ -141,15 +135,7 @@ fn print_breakpoints(
         response_message.push_str("No breakpoints set.");
     }
 
-    Ok(Response {
-        command: "breakpoints".to_string(),
-        success: true,
-        message: Some(response_message),
-        type_: "response".to_string(),
-        request_seq: 0,
-        seq: 0,
-        body: None,
-    })
+    Ok(EvalResponse::Message(response_message))
 }
 
 fn reg_table(results: &[(String, String)], max_line_length: usize) -> String {

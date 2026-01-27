@@ -15,6 +15,11 @@ impl RiscvExceptionHandler {
         memory: &mut dyn MemoryInterface,
         unwind_registers: &mut DebugRegisters,
     ) -> Result<(), DebugError> {
+        let ra = unwind_registers.get_register_value_by_role(&RegisterRole::ReturnAddress)?;
+        if ra == 0 {
+            return Ok(());
+        }
+
         // Current register values.
         let sp = unwind_registers.get_register_value_by_role(&RegisterRole::StackPointer)?;
 

@@ -44,8 +44,7 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-        JtagDriverState, ProbeFactory, ProbeStatistics, RawJtagIo, RawSwdIo, SwdSettings,
-        WireProtocol,
+        JtagDriverState, ProbeFactory, RawJtagIo, RawSwdIo, SwdSettings, WireProtocol,
     },
 };
 
@@ -192,7 +191,6 @@ impl ProbeFactory for JLinkFactory {
             swo_config: None,
             speed_khz: 0, // default is unknown
             swd_settings: SwdSettings::default(),
-            probe_statistics: ProbeStatistics::default(),
             jtag_state: JtagDriverState::default(),
 
             jtag_tms_bits: vec![],
@@ -397,7 +395,6 @@ pub struct JLink {
     /// Used to determine maximum transfer length for SWD IO.
     max_mem_block_size: usize,
 
-    probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
 }
 
@@ -746,7 +743,7 @@ impl JLink {
 
         self.write_cmd(&buf)?;
 
-        // Round bit count up to multple of 8 to get the number of response bytes.
+        // Round bit count up to multiple of 8 to get the number of response bytes.
         let num_resp_bytes = tms_bit_count.div_ceil(8);
         tracing::trace!(
             "{} TMS/TDI bits sent; reading {} response bytes",
@@ -1063,7 +1060,7 @@ impl DebugProbe for JLink {
             self.set_speed(400)?;
         }
 
-        tracing::debug!("Attached succesfully");
+        tracing::debug!("Attached successfully");
 
         Ok(())
     }
@@ -1166,7 +1163,6 @@ impl RawSwdIo for JLink {
     where
         S: IntoIterator<Item = IoSequenceItem>,
     {
-        self.probe_statistics.report_io();
         self.perform_swdio_transfer(swdio)
     }
 
@@ -1206,10 +1202,6 @@ impl RawSwdIo for JLink {
 
     fn swd_settings(&self) -> &SwdSettings {
         &self.swd_settings
-    }
-
-    fn probe_statistics(&mut self) -> &mut ProbeStatistics {
-        &mut self.probe_statistics
     }
 }
 

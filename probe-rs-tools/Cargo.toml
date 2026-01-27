@@ -9,6 +9,7 @@ homepage = "https://probe.rs"
 repository.workspace = true
 readme.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 description = "A collection of on chip debugging tools to communicate with microchips."
 
@@ -43,7 +44,7 @@ espflash = { version = "4", default-features = false }
 itertools = "0.14"
 
 # CLI-only
-addr2line = "0.25"
+addr2line = "0.26"
 bytesize = "2"
 capstone = "0.14"
 cargo_metadata = "0.23"
@@ -53,12 +54,6 @@ defmt-decoder = "1.0"
 directories = "6"
 dunce = "1"
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
-goblin = { version = "0.10", default-features = false, features = [
-    "std",
-    "elf32",
-    "elf64",
-    "endian_fd",
-] }
 ihex = "3.0"
 indicatif = "0.18"
 insta = { version = "1.38", default-features = false, features = ["yaml"] }
@@ -66,6 +61,11 @@ itm = { version = "0.9.0-rc.1", default-features = false }
 parse_int = "0.9"
 libtest-mimic = "0.8.0"
 fastrand = "2.1"
+object = { version = "0.38", default-features = false, features = [
+    "elf",
+    "read_core",
+    "std",
+] }
 rustyline-async = "0.4.7"
 sanitize-filename = "0.6"
 schemafy = "0.6"
@@ -91,7 +91,7 @@ ratatui = { version = "0.30.0", default-features = false, features = [
 ansi-parser = "0.9.0"
 linkme = "0.3.25"
 
-probe-rs = { version = "0.30.0", path = "../probe-rs" }
+probe-rs = { version = "0.31.0", path = "../probe-rs" }
 parking_lot = "0.12.2"
 cargo-config2 = "0.1.26"
 clap_complete = "4.5.2"
@@ -101,7 +101,7 @@ zip = { version = "6.0.0", default-features = false, features = [
     "time",
 ] }
 urlencoding = "2"
-probe-rs-debug = { version = "0.30.0", path = "../probe-rs-debug" }
+probe-rs-debug = { version = "0.31.0", path = "../probe-rs-debug" }
 probe-rs-target = { workspace = true }
 svg = "0.18"
 
@@ -133,6 +133,7 @@ git-version = "0.3"
 [dev-dependencies]
 pretty_assertions = "1.4.0"
 test-case = "3"
+probe-rs = { version = "0.31.0", path = "../probe-rs", features = ["test"] }
 
 # Set the proper name for the homebrew formula
 [package.metadata.dist]

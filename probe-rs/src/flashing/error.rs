@@ -148,7 +148,7 @@ pub enum FlashError {
     },
     /// More than one matching flash algorithm was found for the given memory range and all of them is marked as default.
     #[error(
-        "Trying to write flash, but found more than one suitable flash loader algorithim marked as default for {region:?}."
+        "Trying to write flash, but found more than one suitable flash loader algorithm marked as default for {region:?}."
     )]
     MultipleDefaultFlashLoaderAlgorithms {
         /// The region which matched more than one flash algorithm.
@@ -156,7 +156,7 @@ pub enum FlashError {
     },
     /// More than one matching flash algorithm was found for the given memory range and none of them is marked as default.
     #[error(
-        "Trying to write flash, but found more than one suitable flash algorithims but none marked as default for {region:?}."
+        "Trying to write flash, but found more than one suitable flash algorithm but none marked as default for {region:?}."
     )]
     MultipleFlashLoaderAlgorithmsNoDefault {
         /// The region which matched more than one flash algorithm.
@@ -173,7 +173,7 @@ pub enum FlashError {
         source: Box<dyn std::error::Error + 'static + Send + Sync>,
     },
     // TODO: 1 Add source of target definition
-    // TOOD: 2 Do this at target load time.
+    // TODO: 2 Do this at target load time.
     /// The given chip has no RAM defined.
     #[error("No suitable RAM region is defined for target: {name}.")]
     NoRamDefined {

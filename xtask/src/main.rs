@@ -250,7 +250,7 @@ fn check_local_changelog_fragments(list: &mut FragmentList, fragments_dir: &Path
         };
 
         let Some(fragments) = list.fragments.get_mut(category) else {
-            // Incorrect caregory
+            // Incorrect category
             list.invalid_fragments.push(path);
             continue;
         };
@@ -315,7 +315,7 @@ fn check_new_changelog_fragments(list: &mut FragmentList, info: &PrInfo) -> Resu
         };
 
         let Some(fragments) = list.fragments.get_mut(category) else {
-            // Incorrect caregory
+            // Incorrect category
             list.invalid_fragments.push(path);
             continue;
         };
@@ -516,13 +516,13 @@ fn assemble_changelog(
     println!("Assembled changelog for version {version}:");
     println!("{}", String::from_utf8(assembled.clone())?);
 
-    let old_changelong_content = std::fs::read_to_string(CHANGELOG_FILE)?;
+    let old_changelog_content = std::fs::read_to_string(CHANGELOG_FILE)?;
 
     let mut changelog_file = std::fs::File::create(CHANGELOG_FILE)?;
 
     let mut content_inserted = false;
 
-    for line in old_changelong_content.lines() {
+    for line in old_changelog_content.lines() {
         if !content_inserted && line.starts_with("## ") {
             changelog_file.write_all(&assembled)?;
             content_inserted = true
@@ -584,12 +584,12 @@ fn write_changelog_section(
             anyhow::bail!("Empty changelog fragment {}", fragment.path.display());
         };
 
-        write!(writer, " - {first_line}")?;
+        write!(writer, "- {first_line}")?;
 
         // Write remaining lines
         for line in lines {
             writeln!(writer)?;
-            write!(writer, "   {line}")?;
+            write!(writer, "  {line}")?;
         }
 
         if let Some(pr_number) = &fragment.pr_number {

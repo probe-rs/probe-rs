@@ -6,6 +6,7 @@ edition.workspace = true
 license = "MIT"
 authors = ["Matti Virkkunen <mvirkkunen@gmail.com>"]
 repository.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 env_logger = "0.11"

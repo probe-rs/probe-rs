@@ -11,12 +11,13 @@ pub mod ftdi;
 pub mod glasgow;
 pub mod jlink;
 pub mod list;
+mod selector;
 pub mod sifliuart;
 pub mod stlink;
 pub mod wlink;
 
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::{ArmDebugInterface, ArmError, DapError};
+use crate::architecture::arm::{ArmDebugInterface, ArmError};
 use crate::architecture::arm::{RegisterAddress, SwoAccess, communication_interface::DapProbe};
 use crate::architecture::riscv::communication_interface::{RiscvError, RiscvInterfaceBuilder};
 use crate::architecture::xtensa::communication_interface::{
@@ -29,13 +30,14 @@ use crate::{Error, Permissions, Session};
 use bitvec::slice::BitSlice;
 use bitvec::vec::BitVec;
 use common::ScanChainError;
-use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
+
+pub use selector::DebugProbeSelector;
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measurable.
@@ -878,224 +880,6 @@ impl DebugProbeInfo {
     }
 }
 
-/// An error which can occur while parsing a [`DebugProbeSelector`].
-#[derive(thiserror::Error, Debug, docsplay::Display)]
-pub enum DebugProbeSelectorParseError {
-    /// Could not parse VID or PID: {0}
-    ParseInt(#[from] std::num::ParseIntError),
-
-    /// The format of the selector is invalid. Please use a string in the form `VID:PID:<Serial>`, where Serial is optional.
-    Format,
-}
-
-/// A struct to describe the way a probe should be selected.
-///
-/// Construct this from a set of info or from a string. The
-/// string has to be in the format "VID:PID:SERIALNUMBER",
-/// where the serial number is optional, and VID and PID are
-/// parsed as hexadecimal numbers.
-///
-/// If SERIALNUMBER exists (i.e. the selector contains a second color) and is empty,
-/// probe-rs will select probes that have no serial number, or where the serial number is empty.
-///
-/// ## Example:
-///
-/// ```
-/// use std::convert::TryInto;
-/// let selector: probe_rs::probe::DebugProbeSelector = "1942:1337:SERIAL".try_into().unwrap();
-///
-/// assert_eq!(selector.vendor_id, 0x1942);
-/// assert_eq!(selector.product_id, 0x1337);
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DebugProbeSelector {
-    /// The the USB vendor id of the debug probe to be used.
-    pub vendor_id: u16,
-    /// The the USB product id of the debug probe to be used.
-    pub product_id: u16,
-    /// The the USB interface of the debug probe to be used.
-    pub interface: Option<u8>,
-    /// The the serial number of the debug probe to be used.
-    pub serial_number: Option<String>,
-}
-
-impl DebugProbeSelector {
-    pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
-        if self.interface.is_some() {
-            info.interfaces().any(|iface| {
-                self.match_probe_selector(
-                    info.vendor_id(),
-                    info.product_id(),
-                    Some(iface.interface_number()),
-                    info.serial_number(),
-                )
-            })
-        } else {
-            self.match_probe_selector(
-                info.vendor_id(),
-                info.product_id(),
-                None,
-                info.serial_number(),
-            )
-        }
-    }
-
-    /// Check if the given probe info matches this selector.
-    pub fn matches_probe(&self, info: &DebugProbeInfo) -> bool {
-        self.match_probe_selector(
-            info.vendor_id,
-            info.product_id,
-            info.interface,
-            info.serial_number.as_deref(),
-        )
-    }
-
-    fn match_probe_selector(
-        &self,
-        vendor_id: u16,
-        product_id: u16,
-        interface: Option<u8>,
-        serial_number: Option<&str>,
-    ) -> bool {
-        tracing::trace!(
-            "Matching probe selector:\nVendor ID: {vendor_id:04x} == {:04x}\nProduct ID: {product_id:04x} = {:04x}\nInterface: {interface:?} == {:?}\nSerial Number: {serial_number:?} == {:?}",
-            self.vendor_id,
-            self.product_id,
-            self.interface,
-            self.serial_number
-        );
-
-        vendor_id == self.vendor_id
-            && product_id == self.product_id
-            && self
-                .interface
-                .map(|iface| interface == Some(iface))
-                .unwrap_or(true) // USB interface not specified by user
-            && self
-                .serial_number
-                .as_ref()
-                .map(|s| {
-                    if let Some(serial_number) = serial_number {
-                        serial_number == s
-                    } else {
-                        // Match probes without serial number when the
-                        // selector has a third, empty part ("VID:PID:")
-                        s.is_empty()
-                    }
-                })
-                .unwrap_or(true)
-    }
-}
-
-impl TryFrom<&str> for DebugProbeSelector {
-    type Error = DebugProbeSelectorParseError;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        // Split into at most 3 parts: VID, PID, Serial.
-        // We limit the number of splits to allow for colons in the
-        // serial number (EspJtag uses MAC address)
-        let mut split = value.splitn(3, ':');
-
-        let vendor_id = split.next().unwrap(); // First split is always successful
-        let mut product_id = split.next().ok_or(DebugProbeSelectorParseError::Format)?;
-        let interface = if let Some((id, iface)) = product_id.split_once("-") {
-            product_id = id;
-            // Matches probes without interface where the selector has minus but no interface number ("VID:PID-")
-            if iface.is_empty() {
-                Ok(None)
-            } else {
-                iface.parse::<u8>().map(Some)
-            }
-        } else {
-            Ok(None)
-        }?;
-        let serial_number = split.next().map(|s| s.to_string());
-
-        Ok(DebugProbeSelector {
-            vendor_id: u16::from_str_radix(vendor_id, 16)?,
-            product_id: u16::from_str_radix(product_id, 16)?,
-            serial_number,
-            interface,
-        })
-    }
-}
-
-impl TryFrom<String> for DebugProbeSelector {
-    type Error = DebugProbeSelectorParseError;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        TryFrom::<&str>::try_from(&value)
-    }
-}
-
-impl std::str::FromStr for DebugProbeSelector {
-    type Err = DebugProbeSelectorParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::try_from(s)
-    }
-}
-
-impl From<DebugProbeInfo> for DebugProbeSelector {
-    fn from(selector: DebugProbeInfo) -> Self {
-        DebugProbeSelector {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number,
-            interface: selector.interface,
-        }
-    }
-}
-
-impl From<&DebugProbeInfo> for DebugProbeSelector {
-    fn from(selector: &DebugProbeInfo) -> Self {
-        DebugProbeSelector {
-            vendor_id: selector.vendor_id,
-            product_id: selector.product_id,
-            serial_number: selector.serial_number.clone(),
-            interface: selector.interface,
-        }
-    }
-}
-
-impl From<&DebugProbeSelector> for DebugProbeSelector {
-    fn from(selector: &DebugProbeSelector) -> Self {
-        selector.clone()
-    }
-}
-
-impl fmt::Display for DebugProbeSelector {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:04x}:{:04x}", self.vendor_id, self.product_id)?;
-        if let Some(ref sn) = self.serial_number {
-            write!(f, ":{sn}")?;
-        }
-        Ok(())
-    }
-}
-
-impl From<DebugProbeSelector> for String {
-    fn from(value: DebugProbeSelector) -> String {
-        value.to_string()
-    }
-}
-
-impl Serialize for DebugProbeSelector {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl<'a> Deserialize<'a> for DebugProbeSelector {
-    fn deserialize<D>(deserializer: D) -> Result<DebugProbeSelector, D::Error>
-    where
-        D: Deserializer<'a>,
-    {
-        let s = String::deserialize(deserializer)?;
-        s.parse().map_err(serde::de::Error::custom)
-    }
-}
-
 /// Bit-banging interface, ARM edition.
 ///
 /// This trait (and [RawJtagIo], [JtagAccess]) should not be used by architecture implementations
@@ -1124,8 +908,6 @@ pub(crate) trait RawSwdIo: DebugProbe {
     ) -> Result<u32, DebugProbeError>;
 
     fn swd_settings(&self) -> &SwdSettings;
-
-    fn probe_statistics(&mut self) -> &mut ProbeStatistics;
 }
 
 /// A trait for implementing low-level JTAG interface operations.
@@ -1262,59 +1044,6 @@ impl Default for JtagDriverState {
             scan_chain: Vec::new(),
             chain_params: ChainParams::default(),
             jtag_idle_cycles: 0,
-        }
-    }
-}
-
-#[derive(Default, Debug)]
-pub(crate) struct ProbeStatistics {
-    /// Number of protocol transfers performed.
-    ///
-    /// This includes repeated transfers, and transfers
-    /// which are automatically added to fulfill
-    /// protocol requirements, e.g. a read from a
-    /// DP register will result in two transfers,
-    /// because the read value is returned in the
-    /// second transfer
-    num_transfers: usize,
-
-    /// Number of extra transfers added to fullfil protocol
-    /// requirements. Ideally as low as possible.
-    num_extra_transfers: usize,
-
-    /// Number of calls to the probe IO function.
-    ///
-    /// A single call can perform multiple SWD transfers,
-    /// so this number is ideally a lot lower than then
-    /// number of SWD transfers.
-    num_io_calls: usize,
-
-    /// Number of SWD wait responses encountered.
-    num_wait_resp: usize,
-
-    /// Number of SWD FAULT responses encountered.
-    num_faults: usize,
-}
-
-impl ProbeStatistics {
-    pub fn record_extra_transfer(&mut self) {
-        self.num_extra_transfers += 1;
-    }
-
-    pub fn record_transfers(&mut self, num_transfers: usize) {
-        self.num_transfers += num_transfers;
-    }
-
-    pub fn report_io(&mut self) {
-        self.num_io_calls += 1;
-    }
-
-    pub fn report_swd_response<T>(&mut self, response: &Result<T, DapError>) {
-        match response {
-            Err(DapError::FaultResponse) => self.num_faults += 1,
-            Err(DapError::WaitResponse) => self.num_wait_resp += 1,
-            // Other errors are not counted right now.
-            _ => (),
         }
     }
 }
@@ -1827,92 +1556,5 @@ mod test {
 
         assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
         assert!(!probe_info.is_probe_type::<espusbjtag::EspUsbJtagFactory>());
-    }
-
-    #[test]
-    fn test_parsing_many_colons() {
-        let selector: DebugProbeSelector = "303a:1001:DC:DA:0C:D3:FE:D8".try_into().unwrap();
-
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
-        assert_eq!(
-            selector.serial_number,
-            Some("DC:DA:0C:D3:FE:D8".to_string())
-        );
-    }
-
-    #[test]
-    fn missing_serial_is_none() {
-        let selector: DebugProbeSelector = "303a:1001".try_into().unwrap();
-
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
-        assert_eq!(selector.serial_number, None);
-
-        let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
-        let matches_with_serial =
-            selector.match_probe_selector(0x303a, 0x1001, None, Some("serial"));
-        assert!(matches);
-        assert!(matches_with_serial);
-    }
-
-    #[test]
-    fn empty_serial_is_some() {
-        let selector: DebugProbeSelector = "303a:1001:".try_into().unwrap();
-
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
-        assert_eq!(selector.serial_number, Some(String::new()));
-
-        let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
-        let matches_with_serial =
-            selector.match_probe_selector(0x303a, 0x1001, None, Some("serial"));
-        assert!(matches);
-        assert!(!matches_with_serial);
-    }
-
-    #[test]
-    fn missing_interface_is_none() {
-        let selector: DebugProbeSelector = "303a:1001".try_into().unwrap();
-
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
-        assert_eq!(selector.interface, None);
-
-        let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
-        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001, Some(0), None);
-        assert!(matches);
-        assert!(matches_with_interface);
-    }
-
-    #[test]
-    fn empty_interface_is_none() {
-        let selector: DebugProbeSelector = "303a:1001-".try_into().unwrap();
-
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
-        assert_eq!(selector.interface, None);
-
-        let matches = selector.match_probe_selector(0x303a, 0x1001, None, None);
-        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001, Some(0), None);
-        assert!(matches);
-        assert!(matches_with_interface);
-    }
-
-    #[test]
-    fn set_interface_matches() {
-        let selector: DebugProbeSelector = "303a:1001-0".try_into().unwrap();
-
-        assert_eq!(selector.vendor_id, 0x303a);
-        assert_eq!(selector.product_id, 0x1001);
-        assert_eq!(selector.interface, Some(0));
-
-        let no_match = selector.match_probe_selector(0x303a, 0x1001, None, None);
-        let matches_with_interface = selector.match_probe_selector(0x303a, 0x1001, Some(0), None);
-        let no_match_with_wrong_interface =
-            selector.match_probe_selector(0x303a, 0x1001, Some(1), None);
-        assert!(!no_match);
-        assert!(matches_with_interface);
-        assert!(!no_match_with_wrong_interface);
     }
 }

@@ -105,6 +105,9 @@ pub struct RamRegion {
     pub range: Range<u64>,
     /// List of cores that can access this region
     pub cores: Vec<String>,
+    /// True if the memory region is an alias of a different memory region.
+    #[serde(default)]
+    pub is_alias: bool,
     /// Access permissions for the region.
     #[serde(default)]
     pub access: Option<MemoryAccess>,
@@ -202,7 +205,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let mut region = self.iter.next()?.clone();
         while let Some(next) = self.iter.peek() {
-            if region.range.end != next.range.start || region.access != next.access {
+            if region.range.end != next.range.start
+                || region.access != next.access
+                || region.is_alias != next.is_alias
+            {
                 break;
             }
 
@@ -213,7 +219,7 @@ where
                 .cloned()
                 .collect::<Vec<_>>();
 
-            // Do not return inaccessable regions.
+            // Do not return inaccessible regions.
             if common_cores.is_empty() {
                 break;
             }
@@ -599,6 +605,7 @@ mod test {
             range: 0..4,
             cores: vec!["core0".to_string()],
             access: None,
+            is_alias: false,
         }];
 
         let merged_regions: Vec<RamRegion> = regions.iter().merge_consecutive().collect();
@@ -610,6 +617,7 @@ mod test {
                 range: 0..4,
                 cores: vec!["core0".to_string()],
                 access: None,
+                is_alias: false,
             },]
         );
     }
@@ -622,24 +630,28 @@ mod test {
                 range: 0..4,
                 cores: vec!["core0".to_string()],
                 access: None,
+                is_alias: false,
             },
             RamRegion {
                 name: None,
                 range: 4..8,
                 cores: vec!["core1".to_string()],
                 access: None,
+                is_alias: false,
             },
             RamRegion {
                 name: None,
                 range: 8..12,
                 cores: vec!["core1".to_string()],
                 access: None,
+                is_alias: false,
             },
             RamRegion {
                 name: None,
                 range: 16..20,
                 cores: vec!["core1".to_string()],
                 access: None,
+                is_alias: false,
             },
         ];
 
@@ -653,18 +665,21 @@ mod test {
                     range: 0..4,
                     cores: vec!["core0".to_string()],
                     access: None,
+                    is_alias: false,
                 },
                 RamRegion {
                     name: None,
                     range: 4..12,
                     cores: vec!["core1".to_string()],
                     access: None,
+                    is_alias: false,
                 },
                 RamRegion {
                     name: None,
                     range: 16..20,
                     cores: vec!["core1".to_string()],
                     access: None,
+                    is_alias: false,
                 },
             ]
         );

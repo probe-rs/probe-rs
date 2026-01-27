@@ -1,11 +1,9 @@
 use std::collections::HashMap;
-use std::env::VarError;
 use std::io::Write;
 use std::path::PathBuf;
 
 use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
-use ratatui::crossterm::style::Stylize;
 use rustyline_async::SharedWriter;
 use rustyline_async::{Readline, ReadlineEvent};
 use time::UtcOffset;
@@ -27,6 +25,7 @@ use crate::cmd::dap_server::server::configuration::CoreConfig;
 use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::cmd::dap_server::server::configuration::SessionConfig;
 use crate::cmd::dap_server::server::debugger::Debugger;
+use crate::util::cli::Prompt;
 use crate::util::rtt::RttConfig;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
 
@@ -198,16 +197,7 @@ impl Cmd {
     ) -> anyhow::Result<()> {
         let (sender, receiver) = mpsc::channel(5);
 
-        let prompt = if matches!(
-            std::env::var("PROBE_RS_COLOR").as_deref(),
-            Err(VarError::NotPresent) | Ok("true" | "1" | "yes" | "on")
-        ) {
-            "> ".bold().dark_green().to_string()
-        } else {
-            ">> ".to_string()
-        };
-
-        let (mut rl, mut writer) = Readline::new(prompt).unwrap();
+        let (mut rl, mut writer) = Readline::new(Prompt("> ").to_string()).unwrap();
 
         // TODO: properly introduce a response/event channel, react to terminated event
         let cancellation = CancellationToken::new();
@@ -278,6 +268,7 @@ impl Cmd {
                         rtt_config: RttConfig {
                             enabled: false,
                             channels: vec![],
+                            default_config: Default::default(),
                         },
                         catch_hardfault: !self.no_catch_hardfault,
                         catch_reset: !self.no_catch_reset,

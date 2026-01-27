@@ -267,8 +267,6 @@ fn perform_swd_transfers<P: RawSwdIo>(
         let response_offset = 8;
         let response = parse_swd_response(&result_bits[response_offset..], transfer.direction);
 
-        probe.probe_statistics().report_swd_response(&response);
-
         transfer.status = match response {
             Ok(response) => {
                 transfer.value = response;
@@ -387,9 +385,8 @@ fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
 
             // Add a read from RDBUFF, this access will be stalled by the DebugPort if the write
             // buffer is not empty.
-            // This is an extra transfer, which doesn't have a reponse on it's own.
+            // This is an extra transfer, which doesn't have a response on it's own.
             final_transfers.push(DapTransfer::read(RdBuff::ADDRESS));
-            probe.probe_statistics().record_extra_transfer();
         }
     }
 
@@ -403,8 +400,6 @@ fn perform_transfers<P: DebugProbe + RawSwdIo + JtagAccess>(
         num_transfers,
         num_transfers - transfers.len()
     );
-
-    probe.probe_statistics().record_transfers(num_transfers);
 
     perform_raw_transfers_retry(probe, &mut final_transfers)?;
 
@@ -906,7 +901,7 @@ fn build_swd_transfer(address: &RegisterAddress, direction: TransferType) -> IoS
 fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32, DapError> {
     // We need to discard the output bits that correspond to the part of the request
     // in which the probe is driving SWDIO. Additionally, there is a phase shift that
-    // happens when ownership of the SWDIO line is transfered to the device.
+    // happens when ownership of the SWDIO line is transferred to the device.
     // The device changes the value of SWDIO with the rising edge of the clock.
     //
     // It appears that the JLink probe samples this line with the falling edge of
@@ -939,7 +934,7 @@ fn parse_swd_response(resp: &[bool], direction: TransferDirection) -> Result<u32
         _ => {
             // Invalid response
             tracing::debug!(
-                "Unexpected response from target, does not conform to SWD specfication (ack={:?})",
+                "Unexpected response from target, does not conform to SWD specification (ack={:?})",
                 resp
             );
             Err(DapError::Protocol(WireProtocol::Swd))
@@ -970,7 +965,7 @@ impl<Probe: DebugProbe + RawSwdIo + JtagAccess + 'static> RawDapAccess for Probe
                     //  This is not necessarily the CTRL/STAT register, because the dpbanksel field in the SELECT register
                     //  might be set so that the read wasn't actually from the CTRL/STAT register.
                     tracing::debug!(
-                        "Read might have been from CTRL/STAT register, not reading it again to dermine fault reason"
+                        "Read might have been from CTRL/STAT register, not reading it again to determine fault reason"
                     );
 
                     // We still clear the sticky error, otherwise all future accesses will fail.
@@ -1216,8 +1211,8 @@ mod test {
         },
         error::Error,
         probe::{
-            DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess, JtagSequence, ProbeStatistics,
-            RawSwdIo, SwdSettings, WireProtocol,
+            DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess, JtagSequence, RawSwdIo,
+            SwdSettings, WireProtocol,
         },
     };
     use probe_rs_target::ScanChainElement;
@@ -1256,7 +1251,6 @@ mod test {
         performed_transfer_count: usize,
 
         swd_settings: SwdSettings,
-        probe_statistics: ProbeStatistics,
 
         protocol: WireProtocol,
 
@@ -1274,7 +1268,6 @@ mod test {
                 performed_transfer_count: 0,
 
                 swd_settings: SwdSettings::default(),
-                probe_statistics: ProbeStatistics::default(),
 
                 protocol: WireProtocol::Swd,
 
@@ -1298,15 +1291,15 @@ mod test {
 
             match acknowledge {
                 DapAcknowledge::Ok => {
-                    // Set acknowledege to OK
+                    // Set acknowledge to OK
                     response.set(8, true);
                 }
                 DapAcknowledge::Wait => {
-                    // Set acknowledege to WAIT
+                    // Set acknowledge to WAIT
                     response.set(9, true);
                 }
                 DapAcknowledge::Fault => {
-                    // Set acknowledege to FAULT
+                    // Set acknowledge to FAULT
                     response.set(10, true);
                 }
                 DapAcknowledge::NoAck => {
@@ -1335,7 +1328,7 @@ mod test {
             &mut self,
             address: P,
             read: bool,
-            acknowlege: DapAcknowledge,
+            acknowledge: DapAcknowledge,
             output_value: u32,
             input_value: u32,
         ) {
@@ -1343,7 +1336,7 @@ mod test {
             let address = port.lsb().into();
             let mut response = (output_value as u64) << 3;
 
-            let status = match acknowlege {
+            let status = match acknowledge {
                 DapAcknowledge::Ok => JTAG_STATUS_OK,
                 DapAcknowledge::Wait => JTAG_STATUS_WAIT,
                 _ => 0b111,
@@ -1383,15 +1376,15 @@ mod test {
 
             match acknowledge {
                 DapAcknowledge::Ok => {
-                    // Set acknowledege to OK
+                    // Set acknowledge to OK
                     response.set(8, true);
                 }
                 DapAcknowledge::Wait => {
-                    // Set acknowledege to WAIT
+                    // Set acknowledge to WAIT
                     response.set(9, true);
                 }
                 DapAcknowledge::Fault => {
-                    // Set acknowledege to FAULT
+                    // Set acknowledge to FAULT
                     response.set(10, true);
                 }
                 DapAcknowledge::NoAck => {
@@ -1535,10 +1528,6 @@ mod test {
 
         fn swd_settings(&self) -> &SwdSettings {
             &self.swd_settings
-        }
-
-        fn probe_statistics(&mut self) -> &mut ProbeStatistics {
-            &mut self.probe_statistics
         }
     }
 

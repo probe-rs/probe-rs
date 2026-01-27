@@ -1,1 +1,0 @@
-Added support for the PIC32CXSG series of chips

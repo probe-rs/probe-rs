@@ -217,7 +217,7 @@ impl Debugger {
 
             // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
             tracing::trace!(
-                "Sleeping (all cores are halted) for {delay:?} to reduce polling overheaads."
+                "Sleeping (all cores are halted) for {delay:?} to reduce polling overheads."
             );
         } else {
             // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
@@ -286,7 +286,7 @@ impl Debugger {
             return Err(error);
         }
 
-        // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
+        // Loop through remaining (user generated) requests and send to the [process_request] method until either the client or some unexpected behaviour terminates the process.
         let error = loop {
             let debug_session_status = match self
                 .process_next_request(&mut session_data, &mut debug_adapter)
@@ -456,7 +456,7 @@ impl Debugger {
         // First, attach to the core
         let mut target_core = session_data.attach_core(target_core_config.core_index)?;
 
-        // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
+        // Immediately after attaching, halt the core, so that we can finish initialization without bumping into user code.
         // Depending on supplied `config`, the core will be restarted at the end of initialization in the `configuration_done` request.
         halt_core(&mut target_core.core)?;
 
@@ -908,10 +908,10 @@ mod test {
             dap::{
                 adapter::DebugAdapter,
                 dap_types::{
-                    Capabilities, DisassembleArguments, DisassembleResponseBody,
-                    DisassembledInstruction, DisconnectArguments, ErrorResponseBody,
-                    InitializeRequestArguments, Message, Request, Response, Source, Thread,
-                    ThreadsResponseBody,
+                    Capabilities, ContinuedEventBody, DisassembleArguments,
+                    DisassembleResponseBody, DisassembledInstruction, DisconnectArguments,
+                    ErrorResponseBody, InitializeRequestArguments, Message, Request, Response,
+                    Source, Thread, ThreadsResponseBody,
                 },
             },
             protocol::ProtocolAdapter,
@@ -964,7 +964,7 @@ mod test {
     /// Helper function to get the expected capabilities for the debugger
     ///
     /// `Capabilities::default()` is not const, so this can't just be a constant.
-    fn expected_capabilites() -> Capabilities {
+    fn expected_capabilities() -> Capabilities {
         Capabilities {
             support_suspend_debuggee: Some(true),
             supports_clipboard_context: Some(true),
@@ -1250,7 +1250,7 @@ mod test {
             .add_request("initialize")
             .with_arguments(default_initialize_args())
             .and_succesful_response()
-            .with_body(expected_capabilites());
+            .with_body(expected_capabilities());
 
         protocol_adapter.expect_output_event("probe-rs-debug: Log output for \"probe_rs=warn\" will be written to the Debug Console.\n");
         protocol_adapter
@@ -1344,7 +1344,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_initalize_request() {
+    async fn test_initialize_request() {
         let protocol_adapter = initialized_protocol_adapter();
 
         // TODO: Check proper return value
@@ -1470,6 +1470,14 @@ mod test {
             .add_request("configurationDone")
             .and_succesful_response();
 
+        protocol_adapter.expect_event(
+            "continued",
+            Some(ContinuedEventBody {
+                all_threads_continued: Some(true),
+                thread_id: 0,
+            }),
+        );
+
         protocol_adapter
             .add_request("threads")
             .and_succesful_response()
@@ -1552,6 +1560,14 @@ mod test {
         protocol_adapter
             .add_request("configurationDone")
             .and_succesful_response();
+
+        protocol_adapter.expect_event(
+            "continued",
+            Some(ContinuedEventBody {
+                all_threads_continued: Some(true),
+                thread_id: 0,
+            }),
+        );
 
         let default_instruction_fields = DisassembledInstruction {
             address: "".to_string(),

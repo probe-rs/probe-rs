@@ -1,5 +1,5 @@
+use crate::FormatOptions;
 use crate::rpc::functions::flash::{FlashLayout, Operation, ProgressEvent};
-use crate::{FormatKind, FormatOptions};
 
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
 use super::logging;
@@ -13,7 +13,9 @@ use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use probe_rs::InstructionSet;
-use probe_rs::flashing::{BinOptions, ElfOptions, FlashError, FlashProgress, Format, IdfOptions};
+use probe_rs::flashing::{
+    BinOptions, ElfOptions, FlashError, FlashProgress, Format, FormatKind, IdfOptions,
+};
 use probe_rs::{
     Session,
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},

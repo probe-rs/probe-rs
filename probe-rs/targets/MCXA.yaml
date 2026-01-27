@@ -978,7 +978,7 @@ flash_algorithms:
       address_range:
         start: 0x0
         end: 0x100000
-      page_size: 0x80
+      page_size: 0x1000
       erased_byte_value: 0xff
       program_page_timeout: 300
       erase_sector_timeout: 3000

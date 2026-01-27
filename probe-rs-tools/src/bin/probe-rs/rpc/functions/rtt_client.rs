@@ -1,7 +1,7 @@
 use crate::{
     rpc::{
         Key,
-        functions::{RpcContext, RpcResult},
+        functions::{NoResponse, RpcContext, RpcResult},
     },
     util::rtt::{RttChannelConfig, RttConfig, client::RttClient},
 };
@@ -17,9 +17,6 @@ pub enum ScanRegion {
     /// if your device has a lot of RAM, scanning all of it is slow.
     #[default]
     Ram,
-
-    /// Limit scanning to the memory addresses covered by the default region of the target.
-    TargetDefault,
 
     /// Limit scanning to the memory addresses covered by all of the given ranges. It is up to the
     /// user to ensure that reading from this range will not read from undefined memory.
@@ -40,6 +37,9 @@ pub struct CreateRttClientRequest {
 
     /// Channel configuration.
     pub config: Vec<RttChannelConfig>,
+
+    /// Default channel configuration.
+    pub default_config: RttChannelConfig,
 }
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -58,7 +58,6 @@ pub async fn create_rtt_client(
 
     let rtt_scan_regions = match request.scan_regions {
         ScanRegion::Ram => rtt::ScanRegion::Ram,
-        ScanRegion::TargetDefault => session.target().rtt_scan_regions.clone(),
         ScanRegion::Ranges(ranges) => {
             rtt::ScanRegion::Ranges(ranges.into_iter().map(|(start, end)| start..end).collect())
         }
@@ -69,6 +68,7 @@ pub async fn create_rtt_client(
         RttConfig {
             enabled: true,
             channels: request.config,
+            default_config: request.default_config,
         },
         rtt_scan_regions,
         session.target(),
@@ -77,4 +77,27 @@ pub async fn create_rtt_client(
     Ok(RttClientData {
         handle: ctx.store_object(client).await,
     })
+}
+
+#[derive(Serialize, Deserialize, Schema)]
+pub struct RttDownRequest {
+    pub sessid: Key<Session>,
+    pub rtt_client: Key<RttClient>,
+    pub channel: u32,
+    pub data: Vec<u8>,
+}
+
+pub async fn write_rtt_down(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: RttDownRequest,
+) -> NoResponse {
+    let mut session = ctx.session(request.sessid).await;
+    let mut rtt_client = ctx.object_mut(request.rtt_client).await;
+
+    let core_id = rtt_client.core_id();
+    let mut core = session.core(core_id)?;
+    rtt_client.write_down_channel(&mut core, request.channel, &request.data)?;
+
+    Ok(())
 }

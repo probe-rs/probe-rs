@@ -125,7 +125,7 @@ impl DutDefinition {
 
         let mut probe = match &self.probe_selector {
             Some(selector) => lister
-                .open(selector)
+                .open(selector.clone())
                 .with_context(|| format!("Failed to open probe with selector {selector}"))?,
             None => {
                 let probes = lister.list_all();
@@ -153,7 +153,7 @@ impl DutDefinition {
     }
 
     fn from_raw_definition(raw_definition: RawDutDefinition, source_file: &Path) -> Result<Self> {
-        let probe_selector = Some(raw_definition.probe_selector.try_into()?);
+        let probe_selector = Some(raw_definition.probe_selector.parse()?);
 
         let target = lookup_unique_target(&raw_definition.chip)?;
 

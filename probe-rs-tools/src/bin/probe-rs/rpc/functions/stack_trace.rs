@@ -6,7 +6,7 @@ use crate::rpc::{
 };
 use postcard_rpc::header::VarHeader;
 use postcard_schema::Schema;
-use probe_rs::Session;
+use probe_rs::{Error, Session};
 use probe_rs_debug::{DebugInfo, DebugRegisters, exception_handler_for_core};
 use serde::{Deserialize, Serialize};
 
@@ -25,6 +25,7 @@ pub struct StackTraces {
 pub struct TakeStackTraceRequest {
     pub sessid: Key<Session>,
     pub path: String,
+    pub stack_frame_limit: u32,
 }
 
 pub type TakeStackTraceResponse = RpcResult<StackTraces>;
@@ -44,7 +45,11 @@ pub async fn take_stack_trace(
         .halted_access(|session| {
             let mut cores = Vec::new();
             for (idx, core_type) in session.list_cores() {
-                let mut core = session.core(idx)?;
+                let mut core = match session.core(idx) {
+                    Ok(core) => core,
+                    Err(Error::CoreDisabled(_)) => continue,
+                    Err(e) => return Err(e),
+                };
 
                 let initial_registers = DebugRegisters::from_core(&mut core);
                 let exception_interface = exception_handler_for_core(core_type);
@@ -55,6 +60,7 @@ pub async fn take_stack_trace(
                         initial_registers,
                         exception_interface.as_ref(),
                         instruction_set,
+                        request.stack_frame_limit as usize,
                     )
                     .unwrap();
 

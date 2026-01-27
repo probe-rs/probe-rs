@@ -98,7 +98,7 @@ pub async fn debug(
                 };
                 debugger.debug_logger.log_to_console(&end_message)?;
 
-                // Terminate after a single debug session. This is the behavour expected by VSCode
+                // Terminate after a single debug session. This is the behaviour expected by VSCode
                 // if it started probe-rs as a child process.
                 if single_session {
                     break;

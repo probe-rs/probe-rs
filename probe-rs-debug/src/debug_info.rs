@@ -9,6 +9,7 @@ use super::{
 use crate::{SourceLocation, VerifiedBreakpoint, stack_frame::StackFrameInfo, unit_info::RangeExt};
 use gimli::{
     BaseAddresses, DebugFrame, RunTimeEndian, UnwindContext, UnwindSection, UnwindTableRow,
+    read::RegisterRule,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs::{
@@ -176,7 +177,7 @@ impl DebugInfo {
                             // The address is after the current row, so we use the previous row data.
                             //
                             // (If we don't do this, you get the artificial effect where the debugger
-                            // steps to the top of the file when it is steppping out of a function.)
+                            // steps to the top of the file when it is stepping out of a function.)
                             if let Some(previous_row) = previous_row
                                 && let Some(path) =
                                     self.find_file_and_directory(unit, previous_row.file_index())
@@ -258,11 +259,14 @@ impl DebugInfo {
         match parent_variable.variable_node_type {
             VariableNodeType::TypeOffset(header_offset, unit_offset)
             | VariableNodeType::DirectLookup(header_offset, unit_offset) => {
-                let Some(unit_info) = self
-                    .unit_infos
-                    .iter()
-                    .find(|unit_info| unit_info.unit.header.offset() == header_offset.into())
-                else {
+                let Some(unit_info) = self.unit_infos.iter().find(|unit_info| {
+                    unit_info
+                        .unit
+                        .header
+                        .offset()
+                        .to_debug_info_offset(&unit_info.unit)
+                        == Some(header_offset)
+                }) else {
                     return Err(DebugError::Other(
                         "Failed to find unit info for offset lookup.".to_string(),
                     ));
@@ -293,7 +297,7 @@ impl DebugInfo {
 
                     // Only process statics for this unit header.
                     // Navigate the current unit from the header down.
-                    let (_, unit_node) = entries.next_dfs()?.unwrap();
+                    let unit_node = entries.next_dfs()?.unwrap();
                     let unit_offset = unit_node.offset();
 
                     let mut type_tree = unit_info.unit.entries_tree(Some(unit_offset))?;
@@ -543,8 +547,15 @@ impl DebugInfo {
         initial_registers: DebugRegisters,
         exception_handler: &dyn ExceptionInterface,
         instruction_set: Option<InstructionSet>,
+        max_stack_frame_count: usize,
     ) -> Result<Vec<StackFrame>, Error> {
-        self.unwind_impl(initial_registers, core, exception_handler, instruction_set)
+        self.unwind_impl(
+            initial_registers,
+            core,
+            exception_handler,
+            instruction_set,
+            max_stack_frame_count,
+        )
     }
 
     pub(crate) fn unwind_impl(
@@ -553,6 +564,7 @@ impl DebugInfo {
         memory: &mut impl MemoryInterface,
         exception_handler: &dyn ExceptionInterface,
         instruction_set: Option<InstructionSet>,
+        max_stack_frame_count: usize,
     ) -> Result<Vec<StackFrame>, Error> {
         let mut stack_frames = Vec::<StackFrame>::new();
 
@@ -570,6 +582,10 @@ impl DebugInfo {
                 }
             })
         {
+            if stack_frames.len() >= max_stack_frame_count {
+                tracing::warn!("Stopped unwinding the stack after {max_stack_frame_count} frames");
+                break;
+            }
             let frame_pc = frame_pc_register_value.try_into().map_err(|error| {
                 let message = format!("Cannot convert register value for program counter to a 64-bit integer value: {error:?}");
                 Error::Register(message)
@@ -913,7 +929,7 @@ impl DebugInfo {
         })
     }
 
-    /// Search accross all compilation untis, and retrive the DIEs for the function containing the given address.
+    /// Search across all compilation units, and retrieve the DIEs for the function containing the given address.
     /// This is distinct from [`UnitInfo::get_function_dies`] in that it will search all compilation units.
     /// - The first entry in the vector will be the outermost function containing the address.
     /// - If the address is inlined, the innermost function will be the last entry in the vector.
@@ -939,13 +955,13 @@ impl DebugInfo {
         attribute: gimli::DwAt,
         die: &Die,
         unit_info: &'unit_info UnitInfo,
-    ) -> Option<Die<'debug_info, 'debug_info>>
+    ) -> Option<Die>
     where
         'unit_info: 'debug_info,
     {
-        let attr = die.attr(attribute).ok().flatten()?;
+        let attr = die.attr(attribute)?;
 
-        self.resolve_die_reference_with_unit(&attr, unit_info)
+        self.resolve_die_reference_with_unit(attr, unit_info)
             .ok()
             .map(|(_, die)| die)
     }
@@ -960,7 +976,7 @@ impl DebugInfo {
         &'debug_info self,
         attr: &gimli::Attribute<GimliReader>,
         unit_info: &'unit_info UnitInfo,
-    ) -> Result<(&'debug_info UnitInfo, Die<'debug_info, 'debug_info>), DebugError>
+    ) -> Result<(&'debug_info UnitInfo, Die), DebugError>
     where
         'unit_info: 'debug_info,
     {
@@ -1135,12 +1151,10 @@ pub fn unwind_register(
     unwind_cfa: Option<u64>,
     memory: &mut dyn MemoryInterface,
 ) -> Result<Option<RegisterValue>, Error> {
-    use gimli::read::RegisterRule;
-
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
     let register_rule = debug_register
         .dwarf_id
-        .map(|register_position| unwind_info.register(gimli::Register(register_position)))
+        .and_then(|register_position| unwind_info.register(gimli::Register(register_position)))
         .unwrap_or(RegisterRule::Undefined);
 
     unwind_register_using_rule(
@@ -1311,7 +1325,7 @@ fn unwind_register_using_rule(
                 }
             }
         }
-        //TODO: Implement the remainder of these `RegisterRule`s
+        // TODO: Implement the remainder of these `RegisterRule`s
         _ => unimplemented!(),
     };
 
@@ -1336,7 +1350,7 @@ fn unwind_program_counter_register(
     register_rule_string: &mut String,
 ) -> Option<RegisterValue> {
     if return_address.is_max_value() || return_address.is_zero() {
-        tracing::warn!(
+        tracing::debug!(
             "No reliable return address is available, so we cannot determine the program counter to unwind the previous frame."
         );
         return None;
@@ -1546,6 +1560,7 @@ mod test {
                 &mut mocked_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1698,6 +1713,7 @@ mod test {
                 &mut dummy_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1824,6 +1840,7 @@ mod test {
                 &mut dummy_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1916,6 +1933,7 @@ mod test {
                 &mut dummy_mem,
                 exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
+                500,
             )
             .unwrap();
 
@@ -1946,6 +1964,7 @@ mod test {
                 initial_registers,
                 exception_handler.as_ref(),
                 Some(instruction_set),
+                1000,
             )
             .unwrap();
 
@@ -1991,6 +2010,7 @@ mod test {
                 initial_registers,
                 exception_handler.as_ref(),
                 Some(instruction_set),
+                1000,
             )
             .unwrap();
 
@@ -2023,7 +2043,7 @@ mod test {
     #[test_case("RP2040_full_unwind"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA_full_unwind"; "Armv7-m using nRF52833_xxAA")]
     #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
-    //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
+    // TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
     fn static_variables(chip_name: &str) {
         // TODO: Add RISC-V tests.
 

@@ -1,19 +1,18 @@
 use std::path::{Path, PathBuf};
 
 use crate::rpc::client::RpcClient;
-use crate::rpc::functions::monitor::{MonitorMode, MonitorOptions};
+use crate::rpc::functions::monitor::MonitorMode;
+use crate::rpc::functions::rtt_client::ScanRegion;
 use crate::rpc::functions::test::{Test, TestDefinition};
 
 use crate::FormatOptions;
-use crate::util::cli::{self, connect_target_output_files, parse_semihosting_options, rtt_client};
+use crate::util::cli::{self, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
+use crate::util::rtt::ChannelMode;
 
 use anyhow::{Context, anyhow};
-use goblin::elf::Elf;
-use goblin::elf::SectionHeader;
-use goblin::elf::Sym;
-use goblin::elf::sym::{STB_GLOBAL, STT_OBJECT};
 use libtest_mimic::{Arguments, FormatSetting};
+use object::{Object, ObjectSection, ObjectSymbol, Section, Symbol, SymbolKind};
 use probe_rs::flashing::FileDownloadError;
 use std::fs::File;
 use std::io::Read;
@@ -119,13 +118,6 @@ pub struct Cmd {
     #[clap(flatten)]
     pub(crate) test_options: TestOptions,
 
-    /// Options shared by all run modes
-    #[clap(flatten)]
-    pub(crate) shared_options: SharedOptions,
-}
-
-#[derive(Debug, clap::Parser)]
-pub struct SharedOptions {
     #[clap(flatten)]
     pub(crate) probe_options: ProbeOptions,
 
@@ -141,39 +133,90 @@ pub struct SharedOptions {
     )]
     pub(crate) path: PathBuf,
 
-    /// Always print the stacktrace on ctrl + c.
-    #[clap(long)]
-    pub(crate) always_print_stacktrace: bool,
-
-    /// Suppress filename and line number information from the rtt log
-    #[clap(long)]
-    pub(crate) no_location: bool,
-
-    /// Suppress timestamps from the rtt log
-    #[clap(long)]
-    pub(crate) no_timestamps: bool,
-
     #[clap(flatten)]
     pub(crate) format_options: FormatOptions,
 
+    #[clap(flatten)]
+    pub(crate) monitor_options: MonitoringOptions,
+}
+
+#[derive(Debug, Clone, clap::Args)]
+pub(crate) struct MonitoringOptions {
     /// The format string to use when printing defmt encoded log messages from the target.
     ///
     /// You can also use one of two presets: oneline (default) and full.
     ///
     /// See <https://defmt.ferrous-systems.com/custom-log-output>
-    #[clap(long)]
+    #[clap(long, help_heading = "LOG CONFIGURATION")]
     pub(crate) log_format: Option<String>,
 
     /// File name to store formatted output at. Different channels can be assigned to different
     /// files using channel=file arguments to multiple occurrences (eg. `--target-output-file
     /// defmt=out/defmt.txt --target-output-file out/default`). Channel names can be prefixed with
     /// `rtt:` or `semihosting:` (eg. `semihosting:stdout`) to disambiguate.
-    #[clap(long)]
+    #[clap(long, help_heading = "LOG CONFIGURATION")]
     pub(crate) target_output_file: Vec<String>,
 
-    /// Scan the memory to find the RTT control block
-    #[clap(long)]
-    pub(crate) rtt_scan_memory: bool,
+    /// Memory region to scan for control block.
+    ///
+    /// If probe-rs finds the exact location in the binary, that location will be used. If probe-rs does not find the exact location,
+    /// it will scan the specified region for the control block.
+    ///
+    /// You can specify either 'ram' to scan the whole memory, an exact starting address '0x1000' or a range such as '0x0000..0x1000'. Both decimal and hex are accepted.
+    ///
+    /// If no region is specified, probe-rs will not scan and will not poll RTT.
+    #[clap(long, default_value = "", value_parser = parse_scan_region, help_heading = "LOG CONFIGURATION / RTT")]
+    pub(crate) scan_region: ScanRegion,
+
+    /// RTT channel mode to use.
+    ///
+    /// By default, probe-rs will configure RTT to block when the buffer is full, to avoid losing data. This option can override that behavior.
+    #[clap(
+        long,
+        default_value = "block-if-full",
+        help_heading = "LOG CONFIGURATION / RTT"
+    )]
+    pub(crate) rtt_channel_mode: ChannelMode,
+
+    /// RTT up channels to display.
+    ///
+    /// By default, probe-rs will read and display data from all available up channels. This option can override that behavior.
+    #[clap(long, help_heading = "LOG CONFIGURATION / RTT")]
+    pub(crate) rtt_up_channels: Vec<u32>,
+
+    /// RTT down channel to use.
+    ///
+    /// By default, probe-rs will select the first available channel. This option can override that behavior.
+    #[clap(long, default_value = "0", help_heading = "LOG CONFIGURATION / RTT")]
+    pub(crate) rtt_down_channel: u32,
+
+    /// List RTT channels and exit.
+    #[clap(
+        long,
+        default_value = "false",
+        help_heading = "LOG CONFIGURATION / RTT"
+    )]
+    pub(crate) list_rtt: bool,
+
+    /// Always print the stacktrace on ctrl + c.
+    #[clap(long, help_heading = "LOG CONFIGURATION / STACK TRACE")]
+    pub(crate) always_print_stacktrace: bool,
+
+    /// Limit the number of stack frames to print.
+    #[clap(
+        long,
+        default_value = "500",
+        help_heading = "LOG CONFIGURATION / STACK TRACE"
+    )]
+    pub(crate) stack_frame_limit: u32,
+
+    /// Suppress filename and line number information
+    #[clap(long, help_heading = "LOG CONFIGURATION")]
+    pub(crate) no_location: bool,
+
+    /// Suppress timestamps
+    #[clap(long, help_heading = "LOG CONFIGURATION")]
+    pub(crate) no_timestamps: bool,
 
     /// File name to expose via semihosting. Values ending with a slash expose the whole directory.
     /// By using `target=host` arguments the names can differ between the host and the target.
@@ -193,36 +236,22 @@ impl Cmd {
 
         // TODO: Skip attach_probe & flashing, if user only wants to list tests (only possible when using embedded_test with protocol version >= 1)
 
-        let session = cli::attach_probe(&client, self.shared_options.probe_options, false).await?;
+        let session = cli::attach_probe(&client, self.probe_options, false).await?;
 
         let mut rtt_client = rtt_client(
             &session,
-            &self.shared_options.path,
-            match self.shared_options.rtt_scan_memory {
-                true => crate::rpc::functions::rtt_client::ScanRegion::TargetDefault,
-                false => crate::rpc::functions::rtt_client::ScanRegion::Ranges(vec![]),
-            },
-            self.shared_options.log_format,
-            !self.shared_options.no_timestamps,
-            !self.shared_options.no_location,
+            Some(&self.path),
+            &self.monitor_options,
             Some(utc_offset),
         )
         .await?;
 
-        let mut target_output_files =
-            connect_target_output_files(self.shared_options.target_output_file).await?;
-
-        let semihosting_options = parse_semihosting_options(self.shared_options.semihosting_file)?;
-
-        let client_handle = rtt_client.handle();
-
         // Flash firmware
         let boot_info = cli::flash(
             &session,
-            &self.shared_options.path,
-            self.shared_options.download_options.chip_erase,
-            self.shared_options.format_options,
-            self.shared_options.download_options,
+            &self.path,
+            self.format_options,
+            self.download_options,
             Some(&mut rtt_client),
             None,
         )
@@ -245,32 +274,25 @@ impl Cmd {
                     filter: if self.test_options.filter.is_empty() {
                         None
                     } else {
-                        //TODO: Fix libtest-mimic so that it allows multiple filters (same as std test runners)
+                        // TODO: Fix libtest-mimic so that it allows multiple filters (same as std test runners)
                         Some(self.test_options.filter.join(" "))
                     },
                     ..Arguments::default()
                 },
-                self.shared_options.always_print_stacktrace,
-                &self.shared_options.path,
+                &self.monitor_options,
+                &self.path,
                 Some(rtt_client),
-                &mut target_output_files,
-                semihosting_options,
             )
             .await
         } else {
             cli::monitor(
                 &session,
                 MonitorMode::Run(boot_info),
-                &self.shared_options.path,
+                Some(&self.path),
+                &self.monitor_options,
                 Some(rtt_client),
-                MonitorOptions {
-                    catch_reset: !self.run_options.no_catch_reset,
-                    catch_hardfault: !self.run_options.no_catch_hardfault,
-                    rtt_client: Some(client_handle),
-                    semihosting_options,
-                },
-                self.shared_options.always_print_stacktrace,
-                &mut target_output_files,
+                !self.run_options.no_catch_reset,
+                !self.run_options.no_catch_hardfault,
             )
             .await
         }
@@ -293,41 +315,32 @@ pub struct EmbeddedTestElfInfo {
 
 struct ElfReader<'a> {
     buffer: &'a [u8],
-    elf: Elf<'a>,
+    elf: object::File<'a>,
 }
 
 impl<'a> ElfReader<'a> {
     fn decode(&self) -> anyhow::Result<Option<EmbeddedTestElfInfo>> {
-        if self.elf.syms.is_empty() {
+        if self.elf.symbols().next().is_none() {
             tracing::debug!("No Symbols in ELF");
             return Ok(None);
         }
 
         // Find our custom .embedded_test section which contains version info and possibly testcases
-        let Some((et_section_index, et_section)) = self
-            .elf
-            .section_headers
-            .iter()
-            .enumerate()
-            .find(|(_idx, hdr)| self.elf.shdr_strtab.get_at(hdr.sh_name) == Some(".embedded_test"))
-        else {
+        let Some(et_section) = self.elf.section_by_name(".embedded_test") else {
             tracing::debug!("No .embedded_test linker section in ELF");
             return Ok(None);
         };
 
-        let Some(version_sym) = self.elf.syms.iter().find(|sym| {
-            sym.st_bind() == STB_GLOBAL
-                && sym.st_type() == STT_OBJECT
-                && sym.st_shndx == et_section_index
-                && sym.st_size == 4 // sizeof( u32 )
-                && matches!(self.symbol_name_of(sym), Ok("EMBEDDED_TEST_VERSION"))
-        }) else {
+        let Some(version_sym) = self.elf.symbol_by_name("EMBEDDED_TEST_VERSION") else {
             tracing::debug!("No EMBEDDED_TEST_VERSION symbol in ELF");
             return Ok(None);
         };
 
-        let version =
-            self.read_u32_at_offset(self.file_offset_for(version_sym.st_value, et_section))?;
+        let version = et_section
+            .data_range(version_sym.address(), version_sym.size())
+            .context("Failed to read the embedded-test version symbol")?
+            .unwrap();
+        let version = u32::from_le_bytes(version.try_into().expect("Version must be 4 bytes"));
 
         match version {
             0 => {
@@ -341,14 +354,10 @@ impl<'a> ElfReader<'a> {
             1 => {
                 // Read testcases from symbols
                 let mut tests = vec![];
-                for sym in self.elf.syms.iter() {
-                    if sym.st_bind() == STB_GLOBAL
-                        && sym.st_type() == STT_OBJECT
-                        && sym.st_shndx == et_section_index
-                        && sym.st_size == 12
-                    // sizeof( (fn()->!, &'static str) )
-                    {
-                        tests.push(self.decode_testcase_sym(&sym, et_section)?);
+
+                for sym in self.elf.symbols() {
+                    if let Some(sym) = self.try_decode_testcase_sym(&sym, &et_section)? {
+                        tests.push(sym);
                     }
                 }
 
@@ -361,58 +370,64 @@ impl<'a> ElfReader<'a> {
         }
     }
 
-    fn decode_testcase_sym(&self, sym: &Sym, et_section: &SectionHeader) -> anyhow::Result<Test> {
-        // A testcase is stored as tuple of testfunc + module_path
-        // and has type (fn()->!, &'static str) which is 12 bytes.
-        // The symbol name is a escaped json object containing info about the test
+    /// Attempts to decode a symbol as a testcase.
+    ///
+    /// A testcase is stored as tuple of testfunc + module_path
+    /// and has type `(fn()->!, &'static str)` which is 12 bytes.
+    /// The symbol name is a escaped json object containing info about the test
+    fn try_decode_testcase_sym(
+        &self,
+        sym: &Symbol<'_, '_>,
+        et_section: &Section<'_, '_>,
+    ) -> anyhow::Result<Option<Test>> {
+        const TESTCASE_SYM_SIZE: u64 = 12;
+        if !sym.is_global()
+            || sym.kind() != SymbolKind::Data
+            || sym.section_index() != Some(et_section.index())
+            || sym.size() != TESTCASE_SYM_SIZE
+        // sizeof( (fn()->!, &'static str) )
+        {
+            return Ok(None);
+        }
 
-        let file_offset = self.file_offset_for(sym.st_value, et_section);
-        let test_fn_ptr = self.read_u32_at_offset(file_offset)?;
-        let mod_path_ptr = self.read_u32_at_offset(file_offset + 4)?;
-        let mod_path_len = self.read_u32_at_offset(file_offset + 8)?;
+        let sym_data = et_section
+            .data_range(sym.address(), TESTCASE_SYM_SIZE)?
+            .unwrap();
+
+        // Unwrap is okay, this function is only called when the symbol size is known to be 12 bytes.
+        let test_fn_ptr = u32::from_le_bytes(sym_data[0..4].try_into().unwrap());
+        let mod_path_ptr = u32::from_le_bytes(sym_data[4..8].try_into().unwrap());
+        let mod_path_len = u32::from_le_bytes(sym_data[8..12].try_into().unwrap());
 
         let mod_path = self.read_mod_path(mod_path_ptr, mod_path_len)?;
-        let sym_name = self.symbol_name_of(sym)?;
+        let sym_name = sym.name()?;
         let def: TestDefinition = serde_json::from_str(sym_name)?;
+
         let mut test: Test = def.into();
         test.name = format!("{mod_path}::{}", test.name); //prepend mod path to test name
         test.address = Some(test_fn_ptr);
-        Ok(test)
-    }
-
-    fn symbol_name_of(&self, sym: &Sym) -> anyhow::Result<&'a str> {
-        self.elf
-            .strtab
-            .get_at(sym.st_name)
-            .ok_or(anyhow!("No name for symbol {sym:?}"))
+        Ok(Some(test))
     }
 
     #[inline]
-    fn file_offset_for(&self, addr: u64, section: &SectionHeader) -> usize {
-        (section.sh_offset + (addr - section.sh_addr)) as usize
-    }
-
-    #[inline]
-    fn read_u32_at_offset(&self, file_offset: usize) -> anyhow::Result<u32> {
-        Ok(u32::from_le_bytes(
-            self.buffer[file_offset..file_offset + 4].try_into()?,
-        ))
+    fn file_offset_for(&self, addr: u64, section: &Section<'_, '_>) -> usize {
+        let (start, _end) = section.file_range().unwrap();
+        let offset = addr - section.address();
+        (start + offset) as usize
     }
 
     fn read_mod_path(&self, mod_path_ptr: u32, mod_path_len: u32) -> anyhow::Result<&'a str> {
         let section = self
             .elf
-            .section_headers
-            .iter()
+            .sections()
             .find(|section| {
-                mod_path_ptr >= section.sh_addr as u32
-                    && mod_path_ptr + mod_path_len <= (section.sh_addr + section.sh_size) as u32
+                mod_path_ptr as u64 >= section.address()
+                    && mod_path_ptr as u64 + mod_path_len as u64
+                        <= (section.address() + section.size())
             })
-            .ok_or(anyhow!(
-                "section not found for mod path str {mod_path_ptr:x}"
-            ))?;
+            .with_context(|| format!("section not found for mod path str {mod_path_ptr:x}"))?;
 
-        let file_offset = self.file_offset_for(mod_path_ptr as u64, section);
+        let file_offset = self.file_offset_for(mod_path_ptr as u64, &section);
         let full_path = &self.buffer[file_offset..file_offset + mod_path_len as usize];
         let full_path = str::from_utf8(full_path)?;
         let first_col = full_path
@@ -430,7 +445,7 @@ impl EmbeddedTestElfInfo {
         file.read_to_end(&mut buffer)?;
         let buffer = buffer.as_slice();
 
-        let elf = goblin::elf::Elf::parse(buffer).context("Failed to parse ELF file")?;
+        let elf = object::File::parse(buffer).context("Failed to parse ELF file")?;
 
         ElfReader { buffer, elf }
             .decode()
@@ -439,7 +454,7 @@ impl EmbeddedTestElfInfo {
 }
 
 fn detect_run_mode(cmd: &Cmd) -> anyhow::Result<RunMode> {
-    if let Some(elf_info) = EmbeddedTestElfInfo::from_elf(&cmd.shared_options.path)? {
+    if let Some(elf_info) = EmbeddedTestElfInfo::from_elf(&cmd.path)? {
         // We tolerate the run options, even in test mode so that you can set
         // `probe-rs run --catch-hardfault` as cargo runner (used for both unit tests and normal binaries)
         tracing::info!("Detected embedded-test in ELF file. Running as test");
@@ -459,5 +474,27 @@ fn detect_run_mode(cmd: &Cmd) -> anyhow::Result<RunMode> {
 
         tracing::debug!("No embedded-test in ELF file. Running as normal");
         Ok(RunMode::Normal)
+    }
+}
+
+fn parse_scan_region(mut src: &str) -> anyhow::Result<ScanRegion> {
+    src = src.trim();
+    if src.is_empty() {
+        return Ok(ScanRegion::Ranges(vec![]));
+    }
+
+    if src.eq_ignore_ascii_case("ram") {
+        return Ok(ScanRegion::Ram);
+    }
+
+    let parts = src
+        .split("..")
+        .map(parse_int::parse::<u64>)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    match *parts.as_slice() {
+        [addr] => Ok(ScanRegion::Exact(addr)),
+        [start, end] => Ok(ScanRegion::Ranges(vec![(start, end)])),
+        _ => anyhow::bail!("Invalid range: multiple '..'s"),
     }
 }

@@ -127,3 +127,18 @@ jobs:
         run: cargo doc -p probe-rs --no-deps --all-features --locked
         env:
           RUSTDOCFLAGS: "-D warnings"
+
+  min-version:
+    name: Minimum Rust Version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2.8.2
+
+      - uses: taiki-e/install-action@cargo-hack
+
+      - name: Check minimum Rust version
+        run: cargo hack check --rust-version --workspace --all-targets --ignore-private

@@ -92,7 +92,7 @@ impl<'state> Riscv32<'state> {
 
     /// Check if the current breakpoint is a semihosting call
     fn check_for_semihosting(&mut self) -> Result<Option<SemihostingCommand>, Error> {
-        // The Riscv Semihosting Specification, specificies the following sequence of instructions,
+        // The Riscv Semihosting Specification, specifies the following sequence of instructions,
         // to trigger a semihosting call:
         // <https://github.com/riscv-software-src/riscv-semihosting/blob/main/riscv-semihosting-spec.adoc>
 

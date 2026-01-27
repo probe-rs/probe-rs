@@ -78,7 +78,7 @@ pub enum VariableName {
     /// Top-level variable for local scoped variables, child of a stack frame variable.
     LocalScopeRoot,
     /// Artificial variable, without a name (e.g. enum discriminant)
-    Artifical,
+    Artificial,
     /// Anonymous namespace
     AnonymousNamespace,
     /// A Namespace with a specific name
@@ -98,7 +98,7 @@ impl std::fmt::Display for VariableName {
             VariableName::StaticScopeRoot => write!(f, "Static Variable"),
             VariableName::RegistersRoot => write!(f, "Platform Register"),
             VariableName::LocalScopeRoot => write!(f, "Function Variable"),
-            VariableName::Artifical => write!(f, "<artifical>"),
+            VariableName::Artificial => write!(f, "<artificial>"),
             VariableName::AnonymousNamespace => write!(f, "<anonymous_namespace>"),
             VariableName::Namespace(name) => name.fmt(f),
             VariableName::Named(name) => name.fmt(f),
@@ -968,7 +968,7 @@ fn format_children_values<'a>(
         .join(",")
 }
 
-/// Genarate a string that indents the line exactly the right amount.
+/// Generate a string that indents the line exactly the right amount.
 /// Includes a newline at the start if the indentation is bigger than 0.
 fn line_indent_string(indentation: usize) -> String {
     let line_feed = if indentation == 0 { "" } else { "\n" };

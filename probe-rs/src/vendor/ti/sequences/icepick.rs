@@ -92,7 +92,7 @@ impl<'a> Icepick<'a> {
         })
     }
 
-    /// Indicate we want to catch a reet by setting the `RESETCONTROL` to `Wait-in-reset`
+    /// Indicate we want to catch a reset by setting the `RESETCONTROL` to `Wait-in-reset`
     pub fn catch_reset(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
         self.icepick_router(
             IcepickRoutingRegister::SdTap(secondary_tap),
@@ -259,7 +259,7 @@ impl<'a> Icepick<'a> {
     /// <https://github.com/openocd-org/openocd/blob/master/tcl/target/icepick.cfg#L81-L124>
     /// A few things were removed to fit the cc13xx_cc26xx family.
     pub(crate) fn select_tap(&mut self, secondary_tap: u8) -> Result<(), ArmError> {
-        tracing::trace!("Selecting seconary tap {secondary_tap}");
+        tracing::trace!("Selecting secondary tap {secondary_tap}");
         // Select the Connect register
         self.shift_ir(IR_CONNECT, JtagState::SelectDrScan)?;
         // Enable write, set the `ConnectKey` to 0b1001 (0x9) as per TRM section 6.3.3

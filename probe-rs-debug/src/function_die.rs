@@ -1,4 +1,4 @@
-use gimli::RunTimeEndian;
+use gimli::UnitOffset;
 use std::ops::Range;
 
 use crate::{MemoryInterface, stack_frame::StackFrameInfo};
@@ -8,8 +8,7 @@ use super::{
     unit_info::{ExpressionResult, UnitInfo},
 };
 
-pub(crate) type Die<'abbrev, 'unit> =
-    gimli::DebuggingInformationEntry<'abbrev, 'unit, debug_info::GimliReader, usize>;
+pub(crate) type Die = gimli::DebuggingInformationEntry<debug_info::GimliReader, usize>;
 
 /// Reference to a DIE for a function
 #[derive(Clone)]
@@ -17,7 +16,7 @@ pub(crate) struct FunctionDie<'data> {
     /// A reference to the compilation unit this function belongs to.
     pub(crate) unit_info: &'data UnitInfo,
     /// The DIE (Debugging Information Entry) for the function.
-    pub(crate) function_die: Die<'data, 'data>,
+    pub(crate) function_die: Die,
     /// The optional specification DIE for the function, if it has one.
     /// - For regular functions, this applies to the `function_die`.
     /// - For inlined functions, this applies to the `abstract_die`.
@@ -25,10 +24,10 @@ pub(crate) struct FunctionDie<'data> {
     /// The specification DIE will contain separately declared attributes,
     /// e.g. for the function name.
     /// See DWARF spec, 2.13.2.
-    pub(crate) specification_die: Option<Die<'data, 'data>>,
+    pub(crate) specification_die: Option<Die>,
     /// Only present for inlined functions, where this is a reference
     /// to the declaration of the function.
-    pub(crate) abstract_die: Option<Die<'data, 'data>>,
+    pub(crate) abstract_die: Option<Die>,
     /// The address ranges for which this function is valid.
     pub(crate) ranges: Vec<Range<u64>>,
 }
@@ -39,7 +38,7 @@ impl<'a> FunctionDie<'a> {
     /// relevant to the address/program counter specified.
     /// Other DIE's will return None, and should be ignored.
     pub(crate) fn new(
-        function_die: Die<'a, 'a>,
+        function_die: Die,
         unit_info: &'a UnitInfo,
         debug_info: &'a DebugInfo,
         address: u64,
@@ -60,7 +59,7 @@ impl<'a> FunctionDie<'a> {
         let mut die_ranges = Vec::new();
         while let Ok(Some(gimli_range)) = gimli_ranges.next() {
             if gimli_range.begin == 0 {
-                //TODO: The DW_AT_subprograms with low_pc == 0 cause overlapping ranges with other 'valid' function dies, and obscures the correct function die.
+                // TODO: The DW_AT_subprograms with low_pc == 0 cause overlapping ranges with other 'valid' function dies, and obscures the correct function die.
                 // We need to understand what those mean, and how to handle them correctly.
                 return Ok(None);
             }
@@ -142,7 +141,12 @@ impl<'a> FunctionDie<'a> {
             return None;
         };
         match debug_info.dwarf.string(fn_name_ref) {
-            Ok(fn_name_raw) => Some(String::from_utf8_lossy(&fn_name_raw).to_string()),
+            Ok(fn_name_raw) => {
+                let function_name = String::from_utf8_lossy(&fn_name_raw);
+
+                let language = crate::language::from_dwarf(self.unit_info.get_language());
+                Some(language.format_function_name(function_name.as_ref(), self, debug_info))
+            }
             Err(error) => {
                 tracing::debug!("No value for DW_AT_name: {:?}: error", error);
 
@@ -193,11 +197,14 @@ impl<'a> FunctionDie<'a> {
         debug_info: &super::DebugInfo,
         attribute_name: gimli::DwAt,
     ) -> Option<debug_info::GimliAttribute> {
-        let attribute =
-            collapsed_attribute(&self.function_die, &self.specification_die, attribute_name);
+        let attribute = collapsed_attribute(
+            &self.function_die,
+            self.specification_die.as_ref(),
+            attribute_name,
+        );
 
         if attribute.is_some() {
-            return attribute;
+            return attribute.cloned();
         }
 
         // For inlined function, the *abstract instance* has to be checked if we cannot find the
@@ -208,11 +215,14 @@ impl<'a> FunctionDie<'a> {
                 abstract_die,
                 self.unit_info,
             );
-            let inline_attribute =
-                collapsed_attribute(abstract_die, &inlined_specification_die, attribute_name);
+            let inline_attribute = collapsed_attribute(
+                abstract_die,
+                inlined_specification_die.as_ref(),
+                attribute_name,
+            );
 
             if inline_attribute.is_some() {
-                return inline_attribute;
+                return inline_attribute.cloned();
             }
         }
 
@@ -240,24 +250,27 @@ impl<'a> FunctionDie<'a> {
             _ => Ok(None),
         }
     }
+
+    pub(crate) fn parent_offset(&self) -> Option<UnitOffset> {
+        self.unit_info.parent_offset(self.spec_offset())
+    }
+
+    pub(crate) fn spec_offset(&self) -> UnitOffset {
+        self.specification_die
+            .as_ref()
+            .map(|d| d.offset())
+            .unwrap_or(self.function_die.offset())
+    }
 }
 
 // Try to retrieve the attribute from the specification or the function DIE.
-fn collapsed_attribute(
-    function_die: &Die,
-    specification_die: &Option<Die>,
+fn collapsed_attribute<'a>(
+    function_die: &'a Die,
+    specification_die: Option<&'a Die>,
     attribute_name: gimli::DwAt,
-) -> Option<gimli::Attribute<gimli::EndianReader<RunTimeEndian, std::rc::Rc<[u8]>>>> {
+) -> Option<&'a debug_info::GimliAttribute> {
     specification_die
         .as_ref()
-        .and_then(|specification_die| {
-            specification_die
-                .attr(attribute_name)
-                .map_or(None, |attribute| attribute)
-        })
-        .or_else(|| {
-            function_die
-                .attr(attribute_name)
-                .map_or(None, |attribute| attribute)
-        })
+        .and_then(|specification_die| specification_die.attr(attribute_name))
+        .or_else(|| function_die.attr(attribute_name))
 }

@@ -68,12 +68,12 @@ memory_mapped_bitfield_register! {
     pub struct Cpacr(u32);
     0xE000_ED88, "CPACR",
     impl From;
-    pub fpu_privilige, _: 21,20;
+    pub fpu_privilege, _: 21,20;
 }
 
 impl Cpacr {
     pub fn fpu_present(&self) -> bool {
-        self.fpu_privilige() != 0
+        self.fpu_privilege() != 0
     }
 }
 
@@ -174,7 +174,7 @@ pub(crate) fn check_for_semihosting(
     cached_command: Option<SemihostingCommand>,
     core: &mut dyn CoreInterface,
 ) -> Result<Option<SemihostingCommand>, Error> {
-    // The Arm Semihosting Specification, specificies that the instruction
+    // The Arm Semihosting Specification, specifies that the instruction
     // "BKPT 0xAB" (encoded as 0xBEAB) triggers a semihosting call.
     // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#the-semihosting-interface>
     const TRAP_INSTRUCTION: [u8; 2] = [

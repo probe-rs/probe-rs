@@ -2,7 +2,6 @@
 
 #[macro_use]
 pub mod ap;
-pub(crate) mod assembly;
 pub(crate) mod communication_interface;
 pub mod component;
 // TODO: Check if this should be public.
@@ -32,7 +31,7 @@ pub use communication_interface::{
 pub use swo::{SwoAccess, SwoConfig, SwoMode, SwoReader};
 pub use traits::*;
 
-/// A error that occured while parsing a raw register value.
+/// A error that occurred while parsing a raw register value.
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to parse register {name} from {value:#010x}")]
 pub struct RegisterParseError {

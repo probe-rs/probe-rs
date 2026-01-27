@@ -66,7 +66,7 @@ pub struct Chip {
     pub svd: Option<String>,
     /// Documentation URLs associated with this chip.
     #[serde(default)]
-    pub documentation: HashMap<String, url::Url>,
+    pub documentation: HashMap<String, String>,
     /// The package variants available for this chip.
     ///
     /// If empty, the chip is assumed to have only one package variant.

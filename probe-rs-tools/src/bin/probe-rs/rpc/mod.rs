@@ -93,7 +93,7 @@ impl<T> Key<T> {
     }
 }
 
-struct ObjectStorage {
+pub(crate) struct ObjectStorage {
     storage: HashMap<u64, Arc<Mutex<dyn Any + Send>>>,
 }
 
@@ -200,10 +200,15 @@ impl SessionState<'_> {
     /// Returns a handle to the session.
     ///
     /// This function blocks while other users hold the session.
+    pub fn object_storage(&self) -> impl DerefMut<Target = ObjectStorage> + Send + use<'_> {
+        self.object_storage.blocking_lock()
+    }
+
+    /// Returns a handle to the session.
+    ///
+    /// This function blocks while other users hold the session.
     pub fn session_blocking(&self) -> impl DerefMut<Target = Session> + Send + use<> {
-        self.object_storage
-            .blocking_lock()
-            .object_mut_blocking(self.session)
+        self.object_storage().object_mut_blocking(self.session)
     }
 
     /// Returns whether the session is in dry-run mode.

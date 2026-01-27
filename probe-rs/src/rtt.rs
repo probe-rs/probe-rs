@@ -46,6 +46,8 @@
 
 mod channel;
 pub use channel::*;
+#[cfg(feature = "object")]
+use object::{Object as _, ObjectSymbol as _};
 
 use crate::Session;
 use crate::{Core, MemoryInterface, config::MemoryRegion};
@@ -54,6 +56,31 @@ use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 use zerocopy::{FromBytes, IntoBytes};
+
+/// Extract the RTT control block from a raw file, usually an ELF file.
+#[cfg(feature = "object")]
+pub fn find_rtt_control_block_in_raw_file(raw_file: &[u8]) -> Result<Option<u64>, object::Error> {
+    let obj = object::File::parse(raw_file)?;
+    Ok(find_rtt_control_block_in_file(&obj))
+}
+
+/// Extract the RTT control block from a parsed [object::File] file, usually a parsed ELF file.
+#[cfg(feature = "object")]
+pub fn find_rtt_control_block_in_file(file: &object::File) -> Option<u64> {
+    for symbol in file.symbols() {
+        // Get the symbol name
+        if let Ok(name) = symbol.name()
+            && name == "_SEGGER_RTT"
+        {
+            // Ensure it is a defined symbol (not undefined). Symbols with a section index are
+            // defined in the binary.
+            if symbol.section_index().is_some() {
+                return Some(symbol.address());
+            }
+        }
+    }
+    None
+}
 
 /// The RTT interface.
 ///
@@ -315,7 +342,7 @@ impl Rtt {
     /// Attempts to detect an RTT control block in the specified RAM region(s) and returns an
     /// instance if a valid control block was found.
     pub fn attach_region(core: &mut Core, region: &ScanRegion) -> Result<Rtt, Error> {
-        let ptr = Self::find_contol_block(core, region)?;
+        let ptr = Self::find_control_block(core, region)?;
         Self::attach_at(core, ptr)
     }
 
@@ -327,7 +354,7 @@ impl Rtt {
 
     /// Attempts to detect an RTT control block in the specified RAM region(s) and returns an
     /// address if a valid control block location was found.
-    pub fn find_contol_block(core: &mut Core, region: &ScanRegion) -> Result<u64, Error> {
+    pub fn find_control_block(core: &mut Core, region: &ScanRegion) -> Result<u64, Error> {
         let ranges = match region.clone() {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: {:#010x}", addr);
@@ -339,6 +366,7 @@ impl Rtt {
 
                 core.memory_regions()
                     .filter_map(MemoryRegion::as_ram_region)
+                    .filter(|r| !r.is_alias)
                     .map(|r| r.range.clone())
                     .collect()
             }

@@ -1,3 +1,4 @@
+use clap::ValueEnum;
 use postcard_schema::Schema;
 use probe_rs::rtt::{self, DownChannel, Error, Rtt, UpChannel};
 use probe_rs::{Core, MemoryInterface};
@@ -28,7 +29,7 @@ pub enum DataFormat {
 
 /// Specifies what to do when a channel doesn't have enough buffer space for a complete write on the
 /// target side.
-#[derive(Clone, Copy, Eq, PartialEq, Debug, Serialize, Deserialize, Schema)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug, Serialize, Deserialize, Schema, ValueEnum)]
 #[repr(u32)]
 pub enum ChannelMode {
     /// Skip writing the data completely if it doesn't fit in its entirety.
@@ -72,14 +73,19 @@ pub struct RttConfig {
     /// Configure data_format and show_timestamps for select channels
     #[serde(default = "Vec::new", rename = "rttChannelFormats")]
     pub channels: Vec<RttChannelConfig>,
+
+    /// Default channel configuration.
+    #[serde(default)]
+    pub default_config: RttChannelConfig,
 }
 
 impl RttConfig {
     /// Returns the configuration for the specified channel number, if it exists.
-    pub fn channel_config(&self, channel_number: u32) -> Option<&RttChannelConfig> {
+    pub fn channel_config(&self, channel_number: u32) -> &RttChannelConfig {
         self.channels
             .iter()
             .find(|ch| ch.channel_number == Some(channel_number))
+            .unwrap_or(&self.default_config)
     }
 }
 
@@ -157,6 +163,12 @@ impl RttActiveUpChannel {
             .unwrap_or_else(|| format!("Unnamed RTT up channel - {}", self.up_channel.number()))
     }
 
+    /// Returns the buffer size in bytes. Note that the usable size is one byte less due to how the
+    /// ring buffer is implemented.
+    pub fn buffer_size(&self) -> usize {
+        self.up_channel.buffer_size()
+    }
+
     pub fn number(&self) -> u32 {
         self.up_channel.number() as u32
     }
@@ -198,6 +210,12 @@ impl RttActiveDownChannel {
             .unwrap_or_else(|| format!("Unnamed RTT down channel - {}", self.down_channel.number()))
     }
 
+    /// Returns the buffer size in bytes. Note that the usable size is one byte less due to how the
+    /// ring buffer is implemented.
+    pub fn buffer_size(&self) -> usize {
+        self.down_channel.buffer_size()
+    }
+
     pub fn number(&self) -> u32 {
         self.down_channel.number() as u32
     }
@@ -205,15 +223,6 @@ impl RttActiveDownChannel {
     pub fn write(&mut self, core: &mut Core<'_>, data: impl AsRef<[u8]>) -> Result<(), Error> {
         self.down_channel.write(core, data.as_ref()).map(|_| ())
     }
-}
-
-/// Error type for RTT symbol lookup.
-#[derive(Debug, thiserror::Error, docsplay::Display)]
-pub enum RttSymbolError {
-    /// RTT symbol not found in the ELF file.
-    RttSymbolNotFound,
-    /// Failed to parse the firmware as an ELF file.
-    Goblin(#[source] goblin::error::Error),
 }
 
 /// Once an active connection with the Target RTT control block has been established, we configure
@@ -299,19 +308,5 @@ impl RttConnection {
         self.active_down_channels.clear();
         self.active_up_channels.clear();
         Ok(())
-    }
-}
-
-pub fn get_rtt_symbol_from_bytes(buffer: &[u8]) -> Result<u64, RttSymbolError> {
-    match goblin::elf::Elf::parse(buffer) {
-        Ok(binary) => {
-            for sym in &binary.syms {
-                if binary.strtab.get_at(sym.st_name) == Some("_SEGGER_RTT") {
-                    return Ok(sym.st_value);
-                }
-            }
-            Err(RttSymbolError::RttSymbolNotFound)
-        }
-        Err(err) => Err(RttSymbolError::Goblin(err)),
     }
 }

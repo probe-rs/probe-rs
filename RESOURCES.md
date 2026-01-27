@@ -5,7 +5,7 @@
 [JEDEC CODES](https://www.jedec.org/system/files/docs/JEP106AY.pdf)
 
 
-## Releated OSS projects
+## Related OSS projects
 
 [PyOCD](https://github.com/mbedmicro/pyOCD) Open source Python library for
 programming and debugging Arm Cortex-M microcontrollers using CMSIS-DAP.

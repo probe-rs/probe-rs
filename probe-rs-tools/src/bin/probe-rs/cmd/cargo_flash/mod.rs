@@ -182,7 +182,6 @@ async fn main_try(client: &mut RpcClient, opt: CliOptions) -> Result<(), Operati
     cli::flash(
         &session,
         &path,
-        opt.download_options.chip_erase,
         opt.format_options,
         opt.download_options,
         None,

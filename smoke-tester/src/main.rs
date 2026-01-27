@@ -1,8 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    process::ExitCode,
-    time::Duration,
-};
+use std::{path::PathBuf, process::ExitCode, time::Duration};
 
 use crate::dut_definition::DutDefinition;
 
@@ -11,7 +7,6 @@ use clap::Parser;
 use libtest_mimic::{Arguments, Failed, Trial};
 use linkme::distributed_slice;
 use probe_rs::Permissions;
-use tracing::Level;
 use tracing_subscriber::EnvFilter;
 
 mod dut_definition;
@@ -21,9 +16,13 @@ mod tests;
 pub type TestResult = Result<(), Failed>;
 
 #[derive(Debug, Parser)]
+#[clap(name = "smoke-tester")]
 struct Opt {
-    #[arg(long, value_name = "DIRECTORY")]
+    #[arg(value_name = "DIRECTORY", env = "SMOKE_TESTER_CONFIG")]
     dut_definitions: PathBuf,
+
+    #[clap(flatten)]
+    test: Arguments,
 }
 
 fn main() -> Result<ExitCode> {
@@ -33,14 +32,24 @@ fn main() -> Result<ExitCode> {
         .with_env_filter(EnvFilter::from_env("SMOKE_TESTER_LOG"))
         .init();
 
-    let test_args = Arguments::from_args();
+    let (test_args, dut_definition) = if std::env::var("NEXTEST").is_ok() {
+        let args = Arguments::from_args();
+        let Some(dut_definition) = std::env::var_os("SMOKE_TESTER_CONFIG") else {
+            anyhow::bail!("SMOKE_TESTER_CONFIG environment variable not set");
+        };
 
-    // Require dut definition as an environment variable
-    let Some(dut_definition) = std::env::var_os("SMOKE_TESTER_CONFIG") else {
-        anyhow::bail!("SMOKE_TESTER_CONFIG environment variable not set");
+        (args, PathBuf::from(dut_definition))
+    } else {
+        let test_args = Opt::parse();
+
+        (test_args.test, test_args.dut_definitions)
     };
 
-    let definitions = DutDefinition::collect(Path::new(&dut_definition))?;
+    let definitions = if dut_definition.is_file() {
+        vec![DutDefinition::from_file(&dut_definition)?]
+    } else {
+        DutDefinition::collect(&dut_definition)?
+    };
     //println!("Found {} target definitions.", definitions.len());
 
     run_test(test_args, &definitions)
@@ -152,14 +161,18 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
     args.test_threads = Some(1);
 
     let subscriber = tracing_subscriber::fmt()
-        .with_max_level(Level::TRACE)
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_env_var("SMOKE_TESTER_TEST_LOG")
+                .with_default_directive(tracing::level_filters::LevelFilter::TRACE.into())
+                .from_env_lossy(),
+        )
         .finish();
 
-    let exit_code = tracing::subscriber::with_default(subscriber, || {
-        libtest_mimic::run(&args, trials).exit_code()
-    });
+    let conclusion =
+        tracing::subscriber::with_default(subscriber, || libtest_mimic::run(&args, trials));
 
-    Ok(exit_code)
+    Ok(conclusion.exit_code())
 }
 
 struct NamedSessionTest {

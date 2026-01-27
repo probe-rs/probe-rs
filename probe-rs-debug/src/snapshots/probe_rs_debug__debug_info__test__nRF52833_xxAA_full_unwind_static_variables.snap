@@ -2670,7 +2670,7 @@ Child Variables:
                           type_name:
                             Base: u8
                           value: "32"
-                        - name: Artifical
+                        - name: Artificial
                           type_name: Unknown
                           value: "... and 974 more"
             - name:
@@ -2954,7 +2954,7 @@ Child Variables:
                           type_name:
                             Base: u8
                           value: "0"
-                        - name: Artifical
+                        - name: Artificial
                           type_name: Unknown
                           value: "... and 974 more"
     - name:

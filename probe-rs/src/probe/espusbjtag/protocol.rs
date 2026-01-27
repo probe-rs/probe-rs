@@ -96,7 +96,7 @@ impl ProtocolHandler {
             .wait()
             .map_err(|e| ProbeCreationError::Usb(e.into()))?;
 
-        tracing::debug!("Aquired handle for probe");
+        tracing::debug!("Acquired handle for probe");
 
         let config = device_handle.configurations().next().unwrap();
 
@@ -214,7 +214,7 @@ impl ProtocolHandler {
             p += cap_bytes.len();
         }
 
-        tracing::debug!("Succesfully attached to ESP USB JTAG.");
+        tracing::debug!("Successfully attached to ESP USB JTAG.");
 
         let mut this = Self {
             device_handle: iface,
@@ -454,7 +454,7 @@ impl ProtocolHandler {
         // We only clear the output buffer on a successful transmission of all bytes.
         self.output_buffer.clear();
 
-        // If there's more than a bufferful of data queing up in the jtag adapters IN endpoint, empty all but one buffer.
+        // If there's more than a bufferful of data queuing up in the jtag adapters IN endpoint, empty all but one buffer.
         while self.pending_in_bits > (IN_EP_BUFFER_SIZE + HW_FIFO_SIZE) * 8 {
             self.receive_buffer()?;
         }

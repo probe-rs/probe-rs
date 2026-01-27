@@ -5,6 +5,7 @@ use std::time::Duration;
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::MessageSeverity;
 use crate::cmd::dap_server::debug_adapter::dap::repl_commands::ReplCommand;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{self, DataFormat, DefmtProcessor, DefmtState};
@@ -15,7 +16,7 @@ use crate::{
             dap::{
                 adapter::DebugAdapter,
                 core_status::DapStatus,
-                dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+                dap_types::{ContinuedEventBody, Source, StoppedEventBody},
             },
             protocol::ProtocolAdapter,
         },
@@ -95,7 +96,7 @@ impl CoreHandle<'_> {
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) {
-        self.core_data.last_known_status = CoreStatus::Running;
+        self.core_data.last_known_status = CoreStatus::Unknown;
         debug_adapter.all_cores_halted = false;
     }
 
@@ -143,7 +144,7 @@ impl CoreHandle<'_> {
             }
 
             CoreStatus::Halted(HaltReason::Step) => {
-                // HaltReason::Step is a special case, where we have to send a custome event to the client that the core halted.
+                // HaltReason::Step is a special case, where we have to send a custom event to the client that the core halted.
                 // In this case, we don't re-send the "stopped" event, but further down, we will
                 // update the `last_known_status` to the actual HaltReason returned by the core.
             }
@@ -156,13 +157,20 @@ impl CoreHandle<'_> {
 
             CoreStatus::Halted(_) => self.notify_halted(debug_adapter, status)?,
             CoreStatus::LockedUp => {
-                let (_, description) = status.short_long_status(None);
-                debug_adapter.show_message(MessageSeverity::Error, &description);
-                return Err(DebuggerError::Other(anyhow!(description)));
+                // TODO: We can't really continue here, but the debugger should remain working
+                //
+                // Maybe step should be prevented?
+
+                debug_adapter.show_message(
+                    MessageSeverity::Warning,
+                    format!("Core {} is in locked up state", self.core_id),
+                );
+
+                self.notify_halted(debug_adapter, status)?
             }
             CoreStatus::Unknown => {
                 let error =
-                    DebuggerError::Other(anyhow!("Unknown Device status reveived from Probe-rs"));
+                    DebuggerError::Other(anyhow!("Unknown Device status received from Probe-rs"));
                 debug_adapter.show_error_message(&error)?;
 
                 return Err(error);
@@ -235,10 +243,7 @@ impl CoreHandle<'_> {
         for up_channel in client.up_channels() {
             let number = up_channel.up_channel.number();
 
-            let mut channel_config = rtt_config
-                .channel_config(number as u32)
-                .cloned()
-                .unwrap_or_default();
+            let mut channel_config = rtt_config.channel_config(number as u32).clone();
 
             if up_channel.channel_name() == "defmt" {
                 channel_config.data_format = DataFormat::Defmt;
@@ -758,15 +763,15 @@ fn consolidate_memory_ranges(
     let mut condensed_range: Option<Range<u64>> = None;
 
     for memory_range in discrete_memory_ranges.iter() {
-        if let Some(range_comparitor) = condensed_range {
-            if memory_range.start <= range_comparitor.end + include_bytes_between_ranges + 1 {
-                let new_end = std::cmp::max(range_comparitor.end, memory_range.end);
+        if let Some(range_comparator) = condensed_range {
+            if memory_range.start <= range_comparator.end + include_bytes_between_ranges + 1 {
+                let new_end = std::cmp::max(range_comparator.end, memory_range.end);
                 condensed_range = Some(Range {
-                    start: range_comparitor.start,
+                    start: range_comparator.start,
                     end: new_end,
                 });
             } else {
-                consolidated_memory_ranges.push(range_comparitor);
+                consolidated_memory_ranges.push(range_comparator);
                 condensed_range = Some(memory_range.clone());
             }
         } else {
@@ -774,8 +779,8 @@ fn consolidate_memory_ranges(
         }
     }
 
-    if let Some(range_comparitor) = condensed_range {
-        consolidated_memory_ranges.push(range_comparitor);
+    if let Some(range_comparator) = condensed_range {
+        consolidated_memory_ranges.push(range_comparator);
     }
 
     consolidated_memory_ranges

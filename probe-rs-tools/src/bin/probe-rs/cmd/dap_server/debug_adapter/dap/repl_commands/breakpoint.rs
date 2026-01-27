@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use linkme::distributed_slice;
 use probe_rs::{CoreStatus, HaltReason};
 
@@ -11,9 +9,9 @@ use crate::cmd::dap_server::{
             core_status::DapStatus,
             dap_types::{
                 Breakpoint, BreakpointEventBody, EvaluateArguments, InstructionBreakpoint,
-                MemoryAddress, Response,
+                MemoryAddress,
             },
-            repl_commands::{REPL_COMMANDS, ReplCommand},
+            repl_commands::{EvalResponse, EvalResult, REPL_COMMANDS, ReplCommand},
             repl_types::ReplCommandArgs,
             request_helpers::set_instruction_breakpoint,
         },
@@ -25,7 +23,7 @@ use crate::cmd::dap_server::{
 #[distributed_slice(REPL_COMMANDS)]
 static BREAK: ReplCommand = ReplCommand {
     command: "break",
-    // Stricly speaking, gdb refers to this as an expression, but we only support variables.
+    // Strictly speaking, gdb refers to this as an expression, but we only support variables.
     help_text: "Sets a breakpoint specified location, or next instruction if unspecified.",
     requires_target_halted: false,
     sub_commands: &[],
@@ -47,23 +45,15 @@ fn create_breakpoint(
     target_core: &mut CoreHandle<'_>,
     command_arguments: &str,
     _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> Result<Response, DebuggerError> {
+    adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> EvalResult {
     if command_arguments.is_empty() {
-        let core_info = target_core.core.halt(Duration::from_millis(500))?;
-        return Ok(Response {
-            command: "pause".to_string(),
-            success: true,
-            message: Some(
-                CoreStatus::Halted(HaltReason::Request)
-                    .short_long_status(Some(core_info.pc))
-                    .1,
-            ),
-            type_: "response".to_string(),
-            request_seq: 0,
-            seq: 0,
-            body: None,
-        });
+        let core_info = adapter.pause_impl(target_core)?;
+        return Ok(EvalResponse::Message(
+            CoreStatus::Halted(HaltReason::Request)
+                .short_long_status(Some(core_info.pc))
+                .1,
+        ));
     }
 
     let mut input_arguments = command_arguments.split_whitespace();
@@ -83,35 +73,32 @@ fn create_breakpoint(
         },
         target_core,
     );
-    let mut response =
-        Response {
-            command: "setBreakpoints".to_string(),
-            success: true,
-            message: Some(result.message.clone().unwrap_or_else(|| {
-                format!("Unexpected error creating breakpoint at {address_str}.")
-            })),
-            type_: "response".to_string(),
-            request_seq: 0,
-            seq: 0,
-            body: None,
-        };
-    if result.verified {
+
+    let body = if result.verified {
         // The caller will catch this event body and use it to synch the UI breakpoint list.
-        response.body = serde_json::to_value(BreakpointEventBody {
-            breakpoint: result,
+        serde_json::to_value(BreakpointEventBody {
+            breakpoint: result.clone(),
             reason: "new".to_string(),
         })
-        .ok();
-    }
-    Ok(response)
+        .ok()
+    } else {
+        None
+    };
+
+    // Synch the DAP client UI.
+    adapter.dyn_send_event("breakpoint", body)?;
+
+    Ok(EvalResponse::Message(result.message.unwrap_or_else(|| {
+        format!("Unexpected error creating breakpoint at {address_str}.")
+    })))
 }
 
 fn clear_breakpoint(
     target_core: &mut CoreHandle<'_>,
     command_arguments: &str,
     _: &EvaluateArguments,
-    _: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
-) -> Result<Response, DebuggerError> {
+    adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
+) -> EvalResult {
     let mut input_arguments = command_arguments.split_whitespace();
     let Some(input_argument) = input_arguments.next() else {
         return Err(DebuggerError::UserMessage(
@@ -137,30 +124,26 @@ fn clear_breakpoint(
         )));
     };
 
-    let response = Response {
-        command: "setBreakpoints".to_string(),
-        success: true,
-        message: Some("Breakpoint cleared".to_string()),
-        type_: "response".to_string(),
-        request_seq: 0,
-        seq: 0,
-        body: serde_json::to_value(BreakpointEventBody {
-            breakpoint: Breakpoint {
-                id: Some(address as i64),
-                column: None,
-                end_column: None,
-                end_line: None,
-                instruction_reference: None,
-                line: None,
-                message: None,
-                offset: None,
-                source: None,
-                verified: false,
-                reason: None,
-            },
-            reason: "removed".to_string(),
-        })
-        .ok(),
-    };
-    Ok(response)
+    let body = serde_json::to_value(BreakpointEventBody {
+        breakpoint: Breakpoint {
+            id: Some(address as i64),
+            column: None,
+            end_column: None,
+            end_line: None,
+            instruction_reference: None,
+            line: None,
+            message: None,
+            offset: None,
+            source: None,
+            verified: false,
+            reason: None,
+        },
+        reason: "removed".to_string(),
+    })
+    .ok();
+
+    // Synch the DAP client UI.
+    adapter.dyn_send_event("breakpoint", body)?;
+
+    Ok(EvalResponse::Message("Breakpoint cleared".to_string()))
 }
