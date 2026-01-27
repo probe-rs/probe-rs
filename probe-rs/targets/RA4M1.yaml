@@ -7,14 +7,7 @@ chip_detection:
   target_id: 0x160
   mcu_pn_base: 0x01003c24
   variants:
-    R7FA4M1AB:
-      - R7FA4M1AB2CLJ
-      - R7FA4M1AB3CFL
-      - R7FA4M1AB3CFM
-      - R7FA4M1AB3CFP
-      - R7FA4M1AB3CNB
-      - R7FA4M1AB3CNE
-      - R7FA4M1AB3CNF
+    - R7FA4M1AB
 variants:
 - name: R7FA4M1AB
   cores:

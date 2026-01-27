@@ -2,6 +2,16 @@ name: RA6M5 Series
 manufacturer:
   id: 0x23
   cc: 0x4
+chip_detection:
+- !RenesasPnr
+  target_id: 0x360 
+  mcu_pn_base: 0x010080f0
+  variants:
+    - R7FA6M5AH
+    - R7FA6M5AG
+    - R7FA6M5BH
+    - R7FA6M5BG
+    - R7FA6M5BF
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:

@@ -5,30 +5,11 @@ manufacturer:
 chip_detection:
 - !RenesasPnr
   target_id: 0x2f0
+  reverse_string: true
   mcu_pn_base: 0x01001c10
   variants:
-    R7FA2L1A9:
-      - R7FA2L1A92DFL
-      - R7FA2L1A92DFM
-      - R7FA2L1A92DFN
-      - R7FA2L1A92DFP
-      - R7FA2L1A92DNE
-      - R7FA2L1A93CFL
-      - R7FA2L1A93CFM
-      - R7FA2L1A93CFN
-      - R7FA2L1A93CFP
-      - R7FA2L1A93CNE
-    R7FA2L1AB:
-      - R7FA2L1AB2DFL
-      - R7FA2L1AB2DFM
-      - R7FA2L1AB2DFN
-      - R7FA2L1AB2DFP
-      - R7FA2L1AB2DNE
-      - R7FA2L1AB3CFL
-      - R7FA2L1AB3CFM
-      - R7FA2L1AB3CFN
-      - R7FA2L1AB3CFP
-      - R7FA2L1AB3CNE
+    - R7FA2L1A9
+    - R7FA2L1AB
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:

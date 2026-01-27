@@ -214,5 +214,5 @@ pub struct RenesasPnrDetection {
     pub mcu_pn_base: u32,
 
     /// Chip part number
-    pub variants: IndexMap<String, Vec<String>>,
+    pub variants: Vec<String>,
 }
