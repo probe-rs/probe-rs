@@ -29,6 +29,19 @@ impl Vendor for Renesas {
         interface: &mut dyn ArmDebugInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
+        // Renesas provides part number registers (PNRn) for most of the RA variants.  However
+        // where the registers live depends on the actual chip itself, often in areas that other
+        // variants consider "reserved, do not touch". There should be four registers for a total
+        // of 16 bytes with the data being zero padded.
+        //
+        // To narrow down the location of the PNR registers the reference manuals define PIDR 0 and
+        // PIDR 1 for the CoreSight™ ROM table, and this will provide the TARGETID value.
+        // Typically: ((PIDR0 << 4) | (PIDR1 & 0x0F))
+        //
+        // For future variants: ensure that if the TARGETID is shared with another variant that
+        // the PNR registers are at the same location. If there is a conflict, this logic needs to
+        // be reworked.
+
         if chip_info.manufacturer.get() != Some("Renesas Electronics") {
             return Ok(None);
         }
