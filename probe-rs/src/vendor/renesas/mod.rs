@@ -48,7 +48,7 @@ impl Vendor for Renesas {
             for info in family
                 .chip_detection
                 .iter()
-                .filter_map(ChipDetectionMethod::as_renesas_fmifrt)
+                .filter_map(ChipDetectionMethod::as_renesas_pnr)
             {
                 if target_pn != info.target_id {
                     continue;
@@ -74,12 +74,6 @@ impl Vendor for Renesas {
                         return Ok(Some(variant.clone()));
                     }
                 }
-
-                // for (target, variants) in info.variants.iter() {
-                //     if variants.iter().any(|v| v == part_number) {
-                //         return Ok(Some(target.clone()));
-                //     }
-                // }
             }
         }
 

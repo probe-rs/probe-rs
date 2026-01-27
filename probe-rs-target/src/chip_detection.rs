@@ -88,7 +88,7 @@ impl ChipDetectionMethod {
     }
 
     /// Returns the Renesas detection information if available.
-    pub fn as_renesas_fmifrt(&self) -> Option<&RenesasPnrDetection> {
+    pub fn as_renesas_pnr(&self) -> Option<&RenesasPnrDetection> {
         if let Self::RenesasPnr(v) = self {
             Some(v)
         } else {
