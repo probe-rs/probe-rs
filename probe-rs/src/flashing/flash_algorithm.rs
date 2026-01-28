@@ -455,7 +455,7 @@ impl FlashAlgorithm {
     }
 
     /// Constructs a complete flash algorithm, choosing a suitable RAM region to run the algorithm.
-    pub(crate) fn assemble_from_raw_with_core(
+    pub fn assemble_from_raw_with_core(
         algo: &RawFlashAlgorithm,
         core_name: &str,
         target: &Target,

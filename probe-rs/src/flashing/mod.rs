@@ -19,7 +19,7 @@
 //! let session_config = SessionConfig::default();
 //! let mut session = Session::auto_attach("nrf51822", session_config)?;
 //!
-//! flashing::download_file(&mut session, "binary.hex", flashing::Format::Hex)?;
+//! flashing::download_file(&mut session, "binary.hex", flashing::HexLoader)?;
 //!
 //! # Ok::<(), anyhow::Error>(())
 //! ```
@@ -41,8 +41,6 @@
 //!
 //! # Ok::<(), anyhow::Error>(())
 //! ```
-//!
-//!
 
 mod builder;
 mod download;
@@ -55,12 +53,12 @@ mod loader;
 mod progress;
 
 use builder::*;
-use flasher::*;
 
 pub use builder::{FlashDataBlockSpan, FlashFill, FlashLayout, FlashPage, FlashSector};
 pub use download::*;
 pub use erase::*;
 pub use error::*;
 pub use flash_algorithm::*;
+pub use flasher::{ActiveFlasher, Erase, FlashData, Flasher, LoadedRegion, Program, Verify};
 pub use loader::*;
 pub use progress::*;
