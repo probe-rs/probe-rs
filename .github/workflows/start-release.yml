@@ -95,7 +95,6 @@ jobs:
 
           - probe-rs
           - probe-rs-target
-          - rtthost
           - target-gen
           - probe-rs-tools
           - probe-rs-mi
