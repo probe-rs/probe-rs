@@ -13,8 +13,18 @@ rust-version.workspace = true
 probe-rs.workspace = true
 probe-rs-target.workspace = true
 
+bincode = { version = "2", features = ["serde"] }
 docsplay.workspace = true
+thiserror.workspace = true
 tracing = "0.1"
+serde.workspace = true
+serde_yaml.workspace = true
+
+espflash = { version = "4", default-features = false }
+
+[build-dependencies]
+probe-rs = { workspace = true, features = ["test", "flashing"] }
+probe-rs-target = { workspace = true, features = ["bincode"] }
 
 [lints]
 workspace = true

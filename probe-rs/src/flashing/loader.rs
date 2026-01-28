@@ -1,26 +1,116 @@
-use espflash::flasher::{FlashData, FlashSettings, FlashSize};
-use espflash::image_format::idf::{IdfBootloaderFormat, check_idf_bootloader};
 use ihex::Record;
 use itertools::Itertools as _;
+use parking_lot::RwLock;
 use probe_rs_target::{
     InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
     TargetDescriptionSource,
 };
+use serde_yaml::Value;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
-use std::str::FromStr;
+use std::sync::LazyLock;
 use std::time::Duration;
 
 use super::builder::FlashBuilder;
 use super::{
-    BinOptions, DownloadOptions, ElfOptions, FileDownloadError, FlashError, Flasher, IdfOptions,
+    BinOptions, DownloadOptions, ElfOptions, FileDownloadError, FlashError, Flasher,
     extract_from_elf,
 };
 use crate::Target;
 use crate::flashing::progress::ProgressOperation;
-use crate::flashing::{FlashLayout, FlashProgress, Format};
+use crate::flashing::{FlashLayout, FlashProgress};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
+
+pub trait ImageFormat: Sync {
+    /// The list of format names supported by this loader factory.
+    fn formats(&self) -> &[&str];
+
+    /// Create a new image loader.
+    fn create_loader(&self, options: Option<Value>) -> Box<dyn ImageLoader>;
+}
+
+/// A list of all known image formats
+static LOADERS: LazyLock<RwLock<Vec<&'static dyn ImageFormat>>> = LazyLock::new(|| {
+    let image_formats: Vec<&'static dyn ImageFormat> = vec![
+        &ElfLoaderFactory,
+        &BinLoaderFactory,
+        &HexLoaderFactory,
+        &Uf2LoaderFactory,
+    ];
+
+    RwLock::new(image_formats)
+});
+
+pub fn image_format(format: &str) -> Option<&'static dyn ImageFormat> {
+    LOADERS
+        .read()
+        .iter()
+        .find(|factory| factory.formats().contains(&format))
+        .map(|factory| *factory)
+}
+
+pub(crate) fn register_image_format(factory: &'static dyn ImageFormat) {
+    LOADERS.write().push(factory);
+}
+
+struct ElfLoaderFactory;
+struct BinLoaderFactory;
+struct HexLoaderFactory;
+struct Uf2LoaderFactory;
+
+impl ImageFormat for ElfLoaderFactory {
+    fn formats(&self) -> &[&str] {
+        &["elf"]
+    }
+
+    fn create_loader(&self, options: Option<Value>) -> Box<dyn ImageLoader> {
+        let options = options
+            .and_then(|value| serde_yaml::from_value(value).ok())
+            .unwrap_or_default();
+        Box::new(ElfLoader(options))
+    }
+}
+impl ImageFormat for BinLoaderFactory {
+    fn formats(&self) -> &[&str] {
+        &["bin", "binary"]
+    }
+
+    fn create_loader(&self, options: Option<Value>) -> Box<dyn ImageLoader> {
+        let options = options
+            .and_then(|value| serde_yaml::from_value(value).ok())
+            .unwrap_or_default();
+        Box::new(BinLoader(options))
+    }
+}
+impl ImageFormat for HexLoaderFactory {
+    fn formats(&self) -> &[&str] {
+        &["hex", "ihex", "intelhex"]
+    }
+
+    fn create_loader(&self, _options: Option<Value>) -> Box<dyn ImageLoader> {
+        Box::new(HexLoader)
+    }
+}
+impl ImageFormat for Uf2LoaderFactory {
+    fn formats(&self) -> &[&str] {
+        &["uf2"]
+    }
+
+    fn create_loader(&self, _options: Option<Value>) -> Box<dyn ImageLoader> {
+        Box::new(Uf2Loader)
+    }
+}
+
+pub fn into_format_error<E>(format: &str, error: E) -> FileDownloadError
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    FileDownloadError::ImageFormatSpecific {
+        format: format.to_string(),
+        source: Box::new(error),
+    }
+}
 
 /// Helper trait for object safety.
 pub trait ImageReader: Read + Seek {}
@@ -39,25 +129,19 @@ pub trait ImageLoader {
     ) -> Result<(), FileDownloadError>;
 }
 
-impl ImageLoader for Format {
+impl ImageLoader for Box<dyn ImageLoader> {
     fn load(
         &self,
         flash_loader: &mut FlashLoader,
         session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
-        match self {
-            Format::Bin(options) => BinLoader(options.clone()).load(flash_loader, session, file),
-            Format::Elf(options) => ElfLoader(options.clone()).load(flash_loader, session, file),
-            Format::Hex => HexLoader.load(flash_loader, session, file),
-            Format::Idf(options) => IdfLoader(options.clone()).load(flash_loader, session, file),
-            Format::Uf2 => Uf2Loader.load(flash_loader, session, file),
-        }
+        self.as_ref().load(flash_loader, session, file)
     }
 }
 
 /// Reads the data from the binary file and adds it to the loader without splitting it into flash instructions yet.
-struct BinLoader(BinOptions);
+pub struct BinLoader(pub BinOptions);
 
 impl ImageLoader for BinLoader {
     fn load(
@@ -85,20 +169,19 @@ impl ImageLoader for BinLoader {
 
 /// Prepares the data sections that have to be loaded into flash from an ELF file.
 /// This will validate the ELF file and transform all its data into sections but no flash loader commands yet.
-struct ElfLoader(ElfOptions);
+pub struct ElfLoader(pub ElfOptions);
 
 impl ImageLoader for ElfLoader {
     fn load(
         &self,
         flash_loader: &mut FlashLoader,
-        session: &mut Session,
+        _session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
         const VECTOR_TABLE_SECTION_NAME: &str = ".vector_table";
         let mut elf_buffer = Vec::new();
         file.read_to_end(&mut elf_buffer)?;
 
-        check_chip_compatibility_from_elf_metadata(session, &elf_buffer)?;
         let extracted_data = extract_from_elf(&elf_buffer, &self.0)?;
 
         if extracted_data.is_empty() {
@@ -135,7 +218,7 @@ impl ImageLoader for ElfLoader {
 
 /// Reads the HEX data segments and adds them as loadable data blocks to the loader.
 /// This does not create any flash loader instructions yet.
-struct HexLoader;
+pub struct HexLoader;
 
 impl ImageLoader for HexLoader {
     fn load(
@@ -173,7 +256,7 @@ impl ImageLoader for HexLoader {
 
 /// Prepares the data sections that have to be loaded into flash from an UF2 file.
 /// This will validate the UF2 file and transform all its data into sections but no flash loader commands yet.
-struct Uf2Loader;
+pub struct Uf2Loader;
 
 impl ImageLoader for Uf2Loader {
     fn load(
@@ -202,123 +285,6 @@ impl ImageLoader for Uf2Loader {
             Err(FileDownloadError::NoLoadableSegments)
         }
     }
-}
-
-/// Loads an ELF file as an esp-idf application into the loader by converting the main application
-/// to the esp-idf bootloader format, appending it to the loader along with the bootloader and
-/// partition table.
-///
-/// This does not create any flash loader instructions yet.
-struct IdfLoader(IdfOptions);
-
-impl ImageLoader for IdfLoader {
-    fn load(
-        &self,
-        flash_loader: &mut FlashLoader,
-        session: &mut Session,
-        file: &mut dyn ImageReader,
-    ) -> Result<(), FileDownloadError> {
-        let target = session.target();
-        let target_name = target
-            .name
-            .split_once('-')
-            .map(|(name, _)| name)
-            .unwrap_or(target.name.as_str());
-        let chip = espflash::target::Chip::from_str(target_name)
-            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.to_string()))?;
-
-        let mut algo = Flasher::new(target, 0, &target.flash_algorithms[0])
-            .map_err(FileDownloadError::Flash)?;
-
-        session
-            .core(0)
-            .unwrap()
-            .reset_and_halt(Duration::from_millis(500))
-            .map_err(FlashError::ResetAndHalt)
-            .map_err(FileDownloadError::FlashSizeDetection)?;
-
-        let flash_size_result = algo
-            .run_verify(session, &mut FlashProgress::empty(), |flasher, _| {
-                flasher.read_flash_size()
-            })
-            .map_err(FileDownloadError::FlashSizeDetection)?;
-
-        let flash_size = match flash_size_result {
-            0x40000 => Some(FlashSize::_256Kb),
-            0x80000 => Some(FlashSize::_512Kb),
-            0x100000 => Some(FlashSize::_1Mb),
-            0x200000 => Some(FlashSize::_2Mb),
-            0x400000 => Some(FlashSize::_4Mb),
-            0x800000 => Some(FlashSize::_8Mb),
-            0x1000000 => Some(FlashSize::_16Mb),
-            0x2000000 => Some(FlashSize::_32Mb),
-            0x4000000 => Some(FlashSize::_64Mb),
-            0x8000000 => Some(FlashSize::_128Mb),
-            0x10000000 => Some(FlashSize::_256Mb),
-            _ => None,
-        };
-
-        tracing::info!("Detected flash size: {:?}", flash_size);
-
-        let flash_data = FlashData::new(
-            {
-                let mut settings = FlashSettings::default();
-
-                settings.size = flash_size;
-                settings.freq = self.0.flash_frequency;
-                settings.mode = self.0.flash_mode;
-
-                settings
-            },
-            0,
-            None,
-            chip,
-            // TODO: auto-detect the crystal frequency.
-            chip.default_xtal_frequency(),
-        );
-
-        let mut elf_buffer = Vec::new();
-        file.read_to_end(&mut elf_buffer)?;
-
-        check_idf_bootloader(&elf_buffer).map_err(|e| {
-            FileDownloadError::Idf(espflash::Error::AppDescriptorNotPresent(e.to_string()))
-        })?;
-        check_chip_compatibility_from_elf_metadata(session, &elf_buffer)?;
-
-        let image = IdfBootloaderFormat::new(
-            &elf_buffer,
-            &flash_data,
-            self.0.partition_table.as_deref(),
-            self.0.bootloader.as_deref(),
-            None,
-            self.0.target_app_partition.as_deref(),
-        )?;
-
-        for data in image.flash_segments() {
-            flash_loader.add_data(data.addr.into(), &data.data)?;
-        }
-
-        Ok(())
-    }
-}
-
-fn check_chip_compatibility_from_elf_metadata(
-    session: &Session,
-    elf_data: &[u8],
-) -> Result<(), FileDownloadError> {
-    let esp_metadata = espflash::image_format::Metadata::from_bytes(Some(elf_data));
-
-    if let Some(chip_name) = esp_metadata.chip_name() {
-        let target = session.target();
-        if chip_name != target.name {
-            return Err(FileDownloadError::IncompatibleImageChip {
-                target: target.name.clone(),
-                image_chips: vec![chip_name.to_string()],
-            });
-        }
-    }
-
-    Ok(())
 }
 
 /// Current boot information
@@ -452,7 +418,7 @@ impl FlashLoader {
         &mut self,
         session: &mut Session,
         file: &mut T,
-        format: Format,
+        format: impl ImageLoader,
         image_instruction_set: Option<InstructionSet>,
     ) -> Result<(), FileDownloadError> {
         if let Some(instr_set) = image_instruction_set {

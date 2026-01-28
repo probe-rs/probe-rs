@@ -21,33 +21,33 @@ use std::{
 /// The timeout for init/uninit routines.
 const INIT_TIMEOUT: Duration = Duration::from_secs(2);
 
-pub(super) trait Operation {
+pub(crate) trait Operation {
     const OPERATION: u32;
     const NAME: &'static str;
 }
 
-pub(super) struct Erase;
+pub struct Erase;
 
 impl Operation for Erase {
     const OPERATION: u32 = 1;
     const NAME: &'static str = "Erase";
 }
 
-pub(super) struct Program;
+pub struct Program;
 
 impl Operation for Program {
     const OPERATION: u32 = 2;
     const NAME: &'static str = "Program";
 }
 
-pub(super) struct Verify;
+pub struct Verify;
 
 impl Operation for Verify {
     const OPERATION: u32 = 3;
     const NAME: &'static str = "Verify";
 }
 
-pub(super) enum FlashData {
+pub enum FlashData {
     Raw(FlashLayout),
     Loaded {
         encoder: FlashEncoder,
@@ -101,7 +101,7 @@ impl FlashData {
     }
 }
 
-pub(super) struct LoadedRegion {
+pub struct LoadedRegion {
     pub region: NvmRegion,
     pub data: FlashData,
 }
@@ -115,7 +115,7 @@ impl LoadedRegion {
 /// A structure to control the flash of an attached microchip.
 ///
 /// Once constructed it can be used to program date to the flash.
-pub(super) struct Flasher {
+pub struct Flasher {
     pub(super) core_index: usize,
     pub(super) flash_algorithm: FlashAlgorithm,
     pub(super) loaded: bool,
@@ -127,7 +127,7 @@ pub(super) struct Flasher {
 const STACK_FILL_BYTE: u8 = 0x56;
 
 impl Flasher {
-    pub(super) fn new(
+    pub fn new(
         target: &Target,
         core_index: usize,
         raw_flash_algorithm: &RawFlashAlgorithm,
@@ -234,7 +234,7 @@ impl Flasher {
         Ok(())
     }
 
-    pub(super) fn init<'s, 'p, O: Operation>(
+    pub fn init<'s, 'p, O: Operation>(
         &'s mut self,
         session: &'s mut Session,
         progress: &'s mut FlashProgress<'p>,
@@ -263,7 +263,7 @@ impl Flasher {
         Ok((flasher, &mut self.regions))
     }
 
-    pub(super) fn run_erase_all(
+    pub fn run_erase_all(
         &mut self,
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
@@ -290,7 +290,7 @@ impl Flasher {
         result
     }
 
-    pub(super) fn run_blank_check<'p, T, F>(
+    pub fn run_blank_check<'p, T, F>(
         &mut self,
         session: &mut Session,
         progress: &mut FlashProgress<'p>,
@@ -305,7 +305,7 @@ impl Flasher {
         Ok(r)
     }
 
-    pub(super) fn run_erase<'p, T, F>(
+    pub fn run_erase<'p, T, F>(
         &mut self,
         session: &mut Session,
         progress: &mut FlashProgress<'p>,
@@ -320,7 +320,7 @@ impl Flasher {
         Ok(r)
     }
 
-    pub(super) fn run_program<'p, T, F>(
+    pub fn run_program<'p, T, F>(
         &mut self,
         session: &mut Session,
         progress: &mut FlashProgress<'p>,
@@ -338,7 +338,7 @@ impl Flasher {
         Ok(r)
     }
 
-    pub(super) fn run_verify<'p, T, F>(
+    pub fn run_verify<'p, T, F>(
         &mut self,
         session: &mut Session,
         progress: &mut FlashProgress<'p>,
@@ -797,7 +797,7 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
     Ok(reg_value)
 }
 
-pub(super) struct ActiveFlasher<'op, 'p, O: Operation> {
+pub struct ActiveFlasher<'op, 'p, O: Operation> {
     pub(super) core: Core<'op>,
     instruction_set: InstructionSet,
     rtt: Option<Rtt>,
@@ -875,7 +875,10 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         Ok(())
     }
 
-    pub(super) fn read_flash_size(&mut self) -> Result<u32, FlashError> {
+    // TODO: this function should not be defined in the probe-rs library.
+    // The target yaml should provide a way to define custom functions, and ActiveFlasher
+    // should provide a way to call any custom function without apriori knowledge.
+    pub fn read_flash_size(&mut self) -> Result<u32, FlashError> {
         tracing::debug!("Reading flash size.");
         let algo = &self.flash_algorithm;
 
