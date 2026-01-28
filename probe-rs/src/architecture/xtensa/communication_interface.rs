@@ -280,7 +280,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
     /// Enter debug mode.
     pub fn enter_debug_mode(&mut self) -> Result<(), XtensaError> {
-        self.state.register_cache = RegisterCache::new();
+        self.clear_register_cache();
         self.xdm.enter_debug_mode()?;
 
         self.state.is_halted = self.xdm.status()?.stopped();
@@ -941,7 +941,6 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             ps.set_woe(true);
             ps
         })?;
-        self.state.register_cache = RegisterCache::new();
 
         Ok(())
     }
