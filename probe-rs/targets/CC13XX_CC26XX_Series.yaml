@@ -27,9 +27,9 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
   jtag:
+    # At boot, only the ICEPICK is visible on the scan chain. The chain
+    # will be updated by the sequence when the CPU core debug is enabled.
     scan_chain:
-    - name: core0
-      ir_len: 4
     - name: ICEPICK
       ir_len: 6
 - name: CC2652R

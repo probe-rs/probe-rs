@@ -562,8 +562,16 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
         self.read_captured_bits()
     }
 
-    fn set_scan_chain(&mut self, scan_chain: &[ScanChainElement]) -> Result<(), DebugProbeError> {
+    fn set_expected_scan_chain(
+        &mut self,
+        scan_chain: &[ScanChainElement],
+    ) -> Result<(), DebugProbeError> {
         self.state_mut().expected_scan_chain = Some(scan_chain.to_vec());
+        Ok(())
+    }
+
+    fn set_scan_chain(&mut self, scan_chain: &[ScanChainElement]) -> Result<(), DebugProbeError> {
+        self.state_mut().scan_chain = scan_chain.to_vec();
         Ok(())
     }
 

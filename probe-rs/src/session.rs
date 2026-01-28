@@ -225,7 +225,7 @@ impl Session {
             && let Some(scan_chain) = jtag.scan_chain.clone()
             && let Some(probe) = probe.try_as_jtag_probe()
         {
-            probe.set_scan_chain(&scan_chain)?;
+            probe.set_expected_scan_chain(&scan_chain)?;
         }
 
         probe.attach_to_unspecified()?;
@@ -349,7 +349,7 @@ impl Session {
             && let Some(scan_chain) = jtag.scan_chain.clone()
             && let Some(probe) = probe.try_as_jtag_probe()
         {
-            probe.set_scan_chain(&scan_chain)?;
+            probe.set_expected_scan_chain(&scan_chain)?;
         }
 
         probe.attach_to_unspecified()?;

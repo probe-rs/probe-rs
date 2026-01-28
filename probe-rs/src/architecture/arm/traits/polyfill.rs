@@ -1420,6 +1420,13 @@ mod test {
             todo!()
         }
 
+        fn set_expected_scan_chain(
+            &mut self,
+            _: &[ScanChainElement],
+        ) -> Result<(), DebugProbeError> {
+            todo!()
+        }
+
         fn set_scan_chain(&mut self, _: &[ScanChainElement]) -> Result<(), DebugProbeError> {
             todo!()
         }
