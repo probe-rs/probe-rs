@@ -5,7 +5,6 @@ use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, Operation
 use super::logging;
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::time::Duration;
 use std::{path::Path, time::Instant};
 
@@ -13,9 +12,7 @@ use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use parking_lot::Mutex;
 use probe_rs::InstructionSet;
-use probe_rs::flashing::{
-    BinOptions, ElfOptions, FlashError, FlashProgress, Format, FormatKind, IdfOptions,
-};
+use probe_rs::flashing::{FlashError, FlashProgress};
 use probe_rs::{
     Session,
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},
@@ -117,29 +114,8 @@ pub fn build_loader(
     format_options: FormatOptions,
     image_instruction_set: Option<InstructionSet>,
 ) -> Result<FlashLoader, FileDownloadError> {
-    let format = match format_options.to_format_kind(session.target()) {
-        FormatKind::Bin => Format::Bin(BinOptions {
-            base_address: format_options.bin_options.base_address,
-            skip: format_options.bin_options.skip,
-        }),
-        FormatKind::Hex => Format::Hex,
-        FormatKind::Elf => Format::Elf(ElfOptions {
-            skip_sections: format_options.elf_options.skip_section,
-        }),
-        FormatKind::Uf2 => Format::Uf2,
-        FormatKind::Idf => Format::Idf(IdfOptions {
-            bootloader: format_options.idf_options.idf_bootloader.map(PathBuf::from),
-            partition_table: format_options
-                .idf_options
-                .idf_partition_table
-                .map(PathBuf::from),
-            target_app_partition: format_options.idf_options.idf_target_app_partition,
-            flash_frequency: format_options.idf_options.idf_flash_freq.map(From::from),
-            flash_mode: format_options.idf_options.idf_flash_mode.map(From::from),
-        }),
-    };
-
-    probe_rs::flashing::build_loader(session, path, format, image_instruction_set)
+    let loader = format_options.image_loader(session.target());
+    probe_rs::flashing::build_loader(session, path, loader, image_instruction_set)
 }
 
 #[derive(Default)]

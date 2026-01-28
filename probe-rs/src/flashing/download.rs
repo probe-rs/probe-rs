@@ -1,4 +1,3 @@
-use espflash::flasher::{FlashFrequency, FlashMode};
 use object::{
     Endianness, Object, ObjectSection, elf::FileHeader32, elf::FileHeader64, elf::PT_LOAD,
     read::elf::ElfFile, read::elf::FileHeader, read::elf::ProgramHeader,
@@ -6,11 +5,7 @@ use object::{
 use probe_rs_target::{InstructionSet, MemoryRange};
 use serde::{Deserialize, Serialize};
 
-use std::{
-    fs::File,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::{fs::File, path::Path};
 
 use super::*;
 use crate::session::Session;
@@ -24,108 +19,11 @@ pub struct BinOptions {
     pub skip: u32,
 }
 
-/// Extended options for flashing a ESP-IDF format file.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
-pub struct IdfOptions {
-    /// The bootloader
-    pub bootloader: Option<PathBuf>,
-    /// The partition table
-    pub partition_table: Option<PathBuf>,
-    /// The target app partition
-    pub target_app_partition: Option<String>,
-    /// Flash SPI mode
-    pub flash_mode: Option<FlashMode>,
-    /// Flash SPI frequency
-    pub flash_frequency: Option<FlashFrequency>,
-}
-
 /// Extended options for flashing an ELF file.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct ElfOptions {
     /// Sections to skip flashing
     pub skip_sections: Vec<String>,
-}
-
-/// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
-pub enum FormatKind {
-    /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
-    /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
-    /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
-    Bin,
-    /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
-    Hex,
-    /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
-    #[default]
-    Elf,
-    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
-    /// Use [IdfOptions] to configure flashing.
-    Idf,
-    /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
-    Uf2,
-}
-
-impl FormatKind {
-    /// Creates a new Format from an optional string.
-    ///
-    /// If the string is `None`, the default format is returned.
-    pub fn from_optional(s: Option<&str>) -> Result<Self, String> {
-        match s {
-            Some(format) => Self::from_str(format),
-            None => Ok(Self::default()),
-        }
-    }
-}
-
-impl FromStr for FormatKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match &s.to_lowercase()[..] {
-            "bin" | "binary" => Ok(Self::Bin),
-            "hex" | "ihex" | "intelhex" => Ok(Self::Hex),
-            "elf" => Ok(Self::Elf),
-            "uf2" => Ok(Self::Uf2),
-            "idf" | "esp-idf" | "espidf" => Ok(Self::Idf),
-            _ => Err(format!("Format '{s}' is unknown.")),
-        }
-    }
-}
-
-/// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub enum Format {
-    /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
-    /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
-    /// Additionally using the same config struct, you can skip the first N bytes of the binary file to have them not put into the flash.
-    Bin(BinOptions),
-    /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
-    Hex,
-    /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
-    Elf(ElfOptions),
-    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
-    /// Use [IdfOptions] to configure flashing.
-    Idf(IdfOptions),
-    /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
-    Uf2,
-}
-
-impl Default for Format {
-    fn default() -> Self {
-        Format::Elf(ElfOptions::default())
-    }
-}
-
-impl From<FormatKind> for Format {
-    fn from(kind: FormatKind) -> Self {
-        match kind {
-            FormatKind::Bin => Format::Bin(BinOptions::default()),
-            FormatKind::Hex => Format::Hex,
-            FormatKind::Elf => Format::Elf(ElfOptions::default()),
-            FormatKind::Uf2 => Format::Uf2,
-            FormatKind::Idf => Format::Idf(IdfOptions::default()),
-        }
-    }
 }
 
 /// A finite list of all the errors that can occur when flashing a given file.
@@ -152,20 +50,20 @@ pub enum FileDownloadError {
     /// Failed to read or decode the ELF file.
     Elf(#[from] object::read::Error),
 
-    /// Failed to format as esp-idf binary
-    Idf(#[from] espflash::Error),
+    /// An error specific to the {format} image format has occurred.
+    ImageFormatSpecific {
+        /// The image format.
+        format: String,
 
-    /// Target {0} does not support the esp-idf format
-    IdfUnsupported(String),
+        /// The specific error.
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
 
     /// No loadable segments were found in the ELF file.
     #[ignore_extra_doc_attributes]
     ///
     /// This is most likely because of a bad linker script.
     NoLoadableSegments,
-
-    /// Could not determine flash size.
-    FlashSizeDetection(#[source] FlashError),
 
     /// The image ({image:?}) is not compatible with the target ({print_instr_sets(target)}).
     IncompatibleImage {
@@ -252,7 +150,7 @@ impl DownloadOptions<'_> {
 pub fn build_loader(
     session: &mut Session,
     path: impl AsRef<Path>,
-    format: Format,
+    format: impl ImageLoader,
     image_instruction_set: Option<InstructionSet>,
 ) -> Result<FlashLoader, FileDownloadError> {
     // Create the flash loader
@@ -274,7 +172,7 @@ pub fn build_loader(
 pub fn download_file(
     session: &mut Session,
     path: impl AsRef<Path>,
-    format: impl Into<Format>,
+    format: impl ImageLoader,
 ) -> Result<(), FileDownloadError> {
     download_file_with_options(session, path, format, DownloadOptions::default())
 }
@@ -287,10 +185,10 @@ pub fn download_file(
 pub fn download_file_with_options(
     session: &mut Session,
     path: impl AsRef<Path>,
-    format: impl Into<Format>,
+    format: impl ImageLoader,
     options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
-    let loader = build_loader(session, path, format.into(), None)?;
+    let loader = build_loader(session, path, format, None)?;
 
     loader
         .commit(session, options)
@@ -424,47 +322,5 @@ pub(super) fn extract_from_elf<'a>(
             extract_from_elf_inner(elf_header, binary, elf_data, options)
         }
         _ => Err(FileDownloadError::Object("Unsupported file type")),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::str::FromStr;
-
-    use super::FormatKind;
-
-    #[test]
-    fn parse_format() {
-        assert_eq!(FormatKind::from_str("hex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("Hex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("Ihex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("IHex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("iHex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("IntelHex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("intelhex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("intelHex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("Intelhex"), Ok(FormatKind::Hex));
-        assert_eq!(FormatKind::from_str("bin"), Ok(FormatKind::Bin));
-        assert_eq!(FormatKind::from_str("Bin"), Ok(FormatKind::Bin));
-        assert_eq!(FormatKind::from_str("binary"), Ok(FormatKind::Bin));
-        assert_eq!(FormatKind::from_str("Binary"), Ok(FormatKind::Bin));
-        assert_eq!(FormatKind::from_str("Elf"), Ok(FormatKind::Elf));
-        assert_eq!(FormatKind::from_str("elf"), Ok(FormatKind::Elf));
-        assert_eq!(FormatKind::from_str("idf"), Ok(FormatKind::Idf));
-        assert_eq!(FormatKind::from_str("espidf"), Ok(FormatKind::Idf));
-        assert_eq!(FormatKind::from_str("esp-idf"), Ok(FormatKind::Idf));
-        assert_eq!(FormatKind::from_str("ESP-IDF"), Ok(FormatKind::Idf));
-        assert_eq!(
-            FormatKind::from_str("elfbin"),
-            Err("Format 'elfbin' is unknown.".to_string())
-        );
-        assert_eq!(
-            FormatKind::from_str(""),
-            Err("Format '' is unknown.".to_string())
-        );
-        assert_eq!(
-            FormatKind::from_str("asdasdf"),
-            Err("Format 'asdasdf' is unknown.".to_string())
-        );
     }
 }
