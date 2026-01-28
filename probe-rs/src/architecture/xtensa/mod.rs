@@ -105,10 +105,6 @@ impl<'probe> Xtensa<'probe> {
         Ok(this)
     }
 
-    fn clear_cache(&mut self) {
-        self.interface.clear_register_cache();
-    }
-
     fn on_attach(&mut self) -> Result<(), Error> {
         // If the core was reset, force a reconnection.
         let core_reset;
@@ -245,7 +241,9 @@ impl<'probe> Xtensa<'probe> {
 
     fn on_halted(&mut self) -> Result<(), Error> {
         self.state.pc_written = false;
-        self.clear_cache();
+
+        // NB: do not clear the register cache here. We clear it before resuming,
+        // and clearing here would interfere with instruction stepping.
 
         let status = self.status()?;
         tracing::debug!("Core halted: {:#?}", status);
