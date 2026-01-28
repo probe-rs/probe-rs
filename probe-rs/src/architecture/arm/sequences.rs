@@ -11,7 +11,7 @@ use std::{
 use probe_rs_target::CoreType;
 
 use crate::{
-    MemoryInterface, MemoryMappedRegister, Session,
+    Core, MemoryInterface, MemoryMappedRegister,
     architecture::arm::{
         ArmDebugInterface, DapError, RegisterAddress,
         core::registers::cortex_m::{PC, SP},
@@ -1082,26 +1082,20 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
-    /// This ARM sequence is called if an image was flashed to RAM directly.
-    /// It will perform the necessary preparation to run that image.
+    /// This ARM sequence is called if an image was flashed to RAM directly. It should perform the
+    /// necessary preparation to run that image on the core passed to the function.
     ///
-    /// Core should be already `reset_and_halt`ed right before this call.
+    /// The core should already be `reset_and_halt`ed right before this call.
     fn prepare_running_on_ram(
         &self,
         vector_table_addr: u64,
-        session: &mut Session,
+        core: &mut Core,
     ) -> Result<(), crate::Error> {
         tracing::info!("Performing RAM flash start");
         const SP_MAIN_OFFSET: usize = 0;
         const RESET_VECTOR_OFFSET: usize = 1;
 
-        if session.list_cores().len() > 1 {
-            return Err(crate::Error::NotImplemented(
-                "multi-core ram flash start not implemented yet",
-            ));
-        }
-
-        let (_, core_type) = session.list_cores()[0];
+        let core_type = core.core_type();
         match core_type {
             CoreType::Armv7a | CoreType::Armv8a => {
                 return Err(crate::Error::NotImplemented(
@@ -1110,7 +1104,6 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             }
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 tracing::debug!("RAM flash start for Cortex-M single core target");
-                let mut core = session.core(0)?;
                 // See ARMv7-M Architecture Reference Manual Chapter B1.5 for more details. The
                 // process appears to be the same for the other Cortex-M architectures as well.
                 let vtor = Vtor(vector_table_addr as u32);
