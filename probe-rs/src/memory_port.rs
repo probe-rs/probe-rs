@@ -10,7 +10,7 @@ use crate::{
 ///
 /// As soon as you did your atomic task (e.g. read or write memory, for example the RTT buffer) you
 /// should drop this object, to allow potential other shareholders of the session struct to grab a
-/// core handle too.
+/// core handle or memory access port too.
 pub struct MemoryAccessPort<'probe> {
     id: usize,
     name: &'probe str,
