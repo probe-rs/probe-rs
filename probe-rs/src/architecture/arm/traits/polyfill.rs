@@ -7,15 +7,14 @@
 use bitvec::{bitvec, field::BitField, slice::BitSlice, vec::BitVec};
 
 use crate::{
-    Error,
     architecture::arm::{
-        ArmError, DapError, FullyQualifiedApAddress, RawDapAccess, RegisterAddress,
-        ap::AccessPortError,
-        dp::{Abort, Ctrl, DPIDR, DebugPortError, DpRegister, RdBuff},
+        ArmError, DapError, RawDapAccess, RegisterAddress,
+        dp::{Abort, Ctrl, DPIDR, DpRegister, RdBuff},
     },
     probe::{
-        CommandQueue, CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess,
-        JtagSequence, JtagWriteCommand, RawSwdIo, WireProtocol, common::bits_to_byte,
+        BatchSubError, CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess,
+        JtagSequence, JtagWriteCommand, JtagWriteData, RawSwdIo, TypedQueue, WireProtocol,
+        common::bits_to_byte,
     },
 };
 
@@ -119,26 +118,26 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
-    // Set up the command queue.
-    let mut queue = CommandQueue::new();
+    // Set up the typed batch with DapError.
+    let mut batch: TypedQueue<DapError> = TypedQueue::new();
 
     let mut results = vec![];
 
     for transfer in transfers.iter() {
-        results.push(queue.schedule(transfer.jtag_write()));
+        results.push(batch.schedule(transfer.jtag_write()));
     }
 
     let last_is_abort = transfers[transfers.len() - 1].is_abort();
     let last_is_rdbuff = transfers[transfers.len() - 1].is_rdbuff();
     if !last_is_abort && !last_is_rdbuff {
         // Need to issue a fake read to get final ack
-        results.push(queue.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
+        results.push(batch.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
     }
 
     if !last_is_abort {
         // Check CTRL/STATUS to make sure OK/FAULT meant OK
-        results.push(queue.schedule(DapTransfer::read(Ctrl::ADDRESS).jtag_write()));
-        results.push(queue.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
+        results.push(batch.schedule(DapTransfer::read(Ctrl::ADDRESS).jtag_write()));
+        results.push(batch.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
     }
 
     let mut status_responses = vec![TransferStatus::Pending; results.len()];
@@ -153,10 +152,10 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
     let idle_cycles = probe.idle_cycles();
     probe.set_idle_cycles(max_idle_cycles.min(255) as u8)?;
 
-    // Execute as much of the queue as we can. We'll handle the rest in a following iteration
+    // Execute as much of the batch as we can. We'll handle the rest in a following iteration
     // if we can.
     let mut jtag_results;
-    match probe.write_register_batch(&queue) {
+    match batch.execute(probe) {
         Ok(r) => {
             status_responses.fill(TransferStatus::Ok);
             jtag_results = r;
@@ -167,16 +166,14 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
             jtag_results = e.results;
 
             match e.error {
-                Error::Arm(ArmError::AccessPort {
-                    address: _,
-                    source: AccessPortError::DebugPort(DebugPortError::Dap(failure)),
-                }) => {
-                    // Mark all subsequent transactions with the same failure.
+                BatchSubError::Specific(failure) => {
+                    // failure is now DapError directly, no downcasting needed
                     status_responses[current_idx..].fill(TransferStatus::Failed(failure));
                     jtag_results.push(&results[current_idx], CommandResult::None);
                 }
-                Error::Probe(error) => return Err(error),
-                _other => unreachable!(),
+                BatchSubError::Probe(err) => {
+                    return Err(err);
+                }
             }
         }
     }
@@ -592,7 +589,7 @@ impl DapTransfer {
         seq
     }
 
-    fn jtag_write(&self) -> JtagWriteCommand {
+    fn jtag_write(&self) -> JtagWriteCommand<DapError> {
         let (payload, address) = if self.is_abort() {
             (JTAG_ABORT_VALUE, JTAG_ABORT_IR_VALUE)
         } else {
@@ -616,12 +613,14 @@ impl DapTransfer {
         };
 
         JtagWriteCommand {
-            address,
-            data: payload.to_le_bytes().to_vec(),
-            len: JTAG_DR_BIT_LENGTH,
-            transform: |command, response| {
+            inner: JtagWriteData {
+                address,
+                data: payload.to_le_bytes().to_vec(),
+                len: JTAG_DR_BIT_LENGTH,
+            },
+            transform: |data, response| {
                 // No responses returned for aborts.
-                if command.address == JTAG_ABORT_IR_VALUE {
+                if data.address == JTAG_ABORT_IR_VALUE {
                     return Ok(CommandResult::None);
                 }
 
@@ -642,10 +641,7 @@ impl DapTransfer {
                     }
                 };
 
-                Err(Error::Arm(ArmError::AccessPort {
-                    address: FullyQualifiedApAddress::v1_with_default_dp(0), // Dummy value, unused
-                    source: AccessPortError::DebugPort(DebugPortError::Dap(error)),
-                }))
+                Err(error)
             },
         }
     }

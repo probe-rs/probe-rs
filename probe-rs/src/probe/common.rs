@@ -733,20 +733,21 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
             let result = match command {
                 JtagCommand::WriteRegister(write) => prepare_write_register(
                     self,
-                    write.address,
-                    &write.data,
-                    write.len,
+                    write.inner.address,
+                    &write.inner.data,
+                    write.inner.len,
                     idx.should_capture(),
                 ),
 
                 JtagCommand::ShiftDr(write) => {
-                    shift_dr(self, &write.data, write.len as usize, idx.should_capture())
+                    shift_dr(self, &write.inner.data, write.inner.len as usize, idx.should_capture())
                 }
             };
 
             // If an error happens during prep, return no results as chip will be in an inconsistent state
-            let op =
-                result.map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
+            let op = result.map_err(|e| {
+                BatchExecutionError::new_specific(e.into(), DeferredResultSet::new())
+            })?;
 
             bits.push((idx, command, op));
         }
@@ -755,7 +756,7 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
         // If an error happens during the final flush, also retry whole operation
         let bitstream = self
             .read_captured_bits()
-            .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
+            .map_err(|e| BatchExecutionError::new_specific(e.into(), DeferredResultSet::new()))?;
 
         tracing::debug!("Got responses! Took {:?}! Processing...", t1.elapsed());
         let mut responses = DeferredResultSet::with_capacity(bits.len());
@@ -766,13 +767,13 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
                 let response = &bitstream[..bits];
 
                 let result = match command {
-                    JtagCommand::WriteRegister(command) => (command.transform)(command, response),
-                    JtagCommand::ShiftDr(command) => (command.transform)(command, response),
+                    JtagCommand::WriteRegister(cmd) => (cmd.transform)(&cmd.inner, response),
+                    JtagCommand::ShiftDr(cmd) => (cmd.transform)(&cmd.inner, response),
                 };
 
                 match result {
                     Ok(response) => responses.push(idx, response),
-                    Err(e) => return Err(BatchExecutionError::new(e, responses)),
+                    Err(e) => return Err(BatchExecutionError::new_specific(e, responses)),
                 }
             } else {
                 // Add a response so that the number of successfully processed commands is correct.
