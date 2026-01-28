@@ -2,6 +2,12 @@ name: RA4M1 Series
 manufacturer:
   id: 0x23
   cc: 0x4
+chip_detection:
+- !RenesasPnr
+  target_id: 0x160
+  mcu_pn_base: 0x01003c24
+  variants:
+    - R7FA4M1AB
 variants:
 - name: R7FA4M1AB
   cores:
