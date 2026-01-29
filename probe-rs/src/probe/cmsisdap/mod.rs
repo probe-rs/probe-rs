@@ -1183,7 +1183,7 @@ impl RawDapAccess for CmsisDap {
             let resp: TransferBlockResponse = commands::send_command(&mut self.device, &request)
                 .map_err(DebugProbeError::from)?;
 
-            let executed_reads = i * data_chunk_len + usize::from(request.transfer_count);
+            let executed_reads = i * data_chunk_len + usize::from(resp.transfer_count);
 
             self.handle_transfer_block_response(address, &resp, executed_reads, total_num_reads)?;
 
