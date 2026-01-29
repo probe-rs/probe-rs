@@ -1,5 +1,5 @@
 # use PowerShell instead of sh:
-set shell := ["powershell.exe", "-c"]
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 all: check check-fmt clippy test
 
