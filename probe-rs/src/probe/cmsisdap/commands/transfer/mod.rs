@@ -239,7 +239,7 @@ impl Request for TransferRequest {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Ack {
-    /// TODO: ??????????????????????? Docs are weird?
+    // TODO: ??????????????????????? Docs are weird?
     /// OK (for SWD protocol), OK or FAULT (for JTAG protocol),
     Ok = 1,
     Wait = 2,
@@ -314,7 +314,7 @@ impl Request for TransferBlockRequest {
         let transfer_count = buffer
             .pread_with(0, LE)
             .map_err(|_| SendError::NotEnoughData)?;
-        let transfer_response = buffer
+        let raw_transfer_response: u8 = buffer
             .pread_with(2, LE)
             .map_err(|_| SendError::NotEnoughData)?;
 
@@ -340,8 +340,28 @@ impl Request for TransferBlockRequest {
             }
         }
 
+        let ack = match raw_transfer_response & 0b111 {
+            1 => Ack::Ok,
+            2 => Ack::Wait,
+            4 => Ack::Fault,
+            7 => Ack::NoAck,
+            ack => {
+                tracing::warn!("Unexpected response to SWD/JTAG transfer: {ack:x}");
+                Ack::NoAck
+            }
+        };
+
+        let protocol_error = (raw_transfer_response & (1 << 3)) != 0;
+
+        let transfer_response = LastTransferResponse {
+            ack,
+            protocol_error,
+            // Not applicable for block transfer
+            _value_mismatch: false,
+        };
+
         Ok(TransferBlockResponse {
-            _transfer_count: transfer_count,
+            transfer_count,
             transfer_response,
             transfer_data: data,
         })
@@ -402,7 +422,7 @@ impl InnerTransferBlockRequest {
 
 #[derive(Debug)]
 pub(crate) struct TransferBlockResponse {
-    _transfer_count: u16,
-    pub transfer_response: u8,
+    pub transfer_count: u16,
+    pub transfer_response: LastTransferResponse,
     pub transfer_data: Vec<u32>,
 }

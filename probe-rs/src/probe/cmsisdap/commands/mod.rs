@@ -14,7 +14,6 @@ use std::time::Duration;
 
 use self::general::host_status::HostStatusRequest;
 use self::swj::clock::SWJClockRequest;
-use self::transfer::InnerTransferBlockRequest;
 
 pub(crate) const DEFAULT_USB_TIMEOUT: Duration = Duration::from_millis(1000);
 
@@ -156,18 +155,6 @@ pub enum RequestError {
 
     /// Setting the host status on the debug probe failed with request {request:?}
     HostStatus { request: HostStatusRequest },
-
-    /// Transferring {transfer_count} raw data blocks to DAP {dap_index} failed for block {transfer_request:?}
-    BlockTransfer {
-        /// The DAP index to be used in JTAG mode. This is ignored for SWD.
-        dap_index: u8,
-
-        /// Number of transfers
-        transfer_count: u16,
-
-        /// Information about requested access
-        transfer_request: InnerTransferBlockRequest,
-    },
 }
 
 pub enum CmsisDapDevice {
