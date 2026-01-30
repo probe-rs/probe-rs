@@ -279,6 +279,7 @@ pub(crate) fn extract_ir_lengths<T: BitStore>(
 }
 
 /// Inner states of the parallel arms (IR-Scan and DR-Scan) of the JTAG state machine.
+#[cfg_attr(not(feature = "builtin-probes"), allow(unused))]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub(crate) enum RegisterState {
     Select,
@@ -304,6 +305,7 @@ impl RegisterState {
         }
     }
 
+    #[cfg_attr(not(feature = "builtin-probes"), allow(unused))]
     fn update(self, tms: bool) -> Self {
         if tms {
             match self {
@@ -380,6 +382,7 @@ impl JtagState {
     }
 
     /// Updates the state machine from the given TMS bit.
+    #[cfg_attr(not(feature = "builtin-probes"), allow(unused))]
     pub fn update(&mut self, tms: bool) {
         *self = match *self {
             Self::Reset if tms => Self::Reset,

@@ -4,10 +4,6 @@ use crate::probe::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError, ProbeFactory,
 };
 
-use super::{
-    blackmagic, ch347usbjtag, cmsisdap, espusbjtag, ftdi, glasgow, jlink, sifliuart, stlink, wlink,
-};
-
 /// Struct to list all attached debug probes
 #[derive(Debug)]
 pub struct Lister {
@@ -116,18 +112,11 @@ impl Default for AllProbesLister {
 }
 
 impl AllProbesLister {
-    const DRIVERS: &'static [&'static dyn ProbeFactory] = &[
-        &blackmagic::BlackMagicProbeFactory,
-        &cmsisdap::CmsisDapFactory,
-        &ftdi::FtdiProbeFactory,
-        &stlink::StLinkFactory,
-        &jlink::JLinkFactory,
-        &espusbjtag::EspUsbJtagFactory,
-        &wlink::WchLinkFactory,
-        &sifliuart::SifliUartFactory,
-        &glasgow::GlasgowFactory,
-        &ch347usbjtag::Ch347UsbJtagFactory,
-    ];
+    #[cfg(feature = "builtin-probes")]
+    const DRIVERS: &'static [&'static dyn ProbeFactory] = crate::probe_drivers::DRIVERS;
+
+    #[cfg(not(feature = "builtin-probes"))]
+    const DRIVERS: &'static [&'static dyn ProbeFactory] = &[];
 
     /// Create a new lister with all built-in probe drivers.
     pub const fn new() -> Self {

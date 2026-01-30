@@ -80,6 +80,8 @@ pub mod flashing;
 pub mod integration;
 mod memory;
 pub mod probe;
+#[cfg(feature = "builtin-probes")]
+pub mod probe_drivers;
 pub mod rtt;
 pub mod semihosting;
 mod session;
