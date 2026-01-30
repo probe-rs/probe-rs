@@ -5,10 +5,12 @@
 //! and largely involves creating a breakpoint, issuing some sort of reset,
 //! then clearing memory using platform-specific register writes.
 use super::icepick::{DefaultProtocol, Icepick};
+use crate::MemoryMappedRegister;
 use crate::architecture::arm::armv7a::{
     clear_hw_breakpoint, core_halted, get_hw_breakpoint, read_word_32, request_halt, run,
     set_hw_breakpoint, wait_for_core_halted, write_word_32,
 };
+use crate::architecture::arm::core::armv7a_debug_regs::Dbgdscr;
 use crate::architecture::arm::dp::{DebugPortError, DpAddress};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
@@ -55,12 +57,29 @@ impl<'a> TemporaryCore<'a> {
         }
     }
 
+    /// Resetting can disable ITR, which is needed to execute instructions. Ensure it's re-enabled.
+    pub fn ensure_itren(&mut self) -> Result<(), ArmError> {
+        let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
+        let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+        if !dbgdscr.itren() {
+            dbgdscr.set_itren(true);
+            self.memory.write_word_32(address, dbgdscr.into())?;
+        }
+        Ok(())
+    }
+
     pub fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), ArmError> {
-        write_word_32(self.memory, self.base_address, address, data)
+        self.halted_access(|core| {
+            core.ensure_itren()?;
+            write_word_32(core.memory, core.base_address, address, data)
+        })
     }
 
     pub fn read_word_32(&mut self, address: u32) -> Result<u32, ArmError> {
-        read_word_32(self.memory, self.base_address, address)
+        self.halted_access(|core| {
+            core.ensure_itren()?;
+            read_word_32(core.memory, core.base_address, address)
+        })
     }
 
     pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), ArmError> {
