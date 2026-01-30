@@ -69,6 +69,12 @@ impl ESP32C5 {
             RiscvBusAccess::A128,
         ];
         for access in accesses {
+            // CPU subsystem
+            memory_access_config.set_region_override(
+                access,
+                0x2000_0000..0x3000_0000,
+                MemoryAccessMethod::WaitingProgramBuffer,
+            );
             // External data/instruction bus
             // Loading external memory is slower than the CPU. If we can't access something via the
             // system bus, select the waiting program buffer method.
