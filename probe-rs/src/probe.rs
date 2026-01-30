@@ -1,20 +1,8 @@
-//! Probe drivers
+//! Probe definitions
 pub(crate) mod common;
-pub(crate) mod usb_util;
-
-pub mod blackmagic;
-pub mod ch347usbjtag;
-pub mod cmsisdap;
-pub mod espusbjtag;
 pub mod fake_probe;
-pub mod ftdi;
-pub mod glasgow;
-pub mod jlink;
 pub mod list;
 mod selector;
-pub mod sifliuart;
-pub mod stlink;
-pub mod wlink;
 
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ArmDebugInterface, ArmError};
@@ -38,10 +26,6 @@ use std::fmt;
 use std::sync::Arc;
 
 pub use selector::DebugProbeSelector;
-
-/// Used to log warnings when the measured target voltage is
-/// lower than 1.4V, if at all measurable.
-const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
 
 /// The protocol that is to be used by the probe when communicating with the target.
 ///
@@ -813,7 +797,7 @@ pub struct DebugProbeInfo {
     pub is_hid_interface: bool,
 
     /// A reference to the [`ProbeFactory`] that created this info object.
-    probe_factory: &'static dyn ProbeFactory,
+    pub probe_factory: &'static dyn ProbeFactory,
 }
 
 impl std::fmt::Display for DebugProbeInfo {
@@ -1253,6 +1237,7 @@ impl From<ShiftDrCommand> for JtagCommand {
 /// Chain parameters to select a target tap within the chain.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct ChainParams {
+    #[cfg_attr(not(feature = "builtin-probes"), allow(unused))]
     pub index: usize,
     pub irpre: usize,
     pub irpost: usize,
@@ -1550,10 +1535,12 @@ pub enum AttachMethod {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     #[test]
+    #[cfg(feature = "builtin-probes")]
     fn test_is_probe_factory() {
+        use super::*;
+        use crate::probe_drivers::{espusbjtag, ftdi};
+
         let probe_info = DebugProbeInfo::new(
             "Mock probe",
             0x12,

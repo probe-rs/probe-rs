@@ -4,8 +4,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::probe::DebugProbeInfo;
 
-use nusb::DeviceInfo;
-
 /// A struct to describe the way a probe should be selected.
 ///
 /// Construct this from a set of info or from a string. The
@@ -49,26 +47,6 @@ pub struct DebugProbeSelector {
 }
 
 impl DebugProbeSelector {
-    pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
-        if self.interface.is_some() {
-            info.interfaces().any(|iface| {
-                self.match_probe_selector(
-                    info.vendor_id(),
-                    info.product_id(),
-                    Some(iface.interface_number()),
-                    info.serial_number(),
-                )
-            })
-        } else {
-            self.match_probe_selector(
-                info.vendor_id(),
-                info.product_id(),
-                None,
-                info.serial_number(),
-            )
-        }
-    }
-
     /// Check if the given probe info matches this selector.
     pub fn matches_probe(&self, info: &DebugProbeInfo) -> bool {
         self.match_probe_selector(
@@ -79,7 +57,7 @@ impl DebugProbeSelector {
         )
     }
 
-    fn match_probe_selector(
+    pub(crate) fn match_probe_selector(
         &self,
         vendor_id: u16,
         product_id: u16,
