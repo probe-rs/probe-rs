@@ -17,6 +17,7 @@ use probe_rs::{
     RegisterValue, UnwindRule,
 };
 use std::{borrow, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8};
+use typed_path::{TypedPath, TypedPathBuf};
 
 pub(crate) type GimliReader = gimli::EndianReader<RunTimeEndian, std::rc::Rc<[u8]>>;
 pub(crate) type GimliReaderOffset =

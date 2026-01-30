@@ -32,7 +32,8 @@ use probe_rs::{
 };
 use probe_rs::{Core, CoreStatus, HaltReason, rtt::ScanRegion};
 use probe_rs_debug::{
-    ColumnType, ObjectRef, SourceLocation, VariableCache, debug_info::DebugInfo, stack_frame::StackFrameInfo,
+    ColumnType, ObjectRef, SourceLocation, VariableCache, debug_info::DebugInfo,
+    stack_frame::StackFrameInfo,
 };
 use time::UtcOffset;
 use typed_path::TypedPath;
@@ -411,8 +412,13 @@ impl CoreHandle<'_> {
             )
             .map_err(|debug_error|
                 DebuggerError::Other(anyhow!("Cannot set breakpoint here. Try reducing compile time-, and link time-, optimization in your build configuration, or choose a different source location: {debug_error}")))?;
+        let address = source_location.address.ok_or_else(|| {
+            DebuggerError::Other(anyhow!(
+                "Breakpoint source location has no associated address."
+            ))
+        })?;
         self.set_breakpoint(
-            source_location.address,
+            address,
             BreakpointType::SourceBreakpoint {
                 source: Box::new(requested_source.clone()),
                 location: SourceLocationScope::Specific(source_location.clone()),

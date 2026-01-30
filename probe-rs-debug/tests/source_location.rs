@@ -31,7 +31,7 @@ fn breakpoint_location_absolute() {
         };
 
         assert_eq!(
-            *addr,
+            Some(*addr),
             di.get_breakpoint_location(path.to_path(), *line, col)
                 .expect("Failed to find breakpoint location.")
                 .address,
@@ -66,7 +66,7 @@ fn breakpoint_location_inexact() {
         };
 
         assert_eq!(
-            *addr,
+            Some(*addr),
             di.get_breakpoint_location(path.to_path(), *line, col)
                 .expect("Failed to find valid breakpoint locations.")
                 .address,
@@ -88,11 +88,10 @@ fn source_location() {
     for (addr, line, col) in TEST_DATA.iter() {
         assert_eq!(
             Some(SourceLocation {
-                address: *addr,
                 line: Some(*line),
                 column: Some(*col),
                 path: path.clone(),
-                address: Some(*addr)
+                address: Some(*addr),
             }),
             di.get_source_location(*addr)
         );
@@ -123,5 +122,5 @@ fn regression_pr2324() {
 
     let addr = di.get_breakpoint_location(path, 58, None).unwrap();
 
-    assert_eq!(addr.address, 0x2e4);
+    assert_eq!(addr.address, Some(0x2e4));
 }

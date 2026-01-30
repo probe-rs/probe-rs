@@ -1,7 +1,8 @@
 use super::{
-    super::{unit_info::UnitInfo, DebugError, DebugInfo},
+    super::{DebugError, DebugInfo, unit_info::UnitInfo},
     instruction::{Instruction, InstructionRole},
 };
+use std::fmt::Debug;
 use std::ops::RangeInclusive;
 
 /// The concept of an instruction block is based on

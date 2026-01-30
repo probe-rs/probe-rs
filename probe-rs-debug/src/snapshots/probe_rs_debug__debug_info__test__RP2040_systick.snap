@@ -838,8 +838,8 @@ expression: stack_frames
     path: /Users/jacknoppe/.cargo/registry/src/index.crates.io-6f17d22bba15001f/cortex-m-0.7.7/src/../asm/inline.rs
     line: 61
     column:
-      Column: 20
-    address: 268437344
+      Column: 24
+    address: 268437342
   registers:
     - core_register:
         id: 0
@@ -1278,10 +1278,10 @@ expression: stack_frames
 - function_name: enable_systick
   source_location:
     path: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/bin/RP2040.rs
-    line: 93
+    line: 90
     column:
-      Column: 9
-    address: 268436308
+      Column: 5
+    address: 268436300
   registers:
     - core_register:
         id: 0

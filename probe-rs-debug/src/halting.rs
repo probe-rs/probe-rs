@@ -4,8 +4,8 @@ mod sequence;
 mod stepping;
 use self::sequence::Sequence;
 use super::{
-    unit_info::{self},
     ColumnType, DebugError, DebugInfo,
+    unit_info::{self},
 };
 use instruction::Instruction;
 use serde::Serialize;
@@ -35,7 +35,7 @@ pub(crate) fn canonical_unit_path_eq(unit_path: TypedPath, source_file_path: Typ
 /// A specific location in source code, represented by an instruction address and source file information.
 /// Not all instructions have a known (from debug info) source location.
 /// Each unique address, line, column, file and directory combination is a unique source location.
-#[derive(Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Clone, PartialEq, Eq, Serialize)]
 pub struct SourceLocation {
     /// The path to the source file
     #[serde(serialize_with = "serialize_typed_path")]
@@ -46,6 +46,17 @@ pub struct SourceLocation {
     pub column: Option<ColumnType>,
     /// The address of the source location.
     pub address: Option<u64>,
+}
+
+impl Default for SourceLocation {
+    fn default() -> Self {
+        Self {
+            path: TypedPathBuf::from(""),
+            line: None,
+            column: None,
+            address: None,
+        }
+    }
 }
 
 impl std::fmt::Debug for SourceLocation {
@@ -148,7 +159,10 @@ impl SourceLocation {
         }
 
         // If we get here, we have not found a valid breakpoint location.
-        Err(DebugError::Other(format!("No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}", path.display())))
+        Err(DebugError::Other(format!(
+            "No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}",
+            path.display()
+        )))
     }
 
     fn breakpoint_at_next_line(

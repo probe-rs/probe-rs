@@ -42,14 +42,14 @@ Frame:
  source_location:
   path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(297)
-  column: Some(Column(9))
+  column: Some(Column(23))
  frame_base:      Some(20003fa8)
 Frame:
  function:        delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
  source_location:
   path: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs
   line: Some(306)
-  column: Some(Column(9))
+  column: Some(Column(23))
  frame_base:      Some(20003fc0)
 Frame:
  function:        __cortex_m_rt_main

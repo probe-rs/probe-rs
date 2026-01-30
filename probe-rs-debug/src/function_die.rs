@@ -52,8 +52,6 @@ impl<'a> FunctionDie<'a> {
         let is_inlined_function = match function_die.tag() {
             gimli::DW_TAG_subprogram => function_die
                 .attr(gimli::DW_AT_inline)
-                .ok()
-                .flatten()
                 .and_then(|attr| attr.udata_value())
                 .map(|is_inlined| is_inlined.eq(&1))
                 .unwrap_or(false),
@@ -167,7 +165,6 @@ impl<'a> FunctionDie<'a> {
     pub(crate) fn inline_call_location(
         &self,
         debug_info: &super::DebugInfo,
-        address: u64,
     ) -> Option<SourceLocation> {
         if !self.is_inline() {
             return None;
@@ -194,7 +191,6 @@ impl<'a> FunctionDie<'a> {
             line,
             column,
             path,
-            address,
         })
     }
 
@@ -216,16 +212,7 @@ impl<'a> FunctionDie<'a> {
         // For inlined function, the *abstract instance* has to be checked if we cannot find the
         // attribute on the *concrete instance*. The abstract instance my also be a reference to a specification.
         if let Some(abstract_die) = &self.abstract_die {
-            let inlined_specification_die = debug_info.resolve_die_reference(
-                gimli::DW_AT_specification,
-                abstract_die,
-                self.unit_info,
-            );
-            let inline_attribute = collapsed_attribute(
-                abstract_die,
-                inlined_specification_die.as_ref(),
-                attribute_name,
-            );
+            let inline_attribute = collapsed_attribute(abstract_die, None, attribute_name);
 
             if inline_attribute.is_some() {
                 return inline_attribute.cloned();

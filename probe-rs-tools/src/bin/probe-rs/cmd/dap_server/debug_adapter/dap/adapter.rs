@@ -31,10 +31,7 @@ use probe_rs::{
         xtensa::communication_interface::XtensaError,
     },
 };
-use probe_rs_debug::{
-    ColumnType, ObjectRef, SourceLocation, Stepping, VariableName,
-    stack_frame::StackFrameInfo,
-};
+use probe_rs_debug::{ColumnType, ObjectRef, Stepping, VariableName, stack_frame::StackFrameInfo};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use typed_path::NativePathBuf;
@@ -835,9 +832,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     end_line: None,
                     id: source_location.address.map(|a| a as i64),
                     line: source_location.line.map(|line| line as i64),
-                    message: source_location.address.map(|a| format!(
-                        "Source breakpoint at memory address: {a:#010X}"
-                    )),
+                    message: source_location
+                        .address
+                        .map(|a| format!("Source breakpoint at memory address: {a:#010X}")),
                     source: Some(args.source.clone()),
                     instruction_reference: source_location.address.map(|a| format!("{a:#010X}")),
                     offset: None,

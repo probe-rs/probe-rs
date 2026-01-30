@@ -1,19 +1,19 @@
 use super::{
     super::{
-        ColumnType, debug_info::DebugInfo, exception_handling::ExceptionInfo,
-        exception_handling::exception_handler_for_core, registers::DebugRegisters, DebugError,
+        ColumnType, DebugError, debug_info::DebugInfo, exception_handling::ExceptionInfo,
+        exception_handling::exception_handler_for_core, registers::DebugRegisters,
     },
+    SourceLocation,
     instruction::Instruction,
     line_sequence_for_address,
     sequence::Sequence,
-    SourceLocation,
 };
 use probe_rs::{
+    CoreInterface, CoreStatus, Error, HaltReason,
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
         xtensa::communication_interface::XtensaError,
     },
-    CoreInterface, CoreStatus, Error, HaltReason, MemoryInterface,
 };
 use probe_rs_target::InstructionSet;
 use std::{ops::ControlFlow, time::Duration};
@@ -65,7 +65,7 @@ impl Stepping {
             _ => {
                 return Err(DebugError::Other(
                     "Core must be halted before stepping.".to_string(),
-                ))
+                ));
             }
         };
         let origin_program_counter = program_counter;
@@ -93,7 +93,13 @@ impl Stepping {
             target_breakpoint
         );
 
-        run_to_address(target_breakpoint.address, core, debug_info)
+        let target_address =
+            target_breakpoint
+                .address
+                .ok_or_else(|| DebugError::WarnAndContinue {
+                    message: "Step target has no address.".to_string(),
+                })?;
+        run_to_address(target_address, core, debug_info)
     }
 }
 
@@ -116,7 +122,8 @@ fn get_step_into_location(
         // Once we have reached a new valid haltpoint, we are either at the start of a non-inlined function,
         // or on a new line in the same sequence (stepped over, because there was nothing to step into).
         if let Some(new_halt_location) = new_sequence.haltpoint_for_address(core_information.pc) {
-            return SourceLocation::breakpoint_at_address(debug_info, new_halt_location.address);
+            let address = new_halt_location.address.unwrap_or(core_information.pc);
+            return SourceLocation::breakpoint_at_address(debug_info, address);
         }
 
         if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core, debug_info) {
@@ -153,10 +160,7 @@ fn get_step_out_location(
         function.high_pc()
     );
 
-    if function
-        .attribute(debug_info, gimli::DW_AT_noreturn)
-        .is_some()
-    {
+    if function.attribute(gimli::DW_AT_noreturn).is_some() {
         let message = format!(
             "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
             function
@@ -169,7 +173,7 @@ fn get_step_out_location(
 
     if function.is_inline() {
         function
-            .inline_call_location(debug_info, program_counter)
+            .inline_call_location(debug_info)
             .and_then(|call_site| {
                 // Step_out_address for inlined functions, is the first available breakpoint address for the call site.
                 // This has been tested to work with nested inline functions also.
@@ -214,12 +218,16 @@ fn get_step_out_location(
             // 2. Single-step the core until we get to the next valid halt location.
 
             // Find the last valid halt location in the current sequence.
-            tracing::debug!("Looking for last halt instruction in the sequence containing address={program_counter:#010x}");
+            tracing::debug!(
+                "Looking for last halt instruction in the sequence containing address={program_counter:#010x}"
+            );
 
             let sequence = Sequence::from_address(debug_info, program_counter)?;
 
             let Some(last_sequence_haltpoint) = sequence.last_halt_instruction else {
-                let message = format!("No valid halt location found in the sequence for the return address: {return_address:#010x}.");
+                let message = format!(
+                    "No valid halt location found in the sequence for the return address: {return_address:#010x}."
+                );
                 return Err(DebugError::WarnAndContinue { message });
             };
 
@@ -261,27 +269,26 @@ fn get_step_over_location(
     program_counter: u64,
 ) -> Result<SourceLocation, DebugError> {
     let current_halt_location = SourceLocation::breakpoint_at_address(debug_info, program_counter)?;
+    let current_address = current_halt_location.address.unwrap_or(program_counter);
 
     let mut candidate_haltpoints: Vec<Instruction> = Vec::new();
     let Some(sequence) =
         // When we filter by address, we expect to get a single sequence, or none.
-        line_sequence_for_address(debug_info, current_halt_location.address)
+        line_sequence_for_address(debug_info, current_address)
     else {
         let message = format!(
-            "No available line program sequences for address {:?}",
-            current_halt_location.address
+            "No available line program sequences for address {current_address:#010x}",
         );
         return Err(DebugError::WarnAndContinue { message });
     };
     // First we try to find the next haltpoint, in the next linked block in the current sequence.
-    if let Some(breakpoint) = sequence.haltpoint_for_next_block(current_halt_location.address) {
+    if let Some(breakpoint) = sequence.haltpoint_for_next_block(current_address) {
         return Ok(breakpoint);
     }
     // If we don't find a next block, we try to find the next haltpoint in the same sequence.
     candidate_haltpoints.extend(sequence.blocks.iter().flat_map(|block| {
         block.instructions.iter().filter(|instruction| {
-            instruction.role.is_halt_location()
-                && instruction.address > current_halt_location.address
+            instruction.role.is_halt_location() && instruction.address > current_address
         })
     }));
     // Ensure we limit the stepping range to something sensible.
@@ -292,7 +299,7 @@ fn get_step_over_location(
         // We've run out of valid lines in the current sequence, so can just step to the last statement in the sequence.
         let candidate_haltpoint =
             SourceLocation::breakpoint_at_address(debug_info, terminating_address)?;
-        if program_counter == candidate_haltpoint.address {
+        if program_counter == candidate_haltpoint.address.unwrap_or(0) {
             // We are already at the last statement in the sequence, so we have to attempt a step to the next sequence.
             sequence
                 .haltpoint_for_next_block(program_counter)
@@ -397,8 +404,7 @@ fn run_to_address(
                     // Something else is wrong.
                     Err(DebugError::Other(format!(
                         "Unexpected error while waiting for the core to halt after stepping to {:#010X}. Forced a halt at {:#010X}. {error:?}.",
-                        program_counter,
-                        target_address,
+                        program_counter, target_address,
                     )))
                 }
             }
@@ -478,7 +484,9 @@ fn validate_core_status_after_step(
                 HaltReason::Step | HaltReason::Request => ControlFlow::Continue(()),
                 // This is a recoverable error, and can be reported to the user higher up in the call stack.
                 other_halt_reason => {
-                    let message = format!("Target halted unexpectedly before we reached the destination address of a step operation. Reason: {other_halt_reason:?}");
+                    let message = format!(
+                        "Target halted unexpectedly before we reached the destination address of a step operation. Reason: {other_halt_reason:?}"
+                    );
                     ControlFlow::Break(DebugError::WarnAndContinue { message })
                 }
             },

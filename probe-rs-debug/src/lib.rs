@@ -25,9 +25,13 @@ pub mod variable_cache;
 pub(crate) mod exception_handling;
 
 pub use self::{
-    debug_info::*, exception_handling::exception_handler_for_core,
-    halting::{SourceLocation, Stepping}, registers::*,
-    stack_frame::StackFrame, variable::*, variable_cache::VariableCache,
+    debug_info::*,
+    exception_handling::exception_handler_for_core,
+    halting::{SourceLocation, Stepping},
+    registers::*,
+    stack_frame::StackFrame,
+    variable::*,
+    variable_cache::VariableCache,
 };
 
 use probe_rs::{Core, MemoryInterface};
@@ -75,7 +79,9 @@ pub enum DebugError {
     #[error(transparent)]
     IntConversion(#[from] std::num::TryFromIntError),
     /// Error while identifying a valid halt location for setting a breakpoint, or during debug stepping.
-    #[error("{0}. Please consider using instruction level stepping, or try setting a breakpoint at a different location.")]
+    #[error(
+        "{0}. Please consider using instruction level stepping, or try setting a breakpoint at a different location."
+    )]
     HaltLocation(&'static str),
     /// Non-terminal Errors encountered while unwinding the stack, e.g. Could not resolve the value of a variable in the stack.
     /// These are distinct from other errors because they do not interrupt processing.

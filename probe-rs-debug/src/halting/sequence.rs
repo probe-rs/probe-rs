@@ -1,8 +1,8 @@
 use super::{
-    super::{debug_info::GimliReader, unit_info::UnitInfo, ColumnType, DebugError, DebugInfo},
+    super::{ColumnType, DebugError, DebugInfo, debug_info::GimliReader, unit_info::UnitInfo},
+    SourceLocation,
     block::Block,
     instruction::{Instruction, InstructionRole},
-    SourceLocation,
 };
 use gimli::LineSequence;
 use std::{
@@ -524,11 +524,7 @@ fn is_prologue_complete(
 }
 
 /// Helper function to avoid code duplication when logging of information during row evaluation.
-fn log_row_eval(
-    active_sequence: &LineSequence<GimliReader>,
-    row: &gimli::LineRow,
-    status: &str,
-) {
+fn log_row_eval(active_sequence: &LineSequence<GimliReader>, row: &gimli::LineRow, status: &str) {
     tracing::trace!(
         "Sequence: line={:04} col={:05} f={:02} stmt={:5} ep={:5} es={:5} eb={:5} : {:#010X}<={:#010X}<{:#010X} : {}",
         match row.line() {

@@ -1753,8 +1753,8 @@ expression: stack_frames
     path: "C:\\_Espressif\\bug-repros\\generate\\s3\\src\\bin\\main.rs"
     line: 100
     column:
-      Column: 5
-    address: 1107301788
+      Column: 7
+    address: 1107301778
   registers:
     - core_register:
         id: 0
@@ -1959,8 +1959,8 @@ expression: stack_frames
     path: "C:\\_Espressif\\bug-repros\\generate\\s3\\src\\bin\\main.rs"
     line: 100
     column:
-      Column: 5
-    address: 1107301788
+      Column: 7
+    address: 1107301778
   registers:
     - core_register:
         id: 0
@@ -2165,8 +2165,8 @@ expression: stack_frames
     path: "C:\\_Espressif\\bug-repros\\generate\\s3\\src\\bin\\main.rs"
     line: 100
     column:
-      Column: 5
-    address: 1107301788
+      Column: 7
+    address: 1107301778
   registers:
     - core_register:
         id: 0
@@ -2371,8 +2371,8 @@ expression: stack_frames
     path: "C:\\_Espressif\\bug-repros\\generate\\s3\\src\\bin\\main.rs"
     line: 100
     column:
-      Column: 5
-    address: 1107301788
+      Column: 7
+    address: 1107301778
   registers:
     - core_register:
         id: 0
@@ -2577,8 +2577,8 @@ expression: stack_frames
     path: "C:\\_Espressif\\bug-repros\\generate\\s3\\src\\bin\\main.rs"
     line: 100
     column:
-      Column: 5
-    address: 1107301788
+      Column: 7
+    address: 1107301778
   registers:
     - core_register:
         id: 0
@@ -6205,7 +6205,7 @@ expression: stack_frames
     line: 17
     column:
       Column: 1
-    address: 1107301853
+    address: 1107301845
   registers:
     - core_register:
         id: 0
