@@ -1,25 +1,30 @@
-//! Espressif vendor support.
+//! Espressif device support for probe-rs
+
+use probe_rs::plugin;
+
+pub fn register_plugin() {
+    plugin::register_plugin(plugin::Plugin {
+        vendors: &[&Espressif],
+    });
+}
 
 use probe_rs_target::{
     Chip,
     chip_detection::{ChipDetectionMethod, EspressifDetection},
 };
 
-use crate::{
+use probe_rs::{
     Error, MemoryInterface,
     architecture::{
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     config::{DebugSequence, Registry},
-    vendor::{
-        Vendor,
-        espressif::sequences::{
-            esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c5::ESP32C5, esp32c6::ESP32C6,
-            esp32c61::ESP32C61, esp32h2::ESP32H2, esp32p4::ESP32P4, esp32s2::ESP32S2,
-            esp32s3::ESP32S3,
-        },
-    },
+    vendor::Vendor,
+};
+use sequences::{
+    esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c5::ESP32C5, esp32c6::ESP32C6,
+    esp32c61::ESP32C61, esp32h2::ESP32H2, esp32p4::ESP32P4, esp32s2::ESP32S2, esp32s3::ESP32S3,
 };
 
 pub mod sequences;
@@ -77,7 +82,7 @@ fn try_detect_espressif_chip(
 
 /// Espressif
 #[derive(docsplay::Display)]
-pub struct Espressif;
+struct Espressif;
 
 impl Vendor for Espressif {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {

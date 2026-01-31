@@ -105,3 +105,5 @@ pub use crate::session::{Permissions, Session, SessionConfig};
 #[doc = include_str!("../../README.md")]
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
+
+pub mod plugin;

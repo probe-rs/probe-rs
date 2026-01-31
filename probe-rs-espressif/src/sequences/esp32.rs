@@ -5,8 +5,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{
-    MemoryInterface,
+use crate::sequences::esp::EspBreakpointHandler;
+use probe_rs::{
+    Error, MemoryInterface,
     architecture::xtensa::{
         Xtensa,
         communication_interface::{
@@ -16,7 +17,6 @@ use crate::{
         xdm,
     },
     semihosting::{SemihostingCommand, UnknownCommandDetails},
-    vendor::espressif::sequences::esp::EspBreakpointHandler,
 };
 
 /// The debug sequence implementation for the ESP32.
@@ -94,14 +94,14 @@ impl ESP32 {
 }
 
 impl XtensaDebugSequence for ESP32 {
-    fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
         Ok(())
     }
 
-    fn on_halt(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_halt(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         self.disable_wdts(interface)
     }
 

@@ -131,6 +131,8 @@ pub fn parse_u64(input: &str) -> Result<u64, ParseIntError> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    probe_rs_espressif::register_plugin();
+
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(

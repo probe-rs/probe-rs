@@ -1,3 +1,5 @@
+//! Debug sequences to operate special requirements Xtensa targets.
+
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use crate::architecture::xtensa::Xtensa;

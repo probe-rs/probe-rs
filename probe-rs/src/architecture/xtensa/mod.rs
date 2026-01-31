@@ -27,12 +27,12 @@ use crate::{
 };
 
 pub(crate) mod arch;
-pub(crate) mod xdm;
+pub mod xdm;
 
 pub mod communication_interface;
 pub(crate) mod register_cache;
 pub mod registers;
-pub(crate) mod sequences;
+pub mod sequences;
 
 /// Xtensa core state.
 #[derive(Debug)]

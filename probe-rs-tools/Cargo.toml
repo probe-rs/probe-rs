@@ -38,7 +38,6 @@ serde_yaml = "0.9"
 thiserror = { workspace = true }
 tracing = "0.1"
 typed-path = "0.12"
-probe-rs-mi = { workspace = true }
 espflash = { version = "4", default-features = false }
 
 itertools = "0.14"
@@ -91,7 +90,6 @@ ratatui = { version = "0.30.0", default-features = false, features = [
 ansi-parser = "0.9.0"
 linkme = "0.3.25"
 
-probe-rs = { version = "0.31.0", path = "../probe-rs" }
 parking_lot = "0.12.2"
 cargo-config2 = "0.1.26"
 clap_complete = "4.5.2"
@@ -101,9 +99,13 @@ zip = { version = "6.0.0", default-features = false, features = [
     "time",
 ] }
 urlencoding = "2"
-probe-rs-debug = { version = "0.31.0", path = "../probe-rs-debug" }
-probe-rs-target = { workspace = true }
 svg = "0.18"
+
+probe-rs = { version = "0.31.0", path = "../probe-rs" }
+probe-rs-debug = { version = "0.31.0", path = "../probe-rs-debug" }
+probe-rs-mi.workspace = true
+probe-rs-target.workspace = true
+probe-rs-espressif.workspace = true
 
 # Server-only
 tokio = { version = "1.0", features = ["full"] }

@@ -4,7 +4,7 @@
 
 use std::{num::NonZeroU32, time::SystemTime};
 
-use crate::{CoreInterface, Error, MemoryInterface, RegisterValue};
+use crate::{Core, CoreInterface, Error, MemoryInterface, RegisterValue};
 
 /// Indicates the operation the target would like the debugger to perform.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -199,10 +199,15 @@ impl CloseRequest {
 
 /// A request to write to the console
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub struct WriteConsoleRequest(pub(crate) ZeroTerminatedString);
+pub struct WriteConsoleRequest(ZeroTerminatedString);
 impl WriteConsoleRequest {
+    /// Creates a new request to write to the console
+    pub fn new(address: u32, length: Option<u32>) -> Self {
+        Self(ZeroTerminatedString { address, length })
+    }
+
     /// Reads the string from the target
-    pub fn read(&self, core: &mut crate::Core<'_>) -> Result<String, Error> {
+    pub fn read(&self, core: &mut Core<'_>) -> Result<String, Error> {
         self.0.read(core)
     }
 }
@@ -222,7 +227,7 @@ impl WriteRequest {
     }
 
     /// Reads the buffer from the target
-    pub fn read(&self, core: &mut crate::Core<'_>) -> Result<Vec<u8>, Error> {
+    pub fn read(&self, core: &mut Core<'_>) -> Result<Vec<u8>, Error> {
         let mut buf = vec![0u8; self.len as usize];
         core.read(self.bytes as u64, &mut buf)?;
         Ok(buf)
@@ -254,11 +259,7 @@ impl ReadRequest {
     }
 
     /// Writes the buffer to the target
-    pub fn write_buffer_to_target(
-        &self,
-        core: &mut crate::Core<'_>,
-        buf: &[u8],
-    ) -> Result<(), Error> {
+    pub fn write_buffer_to_target(&self, core: &mut Core<'_>, buf: &[u8]) -> Result<(), Error> {
         assert!(buf.len() <= self.len as usize);
 
         if !buf.is_empty() {
