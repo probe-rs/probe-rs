@@ -401,6 +401,10 @@ impl CoreInterface for Xtensa<'_> {
         self.state.semihosting_command = None;
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
+
+        // Chip reset clears hardware breakpoint state
+        self.state.breakpoints_enabled = false;
+
         self.on_halted()?;
 
         // TODO: this may return that the core has gone away, which is fine but currently unexpected
