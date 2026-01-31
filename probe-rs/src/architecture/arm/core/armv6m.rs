@@ -619,8 +619,9 @@ impl CoreInterface for Armv6m<'_> {
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv6m, None)?;
-        // Invalidate cached core status
+        // Invalidate cached state: chip reset clears FP_CTRL and core status
         self.set_core_status(CoreStatus::Unknown);
+        self.state.hw_breakpoints_enabled = false;
         Ok(())
     }
 
@@ -630,8 +631,9 @@ impl CoreInterface for Armv6m<'_> {
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv6m, None)?;
 
-        // Invalidate cached core status
+        // Invalidate cached state: chip reset clears FP_CTRL and core status
         self.set_core_status(CoreStatus::Unknown);
+        self.state.hw_breakpoints_enabled = false;
 
         // Some processors may not enter the halt state immediately after clearing the reset state.
         // Particularly: on PSOC 6, vector catch takes effect after the core's boot ROM finishes
