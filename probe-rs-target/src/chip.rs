@@ -176,7 +176,6 @@ pub enum CoreAccessOptions {
 pub enum ApAddress {
     /// References an address for an APv1 access, which is part of the ADIv5 specification.
     #[serde(rename = "v1")]
-    #[serde(serialize_with = "hex_u_int")]
     V1(u8),
     /// References an address for an APv2 access, which is part of the ADIv6 specification.
     ///
