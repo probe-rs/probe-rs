@@ -316,6 +316,7 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
                 "write: true",
                 "execute: true",
                 "stack_overflow_check: true",
+                "rtt_poll_interval: 20",
             ];
             if trim_nondefault.contains(&trimmed_line) {
                 // Skip the line
