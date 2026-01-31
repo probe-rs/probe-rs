@@ -2,16 +2,18 @@
 
 use std::{sync::Arc, time::Duration};
 
-use crate::{
-    MemoryInterface,
+use crate::sequences::esp::EspBreakpointHandler;
+use probe_rs::{
+    Error, MemoryInterface,
     architecture::riscv::{
-        Dmcontrol,
+        Dmcontrol, Riscv32,
         communication_interface::{
             MemoryAccessMethod, RiscvBusAccess, RiscvCommunicationInterface, Sbaddress0, Sbcs,
             Sbdata0,
         },
         sequences::RiscvDebugSequence,
     },
+    semihosting::{SemihostingCommand, UnknownCommandDetails},
 };
 
 const DR_REG_LP_WDT_BASE: u64 = 0x5011_6000;
@@ -82,10 +84,7 @@ impl ESP32P4 {
         Arc::new(Self {})
     }
 
-    fn disable_wdts(
-        &self,
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<(), crate::Error> {
+    fn disable_wdts(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
         tracing::info!("Disabling ESP32P4 watchdogs...");
 
         // tg0 wdg
@@ -132,7 +131,7 @@ impl ESP32P4 {
     fn configure_memory_access(
         &self,
         interface: &mut RiscvCommunicationInterface<'_>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         let memory_access_config = interface.memory_access_config();
 
         let accesses = [
@@ -174,7 +173,7 @@ impl ESP32P4 {
 }
 
 impl RiscvDebugSequence for ESP32P4 {
-    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
         self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
@@ -185,7 +184,7 @@ impl RiscvDebugSequence for ESP32P4 {
         &self,
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         // System reset, ported from OpenOCD.
 
         interface.halt(timeout)?;
@@ -240,5 +239,13 @@ impl RiscvDebugSequence for ESP32P4 {
         self.on_connect(interface)?;
 
         Ok(())
+    }
+
+    fn on_unknown_semihosting_command(
+        &self,
+        interface: &mut Riscv32,
+        details: UnknownCommandDetails,
+    ) -> Result<Option<SemihostingCommand>, Error> {
+        EspBreakpointHandler::handle_riscv_idf_semihosting(interface, details)
     }
 }

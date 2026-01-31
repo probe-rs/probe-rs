@@ -1,9 +1,7 @@
-use crate::{
+use probe_rs::{
     CoreInterface, MemoryInterface,
     architecture::{riscv::Riscv32, xtensa::Xtensa},
-    semihosting::{
-        SemihostingCommand, UnknownCommandDetails, WriteConsoleRequest, ZeroTerminatedString,
-    },
+    semihosting::{SemihostingCommand, UnknownCommandDetails, WriteConsoleRequest},
 };
 
 pub(super) struct EspBreakpointHandler {}
@@ -53,11 +51,8 @@ impl EspBreakpointHandler {
 
         let [address, length] = buffer;
 
-        Ok(Some(SemihostingCommand::WriteConsole(WriteConsoleRequest(
-            ZeroTerminatedString {
-                address,
-                length: Some(length),
-            },
-        ))))
+        Ok(Some(SemihostingCommand::WriteConsole(
+            WriteConsoleRequest::new(address, Some(length)),
+        )))
     }
 }

@@ -2,8 +2,9 @@
 
 use std::{sync::Arc, time::Duration};
 
-use crate::{
-    MemoryInterface,
+use crate::sequences::esp::EspBreakpointHandler;
+use probe_rs::{
+    Error, MemoryInterface,
     architecture::riscv::{
         Dmcontrol, Riscv32,
         communication_interface::{
@@ -13,7 +14,6 @@ use crate::{
         sequences::RiscvDebugSequence,
     },
     semihosting::{SemihostingCommand, UnknownCommandDetails},
-    vendor::espressif::sequences::esp::EspBreakpointHandler,
 };
 
 /// The debug sequence implementation for the ESP32H2.
@@ -26,10 +26,7 @@ impl ESP32H2 {
         Arc::new(Self {})
     }
 
-    fn disable_wdts(
-        &self,
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<(), crate::Error> {
+    fn disable_wdts(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
         tracing::info!("Disabling ESP32-H2 watchdogs...");
 
         // disable super wdt
@@ -59,7 +56,7 @@ impl ESP32H2 {
     fn configure_memory_access(
         &self,
         interface: &mut RiscvCommunicationInterface<'_>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         let memory_access_config = interface.memory_access_config();
 
         let accesses = [
@@ -85,14 +82,14 @@ impl ESP32H2 {
 }
 
 impl RiscvDebugSequence for ESP32H2 {
-    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
         self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
         Ok(())
     }
 
-    fn on_halt(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_halt(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
         self.disable_wdts(interface)
     }
 
@@ -100,7 +97,7 @@ impl RiscvDebugSequence for ESP32H2 {
         &self,
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         interface.halt(timeout)?;
 
         // System reset, ported from OpenOCD.
@@ -142,7 +139,7 @@ impl RiscvDebugSequence for ESP32H2 {
         &self,
         interface: &mut Riscv32,
         details: UnknownCommandDetails,
-    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+    ) -> Result<Option<SemihostingCommand>, Error> {
         EspBreakpointHandler::handle_riscv_idf_semihosting(interface, details)
     }
 }

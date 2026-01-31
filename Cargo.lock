@@ -2950,6 +2950,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "probe-rs-espressif"
+version = "0.31.0"
+dependencies = [
+ "docsplay",
+ "probe-rs",
+ "probe-rs-target",
+ "tracing",
+]
+
+[[package]]
 name = "probe-rs-mi"
 version = "0.1.0"
 dependencies = [
@@ -3013,6 +3023,7 @@ dependencies = [
  "pretty_assertions",
  "probe-rs",
  "probe-rs-debug",
+ "probe-rs-espressif",
  "probe-rs-mi",
  "probe-rs-target",
  "ratatui",
@@ -3894,6 +3905,7 @@ dependencies = [
  "linkme",
  "log",
  "probe-rs",
+ "probe-rs-espressif",
  "serde",
  "smoke_tester_macros",
  "thiserror 2.0.18",
@@ -4079,6 +4091,7 @@ dependencies = [
  "log",
  "parse_int",
  "probe-rs",
+ "probe-rs-espressif",
  "probe-rs-target",
  "reqwest",
  "scroll",

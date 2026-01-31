@@ -243,7 +243,7 @@ pub struct XtensaDebugInterfaceState {
 // here but one layer up.
 pub struct XtensaCommunicationInterface<'probe> {
     /// The Xtensa debug module
-    pub(crate) xdm: Xdm<'probe>,
+    pub xdm: Xdm<'probe>,
     pub(super) state: &'probe mut XtensaInterfaceState,
     core_properties: &'probe mut XtensaCoreProperties,
 }
@@ -927,7 +927,8 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(())
     }
 
-    pub(crate) fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
+    /// Reset and halt the target.
+    pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
         self.clear_register_cache();
         self.xdm.reset_and_halt()?;
         self.wait_for_core_halted(timeout)?;

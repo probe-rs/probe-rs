@@ -1,9 +1,10 @@
-//! Sequences for the ESP32C61.
+//! Sequences for the ESP32C6.
 
 use std::{sync::Arc, time::Duration};
 
-use crate::{
-    MemoryInterface,
+use crate::sequences::esp::EspBreakpointHandler;
+use probe_rs::{
+    Error, MemoryInterface,
     architecture::riscv::{
         Dmcontrol, Riscv32,
         communication_interface::{
@@ -13,46 +14,40 @@ use crate::{
         sequences::RiscvDebugSequence,
     },
     semihosting::{SemihostingCommand, UnknownCommandDetails},
-    vendor::espressif::sequences::esp::EspBreakpointHandler,
 };
 
-/// The debug sequence implementation for the ESP32C61.
+/// The debug sequence implementation for the ESP32C6.
 #[derive(Debug)]
-pub struct ESP32C61 {}
+pub struct ESP32C6 {}
 
-impl ESP32C61 {
-    /// Creates a new debug sequence handle for the ESP32C61.
+impl ESP32C6 {
+    /// Creates a new debug sequence handle for the ESP32C6.
     pub fn create() -> Arc<dyn RiscvDebugSequence> {
         Arc::new(Self {})
     }
 
-    fn disable_wdts(
-        &self,
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<(), crate::Error> {
-        tracing::info!("Disabling ESP32-C61 watchdogs...");
+    fn disable_wdts(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
+        tracing::info!("Disabling ESP32-C6 watchdogs...");
+        // disable super wdt
+        interface.write_word_32(0x600B1C20, 0x50D83AA1)?; // write protection off
+        let current = interface.read_word_32(0x600B_1C1C)?;
+        interface.write_word_32(0x600B_1C1C, current | (1 << 18))?; // set RTC_CNTL_SWD_AUTO_FEED_EN
+        interface.write_word_32(0x600B1C20, 0x0)?; // write protection on
 
         // tg0 wdg
         interface.write_word_32(0x6000_8064, 0x50D83AA1)?; // write protection off
         interface.write_word_32(0x6000_8048, 0x0)?;
-        interface.write_word_32(0x6000_807C, 0x4)?;
+        interface.write_word_32(0x6000_8064, 0x0)?; // write protection on
 
         // tg1 wdg
         interface.write_word_32(0x6000_9064, 0x50D83AA1)?; // write protection off
         interface.write_word_32(0x6000_9048, 0x0)?;
-        interface.write_word_32(0x6000_907C, 0x4)?;
-
-        // disable super wdt
-        interface.write_word_32(0x600B_1C20, 0x50D83AA1)?; // write protection off
-        let current = interface.read_word_32(0x600B_1C1C)?;
-        interface.write_word_32(0x600B_1C1C, current | (1 << 18))?; // set RTC_WDT_SWD_AUTO_FEED_EN
+        interface.write_word_32(0x6000_9064, 0x0)?; // write protection on
 
         // rtc wdg
         interface.write_word_32(0x600B_1C18, 0x50D83AA1)?; // write protection off
         interface.write_word_32(0x600B_1C00, 0x0)?;
-
-        // clear rtc + super wdt interrupt status bits
-        interface.write_word_32(0x600B_1C30, 0xC0000000)?;
+        interface.write_word_32(0x600B_1C18, 0x0)?; // write protection on
 
         Ok(())
     }
@@ -60,15 +55,8 @@ impl ESP32C61 {
     fn configure_memory_access(
         &self,
         interface: &mut RiscvCommunicationInterface<'_>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         let memory_access_config = interface.memory_access_config();
-
-        // Access peripheral registers via program buffer
-        memory_access_config.set_region_override(
-            RiscvBusAccess::A32,
-            0x6000_0000..0x600D_0000,
-            MemoryAccessMethod::ProgramBuffer,
-        );
 
         let accesses = [
             RiscvBusAccess::A8,
@@ -83,7 +71,7 @@ impl ESP32C61 {
             // system bus, select the waiting program buffer method.
             memory_access_config.set_region_override(
                 access,
-                0x4200_0000..0x4400_0000,
+                0x4200_0000..0x4300_0000,
                 MemoryAccessMethod::WaitingProgramBuffer,
             );
         }
@@ -92,19 +80,23 @@ impl ESP32C61 {
     }
 }
 
-impl RiscvDebugSequence for ESP32C61 {
-    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+impl RiscvDebugSequence for ESP32C6 {
+    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
         self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
         Ok(())
     }
 
+    fn on_halt(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
+        self.disable_wdts(interface)
+    }
+
     fn reset_system_and_halt(
         &self,
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         interface.halt(timeout)?;
 
         // System reset, ported from OpenOCD.
@@ -113,14 +105,14 @@ impl RiscvDebugSequence for ESP32C61 {
         interface.write_dm_register(Sbdata0(0x80000000_u32))?;
 
         // clear dmactive to clear sbbusy otherwise debug module gets stuck
-        // interface.write_dm_register(Dmcontrol(0))?;
+        interface.write_dm_register(Dmcontrol(0))?;
 
         interface.write_dm_register(Sbcs(0x48000))?;
         interface.write_dm_register(Sbaddress0(0x600b1038))?;
         interface.write_dm_register(Sbdata0(0x10000000_u32))?;
 
         // clear dmactive to clear sbbusy otherwise debug module gets stuck
-        // interface.write_dm_register(Dmcontrol(0))?;
+        interface.write_dm_register(Dmcontrol(0))?;
 
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
@@ -146,7 +138,7 @@ impl RiscvDebugSequence for ESP32C61 {
         &self,
         interface: &mut Riscv32,
         details: UnknownCommandDetails,
-    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+    ) -> Result<Option<SemihostingCommand>, Error> {
         EspBreakpointHandler::handle_riscv_idf_semihosting(interface, details)
     }
 }

@@ -5,8 +5,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{
-    MemoryInterface,
+use crate::sequences::esp::EspBreakpointHandler;
+use probe_rs::{
+    Error, MemoryInterface,
     architecture::xtensa::{
         Xtensa,
         communication_interface::{
@@ -16,7 +17,6 @@ use crate::{
         xdm,
     },
     semihosting::{SemihostingCommand, UnknownCommandDetails},
-    vendor::espressif::sequences::esp::EspBreakpointHandler,
 };
 
 /// The debug sequence implementation for the ESP32-S3.
@@ -35,7 +35,7 @@ impl ESP32S3 {
         Arc::new(Self {})
     }
 
-    fn disable_wdts(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+    fn disable_wdts(&self, core: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         tracing::info!("Disabling ESP32-S3 watchdogs...");
 
         // disable super wdt
@@ -118,14 +118,14 @@ impl ESP32S3 {
 }
 
 impl XtensaDebugSequence for ESP32S3 {
-    fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
         Ok(())
     }
 
-    fn on_halt(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_halt(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         self.disable_wdts(interface)
     }
 
@@ -235,7 +235,7 @@ impl XtensaDebugSequence for ESP32S3 {
         &self,
         interface: &mut Xtensa,
         details: UnknownCommandDetails,
-    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+    ) -> Result<Option<SemihostingCommand>, Error> {
         EspBreakpointHandler::handle_xtensa_idf_semihosting(interface, details)
     }
 }

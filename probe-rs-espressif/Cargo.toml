@@ -1,0 +1,20 @@
+[package]
+name = "probe-rs-espressif"
+version.workspace = true
+edition.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+probe-rs.workspace = true
+probe-rs-target.workspace = true
+
+docsplay.workspace = true
+tracing = "0.1"
+
+[lints]
+workspace = true

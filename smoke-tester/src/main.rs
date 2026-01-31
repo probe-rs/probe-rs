@@ -26,6 +26,8 @@ struct Opt {
 }
 
 fn main() -> Result<ExitCode> {
+    probe_rs_espressif::register_plugin();
+
     // nextest will get angry if logs are emitted outside of tests,
     // so we use a separate ENV variable here, so setting RUST_LOG doesn't affect this
     tracing_subscriber::fmt()

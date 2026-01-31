@@ -1,3 +1,4 @@
+//! Low level access to the Xtensa Debug Module (XDM).
 use std::{
     fmt::Debug,
     time::{Duration, Instant},
@@ -76,6 +77,7 @@ impl From<PowerDevice> for TapInstruction {
     }
 }
 
+/// Errors that can occur when accessing Xtensa Debug Module registers.
 #[derive(thiserror::Error, Debug, Copy, Clone, docsplay::Display)]
 pub enum DebugRegisterError {
     /// Register is busy
@@ -88,6 +90,7 @@ pub enum DebugRegisterError {
     Unexpected(u8),
 }
 
+/// Xtensa Debug Module errors
 #[derive(thiserror::Error, Debug, Clone, Copy, docsplay::Display)]
 pub enum Error {
     /// Error {access} {print_narsel(narsel)} register
@@ -135,7 +138,7 @@ fn print_narsel(narsel: &u8) -> String {
 }
 
 #[derive(Debug, Default)]
-pub struct XdmState {
+pub(crate) struct XdmState {
     /// The last instruction to be executed.
     // This is used to:
     // - detect incorrect uses of `schedule_write_ddr_and_execute` which expects an instruction to
@@ -173,7 +176,7 @@ pub struct Xdm<'probe> {
 }
 
 impl<'probe> Xdm<'probe> {
-    pub fn new(probe: &'probe mut dyn JtagAccess, state: &'probe mut XdmState) -> Self {
+    pub(crate) fn new(probe: &'probe mut dyn JtagAccess, state: &'probe mut XdmState) -> Self {
         // TODO implement openocd's esp32_queue_tdi_idle() to prevent potentially damaging flash ICs
 
         Self { probe, state }
@@ -254,7 +257,8 @@ impl<'probe> Xdm<'probe> {
         Ok(())
     }
 
-    pub(crate) fn debug_control(&mut self, bits: DebugControlBits) -> Result<(), XtensaError> {
+    /// Schedule a write of the Debug Control Register
+    pub fn debug_control(&mut self, bits: DebugControlBits) -> Result<(), XtensaError> {
         self.schedule_write_nexus_register(DebugControlSet(bits));
         self.schedule_write_nexus_register(DebugControlClear({
             let mut reg = DebugControlBits(0);
@@ -297,18 +301,19 @@ impl<'probe> Xdm<'probe> {
     }
 
     /// Read and clear the `PowerStatus` flags.
-    pub(crate) fn power_status(&mut self, clear: PowerStatus) -> Result<PowerStatus, XtensaError> {
+    pub fn power_status(&mut self, clear: PowerStatus) -> Result<PowerStatus, XtensaError> {
         let bits = self.pwr_write(PowerDevice::PowerStat, clear.0)?;
         Ok(PowerStatus(bits))
     }
 
     /// Read and clear the `core_was_reset` flag.
-    pub(crate) fn read_power_status(&mut self) -> Result<PowerStatus, XtensaError> {
+    pub fn read_power_status(&mut self) -> Result<PowerStatus, XtensaError> {
         let bits = self.pwr_write(PowerDevice::PowerStat, 0)?;
         Ok(PowerStatus(bits))
     }
 
-    pub(crate) fn execute(&mut self) -> Result<(), XtensaError> {
+    /// Execute the queued commands.
+    pub fn execute(&mut self) -> Result<(), XtensaError> {
         let mut queue = std::mem::take(&mut self.state.queue);
 
         tracing::debug!("Executing {} commands", queue.len());
@@ -666,7 +671,7 @@ impl<'probe> Xdm<'probe> {
         }
     }
 
-    pub fn reset_and_halt(&mut self) -> Result<(), XtensaError> {
+    pub(crate) fn reset_and_halt(&mut self) -> Result<(), XtensaError> {
         self.execute()?;
         self.pwr_write(PowerDevice::PowerControl, {
             let mut pwr_control = PowerControl(0);
@@ -752,72 +757,158 @@ fn transform_instruction_status(
 }
 
 bitfield::bitfield! {
+    /// Power and Reset Control register
     #[derive(Copy, Clone)]
     pub struct PowerControl(u8);
     impl Debug;
 
+    /// Request power to core
     pub core_wakeup,    set_core_wakeup:    0;
+
+    /// Request power to Memory domain
     pub mem_wakeup,     set_mem_wakeup:     1;
+
+    /// Request power to Debug module
     pub debug_wakeup,   set_debug_wakeup:   2;
+
+    /// Setting to 1 asserts reset to the core
     pub core_reset,     set_core_reset:     4;
+
+    /// Setting to 1 asserts reset to the Xtensa Debug module
     pub debug_reset,    set_debug_reset:    6;
+
+    /// Set to enable JTAG access to Debug
+    ///
+    /// Tied high in configurations without PSO.
     pub jtag_debug_use, set_jtag_debug_use: 7;
 }
 
 bitfield::bitfield! {
+    /// Power and Reset Status register
     #[derive(Copy, Clone)]
     pub struct PowerStatus(u8);
     impl Debug;
 
+    /// Set if core is powered on
     pub core_domain_on,    _: 0;
+
+    /// Set if memory domain is powered on
     pub mem_domain_on,     _: 1;
+
+    /// Set if debug domain is powered on
     pub debug_domain_on,   _: 2;
+
+    /// Set if any core wakeup signal is set. Indicates some
+    /// agent still requires power to the core.
     pub core_still_needed, _: 3;
+
+    /// Core was reset since last time this bit was cleared
+    ///
     /// Clears bit when written as 1
     pub core_was_reset,    set_core_was_reset: 4;
+
+    /// Debug module was reset since last time this bit was cleared
+    ///
     /// Clears bit when written as 1
     pub debug_was_reset,   set_debug_was_reset: 6;
 }
 
 bitfield::bitfield! {
+    /// Debug Status register
+    ///
+    /// The DSR register provides OCD status to host debugger.
     #[derive(Copy, Clone)]
     pub struct DebugStatus(u32);
     impl Debug;
 
-    // Cleared by writing 1
+    /// Instruction in DIR completed execution (w/ or w/o exception)
+    ///
+    /// Cleared by writing 1
     pub exec_done,         set_exec_done: 0;
-    // Cleared by writing 1
+
+    /// A previous instruction in DIR completed with an exception
+    ///
+    /// Cleared by writing 1
     pub exec_exception,    set_exec_exception: 1;
+
+    /// Core is executing DIR (meaningful while Stopped is 1)
     pub exec_busy,         _: 2;
-    // Cleared by writing 1
+
+    /// DIR execution attempted while previous execute still busy
+    ///
+    /// Cleared by writing 1
     pub exec_overrun,      set_exec_overrun: 3;
+
+    /// Core is under OCD debug control, in Stopped or executing DIR
     pub stopped,           _: 4;
-    // Cleared by writing 1
+
+    /// Core wrote to DDR, i.e. executed WSR.DDR or XSR.DDR
+    ///
+    /// Cleared by writing 1
     pub core_wrote_ddr,    set_core_wrote_ddr: 10;
-    // Cleared by writing 1
+
+    /// Core read from DDR, i.e. executed RSR.DDR or XSR.DDR
+    ///
+    /// Cleared by writing 1
     pub core_read_ddr,     set_core_read_ddr: 11;
-    // Cleared by writing 1
+
+    /// Host wrote to DDR (via JTAG or APB) (includes DDREXEC)
+    ///
+    /// Cleared by writing 1
     pub host_wrote_ddr,    set_host_wrote_ddr: 14;
-    // Cleared by writing 1
+
+    /// Host read from DDR (via JTAG or APB) (includes DDREXEC)
+    ///
+    /// Cleared by writing 1
     pub host_read_ddr,     set_host_read_ddr: 15;
-    // Cleared by writing 1
+
+    /// Debug interrupt pending due to BreakIn signal
+    ///
+    /// Cleared by writing 1
     pub debug_pend_break,  set_debug_pend_break: 16;
-    // Cleared by writing 1
+
+    /// Debug interrupt pending due to DCR.DebugInterrupt
+    ///
+    /// Cleared by writing 1
     pub debug_pend_host,   set_debug_pend_host: 17;
-    // Cleared by writing 1
+
+    /// Debug interrupt pending due to TRAX PTO
+    ///
+    /// Cleared by writing 1
     pub debug_pend_trax,   set_debug_pend_trax: 18;
-    // Cleared by writing 1
+
+    /// Debug interrupt taken due to BreakIn signal
+    ///
+    /// Cleared by writing 1
     pub debug_int_break,   set_debug_int_break: 20;
-    // Cleared by writing 1
+
+    /// Debug interrupt taken due to DCR.DebugInterrupt signal
+    ///
+    /// Cleared by writing 1
     pub debug_int_host,    set_debug_int_host: 21;
-    // Cleared by writing 1
+
+    /// Debug interrupt taken due to TRAX PTO
+    ///
+    /// Cleared by writing 1
     pub debug_int_trax,    set_debug_int_trax: 22;
-    // Cleared by writing 1
+
+    /// Set when RunStall input to Xtensa changes polarity
+    ///
+    /// Cleared by writing 1
     pub run_stall_toggle,  set_run_stall_toggle: 23;
+
+    /// Provides the real-time value of the RunStall input to Xtensa
     pub run_stall_sample,  _: 24;
+
+    /// Break-out topology detection status bit (BreakOutAck signal state)
     pub break_out_ack_iti, _: 25;
+
+    /// Break-in topology detection status bit (BreakIn signal state)
     pub break_in_iti,      _: 26;
+
+    /// Always 1 (Read as zero when the Debug module is powered off.)
     pub dbgmod_power_on,   _: 31;
+
 }
 
 /// An abstraction over all registers that can be accessed via the NAR/NDR instruction pair.
@@ -861,23 +952,41 @@ impl NexusRegister for OcdId {
 }
 
 bitfield::bitfield! {
+    /// Debug Control register bits.
     #[derive(Copy, Clone)]
     pub struct DebugControlBits(u32);
     impl Debug;
 
+    /// Set to activate the OCD.
     pub enable_ocd,          set_enable_ocd         : 0;
-    // R/set
+
+    /// Set to break the core (same as DSR.DebugPendHost)
+    ///
+    /// R/set
     pub debug_interrupt,     set_debug_interrupt    : 1;
+
+    /// Set to allow debug interrupts to supersede all conditions
     pub interrupt_all_conds, set_interrupt_all_conds: 2;
 
+    /// Enable BreakIn
     pub break_in_en,         set_break_in_en        : 16;
+
+    /// Enable BreakOut
     pub break_out_en,        set_break_out_en       : 17;
 
+    /// A software-set flag that indicates user-controlled debug mode
     pub debug_sw_active,     set_debug_sw_active    : 20;
+
+    /// Enable the RunStall input
     pub run_stall_in_en,     set_run_stall_in_en    : 21;
+
+    /// Enable the XOCDMode output
     pub debug_mode_out_en,   set_debug_mode_out_en  : 22;
 
+    /// BreakOut topology detection control bit
     pub break_out_ito,       set_break_out_ito      : 24;
+
+    /// BreakInAck topology detection control bit
     pub break_in_ack_ito,    set_break_in_ack_ito   : 25;
 }
 
