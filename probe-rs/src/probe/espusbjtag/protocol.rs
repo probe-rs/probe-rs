@@ -234,11 +234,23 @@ impl ProtocolHandler {
         // We need to flush the device's response buffer, but we don't always succeed in doing so.
         // This nonsense if supposed to help us recover from some errors.
         // Not bulletproof, but significantly reduces error rate.
+        let start_flushing = Instant::now();
         let flush_ep = |this: &mut Self| {
             let mut incoming = [0; IN_EP_BUFFER_SIZE];
-            this.device_handle
-                .read_bulk(this.ep_in, &mut incoming, Duration::from_millis(100))
-                .is_ok()
+            let read_bulk =
+                this.device_handle
+                    .read_bulk(this.ep_in, &mut incoming, Duration::from_millis(100));
+
+            // Stop after half a second, if we silently didn't succeed don't loop indefinitely
+            if start_flushing.elapsed() > Duration::from_millis(500) {
+                return false;
+            }
+
+            if let Ok(flushed) = read_bulk {
+                flushed != 0
+            } else {
+                false
+            }
         };
 
         if flush_ep(&mut this) {
