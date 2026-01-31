@@ -17,6 +17,6 @@ Then, register the plugin with probe-rs:
 fn main() {
     probe_rs_espressif::register_plugin();
     
-    /// ... rest of the code
+    // ... rest of the code
 }
 ```
