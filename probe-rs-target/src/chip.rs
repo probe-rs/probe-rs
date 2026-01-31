@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use super::memory::MemoryRegion;
-use crate::{CoreType, serialize::hex_option};
+use crate::{
+    CoreType,
+    serialize::{hex_option, hex_u_int},
+};
 use serde::{Deserialize, Serialize};
 
 /// Represents a DAP scan chain element.
@@ -173,12 +176,14 @@ pub enum CoreAccessOptions {
 pub enum ApAddress {
     /// References an address for an APv1 access, which is part of the ADIv5 specification.
     #[serde(rename = "v1")]
+    #[serde(serialize_with = "hex_u_int")]
     V1(u8),
     /// References an address for an APv2 access, which is part of the ADIv6 specification.
     ///
     /// # Note
     /// This represents a base address within the root DP memory space.
     #[serde(rename = "v2")]
+    #[serde(serialize_with = "hex_u_int")]
     V2(u64),
 }
 
