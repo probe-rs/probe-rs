@@ -754,8 +754,9 @@ impl DebugInfo {
                         );
                     }
                     Err(e) => {
+                        // TODO: Nicely print error with sources
                         let message = format!(
-                            "UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {e:?}"
+                            "UNWIND: Error while checking for exception context. The stack trace will not include the calling frames.\n{e:?}"
                         );
                         tracing::warn!("{message}");
                         stack_frames.push(StackFrame {
