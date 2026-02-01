@@ -75,8 +75,8 @@ log_path = "./logs"
 # socket   (Optional) - Server socket address (for optional external frontend or endpoint).
 # log_format (Optional) - Control the output format for `format = Defmt`.
 up_channels = [
-    # { channel = 0, mode = "BlockIfFull", format = "Defmt", show_location = true },
-    # { channel = 1, mode = "BlockIfFull", format = "String", show_timestamps = false, socket = "127.0.0.1:12345" },
+  # { channel = 0, mode = "BlockIfFull", format = "Defmt", show_location = true },
+  # { channel = 1, mode = "BlockIfFull", format = "String", show_timestamps = false, socket = "127.0.0.1:12345" },
 ]
 
 # A list of down (host -> target) channel settings. You can select a down channel for each UI tab,
@@ -86,7 +86,7 @@ up_channels = [
 #                       fit in the buffer. If left unset, the firmware will determine the default
 #                       for each RTT down channel.
 down_channels = [
-    # { channel = 0, mode = "BlockIfFull" }
+  # { channel = 0, mode = "BlockIfFull" }
 ]
 
 # UI tab settings. All up channels are displayed, except when hidden here. You can specify how each
@@ -96,8 +96,8 @@ down_channels = [
 # down_channel (Optional) - The channel_number of the RTT down channel to use for this tab.
 # name         (Optional) - String to be displayed in the RTTUI tab. Defaults to the channel name.
 tabs = [
-    # { up_channel = 0, down_channel = 0, name = "My channel" },
-    # { up_channel = 1, hide = true },
+  # { up_channel = 0, down_channel = 0, name = "My channel" },
+  # { up_channel = 1, hide = true },
 ]
 
 [default.gdb]

@@ -15,16 +15,16 @@ rust-version = "1.89"
 [workspace]
 resolver = "2"
 members = [
-    "probe-rs",
-    "probe-rs-target",
-    "smoke-tester",
-    "smoke-tester-macros",
-    "xtask",
-    "target-gen",
-    "probe-rs-tools",
-    "probe-rs-mi",
-    "probe-rs-debug",
-    "probe-rs-espressif",
+  "probe-rs",
+  "probe-rs-target",
+  "smoke-tester",
+  "smoke-tester-macros",
+  "xtask",
+  "target-gen",
+  "probe-rs-tools",
+  "probe-rs-mi",
+  "probe-rs-debug",
+  "probe-rs-espressif",
 ]
 exclude = ["probe-rs/tests/gpio-hal-blinky"]
 

@@ -9,8 +9,8 @@ edition = "2018"
 embedded-hal = "0.2.7"
 cortex-m-rt = "0.7"
 cortex-m = { version = "0.7", features = [
-    "critical-section-single-core",
-    "inline-asm",
+  "critical-section-single-core",
+  "inline-asm",
 ] }
 panic-halt = "1.0.0"
 microbit = "0.16.0"

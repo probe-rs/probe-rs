@@ -1,2 +1,2 @@
 [build]
-target = "thumbv7m-none-eabi"    # Cortex-M3
+target = "thumbv7m-none-eabi" # Cortex-M3

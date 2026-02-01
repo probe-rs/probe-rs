@@ -2,9 +2,9 @@
 name = "probe-rs"
 version.workspace = true
 authors = [
-    "Noah Hüsser <yatekii@yatekii.ch>",
-    "Dominik Boehi <dominik.boehi@gmail.ch>",
-    "Jack Noppe <noppej@hotmail.com>",
+  "Noah Hüsser <yatekii@yatekii.ch>",
+  "Dominik Boehi <dominik.boehi@gmail.ch>",
+  "Jack Noppe <noppej@hotmail.com>",
 ]
 edition.workspace = true
 description = "A collection of on chip debugging tools to communicate with microchips."
@@ -28,7 +28,13 @@ default = ["builtin-targets", "cmsisdap_v1", "flashing", "coredump"]
 builtin-targets = ["dep:bincode", "dep:serde_yaml", "dep:probe-rs-target"]
 cmsisdap_v1 = ["dep:hidapi"]
 
-flashing = ["dep:espflash", "dep:uf2-decode", "object", "dep:flate2", "dep:ihex"]
+flashing = [
+  "dep:espflash",
+  "dep:uf2-decode",
+  "object",
+  "dep:flate2",
+  "dep:ihex",
+]
 
 coredump = ["object", "dep:rmp-serde", "dep:dunce"]
 
@@ -46,26 +52,25 @@ bincode = { version = "2", features = ["serde"], optional = true }
 bitfield = "0.19.0"
 bitvec = "1"
 hidapi = { version = "2.6.4", default-features = false, features = [
-    "linux-native-basic-udev",
+  "linux-native-basic-udev",
 ], optional = true }
 itertools = "0.14"
 jep106 = "0.3"
 object = { version = "0.38", default-features = false, features = [
-    "elf",
-    "read_core",
-    "std",
+  "elf",
+  "read_core",
+  "std",
 ], optional = true }
 nusb = "0.2.1"
 futures-lite = { version = "2", default-features = false }
 scroll = "0.13"
 serialport = { version = "4.7.0", default-features = false, features = [
-    "usbportinfo-interface",
+  "usbportinfo-interface",
 ] }
 tracing = "0.1"
 parking_lot = "0.12.2"
 zerocopy = { version = "0.8.0", features = ["derive"] }
 cobs = "0.5"
-
 
 
 serde = { version = "1", features = ["derive"] }
@@ -103,10 +108,10 @@ test-case = "3"
 test-log = { version = "0.2.16", features = ["trace"] }
 insta = { version = "1.38", default-features = false }
 object = { version = "0.38", default-features = false, features = [
-    "elf",
-    "read_core",
-    "std",
-]}
+  "elf",
+  "read_core",
+  "std",
+] }
 
 [[package.metadata.release.pre-release-replacements]]
 file = "../CHANGELOG.md"
