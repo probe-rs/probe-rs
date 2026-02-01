@@ -16,7 +16,7 @@ jobs:
         with:
           version: "0.8.1"
       - name: Run Markdown codeblocks
-        run: mdsf verify --log-level error .
+        run: mdsf verify --log-level error --debug .
       - name: Check TOML
         run: taplo format --check --diff
       - name: Check YAML
