@@ -1,0 +1,23 @@
+name: Format
+on:
+  push:
+    branches: [master, staging, trying]
+  pull_request:
+  merge_group:
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Install mdsf
+        uses: hougesen/mdsf@main
+      - uses: uncenter/setup-taplo@v1
+        with:
+          version: "0.8.1"
+      - name: Run Markdown codeblocks
+        run: mdsf verify --log-level error .
+      - name: Check TOML
+        run: taplo format --check --diff
+      - name: Check YAML
+        run: yamlfmt -lint .
