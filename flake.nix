@@ -25,6 +25,7 @@
               shellcheck
               taplo
               shfmt
+              yamlfmt
             ];
           };
         };
