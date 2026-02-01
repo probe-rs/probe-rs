@@ -16,7 +16,7 @@ Then, register the plugin with probe-rs:
 ```rust
 fn main() {
     probe_rs_espressif::register_plugin();
-    
+
     // ... rest of the code
 }
 ```

@@ -85,17 +85,17 @@ fn main() -> Result<(), probe_rs::Error> {
 ### Reading from RAM
 
 ```rust,no_run
-use probe_rs::{MemoryInterface, Permissions, Session, SessionConfig};
 use probe_rs::probe::WireProtocol;
+use probe_rs::{MemoryInterface, Permissions, Session, SessionConfig};
 
 fn main() -> Result<(), probe_rs::Error> {
     // Attach to a chip.
     let speed = Some(5500);
     let protocol = Some(WireProtocol::Swd);
     let session_config = SessionConfig {
-      speed,
-      protocol,
-      ..Default::default()
+        speed,
+        protocol,
+        ..Default::default()
     };
 
     let mut session = Session::auto_attach("nRF52840_xxAA", session_config)?;
@@ -144,7 +144,7 @@ Please reach out to [@Yatekii](https://github.com/Yatekii)
 
 ### Building
 
-Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). 
+Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/).
 
 ### Adding Targets
 
