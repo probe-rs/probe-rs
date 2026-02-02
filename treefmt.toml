@@ -14,8 +14,8 @@ options = ["--write"]
 includes = ["*.json"]
 
 [formatter.markdown]
-command = "prettier"
-options = ["--write"]
+command = "rumdl"
+options = ["fmt"]
 includes = ["*.md"]
 
 [formatter.markdown-codeblocks]

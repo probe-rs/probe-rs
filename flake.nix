@@ -26,6 +26,7 @@
               taplo
               shfmt
               prettier
+              rumdl
             ];
           };
         };
