@@ -16,7 +16,7 @@ use crate::{
         xdm::{DebugStatus, XdmState},
     },
     memory::{Operation, OperationKind},
-    probe::{DebugProbeError, DeferredResultIndex, JtagAccess},
+    probe::{DebugProbeError, JtagAccess, queue::DeferredResultIndex},
 };
 
 use super::xdm::{Error as XdmError, Xdm};

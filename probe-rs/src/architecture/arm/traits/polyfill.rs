@@ -12,9 +12,10 @@ use crate::{
         dp::{Abort, Ctrl, DPIDR, DpRegister, RdBuff},
     },
     probe::{
-        BatchSubError, CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess,
-        JtagSequence, JtagWriteCommand, JtagWriteData, RawSwdIo, TypedQueue, WireProtocol,
+        CommandResult, DebugProbe, DebugProbeError, IoSequenceItem, JtagAccess, JtagSequence,
+        JtagWriteCommand, JtagWriteData, RawSwdIo, WireProtocol,
         common::bits_to_byte,
+        queue::{BatchSubError, TypedQueue},
     },
 };
 
@@ -118,26 +119,24 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
-    // Set up the typed batch with DapError.
-    let mut batch: TypedQueue<DapError> = TypedQueue::new();
+    let mut queue: TypedQueue<DapError> = TypedQueue::new();
 
-    let mut results = vec![];
-
-    for transfer in transfers.iter() {
-        results.push(batch.schedule(transfer.jtag_write()));
-    }
+    let mut results: Vec<_> = transfers
+        .iter()
+        .map(|t| queue.schedule(t.jtag_write()))
+        .collect();
 
     let last_is_abort = transfers[transfers.len() - 1].is_abort();
     let last_is_rdbuff = transfers[transfers.len() - 1].is_rdbuff();
     if !last_is_abort && !last_is_rdbuff {
         // Need to issue a fake read to get final ack
-        results.push(batch.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
+        results.push(queue.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
     }
 
     if !last_is_abort {
         // Check CTRL/STATUS to make sure OK/FAULT meant OK
-        results.push(batch.schedule(DapTransfer::read(Ctrl::ADDRESS).jtag_write()));
-        results.push(batch.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
+        results.push(queue.schedule(DapTransfer::read(Ctrl::ADDRESS).jtag_write()));
+        results.push(queue.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
     }
 
     let mut status_responses = vec![TransferStatus::Pending; results.len()];
@@ -155,7 +154,7 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
     // Execute as much of the batch as we can. We'll handle the rest in a following iteration
     // if we can.
     let mut jtag_results;
-    match batch.execute(probe) {
+    match queue.execute(probe) {
         Ok(r) => {
             status_responses.fill(TransferStatus::Ok);
             jtag_results = r;
@@ -167,7 +166,6 @@ fn perform_jtag_transfers<P: JtagAccess + RawSwdIo>(
 
             match e.error {
                 BatchSubError::Specific(failure) => {
-                    // failure is now DapError directly, no downcasting needed
                     status_responses[current_idx..].fill(TransferStatus::Failed(failure));
                     jtag_results.push(&results[current_idx], CommandResult::None);
                 }

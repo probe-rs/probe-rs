@@ -6,7 +6,7 @@ use crate::{
         communication_interface::{MaybeDeferredResultIndex, XtensaError},
         xdm::Xdm,
     },
-    probe::DeferredResultIndex,
+    probe::queue::DeferredResultIndex,
 };
 
 #[derive(Default)]

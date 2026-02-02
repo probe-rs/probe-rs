@@ -9,8 +9,8 @@ use bitvec::{field::BitField, slice::BitSlice};
 use crate::{
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
-        BatchSubError, CommandResult, DeferredResultIndex, DeferredResultSet, JtagAccess,
-        JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData, TypedQueue,
+        CommandResult, JtagAccess, JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData,
+        queue::{BatchSubError, DeferredResultIndex, DeferredResultSet, TypedQueue},
     },
 };
 

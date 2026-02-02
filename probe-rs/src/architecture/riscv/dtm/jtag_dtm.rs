@@ -13,9 +13,9 @@ use crate::architecture::riscv::communication_interface::{
 };
 use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
 use crate::probe::DebugProbeError;
+use crate::probe::queue::{BatchSubError, DeferredResultIndex, DeferredResultSet, TypedQueue};
 use crate::probe::{
-    BatchSubError, CommandResult, DeferredResultIndex, DeferredResultSet, JtagAccess,
-    JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData, TypedQueue,
+    CommandResult, JtagAccess, JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData,
 };
 
 #[derive(Debug, Default)]

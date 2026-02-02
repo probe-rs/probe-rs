@@ -5,9 +5,9 @@
 //! specification v0.13.2 .
 
 use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+use crate::probe::queue::DeferredResultIndex;
 use crate::{
     Error as ProbeRsError, architecture::riscv::*, config::Target, memory_mapped_bitfield_register,
-    probe::DeferredResultIndex,
 };
 use std::any::Any;
 use std::collections::HashMap;

@@ -7,8 +7,9 @@ use bitvec::prelude::*;
 use probe_rs_target::ScanChainElement;
 
 use crate::probe::{
-    AutoImplementJtagAccess, BatchExecutionError, ChainParams, CommandQueue, CommandResult,
-    DebugProbeError, DeferredResultSet, JtagAccess, JtagCommand, JtagSequence, RawJtagIo,
+    AutoImplementJtagAccess, ChainParams, CommandResult, DebugProbeError, JtagAccess, JtagCommand,
+    JtagSequence, RawJtagIo,
+    queue::{BatchExecutionError, CommandQueue, DeferredResultSet},
 };
 
 pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
@@ -739,9 +740,12 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
                     idx.should_capture(),
                 ),
 
-                JtagCommand::ShiftDr(write) => {
-                    shift_dr(self, &write.inner.data, write.inner.len as usize, idx.should_capture())
-                }
+                JtagCommand::ShiftDr(write) => shift_dr(
+                    self,
+                    &write.inner.data,
+                    write.inner.len as usize,
+                    idx.should_capture(),
+                ),
             };
 
             // If an error happens during prep, return no results as chip will be in an inconsistent state
