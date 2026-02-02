@@ -241,6 +241,11 @@ impl<'probe> Core<'probe> {
             .filter(|r| r.cores().iter().any(|m| m == self.name))
     }
 
+    /// Returns the name of the core.
+    pub fn name(&self) -> &str {
+        self.name
+    }
+
     /// Returns the target descriptor of the current `Session`.
     pub fn target(&self) -> &Target {
         self.target
