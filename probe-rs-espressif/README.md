@@ -8,7 +8,7 @@ To use this crate, add it as a dependency in your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-probe-rs-espressif = <current version>
+probe-rs-espressif = "<current version>"
 ```
 
 Then, register the plugin with probe-rs:
