@@ -12,12 +12,12 @@ use crate::{
 /// should drop this object, to allow potential other shareholders of the session struct to grab a
 /// core handle or memory access port too.
 pub struct MemoryAccessPort<'probe> {
+    name: String,
     id: usize,
-    name: &'probe str,
-    target: &'probe Target,
+    target: Target,
     is_64_bit: bool,
 
-    inner: Inner<'probe>,
+    memory: Box<dyn MemoryInterface + 'probe>,
 }
 
 impl core::fmt::Debug for MemoryAccessPort<'_> {
@@ -32,36 +32,33 @@ impl core::fmt::Debug for MemoryAccessPort<'_> {
 
 impl<'probe> MemoryAccessPort<'probe> {
     /// Create a new [`MemoryAccessPort`].
-    #[expect(dead_code)]
-    pub(crate) fn new(
-        id: usize,
-        name: &'probe str,
-        target: &'probe Target,
-        memory_port: impl MemoryInterface + 'probe,
-        is_64_bit: bool,
-    ) -> MemoryAccessPort<'probe> {
+    pub(crate) fn new_for_core(core: crate::Core<'probe>) -> MemoryAccessPort<'probe> {
+        let id = core.id();
+        let name = core.name().to_string();
+        let is_64_bit = core.is_64_bit();
         Self {
             id,
-            is_64_bit,
             name,
-            target,
-            inner: Inner::Generic(Box::new(memory_port)),
+            target: core.target().clone(),
+            is_64_bit,
+            memory: Box::new(core),
         }
     }
 
-    pub(crate) fn new_for_arm(
+    /// Create a new [`MemoryAccessPort`] from an [ArmMemoryInterface].
+    pub(crate) fn new_for_arm_memory_interface(
         id: usize,
         name: &'probe str,
-        target: &'probe Target,
+        target: Target,
         memory_port: Box<dyn ArmMemoryInterface + 'probe>,
         is_64_bit: bool,
     ) -> MemoryAccessPort<'probe> {
         Self {
             id,
-            name,
             is_64_bit,
+            name: name.to_string(),
             target,
-            inner: Inner::Arm(memory_port),
+            memory: Box::new(ArmMemoryInterfaceWrapper(memory_port)),
         }
     }
 }
@@ -76,7 +73,7 @@ impl MemoryAccessPort<'_> {
     /// Name of the memory access port.
     #[inline]
     pub fn name(&self) -> &str {
-        self.name
+        &self.name
     }
 }
 
@@ -91,132 +88,96 @@ impl RttAccess for MemoryAccessPort<'_> {
     }
 }
 
-enum Inner<'probe> {
-    Arm(Box<dyn ArmMemoryInterface + 'probe>),
-    Generic(Box<dyn MemoryInterface + 'probe>),
-}
+pub struct ArmMemoryInterfaceWrapper<'probe>(Box<dyn ArmMemoryInterface + 'probe>);
 
-impl MemoryInterface for Inner<'_> {
+impl MemoryInterface for ArmMemoryInterfaceWrapper<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
-        match self {
-            Inner::Arm(arm_memory_interface) => arm_memory_interface.supports_native_64bit_access(),
-            Inner::Generic(memory_interface) => memory_interface.supports_native_64bit_access(),
-        }
+        self.0.supports_native_64bit_access()
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::Error> {
-        match self {
-            Inner::Arm(arm_memory_interface) => Ok(arm_memory_interface.read_64(address, data)?),
-            Inner::Generic(memory_interface) => memory_interface.read_64(address, data),
-        }
+        Ok(self.0.read_64(address, data)?)
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
-        match self {
-            Inner::Arm(arm_memory_interface) => Ok(arm_memory_interface.read_32(address, data)?),
-            Inner::Generic(memory_interface) => memory_interface.read_32(address, data),
-        }
+        Ok(self.0.read_32(address, data)?)
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
-        match self {
-            Inner::Arm(arm_memory_interface) => Ok(arm_memory_interface.read_16(address, data)?),
-            Inner::Generic(memory_interface) => memory_interface.read_16(address, data),
-        }
+        Ok(self.0.read_16(address, data)?)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
-        match self {
-            Inner::Arm(arm_memory_interface) => Ok(arm_memory_interface.read_8(address, data)?),
-            Inner::Generic(memory_interface) => memory_interface.read_8(address, data),
-        }
+        Ok(self.0.read_8(address, data)?)
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::Error> {
-        match self {
-            Inner::Arm(arm_memory_interface) => Ok(arm_memory_interface.write_64(address, data)?),
-            Inner::Generic(memory_interface) => memory_interface.write_64(address, data),
-        }
+        Ok(self.0.write_64(address, data)?)
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
-        match self {
-            Inner::Arm(arm_memory_interface) => Ok(arm_memory_interface.write_32(address, data)?),
-            Inner::Generic(memory_interface) => memory_interface.write_32(address, data),
-        }
+        Ok(self.0.write_32(address, data)?)
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), crate::Error> {
-        match self {
-            Inner::Arm(arm_memory_interface) => Ok(arm_memory_interface.write_16(address, data)?),
-            Inner::Generic(memory_interface) => memory_interface.write_16(address, data),
-        }
+        Ok(self.0.write_16(address, data)?)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
-        match self {
-            Inner::Arm(arm_memory_interface) => Ok(arm_memory_interface.write_8(address, data)?),
-            Inner::Generic(memory_interface) => memory_interface.write_8(address, data),
-        }
+        Ok(self.0.write_8(address, data)?)
     }
 
     fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
-        match self {
-            Inner::Arm(arm_memory_interface) => Ok(arm_memory_interface.supports_8bit_transfers()?),
-            Inner::Generic(memory_interface) => memory_interface.supports_8bit_transfers(),
-        }
+        Ok(self.0.supports_8bit_transfers()?)
     }
 
     fn flush(&mut self) -> Result<(), crate::Error> {
-        match self {
-            Inner::Arm(arm_memory_interface) => Ok(arm_memory_interface.flush()?),
-            Inner::Generic(memory_interface) => memory_interface.flush(),
-        }
+        Ok(self.0.flush()?)
     }
 }
 
 impl MemoryInterface for MemoryAccessPort<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
-        self.inner.supports_native_64bit_access()
+        self.memory.supports_native_64bit_access()
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::Error> {
-        self.inner.read_64(address, data)
+        self.memory.read_64(address, data)
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
-        self.inner.read_32(address, data)
+        self.memory.read_32(address, data)
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
-        self.inner.read_16(address, data)
+        self.memory.read_16(address, data)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
-        self.inner.read_8(address, data)
+        self.memory.read_8(address, data)
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::Error> {
-        self.inner.write_64(address, data)
+        self.memory.write_64(address, data)
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
-        self.inner.write_32(address, data)
+        self.memory.write_32(address, data)
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), crate::Error> {
-        self.inner.write_16(address, data)
+        self.memory.write_16(address, data)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
-        self.inner.write_8(address, data)
+        self.memory.write_8(address, data)
     }
 
     fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
-        self.inner.supports_8bit_transfers()
+        self.memory.supports_8bit_transfers()
     }
 
     fn flush(&mut self) -> Result<(), crate::Error> {
-        self.inner.flush()
+        self.memory.flush()
     }
 }
