@@ -1,0 +1,29 @@
+[formatter.rust]
+command = "rustfmt"
+options = ["--check", "--edition", "2024"]
+includes = ["*.rs"]
+
+[formatter.toml]
+command = "taplo"
+options = ["format"]
+includes = ["*.toml"]
+
+[formatter.json]
+command = "prettier"
+options = ["--write"]
+includes = ["*.json"]
+
+[formatter.markdown]
+command = "prettier"
+options = ["--write"]
+includes = ["*.md"]
+
+[formatter.markdown-codeblocks]
+command = "mdsf"
+options = ["format"]
+includes = ["*.md"]
+
+[formatter.yaml]
+command = "prettier"
+options = ["--write"]
+includes = ["*.yaml", "*.yml"]
