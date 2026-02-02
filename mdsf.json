@@ -1,0 +1,12 @@
+{
+  "languages": {
+    "shell": "shfmt",
+    "rust": "rustfmt",
+    "toml": "taplo"
+  },
+  "language_aliases": {
+    "rust,no_run": "rust",
+    "bash": "shell",
+    "zsh": "shell"
+  }
+}

@@ -22,34 +22,34 @@ probe-rs-target = { path = "../probe-rs-target", version = "0.31.0", default-fea
 cmsis-pack = "0.7.1"
 jep106 = "0.3.0"
 goblin = { version = "0.10.0", default-features = false, features = [
-    "elf32",
-    "elf64",
-    "endian_fd",
-    "archive",
-    "std",
+  "elf32",
+  "elf64",
+  "endian_fd",
+  "archive",
+  "std",
 ] }
 scroll = "0.13.0"
 serde_yaml = "0.9"
 log = "0.4.21"
 zip = { version = "6.0.0", default-features = false, features = [
-    "deflate64",
-    "deflate",
-    "lzma",
-    "time",
-    "zstd",
+  "deflate64",
+  "deflate",
+  "lzma",
+  "time",
+  "zstd",
 ] }
 clap = { version = "4.5", features = ["derive"] }
 colored = "3"
 anyhow.workspace = true
 reqwest = { version = "0.12.4", features = [
-    "json",
-    "rustls-tls",
+  "json",
+  "rustls-tls",
 ], default-features = false }
 futures = "0.3.30"
 tokio = { version = "1.37.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.18", features = [
-    "env-filter",
-    "tracing-log",
+  "env-filter",
+  "tracing-log",
 ] }
 xshell = { version = "0.2", default-features = false }
 parse_int = "0.9"

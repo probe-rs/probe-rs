@@ -1,6 +1,3 @@
 [workspace]
 
-members = [
-    "workspace_bin",
-    "workspace_lib"
-]
+members = ["workspace_bin", "workspace_lib"]

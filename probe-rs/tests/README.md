@@ -9,7 +9,7 @@ The source code for the tests can be found at locations below. Please note that 
 - `probe-rs-debugger-tests`
   - This binary was created using the `STM32H745ZITx` feature of the [probe-rs-debugger testing application](https://github.com/probe-rs/probe-rs-debugger-test). Clone the above repository, and then follow these steps to recreate the binary:
 
-    ```shell
+    ```bash
     git checkout 14bbaf86d5042f25ee8bce0ac8b1dea0c06adb4a
     cargo build --target thumbv7em-none-eabihf --features STM32H745ZITx --locked
     ```
