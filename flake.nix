@@ -25,7 +25,7 @@
               shellcheck
               taplo
               shfmt
-              yamlfmt
+              prettier
             ];
           };
         };
