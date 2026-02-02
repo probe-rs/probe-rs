@@ -1090,27 +1090,23 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         &self,
         vector_table_addr: u64,
         session: &mut Session,
+        core_id: usize,
     ) -> Result<(), crate::Error> {
         tracing::info!("Performing RAM flash start");
-        const SP_MAIN_OFFSET: usize = 0;
-        const RESET_VECTOR_OFFSET: usize = 1;
 
-        if session.list_cores().len() > 1 {
-            return Err(crate::Error::NotImplemented(
-                "multi-core ram flash start not implemented yet",
-            ));
-        }
-
-        let (_, core_type) = session.list_cores()[0];
+        let (_, core_type) = session.list_cores()[core_id];
         match core_type {
             CoreType::Armv7a | CoreType::Armv8a => {
-                return Err(crate::Error::NotImplemented(
-                    "RAM flash not implemented for ARM Cortex-A",
-                ));
+                tracing::debug!("RAM flash start for Cortex-A core with ID {}", core_id);
+                let mut core = session.core(core_id)?;
+                core.write_core_reg(PC.id, vector_table_addr)?;
             }
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
+                const SP_MAIN_OFFSET: usize = 0;
+                const RESET_VECTOR_OFFSET: usize = 1;
+
                 tracing::debug!("RAM flash start for Cortex-M single core target");
-                let mut core = session.core(0)?;
+                let mut core = session.core(core_id)?;
                 // See ARMv7-M Architecture Reference Manual Chapter B1.5 for more details. The
                 // process appears to be the same for the other Cortex-M architectures as well.
                 let vtor = Vtor(vector_table_addr as u32);

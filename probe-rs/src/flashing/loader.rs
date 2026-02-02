@@ -109,19 +109,16 @@ impl ImageLoader for ElfLoader {
         tracing::info!("Found {} loadable sections:", extracted_data.len());
 
         for section in &extracted_data {
-            let source = match section.section_names.len() {
-                0 => "Unknown",
-                1 => section.section_names[0].as_str(),
-                _ => "Multiple sections",
-            };
-
-            if source == VECTOR_TABLE_SECTION_NAME {
-                flash_loader.set_vector_table_addr(section.address as _);
+            let sources = &section.section_names;
+            for name in &section.section_names {
+                if name == VECTOR_TABLE_SECTION_NAME {
+                    flash_loader.set_vector_table_addr(section.address as _);
+                }
             }
 
             tracing::info!(
-                "    {} at {:#010X} ({} byte{})",
-                source,
+                "    {:?} at {:#010X} ({} byte{})",
+                sources,
                 section.address,
                 section.data.len(),
                 if section.data.len() == 1 { "" } else { "s" }
