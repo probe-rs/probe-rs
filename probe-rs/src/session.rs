@@ -549,6 +549,7 @@ impl Session {
 
     /// Attaches to a memory access port with the given index number.
     pub fn memory_access_port(&mut self, index: usize) -> Result<MemoryAccessPort<'_>, Error> {
+        let is_64_bit = self.core(0)?.is_64_bit();
         let memory_port = self
             .memory_ports
             .get_mut(index)
@@ -567,9 +568,7 @@ impl Session {
                             &target.name,
                             &self.target,
                             memory_interface,
-                            // How do we query this? This is core information. Maybe we need to lift it
-                            // up into the session?
-                            false,
+                            is_64_bit,
                         ))
                     }
                 }
