@@ -121,6 +121,7 @@ pub fn cmd_elf(
                     MemoryRegion::Nvm(NvmRegion {
                         access: None,
                         range: 0..0x2000,
+                        memory_ports: vec![],
                         cores: vec!["main".to_owned()],
                         name: None,
                         is_alias: false,
@@ -128,6 +129,7 @@ pub fn cmd_elf(
                     MemoryRegion::Ram(RamRegion {
                         range: 0x1_0000..0x2_0000,
                         cores: vec!["main".to_owned()],
+                        memory_ports: vec![],
                         name: None,
                         is_alias: false,
                         access: Some(MemoryAccess {
@@ -140,6 +142,7 @@ pub fn cmd_elf(
                 rtt_scan_ranges: None,
                 jtag: None,
                 default_binary_format: None,
+                memory_ports: vec![],
             }],
             flash_algorithms: vec![algorithm],
             source: TargetDescriptionSource::BuiltIn,
@@ -374,6 +377,7 @@ mod test {
         chip.memory_map.push(MemoryRegion::Ram(RamRegion {
             range: 0x20000000..0x20004000,
             cores: vec!["main".to_owned()],
+            memory_ports: vec![],
             name: Some(String::from("SRAM")),
             access: Some(MemoryAccess::default()),
             is_alias: false,
@@ -381,6 +385,7 @@ mod test {
         chip.memory_map.push(MemoryRegion::Ram(RamRegion {
             range: 0x20004000..0x20008000,
             cores: vec!["main".to_owned()],
+            memory_ports: vec![],
             name: Some(String::from("CCMRAM")),
             is_alias: false,
             access: Some(MemoryAccess {
@@ -393,6 +398,7 @@ mod test {
         chip.memory_map.push(MemoryRegion::Nvm(NvmRegion {
             range: 0x8000000..0x8010000,
             cores: vec!["main".to_owned()],
+            memory_ports: vec![],
             name: Some(String::from("Flash")),
             access: None,
             is_alias: false,

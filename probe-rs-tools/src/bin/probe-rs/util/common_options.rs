@@ -211,7 +211,7 @@ impl<'r> LoadedProbeOptions<'r> {
                 }
             })?;
 
-            TargetSelector::Specified(target)
+            TargetSelector::Specified(Box::new(target))
         } else {
             TargetSelector::Auto
         };
