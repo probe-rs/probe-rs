@@ -106,8 +106,6 @@ impl X7Z {
         let ap = FullyQualifiedApAddress::v1_with_default_dp(AccessPort::Debug as u8);
         let mut debug_ap = interface.get_arm_debug_interface()?.memory_interface(&ap)?;
         if !crate::architecture::arm::armv7a::core_halted(debug_ap.as_mut(), debug_base)? {
-            //tracing::warn!("Core not halted after reset, platform-specific setup may be required");
-            //tracing::warn!("Requesting halt anyway, but system may already be initialised");
             let address = Dbgdrcr::get_mmio_address_from_base(debug_base)?;
             let mut value = Dbgdrcr(0);
             value.set_hrq(true);
