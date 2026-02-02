@@ -41,10 +41,7 @@ zip = { version = "6.0.0", default-features = false, features = [
 clap = { version = "4.5", features = ["derive"] }
 colored = "3"
 anyhow.workspace = true
-reqwest = { version = "0.13.0", features = [
-    "json",
-    "rustls-tls",
-], default-features = false }
+reqwest = { version = "0.13.0", features = [ "json" ], default-features = false }
 futures = "0.3.30"
 tokio = { version = "1.37.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.18", features = [
