@@ -43,7 +43,7 @@ pub(crate) enum OutputFormat {
     FirefoxProfiler,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum StackFrameInfo {
     ProgramCounter(u64),
     ReturnAddress(u64),
@@ -66,7 +66,7 @@ impl std::fmt::Debug for StackFrameInfo {
 }
 
 /// A single sample containing a callstack and a time
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct CallstackSample {
     // element 0 is root node
     // element 1 is first callee, etc
