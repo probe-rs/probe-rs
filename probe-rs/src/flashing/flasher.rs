@@ -21,11 +21,13 @@ use std::{
 /// The timeout for init/uninit routines.
 const INIT_TIMEOUT: Duration = Duration::from_secs(2);
 
-pub(crate) trait Operation {
+/// Represents the operation for which the flash loader is initialized.
+pub trait Operation {
     const OPERATION: u32;
     const NAME: &'static str;
 }
 
+/// Type state for [`ActiveFlasher`] when the flash loader is initialized for erasing flash.
 pub struct Erase;
 
 impl Operation for Erase {
@@ -33,6 +35,7 @@ impl Operation for Erase {
     const NAME: &'static str = "Erase";
 }
 
+/// Type state for [`ActiveFlasher`] when the flash loader is initialized for programming.
 pub struct Program;
 
 impl Operation for Program {
@@ -40,6 +43,7 @@ impl Operation for Program {
     const NAME: &'static str = "Program";
 }
 
+/// Type state for [`ActiveFlasher`] when the flash loader is initialized for verification.
 pub struct Verify;
 
 impl Operation for Verify {
@@ -47,15 +51,24 @@ impl Operation for Verify {
     const NAME: &'static str = "Verify";
 }
 
+/// Flash data
+// TODO this is hard to document because this seems like a bad API.
 pub enum FlashData {
+    /// Raw flash data.
     Raw(FlashLayout),
+
+    /// Encoded flash data.
     Loaded {
+        /// The flash encoder.
         encoder: FlashEncoder,
+
+        /// Whether the encoder should ignore fill bytes during processing.
         ignore_fills: bool,
     },
 }
 
 impl FlashData {
+    /// Returns a reference to the flash layout.
     pub fn layout(&self) -> &FlashLayout {
         match self {
             FlashData::Raw(layout) => layout,
@@ -63,6 +76,7 @@ impl FlashData {
         }
     }
 
+    /// Returns a reference to the flash layout.
     pub fn layout_mut(&mut self) -> &mut FlashLayout {
         // We're mutating the data, let's invalidate the encoder
         if let FlashData::Loaded { encoder, .. } = self {
@@ -75,6 +89,7 @@ impl FlashData {
         }
     }
 
+    /// Returns the encoded data.
     pub fn encoder(&mut self, encoding: TransferEncoding, ignore_fills: bool) -> &FlashEncoder {
         if let FlashData::Loaded {
             encoder,
@@ -101,12 +116,17 @@ impl FlashData {
     }
 }
 
+/// Represents a piece of data to be flashed.
 pub struct LoadedRegion {
+    /// The region to flash data to.
     pub region: NvmRegion,
+
+    /// The flash data of the loaded region.
     pub data: FlashData,
 }
 
 impl LoadedRegion {
+    /// Returns the flash layout of the loaded region.
     pub fn flash_layout(&self) -> &FlashLayout {
         self.data.layout()
     }
@@ -127,6 +147,7 @@ pub struct Flasher {
 const STACK_FILL_BYTE: u8 = 0x56;
 
 impl Flasher {
+    /// Creates a new Flasher object.
     pub fn new(
         target: &Target,
         core_index: usize,
@@ -234,6 +255,12 @@ impl Flasher {
         Ok(())
     }
 
+    /// Prepares the flashing algorithm.
+    ///
+    /// This function ensures that the flashing algorithm has been loaded into memory, and
+    /// initialized for the given [`Operation].
+    ///
+    /// The `clk` argument specifies the clock frequency for prgramming the device.
     pub fn init<'s, 'p, O: Operation>(
         &'s mut self,
         session: &'s mut Session,
@@ -263,6 +290,7 @@ impl Flasher {
         Ok((flasher, &mut self.regions))
     }
 
+    /// Erases all flash memory using a debug sequence.
     pub fn run_erase_all(
         &mut self,
         session: &mut Session,
@@ -290,21 +318,7 @@ impl Flasher {
         result
     }
 
-    pub fn run_blank_check<'p, T, F>(
-        &mut self,
-        session: &mut Session,
-        progress: &mut FlashProgress<'p>,
-        f: F,
-    ) -> Result<T, FlashError>
-    where
-        F: FnOnce(&mut ActiveFlasher<'_, 'p, Erase>, &mut [LoadedRegion]) -> Result<T, FlashError>,
-    {
-        let (mut active, data) = self.init(session, progress, None)?;
-        let r = f(&mut active, data)?;
-        active.uninit()?;
-        Ok(r)
-    }
-
+    /// Initializes the flashing algorithm for the [`Erase`] operation and provides an interface to it via the callback.
     pub fn run_erase<'p, T, F>(
         &mut self,
         session: &mut Session,
@@ -320,6 +334,7 @@ impl Flasher {
         Ok(r)
     }
 
+    /// Initializes the flashing algorithm for the [`Program`] operation and provides an interface to it via the callback.
     pub fn run_program<'p, T, F>(
         &mut self,
         session: &mut Session,
@@ -338,6 +353,7 @@ impl Flasher {
         Ok(r)
     }
 
+    /// Initializes the flashing algorithm for the [`Verify`] operation and provides an interface to it via the callback.
     pub fn run_verify<'p, T, F>(
         &mut self,
         session: &mut Session,
@@ -797,6 +813,7 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
     Ok(reg_value)
 }
 
+/// An initialized flash algorithm function interface.
 pub struct ActiveFlasher<'op, 'p, O: Operation> {
     pub(super) core: Core<'op>,
     instruction_set: InstructionSet,
@@ -875,6 +892,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         Ok(())
     }
 
+    /// Runs the ESP32-specific `read_flash_size` routine.
     // TODO: this function should not be defined in the probe-rs library.
     // The target yaml should provide a way to define custom functions, and ActiveFlasher
     // should provide a way to call any custom function without apriori knowledge.
@@ -1231,80 +1249,10 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 
         Ok(())
     }
-}
 
-impl ActiveFlasher<'_, '_, Erase> {
-    pub(super) fn erase_all(&mut self) -> Result<(), FlashError> {
-        tracing::debug!("Erasing entire chip.");
-        let algo = &self.flash_algorithm;
-
-        let Some(pc_erase_all) = algo.pc_erase_all else {
-            return Err(FlashError::ChipEraseNotSupported);
-        };
-
-        let result = self
-            .call_function_and_wait(
-                &Registers {
-                    pc: into_reg(pc_erase_all)?,
-                    r0: None,
-                    r1: None,
-                    r2: None,
-                    r3: None,
-                },
-                false,
-                Duration::from_secs(40),
-            )
-            .map_err(|error| FlashError::ChipEraseFailed {
-                source: Box::new(error),
-            })?;
-
-        if result != 0 {
-            Err(FlashError::ChipEraseFailed {
-                source: Box::new(FlashError::RoutineCallFailed {
-                    name: "chip_erase",
-                    error_code: result,
-                }),
-            })
-        } else {
-            Ok(())
-        }
-    }
-
-    pub(super) fn erase_sector(&mut self, sector: &FlashSector) -> Result<(), FlashError> {
-        let address = sector.address();
-        tracing::info!("Erasing sector at address {:#010x}", address);
-        let t1 = Instant::now();
-
-        let error_code = self.call_function_and_wait(
-            &Registers {
-                pc: into_reg(self.flash_algorithm.pc_erase_sector)?,
-                r0: Some(into_reg(address)?),
-                r1: None,
-                r2: None,
-                r3: None,
-            },
-            false,
-            Duration::from_millis(
-                self.flash_algorithm.flash_properties.erase_sector_timeout as u64,
-            ),
-        )?;
-        tracing::info!(
-            "Done erasing sector. Result is {}. This took {:?}",
-            error_code,
-            t1.elapsed()
-        );
-
-        if error_code != 0 {
-            Err(FlashError::RoutineCallFailed {
-                name: "erase_sector",
-                error_code,
-            })
-        } else {
-            self.progress.sector_erased(sector.size(), t1.elapsed());
-            Ok(())
-        }
-    }
-
+    /// Runs the [`BlankCheck`] function.
+    ///
+    /// [`BlankCheck`]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/algorithmFunc.html#BlankCheck
     pub(super) fn blank_check(&mut self, sector: &FlashSector) -> Result<(), FlashError> {
         let address = sector.address();
         let size = sector.size();
@@ -1368,8 +1316,90 @@ impl ActiveFlasher<'_, '_, Erase> {
     }
 }
 
+impl ActiveFlasher<'_, '_, Erase> {
+    /// Runs the [`EraseChip`] function.
+    ///
+    /// [`EraseChip`]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/algorithmFunc.html#EraseChip
+    pub fn erase_all(&mut self) -> Result<(), FlashError> {
+        tracing::debug!("Erasing entire chip.");
+        let algo = &self.flash_algorithm;
+
+        let Some(pc_erase_all) = algo.pc_erase_all else {
+            return Err(FlashError::ChipEraseNotSupported);
+        };
+
+        let result = self
+            .call_function_and_wait(
+                &Registers {
+                    pc: into_reg(pc_erase_all)?,
+                    r0: None,
+                    r1: None,
+                    r2: None,
+                    r3: None,
+                },
+                false,
+                Duration::from_secs(40),
+            )
+            .map_err(|error| FlashError::ChipEraseFailed {
+                source: Box::new(error),
+            })?;
+
+        if result != 0 {
+            Err(FlashError::ChipEraseFailed {
+                source: Box::new(FlashError::RoutineCallFailed {
+                    name: "chip_erase",
+                    error_code: result,
+                }),
+            })
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Runs the [`EraseSector`] function.
+    ///
+    /// [`EraseSector`]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/algorithmFunc.html#EraseSector
+    pub fn erase_sector(&mut self, sector: &FlashSector) -> Result<(), FlashError> {
+        let address = sector.address();
+        tracing::info!("Erasing sector at address {:#010x}", address);
+        let t1 = Instant::now();
+
+        let error_code = self.call_function_and_wait(
+            &Registers {
+                pc: into_reg(self.flash_algorithm.pc_erase_sector)?,
+                r0: Some(into_reg(address)?),
+                r1: None,
+                r2: None,
+                r3: None,
+            },
+            false,
+            Duration::from_millis(
+                self.flash_algorithm.flash_properties.erase_sector_timeout as u64,
+            ),
+        )?;
+        tracing::info!(
+            "Done erasing sector. Result is {}. This took {:?}",
+            error_code,
+            t1.elapsed()
+        );
+
+        if error_code != 0 {
+            Err(FlashError::RoutineCallFailed {
+                name: "erase_sector",
+                error_code,
+            })
+        } else {
+            self.progress.sector_erased(sector.size(), t1.elapsed());
+            Ok(())
+        }
+    }
+}
+
 impl ActiveFlasher<'_, '_, Program> {
-    pub(super) fn program_page(&mut self, page: &FlashPage) -> Result<(), FlashError> {
+    /// Runs the [`ProgramPage`] function.
+    ///
+    /// [`ProgramPage`]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/algorithmFunc.html#ProgramPage
+    pub fn program_page(&mut self, page: &FlashPage) -> Result<(), FlashError> {
         let t1 = Instant::now();
 
         let address = page.address();
@@ -1394,7 +1424,12 @@ impl ActiveFlasher<'_, '_, Program> {
         Ok(())
     }
 
-    pub(super) fn start_program_page_with_buffer(
+    /// Starts executing the [`ProgramPage`] function.
+    ///
+    /// This function can be used along with [`wait_for_write_end`][Self::wait_for_write_end] to implement double buffered programming.
+    ///
+    /// [`ProgramPage`]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/algorithmFunc.html#ProgramPage
+    pub fn start_program_page_with_buffer(
         &mut self,
         buffer_address: u64,
         page_address: u64,
@@ -1418,7 +1453,12 @@ impl ActiveFlasher<'_, '_, Program> {
         Ok(())
     }
 
-    fn wait_for_write_end(&mut self, last_page_address: u64) -> Result<(), FlashError> {
+    /// Waits for the write operation to complete.
+    ///
+    /// This function can be used along with [`start_program_page_with_buffer`][Self::start_program_page_with_buffer] to implement double buffered programming.
+    ///
+    /// [`start_program_page_with_buffer`]: Self::start_program_page_with_buffer
+    pub fn wait_for_write_end(&mut self, last_page_address: u64) -> Result<(), FlashError> {
         let timeout = Duration::from_millis(
             self.flash_algorithm.flash_properties.program_page_timeout as u64,
         );
