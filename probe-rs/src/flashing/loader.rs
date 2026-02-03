@@ -22,6 +22,9 @@ use crate::flashing::{FlashLayout, FlashProgress};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 
+/// A trait representing a firmware image format.
+///
+/// This trait can create a new [ImageLoader], which can be used to load firmware images for flashing.
 pub trait ImageFormat: Sync {
     /// The list of format names supported by this loader factory.
     fn formats(&self) -> &[&str];
@@ -30,7 +33,7 @@ pub trait ImageFormat: Sync {
     fn create_loader(&self, options: Option<Value>) -> Box<dyn ImageLoader>;
 }
 
-/// A list of all known image formats
+/// A list of all known image formats.
 static LOADERS: LazyLock<RwLock<Vec<&'static dyn ImageFormat>>> = LazyLock::new(|| {
     let image_formats: Vec<&'static dyn ImageFormat> = vec![
         &ElfLoaderFactory,
@@ -42,6 +45,12 @@ static LOADERS: LazyLock<RwLock<Vec<&'static dyn ImageFormat>>> = LazyLock::new(
     RwLock::new(image_formats)
 });
 
+/// Returns an [image format][ImageFormat] by name.
+///
+/// # Arguments
+///
+/// * `format` - The name of the image format. An image format is recognised
+///   by the names it returns from the [formats][ImageFormat::formats] method.
 pub fn image_format(format: &str) -> Option<&'static dyn ImageFormat> {
     LOADERS
         .read()
@@ -50,6 +59,11 @@ pub fn image_format(format: &str) -> Option<&'static dyn ImageFormat> {
         .map(|factory| *factory)
 }
 
+/// Registers an [image format][ImageFormat].
+///
+/// # Arguments
+///
+/// * `factory` - The image format factory.
 pub(crate) fn register_image_format(factory: &'static dyn ImageFormat) {
     LOADERS.write().push(factory);
 }
@@ -102,6 +116,7 @@ impl ImageFormat for Uf2LoaderFactory {
     }
 }
 
+/// Helper function to turn format-specific errors into a [`FileDownloadError`].
 pub fn into_format_error<E>(format: &str, error: E) -> FileDownloadError
 where
     E: std::error::Error + Send + Sync + 'static,

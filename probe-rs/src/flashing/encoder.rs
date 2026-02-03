@@ -183,11 +183,13 @@ impl EncoderAlgorithm for ZlibEncoder {
     }
 }
 
+/// Transforms data to be flashed into a format suitable for the flashing algorithm.
 pub struct FlashEncoder {
     encoder: Box<dyn EncoderAlgorithm>,
 }
 
 impl FlashEncoder {
+    /// Creates a new flash encoder with the given flash layout and transfer encoding.
     pub fn new(encoding: TransferEncoding, flash: FlashLayout, ignore_fills: bool) -> Self {
         Self {
             encoder: match encoding {
@@ -197,18 +199,22 @@ impl FlashEncoder {
         }
     }
 
+    /// Returns the encoded data.
     pub fn pages(&self) -> &[FlashPage] {
         self.encoder.pages()
     }
 
+    /// Returns the sectors to be erased.
     pub fn sectors(&self) -> &[FlashSector] {
         self.encoder.sectors()
     }
 
+    /// Returns the total size of the encoded data.
     pub fn program_size(&self) -> u64 {
         self.pages().iter().map(|p| p.data().len() as u64).sum()
     }
 
+    /// Returns the final flash layout.
     pub fn flash_layout(&self) -> &FlashLayout {
         self.encoder.layout()
     }
