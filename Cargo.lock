@@ -631,7 +631,7 @@ dependencies = [
  "bytes",
  "futures",
  "log",
- "reqwest",
+ "reqwest 0.12.28",
  "roxmltree",
  "serde",
  "serde_json",
@@ -1804,7 +1804,6 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tower-service",
- "webpki-roots 1.0.4",
 ]
 
 [[package]]
@@ -3366,7 +3365,37 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-streams",
  "web-sys",
- "webpki-roots 1.0.4",
+]
+
+[[package]]
+name = "reqwest"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04e9018c9d814e5f30cc16a0f03271aeab3571e609612d9fe78c1aa8d11c2f62"
+dependencies = [
+ "base64",
+ "bytes",
+ "futures-core",
+ "http",
+ "http-body",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "js-sys",
+ "log",
+ "percent-encoding",
+ "pin-project-lite",
+ "serde",
+ "serde_json",
+ "sync_wrapper",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tower-service",
+ "url",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]
@@ -4093,7 +4122,7 @@ dependencies = [
  "probe-rs",
  "probe-rs-espressif",
  "probe-rs-target",
- "reqwest",
+ "reqwest 0.13.1",
  "scroll",
  "serde_yaml",
  "tempfile",
