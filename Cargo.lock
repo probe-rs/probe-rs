@@ -269,28 +269,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "axum-extra"
-version = "0.12.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fef252edff26ddba56bbcdf2ee3307b8129acb86f5749b68990c168a6fcc9c76"
-dependencies = [
- "axum",
- "axum-core",
- "bytes",
- "futures-core",
- "futures-util",
- "headers",
- "http",
- "http-body",
- "http-body-util",
- "mime",
- "pin-project-lite",
- "tower-layer",
- "tower-service",
- "tracing",
-]
-
-[[package]]
 name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1614,30 +1592,6 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash",
-]
-
-[[package]]
-name = "headers"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3314d5adb5d94bcdf56771f2e50dbbc80bb4bdf88967526706205ac9eff24eb"
-dependencies = [
- "base64",
- "bytes",
- "headers-core",
- "http",
- "httpdate",
- "mime",
- "sha1",
-]
-
-[[package]]
-name = "headers-core"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54b4a22553d4242c49fddb9ba998a99962b5cc6f22cb5a3482bec22522403ce4"
-dependencies = [
- "http",
 ]
 
 [[package]]
@@ -2986,7 +2940,6 @@ dependencies = [
  "ansi-parser",
  "anyhow",
  "axum",
- "axum-extra",
  "base64",
  "bytesize",
  "capstone",
@@ -3035,9 +2988,7 @@ dependencies = [
  "scroll",
  "serde",
  "serde_json",
- "serde_yaml",
  "sha2",
- "signal-hook",
  "svd-parser",
  "svg",
  "tempfile",
@@ -3900,7 +3851,6 @@ version = "0.31.0"
 dependencies = [
  "anyhow",
  "clap",
- "colored 3.1.1",
  "libtest-mimic",
  "linkme",
  "log",
@@ -3908,7 +3858,6 @@ dependencies = [
  "probe-rs-espressif",
  "serde",
  "smoke_tester_macros",
- "thiserror 2.0.18",
  "toml 0.9.11+spec-1.1.0",
  "tracing",
  "tracing-subscriber",
@@ -4100,7 +4049,6 @@ dependencies = [
  "tokio",
  "tracing-subscriber",
  "xshell",
- "zerocopy",
  "zip",
 ]
 

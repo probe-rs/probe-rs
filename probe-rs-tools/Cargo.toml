@@ -21,7 +21,6 @@ default = []
 remote = [
     "dep:tokio-tungstenite",
     "dep:axum",
-    "dep:axum-extra",
     "dep:rustls",
     "dep:tempfile",
 ]
@@ -34,7 +33,6 @@ jep106 = "0.3"
 num-traits = "0.2"
 scroll = "0.13"
 serde = { version = "1", features = ["derive"] }
-serde_yaml = "0.9"
 thiserror = { workspace = true }
 tracing = "0.1"
 typed-path = "0.12"
@@ -69,7 +67,6 @@ rustyline-async = "0.4.7"
 sanitize-filename = "0.6"
 schemafy = "0.6"
 serde_json = "1.0.116"
-signal-hook = { version = "0.3", default-features = false }
 # Version 0.14.6 fails to compile
 svd-parser = { version = "=0.14.9", features = ["expand"] }
 termtree = "0.5"
@@ -119,7 +116,6 @@ tokio-tungstenite = { version = "0.28", features = [
     "rustls-tls-webpki-roots",
 ], optional = true }
 axum = { version = "0.8", features = ["ws"], optional = true }
-axum-extra = { version = "0.12", features = ["typed-header"], optional = true }
 tempfile = { version = "3.0", optional = true }
 postcard = { version = "1.0", features = ["use-std"] }
 postcard-rpc = { version = "0.12.0", features = ["use-std"] }
