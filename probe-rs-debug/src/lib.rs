@@ -7,6 +7,8 @@
 pub mod debug_info;
 /// Stepping through a program during debug, at various granularities.
 pub mod debug_step;
+/// Functions used for reading frame records
+pub mod frame_record;
 /// References to the DIE (debug information entry) of functions.
 pub mod function_die;
 /// Programming languages
