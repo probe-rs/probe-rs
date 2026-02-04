@@ -42,6 +42,7 @@ fn read_frame_record_for_core<'a>(
         }
         // not supporting xtensa yet because it's complicated
         InstructionSet::Xtensa => {
+            core.spill_registers()?;
             let fp_32 = frame_pointer
                 .try_into()
                 .map_err(|_| DebugError::Other("Expected 32 bit frame pointer".to_string()))?;
