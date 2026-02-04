@@ -61,8 +61,16 @@ pub(crate) fn frame_pointer_unwind<'a>(
         .instruction_set()
         .map_err(FramePointerUnwindError::DetermineInstructionSet)?;
 
+    // Use the stack pointer on Xtensa as compiling with force-frame-pointers=yes can be buggy
+    // and we spill registers to the stack so we guarantee the frame record starts at SP - 16.
+    // Use frame pointer on all other architectures.
+    let fp_reg = match instruction_set {
+        InstructionSet::Xtensa => core.stack_pointer(),
+        _ => core.frame_pointer(),
+    };
+
     let mut frame_pointer: u64 = core
-        .read_core_reg(core.frame_pointer())
+        .read_core_reg(fp_reg)
         .map_err(FramePointerUnwindError::ReadRegister)?;
     let program_counter: u64 = core
         .read_core_reg(core.program_counter())
