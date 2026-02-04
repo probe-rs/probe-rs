@@ -10,7 +10,7 @@ use crate::{
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
         CommandResult, JtagAccess, JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData,
-        queue::{BatchSubError, DeferredResultIndex, DeferredResultSet, TypedQueue},
+        queue::{BatchError, DeferredResultIndex, DeferredResultSet, Queue},
     },
 };
 
@@ -148,7 +148,7 @@ pub(crate) struct XdmState {
 
     /// The command queue for the current batch. JTAG accesses are batched to reduce the number of
     /// IO operations.
-    queue: TypedQueue<Error>,
+    queue: Queue<Error>,
 
     /// The results of the reads in the already executed batched JTAG commands.
     jtag_results: DeferredResultSet<CommandResult>,
@@ -183,7 +183,7 @@ impl<'probe> Xdm<'probe> {
 
     #[tracing::instrument(skip(self))]
     pub(crate) fn enter_debug_mode(&mut self) -> Result<(), XtensaError> {
-        self.state.queue = TypedQueue::new();
+        self.state.queue = Queue::new();
         self.state.jtag_results = DeferredResultSet::new();
 
         self.probe.tap_reset()?;
@@ -322,7 +322,7 @@ impl<'probe> Xdm<'probe> {
         let _idxs = std::mem::take(&mut self.state.status_idxs);
 
         while !queue.is_empty() {
-            match queue.execute(self.probe) {
+            match queue.execute(|queue| self.probe.write_register_batch(queue)) {
                 Ok(result) => {
                     self.state.jtag_results.merge_from(result);
                     return Ok(());
@@ -332,7 +332,7 @@ impl<'probe> Xdm<'probe> {
                     queue.consume(e.results.len());
 
                     match e.error {
-                        BatchSubError::Specific(err) => {
+                        BatchError::Specific(err) => {
                             // err is now ProbeRsError, not Box<dyn Error>
                             match err {
                                 Error::Xdm {
@@ -371,7 +371,7 @@ impl<'probe> Xdm<'probe> {
                                 error => return Err(XtensaError::XdmError(error)),
                             }
                         }
-                        BatchSubError::Probe(debug_probe_error) => {
+                        BatchError::Probe(debug_probe_error) => {
                             return Err(debug_probe_error.into());
                         }
                     };
@@ -403,7 +403,7 @@ impl<'probe> Xdm<'probe> {
 
     fn do_nexus_op(&mut self, nar: u8, ndr: u32, transform: TransformFn) -> DeferredResultIndex {
         let nar_idx = self.state.queue.schedule(JtagWriteCommand {
-            inner: JtagWriteData {
+            data: JtagWriteData {
                 address: TapInstruction::Nar.code(),
                 data: nar.to_le_bytes().to_vec(),
                 len: TapInstruction::Nar.bits(),
@@ -429,7 +429,7 @@ impl<'probe> Xdm<'probe> {
         // We save the nar reader because we want to capture the previous status.
         self.state.status_idxs.push(nar_idx);
 
-        self.state.queue.schedule_shift_dr(ShiftDrCommand {
+        self.state.queue.schedule(ShiftDrCommand {
             inner: ShiftDrData {
                 data: ndr.to_le_bytes().to_vec(),
                 len: TapInstruction::Ndr.bits(),

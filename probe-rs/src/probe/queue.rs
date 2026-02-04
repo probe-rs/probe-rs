@@ -1,17 +1,15 @@
 use core::fmt;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::probe::{
-    CommandResult, DebugProbeError, JtagAccess, JtagCommand, JtagWriteCommand, ShiftDrCommand,
-};
+use crate::probe::{CommandResult, DebugProbeError, JtagCommand};
 
-/// Internal, batch specific, sub error.
+/// Internal, batch specific, error.
 ///
 /// This is generic over the error type `E`, with a default of a boxed error
-/// for use in the internal JTAG layer. When using `TypedBatch<E>`, the error
+/// for use in the internal JTAG layer. When using [`Queue<E>`], the error
 /// can be downcast back to the concrete type.
 #[derive(Debug, thiserror::Error)]
-pub enum BatchSubError<E> {
+pub enum BatchError<E> {
     /// Batch error specific to a debug interface occurred
     #[error(transparent)]
     Specific(E),
@@ -23,13 +21,13 @@ pub enum BatchSubError<E> {
 /// An error that occurred during batched command execution of JTAG commands.
 ///
 /// This is generic over the error type `E`, with a default of a boxed error.
-/// When using `TypedBatch<E>`, you get back `BatchExecutionError<E>` with
+/// When using `Queue<E>`, you get back `BatchExecutionError<E>` with
 /// your concrete error type.
 #[derive(thiserror::Error, Debug)]
 pub struct BatchExecutionError<E = Box<dyn std::error::Error + Send + Sync>> {
     /// The error that occurred during execution.
     #[source]
-    pub error: BatchSubError<E>,
+    pub error: BatchError<E>,
 
     /// The results of the commands that were executed before the error occurred.
     pub results: DeferredResultSet<CommandResult>,
@@ -41,7 +39,7 @@ impl BatchExecutionError {
         results: DeferredResultSet<CommandResult>,
     ) -> Self {
         BatchExecutionError {
-            error: BatchSubError::Specific(error),
+            error: BatchError::Specific(error),
             results,
         }
     }
@@ -51,7 +49,7 @@ impl BatchExecutionError {
         results: DeferredResultSet<CommandResult>,
     ) -> Self {
         BatchExecutionError {
-            error: BatchSubError::Probe(error),
+            error: BatchError::Probe(error),
             results,
         }
     }
@@ -68,12 +66,12 @@ impl BatchExecutionError {
     {
         BatchExecutionError {
             error: match self.error {
-                BatchSubError::Specific(boxed) => BatchSubError::Specific(
+                BatchError::Specific(boxed) => BatchError::Specific(
                     *boxed
                         .downcast::<T>()
                         .expect("error type mismatch in downcast_specific"),
                 ),
-                BatchSubError::Probe(e) => BatchSubError::Probe(e),
+                BatchError::Probe(e) => BatchError::Probe(e),
             },
             results: self.results,
         }
@@ -90,88 +88,41 @@ impl<E: std::fmt::Display> std::fmt::Display for BatchExecutionError<E> {
         )
     }
 }
-/// A typed batch of JTAG commands with compile-time error type enforcement.
+/// Queue for  JTAG commands with compile-time error type enforcement.
 ///
-/// All commands scheduled in this batch must use the same error type `E`.
-/// When executed, errors are returned with the concrete type rather than
-/// requiring runtime downcasting.
+/// All commands scheduled in this queue must use the same error type `E`.
 ///
-/// # Example
-///
-/// ```ignore
-/// let mut batch: TypedBatch<MyError> = TypedBatch::new();
-/// batch.schedule(JtagWriteCommand {
-///     inner: JtagWriteData { address: 0x10, data: vec![0], len: 8 },
-///     transform: |_data, _bits| Ok(CommandResult::None),
-/// });
-///
-/// match batch.execute(probe) {
-///     Ok(results) => { /* use results */ }
-///     Err(e) => match e.error {
-///         BatchSubError::Specific(my_err) => { /* my_err is MyError */ }
-///         BatchSubError::Probe(probe_err) => { /* handle probe error */ }
-///     }
-/// }
-/// ```
-pub struct TypedQueue<E> {
-    queue: CommandQueue<JtagCommand>,
+#[derive(Debug)]
+pub struct Queue<E> {
+    queue: ErasedQueue,
     _marker: std::marker::PhantomData<E>,
 }
 
-impl<E> std::fmt::Debug for TypedQueue<E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TypedBatch")
-            .field("queue", &self.queue)
-            .finish()
-    }
-}
-
-impl<E: std::error::Error + Send + Sync + 'static> Default for TypedQueue<E> {
+impl<E: std::error::Error + Send + Sync + 'static> Default for Queue<E> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<E: std::error::Error + Send + Sync + 'static> TypedQueue<E> {
+impl<E: std::error::Error + Send + Sync + 'static> Queue<E> {
     /// Creates a new empty typed batch.
     pub fn new() -> Self {
         Self {
-            queue: CommandQueue::new(),
+            queue: ErasedQueue::new(),
             _marker: std::marker::PhantomData,
         }
     }
 
-    /// Schedule a typed JTAG write command.
+    /// Schedule a command.
     ///
     /// The error type is erased internally, but will be recovered when
     /// `execute()` returns an error.
-    pub fn schedule(&mut self, cmd: JtagWriteCommand<E>) -> DeferredResultIndex {
-        self.queue.schedule(cmd.erase())
+    pub fn schedule(&mut self, cmd: impl Into<JtagCommand>) -> DeferredResultIndex {
+        self.queue.schedule(cmd)
     }
+}
 
-    /// Schedule a typed shift DR command.
-    ///
-    /// The error type is erased internally, but will be recovered when
-    /// `execute()` returns an error.
-    pub fn schedule_shift_dr(&mut self, cmd: ShiftDrCommand<E>) -> DeferredResultIndex {
-        self.queue.schedule(cmd.erase())
-    }
-
-    /// Execute the batch and return results with typed errors.
-    ///
-    /// # Errors
-    ///
-    /// Returns `BatchExecutionError<E>` if any command fails. The error
-    /// contains the concrete error type `E`, not a boxed trait object.
-    pub fn execute(
-        &self,
-        probe: &mut dyn JtagAccess,
-    ) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError<E>> {
-        probe
-            .write_register_batch(&self.queue)
-            .map_err(|e| e.downcast_specific::<E>())
-    }
-
+impl<E> Queue<E> {
     /// Returns whether the batch is empty.
     pub fn is_empty(&self) -> bool {
         self.queue.is_empty()
@@ -193,17 +144,23 @@ impl<E: std::error::Error + Send + Sync + 'static> TypedQueue<E> {
     pub fn rewind(&mut self, by: usize) -> bool {
         self.queue.rewind(by)
     }
+}
 
-    /// Get a reference to the internal command queue.
+impl<E: std::error::Error + Send + Sync + 'static> Queue<E> {
+    /// Execute the batch and return results with typed errors.
     ///
-    /// This is useful for direct access to the queue when needed.
-    pub fn queue(&self) -> &CommandQueue<JtagCommand> {
-        &self.queue
-    }
-
-    /// Take ownership of the internal command queue, consuming the batch.
-    pub fn into_queue(self) -> CommandQueue<JtagCommand> {
-        self.queue
+    /// # Errors
+    ///
+    /// Returns `BatchExecutionError<E>` if any command fails. The error
+    /// contains the concrete error type `E`, not a boxed trait object.
+    pub fn execute<F>(
+        &self,
+        command: F,
+    ) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError<E>>
+    where
+        F: FnOnce(&ErasedQueue) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError>,
+    {
+        command(&self.queue).map_err(|e| e.downcast_specific::<E>())
     }
 }
 
@@ -307,42 +264,28 @@ impl std::hash::Hash for DeferredResultIndex {
     }
 }
 
-/// A set of batched commands that will be executed all at once.
+/// A set of batched JTAG commands that will be processed in a batch by the probe.
+///
+/// If possible, the [`Queue`] should be used which
 ///
 /// This list maintains which commands' results can be read by the issuing code, which then
 /// can be used to skip capturing or processing certain parts of the response.
-pub struct CommandQueue<T> {
-    commands: Vec<(DeferredResultIndex, T)>,
+#[derive(Debug, Default)]
+pub struct ErasedQueue {
+    commands: Vec<(DeferredResultIndex, JtagCommand)>,
     cursor: usize,
 }
 
-impl<T: std::fmt::Debug> std::fmt::Debug for CommandQueue<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CommandQueue")
-            .field("commands", &self.len())
-            .finish()
-    }
-}
-
-impl<T> Default for CommandQueue<T> {
-    fn default() -> Self {
-        Self {
-            commands: Vec::new(),
-            cursor: 0,
-        }
-    }
-}
-
-impl<T> CommandQueue<T> {
+impl ErasedQueue {
     /// Creates a new empty queue.
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self::default()
     }
 
     /// Schedules a command for later execution.
     ///
     /// Returns a token value that can be used to retrieve the result of the command.
-    pub fn schedule(&mut self, command: impl Into<T>) -> DeferredResultIndex {
+    fn schedule(&mut self, command: impl Into<JtagCommand>) -> DeferredResultIndex {
         let index = DeferredResultIndex::new();
         self.commands.push((index.clone(), command.into()));
         index
@@ -358,7 +301,7 @@ impl<T> CommandQueue<T> {
         self.len() == 0
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, T)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, JtagCommand)> {
         self.commands[self.cursor..].iter()
     }
 

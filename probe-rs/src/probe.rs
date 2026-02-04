@@ -27,7 +27,7 @@ use crate::architecture::xtensa::communication_interface::{
 use crate::config::TargetSelector;
 use crate::config::registry::Registry;
 use crate::probe::common::JtagState;
-use crate::probe::queue::{BatchExecutionError, CommandQueue, DeferredResultSet};
+use crate::probe::queue::{BatchExecutionError, DeferredResultSet, ErasedQueue};
 use crate::{Error, Permissions, Session};
 use bitvec::slice::BitSlice;
 use bitvec::vec::BitVec;
@@ -35,7 +35,6 @@ use common::ScanChainError;
 use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
-use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
@@ -1153,7 +1152,7 @@ pub trait JtagAccess: DebugProbe {
     /// Executes a sequence of JTAG commands.
     fn write_register_batch(
         &mut self,
-        writes: &CommandQueue<JtagCommand>,
+        writes: &ErasedQueue,
     ) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError> {
         tracing::debug!(
             "Using default `JtagAccess::write_register_batch` hurts performance. Please implement proper batching for this probe."
@@ -1213,7 +1212,7 @@ pub struct JtagSequence {
     pub data: BitVec,
 }
 
-/// Data for a JTAG register write - no transform, just the payload.
+/// Data for a JTAG register write
 #[derive(Debug, Clone)]
 pub struct JtagWriteData {
     /// The IR register to write to.
@@ -1240,28 +1239,29 @@ pub struct ShiftDrData {
 #[derive(Debug, Clone)]
 pub struct JtagWriteCommand<E> {
     /// The inner data for the write command.
-    pub inner: JtagWriteData,
+    pub data: JtagWriteData,
 
     /// A function to transform the raw response into a [`CommandResult`]
     pub transform: fn(&JtagWriteData, &BitSlice) -> Result<CommandResult, E>,
 }
 
-impl<E: std::error::Error + Send + Sync + 'static> JtagWriteCommand<E> {
-    /// Erase the error type, converting to an internal erased command.
-    pub fn erase(self) -> ErasedCommand<JtagWriteData> {
-        let typed_transform = self.transform;
+impl<E: std::error::Error + Send + Sync + 'static> From<JtagWriteCommand<E>> for JtagCommand {
+    fn from(value: JtagWriteCommand<E>) -> Self {
+        let typed_transform = value.transform;
 
-        ErasedCommand {
-            inner: self.inner,
+        let erased_command = ErasedCommand {
+            inner: value.data,
             transform: Box::new(move |data, bits| {
                 (typed_transform)(data, bits)
                     .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
             }),
-        }
+        };
+
+        JtagCommand::WriteRegister(erased_command)
     }
 }
 
-/// A typed DR shift command with compile-time error type.
+/// A DR shift command
 #[derive(Debug, Clone)]
 pub struct ShiftDrCommand<E> {
     /// The inner data for the shift command.
@@ -1271,30 +1271,31 @@ pub struct ShiftDrCommand<E> {
     pub transform: fn(&ShiftDrData, &BitSlice) -> Result<CommandResult, E>,
 }
 
-impl<E: std::error::Error + Send + Sync + 'static> ShiftDrCommand<E> {
-    /// Erase the error type, converting to an internal erased command.
-    pub fn erase(self) -> ErasedCommand<ShiftDrData> {
-        let typed_transform = self.transform;
+impl<E: std::error::Error + Send + Sync + 'static> From<ShiftDrCommand<E>> for JtagCommand {
+    fn from(value: ShiftDrCommand<E>) -> Self {
+        let typed_transform = value.transform;
 
-        ErasedCommand {
-            inner: self.inner,
+        let erased_command = ErasedCommand {
+            inner: value.inner,
             transform: Box::new(move |data, bits| {
                 (typed_transform)(data, bits)
                     .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
             }),
-        }
+        };
+
+        JtagCommand::ShiftDr(erased_command)
     }
 }
 
-/// Type alias for the erased transform function used in JTAG write commands.
-pub type ErasedTransformFn<T> = Box<
+/// Type alias for the erased transform function used in batched JTAG commands.
+pub(crate) type ErasedTransformFn<T> = Box<
     dyn Fn(&T, &BitSlice) -> Result<CommandResult, Box<dyn std::error::Error + Send + Sync>>
         + Send
         + Sync,
 >;
 
 /// An erased JTAG register write command (internal use).
-pub struct ErasedCommand<T> {
+pub(crate) struct ErasedCommand<T> {
     /// The inner data for the write command.
     pub inner: T,
 
@@ -1313,7 +1314,7 @@ impl<T: std::fmt::Debug> std::fmt::Debug for ErasedCommand<T> {
 
 /// A low-level JTAG command (uses type-erased commands internally).
 #[derive(Debug)]
-pub enum JtagCommand {
+pub(crate) enum JtagCommand {
     /// Write a register.
     WriteRegister(ErasedCommand<JtagWriteData>),
     /// Shift a value into the DR register.

@@ -13,14 +13,14 @@ use crate::architecture::riscv::communication_interface::{
 };
 use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
 use crate::probe::DebugProbeError;
-use crate::probe::queue::{BatchSubError, DeferredResultIndex, DeferredResultSet, TypedQueue};
+use crate::probe::queue::{BatchError, DeferredResultIndex, DeferredResultSet, Queue};
 use crate::probe::{
     CommandResult, JtagAccess, JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData,
 };
 
 #[derive(Debug, Default)]
 struct DtmState {
-    queued_commands: TypedQueue<DmiOperationError>,
+    queued_commands: Queue<DmiOperationError>,
     jtag_results: DeferredResultSet<CommandResult>,
 
     /// Number of address bits in the DMI register
@@ -137,7 +137,7 @@ impl<'probe> JtagDtm<'probe> {
         let bit_size = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
 
         Ok(self.state.queued_commands.schedule(JtagWriteCommand {
-            inner: JtagWriteData {
+            data: JtagWriteData {
                 address: DMI_ADDRESS,
                 data: bytes.to_vec(),
                 len: bit_size,
@@ -252,14 +252,14 @@ impl DtmAccess for JtagDtm<'_> {
         let mut cmds = std::mem::take(&mut self.state.queued_commands);
 
         while !cmds.is_empty() {
-            match cmds.execute(self.probe) {
+            match cmds.execute(|queue| self.probe.write_register_batch(queue)) {
                 Ok(r) => {
                     self.state.jtag_results.merge_from(r);
                     return Ok(());
                 }
                 Err(e) => {
                     match e.error {
-                        BatchSubError::Specific(error) => {
+                        BatchError::Specific(error) => {
                             // error is now DmiOperationError, not Box<dyn Error>
                             match error {
                                 DmiOperationError::RequestInProgress => {
@@ -279,7 +279,7 @@ impl DtmAccess for JtagDtm<'_> {
                                 }
                             }
                         }
-                        BatchSubError::Probe(error) => {
+                        BatchError::Probe(error) => {
                             return Err(error.into());
                         }
                     }
@@ -410,7 +410,7 @@ impl<'probe> TunneledJtagDtm<'probe> {
 
     fn make_select_command(&self) -> JtagWriteCommand<DmiOperationError> {
         JtagWriteCommand {
-            inner: self.select_dmi.clone(),
+            data: self.select_dmi.clone(),
             transform: |_, _| Ok(CommandResult::None),
         }
     }
@@ -426,19 +426,16 @@ impl<'probe> TunneledJtagDtm<'probe> {
         let dmi_bits = self.state.abits + DMI_ADDRESS_BIT_OFFSET;
         let (bit_size, bytes) = op.to_tunneled_byte_batch(dmi_bits);
 
-        Ok(self
-            .state
-            .queued_commands
-            .schedule_shift_dr(ShiftDrCommand {
-                inner: ShiftDrData {
-                    data: bytes.to_vec(),
-                    len: bit_size,
-                },
-                transform: |_, raw_result| {
-                    let result = TunneledJtagDtm::transform_tunneled_dr_result(raw_result);
-                    JtagDtm::transform_dmi_result(result).map(CommandResult::U32)
-                },
-            }))
+        Ok(self.state.queued_commands.schedule(ShiftDrCommand {
+            inner: ShiftDrData {
+                data: bytes.to_vec(),
+                len: bit_size,
+            },
+            transform: |_, raw_result| {
+                let result = TunneledJtagDtm::transform_tunneled_dr_result(raw_result);
+                JtagDtm::transform_dmi_result(result).map(CommandResult::U32)
+            },
+        }))
     }
 
     fn dmi_register_access_with_timeout(
@@ -542,14 +539,14 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         let mut cmds = std::mem::take(&mut self.state.queued_commands);
 
         while !cmds.is_empty() {
-            match cmds.execute(self.probe) {
+            match cmds.execute(|queue| self.probe.write_register_batch(queue)) {
                 Ok(r) => {
                     self.state.jtag_results.merge_from(r);
                     return Ok(());
                 }
                 Err(e) => {
                     match e.error {
-                        BatchSubError::Specific(error) => {
+                        BatchError::Specific(error) => {
                             // error is now DmiOperationError, not Box<dyn Error>
                             match error {
                                 DmiOperationError::RequestInProgress => {
@@ -569,7 +566,7 @@ impl DtmAccess for TunneledJtagDtm<'_> {
                                 }
                             }
                         }
-                        BatchSubError::Probe(debug_probe_error) => {
+                        BatchError::Probe(debug_probe_error) => {
                             return Err(RiscvError::DebugProbe(debug_probe_error));
                         }
                     }
