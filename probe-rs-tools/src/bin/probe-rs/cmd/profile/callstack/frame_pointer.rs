@@ -40,7 +40,6 @@ fn read_frame_record_for_core<'a>(
                 .map_err(|_| DebugError::Other("Expected 32 bit frame pointer".to_string()))?;
             frame_record::read_riscv32_frame_record(core, fp_32).map(frame_record_32_to_64)
         }
-        // not supporting xtensa yet because it's complicated
         InstructionSet::Xtensa => {
             core.spill_registers()?;
             let fp_32 = frame_pointer
