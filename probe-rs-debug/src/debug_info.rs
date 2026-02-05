@@ -795,15 +795,12 @@ impl DebugInfo {
             };
             // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
             // If both the LR and PC registers have undefined rules, this will prevent the unwind from continuing.
-            let mut register_rule_string = "PC=(unwound LR) (dwarf Undefined)".to_string();
-            program_counter.value = unwound_return_address.and_then(|return_address| {
-                unwind_program_counter_register(
-                    return_address,
-                    current_pc,
-                    instruction_set,
-                    &mut register_rule_string,
-                )
-            });
+            let register_rule_str;
+            (program_counter.value, register_rule_str) = unwound_return_address
+                .and_then(|return_address| {
+                    unwind_program_counter_register(return_address, current_pc, instruction_set)
+                })
+                .unzip();
 
             tracing::trace!(
                 "UNWIND - {:>10}: Caller: {}\tCallee: {}\tRule: {}",
@@ -813,7 +810,7 @@ impl DebugInfo {
                     .get_register(program_counter.core_register.id)
                     .and_then(|reg| reg.value)
                     .unwrap_or_default(),
-                register_rule_string,
+                register_rule_str.unwrap_or("PC=(undefined) (dwarf Undefined)"),
             );
 
             if callee_frame_registers == unwind_registers {
@@ -1117,8 +1114,6 @@ pub fn unwind_pc_without_debuginfo(
 
     // This will update the program counter in the `unwind_registers` with the PC value calculated from the LR value.
     if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
-        let mut register_rule_string = "PC=(unwound LR) (dwarf Undefined)".to_string();
-
         let Ok(current_pc) =
             callee_frame_registers.get_register_value_by_role(&RegisterRole::ProgramCounter)
         else {
@@ -1130,14 +1125,11 @@ pub fn unwind_pc_without_debuginfo(
         };
         // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
         // If both the LR and PC registers have undefined rules, this will prevent the unwind from continuing.
-        calling_pc.value = unwound_return_address.and_then(|return_address| {
-            unwind_program_counter_register(
-                return_address,
-                current_pc,
-                instruction_set,
-                &mut register_rule_string,
-            )
-        });
+        (calling_pc.value, _) = unwound_return_address
+            .and_then(|return_address| {
+                unwind_program_counter_register(return_address, current_pc, instruction_set)
+            })
+            .unzip();
     }
 
     ControlFlow::Continue(())
@@ -1344,18 +1336,19 @@ fn unwind_register_using_rule(
 }
 
 /// Helper function to determine the program counter value for the previous frame.
-fn unwind_program_counter_register(
+pub fn unwind_program_counter_register(
     return_address: RegisterValue,
     current_pc: u64,
     instruction_set: Option<InstructionSet>,
-    register_rule_string: &mut String,
-) -> Option<RegisterValue> {
+) -> Option<(RegisterValue, &'static str)> {
     if return_address.is_max_value() || return_address.is_zero() {
         tracing::debug!(
             "No reliable return address is available, so we cannot determine the program counter to unwind the previous frame."
         );
         return None;
     }
+
+    const DEFAULT_REGISTER_RULE_STR: &str = "PC=(unwound LR) (dwarf Undefined)";
 
     match return_address {
         RegisterValue::U32(return_address) => {
@@ -1365,29 +1358,36 @@ fn unwind_program_counter_register(
                     //
                     // We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture,
                     // when in Thumb state for certain instruction types will set the LSB to 1)
-                    *register_rule_string =
-                        "PC=(unwound (LR - 2) & !0b1) (dwarf Undefined)".to_string();
-                    Some(RegisterValue::U32((return_address - 2) & !0b1))
-                }
-                Some(InstructionSet::RV32C) => {
-                    *register_rule_string = "PC=(unwound x1 - 2) (dwarf Undefined)".to_string();
-                    Some(RegisterValue::U32(return_address - 2))
-                }
-                Some(InstructionSet::RV32) => {
-                    *register_rule_string = "PC=(unwound x1 - 4) (dwarf Undefined)".to_string();
-                    Some(RegisterValue::U32(return_address - 4))
-                }
-                Some(InstructionSet::Xtensa) => {
-                    let upper_bits = (current_pc as u32) & 0xC000_0000;
-                    *register_rule_string = "PC=(unwound x0 - 3) (dwarf Undefined)".to_string();
-                    Some(RegisterValue::U32(
-                        (return_address & 0x3FFF_FFFF | upper_bits) - 3,
+                    Some((
+                        RegisterValue::U32((return_address - 2) & !0b1),
+                        "PC=(unwound (LR - 2) & !0b1) (dwarf Undefined)",
                     ))
                 }
-                _ => Some(RegisterValue::U32(return_address)),
+                Some(InstructionSet::RV32C) => Some((
+                    RegisterValue::U32(return_address - 2),
+                    "PC=(unwound x1 - 2) (dwarf Undefined)",
+                )),
+                Some(InstructionSet::RV32) => Some((
+                    RegisterValue::U32(return_address - 4),
+                    "PC=(unwound x1 - 4) (dwarf Undefined)",
+                )),
+                Some(InstructionSet::Xtensa) => {
+                    let upper_bits = (current_pc as u32) & 0xC000_0000;
+                    Some((
+                        RegisterValue::U32((return_address & 0x3FFF_FFFF | upper_bits) - 3),
+                        "PC=(unwound x0 - 3) (dwarf Undefined)",
+                    ))
+                }
+                _ => Some((
+                    RegisterValue::U32(return_address),
+                    DEFAULT_REGISTER_RULE_STR,
+                )),
             }
         }
-        RegisterValue::U64(return_address) => Some(RegisterValue::U64(return_address)),
+        RegisterValue::U64(return_address) => Some((
+            RegisterValue::U64(return_address),
+            DEFAULT_REGISTER_RULE_STR,
+        )),
         RegisterValue::U128(_) => {
             tracing::warn!("128 bit address space not supported");
             None
