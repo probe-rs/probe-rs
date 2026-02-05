@@ -1,6 +1,8 @@
 use probe_rs::InstructionSet;
+use probe_rs::RegisterValue;
 use probe_rs_debug::DebugError;
 use probe_rs_debug::frame_record;
+use probe_rs_debug::unwind_program_counter_register;
 
 use super::StackFrameInfo;
 
@@ -14,10 +16,59 @@ pub(crate) enum FramePointerUnwindError {
     ReadFrameRecord(#[source] probe_rs_debug::DebugError),
 }
 
-fn frame_record_32_to_64(fr_32: frame_record::FrameRecord32) -> frame_record::FrameRecord64 {
-    frame_record::FrameRecord64 {
-        frame_pointer: fr_32.frame_pointer.into(),
-        return_address: fr_32.return_address.into(),
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct AdjustedFrameRecord {
+    frame_pointer: u64,
+    adjusted_return_address: u64,
+}
+
+impl AdjustedFrameRecord {
+    fn new_from_frame_record_32(
+        fr_32: frame_record::FrameRecord32,
+        instruction_set: InstructionSet,
+        last_pc: u64,
+    ) -> Self {
+        let ra = RegisterValue::U32(fr_32.return_address);
+
+        let adjusted_return_address = if ra.is_zero() || ra.is_max_value() {
+            ra
+        } else {
+            let (adjusted_ra_opt, _) =
+                unwind_program_counter_register(ra, last_pc, Some(instruction_set))
+                    .expect("Valid return address unwound");
+            adjusted_ra_opt
+        };
+
+        Self {
+            frame_pointer: fr_32.frame_pointer as u64,
+            adjusted_return_address: adjusted_return_address
+                .try_into()
+                .expect("Should be able to convert 32-bit return address to u64"),
+        }
+    }
+
+    fn new_from_frame_record_64(
+        fr_64: frame_record::FrameRecord64,
+        instruction_set: InstructionSet,
+        last_pc: u64,
+    ) -> Self {
+        let ra = RegisterValue::U64(fr_64.return_address);
+
+        let adjusted_return_address = if ra.is_zero() || ra.is_max_value() {
+            ra
+        } else {
+            let (adjusted_ra_opt, _) =
+                unwind_program_counter_register(ra, last_pc, Some(instruction_set))
+                    .expect("Valid return address unwound");
+            adjusted_ra_opt
+        };
+
+        Self {
+            frame_pointer: fr_64.frame_pointer,
+            adjusted_return_address: adjusted_return_address
+                .try_into()
+                .expect("Should be able to convert 64-bit return address to u64"),
+        }
     }
 }
 
@@ -25,27 +76,35 @@ fn read_frame_record_for_core<'a>(
     core: &mut probe_rs::Core<'a>,
     instruction_set: InstructionSet,
     frame_pointer: u64,
-) -> Result<frame_record::FrameRecord64, DebugError> {
+    last_pc: u64,
+) -> Result<AdjustedFrameRecord, DebugError> {
     match instruction_set {
         InstructionSet::A32 | InstructionSet::Thumb2 => {
             let fp_32 = frame_pointer
                 .try_into()
                 .map_err(|_| DebugError::Other("Expected 32 bit frame pointer".to_string()))?;
-            frame_record::read_arm32_frame_record(core, fp_32).map(frame_record_32_to_64)
+            frame_record::read_arm32_frame_record(core, fp_32).map(|fr| {
+                AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
+            })
         }
-        InstructionSet::A64 => frame_record::read_arm64_frame_record(core, frame_pointer),
+        InstructionSet::A64 => frame_record::read_arm64_frame_record(core, frame_pointer)
+            .map(|fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc)),
         InstructionSet::RV32 | InstructionSet::RV32C => {
             let fp_32 = frame_pointer
                 .try_into()
                 .map_err(|_| DebugError::Other("Expected 32 bit frame pointer".to_string()))?;
-            frame_record::read_riscv32_frame_record(core, fp_32).map(frame_record_32_to_64)
+            frame_record::read_riscv32_frame_record(core, fp_32).map(|fr| {
+                AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
+            })
         }
         InstructionSet::Xtensa => {
             core.spill_registers()?;
             let fp_32 = frame_pointer
                 .try_into()
                 .map_err(|_| DebugError::Other("Expected 32 bit frame pointer".to_string()))?;
-            frame_record::read_xtensa_frame_record(core, fp_32).map(frame_record_32_to_64)
+            frame_record::read_xtensa_frame_record(core, fp_32).map(|fr| {
+                AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
+            })
         }
     }
 }
@@ -71,7 +130,7 @@ pub(crate) fn frame_pointer_unwind<'a>(
     let mut frame_pointer: u64 = core
         .read_core_reg(fp_reg)
         .map_err(FramePointerUnwindError::ReadRegister)?;
-    let program_counter: u64 = core
+    let mut program_counter: u64 = core
         .read_core_reg(core.program_counter())
         .map_err(FramePointerUnwindError::ReadRegister)?;
 
@@ -89,19 +148,23 @@ pub(crate) fn frame_pointer_unwind<'a>(
     //   "The end of the frame record chain is indicated by the address zero appearing as the next
     //   link in the chain." - https://github.com/riscv-non-isa/riscv-elf-psabi-doc/releases
     while frame_pointer != 0 {
-        let return_address;
-        frame_record::FrameRecord64 {
+        let adjusted_return_address;
+        AdjustedFrameRecord {
             frame_pointer,
-            return_address,
-        } = read_frame_record_for_core(core, instruction_set, frame_pointer)
+            adjusted_return_address,
+        } = read_frame_record_for_core(core, instruction_set, frame_pointer, program_counter)
             .map_err(FramePointerUnwindError::ReadFrameRecord)?;
 
-        stack_frames.push(StackFrameInfo::ReturnAddress(return_address));
+        stack_frames.push(StackFrameInfo::AdjustedReturnAddress(
+            adjusted_return_address,
+        ));
 
         // Stop if the return address was in the entry point function
-        if entry_point_address_range.contains(&return_address) {
+        if entry_point_address_range.contains(&adjusted_return_address) {
             break;
         }
+
+        program_counter = adjusted_return_address;
     }
 
     Ok(stack_frames.into_iter().rev().collect())
