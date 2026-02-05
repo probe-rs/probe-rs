@@ -59,6 +59,8 @@ pub use download::*;
 pub use erase::*;
 pub use error::*;
 pub use flash_algorithm::*;
-pub use flasher::{ActiveFlasher, Erase, FlashData, Flasher, LoadedRegion, Program, Verify};
+pub use flasher::{
+    ActiveFlasher, Erase, FlashData, Flasher, LoadedRegion, Operation, Program, Verify,
+};
 pub use loader::*;
 pub use progress::*;
