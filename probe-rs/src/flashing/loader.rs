@@ -258,6 +258,8 @@ impl ImageLoader for IdfLoader {
             _ => None,
         };
 
+        tracing::info!("Detected flash size: {:?}", flash_size);
+
         let flash_data = FlashData::new(
             {
                 let mut settings = FlashSettings::default();
