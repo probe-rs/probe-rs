@@ -75,7 +75,6 @@ pub mod vendor;
 
 mod core;
 mod error;
-#[cfg(feature = "flashing")]
 pub mod flashing;
 pub mod integration;
 mod memory;
