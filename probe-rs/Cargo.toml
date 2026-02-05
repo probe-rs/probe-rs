@@ -29,7 +29,7 @@ builtin-targets = ["dep:bincode", "dep:probe-rs-target"]
 cmsisdap_v1 = ["dep:hidapi"]
 
 # Enables the bin, hex, elf image formats
-builtin-formats = ["dep:uf2-decode", "object", "dep:flate2", "dep:ihex"]
+builtin-formats = ["dep:uf2-decode", "object", "flate2", "dep:ihex"]
 
 coredump = ["object", "dep:rmp-serde", "dep:dunce"]
 
