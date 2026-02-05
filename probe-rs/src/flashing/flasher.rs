@@ -262,9 +262,9 @@ impl Flasher {
     /// Prepares the flashing algorithm.
     ///
     /// This function ensures that the flashing algorithm has been loaded into memory, and
-    /// initialized for the given [`Operation].
+    /// initialized for the given [`Operation`].
     ///
-    /// The `clk` argument specifies the clock frequency for prgramming the device.
+    /// The `clk` argument specifies the clock frequency for programming the device.
     pub fn init<'s, 'p, O: Operation>(
         &'s mut self,
         session: &'s mut Session,
