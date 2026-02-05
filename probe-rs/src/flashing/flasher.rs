@@ -21,9 +21,13 @@ use std::{
 /// The timeout for init/uninit routines.
 const INIT_TIMEOUT: Duration = Duration::from_secs(2);
 
+// TODO: needs to be sealed
 /// Represents the operation for which the flash loader is initialized.
 pub trait Operation {
+    /// The operation code.
     const OPERATION: u32;
+
+    /// The name of the operation.
     const NAME: &'static str;
 }
 

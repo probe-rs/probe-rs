@@ -87,7 +87,7 @@ pub fn image_format(format: &str) -> Option<&'static dyn ImageFormat> {
         .read()
         .iter()
         .find(|factory| factory.formats().contains(&format))
-        .map(|factory| *factory)
+        .copied()
 }
 
 /// Registers an [image format][ImageFormat].
