@@ -10,7 +10,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-probe-rs.workspace = true
+probe-rs = { workspace = true, features = ["flate2"] }
 probe-rs-target.workspace = true
 
 bincode = { version = "2", features = ["serde"] }
@@ -23,7 +23,7 @@ serde_yaml.workspace = true
 espflash = { version = "4", default-features = false }
 
 [build-dependencies]
-probe-rs = { workspace = true, features = ["test", "flashing"] }
+probe-rs = { workspace = true, features = ["test"] }
 probe-rs-target = { workspace = true, features = ["bincode"] }
 
 [lints]

@@ -21,14 +21,15 @@ rust-version.workspace = true
 exclude = ["tests/"]
 
 [features]
-default = ["builtin-targets", "cmsisdap_v1", "flashing", "coredump"]
-
+default = ["builtin-targets", "cmsisdap_v1", "builtin-formats", "coredump"]
+flate2 = ["dep:flate2"]
 
 # Enable all built in targets.
 builtin-targets = ["dep:bincode", "dep:probe-rs-target"]
 cmsisdap_v1 = ["dep:hidapi"]
 
-flashing = ["dep:uf2-decode", "object", "dep:flate2", "dep:ihex"]
+# Enables the bin, hex, elf image formats
+builtin-formats = ["dep:uf2-decode", "object", "dep:flate2", "dep:ihex"]
 
 coredump = ["object", "dep:rmp-serde", "dep:dunce"]
 

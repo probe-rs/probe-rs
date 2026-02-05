@@ -1,5 +1,3 @@
-use std::io::Write as _;
-
 use probe_rs_target::TransferEncoding;
 
 use crate::flashing::{FlashLayout, FlashPage, FlashSector};
@@ -42,13 +40,17 @@ impl EncoderAlgorithm for RawEncoder {
 ///
 /// The flash loader that accepts this format must be able to track the offset in the current image.
 /// The end of an image is signaled by the first non-full page. This may include an empty page.
+#[cfg(feature = "flate2")]
 struct ZlibEncoder {
     flash: FlashLayout,
     compressed_pages: Vec<FlashPage>,
 }
 
+#[cfg(feature = "flate2")]
 impl ZlibEncoder {
     fn new(flash: FlashLayout, ignore_fills: bool) -> Self {
+        use std::io::Write as _;
+
         let mut compressed_pages = vec![];
 
         let page_size = flash.pages()[0].data().len();
@@ -169,6 +171,7 @@ impl ZlibEncoder {
     }
 }
 
+#[cfg(feature = "flate2")]
 impl EncoderAlgorithm for ZlibEncoder {
     fn pages(&self) -> &[FlashPage] {
         &self.compressed_pages
@@ -190,11 +193,14 @@ pub struct FlashEncoder {
 
 impl FlashEncoder {
     /// Creates a new flash encoder with the given flash layout and transfer encoding.
-    pub fn new(encoding: TransferEncoding, flash: FlashLayout, ignore_fills: bool) -> Self {
+    pub fn new(encoding: TransferEncoding, flash: FlashLayout, _ignore_fills: bool) -> Self {
         Self {
             encoder: match encoding {
                 TransferEncoding::Raw => Box::new(RawEncoder::new(flash)),
-                TransferEncoding::Miniz => Box::new(ZlibEncoder::new(flash, ignore_fills)),
+                #[cfg(feature = "flate2")]
+                TransferEncoding::Miniz => Box::new(ZlibEncoder::new(flash, _ignore_fills)),
+                #[cfg(not(feature = "flate2"))]
+                TransferEncoding::Miniz => panic!("flate2 feature is not enabled"),
             },
         }
     }

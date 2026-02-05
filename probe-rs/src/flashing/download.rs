@@ -1,8 +1,5 @@
-use object::{
-    Endianness, Object, ObjectSection, elf::FileHeader32, elf::FileHeader64, elf::PT_LOAD,
-    read::elf::ElfFile, read::elf::FileHeader, read::elf::ProgramHeader,
-};
-use probe_rs_target::{InstructionSet, MemoryRange};
+use probe_rs_target::InstructionSet;
+#[cfg(feature = "builtin-formats")]
 use serde::{Deserialize, Serialize};
 
 use std::{fs::File, path::Path};
@@ -12,6 +9,7 @@ use crate::session::Session;
 
 /// Extended options for flashing a binary file.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
+#[cfg(feature = "builtin-formats")]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
     pub base_address: Option<u64>,
@@ -21,6 +19,7 @@ pub struct BinOptions {
 
 /// Extended options for flashing an ELF file.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
+#[cfg(feature = "builtin-formats")]
 pub struct ElfOptions {
     /// Sections to skip flashing
     pub skip_sections: Vec<String>,
@@ -39,6 +38,7 @@ pub enum FileDownloadError {
     Flash(#[from] FlashError),
 
     /// Failed to read or decode the IHEX file.
+    #[cfg(feature = "builtin-formats")]
     IhexRead(#[from] ihex::ReaderError),
 
     /// An IO error has occurred while reading the firmware file.
@@ -48,6 +48,7 @@ pub enum FileDownloadError {
     Object(&'static str),
 
     /// Failed to read or decode the ELF file.
+    #[cfg(feature = "builtin-formats")]
     Elf(#[from] object::read::Error),
 
     /// An error specific to the {format} image format has occurred.
@@ -193,134 +194,4 @@ pub fn download_file_with_options(
     loader
         .commit(session, options)
         .map_err(FileDownloadError::Flash)
-}
-
-/// Flash data which was extracted from an ELF file.
-pub(super) struct ExtractedFlashData<'data> {
-    pub(super) section_names: Vec<String>,
-    pub(super) address: u32,
-    pub(super) data: &'data [u8],
-}
-
-impl std::fmt::Debug for ExtractedFlashData<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut helper = f.debug_struct("ExtractedFlashData");
-
-        helper
-            .field("name", &self.section_names)
-            .field("address", &self.address);
-
-        if self.data.len() > 10 {
-            helper
-                .field("data", &format!("[..] ({} bytes)", self.data.len()))
-                .finish()
-        } else {
-            helper.field("data", &self.data).finish()
-        }
-    }
-}
-
-fn extract_from_elf_inner<'data, T: FileHeader>(
-    elf_header: &T,
-    binary: ElfFile<'_, T>,
-    elf_data: &'data [u8],
-    options: &ElfOptions,
-) -> Result<Vec<ExtractedFlashData<'data>>, FileDownloadError> {
-    let endian = elf_header.endian()?;
-
-    let mut extracted_data = Vec::new();
-    for segment in elf_header.program_headers(elf_header.endian()?, elf_data)? {
-        // Get the physical address of the segment. The data will be programmed to that location.
-        let p_paddr: u64 = segment.p_paddr(endian).into();
-
-        let p_vaddr: u64 = segment.p_vaddr(endian).into();
-
-        let flags = segment.p_flags(endian);
-
-        let segment_data = segment
-            .data(endian, elf_data)
-            .map_err(|_| FileDownloadError::Object("Failed to access data for an ELF segment."))?;
-
-        let mut elf_section = Vec::new();
-
-        if !segment_data.is_empty() && segment.p_type(endian) == PT_LOAD {
-            tracing::info!(
-                "Found loadable segment, physical address: {:#010x}, virtual address: {:#010x}, flags: {:#x}",
-                p_paddr,
-                p_vaddr,
-                flags
-            );
-
-            let (segment_offset, segment_filesize) = segment.file_range(endian);
-
-            let sector = segment_offset..segment_offset + segment_filesize;
-
-            for section in binary.sections() {
-                let (section_offset, section_filesize) = match section.file_range() {
-                    Some(range) => range,
-                    None => continue,
-                };
-
-                if sector.contains_range(&(section_offset..section_offset + section_filesize)) {
-                    let name = section.name()?;
-                    if options.skip_sections.iter().any(|skip| skip == name) {
-                        tracing::info!("Skipping section: {:?}", name);
-                        continue;
-                    }
-                    tracing::info!("Matching section: {:?}", name);
-
-                    #[cfg(feature = "hexdump")]
-                    for line in hexdump::hexdump_iter(section.data()?) {
-                        tracing::trace!("{}", line);
-                    }
-
-                    for (offset, relocation) in section.relocations() {
-                        tracing::info!(
-                            "Relocation: offset={}, relocation={:?}",
-                            offset,
-                            relocation
-                        );
-                    }
-
-                    elf_section.push(name.to_owned());
-                }
-            }
-
-            if elf_section.is_empty() {
-                tracing::info!("Not adding segment, no matching sections found.");
-            } else {
-                let section_data =
-                    &elf_data[segment_offset as usize..][..segment_filesize as usize];
-
-                extracted_data.push(ExtractedFlashData {
-                    section_names: elf_section,
-                    address: p_paddr as u32,
-                    data: section_data,
-                });
-            }
-        }
-    }
-
-    Ok(extracted_data)
-}
-
-pub(super) fn extract_from_elf<'a>(
-    elf_data: &'a [u8],
-    options: &ElfOptions,
-) -> Result<Vec<ExtractedFlashData<'a>>, FileDownloadError> {
-    let file_kind = object::FileKind::parse(elf_data)?;
-
-    match file_kind {
-        object::FileKind::Elf32 => {
-            let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
-            let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
-            extract_from_elf_inner(elf_header, binary, elf_data, options)
-        }
-        object::FileKind::Elf64 => {
-            let elf_header = FileHeader64::<Endianness>::parse(elf_data)?;
-            let binary = object::read::elf::ElfFile::<FileHeader64<Endianness>>::parse(elf_data)?;
-            extract_from_elf_inner(elf_header, binary, elf_data, options)
-        }
-        _ => Err(FileDownloadError::Object("Unsupported file type")),
-    }
 }
