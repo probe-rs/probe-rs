@@ -46,7 +46,9 @@ pub(crate) enum OutputFormat {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum StackFrameInfo {
     ProgramCounter(u64),
-    ReturnAddress(u64),
+    // Return address adjusted to point to start of call instruction
+    // See `fxprofpp::Frame::AdjustedReturnAddress`
+    AdjustedReturnAddress(u64),
 }
 
 // Format addresses as hex for debugging
@@ -57,7 +59,7 @@ impl std::fmt::Debug for StackFrameInfo {
                 .debug_tuple("ProgramCounter")
                 .field(&format!("{addr:#x}"))
                 .finish(),
-            Self::ReturnAddress(addr) => f
+            Self::AdjustedReturnAddress(addr) => f
                 .debug_tuple("ReturnAddress")
                 .field(&format!("{addr:#x}"))
                 .finish(),

@@ -11,7 +11,7 @@ impl StackFrameInfo {
     ) -> fxprofpp::FrameInfo {
         let frame = match self {
             Self::ProgramCounter(addr) => fxprofpp::Frame::InstructionPointer(*addr),
-            Self::ReturnAddress(addr) => fxprofpp::Frame::ReturnAddress(*addr),
+            Self::AdjustedReturnAddress(addr) => fxprofpp::Frame::AdjustedReturnAddress(*addr),
         };
 
         fxprofpp::FrameInfo {
