@@ -2,11 +2,11 @@ use fxprof_processed_profile as fxprofpp;
 use object::Object;
 
 use super::samply_object;
-use super::{CoreSamples, StackFrameInfo};
+use super::{CoreSamples, FunctionAddress};
 
-impl StackFrameInfo {
+impl FunctionAddress {
     fn to_fxprofpp_with_category(
-        self: &StackFrameInfo,
+        self: &FunctionAddress,
         category: fxprofpp::CategoryHandle,
     ) -> fxprofpp::FrameInfo {
         let frame = match self {
