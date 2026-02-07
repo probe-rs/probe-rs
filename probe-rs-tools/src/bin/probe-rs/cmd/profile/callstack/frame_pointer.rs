@@ -195,3 +195,137 @@ pub(crate) fn frame_pointer_unwind<'a>(
         frame_pointer,
     )
 }
+
+#[cfg(test)]
+mod test {
+    use probe_rs_debug::{DebugInfo, DebugRegisters};
+
+    use probe_rs::{CoreDump, RegisterRole};
+    use std::path::PathBuf;
+
+    use super::*;
+
+    /// Get the full path to a file in the `tests` directory.
+    fn get_path_for_test_files(relative_file: &str) -> PathBuf {
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.pop();
+        path.push("probe-rs-debug");
+        path.push("tests");
+        path.push(relative_file);
+        path
+    }
+
+    /// Load the DebugInfo from the `elf_file` for the test.
+    /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
+    fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
+        let path = get_path_for_test_files(elf_file);
+        DebugInfo::from_file(&path).unwrap_or_else(|err: DebugError| {
+            panic!("Failed to open file {}: {:?}", path.display(), err)
+        })
+    }
+
+    fn coredump_path(base: String) -> PathBuf {
+        let possible_coredump_paths = [
+            get_path_for_test_files(format!("{base}.coredump").as_str()),
+            get_path_for_test_files(format!("{base}_coredump.elf").as_str()),
+        ];
+
+        possible_coredump_paths
+            .iter()
+            .find(|path| path.exists())
+            .unwrap_or_else(|| {
+                panic!(
+                    "No coredump found for chip {base}. Expected one of: {possible_coredump_paths:?}"
+                )
+            })
+            .clone()
+    }
+
+    /// Like `frame_pointer_unwind` but for CoreDump rather than Core
+    pub(crate) fn frame_pointer_unwind_core_dump(
+        core_dump: &mut CoreDump,
+        entry_point_address_range: &std::ops::Range<u64>,
+    ) -> Result<Vec<FunctionAddress>, FramePointerUnwindError> {
+        // I hope Xtensa registers are already spilled in core dump
+
+        let instruction_set = core_dump.instruction_set();
+
+        // Use the stack pointer on Xtensa as compiling with force-frame-pointers=yes can be buggy
+        // and we spill registers to the stack so we guarantee the frame record starts at SP - 16.
+        // Use frame pointer on all other architectures.
+        let fp_role = match instruction_set {
+            InstructionSet::Xtensa => RegisterRole::StackPointer,
+            _ => RegisterRole::FramePointer,
+        };
+
+        let initial_registers = DebugRegisters::from_coredump(&core_dump);
+        let frame_pointer = initial_registers
+            .get_register_value_by_role(&fp_role)
+            .unwrap();
+        let program_counter = initial_registers
+            .get_register_value_by_role(&RegisterRole::ProgramCounter)
+            .unwrap();
+
+        frame_pointer_unwind_memory_interface(
+            core_dump,
+            instruction_set,
+            entry_point_address_range,
+            program_counter,
+            frame_pointer,
+        )
+    }
+
+    fn check_stack_walk(test_name: &str, expect: &Vec<FunctionAddress>) {
+        let executable_location =
+            get_path_for_test_files(format!("debug-unwind-tests/{test_name}.elf").as_str());
+        let coredump_path = coredump_path(format!("debug-unwind-tests/{test_name}"));
+
+        let mut core_dump = CoreDump::load(&coredump_path).unwrap();
+        let object_bytes = std::fs::read(&executable_location).unwrap();
+        let obj = object::File::parse(object_bytes.as_slice()).unwrap();
+        let entry_point_address_range = super::super::get_entry_point_address_range(&obj).unwrap();
+
+        let res =
+            frame_pointer_unwind_core_dump(&mut core_dump, &entry_point_address_range).unwrap();
+
+        assert_eq!(&res, expect);
+    }
+
+    /// Helper to convert slice of addresses to callstack Vec
+    fn addresses_to_callstack(addresses: &[u64]) -> Vec<FunctionAddress> {
+        addresses
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(i, val)| match i {
+                0 => FunctionAddress::ProgramCounter(val),
+                _ => FunctionAddress::AdjustedReturnAddress(val),
+            })
+            .rev()
+            .collect()
+    }
+
+    /// frame_pointer_unwind Armv6-m using RP2040
+    #[test]
+    fn test_frame_pointer_unwind_armv6m() {
+        let test_name = "RP2040_full_unwind";
+        let expect = Vec::new();
+        check_stack_walk(&test_name, &expect);
+    }
+
+    /// frame_pointer_unwind Xtensa using esp32s3
+    #[test]
+    fn test_frame_pointer_unwind_xtensa() {
+        let test_name = "esp32s3_coredump_elf";
+        let expect = addresses_to_callstack(&[
+            1107314147, 1107318906, 1107300201, 1107299479, 1107315720, 1107299257, 1107300213,
+            1107313795,
+        ]);
+        check_stack_walk(&test_name, &expect);
+    }
+
+    // #[test_case("nRF52833_xxAA_full_unwind"; "full_unwind Armv7-m using nRF52833_xxAA")]
+    // #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
+    // #[test_case("esp32c3_full_unwind"; "full_unwind RISC-V32E using esp32c3")]
+    // #[test_case("esp32c6_coredump_elf"; "Unwind using a RISC-V coredump in ELF format")]
+}
