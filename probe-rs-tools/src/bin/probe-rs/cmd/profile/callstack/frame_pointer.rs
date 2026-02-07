@@ -198,7 +198,7 @@ pub(crate) fn frame_pointer_unwind<'a>(
 
 #[cfg(test)]
 mod test {
-    use probe_rs_debug::{DebugInfo, DebugRegisters};
+    use probe_rs_debug::DebugRegisters;
 
     use probe_rs::{CoreDump, RegisterRole};
     use std::path::PathBuf;
@@ -213,15 +213,6 @@ mod test {
         path.push("tests");
         path.push(relative_file);
         path
-    }
-
-    /// Load the DebugInfo from the `elf_file` for the test.
-    /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
-    fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
-        let path = get_path_for_test_files(elf_file);
-        DebugInfo::from_file(&path).unwrap_or_else(|err: DebugError| {
-            panic!("Failed to open file {}: {:?}", path.display(), err)
-        })
     }
 
     fn coredump_path(base: String) -> PathBuf {
