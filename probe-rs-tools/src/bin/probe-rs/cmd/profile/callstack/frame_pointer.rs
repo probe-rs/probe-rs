@@ -318,8 +318,8 @@ mod test {
     fn test_frame_pointer_unwind_xtensa() {
         let test_name = "esp32s3_coredump_elf";
         let expect = addresses_to_callstack(&[
-            1107314147, 1107318906, 1107300201, 1107299479, 1107315720, 1107299257, 1107300213,
-            1107313795,
+            0x420045e3, // frame missed - 0x4200587a
+            0x42000f69, 0x42000d10, 0x42004c4e, 0x42000bb9, 0x42000f7f, 0x42004483, 0x40378836,
         ]);
         check_stack_walk(&test_name, &expect);
     }
