@@ -50,7 +50,8 @@ impl RegisterCache {
         self.entries.iter().map(|(k, v)| (*k, v))
     }
 
-    pub(crate) fn mark_dirty(&mut self, register: Register) {
+    pub(crate) fn mark_dirty(&mut self, register: impl Into<Register>) {
+        let register = register.into();
         let entry = self.entries.get_mut(&register).unwrap_or_else(|| {
             panic!("Register {register:?} is not in cache. This is a bug, please report it.")
         });
