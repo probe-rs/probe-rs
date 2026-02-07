@@ -1314,8 +1314,7 @@ impl MemoryAccess for FastMemoryAccess {
         &mut self,
         interface: &mut XtensaCommunicationInterface,
     ) -> Result<(), XtensaError> {
-        interface.ensure_register_saved(CpuRegister::A3)?;
-        Ok(())
+        interface.ensure_register_saved(CpuRegister::A3)
     }
 
     fn load_initial_address_for_read(
@@ -1461,7 +1460,7 @@ impl MemoryAccess for SlowMemoryAccess {
             self.address_written = false;
         }
 
-        Ok(interface.schedule_read_register_uncached(CpuRegister::A4)?)
+        interface.schedule_read_register_uncached(CpuRegister::A4)
     }
 
     fn read_one_and_continue(
