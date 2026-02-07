@@ -1,10 +1,11 @@
 use probe_rs::InstructionSet;
+use probe_rs::MemoryInterface;
 use probe_rs::RegisterValue;
 use probe_rs_debug::DebugError;
 use probe_rs_debug::frame_record;
 use probe_rs_debug::unwind_program_counter_register;
 
-use super::StackFrameInfo;
+use super::FunctionAddress;
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum FramePointerUnwindError {
@@ -12,6 +13,8 @@ pub(crate) enum FramePointerUnwindError {
     DetermineInstructionSet(#[source] probe_rs::Error),
     #[error("Could not read register")]
     ReadRegister(#[source] probe_rs::Error),
+    #[error("Failed to spill registers")]
+    RegisterSpillError(#[source] probe_rs::Error),
     #[error("Could not read frame record")]
     ReadFrameRecord(#[source] probe_rs_debug::DebugError),
 }
@@ -72,8 +75,8 @@ impl AdjustedFrameRecord {
     }
 }
 
-fn read_frame_record_for_core<'a>(
-    core: &mut probe_rs::Core<'a>,
+fn read_frame_record_for_core(
+    memory: &mut dyn MemoryInterface,
     instruction_set: InstructionSet,
     frame_pointer: u64,
     last_pc: u64,
@@ -83,58 +86,43 @@ fn read_frame_record_for_core<'a>(
             let fp_32 = frame_pointer
                 .try_into()
                 .map_err(|_| DebugError::Other("Expected 32 bit frame pointer".to_string()))?;
-            frame_record::read_arm32_frame_record(core, fp_32).map(|fr| {
+            frame_record::read_arm32_frame_record(memory, fp_32).map(|fr| {
                 AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
             })
         }
-        InstructionSet::A64 => frame_record::read_arm64_frame_record(core, frame_pointer)
+        InstructionSet::A64 => frame_record::read_arm64_frame_record(memory, frame_pointer)
             .map(|fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc)),
         InstructionSet::RV32 | InstructionSet::RV32C => {
             let fp_32 = frame_pointer
                 .try_into()
                 .map_err(|_| DebugError::Other("Expected 32 bit frame pointer".to_string()))?;
-            frame_record::read_riscv32_frame_record(core, fp_32).map(|fr| {
+            frame_record::read_riscv32_frame_record(memory, fp_32).map(|fr| {
                 AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
             })
         }
         InstructionSet::Xtensa => {
-            core.spill_registers()?;
             let fp_32 = frame_pointer
                 .try_into()
                 .map_err(|_| DebugError::Other("Expected 32 bit frame pointer".to_string()))?;
-            frame_record::read_xtensa_frame_record(core, fp_32).map(|fr| {
+            frame_record::read_xtensa_frame_record(memory, fp_32).map(|fr| {
                 AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
             })
         }
     }
 }
 
-pub(crate) fn frame_pointer_unwind<'a>(
-    core: &mut probe_rs::Core<'a>,
+/// Part of frame pointer unwind that is generic for memory interface, used for
+/// frame_pointer_unwind implementationa and testing.
+fn frame_pointer_unwind_memory_interface(
+    memory: &mut dyn MemoryInterface,
+    instruction_set: InstructionSet,
     entry_point_address_range: &std::ops::Range<u64>,
-) -> Result<Vec<StackFrameInfo>, FramePointerUnwindError> {
+    mut program_counter: u64,
+    mut frame_pointer: u64,
+) -> Result<Vec<FunctionAddress>, FramePointerUnwindError> {
     let mut stack_frames = Vec::new();
 
-    let instruction_set = core
-        .instruction_set()
-        .map_err(FramePointerUnwindError::DetermineInstructionSet)?;
-
-    // Use the stack pointer on Xtensa as compiling with force-frame-pointers=yes can be buggy
-    // and we spill registers to the stack so we guarantee the frame record starts at SP - 16.
-    // Use frame pointer on all other architectures.
-    let fp_reg = match instruction_set {
-        InstructionSet::Xtensa => core.stack_pointer(),
-        _ => core.frame_pointer(),
-    };
-
-    let mut frame_pointer: u64 = core
-        .read_core_reg(fp_reg)
-        .map_err(FramePointerUnwindError::ReadRegister)?;
-    let mut program_counter: u64 = core
-        .read_core_reg(core.program_counter())
-        .map_err(FramePointerUnwindError::ReadRegister)?;
-
-    stack_frames.push(StackFrameInfo::ProgramCounter(program_counter));
+    stack_frames.push(FunctionAddress::ProgramCounter(program_counter));
 
     // Unwind, stopping if:
     //
@@ -152,10 +140,10 @@ pub(crate) fn frame_pointer_unwind<'a>(
         AdjustedFrameRecord {
             frame_pointer,
             adjusted_return_address,
-        } = read_frame_record_for_core(core, instruction_set, frame_pointer, program_counter)
+        } = read_frame_record_for_core(memory, instruction_set, frame_pointer, program_counter)
             .map_err(FramePointerUnwindError::ReadFrameRecord)?;
 
-        stack_frames.push(StackFrameInfo::AdjustedReturnAddress(
+        stack_frames.push(FunctionAddress::AdjustedReturnAddress(
             adjusted_return_address,
         ));
 
@@ -168,4 +156,42 @@ pub(crate) fn frame_pointer_unwind<'a>(
     }
 
     Ok(stack_frames.into_iter().rev().collect())
+}
+
+pub(crate) fn frame_pointer_unwind<'a>(
+    core: &mut probe_rs::Core<'a>,
+    entry_point_address_range: &std::ops::Range<u64>,
+) -> Result<Vec<FunctionAddress>, FramePointerUnwindError> {
+    let instruction_set = core
+        .instruction_set()
+        .map_err(FramePointerUnwindError::DetermineInstructionSet)?;
+
+    // Spill registers on Xtensa to ensure frame records are on the stack
+    if instruction_set == InstructionSet::Xtensa {
+        core.spill_registers()
+            .map_err(FramePointerUnwindError::RegisterSpillError)?;
+    }
+
+    // Use the stack pointer on Xtensa as compiling with force-frame-pointers=yes can be buggy
+    // and we spill registers to the stack so we guarantee the frame record starts at SP - 16.
+    // Use frame pointer on all other architectures.
+    let fp_reg = match instruction_set {
+        InstructionSet::Xtensa => core.stack_pointer(),
+        _ => core.frame_pointer(),
+    };
+
+    let frame_pointer: u64 = core
+        .read_core_reg(fp_reg)
+        .map_err(FramePointerUnwindError::ReadRegister)?;
+    let program_counter: u64 = core
+        .read_core_reg(core.program_counter())
+        .map_err(FramePointerUnwindError::ReadRegister)?;
+
+    frame_pointer_unwind_memory_interface(
+        core,
+        instruction_set,
+        entry_point_address_range,
+        program_counter,
+        frame_pointer,
+    )
 }
