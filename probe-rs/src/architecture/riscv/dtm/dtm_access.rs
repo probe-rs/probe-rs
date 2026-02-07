@@ -1,5 +1,6 @@
 use crate::architecture::riscv::communication_interface::RiscvError;
-use crate::probe::{CommandResult, DebugProbeError, DeferredResultIndex};
+use crate::probe::queue::DeferredResultIndex;
+use crate::probe::{CommandResult, DebugProbeError};
 use std::fmt;
 use std::time::Duration;
 

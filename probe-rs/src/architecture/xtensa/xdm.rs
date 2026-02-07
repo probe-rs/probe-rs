@@ -7,11 +7,10 @@ use std::{
 use bitvec::{field::BitField, slice::BitSlice};
 
 use crate::{
-    Error as ProbeRsError,
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
-        CommandQueue, CommandResult, DeferredResultIndex, DeferredResultSet, JtagAccess,
-        JtagCommand, JtagWriteCommand, ShiftDrCommand,
+        CommandResult, JtagAccess, JtagWriteCommand, JtagWriteData, ShiftDrCommand, ShiftDrData,
+        queue::{BatchError, DeferredResultIndex, DeferredResultSet, Queue},
     },
 };
 
@@ -149,7 +148,7 @@ pub(crate) struct XdmState {
 
     /// The command queue for the current batch. JTAG accesses are batched to reduce the number of
     /// IO operations.
-    queue: CommandQueue<JtagCommand>,
+    queue: Queue<Error>,
 
     /// The results of the reads in the already executed batched JTAG commands.
     jtag_results: DeferredResultSet<CommandResult>,
@@ -184,7 +183,7 @@ impl<'probe> Xdm<'probe> {
 
     #[tracing::instrument(skip(self))]
     pub(crate) fn enter_debug_mode(&mut self) -> Result<(), XtensaError> {
-        self.state.queue = CommandQueue::new();
+        self.state.queue = Queue::new();
         self.state.jtag_results = DeferredResultSet::new();
 
         self.probe.tap_reset()?;
@@ -323,7 +322,7 @@ impl<'probe> Xdm<'probe> {
         let _idxs = std::mem::take(&mut self.state.status_idxs);
 
         while !queue.is_empty() {
-            match self.probe.write_register_batch(&queue) {
+            match queue.execute(|queue| self.probe.write_register_batch(queue)) {
                 Ok(result) => {
                     self.state.jtag_results.merge_from(result);
                     return Ok(());
@@ -333,43 +332,49 @@ impl<'probe> Xdm<'probe> {
                     queue.consume(e.results.len());
 
                     match e.error {
-                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm {
-                            source: DebugRegisterError::Busy,
-                            ..
-                        })) => {
-                            // The specific nexus register may need some longer delay. For now we just
-                            // retry, but we should probably add some no-ops later.
-                        }
-                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)) => {
-                            // The instruction is still executing. Retry the Debug Status read.
-                            // Do not rewind the queue, it will not include the failed command.
-                            // Retrying the failed command will just shift the DSR out of the
-                            // JTAG DR again, re-attempting the read.
-                        }
-                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecOverrun)) => {
-                            // Clear exception/overrun to allow executing further instructions.
-                            self.clear_exception_state()?;
-                            // This state is reported by a DebugStatus read. We need to rewind this read and
-                            // the previous commands that attempted to execute an instruction. Commands come in NAR-NDR
-                            // pairs, and we don't have to rewind the last NDR, because the failed instruction is not
-                            // part of the returned results, hence it is not consumed.
-                            if !queue.rewind(3) {
-                                return Err(XtensaError::XdmError(Error::ExecOverrun));
+                        BatchError::Specific(err) => {
+                            // err is now ProbeRsError, not Box<dyn Error>
+                            match err {
+                                Error::Xdm {
+                                    source: DebugRegisterError::Busy,
+                                    ..
+                                } => {
+                                    // The specific nexus register may need some longer delay. For now we just
+                                    // retry, but we should probably add some no-ops later.
+                                }
+                                Error::ExecBusy => {
+                                    // The instruction is still executing. Retry the Debug Status read.
+                                    // Do not rewind the queue, it will not include the failed command.
+                                    // Retrying the failed command will just shift the DSR out of the
+                                    // JTAG DR again, re-attempting the read.
+                                }
+                                Error::ExecOverrun => {
+                                    // Clear exception/overrun to allow executing further instructions.
+                                    self.clear_exception_state()?;
+                                    // This state is reported by a DebugStatus read. We need to rewind this read and
+                                    // the previous commands that attempted to execute an instruction. Commands come in NAR-NDR
+                                    // pairs, and we don't have to rewind the last NDR, because the failed instruction is not
+                                    // part of the returned results, hence it is not consumed.
+                                    if !queue.rewind(3) {
+                                        return Err(XtensaError::XdmError(Error::ExecOverrun));
+                                    }
+                                }
+                                Error::ExecException => {
+                                    // Clear exception to allow executing further instructions.
+                                    self.clear_exception_state()?;
+                                    // TODO: in the future, we might want to bubble up the exception cause.
+                                    // We might also want to store this error for each result that has not
+                                    // yet been read.
+                                    return Err(XtensaError::XdmError(Error::ExecException));
+                                }
+
+                                error => return Err(XtensaError::XdmError(error)),
                             }
                         }
-                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecException)) => {
-                            // Clear exception to allow executing further instructions.
-                            self.clear_exception_state()?;
-                            // TODO: in the future, we might want to bubble up the exception cause.
-                            // We might also want to store this error for each result that has not
-                            // yet been read.
-                            return Err(XtensaError::XdmError(Error::ExecException));
+                        BatchError::Probe(debug_probe_error) => {
+                            return Err(debug_probe_error.into());
                         }
-
-                        ProbeRsError::Probe(error) => return Err(error.into()),
-                        ProbeRsError::Xtensa(error) => return Err(error),
-                        other => panic!("Unexpected error: {other}"),
-                    }
+                    };
 
                     self.state.jtag_results.merge_from(e.results);
                 }
@@ -397,35 +402,38 @@ impl<'probe> Xdm<'probe> {
     }
 
     fn do_nexus_op(&mut self, nar: u8, ndr: u32, transform: TransformFn) -> DeferredResultIndex {
-        let nar = self.state.queue.schedule(JtagWriteCommand {
-            address: TapInstruction::Nar.code(),
-            data: nar.to_le_bytes().to_vec(),
-            len: TapInstruction::Nar.bits(),
+        let nar_idx = self.state.queue.schedule(JtagWriteCommand {
+            data: JtagWriteData {
+                address: TapInstruction::Nar.code(),
+                data: nar.to_le_bytes().to_vec(),
+                len: TapInstruction::Nar.bits(),
+            },
             transform: |write, capture| {
                 let capture = capture.load_le::<u8>();
                 let nar = write.data[0] >> 1;
-                let write = write.data[0] & 1 == 1;
+                let is_write = write.data[0] & 1 == 1;
 
-                // eww...?
-                Err(ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm {
+                Err(Error::Xdm {
                     narsel: nar,
-                    access: if write { "writing" } else { "reading" },
+                    access: if is_write { "writing" } else { "reading" },
                     source: match capture & 0b00000011 {
                         0 => return Ok(CommandResult::None),
                         1 => DebugRegisterError::Error,
                         2 => DebugRegisterError::Busy,
                         _ => DebugRegisterError::Unexpected(capture),
                     },
-                })))
+                })
             },
         });
 
         // We save the nar reader because we want to capture the previous status.
-        self.state.status_idxs.push(nar);
+        self.state.status_idxs.push(nar_idx);
 
         self.state.queue.schedule(ShiftDrCommand {
-            data: ndr.to_le_bytes().to_vec(),
-            len: TapInstruction::Ndr.bits(),
+            inner: ShiftDrData {
+                data: ndr.to_le_bytes().to_vec(),
+                len: TapInstruction::Ndr.bits(),
+            },
             transform,
         })
     }
@@ -712,48 +720,36 @@ impl<'probe> Xdm<'probe> {
     }
 }
 
-type TransformFn = fn(&ShiftDrCommand, &BitSlice) -> Result<CommandResult, ProbeRsError>;
+type TransformFn = fn(&ShiftDrData, &BitSlice) -> Result<CommandResult, Error>;
 
-fn transform_u32(
-    _command: &ShiftDrCommand,
-    capture: &BitSlice,
-) -> Result<CommandResult, ProbeRsError> {
+fn transform_u32(_data: &ShiftDrData, capture: &BitSlice) -> Result<CommandResult, Error> {
     Ok(CommandResult::U32(capture.load_le::<u32>()))
 }
 
-fn transform_noop(
-    _command: &ShiftDrCommand,
-    _capture: &BitSlice,
-) -> Result<CommandResult, ProbeRsError> {
+fn transform_noop(_data: &ShiftDrData, _capture: &BitSlice) -> Result<CommandResult, Error> {
     Ok(CommandResult::None)
 }
 
 fn transform_instruction_status(
-    _command: &ShiftDrCommand,
+    _data: &ShiftDrData,
     capture: &BitSlice,
-) -> Result<CommandResult, ProbeRsError> {
+) -> Result<CommandResult, Error> {
     let status = DebugStatus(capture.load_le::<u32>());
 
     if status.exec_overrun() {
-        return Err(ProbeRsError::Xtensa(XtensaError::XdmError(
-            Error::ExecOverrun,
-        )));
+        return Err(Error::ExecOverrun);
     }
     if status.exec_exception() {
-        return Err(ProbeRsError::Xtensa(XtensaError::XdmError(
-            Error::ExecException,
-        )));
+        return Err(Error::ExecException);
     }
     if status.exec_busy() {
-        return Err(ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)));
+        return Err(Error::ExecBusy);
     }
     if status.exec_done() {
         return Ok(CommandResult::None);
     }
 
-    Err(ProbeRsError::Xtensa(XtensaError::XdmError(
-        Error::InstructionIgnored,
-    )))
+    Err(Error::InstructionIgnored)
 }
 
 bitfield::bitfield! {

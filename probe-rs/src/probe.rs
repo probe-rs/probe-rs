@@ -11,6 +11,7 @@ pub mod ftdi;
 pub mod glasgow;
 pub mod jlink;
 pub mod list;
+pub(crate) mod queue;
 mod selector;
 pub mod sifliuart;
 pub mod stlink;
@@ -26,6 +27,7 @@ use crate::architecture::xtensa::communication_interface::{
 use crate::config::TargetSelector;
 use crate::config::registry::Registry;
 use crate::probe::common::JtagState;
+use crate::probe::queue::{BatchExecutionError, DeferredResultSet, ErasedQueue};
 use crate::{Error, Permissions, Session};
 use bitvec::slice::BitSlice;
 use bitvec::vec::BitVec;
@@ -33,7 +35,6 @@ use common::ScanChainError;
 use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
-use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
@@ -1151,7 +1152,7 @@ pub trait JtagAccess: DebugProbe {
     /// Executes a sequence of JTAG commands.
     fn write_register_batch(
         &mut self,
-        writes: &CommandQueue<JtagCommand>,
+        writes: &ErasedQueue,
     ) -> Result<DeferredResultSet<CommandResult>, BatchExecutionError> {
         tracing::debug!(
             "Using default `JtagAccess::write_register_batch` hurts performance. Please implement proper batching for this probe."
@@ -1161,24 +1162,35 @@ pub trait JtagAccess: DebugProbe {
         for (idx, write) in writes.iter() {
             match write {
                 JtagCommand::WriteRegister(write) => {
-                    match self
-                        .write_register(write.address, &write.data, write.len)
-                        .map_err(crate::Error::Probe)
-                        .and_then(|response| (write.transform)(write, &response))
-                    {
+                    let response = match self.write_register(
+                        write.inner.address,
+                        &write.inner.data,
+                        write.inner.len,
+                    ) {
+                        Ok(response) => response,
+                        Err(e) => {
+                            return Err(BatchExecutionError::new_from_debug_probe(e, results));
+                        }
+                    };
+
+                    match (write.transform)(&write.inner, &response) {
                         Ok(res) => results.push(idx, res),
-                        Err(e) => return Err(BatchExecutionError::new(e, results)),
+                        Err(e) => {
+                            return Err(BatchExecutionError::new_specific(e, results));
+                        }
                     }
                 }
 
                 JtagCommand::ShiftDr(write) => {
-                    match self
-                        .write_dr(&write.data, write.len)
-                        .map_err(crate::Error::Probe)
-                        .and_then(|response| (write.transform)(write, &response))
-                    {
+                    let response = match self.write_dr(&write.inner.data, write.inner.len) {
+                        Ok(response) => response,
+                        Err(e) => {
+                            return Err(BatchExecutionError::new_from_debug_probe(e, results));
+                        }
+                    };
+                    match (write.transform)(&write.inner, &response) {
                         Ok(res) => results.push(idx, res),
-                        Err(e) => return Err(BatchExecutionError::new(e, results)),
+                        Err(e) => return Err(BatchExecutionError::new_specific(e, results)),
                     }
                 }
             }
@@ -1200,9 +1212,9 @@ pub struct JtagSequence {
     pub data: BitVec,
 }
 
-/// A low-level JTAG register write command.
+/// Data for a JTAG register write
 #[derive(Debug, Clone)]
-pub struct JtagWriteCommand {
+pub struct JtagWriteData {
     /// The IR register to write to.
     pub address: u32,
 
@@ -1211,41 +1223,112 @@ pub struct JtagWriteCommand {
 
     /// The number of bits in `data`
     pub len: u32,
-
-    /// A function to transform the raw response into a [`CommandResult`]
-    pub transform: fn(&JtagWriteCommand, &BitSlice) -> Result<CommandResult, crate::Error>,
 }
 
-/// A low-level JTAG register write command.
+/// Data for a DR shift - no transform, just the payload.
 #[derive(Debug, Clone)]
-pub struct ShiftDrCommand {
+pub struct ShiftDrData {
     /// The data to be written to DR.
     pub data: Vec<u8>,
 
     /// The number of bits in `data`
     pub len: u32,
+}
+
+/// A typed JTAG register write command with compile-time error type.
+#[derive(Debug, Clone)]
+pub struct JtagWriteCommand<E> {
+    /// The inner data for the write command.
+    pub data: JtagWriteData,
 
     /// A function to transform the raw response into a [`CommandResult`]
-    pub transform: fn(&ShiftDrCommand, &BitSlice) -> Result<CommandResult, crate::Error>,
+    pub transform: fn(&JtagWriteData, &BitSlice) -> Result<CommandResult, E>,
 }
 
-/// A low-level JTAG command.
+impl<E: std::error::Error + Send + Sync + 'static> From<JtagWriteCommand<E>> for JtagCommand {
+    fn from(value: JtagWriteCommand<E>) -> Self {
+        let typed_transform = value.transform;
+
+        let erased_command = ErasedCommand {
+            inner: value.data,
+            transform: Box::new(move |data, bits| {
+                (typed_transform)(data, bits)
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+            }),
+        };
+
+        JtagCommand::WriteRegister(erased_command)
+    }
+}
+
+/// A DR shift command
 #[derive(Debug, Clone)]
-pub enum JtagCommand {
-    /// Write a register.
-    WriteRegister(JtagWriteCommand),
-    /// Shift a value into the DR register.
-    ShiftDr(ShiftDrCommand),
+pub struct ShiftDrCommand<E> {
+    /// The inner data for the shift command.
+    pub inner: ShiftDrData,
+
+    /// A function to transform the raw response into a [`CommandResult`]
+    pub transform: fn(&ShiftDrData, &BitSlice) -> Result<CommandResult, E>,
 }
 
-impl From<JtagWriteCommand> for JtagCommand {
-    fn from(cmd: JtagWriteCommand) -> Self {
+impl<E: std::error::Error + Send + Sync + 'static> From<ShiftDrCommand<E>> for JtagCommand {
+    fn from(value: ShiftDrCommand<E>) -> Self {
+        let typed_transform = value.transform;
+
+        let erased_command = ErasedCommand {
+            inner: value.inner,
+            transform: Box::new(move |data, bits| {
+                (typed_transform)(data, bits)
+                    .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+            }),
+        };
+
+        JtagCommand::ShiftDr(erased_command)
+    }
+}
+
+/// Type alias for the erased transform function used in batched JTAG commands.
+pub(crate) type ErasedTransformFn<T> = Box<
+    dyn Fn(&T, &BitSlice) -> Result<CommandResult, Box<dyn std::error::Error + Send + Sync>>
+        + Send
+        + Sync,
+>;
+
+/// An erased JTAG register write command (internal use).
+pub(crate) struct ErasedCommand<T> {
+    /// The inner data for the write command.
+    pub inner: T,
+
+    /// A function to transform the raw response into a [`CommandResult`]
+    pub transform: ErasedTransformFn<T>,
+}
+
+impl<T: std::fmt::Debug> std::fmt::Debug for ErasedCommand<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ErasedCommand")
+            .field("inner", &self.inner)
+            .field("transform", &"<fn>")
+            .finish()
+    }
+}
+
+/// A low-level JTAG command (uses type-erased commands internally).
+#[derive(Debug)]
+pub(crate) enum JtagCommand {
+    /// Write a register.
+    WriteRegister(ErasedCommand<JtagWriteData>),
+    /// Shift a value into the DR register.
+    ShiftDr(ErasedCommand<ShiftDrData>),
+}
+
+impl From<ErasedCommand<JtagWriteData>> for JtagCommand {
+    fn from(cmd: ErasedCommand<JtagWriteData>) -> Self {
         JtagCommand::WriteRegister(cmd)
     }
 }
 
-impl From<ShiftDrCommand> for JtagCommand {
-    fn from(cmd: ShiftDrCommand) -> Self {
+impl From<ErasedCommand<ShiftDrData>> for JtagCommand {
+    fn from(cmd: ErasedCommand<ShiftDrData>) -> Self {
         JtagCommand::ShiftDr(cmd)
     }
 }
@@ -1283,37 +1366,6 @@ impl ChainParams {
         }
 
         found.then_some(params)
-    }
-}
-
-/// An error that occurred during batched command execution of JTAG commands.
-#[derive(thiserror::Error, Debug)]
-pub struct BatchExecutionError {
-    /// The error that occurred during execution.
-    #[source]
-    pub error: crate::Error,
-
-    /// The results of the commands that were executed before the error occurred.
-    pub results: DeferredResultSet<CommandResult>,
-}
-
-impl BatchExecutionError {
-    pub(crate) fn new(
-        error: crate::Error,
-        results: DeferredResultSet<CommandResult>,
-    ) -> BatchExecutionError {
-        BatchExecutionError { error, results }
-    }
-}
-
-impl std::fmt::Display for BatchExecutionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Error cause was {}. Successful command count {}",
-            self.error,
-            self.results.len()
-        )
     }
 }
 
@@ -1359,180 +1411,6 @@ impl CommandResult {
             CommandResult::U8(val) => val,
             _ => panic!("CommandResult is not a u8"),
         }
-    }
-}
-
-/// A set of batched commands that will be executed all at once.
-///
-/// This list maintains which commands' results can be read by the issuing code, which then
-/// can be used to skip capturing or processing certain parts of the response.
-pub struct CommandQueue<T> {
-    commands: Vec<(DeferredResultIndex, T)>,
-    cursor: usize,
-}
-
-impl<T: std::fmt::Debug> std::fmt::Debug for CommandQueue<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CommandQueue")
-            .field("commands", &self.len())
-            .finish()
-    }
-}
-
-impl<T> Default for CommandQueue<T> {
-    fn default() -> Self {
-        Self {
-            commands: Vec::new(),
-            cursor: 0,
-        }
-    }
-}
-
-impl<T> CommandQueue<T> {
-    /// Creates a new empty queue.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Schedules a command for later execution.
-    ///
-    /// Returns a token value that can be used to retrieve the result of the command.
-    pub fn schedule(&mut self, command: impl Into<T>) -> DeferredResultIndex {
-        let index = DeferredResultIndex::new();
-        self.commands.push((index.clone(), command.into()));
-        index
-    }
-
-    /// Returns the number of commands in the queue.
-    pub fn len(&self) -> usize {
-        self.commands[self.cursor..].len()
-    }
-
-    /// Returns whether the queue is empty.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, T)> {
-        self.commands[self.cursor..].iter()
-    }
-
-    /// Rewinds the cursor by the specified number of commands.
-    ///
-    /// Returns `true` if the cursor was successfully rewound, `false` if more commands were requested than available.
-    pub(crate) fn rewind(&mut self, by: usize) -> bool {
-        if self.cursor >= by {
-            self.cursor -= by;
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Removes the first `len` number of commands from the batch.
-    pub(crate) fn consume(&mut self, len: usize) {
-        debug_assert!(self.len() >= len);
-        self.cursor += len;
-    }
-}
-
-/// The set of results returned by executing a batched command.
-pub struct DeferredResultSet<T>(HashMap<DeferredResultIndex, T>);
-
-impl<T: std::fmt::Debug> std::fmt::Debug for DeferredResultSet<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("DeferredResultSet").field(&self.0).finish()
-    }
-}
-
-impl<T> Default for DeferredResultSet<T> {
-    fn default() -> Self {
-        Self(HashMap::default())
-    }
-}
-
-impl<T> DeferredResultSet<T> {
-    /// Creates a new empty result set.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Creates a new empty result set with the given capacity.
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self(HashMap::with_capacity(capacity))
-    }
-
-    pub(crate) fn push(&mut self, idx: &DeferredResultIndex, result: T) {
-        self.0.insert(idx.clone(), result);
-    }
-
-    /// Returns the number of results in the set.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Returns whether the set is empty.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    pub(crate) fn merge_from(&mut self, other: DeferredResultSet<T>) {
-        self.0.extend(other.0);
-        self.0.retain(|k, _| k.should_capture());
-    }
-
-    /// Takes a result from the set.
-    pub fn take(&mut self, index: DeferredResultIndex) -> Result<T, DeferredResultIndex> {
-        self.0.remove(&index).ok_or(index)
-    }
-}
-
-/// An index type used to retrieve the result of a deferred command.
-///
-/// This type can detect if the result of a command is not used.
-#[derive(Eq)]
-pub struct DeferredResultIndex(Arc<()>);
-
-impl PartialEq for DeferredResultIndex {
-    fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.0, &other.0)
-    }
-}
-
-impl fmt::Debug for DeferredResultIndex {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("DeferredResultIndex")
-            .field(&self.id())
-            .finish()
-    }
-}
-
-impl DeferredResultIndex {
-    // Intentionally private. User code must not be able to create these.
-    fn new() -> Self {
-        Self(Arc::new(()))
-    }
-
-    fn id(&self) -> usize {
-        Arc::as_ptr(&self.0) as usize
-    }
-
-    pub(crate) fn should_capture(&self) -> bool {
-        // Both the queue and the user code may hold on to at most one of the references. The queue
-        // execution will be able to detect if the user dropped their read reference, meaning
-        // the read data would be inaccessible.
-        Arc::strong_count(&self.0) > 1
-    }
-
-    // Intentionally private. User code must not be able to clone these.
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
-impl std::hash::Hash for DeferredResultIndex {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id().hash(state)
     }
 }
 
