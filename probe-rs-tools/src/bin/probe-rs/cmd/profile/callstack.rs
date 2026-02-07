@@ -44,7 +44,7 @@ pub(crate) enum OutputFormat {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum StackFrameInfo {
+enum FunctionAddress {
     ProgramCounter(u64),
     // Return address adjusted to point to start of call instruction
     // See `fxprofpp::Frame::AdjustedReturnAddress`
@@ -52,7 +52,7 @@ enum StackFrameInfo {
 }
 
 // Format addresses as hex for debugging
-impl std::fmt::Debug for StackFrameInfo {
+impl std::fmt::Debug for FunctionAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::ProgramCounter(addr) => f
@@ -72,7 +72,7 @@ impl std::fmt::Debug for StackFrameInfo {
 struct CallstackSample {
     // element 0 is root node
     // element 1 is first callee, etc
-    callstack: Vec<StackFrameInfo>,
+    callstack: Vec<FunctionAddress>,
     // time since profiling started
     time: Duration,
 }
