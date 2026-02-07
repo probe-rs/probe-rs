@@ -60,7 +60,7 @@ impl std::fmt::Debug for FunctionAddress {
                 .field(&format!("{addr:#x}"))
                 .finish(),
             Self::AdjustedReturnAddress(addr) => f
-                .debug_tuple("ReturnAddress")
+                .debug_tuple("AdjustedReturnAddress")
                 .field(&format!("{addr:#x}"))
                 .finish(),
         }
