@@ -3,6 +3,7 @@ use super::{
     core_data::{CoreData, CoreHandle},
 };
 use crate::{
+    FormatKind,
     cmd::{
         dap_server::{
             DebuggerError,
@@ -24,7 +25,6 @@ use anyhow::{Result, anyhow};
 use probe_rs::{
     BreakpointCause, CoreStatus, HaltReason, Session, VectorCatchCondition,
     config::{Registry, TargetSelector},
-    flashing::FormatKind,
     probe::list::Lister,
     rtt::{ScanRegion, find_rtt_control_block_in_raw_file},
 };
@@ -246,7 +246,8 @@ impl SessionData {
         let image_format = config
             .flashing_config
             .format_options
-            .to_format_kind(self.session.target());
+            .binary_format
+            .resolve(self.session.target());
 
         for core_configuration in valid_core_configs {
             let Some(core_data) = self

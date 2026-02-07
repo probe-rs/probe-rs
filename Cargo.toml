@@ -39,6 +39,9 @@ thiserror = "2.0.11"
 anyhow = "1.0.82"
 async-io = "2"
 
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+
 [workspace.metadata.release]
 shared-version = true
 tag-name = "v{{version}}"
