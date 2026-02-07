@@ -455,44 +455,22 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         Ok(())
     }
 
-    fn schedule_read_cpu_register(&mut self, register: CpuRegister) -> DeferredResultIndex {
-        self.xdm
-            .schedule_execute_instruction(Instruction::Wsr(SpecialRegister::Ddr, register));
-        self.xdm.schedule_read_ddr()
-    }
-
-    fn schedule_read_special_register(
-        &mut self,
-        register: SpecialRegister,
-    ) -> Result<DeferredResultIndex, XtensaError> {
-        self.ensure_register_saved(CpuRegister::A3)?;
-        self.state.register_cache.mark_dirty(CpuRegister::A3.into());
-
-        // Read special register into the scratch register
-        self.xdm
-            .schedule_execute_instruction(Instruction::Rsr(register, CpuRegister::A3));
-
-        Ok(self.schedule_read_cpu_register(CpuRegister::A3))
-    }
-
     fn schedule_write_special_register(
         &mut self,
         register: SpecialRegister,
         value: u32,
     ) -> Result<(), XtensaError> {
         tracing::debug!("Writing special register: {:?}", register);
-        self.ensure_register_saved(CpuRegister::A3)?;
-        self.state.register_cache.mark_dirty(CpuRegister::A3.into());
+        const SCRATCH_REGISTER: CpuRegister = CpuRegister::A3;
 
-        self.xdm.schedule_write_ddr(value);
+        self.ensure_register_saved(SCRATCH_REGISTER)?;
+        self.state.register_cache.mark_dirty(SCRATCH_REGISTER);
 
-        // DDR -> scratch
-        self.xdm
-            .schedule_execute_instruction(Instruction::Rsr(SpecialRegister::Ddr, CpuRegister::A3));
+        self.schedule_write_cpu_register(SCRATCH_REGISTER, value)?;
 
         // scratch -> target special register
         self.xdm
-            .schedule_execute_instruction(Instruction::Wsr(register, CpuRegister::A3));
+            .schedule_execute_instruction(Instruction::Wsr(register, SCRATCH_REGISTER));
 
         Ok(())
     }
@@ -549,18 +527,46 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(value);
         }
 
-        let reader = match register {
-            Register::Cpu(register) => self.schedule_read_cpu_register(register),
-            Register::Special(register) => self.schedule_read_special_register(register)?,
-            Register::CurrentPc => {
-                self.schedule_read_special_register(self.core_properties.debug_level.pc())?
-            }
-            Register::CurrentPs => {
-                self.schedule_read_special_register(self.core_properties.debug_level.ps())?
-            }
-        };
+        let reader = self.schedule_read_register_uncached(register)?;
+
         self.state.register_cache.store_deferred(register, reader);
         Ok(MaybeDeferredResultIndex::Deferred(register))
+    }
+
+    pub(crate) fn schedule_read_register_uncached(
+        &mut self,
+        register: impl Into<Register>,
+    ) -> Result<DeferredResultIndex, XtensaError> {
+        let register = register.into();
+
+        const SCRATCH_REGISTER: CpuRegister = CpuRegister::A3;
+        let mut cpu_register = SCRATCH_REGISTER;
+
+        // Do we need to read a special register?
+        let special_register = match register {
+            Register::Cpu(register) => {
+                cpu_register = register;
+                None
+            }
+            Register::Special(register) => Some(register),
+            Register::CurrentPc => Some(self.core_properties.debug_level.pc()),
+            Register::CurrentPs => Some(self.core_properties.debug_level.ps()),
+        };
+
+        if let Some(special_register) = special_register {
+            // If we need to read a special register, read through a scratch register.
+            self.ensure_register_saved(cpu_register)?;
+            self.state.register_cache.mark_dirty(cpu_register);
+
+            // Read special register into the scratch register.
+            self.xdm
+                .schedule_execute_instruction(Instruction::Rsr(special_register, cpu_register));
+        }
+
+        self.xdm
+            .schedule_execute_instruction(Instruction::Wsr(SpecialRegister::Ddr, cpu_register));
+
+        Ok(self.xdm.schedule_read_ddr())
     }
 
     /// Read a register.
@@ -1319,10 +1325,7 @@ impl MemoryAccess for FastMemoryAccess {
     ) -> Result<(), XtensaError> {
         // Write aligned address to the scratch register
         interface.schedule_write_cpu_register(CpuRegister::A3, address)?;
-        interface
-            .state
-            .register_cache
-            .mark_dirty(CpuRegister::A3.into());
+        interface.state.register_cache.mark_dirty(CpuRegister::A3);
 
         // Read from address in the scratch register
         interface
@@ -1338,10 +1341,7 @@ impl MemoryAccess for FastMemoryAccess {
         address: u32,
     ) -> Result<(), XtensaError> {
         interface.schedule_write_cpu_register(CpuRegister::A3, address)?;
-        interface
-            .state
-            .register_cache
-            .mark_dirty(CpuRegister::A3.into());
+        interface.state.register_cache.mark_dirty(CpuRegister::A3);
 
         interface
             .xdm
@@ -1437,10 +1437,7 @@ impl MemoryAccess for SlowMemoryAccess {
     ) -> Result<DeferredResultIndex, XtensaError> {
         if !self.address_written {
             interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address)?;
-            interface
-                .state
-                .register_cache
-                .mark_dirty(CpuRegister::A3.into());
+            interface.state.register_cache.mark_dirty(CpuRegister::A3);
             self.current_offset = 0;
             self.address_written = true;
         }
@@ -1454,10 +1451,7 @@ impl MemoryAccess for SlowMemoryAccess {
             ));
         self.current_offset += 4;
 
-        interface
-            .state
-            .register_cache
-            .mark_dirty(CpuRegister::A4.into());
+        interface.state.register_cache.mark_dirty(CpuRegister::A4);
 
         if self.current_offset == 1024 {
             // The maximum offset for L32I is 1020, so we need to
@@ -1467,7 +1461,7 @@ impl MemoryAccess for SlowMemoryAccess {
             self.address_written = false;
         }
 
-        Ok(interface.schedule_read_cpu_register(CpuRegister::A4))
+        Ok(interface.schedule_read_register_uncached(CpuRegister::A4)?)
     }
 
     fn read_one_and_continue(
@@ -1484,16 +1478,10 @@ impl MemoryAccess for SlowMemoryAccess {
     ) -> Result<(), XtensaError> {
         // Store address and data
         interface.schedule_write_cpu_register(CpuRegister::A3, self.current_address)?;
-        interface
-            .state
-            .register_cache
-            .mark_dirty(CpuRegister::A3.into());
+        interface.state.register_cache.mark_dirty(CpuRegister::A3);
 
         interface.schedule_write_cpu_register(CpuRegister::A4, data)?;
-        interface
-            .state
-            .register_cache
-            .mark_dirty(CpuRegister::A4.into());
+        interface.state.register_cache.mark_dirty(CpuRegister::A4);
 
         // Increment address
         self.current_address += 4;
