@@ -217,19 +217,11 @@ mod test {
     use probe_rs::{CoreDump, RegisterRole};
     use std::path::PathBuf;
 
+    use super::super::test::get_path_for_test_files;
     use super::*;
 
-    /// Get the full path to a file in the `tests` directory.
-    fn get_path_for_test_files(relative_file: &str) -> PathBuf {
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.pop();
-        path.push("probe-rs-debug");
-        path.push("tests");
-        path.push(relative_file);
-        path
-    }
-
-    fn coredump_path(base: String) -> PathBuf {
+    /// Find core dump file path using name - either .elf or probe-rs's .coredump format
+    fn coredump_path(base: &str) -> PathBuf {
         let possible_coredump_paths = [
             get_path_for_test_files(format!("{base}.coredump").as_str()),
             get_path_for_test_files(format!("{base}_coredump.elf").as_str()),
@@ -283,7 +275,7 @@ mod test {
     fn check_stack_walk(test_name: &str, expect: &Vec<FunctionAddress>) {
         let executable_location =
             get_path_for_test_files(format!("debug-unwind-tests/{test_name}.elf").as_str());
-        let coredump_path = coredump_path(format!("debug-unwind-tests/{test_name}"));
+        let coredump_path = coredump_path(&format!("debug-unwind-tests/{test_name}"));
 
         let mut core_dump = CoreDump::load(&coredump_path).unwrap();
         let object_bytes = std::fs::read(&executable_location).unwrap();
