@@ -297,6 +297,18 @@ mod test {
     }
 
     /// Helper to convert slice of addresses to callstack Vec
+    /// Input order is callee most to caller most
+    /// These can be found loading the coredump with gdb and then running bt, gdb may not adjust
+    /// the addresses in the same way though:
+    /// rust-gdb --se <elf-executable-file> --core <elf-format-core-file>
+    /// info registers pc
+    /// bt
+    ///
+    /// can do stack walk inside gdb:
+    /// info registers fp
+    /// loop:
+    ///     p/x *((addr + <offset-fp>) as *u32)
+    ///     p/x *((addr + <offset-ra>) as *u32)
     fn addresses_to_callstack(addresses: &[u64]) -> Vec<FunctionAddress> {
         addresses
             .iter()
@@ -310,27 +322,52 @@ mod test {
             .collect()
     }
 
-    /// frame_pointer_unwind Armv6-m using RP2040
+    /// frame_pointer_unwind RISC-V coredump in ELF format from esp32c6
     #[test]
-    fn test_frame_pointer_unwind_armv6m() {
-        let test_name = "RP2040_full_unwind";
-        let expect = Vec::new();
-        check_stack_walk(&test_name, &expect);
-    }
-
-    /// frame_pointer_unwind Xtensa using esp32s3
-    #[test]
-    fn test_frame_pointer_unwind_xtensa() {
-        let test_name = "esp32s3_coredump_elf";
+    fn test_frame_pointer_unwind_riscv32() {
+        // the frame pointer register happens to point to the correct place in this core dump
+        let test_name = "esp32c6_coredump_elf";
         let expect = addresses_to_callstack(&[
-            0x420045e3, // frame missed - 0x4200587a
-            0x42000f69, 0x42000d10, 0x42004c4e, 0x42000bb9, 0x42000f7f, 0x42004483, 0x40378836,
+            0x4200124e, // rust_begin_unwind
+            0x420054f2, // _ZN4core9panicking9panic_fmt17h021b089f2ed24437E
+            0x42000202, // _ZN16embassy_executor3raw20TaskStorage$LT$F$GT$4poll17hcf2d0b9f6da05190E
+            0x420052ec, // _ZN16embassy_executor3raw8Executor4poll17h95bc77c9558ed726E
+            0x42000244, // _ZN15esp_hal_embassy8executor6thread8Executor3run17h70decec90d969805E
+            0x42000510, // main
+            0x4200438c, // hal_main
+            0x42000132, // _start_rust
         ]);
         check_stack_walk(&test_name, &expect);
     }
 
-    // #[test_case("nRF52833_xxAA_full_unwind"; "full_unwind Armv7-m using nRF52833_xxAA")]
-    // #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
-    // #[test_case("esp32c3_full_unwind"; "full_unwind RISC-V32E using esp32c3")]
-    // #[test_case("esp32c6_coredump_elf"; "Unwind using a RISC-V coredump in ELF format")]
+    /// frame_pointer_unwind Armv7-em coredump from atsamd51p19a
+    #[test]
+    fn test_frame_pointer_unwind_armv7em() {
+        let test_name = "atsamd51p19a";
+        let expect = addresses_to_callstack(&[
+            0x1474, // print_const_pointers
+            0x14da, // print_pointers
+            0x1538, // main
+            0x978,  // Reset_Handler
+        ]);
+        check_stack_walk(&test_name, &expect);
+    }
+
+    /// frame_pointer_unwind Xtensa coredump from esp32s3
+    #[test]
+    fn test_frame_pointer_unwind_xtensa() {
+        let test_name = "esp32s3_coredump_elf";
+        let expect = addresses_to_callstack(&[
+            0x420045e3, // rust_begin_unwind
+            // frame missed - 0x4200587a
+            0x42000f69, // _ZN11coredump_c67do_loop17hf978f6cd1e9a91bbE
+            0x42000d10, // _ZN16embassy_executor3raw20TaskStorage$LT$F$GT$4poll17h82f24e86eebf8c70E.llvm.2709420154441022049
+            0x42004c4e, // _ZN16embassy_executor3raw8Executor4poll17h6968ad0e84efef64E
+            0x42000bb9, // _ZN15esp_hal_embassy8executor6thread8Executor3run17h3be5e460a364c27eE
+            0x42000f7f, // main
+            0x42004483, // Reset
+            0x40378836, // ESP32Reset
+        ]);
+        check_stack_walk(&test_name, &expect);
+    }
 }
