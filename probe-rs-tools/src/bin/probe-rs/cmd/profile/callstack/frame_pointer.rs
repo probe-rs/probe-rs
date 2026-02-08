@@ -337,7 +337,7 @@ mod test {
             _ => RegisterRole::FramePointer,
         };
 
-        let initial_registers = DebugRegisters::from_coredump(&core_dump);
+        let initial_registers = DebugRegisters::from_coredump(core_dump);
         let frame_pointer = initial_registers
             .get_register_value_by_role(&fp_role)
             .unwrap();
@@ -385,7 +385,7 @@ mod test {
             0x4200438c, // hal_main
             0x42000132, // _start_rust
         ]);
-        check_stack_walk(&test_name, &expect);
+        check_stack_walk(test_name, &expect);
     }
 
     /// frame_pointer_stack_walk Armv7-em coredump from atsamd51p19a
@@ -398,7 +398,7 @@ mod test {
             0x1538, // main
             0x978,  // Reset_Handler
         ]);
-        check_stack_walk(&test_name, &expect);
+        check_stack_walk(test_name, &expect);
     }
 
     /// frame_pointer_stack_walk Xtensa coredump from esp32s3
@@ -416,6 +416,6 @@ mod test {
             0x42004483, // Reset
             0x40378836, // ESP32Reset
         ]);
-        check_stack_walk(&test_name, &expect);
+        check_stack_walk(test_name, &expect);
     }
 }
