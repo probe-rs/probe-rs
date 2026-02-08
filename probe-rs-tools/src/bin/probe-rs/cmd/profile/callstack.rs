@@ -29,7 +29,7 @@ pub(crate) struct CallstackProfileArgs {
 
 #[derive(clap::Subcommand, Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CallstackProfileMethod {
-    /// Naively (halt -> walk -> resume) unwind callstack using frame pointers and frame record
+    /// Naively (halt -> walk -> resume) walk call stack using frame pointers and frame record
     /// chain. You should ensure the program was compiled with frame pointers enabled.
     /// For rust, set the codegen option force-frame-pointers=yes.
     /// For C/C++ gcc/clang, set -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer.
@@ -158,7 +158,7 @@ pub(super) fn callstack_profile(
             core.halt(Duration::from_millis(10))?;
             let callstack = match callstack_profile_args.method {
                 CallstackProfileMethod::NaiveFramePointer => {
-                    frame_pointer::frame_pointer_unwind(&mut core, &entry_address_range)
+                    frame_pointer::frame_pointer_stack_walk(&mut core, &entry_address_range)
                         .context("Unwinding error, was the program compiled with frame pointers?")?
                 }
             };
