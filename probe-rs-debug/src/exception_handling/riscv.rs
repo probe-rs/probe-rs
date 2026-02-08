@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use crate::{
-    DebugError, DebugRegisters, StackFrame, exception_handling::ExceptionInterface, frame_record,
+    DebugError, DebugRegisters, StackFrame, exception_handling::ExceptionInterface,
     unwind_pc_without_debuginfo,
 };
 
@@ -30,14 +30,10 @@ impl RiscvExceptionHandler {
             ));
         }
 
-        // Read frame record
-        let sp_32 = sp
-            .try_into()
-            .map_err(|_| DebugError::Other("Stack pointer is too high to unwind".to_string()))?;
-        let frame_record::FrameRecord32 {
-            return_address: return_addr,
-            frame_pointer: caller_sp,
-        } = frame_record::read_riscv32_frame_record(memory, sp_32)?;
+        let mut stack_frame = [0; 2];
+        memory.read_32(sp - 8, &mut stack_frame)?;
+
+        let [caller_sp, return_addr] = stack_frame;
 
         // TODO: use an architecture-appropriate value?
         if (caller_sp as u64).saturating_sub(sp) > 0x1000_0000 {

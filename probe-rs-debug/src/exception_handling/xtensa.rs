@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use crate::{
-    DebugError, DebugRegisters, StackFrame, exception_handling::ExceptionInterface, frame_record,
+    DebugError, DebugRegisters, StackFrame, exception_handling::ExceptionInterface,
     unwind_pc_without_debuginfo,
 };
 
@@ -52,20 +52,11 @@ impl XtensaExceptionHandler {
 
         let windowsize = (ra & 0xc000_0000) >> 30;
 
-        // Read frame record from current stack frame's Register-Spill Area.
-        let sp_32 = sp
-            .try_into()
-            .map_err(|_| DebugError::Other("Stack pointer is too high to unwind".to_string()))?;
-        let frame_record::FrameRecord32 {
-            return_address: a0,
-            frame_pointer: caller_sp,
-        } = frame_record::read_xtensa_frame_record(memory, sp_32)?;
+        // Read A0-A3 from current stack frame's Register-Spill Area.
+        let mut stack_frame = [0; 4];
+        memory.read_32(sp - 16, &mut stack_frame)?;
 
-        // Read A2,A3 from current stack frame's Register-Spill Area.
-        let mut stack_frame = [0; 2];
-        memory.read_32(sp - 8, &mut stack_frame)?;
-
-        let [a2, a3] = stack_frame;
+        let [a0, caller_sp, a2, a3] = stack_frame;
 
         // TODO: use an architecture-appropriate value?
         if (caller_sp as u64).saturating_sub(sp) > 0x1000_0000 {
