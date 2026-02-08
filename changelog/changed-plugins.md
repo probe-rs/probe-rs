@@ -1,1 +1,1 @@
-The `vendor::register_vendor` function has been replaced with `plugin::register_plugin` and the `Plugin` struct.
+The `vendor::register_vendor` function has been replaced with `plugin::register_plugin` and the `Plugin` struct. The `Plugin` struct can be used to extend the list of built-in targets, image formats, probe drivers and vendor support code.

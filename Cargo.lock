@@ -2906,8 +2906,10 @@ name = "probe-rs-espressif"
 version = "0.31.0"
 dependencies = [
  "bincode",
+ "bitvec",
  "docsplay",
  "espflash",
+ "nusb",
  "probe-rs",
  "probe-rs-target",
  "serde",

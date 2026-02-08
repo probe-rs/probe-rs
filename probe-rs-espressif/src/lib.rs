@@ -21,8 +21,9 @@ use sequences::{
     esp32c61::ESP32C61, esp32h2::ESP32H2, esp32p4::ESP32P4, esp32s2::ESP32S2, esp32s3::ESP32S3,
 };
 
-use crate::image_format::IdfLoaderFactory;
+use crate::{espusbjtag::EspUsbJtagFactory, image_format::IdfLoaderFactory};
 
+pub mod espusbjtag;
 pub mod image_format;
 pub mod sequences;
 
@@ -32,6 +33,7 @@ pub fn register_plugin() {
         vendors: &[&Espressif],
         image_formats: &[&IdfLoaderFactory],
         targets: &targets,
+        probe_drivers: &[&EspUsbJtagFactory],
     });
 }
 

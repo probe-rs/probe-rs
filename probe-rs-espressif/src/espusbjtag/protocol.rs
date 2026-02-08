@@ -5,10 +5,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::probe::{
+use probe_rs::probe::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeError,
-    espusbjtag::EspUsbJtagFactory, usb_util::InterfaceExt,
+    usb_util::InterfaceExt,
 };
+
+use super::EspUsbJtagFactory;
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
 const JTAG_PROTOCOL_CAPABILITIES_SPEED_APB_TYPE: u8 = 1;

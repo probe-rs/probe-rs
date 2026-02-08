@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 use crate::architecture::riscv::communication_interface::{
     RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError, RiscvInterfaceBuilder,
 };
-use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+use crate::architecture::riscv::dtm::DtmAccess;
 use crate::probe::DebugProbeError;
 use crate::probe::queue::{BatchError, DeferredResultIndex, DeferredResultSet, Queue};
 use crate::probe::{
@@ -85,7 +85,7 @@ impl<'probe> RiscvInterfaceBuilder<'probe> for JtagDtmBuilder<'probe> {
 /// which is used to communicate with the RISC-V debug module.
 #[derive(Debug)]
 pub struct JtagDtm<'probe> {
-    pub probe: &'probe mut dyn JtagAccess,
+    probe: &'probe mut dyn JtagAccess,
     state: &'probe mut DtmState,
 }
 
@@ -344,7 +344,7 @@ impl DtmAccess for JtagDtm<'_> {
 /// 4. Set tunnel to idle: 3 zero bits
 #[derive(Debug)]
 pub struct TunneledJtagDtm<'probe> {
-    pub probe: &'probe mut dyn JtagAccess,
+    probe: &'probe mut dyn JtagAccess,
     state: &'probe mut DtmState,
     select_dtmcs: JtagWriteData,
     select_dmi: JtagWriteData,
@@ -646,11 +646,26 @@ fn tunnel_dtmcs_transform(
     Ok(CommandResult::U32(response))
 }
 
+/// DMI operation.
 #[derive(Copy, Clone, Debug)]
 pub enum DmiOperation {
+    /// No operation, usually to read back the response to the previous operation.
     NoOp,
-    Read { address: u64 },
-    Write { address: u64, value: u32 },
+
+    /// Read operation.
+    Read {
+        /// Address of the register to read.
+        address: u64,
+    },
+
+    /// Write operation.
+    Write {
+        /// Address of the register to write.
+        address: u64,
+
+        /// Value to write to the register.
+        value: u32,
+    },
 }
 
 impl DmiOperation {
@@ -673,10 +688,12 @@ impl DmiOperation {
         (address << DMI_ADDRESS_BIT_OFFSET) | (value << DMI_VALUE_BIT_OFFSET) | opcode
     }
 
+    /// Converts the DMI operation into a byte array.
     pub fn to_byte_batch(self) -> [u8; 16] {
         self.register_value().to_le_bytes()
     }
 
+    /// Converts the DMI operation into a byte array for tunneling.
     pub fn to_tunneled_byte_batch(self, dmi_bits: u32) -> (u32, [u8; 16]) {
         let width_offset = 1 + (dmi_bits) + 3;
         let msb_offset = 7 + width_offset;
@@ -687,18 +704,22 @@ impl DmiOperation {
     }
 }
 
-/// Possible return values in the op field of
-/// the dmi register.
+/// Possible return values in the op field of the dmi register.
 #[derive(Debug)]
 pub enum DmiOperationStatus {
+    /// OK
     Ok = 0,
+    /// Reserved
     Reserved = 1,
+    /// Operation failed
     OperationFailed = 2,
+    /// Request in progress
     RequestInProgress = 3,
 }
 
 // TODO Better error names
 
+/// DMI operation error.
 #[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum DmiOperationError {
     /// Reserved
@@ -745,10 +766,57 @@ bitfield! {
     pub struct Dtmcs(u32);
     impl Debug;
 
+
+    /// Hard-reset the DTM
+    ///
+    /// Writing 1 to this bit does a hard reset of the DTM,
+    /// causing the DTM to forget about any outstanding DMI
+    /// transactions. In general this should only be used
+    /// when the Debugger has reason to expect that the
+    /// outstanding DMI transaction will never complete
+    /// (e.g. a reset condition caused an inflight DMI
+    /// transaction to be cancelled).
     pub _, set_dmihardreset: 17;
+
+    /// Writing 1 to this bit clears the sticky error state
+    /// and allows the DTM to retry or complete the previous
+    /// outstanding transaction.
     pub _, set_dmireset: 16;
+
+    /// Idle cycles hint.
+    ///
+    /// This is a hint to the debugger of the minimum
+    /// number of cycles a debugger should spend in Run
+    /// Test/Idle after every DMI scan to avoid a ‘busy’
+    /// return code (dmistat of 3). A debugger must still
+    /// check dmistat when necessary.
+    ///
+    /// 0: It is not necessary to enter Run-Test/Idle at
+    ///    all.
+    /// 1: Enter Run-Test/Idle and leave it immediately.
+    /// 2: Enter Run-Test/Idle and stay there for 1 cycle
+    ///    before leaving.
+    ///
+    /// And so on.
     pub idle, _: 14, 12;
+
+    /// DMI status
+    ///
+    /// 0: No error.
+    /// 1: Reserved. Interpret the same as 2.
+    /// 2: An operation failed (resulted in op of 2).
+    /// 3: An operation was attempted while a DMI access was still
+    ///    in progress (resulted in op of 3).
     pub dmistat, _: 11,10;
+
+    /// The size of address in dmi.
     pub abits, _: 9,4;
+
+    /// Version of the implemented RISCV-V debug specification
+    ///
+    /// 0: Version described in spec version 0.11.
+    /// 1: Version described in spec version 0.13.
+    /// 15: Version not described in any available version
+    /// of this spec.
     pub version, _: 3,0;
 }
