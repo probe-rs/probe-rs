@@ -58,7 +58,7 @@ object = { version = "0.38", default-features = false, features = [
     "read_core",
     "std",
 ], optional = true }
-nusb = "0.2.1"
+nusb.workspace = true
 futures-lite = { version = "2", default-features = false }
 scroll = "0.13"
 serialport = { version = "4.7.0", default-features = false, features = [

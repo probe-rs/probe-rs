@@ -14,7 +14,9 @@ probe-rs = { workspace = true, features = ["flate2"] }
 probe-rs-target.workspace = true
 
 bincode = { version = "2", features = ["serde"] }
+bitvec = "1"
 docsplay.workspace = true
+nusb.workspace = true
 thiserror.workspace = true
 tracing = "0.1"
 serde.workspace = true

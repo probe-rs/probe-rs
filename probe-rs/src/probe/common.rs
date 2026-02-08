@@ -281,13 +281,20 @@ pub(crate) fn extract_ir_lengths<T: BitStore>(
 
 /// Inner states of the parallel arms (IR-Scan and DR-Scan) of the JTAG state machine.
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub(crate) enum RegisterState {
+pub enum RegisterState {
+    /// Select state.
     Select,
+    /// Capture state.
     Capture,
+    /// Shift state.
     Shift,
+    /// Exit1 state.
     Exit1,
+    /// Pause state.
     Pause,
+    /// Exit2 state.
     Exit2,
+    /// Update state.
     Update,
 }
 
@@ -331,10 +338,17 @@ impl RegisterState {
 
 /// JTAG State Machine representation.
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub(crate) enum JtagState {
+pub enum JtagState {
+    /// Reset state.
     Reset,
+
+    /// Idle state.
     Idle,
+
+    /// State along the Data Register path.
     Dr(RegisterState),
+
+    /// State along the Instruction Register path.
     Ir(RegisterState),
 }
 

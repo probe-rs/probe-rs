@@ -1,12 +1,10 @@
 //! Listing probes of various types.
 
 use crate::probe::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError, ProbeFactory,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
 };
 
-use super::{
-    blackmagic, ch347usbjtag, cmsisdap, espusbjtag, ftdi, glasgow, jlink, sifliuart, stlink, wlink,
-};
+use super::DRIVERS;
 
 /// Struct to list all attached debug probes
 #[derive(Debug)]
@@ -74,7 +72,7 @@ impl ProbeLister for AllProbesLister {
         let mut open_error = None;
         let mut fallback_error = ProbeCreationError::NotFound;
 
-        for probe_ctor in Self::DRIVERS {
+        for probe_ctor in DRIVERS.read().iter() {
             match probe_ctor.open(selector) {
                 Ok(link) => return Ok(Probe::from_specific_probe(link)),
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
@@ -96,7 +94,7 @@ impl ProbeLister for AllProbesLister {
     fn list(&self, selector: Option<&DebugProbeSelector>) -> Vec<DebugProbeInfo> {
         let mut list = vec![];
 
-        for driver in Self::DRIVERS {
+        for driver in DRIVERS.read().iter() {
             list.extend(driver.list_probes_filtered(selector));
         }
 
@@ -116,19 +114,6 @@ impl Default for AllProbesLister {
 }
 
 impl AllProbesLister {
-    const DRIVERS: &'static [&'static dyn ProbeFactory] = &[
-        &blackmagic::BlackMagicProbeFactory,
-        &cmsisdap::CmsisDapFactory,
-        &ftdi::FtdiProbeFactory,
-        &stlink::StLinkFactory,
-        &jlink::JLinkFactory,
-        &espusbjtag::EspUsbJtagFactory,
-        &wlink::WchLinkFactory,
-        &sifliuart::SifliUartFactory,
-        &glasgow::GlasgowFactory,
-        &ch347usbjtag::Ch347UsbJtagFactory,
-    ];
-
     /// Create a new lister with all built-in probe drivers.
     pub const fn new() -> Self {
         Self
