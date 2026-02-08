@@ -111,9 +111,9 @@ fn read_frame_record_for_core(
     }
 }
 
-/// Part of frame pointer unwind that is generic for memory interface, used for
-/// frame_pointer_unwind implementationa and testing.
-fn frame_pointer_unwind_memory_interface(
+/// Part of frame pointer stack walk that is generic for memory interface, used for
+/// frame_pointer_stack_walk implementationa and testing.
+fn frame_pointer_stack_walk_memory_interface(
     memory: &mut dyn MemoryInterface,
     instruction_set: InstructionSet,
     entry_point_address_range: &std::ops::Range<u64>,
@@ -172,7 +172,7 @@ fn frame_pointer_unwind_memory_interface(
     Ok(stack_frames.into_iter().rev().collect())
 }
 
-pub(crate) fn frame_pointer_unwind<'a>(
+pub(crate) fn frame_pointer_stack_walk<'a>(
     core: &mut probe_rs::Core<'a>,
     entry_point_address_range: &std::ops::Range<u64>,
 ) -> Result<Vec<FunctionAddress>, FramePointerUnwindError> {
@@ -201,7 +201,7 @@ pub(crate) fn frame_pointer_unwind<'a>(
         .read_core_reg(core.program_counter())
         .map_err(FramePointerUnwindError::ReadRegister)?;
 
-    frame_pointer_unwind_memory_interface(
+    frame_pointer_stack_walk_memory_interface(
         core,
         instruction_set,
         entry_point_address_range,
@@ -246,8 +246,8 @@ mod test {
             .clone()
     }
 
-    /// Like `frame_pointer_unwind` but for CoreDump rather than Core
-    pub(crate) fn frame_pointer_unwind_core_dump(
+    /// Like `frame_pointer_stack_walk` but for CoreDump rather than Core
+    pub(crate) fn frame_pointer_stack_walk_core_dump(
         core_dump: &mut CoreDump,
         entry_point_address_range: &std::ops::Range<u64>,
     ) -> Result<Vec<FunctionAddress>, FramePointerUnwindError> {
@@ -271,7 +271,7 @@ mod test {
             .get_register_value_by_role(&RegisterRole::ProgramCounter)
             .unwrap();
 
-        frame_pointer_unwind_memory_interface(
+        frame_pointer_stack_walk_memory_interface(
             core_dump,
             instruction_set,
             entry_point_address_range,
@@ -291,7 +291,7 @@ mod test {
         let entry_point_address_range = super::super::get_entry_point_address_range(&obj).unwrap();
 
         let res =
-            frame_pointer_unwind_core_dump(&mut core_dump, &entry_point_address_range).unwrap();
+            frame_pointer_stack_walk_core_dump(&mut core_dump, &entry_point_address_range).unwrap();
 
         assert_eq!(&res, expect);
     }
@@ -322,9 +322,9 @@ mod test {
             .collect()
     }
 
-    /// frame_pointer_unwind RISC-V coredump in ELF format from esp32c6
+    /// frame_pointer_stack_walk RISC-V coredump in ELF format from esp32c6
     #[test]
-    fn test_frame_pointer_unwind_riscv32() {
+    fn test_frame_pointer_stack_walk_riscv32() {
         // the frame pointer register happens to point to the correct place in this core dump
         let test_name = "esp32c6_coredump_elf";
         let expect = addresses_to_callstack(&[
@@ -340,9 +340,9 @@ mod test {
         check_stack_walk(&test_name, &expect);
     }
 
-    /// frame_pointer_unwind Armv7-em coredump from atsamd51p19a
+    /// frame_pointer_stack_walk Armv7-em coredump from atsamd51p19a
     #[test]
-    fn test_frame_pointer_unwind_armv7em() {
+    fn test_frame_pointer_stack_walk_armv7em() {
         let test_name = "atsamd51p19a";
         let expect = addresses_to_callstack(&[
             0x1474, // print_const_pointers
@@ -353,9 +353,9 @@ mod test {
         check_stack_walk(&test_name, &expect);
     }
 
-    /// frame_pointer_unwind Xtensa coredump from esp32s3
+    /// frame_pointer_stack_walk Xtensa coredump from esp32s3
     #[test]
-    fn test_frame_pointer_unwind_xtensa() {
+    fn test_frame_pointer_stack_walk_xtensa() {
         let test_name = "esp32s3_coredump_elf";
         let expect = addresses_to_callstack(&[
             0x420045e3, // rust_begin_unwind
