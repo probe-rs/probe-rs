@@ -129,3 +129,78 @@ pub(crate) fn save_fx_profile(
     serde_json::to_writer(gz, &profile)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use super::super::CallstackSample;
+    use super::super::test::{addresses_to_callstack, get_path_for_test_files};
+    use super::*;
+
+    #[test]
+    fn test_make_fx_profile() {
+        let executable_name = "esp32c6_coredump_elf";
+        let executable_location =
+            get_path_for_test_files(format!("debug-unwind-tests/{executable_name}.elf").as_str());
+
+        let object_bytes = std::fs::read(&executable_location).unwrap();
+        let obj = object::File::parse(object_bytes.as_slice()).unwrap();
+
+        let input_addresses = [
+            0x4200124e, // rust_begin_unwind
+            0x420054f2, // _ZN4core9panicking9panic_fmt17h021b089f2ed24437E
+            0x42000202, // _ZN16embassy_executor3raw20TaskStorage$LT$F$GT$4poll17hcf2d0b9f6da05190E
+            0x420052ec, // _ZN16embassy_executor3raw8Executor4poll17h95bc77c9558ed726E
+            0x42000244, // _ZN15esp_hal_embassy8executor6thread8Executor3run17h70decec90d969805E
+            0x42000510, // main
+            0x4200438c, // hal_main
+            0x42000132, // _start_rust
+        ];
+        let callstack = addresses_to_callstack(&input_addresses);
+
+        let core_callstacks = [CoreSamples {
+            core: 0,
+            callstacks: vec![CallstackSample {
+                callstack,
+                time: std::time::Duration::from_secs(7),
+            }],
+        }];
+
+        let fx_profile = make_fx_profile(
+            &core_callstacks,
+            &std::time::SystemTime::now(),
+            &std::time::Duration::from_secs(7),
+            &executable_location,
+            &obj,
+        )
+        .unwrap();
+
+        let profile_value = serde_json::to_value(&fx_profile).unwrap();
+
+        let result_addresses: Vec<u64> = profile_value.get("threads").unwrap()[0]
+            .get("frameTable")
+            .unwrap()
+            .get("address")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_u64().unwrap())
+            .collect();
+
+        let start_avma = samply_object::relative_address_base(&obj);
+
+        // check output profile has the addresses we put into it
+        for input_address in &input_addresses {
+            assert!(result_addresses.contains(&(input_address - start_avma)));
+        }
+
+        let result_product_name = profile_value
+            .get("meta")
+            .unwrap()
+            .get("product")
+            .unwrap()
+            .as_str()
+            .unwrap();
+        assert_eq!(result_product_name, executable_name);
+    }
+}

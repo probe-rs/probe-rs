@@ -217,6 +217,32 @@ mod test {
         path
     }
 
+    /// Helper to convert slice of addresses to callstack Vec
+    /// Input order is callee most to caller most
+    /// These can be found loading the coredump with gdb and then running bt, gdb may not adjust
+    /// the addresses in the same way though:
+    /// rust-gdb --se <elf-executable-file> --core <elf-format-core-file>
+    /// info registers pc
+    /// bt
+    ///
+    /// can do stack walk inside gdb:
+    /// info registers fp
+    /// loop:
+    ///     p/x *((addr + <offset-fp>) as *u32)
+    ///     p/x *((addr + <offset-ra>) as *u32)
+    pub(crate) fn addresses_to_callstack(addresses: &[u64]) -> Vec<FunctionAddress> {
+        addresses
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(i, val)| match i {
+                0 => FunctionAddress::ProgramCounter(val),
+                _ => FunctionAddress::AdjustedReturnAddress(val),
+            })
+            .rev()
+            .collect()
+    }
+
     #[test]
     fn test_get_entry_point_address_range() {
         let executable_name = "esp32c6_coredump_elf";

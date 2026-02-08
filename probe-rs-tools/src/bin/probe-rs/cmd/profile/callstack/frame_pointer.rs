@@ -217,7 +217,7 @@ mod test {
     use probe_rs::{CoreDump, RegisterRole};
     use std::path::PathBuf;
 
-    use super::super::test::get_path_for_test_files;
+    use super::super::test::{addresses_to_callstack, get_path_for_test_files};
     use super::*;
 
     /// Find core dump file path using name - either .elf or probe-rs's .coredump format
@@ -239,7 +239,7 @@ mod test {
     }
 
     /// Like `frame_pointer_stack_walk` but for CoreDump rather than Core
-    pub(crate) fn frame_pointer_stack_walk_core_dump(
+    fn frame_pointer_stack_walk_core_dump(
         core_dump: &mut CoreDump,
         entry_point_address_range: &std::ops::Range<u64>,
     ) -> Result<Vec<FunctionAddress>, FramePointerUnwindError> {
@@ -286,32 +286,6 @@ mod test {
             frame_pointer_stack_walk_core_dump(&mut core_dump, &entry_point_address_range).unwrap();
 
         assert_eq!(&res, expect);
-    }
-
-    /// Helper to convert slice of addresses to callstack Vec
-    /// Input order is callee most to caller most
-    /// These can be found loading the coredump with gdb and then running bt, gdb may not adjust
-    /// the addresses in the same way though:
-    /// rust-gdb --se <elf-executable-file> --core <elf-format-core-file>
-    /// info registers pc
-    /// bt
-    ///
-    /// can do stack walk inside gdb:
-    /// info registers fp
-    /// loop:
-    ///     p/x *((addr + <offset-fp>) as *u32)
-    ///     p/x *((addr + <offset-ra>) as *u32)
-    fn addresses_to_callstack(addresses: &[u64]) -> Vec<FunctionAddress> {
-        addresses
-            .iter()
-            .copied()
-            .enumerate()
-            .map(|(i, val)| match i {
-                0 => FunctionAddress::ProgramCounter(val),
-                _ => FunctionAddress::AdjustedReturnAddress(val),
-            })
-            .rev()
-            .collect()
     }
 
     /// frame_pointer_stack_walk RISC-V coredump in ELF format from esp32c6
