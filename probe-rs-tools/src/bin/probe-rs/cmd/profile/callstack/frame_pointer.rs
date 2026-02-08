@@ -117,12 +117,14 @@ fn frame_pointer_unwind_memory_interface(
     memory: &mut dyn MemoryInterface,
     instruction_set: InstructionSet,
     entry_point_address_range: &std::ops::Range<u64>,
-    mut program_counter: u64,
+    program_counter: u64,
     mut frame_pointer: u64,
 ) -> Result<Vec<FunctionAddress>, FramePointerUnwindError> {
     let mut stack_frames = Vec::new();
-
     stack_frames.push(FunctionAddress::ProgramCounter(program_counter));
+
+    let mut last_frame_pointer = frame_pointer;
+    let mut last_program_counter = program_counter;
 
     // Unwind, stopping if:
     //
@@ -140,8 +142,20 @@ fn frame_pointer_unwind_memory_interface(
         AdjustedFrameRecord {
             frame_pointer,
             adjusted_return_address,
-        } = read_frame_record_for_core(memory, instruction_set, frame_pointer, program_counter)
-            .map_err(FramePointerUnwindError::ReadFrameRecord)?;
+        } = read_frame_record_for_core(
+            memory,
+            instruction_set,
+            frame_pointer,
+            last_program_counter,
+        )
+        .map_err(FramePointerUnwindError::ReadFrameRecord)?;
+
+        // Stack grows down, so frame pointer should be increasing when walking up call stack
+        // Stop if the frame pointer has not increased
+        if last_frame_pointer >= frame_pointer {
+            break;
+        }
+        last_frame_pointer = frame_pointer;
 
         stack_frames.push(FunctionAddress::AdjustedReturnAddress(
             adjusted_return_address,
@@ -152,7 +166,7 @@ fn frame_pointer_unwind_memory_interface(
             break;
         }
 
-        program_counter = adjusted_return_address;
+        last_program_counter = adjusted_return_address;
     }
 
     Ok(stack_frames.into_iter().rev().collect())
