@@ -1,22 +1,106 @@
 use probe_rs::InstructionSet;
 use probe_rs::MemoryInterface;
 use probe_rs::RegisterValue;
-use probe_rs_debug::DebugError;
-use probe_rs_debug::frame_record;
 use probe_rs_debug::unwind_program_counter_register;
 
 use super::FunctionAddress;
 
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum FramePointerUnwindError {
+pub(crate) enum FramePointerStackWalkError {
     #[error("Could not determine instruction set")]
     DetermineInstructionSet(#[source] probe_rs::Error),
     #[error("Could not read register")]
+    ReadAddressOverflow,
+    #[error("Could not read register")]
     ReadRegister(#[source] probe_rs::Error),
+    #[error("Could not read frame record memory")]
+    ReadMemory(#[source] probe_rs::Error),
     #[error("Failed to spill registers")]
     RegisterSpillError(#[source] probe_rs::Error),
-    #[error("Could not read frame record")]
-    ReadFrameRecord(#[source] probe_rs_debug::DebugError),
+}
+
+/// Frame record contents for 32-bit cores
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct FrameRecord32 {
+    /// Content of frame or stack pointer part of frame record
+    frame_pointer: u32,
+    return_address: u32,
+}
+
+/// Frame record contents for 64-bit cores
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct FrameRecord64 {
+    /// Content of frame or stack pointer part of frame record
+    frame_pointer: u64,
+    return_address: u64,
+}
+
+/// Attempt to read ARM A32 or RISCV32 frame record
+fn read_arm_riscv_32_frame_record(
+    memory: &mut dyn MemoryInterface,
+    frame_pointer: u64,
+    frame_record_offset: i64,
+) -> Result<FrameRecord32, FramePointerStackWalkError> {
+    let read_addr = frame_pointer
+        .checked_add_signed(frame_record_offset)
+        .ok_or(FramePointerStackWalkError::ReadAddressOverflow)?;
+    let mut frame_record = [0; 2];
+    memory
+        .read_32(read_addr, &mut frame_record)
+        .map_err(FramePointerStackWalkError::ReadMemory)?;
+
+    let [caller_fp, return_address] = frame_record;
+
+    Ok(FrameRecord32 {
+        frame_pointer: caller_fp,
+        return_address,
+    })
+}
+
+/// Attempt to read ARM A64 or RISCV64 frame record
+fn read_arm_riscv_64_frame_record(
+    memory: &mut dyn MemoryInterface,
+    frame_pointer: u64,
+    frame_record_offset: i64,
+) -> Result<FrameRecord64, FramePointerStackWalkError> {
+    let read_addr = frame_pointer
+        .checked_add_signed(frame_record_offset)
+        .ok_or(FramePointerStackWalkError::ReadAddressOverflow)?;
+    let mut frame_record = [0; 2];
+    memory
+        .read_64(read_addr, &mut frame_record)
+        .map_err(FramePointerStackWalkError::ReadMemory)?;
+
+    let [caller_fp, return_address] = frame_record;
+
+    Ok(FrameRecord64 {
+        frame_pointer: caller_fp,
+        return_address,
+    })
+}
+
+/// Attempt to read Xtensa frame record
+fn read_xtensa_frame_record(
+    memory: &mut dyn MemoryInterface,
+    frame_pointer: u64,
+    frame_record_offset: i64,
+) -> Result<FrameRecord32, FramePointerStackWalkError> {
+    let read_addr = frame_pointer
+        .checked_add_signed(frame_record_offset)
+        .ok_or(FramePointerStackWalkError::ReadAddressOverflow)?;
+
+    let mut frame_record = [0; 2];
+    memory
+        .read_32(read_addr, &mut frame_record)
+        .map_err(FramePointerStackWalkError::ReadMemory)?;
+
+    // ra and fp are the other way round for Xtensa
+    let [return_address, caller_fp] = frame_record;
+
+    Ok(FrameRecord32 {
+        frame_pointer: caller_fp,
+        return_address,
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,7 +111,7 @@ struct AdjustedFrameRecord {
 
 impl AdjustedFrameRecord {
     fn new_from_frame_record_32(
-        fr_32: frame_record::FrameRecord32,
+        fr_32: FrameRecord32,
         instruction_set: InstructionSet,
         last_pc: u64,
     ) -> Self {
@@ -51,7 +135,7 @@ impl AdjustedFrameRecord {
     }
 
     fn new_from_frame_record_64(
-        fr_64: frame_record::FrameRecord64,
+        fr_64: FrameRecord64,
         instruction_set: InstructionSet,
         last_pc: u64,
     ) -> Self {
@@ -75,36 +159,35 @@ impl AdjustedFrameRecord {
     }
 }
 
+const ARM32_FRAME_RECORD_OFFSET: i64 = 0;
+const ARM64_FRAME_RECORD_OFFSET: i64 = 0;
+const RISCV32_FRAME_RECORD_OFFSET: i64 = -8;
+const XTENSA_FRAME_RECORD_OFFSET: i64 = -16;
+
 fn read_frame_record_for_core(
     memory: &mut dyn MemoryInterface,
     instruction_set: InstructionSet,
     frame_pointer: u64,
     last_pc: u64,
-) -> Result<AdjustedFrameRecord, DebugError> {
+) -> Result<AdjustedFrameRecord, FramePointerStackWalkError> {
     match instruction_set {
         InstructionSet::A32 | InstructionSet::Thumb2 => {
-            let fp_32 = frame_pointer
-                .try_into()
-                .map_err(|_| DebugError::Other("Expected 32 bit frame pointer".to_string()))?;
-            frame_record::read_arm32_frame_record(memory, fp_32).map(|fr| {
-                AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
-            })
+            read_arm_riscv_32_frame_record(memory, frame_pointer, ARM32_FRAME_RECORD_OFFSET).map(
+                |fr| AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc),
+            )
         }
-        InstructionSet::A64 => frame_record::read_arm64_frame_record(memory, frame_pointer)
-            .map(|fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc)),
+        InstructionSet::A64 => {
+            read_arm_riscv_64_frame_record(memory, frame_pointer, ARM64_FRAME_RECORD_OFFSET).map(
+                |fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc),
+            )
+        }
         InstructionSet::RV32 | InstructionSet::RV32C => {
-            let fp_32 = frame_pointer
-                .try_into()
-                .map_err(|_| DebugError::Other("Expected 32 bit frame pointer".to_string()))?;
-            frame_record::read_riscv32_frame_record(memory, fp_32).map(|fr| {
-                AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
-            })
+            read_arm_riscv_32_frame_record(memory, frame_pointer, RISCV32_FRAME_RECORD_OFFSET).map(
+                |fr| AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc),
+            )
         }
         InstructionSet::Xtensa => {
-            let fp_32 = frame_pointer
-                .try_into()
-                .map_err(|_| DebugError::Other("Expected 32 bit frame pointer".to_string()))?;
-            frame_record::read_xtensa_frame_record(memory, fp_32).map(|fr| {
+            read_xtensa_frame_record(memory, frame_pointer, XTENSA_FRAME_RECORD_OFFSET).map(|fr| {
                 AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)
             })
         }
@@ -119,7 +202,7 @@ fn frame_pointer_stack_walk_memory_interface(
     entry_point_address_range: &std::ops::Range<u64>,
     program_counter: u64,
     mut frame_pointer: u64,
-) -> Result<Vec<FunctionAddress>, FramePointerUnwindError> {
+) -> Result<Vec<FunctionAddress>, FramePointerStackWalkError> {
     let mut stack_frames = Vec::new();
     stack_frames.push(FunctionAddress::ProgramCounter(program_counter));
 
@@ -147,8 +230,7 @@ fn frame_pointer_stack_walk_memory_interface(
             instruction_set,
             frame_pointer,
             last_program_counter,
-        )
-        .map_err(FramePointerUnwindError::ReadFrameRecord)?;
+        )?;
 
         // Stack grows down, so frame pointer should be increasing when walking up call stack
         // Stop if the frame pointer has not increased
@@ -175,15 +257,15 @@ fn frame_pointer_stack_walk_memory_interface(
 pub(crate) fn frame_pointer_stack_walk<'a>(
     core: &mut probe_rs::Core<'a>,
     entry_point_address_range: &std::ops::Range<u64>,
-) -> Result<Vec<FunctionAddress>, FramePointerUnwindError> {
+) -> Result<Vec<FunctionAddress>, FramePointerStackWalkError> {
     let instruction_set = core
         .instruction_set()
-        .map_err(FramePointerUnwindError::DetermineInstructionSet)?;
+        .map_err(FramePointerStackWalkError::DetermineInstructionSet)?;
 
     // Spill registers on Xtensa to ensure frame records are on the stack
     if instruction_set == InstructionSet::Xtensa {
         core.spill_registers()
-            .map_err(FramePointerUnwindError::RegisterSpillError)?;
+            .map_err(FramePointerStackWalkError::RegisterSpillError)?;
     }
 
     // Use the stack pointer on Xtensa as compiling with force-frame-pointers=yes can be buggy
@@ -196,10 +278,10 @@ pub(crate) fn frame_pointer_stack_walk<'a>(
 
     let frame_pointer: u64 = core
         .read_core_reg(fp_reg)
-        .map_err(FramePointerUnwindError::ReadRegister)?;
+        .map_err(FramePointerStackWalkError::ReadRegister)?;
     let program_counter: u64 = core
         .read_core_reg(core.program_counter())
-        .map_err(FramePointerUnwindError::ReadRegister)?;
+        .map_err(FramePointerStackWalkError::ReadRegister)?;
 
     frame_pointer_stack_walk_memory_interface(
         core,
@@ -242,7 +324,7 @@ mod test {
     fn frame_pointer_stack_walk_core_dump(
         core_dump: &mut CoreDump,
         entry_point_address_range: &std::ops::Range<u64>,
-    ) -> Result<Vec<FunctionAddress>, FramePointerUnwindError> {
+    ) -> Result<Vec<FunctionAddress>, FramePointerStackWalkError> {
         // I hope Xtensa registers are already spilled in core dump
 
         let instruction_set = core_dump.instruction_set();
