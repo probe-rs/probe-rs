@@ -200,3 +200,35 @@ pub(super) fn callstack_profile(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use std::path::PathBuf;
+
+    use super::*;
+
+    /// Get the full path to a file in the `tests` directory.
+    pub(crate) fn get_path_for_test_files(relative_file: &str) -> PathBuf {
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.pop();
+        path.push("probe-rs-debug");
+        path.push("tests");
+        path.push(relative_file);
+        path
+    }
+
+    #[test]
+    fn test_get_entry_point_address_range() {
+        let executable_name = "esp32c6_coredump_elf";
+        let executable_location =
+            get_path_for_test_files(format!("debug-unwind-tests/{executable_name}.elf").as_str());
+
+        let object_bytes = std::fs::read(&executable_location).unwrap();
+        let obj = object::File::parse(object_bytes.as_slice()).unwrap();
+
+        let entry_point_address_range = get_entry_point_address_range(&obj).unwrap();
+
+        let expect = 0x42000020..0x42000104;
+        assert_eq!(entry_point_address_range, expect);
+    }
+}
