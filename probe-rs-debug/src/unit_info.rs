@@ -25,11 +25,13 @@ pub struct UnitInfo {
     language: Box<dyn language::ProgrammingLanguage>,
     // A mapping from child die to parent die.
     parents: HashMap<UnitOffset, UnitOffset>,
+    // Address => function DIE offset
+    function_dies: Vec<(Range<u64>, UnitOffset)>,
 }
 
 impl UnitInfo {
     /// Create a new `UnitInfo` from a `gimli::Unit`.
-    pub fn new(unit: gimli::Unit<GimliReader, usize>) -> Self {
+    pub fn new(unit: gimli::Unit<GimliReader, usize>, dwarf: &gimli::Dwarf<GimliReader>) -> Self {
         let dwarf_language = if let Some(AttributeValue::Language(unit_language)) = unit
             .entry(unit.root_offset())
             .ok()
@@ -41,19 +43,21 @@ impl UnitInfo {
             gimli::DW_LANG_Rust
         };
 
-        let parents = Self::extract_parents(&unit);
-
-        Self {
+        let mut this = Self {
             unit,
             dwarf_language,
             language: language::from_dwarf(dwarf_language),
-            parents,
-        }
+            parents: HashMap::new(),
+            function_dies: Vec::new(),
+        };
+
+        this.process_unit(dwarf);
+
+        this
     }
 
-    fn extract_parents(unit: &gimli::Unit<GimliReader, usize>) -> HashMap<UnitOffset, UnitOffset> {
-        let mut parents = HashMap::new();
-        let mut entries_cursor = unit.entries();
+    fn process_unit(&mut self, dwarf: &gimli::Dwarf<GimliReader>) {
+        let mut entries_cursor = self.unit.entries();
 
         let mut prev_offset = None;
         let mut previous_depth = entries_cursor.depth();
@@ -67,9 +71,9 @@ impl UnitInfo {
                     let walk_up = |mut levels| {
                         // If 0:  Previous die is a sibling, we have the same parent.
                         // If <0: Previous die is a child of one of our siblings. Trace back as many levels as needed, and grab the parent.
-                        let mut cursor = prev_offset.map(|off| parents.get(&off).copied())?;
+                        let mut cursor = prev_offset.map(|off| self.parents.get(&off).copied())?;
                         while levels != 0 {
-                            cursor = cursor.map(|off| parents.get(&off).copied())?;
+                            cursor = cursor.map(|off| self.parents.get(&off).copied())?;
                             levels += 1;
                         }
                         cursor
@@ -80,13 +84,22 @@ impl UnitInfo {
             };
 
             if let Some(offset) = parent_offset {
-                parents.insert(current.offset(), offset);
+                self.parents.insert(current.offset(), offset);
             }
             previous_depth = current.depth();
             prev_offset = Some(current.offset());
-        }
 
-        parents
+            // Cache the address ranges if this DIE is a function.
+            if current.tag() == gimli::DW_TAG_subprogram
+                && let Ok(Some(ranges)) = FunctionDie::function_ranges(current, self, dwarf)
+            {
+                for range in ranges {
+                    self.function_dies.push((range, current.offset()));
+                }
+            }
+
+            // TODO: assuming the ranges don't overlap, sort function dies by start address
+        }
     }
 
     /// Retrieve the value of the `DW_AT_language` attribute of the compilation unit.
@@ -112,7 +125,17 @@ impl UnitInfo {
     ) -> Result<Vec<FunctionDie<'debug_info>>, DebugError> {
         tracing::trace!("Searching Function DIE for address {:#010x}", address);
 
-        let mut entries_cursor = self.unit.entries();
+        // TODO: assuming the ranges don't overlap, binary-search for the function DIE containing the address
+        let Some((_, start_offset)) = self
+            .function_dies
+            .iter()
+            .find(|(range, _)| range.contains(&address))
+            .cloned()
+        else {
+            return Ok(vec![]);
+        };
+
+        let mut entries_cursor = self.unit.entries_at_offset(start_offset)?;
         while let Ok(Some(current)) = entries_cursor.next_dfs() {
             let Some(die) = FunctionDie::new(current.clone(), self, debug_info, address)? else {
                 continue;
