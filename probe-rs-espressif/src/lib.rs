@@ -2,14 +2,8 @@
 
 use probe_rs::plugin;
 
-pub fn register_plugin() {
-    plugin::register_plugin(plugin::Plugin {
-        vendors: &[&Espressif],
-    });
-}
-
 use probe_rs_target::{
-    Chip,
+    Chip, ChipFamily,
     chip_detection::{ChipDetectionMethod, EspressifDetection},
 };
 
@@ -27,7 +21,29 @@ use sequences::{
     esp32c61::ESP32C61, esp32h2::ESP32H2, esp32p4::ESP32P4, esp32s2::ESP32S2, esp32s3::ESP32S3,
 };
 
+use crate::{espusbjtag::EspUsbJtagFactory, image_format::IdfLoaderFactory};
+
+pub mod espusbjtag;
+pub mod image_format;
 pub mod sequences;
+
+pub fn register_plugin() {
+    let targets = targets();
+    plugin::register_plugin(plugin::Plugin {
+        vendors: &[&Espressif],
+        image_formats: &[&IdfLoaderFactory],
+        targets: &targets,
+        probe_drivers: &[&EspUsbJtagFactory],
+    });
+}
+
+fn targets() -> Vec<ChipFamily> {
+    const ESPRESSIF_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
+
+    bincode::serde::decode_from_slice(ESPRESSIF_TARGETS, bincode::config::standard())
+        .expect("Failed to deserialize builtin targets. This is a bug")
+        .0
+}
 
 // A magic number that resides in the ROM of Espressif chips. This points to 4 bytes that are mostly
 // unique to each chip variant. There may be some overlap between revisions (e.g. esp32c3)
@@ -141,5 +157,56 @@ impl Vendor for Espressif {
             |address| probe.read_word_32(address).ok(),
             idcode,
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use probe_rs::{
+        config::{Registry, RegistryError},
+        flashing::FlashAlgorithm,
+    };
+
+    #[test]
+    fn validate_builtin() {
+        crate::register_plugin();
+
+        // We can't just disable the builtin targets, because of the workspace. Let's build
+        // up the registry manually.
+        let mut registry = Registry::new();
+
+        // Register our targets, this validates them.
+        for target in crate::targets() {
+            match registry.add_target_family(target.clone()) {
+                Ok(_) => {}
+                Err(RegistryError::InvalidChipFamilyDefinition(_, error)) => {
+                    panic!("{}: Invalid chip family definition: {}", target.name, error)
+                }
+                Err(other) => {
+                    panic!("Unexpected error: {:?}", other)
+                }
+            }
+        }
+
+        for family in registry.families() {
+            for target in family.variants() {
+                let target = registry.get_target_by_name(&target.name).unwrap();
+
+                for raw_flash_algo in target.flash_algorithms.iter() {
+                    for core in raw_flash_algo.cores.iter() {
+                        if let Err(error) = FlashAlgorithm::assemble_from_raw_with_core(
+                            raw_flash_algo,
+                            core,
+                            &target,
+                        ) {
+                            panic!(
+                                "Failed to initialize flash algorithm ({}, {}, {core}): {}",
+                                &target.name, &raw_flash_algo.name, error
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -1,7 +1,8 @@
 //! ESP USB JTAG probe implementation.
 mod protocol;
 
-use crate::{
+use bitvec::prelude::*;
+use probe_rs::{
     architecture::{
         riscv::{
             communication_interface::{RiscvError, RiscvInterfaceBuilder},
@@ -16,7 +17,6 @@ use crate::{
         JtagAccess, JtagDriverState, ProbeFactory, RawJtagIo, WireProtocol,
     },
 };
-use bitvec::prelude::*;
 
 use self::protocol::ProtocolHandler;
 

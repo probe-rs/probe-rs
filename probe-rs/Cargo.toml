@@ -21,14 +21,15 @@ rust-version.workspace = true
 exclude = ["tests/"]
 
 [features]
-default = ["builtin-targets", "cmsisdap_v1", "flashing", "coredump"]
-
+default = ["builtin-targets", "cmsisdap_v1", "builtin-formats", "coredump"]
+flate2 = ["dep:flate2"]
 
 # Enable all built in targets.
-builtin-targets = ["dep:bincode", "dep:serde_yaml", "dep:probe-rs-target"]
+builtin-targets = ["dep:bincode", "dep:probe-rs-target"]
 cmsisdap_v1 = ["dep:hidapi"]
 
-flashing = ["dep:espflash", "dep:uf2-decode", "object", "dep:flate2", "dep:ihex"]
+# Enables the bin, hex, elf image formats
+builtin-formats = ["dep:uf2-decode", "object", "flate2", "dep:ihex"]
 
 coredump = ["object", "dep:rmp-serde", "dep:dunce"]
 
@@ -41,6 +42,8 @@ async-io.workspace = true
 docsplay.workspace = true
 thiserror.workspace = true
 probe-rs-target.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true
 
 bincode = { version = "2", features = ["serde"], optional = true }
 bitfield = "0.19.0"
@@ -55,7 +58,7 @@ object = { version = "0.38", default-features = false, features = [
     "read_core",
     "std",
 ], optional = true }
-nusb = "0.2.1"
+nusb.workspace = true
 futures-lite = { version = "2", default-features = false }
 scroll = "0.13"
 serialport = { version = "4.7.0", default-features = false, features = [
@@ -66,16 +69,10 @@ parking_lot = "0.12.2"
 zerocopy = { version = "0.8.0", features = ["derive"] }
 cobs = "0.5"
 
-
-
-serde = { version = "1", features = ["derive"] }
-serde_yaml = "0.9"
-
 # optional
 
 # For flashing
 uf2-decode = { version = "0.2", optional = true }
-espflash = { version = "4", default-features = false, optional = true }
 flate2 = { version = "1.0", optional = true }
 ihex = { version = "3.0", optional = true }
 
@@ -86,10 +83,7 @@ rmp-serde = { version = "1", optional = true }
 dunce = { version = "1.0.5", optional = true }
 
 [build-dependencies]
-probe-rs-target = { workspace = true, optional = true }
-
-bincode = { version = "2", features = ["serde"], optional = true }
-serde_yaml = { version = "0.9", optional = true }
+probe-rs-target = { workspace = true, optional = true, features = ["bincode"] }
 
 [dev-dependencies]
 env_logger = "0.11"

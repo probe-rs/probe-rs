@@ -4,7 +4,7 @@
 //! Debug Module, as described in the RISC-V debug
 //! specification v0.13.2 .
 
-use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+use crate::architecture::riscv::dtm::DtmAccess;
 use crate::probe::queue::DeferredResultIndex;
 use crate::{
     Error as ProbeRsError, architecture::riscv::*, config::Target, memory_mapped_bitfield_register,

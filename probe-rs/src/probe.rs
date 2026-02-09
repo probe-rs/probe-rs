@@ -1,11 +1,10 @@
 //! Probe drivers
 pub(crate) mod common;
-pub(crate) mod usb_util;
+pub mod usb_util;
 
 pub mod blackmagic;
 pub mod ch347usbjtag;
 pub mod cmsisdap;
-pub mod espusbjtag;
 pub mod fake_probe;
 pub mod ftdi;
 pub mod glasgow;
@@ -32,17 +31,38 @@ use crate::{Error, Permissions, Session};
 use bitvec::slice::BitSlice;
 use bitvec::vec::BitVec;
 use common::ScanChainError;
+use parking_lot::RwLock;
 use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 pub use selector::DebugProbeSelector;
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measurable.
 const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
+
+static DRIVERS: LazyLock<RwLock<Vec<&'static dyn ProbeFactory>>> = LazyLock::new(|| {
+    let probes: Vec<&'static dyn ProbeFactory> = vec![
+        &blackmagic::BlackMagicProbeFactory,
+        &cmsisdap::CmsisDapFactory,
+        &ftdi::FtdiProbeFactory,
+        &stlink::StLinkFactory,
+        &jlink::JLinkFactory,
+        &wlink::WchLinkFactory,
+        &sifliuart::SifliUartFactory,
+        &glasgow::GlasgowFactory,
+        &ch347usbjtag::Ch347UsbJtagFactory,
+    ];
+
+    RwLock::new(probes)
+});
+
+pub(crate) fn register_probe_factory(factory: &'static dyn ProbeFactory) {
+    DRIVERS.write().push(factory);
+}
 
 /// The protocol that is to be used by the probe when communicating with the target.
 ///
@@ -893,7 +913,7 @@ impl DebugProbeInfo {
 /// is then implemented by [CmsisDap] or a fallback is provided by for
 /// any [RawSwdIo + JtagAccess](crate::architecture::arm::polyfill) probes.
 ///
-/// RISC-V is close with its [crate::architecture::riscv::dtm::dtm_access::DtmAccess] trait.
+/// RISC-V is close with its [crate::architecture::riscv::dtm::DtmAccess] trait.
 ///
 /// [CmsisDap]: crate::probe::cmsisdap::CmsisDap
 pub(crate) trait RawSwdIo: DebugProbe {
@@ -912,7 +932,7 @@ pub(crate) trait RawSwdIo: DebugProbe {
 }
 
 /// A trait for implementing low-level JTAG interface operations.
-pub(crate) trait RawJtagIo: DebugProbe {
+pub trait RawJtagIo: DebugProbe {
     /// Returns a mutable reference to the current state.
     fn state_mut(&mut self) -> &mut JtagDriverState;
 
@@ -1022,13 +1042,20 @@ impl Default for SwdSettings {
 /// This struct tracks the state of the JTAG state machine,  which TAP is currently selected, and
 /// contains information about the system (like scan chain).
 #[derive(Debug)]
-pub(crate) struct JtagDriverState {
+pub struct JtagDriverState {
+    /// The state of the JTAG state machine.
     pub state: JtagState,
+
+    /// The expected scan chain.
     pub expected_scan_chain: Option<Vec<ScanChainElement>>,
+
+    /// The actual scan chain.
     pub scan_chain: Vec<ScanChainElement>,
+
+    /// The parameters of the scan chain.
     pub chain_params: ChainParams,
-    /// Idle cycles necessary between consecutive
-    /// accesses to the DMI register
+
+    /// Idle cycles necessary between consecutive accesses to the DMI register.
     pub jtag_idle_cycles: usize,
 }
 impl JtagDriverState {
@@ -1053,7 +1080,7 @@ impl Default for JtagDriverState {
 ///
 /// This trait exists to control which probes implement [`JtagAccess`]. In some cases,
 /// a probe may implement [`RawJtagIo`] but does not want an auto-implemented [JtagAccess].
-pub(crate) trait AutoImplementJtagAccess: RawJtagIo + 'static {}
+pub trait AutoImplementJtagAccess: RawJtagIo + 'static {}
 
 /// Low-Level access to the JTAG protocol
 ///
@@ -1335,12 +1362,23 @@ impl From<ErasedCommand<ShiftDrData>> for JtagCommand {
 
 /// Chain parameters to select a target tap within the chain.
 #[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct ChainParams {
+pub struct ChainParams {
+    /// The TAP's position in the chain.
     pub index: usize,
+
+    /// IR bits to shift before the TAP.
     pub irpre: usize,
+
+    /// IR bits to shift after the TAP.
     pub irpost: usize,
+
+    /// DR bits to shift before the TAP.
     pub drpre: usize,
+
+    /// DR bits to shift after the TAP.
     pub drpost: usize,
+
+    /// Length of the instruction register.
     pub irlen: usize,
 }
 
@@ -1443,6 +1481,6 @@ mod test {
         );
 
         assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
-        assert!(!probe_info.is_probe_type::<espusbjtag::EspUsbJtagFactory>());
+        assert!(!probe_info.is_probe_type::<jlink::JLinkFactory>());
     }
 }
