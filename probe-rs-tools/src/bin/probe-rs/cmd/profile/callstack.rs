@@ -20,6 +20,8 @@ pub(crate) struct CallstackProfileArgs {
     #[clap(long, default_value_t = 2.)]
     pub(crate) rate: f64,
     /// Comma separated list of cores to profile, numbered from 0.
+    /// If more than one is specified then the list of cores will be cycled through, with a single
+    /// core sampled at each interval.
     #[clap(long, value_delimiter = ',', default_values_t = [0])]
     pub(crate) cores: Vec<usize>,
     /// Output format.
@@ -122,14 +124,6 @@ pub(super) fn callstack_profile(
     executable_location: &Path,
     callstack_profile_args: &CallstackProfileArgs,
 ) -> anyhow::Result<()> {
-    // Disallow sampling multiple cores as this may lead to misleading results (cores are not yet
-    // be halted simultaneously).
-    if callstack_profile_args.cores.len() > 1 {
-        return Err(anyhow::anyhow!(
-            "Sampling more than one core not yet supported"
-        ));
-    }
-
     let duration = Duration::from_secs(duration);
     let sampling_interval = Duration::from_nanos((1e9 / callstack_profile_args.rate) as u64);
 
@@ -142,39 +136,40 @@ pub(super) fn callstack_profile(
         .iter()
         .map(|core_idx| CoreSamples::new(*core_idx))
         .collect();
+    let mut core_index = 0;
 
     let start = Instant::now();
     let start_sys_time = std::time::SystemTime::now();
 
     loop {
         let current_sample_start = std::time::Instant::now();
-        // TODO: all cores should be stopped simultaneously before samples are collected for more
-        // accurate results - if core 1 is waiting on core 0 while core 0 is stopped then core 1
-        // will likely be in synchronization code when sampled.
-        for core_sample in samples.iter_mut() {
-            let mut core = session.core(core_sample.core)?;
 
-            // collect sample
-            core.halt(Duration::from_millis(10))?;
-            let callstack = match callstack_profile_args.method {
-                CallstackProfileMethod::NaiveFramePointer => {
-                    frame_pointer::frame_pointer_stack_walk(&mut core, &entry_address_range)
-                        .context("Unwinding error, was the program compiled with frame pointers?")?
-                }
-            };
-            core.run()?;
+        let core_sample = &mut samples[core_index];
+        let mut core = session.core(core_sample.core)?;
 
-            let sample = CallstackSample {
-                callstack,
-                time: std::time::Instant::now().duration_since(start),
-            };
+        // collect sample
+        core.halt(Duration::from_millis(10))?;
+        let callstack = match callstack_profile_args.method {
+            CallstackProfileMethod::NaiveFramePointer => {
+                frame_pointer::frame_pointer_stack_walk(&mut core, &entry_address_range)
+                    .context("Unwinding error, was the program compiled with frame pointers?")?
+            }
+        };
+        core.run()?;
 
-            core_sample.callstacks.push(sample);
-        }
+        let sample = CallstackSample {
+            callstack,
+            time: std::time::Instant::now().duration_since(start),
+        };
+
+        core_sample.callstacks.push(sample);
 
         if start.elapsed() > duration {
             break;
         }
+
+        // repeatedly cycle through sampled cores
+        core_index = (core_index + 1) % samples.len();
 
         // sleep a bit before next sample to try to match sampling rate
         let current_sample_time = current_sample_start.elapsed();
