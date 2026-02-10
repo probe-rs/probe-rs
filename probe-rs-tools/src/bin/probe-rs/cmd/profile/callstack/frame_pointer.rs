@@ -120,10 +120,8 @@ impl AdjustedFrameRecord {
         let adjusted_return_address = if ra.is_zero() || ra.is_max_value() {
             ra
         } else {
-            let (adjusted_ra_opt, _) =
-                unwind_program_counter_register(ra, last_pc, Some(instruction_set))
-                    .expect("Valid return address unwound");
-            adjusted_ra_opt
+            unwind_program_counter_register(ra, last_pc, Some(instruction_set))
+                .expect("Valid return address unwound")
         };
 
         Self {
@@ -144,10 +142,8 @@ impl AdjustedFrameRecord {
         let adjusted_return_address = if ra.is_zero() || ra.is_max_value() {
             ra
         } else {
-            let (adjusted_ra_opt, _) =
-                unwind_program_counter_register(ra, last_pc, Some(instruction_set))
-                    .expect("Valid return address unwound");
-            adjusted_ra_opt
+            unwind_program_counter_register(ra, last_pc, Some(instruction_set))
+                .expect("Valid return address unwound")
         };
 
         Self {
