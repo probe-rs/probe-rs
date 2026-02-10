@@ -206,7 +206,7 @@ macro_rules! memory_aps {
                 use $crate::architecture::arm::ap::{IDR, ApRegister};
                 let idr_raw = interface.read_raw_ap_register(address, IDR::ADDRESS)?;
                 if idr_raw == 0 {
-                    return Err(ArmError::InvalidIdrValue);
+                    return Err(ArmError::ApDoesNotExist(address.clone()));
                 }
                 let idr: IDR = idr_raw.try_into()?;
                 tracing::debug!("reading IDR: {:x?}", idr);

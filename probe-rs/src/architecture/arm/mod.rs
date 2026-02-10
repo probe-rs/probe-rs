@@ -69,9 +69,6 @@ pub enum ArmError {
         source: AccessPortError,
     },
 
-    /// IDR value is invalid, which might indicate a faulty debug interface.
-    InvalidIdrValue,
-
     /// An error occurred while using a debug port.
     DebugPort(#[from] DebugPortError),
 
