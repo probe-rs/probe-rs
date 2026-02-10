@@ -31,13 +31,15 @@ pub struct EFM32xG2 {
 impl EFM32xG2 {
     /// Create a sequence handle for the EFM32xG2
     pub fn create(chip: &Chip) -> Arc<dyn ArmDebugSequence> {
-        let is_mg24 = chip.name.starts_with("EFR32MG24");
+        let is_series_2c3 = chip.name.starts_with("EFR32FG23")
+            || chip.name.starts_with("EFR32MG24")
+            || chip.name.starts_with("EFR32PG26");
 
-        let flash_base_addr = if is_mg24 { 0x0800_0000 } else { 0 };
+        let flash_base_addr = if is_series_2c3 { 0x0800_0000 } else { 0 };
 
         Arc::new(Self {
             flash_base_addr,
-            use_msc_erase: is_mg24,
+            use_msc_erase: is_series_2c3,
         })
     }
 }
