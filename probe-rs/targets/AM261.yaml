@@ -1,0 +1,67 @@
+name: AM261
+manufacturer:
+  id: 0x17
+  cc: 0x0
+variants:
+- name: AM2612_lockstep
+  cores:
+  - name: core0
+    type: armv7r
+    core_access_options: !Arm
+      ap: !v1 5
+      debug_base: 0x90030000
+      cti_base: 0x90038000
+  memory_map:
+  - !Ram
+    name: TCMA
+    range:
+      start: 0x0
+      end: 0x40000
+    cores:
+    - core0
+    access:
+      boot: true
+  - !Ram
+    name: TCMB
+    range:
+      start: 0x80000
+      end: 0xc0000
+    cores:
+    - core0
+  - !Ram
+    name: L2OCRAM_BANK0
+    range:
+      start: 0x70000000
+      end: 0x70080000
+    cores:
+    - core0
+  - !Ram
+    name: L2OCRAM_BANK1
+    range:
+      start: 0x70080000
+      end: 0x70100000
+    cores:
+    - core0
+  - !Ram
+    name: L2OCRAM_BANK2
+    range:
+      start: 0x70100000
+      end: 0x70180000
+    cores:
+    - core0
+  - !Ram
+    name: SOC_MAILBOX_RAM0
+    range:
+      start: 0x72000000
+      end: 0x72004000
+    cores:
+    - core0
+  - !Ram
+    name: HSM_MBOX_SRAM
+    range:
+      start: 0x44000000
+      end: 0x44000800
+    cores:
+    - core0
+  jtag:
+    scan_chain:

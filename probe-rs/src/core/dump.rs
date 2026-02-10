@@ -355,7 +355,7 @@ impl CoreDump {
     pub fn registers(&self) -> &'static CoreRegisters {
         match self.core_type {
             CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
-            CoreType::Armv7a => match self.floating_point_register_count {
+            CoreType::Armv7a | CoreType::Armv7r => match self.floating_point_register_count {
                 Some(16) => &AARCH32_WITH_FP_16_CORE_REGISTERS,
                 Some(32) => &AARCH32_WITH_FP_32_CORE_REGISTERS,
                 _ => &AARCH32_CORE_REGISTERS,

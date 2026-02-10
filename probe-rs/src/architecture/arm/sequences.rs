@@ -70,11 +70,11 @@ impl DefaultArmSequence {
 impl ArmDebugSequence for DefaultArmSequence {}
 
 /// ResetCatchSet for Cortex-A devices
-fn armv7a_reset_catch_set(
+fn armv7ar_reset_catch_set(
     core: &mut dyn ArmMemoryInterface,
     debug_base: Option<u64>,
 ) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv7a_debug_regs::Dbgvcr;
+    use crate::architecture::arm::core::armv7ar_debug_regs::Dbgvcr;
 
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
@@ -89,11 +89,11 @@ fn armv7a_reset_catch_set(
 }
 
 /// ResetCatchClear for Cortex-A devices
-fn armv7a_reset_catch_clear(
+fn armv7ar_reset_catch_clear(
     core: &mut dyn ArmMemoryInterface,
     debug_base: Option<u64>,
 ) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv7a_debug_regs::Dbgvcr;
+    use crate::architecture::arm::core::armv7ar_debug_regs::Dbgvcr;
 
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
@@ -107,7 +107,7 @@ fn armv7a_reset_catch_clear(
     Ok(())
 }
 
-fn armv7a_reset_system(
+fn armv7ar_reset_system(
     interface: &mut dyn ArmMemoryInterface,
     debug_base: Option<u64>,
 ) -> Result<(), ArmError> {
@@ -116,7 +116,7 @@ fn armv7a_reset_system(
     // Arm deprecate use of this bit. You may need to implement a vendor-specific
     // reset sequence instead.
     tracing::debug!("Running default ARMv7A system reset via DBGPRCR.CWRR");
-    use crate::architecture::arm::core::armv7a_debug_regs::{Dbgprcr, Dbgprsr};
+    use crate::architecture::arm::core::armv7ar_debug_regs::{Dbgprcr, Dbgprsr};
 
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
@@ -143,11 +143,11 @@ fn armv7a_reset_system(
 }
 
 /// DebugCoreStart for v7 Cortex-A devices
-fn armv7a_core_start(
+fn armv7ar_core_start(
     core: &mut dyn ArmMemoryInterface,
     debug_base: Option<u64>,
 ) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv7a_debug_regs::{
+    use crate::architecture::arm::core::armv7ar_debug_regs::{
         Dbgdsccr, Dbgdscr, Dbgdsmcr, Dbglar, Dbgvcr,
     };
 
@@ -746,9 +746,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     ) -> Result<(), ArmError> {
         let mut core = interface.memory_interface(core_ap)?;
 
-        // Dispatch based on core type (Cortex-A vs M)
+        // Dispatch based on core type (Cortex-A/R vs M)
         match core_type {
-            CoreType::Armv7a => armv7a_core_start(&mut *core, debug_base),
+            CoreType::Armv7a | CoreType::Armv7r => armv7ar_core_start(&mut *core, debug_base),
             CoreType::Armv8a => armv8a_core_start(&mut *core, debug_base, cti_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_core_start(&mut *core)
@@ -769,9 +769,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         core_type: CoreType,
         debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        // Dispatch based on core type (Cortex-A vs M)
+        // Dispatch based on core type (Cortex-A/R vs M)
         match core_type {
-            CoreType::Armv7a => armv7a_reset_catch_set(core, debug_base),
+            CoreType::Armv7a | CoreType::Armv7r => armv7ar_reset_catch_set(core, debug_base),
             CoreType::Armv8a => armv8a_reset_catch_set(core, debug_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_catch_set(core)
@@ -792,9 +792,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         core_type: CoreType,
         debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        // Dispatch based on core type (Cortex-A vs M)
+        // Dispatch based on core type (Cortex-A/R vs M)
         match core_type {
-            CoreType::Armv7a => armv7a_reset_catch_clear(core, debug_base),
+            CoreType::Armv7a | CoreType::Armv7r => armv7ar_reset_catch_clear(core, debug_base),
             CoreType::Armv8a => armv8a_reset_catch_clear(core, debug_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_catch_clear(core)
@@ -845,9 +845,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         core_type: CoreType,
         debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        // Dispatch based on core type (Cortex-A vs M)
+        // Dispatch based on core type (Cortex-A/R vs M)
         match core_type {
-            CoreType::Armv7a => armv7a_reset_system(interface, debug_base),
+            CoreType::Armv7a | CoreType::Armv7r => armv7ar_reset_system(interface, debug_base),
             CoreType::Armv8a => armv8a_reset_system(interface, debug_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_system(interface)
@@ -1097,8 +1097,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         let mut core = session.core(core_id)?;
         let core_type = core.core_type();
         match core_type {
-            CoreType::Armv7a | CoreType::Armv8a => {
-                tracing::debug!("RAM flash start for Cortex-A core with ID {}", core_id);
+            CoreType::Armv7a | CoreType::Armv7r | CoreType::Armv8a => {
+                tracing::debug!("RAM flash start for Cortex-A/R core with ID {}", core_id);
                 core.write_core_reg(PC.id, vector_table_addr)?;
             }
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
