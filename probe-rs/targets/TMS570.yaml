@@ -6,7 +6,7 @@ variants:
 - name: TMS570LC43X
   cores:
   - name: core0
-    type: armv7a
+    type: armv7r
     core_access_options: !Arm
       ap: !v1 1
       debug_base: 0x80001000

@@ -60,7 +60,7 @@ impl TargetDescription {
     pub fn new(core_type: CoreType, isa: InstructionSet) -> Self {
         let arch = match core_type {
             CoreType::Armv6m => "armv6-m",
-            CoreType::Armv7a => "armv7",
+            CoreType::Armv7a | CoreType::Armv7r => "armv7",
             CoreType::Armv7m => "armv7",
             CoreType::Armv7em => "armv7e-m",
             CoreType::Armv8a => match isa {
@@ -238,7 +238,7 @@ pub fn build_target_description(
         CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m => {
             build_cortex_m_registers(&mut desc, regs)
         }
-        CoreType::Armv7a => build_cortex_a_registers(&mut desc, regs),
+        CoreType::Armv7a | CoreType::Armv7r => build_cortex_a_registers(&mut desc, regs),
         CoreType::Armv8a => match isa {
             InstructionSet::A32 => build_cortex_a_registers(&mut desc, regs),
             InstructionSet::A64 => build_aarch64_registers(&mut desc, regs),

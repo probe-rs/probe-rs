@@ -12,13 +12,13 @@ pub mod sequences;
 pub mod swo;
 pub(crate) mod traits;
 
-pub use self::core::{Dump, armv6m, armv7a, armv7m, armv8a, armv8m};
+pub use self::core::{Dump, armv6m, armv7ar, armv7m, armv8a, armv8m};
 use self::{
     ap::AccessPortError,
     dp::DebugPortError,
     memory::romtable::RomTableError,
     sequences::ArmDebugSequenceError,
-    {armv7a::Armv7aError, armv8a::Armv8aError},
+    {armv7ar::Armv7arError, armv8a::Armv8aError},
 };
 use crate::{
     core::memory_mapped_registers::RegisterAddressOutOfBounds,
@@ -119,8 +119,8 @@ pub enum ArmError {
     /// ARMv8a specific error occurred.
     Armv8a(#[from] Armv8aError),
 
-    /// ARMv7a specific error occurred.
-    Armv7a(#[from] Armv7aError),
+    /// ARMv7-A/R specific error occurred.
+    Armv7ar(#[from] Armv7arError),
 
     /// Error occurred in a debug sequence.
     DebugSequence(#[from] ArmDebugSequenceError),

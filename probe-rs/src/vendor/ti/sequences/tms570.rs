@@ -6,7 +6,7 @@
 //! then clearing memory using platform-specific register writes.
 use super::icepick::{DefaultProtocol, Icepick};
 use crate::MemoryMappedRegister;
-use crate::architecture::arm::armv7a::{
+use crate::architecture::arm::armv7ar::{
     clear_hw_breakpoint, core_halted, get_hw_breakpoint, read_word_32, request_halt, run,
     set_hw_breakpoint, wait_for_core_halted, write_word_32,
 };
@@ -47,7 +47,7 @@ struct TemporaryCore<'a> {
     base_address: u64,
 }
 
-/// A temporary copy of the Armv7a object that is used to manipulate the target
+/// A temporary copy of the Armv7ar object that is used to manipulate the target
 /// without maintaining a long-term view of the object.
 impl<'a> TemporaryCore<'a> {
     pub fn new(memory: &'a mut dyn ArmMemoryInterface, base_address: u64) -> Self {
