@@ -64,24 +64,22 @@ impl CombinedCoreState {
                 self.id,
                 name,
                 target,
-                crate::architecture::arm::armv7ar::Armv7ar::new(
+                crate::architecture::arm::armv7a::Armv7a::new(
                     memory,
                     s,
                     options.debug_base.expect("base_address not specified"),
                     debug_sequence,
-                    CoreType::Armv7a,
                 )?,
             ),
             SpecificCoreState::Armv7r(s) => Core::new(
                 self.id,
                 name,
                 target,
-                crate::architecture::arm::armv7ar::Armv7ar::new(
+                crate::architecture::arm::armv7r::Armv7r::new(
                     memory,
                     s,
                     options.debug_base.expect("base_address not specified"),
                     debug_sequence,
-                    CoreType::Armv7r,
                 )?,
             ),
             SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(

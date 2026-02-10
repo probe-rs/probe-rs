@@ -6,11 +6,11 @@
 //! then clearing memory using platform-specific register writes.
 use super::icepick::{DefaultProtocol, Icepick};
 use crate::MemoryMappedRegister;
-use crate::architecture::arm::armv7ar::{
+use crate::architecture::arm::core::armv7a_debug_regs::Dbgdscr;
+use crate::architecture::arm::core::armv7ar::{
     clear_hw_breakpoint, core_halted, get_hw_breakpoint, read_word_32, request_halt, run,
     set_hw_breakpoint, wait_for_core_halted, write_word_32,
 };
-use crate::architecture::arm::core::armv7a_debug_regs::Dbgdscr;
 use crate::architecture::arm::dp::{DebugPortError, DpAddress};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};

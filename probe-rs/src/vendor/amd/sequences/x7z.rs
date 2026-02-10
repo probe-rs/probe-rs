@@ -105,13 +105,13 @@ impl X7Z {
     ) -> Result<(), ArmError> {
         let ap = FullyQualifiedApAddress::v1_with_default_dp(AccessPort::Debug as u8);
         let mut debug_ap = interface.get_arm_debug_interface()?.memory_interface(&ap)?;
-        if !crate::architecture::arm::armv7ar::core_halted(debug_ap.as_mut(), debug_base)? {
+        if !crate::architecture::arm::core::armv7ar::core_halted(debug_ap.as_mut(), debug_base)? {
             let address = Dbgdrcr::get_mmio_address_from_base(debug_base)?;
             let mut value = Dbgdrcr(0);
             value.set_hrq(true);
             debug_ap.write_word_32(address, value.into())?;
         }
-        crate::architecture::arm::armv7ar::wait_for_core_halted(
+        crate::architecture::arm::core::armv7ar::wait_for_core_halted(
             debug_ap.as_mut(),
             debug_base,
             Duration::from_millis(100),

@@ -136,8 +136,11 @@ pub enum Armv7arError {
     DataAbort,
 }
 
-/// Interface for interacting with an ARMv7-A/R core
-pub struct Armv7ar<'probe> {
+/// Shared implementation for ARMv7-A/R cores
+///
+/// This struct provides the common debug interface for both Cortex-A and Cortex-R cores.
+/// Use [`super::armv7a::Armv7a`] or [`super::armv7r::Armv7r`] for profile-specific interfaces.
+pub(crate) struct Armv7ar<'probe> {
     memory: Box<dyn ArmMemoryInterface + 'probe>,
 
     state: &'probe mut CortexARState,
@@ -590,9 +593,7 @@ fn check_and_clear_data_abort(
         dbgdrcr.set_cse(true);
 
         memory.write_word_32(address, dbgdrcr.into())?;
-        return Err(ArmError::Armv7ar(
-            crate::architecture::arm::armv7ar::Armv7arError::DataAbort,
-        ));
+        return Err(ArmError::Armv7ar(Armv7arError::DataAbort));
     }
     Ok(())
 }

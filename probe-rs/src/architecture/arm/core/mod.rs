@@ -12,8 +12,10 @@ use crate::{
 use super::memory::ArmMemoryInterface;
 
 pub mod armv6m;
-pub mod armv7ar;
+pub mod armv7a;
+pub(crate) mod armv7ar;
 pub mod armv7m;
+pub mod armv7r;
 pub mod armv8a;
 pub mod armv8m;
 

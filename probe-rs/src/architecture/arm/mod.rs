@@ -12,13 +12,10 @@ pub mod sequences;
 pub mod swo;
 pub(crate) mod traits;
 
-pub use self::core::{Dump, armv6m, armv7ar, armv7m, armv8a, armv8m};
+pub use self::core::{Dump, armv6m, armv7a, armv7m, armv7r, armv8a, armv8m};
 use self::{
-    ap::AccessPortError,
-    dp::DebugPortError,
-    memory::romtable::RomTableError,
-    sequences::ArmDebugSequenceError,
-    {armv7ar::Armv7arError, armv8a::Armv8aError},
+    ap::AccessPortError, armv8a::Armv8aError, core::armv7ar::Armv7arError, dp::DebugPortError,
+    memory::romtable::RomTableError, sequences::ArmDebugSequenceError,
 };
 use crate::{
     core::memory_mapped_registers::RegisterAddressOutOfBounds,
