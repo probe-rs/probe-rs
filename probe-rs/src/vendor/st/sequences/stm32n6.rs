@@ -12,7 +12,12 @@ use crate::{
         ArmDebugInterface, ArmError, FullyQualifiedApAddress,
         ap::{ApRegister, DRW, TAR},
         armv8m::Aircr,
-        core::{cortex_m::write_core_reg, registers::cortex_m::CORTEX_M_WITH_FP_CORE_REGISTERS},
+        core::{
+            cortex_m::write_core_reg,
+            registers::{
+                armv8m::V8M_MAIN_SEC_FP_REGISTERS, cortex_m::CORTEX_M_WITH_FP_CORE_REGISTERS,
+            },
+        },
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, cortex_m_wait_for_reset},
     },
@@ -122,7 +127,7 @@ impl ArmDebugSequence for Stm32n6 {
         // Try to restore the CPU to a known state after halting. This is necessary on the STM32N6
         // where we can't `reset_and_halt()` into a known state because the boot ROM always runs.
         // See TakeReset() in the arch manual, and DCRSR.REGSEL for register indices.
-        for reg in CORTEX_M_WITH_FP_CORE_REGISTERS.all_registers() {
+        for reg in V8M_MAIN_SEC_FP_REGISTERS.all_registers() {
             write_core_reg(core, reg.into(), 0u32)?;
         }
 
