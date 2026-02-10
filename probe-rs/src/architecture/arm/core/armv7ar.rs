@@ -1,7 +1,7 @@
-//! Register types and the core interface for armv7-a
+//! Register types and the core interface for armv7-a and armv7-r
 
 use super::{
-    CortexAState,
+    CortexARState,
     instructions::aarch32::{
         build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_msr, build_stc, build_vmov,
         build_vmrs,
@@ -20,7 +20,7 @@ use crate::{
     architecture::arm::{
         ArmError, DapAccess, FullyQualifiedApAddress,
         ap::{ApRegister, BD0, BD1, BD2, BD3, TAR, TAR2},
-        core::armv7a_debug_regs::*,
+        core::armv7ar_debug_regs::*,
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
     },
@@ -118,7 +118,7 @@ impl<'a> BankedAccess<'a> {
 
 /// Errors for the ARMv7-A state machine
 #[derive(thiserror::Error, Debug)]
-pub enum Armv7aError {
+pub enum Armv7arError {
     /// Invalid register number
     #[error("Register number {0} is not valid for ARMv7-A")]
     InvalidRegisterNumber(u16),
@@ -132,11 +132,11 @@ pub enum Armv7aError {
     DataAbort,
 }
 
-/// Interface for interacting with an ARMv7-A core
-pub struct Armv7a<'probe> {
+/// Interface for interacting with an ARMv7-A/R core
+pub struct Armv7ar<'probe> {
     memory: Box<dyn ArmMemoryInterface + 'probe>,
 
-    state: &'probe mut CortexAState,
+    state: &'probe mut CortexARState,
 
     base_address: u64,
 
@@ -147,14 +147,17 @@ pub struct Armv7a<'probe> {
     itr_enabled: bool,
 
     endianness: Option<Endian>,
+
+    core_type: CoreType,
 }
 
-impl<'probe> Armv7a<'probe> {
+impl<'probe> Armv7ar<'probe> {
     pub(crate) fn new(
         mut memory: Box<dyn ArmMemoryInterface + 'probe>,
-        state: &'probe mut CortexAState,
+        state: &'probe mut CortexARState,
         base_address: u64,
         sequence: Arc<dyn ArmDebugSequence>,
+        core_type: CoreType,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -184,6 +187,7 @@ impl<'probe> Armv7a<'probe> {
             num_breakpoints: None,
             itr_enabled: false,
             endianness: None,
+            core_type,
         };
 
         if !core.state.initialized() {
@@ -436,7 +440,7 @@ impl<'probe> Armv7a<'probe> {
     }
 }
 
-// These helper functions allow access to the ARMv7A core from Sequences.
+// These helper functions allow access to the ARMv7-A/R core from Sequences.
 // They are also used by the `CoreInterface` to avoid code duplication.
 
 /// Request the core to halt. Does not wait for the core to halt.
@@ -582,8 +586,8 @@ fn check_and_clear_data_abort(
         dbgdrcr.set_cse(true);
 
         memory.write_word_32(address, dbgdrcr.into())?;
-        return Err(ArmError::Armv7a(
-            crate::architecture::arm::armv7a::Armv7aError::DataAbort,
+        return Err(ArmError::Armv7ar(
+            crate::architecture::arm::armv7ar::Armv7arError::DataAbort,
         ));
     }
     Ok(())
@@ -707,7 +711,7 @@ pub(crate) fn read_word_32(
     get_instruction_result(memory, base_address)
 }
 
-impl CoreInterface for Armv7a<'_> {
+impl CoreInterface for Armv7ar<'_> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         wait_for_core_halted(&mut *self.memory, self.base_address, timeout).map_err(|e| e.into())
     }
@@ -1008,7 +1012,7 @@ impl CoreInterface for Armv7a<'_> {
                 Ok(value.into())
             }
             _ => Err(Error::Arm(
-                Armv7aError::InvalidRegisterNumber(reg_num).into(),
+                Armv7arError::InvalidRegisterNumber(reg_num).into(),
             )),
         };
 
@@ -1026,7 +1030,7 @@ impl CoreInterface for Armv7a<'_> {
 
         if (reg_num as usize) >= self.state.register_cache.len() {
             return Err(Error::Arm(
-                Armv7aError::InvalidRegisterNumber(reg_num).into(),
+                Armv7arError::InvalidRegisterNumber(reg_num).into(),
             ));
         }
         self.state.register_cache[reg_num as usize] = Some((value, true));
@@ -1116,7 +1120,7 @@ impl CoreInterface for Armv7a<'_> {
     }
 
     fn core_type(&self) -> CoreType {
-        CoreType::Armv7a
+        self.core_type
     }
 
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
@@ -1197,7 +1201,7 @@ impl CoreInterface for Armv7a<'_> {
     }
 }
 
-impl MemoryInterface for Armv7a<'_> {
+impl MemoryInterface for Armv7ar<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -1964,11 +1968,12 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let _ = Armv7a::new(
+        let _ = Armv7ar::new(
             mock_mem,
-            &mut CortexAState::new(),
+            &mut CortexARState::new(),
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
     }
@@ -1976,7 +1981,7 @@ mod test {
     #[test]
     fn armv7a_core_halted() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -1999,23 +2004,24 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // First read false, second read true
-        assert!(!armv7a.core_halted().unwrap());
-        assert!(armv7a.core_halted().unwrap());
+        assert!(!armv7ar.core_halted().unwrap());
+        assert!(armv7ar.core_halted().unwrap());
     }
 
     #[test]
     fn armv7a_wait_for_core_halted() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2038,16 +2044,17 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // Should halt on second read
-        armv7a
+        armv7ar
             .wait_for_core_halted(Duration::from_millis(100))
             .unwrap();
     }
@@ -2055,7 +2062,7 @@ mod test {
     #[test]
     fn armv7a_status_running() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2072,22 +2079,23 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // Should halt on second read
-        assert_eq!(CoreStatus::Running, armv7a.status().unwrap());
+        assert_eq!(CoreStatus::Running, armv7ar.status().unwrap());
     }
 
     #[test]
     fn armv7a_status_halted() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2104,18 +2112,19 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // Should halt on second read
         assert_eq!(
             CoreStatus::Halted(crate::HaltReason::Request),
-            armv7a.status().unwrap()
+            armv7ar.status().unwrap()
         );
     }
 
@@ -2124,7 +2133,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2137,24 +2146,25 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // First read will hit expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(2)).unwrap()
+            armv7ar.read_core_reg(RegisterId(2)).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(2)).unwrap()
+            armv7ar.read_core_reg(RegisterId(2)).unwrap()
         );
     }
 
@@ -2163,7 +2173,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2176,24 +2186,25 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // First read will hit expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(15)).unwrap()
+            armv7ar.read_core_reg(RegisterId(15)).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(15)).unwrap()
+            armv7ar.read_core_reg(RegisterId(15)).unwrap()
         );
     }
 
@@ -2202,7 +2213,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2215,24 +2226,25 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // First read will hit expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(XPSR.id()).unwrap()
+            armv7ar.read_core_reg(XPSR.id()).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(XPSR.id()).unwrap()
+            armv7ar.read_core_reg(XPSR.id()).unwrap()
         );
     }
 
@@ -2241,7 +2253,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, false);
@@ -2268,25 +2280,26 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // Verify PC
         assert_eq!(
             REG_VALUE as u64,
-            armv7a.halt(Duration::from_millis(100)).unwrap().pc
+            armv7ar.halt(Duration::from_millis(100)).unwrap().pc
         );
     }
 
     #[test]
     fn armv7a_run() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2326,22 +2339,23 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        armv7a.run().unwrap();
+        armv7ar.run().unwrap();
     }
 
     #[test]
     fn armv7a_available_breakpoint_units() {
         const BP_COUNT: u32 = 4;
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2354,15 +2368,16 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        assert_eq!(BP_COUNT, armv7a.available_breakpoint_units().unwrap());
+        assert_eq!(BP_COUNT, armv7ar.available_breakpoint_units().unwrap());
     }
 
     #[test]
@@ -2371,7 +2386,7 @@ mod test {
         const BP1: u64 = 0x2345;
         const BP2: u64 = 0x8000_0000;
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2421,15 +2436,16 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        let results = armv7a.hw_breakpoints().unwrap();
+        let results = armv7ar.hw_breakpoints().unwrap();
         assert_eq!(Some(BP1), results[0]);
         assert_eq!(Some(BP2), results[1]);
         assert_eq!(None, results[2]);
@@ -2440,7 +2456,7 @@ mod test {
     fn armv7a_set_hw_breakpoint() {
         const BP_VALUE: u64 = 0x2345;
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2469,21 +2485,22 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        armv7a.set_hw_breakpoint(0, BP_VALUE).unwrap();
+        armv7ar.set_hw_breakpoint(0, BP_VALUE).unwrap();
     }
 
     #[test]
     fn armv7a_clear_hw_breakpoint() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2503,15 +2520,16 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        armv7a.clear_hw_breakpoint(0).unwrap();
+        armv7ar.clear_hw_breakpoint(0).unwrap();
     }
 
     #[test]
@@ -2520,7 +2538,7 @@ mod test {
         const MEMORY_ADDRESS: u64 = 0x12345678;
 
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2533,20 +2551,21 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        assert_eq!(MEMORY_VALUE, armv7a.read_word_32(MEMORY_ADDRESS).unwrap());
+        assert_eq!(MEMORY_VALUE, armv7ar.read_word_32(MEMORY_ADDRESS).unwrap());
     }
 
     fn test_read_word(value: u32, address: u64, memory_word_address: u64, endian: Endian) -> u8 {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2563,14 +2582,15 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
-        armv7a.read_word_8(address).unwrap()
+        armv7ar.read_word_8(address).unwrap()
     }
 
     #[test]
