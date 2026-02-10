@@ -35,11 +35,13 @@ pub enum CoreType {
     Armv6m,
     /// ARMv7-A: Cortex A7, A9, A15
     Armv7a,
+    /// ARMv7-R: Cortex R4, R5, R7, R8
+    Armv7r,
     /// ARMv7-M: Cortex M3
     Armv7m,
     /// ARMv7e-M: Cortex M4, M7
     Armv7em,
-    /// ARMv7-A: Cortex A35, A55, A72
+    /// ARMv8-A: Cortex A35, A55, A72
     Armv8a,
     /// ARMv8-M: Cortex M23, M33
     Armv8m,
@@ -71,6 +73,7 @@ impl CoreType {
             self,
             CoreType::Armv6m
                 | CoreType::Armv7a
+                | CoreType::Armv7r
                 | CoreType::Armv7em
                 | CoreType::Armv7m
                 | CoreType::Armv8a
@@ -330,8 +333,10 @@ impl ChipFamily {
                         ));
                     }
                     CoreAccessOptions::Arm(options) => {
-                        if matches!(core.core_type, CoreType::Armv7a | CoreType::Armv8a)
-                            && options.debug_base.is_none()
+                        if matches!(
+                            core.core_type,
+                            CoreType::Armv7a | CoreType::Armv7r | CoreType::Armv8a
+                        ) && options.debug_base.is_none()
                         {
                             return Err(format!("Core {} requires setting debug_base", core.name));
                         }

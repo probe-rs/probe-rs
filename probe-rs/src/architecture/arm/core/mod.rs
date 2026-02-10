@@ -12,12 +12,12 @@ use crate::{
 use super::memory::ArmMemoryInterface;
 
 pub mod armv6m;
-pub mod armv7a;
+pub mod armv7ar;
 pub mod armv7m;
 pub mod armv8a;
 pub mod armv8m;
 
-pub(crate) mod armv7a_debug_regs;
+pub(crate) mod armv7ar_debug_regs;
 pub(crate) mod armv8a_debug_regs;
 pub(crate) mod cortex_m;
 pub(crate) mod instructions;
@@ -165,11 +165,11 @@ impl CortexMState {
     }
 }
 
-/// The state cache of a Cortex-A core.
+/// The state cache of a Cortex-A/R core.
 ///
 /// This state is used internally to not having to poll the core constantly.
 #[derive(Debug)]
-pub struct CortexAState {
+pub struct CortexARState {
     initialized: bool,
 
     current_state: CoreStatus,
@@ -183,7 +183,7 @@ pub struct CortexAState {
     fp_reg_count: usize,
 }
 
-impl CortexAState {
+impl CortexARState {
     pub(crate) fn new() -> Self {
         Self {
             initialized: false,
