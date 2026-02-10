@@ -233,7 +233,7 @@ impl FlashAlgorithm {
                     Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_BKPT_T32_BE,
                 }
             }
-            CoreType::Armv7a => match endian {
+            CoreType::Armv7a | CoreType::Armv7r => match endian {
                 Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_BKPT_A32_LE,
                 Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_BKPT_A32_BE,
             },
