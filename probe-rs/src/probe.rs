@@ -10,6 +10,7 @@ pub mod fake_probe;
 pub mod ftdi;
 pub mod glasgow;
 pub mod jlink;
+pub mod linuxspidevswd;
 pub mod list;
 pub(crate) mod queue;
 mod selector;

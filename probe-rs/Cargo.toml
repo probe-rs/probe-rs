@@ -61,6 +61,7 @@ scroll = "0.13"
 serialport = { version = "4.7.0", default-features = false, features = [
     "usbportinfo-interface",
 ] }
+spidev = "0.7"
 tracing = "0.1"
 parking_lot = "0.12.2"
 zerocopy = { version = "0.8.0", features = ["derive"] }
