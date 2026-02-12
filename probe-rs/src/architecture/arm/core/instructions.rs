@@ -82,6 +82,16 @@ pub(crate) mod aarch32 {
         ret
     }
 
+    /// Read the SPSR (Saved Program Status Register)
+    pub(crate) fn build_mrs_spsr(reg: u16) -> u32 {
+        // Same as MRS CPSR but with R bit (bit 22) set
+        let mut ret = 0b1110_0001_0100_1111_0000_0000_0000_0000;
+
+        ret |= (reg as u32) << 12;
+
+        ret
+    }
+
     /// Set all bits of the CPSR
     pub(crate) fn build_msr(reg: u16) -> u32 {
         let mut ret = 0b1110_0001_0010_1111_1111_0000_0000_0000;
