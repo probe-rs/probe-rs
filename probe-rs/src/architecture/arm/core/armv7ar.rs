@@ -3,8 +3,8 @@
 use super::{
     CortexARState,
     instructions::aarch32::{
-        build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_msr, build_stc, build_vmov,
-        build_vmrs,
+        build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_mrs_spsr, build_msr,
+        build_stc, build_vmov, build_vmrs,
     },
     registers::{
         aarch32::{
@@ -16,7 +16,7 @@ use super::{
 };
 use crate::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType, Endian,
-    InstructionSet, MemoryInterface,
+    HaltReason, InstructionSet, MemoryInterface,
     architecture::arm::{
         ArmError, DapAccess, FullyQualifiedApAddress,
         ap::{ApRegister, BD0, BD1, BD2, BD3, TAR, TAR2},
@@ -24,9 +24,10 @@ use crate::{
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
     },
-    core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
+    core::{BreakpointCause, CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
     error::Error,
     memory::{MemoryNotAlignedError, valid_32bit_address},
+    semihosting::{SemihostingCommand, decode_semihosting_syscall},
 };
 use std::{
     mem::size_of,
@@ -711,6 +712,103 @@ pub(crate) fn read_word_32(
     get_instruction_result(memory, base_address)
 }
 
+/// Check if the current vector catch halt is a semihosting call.
+///
+/// Supports two semihosting mechanisms on A/R-profile cores:
+/// - SVC-based: `SVC #0x123456` (ARM) or `SVC #0xAB` (Thumb) - vectors to 0x08
+/// - HLT-based: `HLT #0xF000` (ARM) or `HLT #0x3C` (Thumb) - undefined on ARMv7, vectors to 0x04
+///
+/// HLT-based semihosting is preferred as it doesn't interfere with baremetal/OS/RTOS SVC usage.
+/// Spec: <https://github.com/ARM-software/abi-aa/blob/2025Q1/semihosting/semihosting.rst#the-semihosting-interface>
+pub(crate) fn check_for_semihosting(
+    cached_command: Option<SemihostingCommand>,
+    core: &mut dyn CoreInterface,
+    lr: u32,
+) -> Result<Option<SemihostingCommand>, Error> {
+    // Return cached command if already decoded (avoid re-decoding on repeated status() calls)
+    if let Some(command) = cached_command {
+        return Ok(Some(command));
+    }
+
+    // Vector table layout (32-byte aligned):
+    //   0x00=Reset, 0x04=Undef, 0x08=SVC, ...
+    //
+    // We check for semihosting on:
+    // - SVC vector (0x08): Traditional semihosting via SVC instruction
+    // - UNDEF vector (0x04): HLT-based semihosting (HLT is undefined on ARMv7)
+    let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
+
+    const UNDEF_VECTOR_OFFSET: u32 = 0x04;
+    const SVC_VECTOR_OFFSET: u32 = 0x08;
+    const VECTOR_TABLE_MASK: u32 = 32 - 1;
+
+    let vector_offset = pc & VECTOR_TABLE_MASK;
+
+    // Early return if we're not at a semihosting vector, to not reading potentially invalid memory
+    // at LR-4
+    if vector_offset != UNDEF_VECTOR_OFFSET && vector_offset != SVC_VECTOR_OFFSET {
+        tracing::debug!(
+            "Vector catch at PC={:#x} (offset {:#x}), not SVC/UNDEF vector, not semihosting",
+            pc,
+            vector_offset
+        );
+        return Ok(None);
+    }
+
+    // Semihosting instruction encodings:
+    // SVC-based:
+    // - ARM state:   `SVC #0x123456` encoded as 0xEF123456
+    // - Thumb state: `SVC #0xAB`     encoded as 0xDFAB
+    // HLT-based:
+    // - ARM state:   `HLT #0xF000`   encoded as 0xE10F0070
+    // - Thumb state: `HLT #64`       encoded as 0xBABC
+    const ARM_SEMIHOSTING_SVC: [u8; 4] = 0xEF123456_u32.to_le_bytes();
+    const THUMB_SEMIHOSTING_SVC: [u8; 2] = 0xDFAB_u16.to_le_bytes();
+    const ARM_SEMIHOSTING_HLT: [u8; 4] = 0xE10F0070_u32.to_le_bytes();
+    const THUMB_SEMIHOSTING_HLT: [u8; 2] = 0xBABC_u16.to_le_bytes();
+
+    // Read word at LR-4 to check instructions
+    let instruction_address = lr.wrapping_sub(4);
+    let mut instruction = [0u8; 4];
+    core.read_8(instruction_address as u64, &mut instruction)?;
+
+    let (is_semihosting, mechanism) = match vector_offset {
+        SVC_VECTOR_OFFSET => {
+            let is_arm = instruction == ARM_SEMIHOSTING_SVC;
+            let is_thumb = instruction[2..] == THUMB_SEMIHOSTING_SVC;
+            (is_arm || is_thumb, "SVC")
+        }
+        UNDEF_VECTOR_OFFSET => {
+            let is_arm = instruction == ARM_SEMIHOSTING_HLT;
+            let is_thumb = instruction[2..] == THUMB_SEMIHOSTING_HLT;
+            (is_arm || is_thumb, "HLT")
+        }
+        _ => unreachable!(), // Already handled above in early return
+    };
+
+    if !is_semihosting {
+        return Ok(None);
+    }
+
+    tracing::debug!(
+        "{} instruction check: LR={:#x}, bytes at {:#x} = {:#010x}, match={}",
+        mechanism,
+        lr,
+        instruction_address,
+        u32::from_le_bytes(instruction),
+        is_semihosting
+    );
+
+    let command = decode_semihosting_syscall(core)?;
+    tracing::debug!(
+        "Semihosting {} detected at PC={:#x}: {:?}",
+        mechanism,
+        pc,
+        command
+    );
+    Ok(Some(command))
+}
+
 impl CoreInterface for Armv7ar<'_> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         wait_for_core_halted(&mut *self.memory, self.base_address, timeout).map_err(|e| e.into())
@@ -726,11 +824,24 @@ impl CoreInterface for Armv7ar<'_> {
         let dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
 
         if dbgdscr.halted() {
-            let reason = dbgdscr.halt_reason();
+            let mut reason = dbgdscr.halt_reason();
 
+            // Set the status so semihosting decoding can read registers
             self.set_core_status(CoreStatus::Halted(reason));
 
             self.read_fp_reg_count()?;
+
+            // Check for semihosting on SVC & HLT (UNDEF) vector catch
+            if let HaltReason::Exception = reason {
+                let lr: u32 = self.read_core_reg(RegisterId(14))?.try_into()?;
+
+                self.state.semihosting_command =
+                    check_for_semihosting(self.state.semihosting_command.take(), self, lr)?;
+                if let Some(command) = self.state.semihosting_command {
+                    reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(command));
+                    self.set_core_status(CoreStatus::Halted(reason));
+                }
+            }
 
             return Ok(CoreStatus::Halted(reason));
         }
@@ -768,6 +879,37 @@ impl CoreInterface for Armv7ar<'_> {
         if matches!(self.state.current_state, CoreStatus::Running) {
             return Ok(());
         }
+
+        if self.state.semihosting_command.is_some() {
+            // We're in SVC mode after vector catch. Need to:
+            // 1. Restore CPSR from SPSR_svc (to return to original mode)
+            // 2. Set PC to LR_svc (return address)
+
+            // Read LR (r14) - since we're in SVC mode, this is LR_svc
+            let lr: u32 = self.read_core_reg(RegisterId(14))?.try_into()?;
+
+            // Save r0 in case it was modified by semihosting result
+            self.prepare_for_clobber(0)?;
+
+            // Read SPSR into r0: mrs r0, spsr
+            let mrs_spsr = build_mrs_spsr(0);
+            self.execute_instruction(mrs_spsr)?;
+
+            // Write r0 to CPSR: msr cpsr_fsxc, r0
+            let msr_cpsr = build_msr(0);
+            self.execute_instruction(msr_cpsr)?;
+
+            // Set PC to LR (return address)
+            self.write_core_reg(self.program_counter().into(), lr.into())?;
+
+            tracing::debug!(
+                "Semihosting resume: restoring CPSR from SPSR, setting PC to LR={:#x}",
+                lr
+            );
+        }
+
+        // Clear cached semihosting command
+        self.state.semihosting_command = None;
 
         // set writeback values
         self.writeback_registers()?;
@@ -835,11 +977,12 @@ impl CoreInterface for Armv7ar<'_> {
         )?;
         self.wait_for_core_halted(timeout)?;
 
-        // Update core status
-        let _ = self.status()?;
-
-        // Reset our cached values
         self.reset_register_cache();
+
+        // Clear any cached semihosting command from before reset
+        self.state.semihosting_command = None;
+
+        let _ = self.status()?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(self.program_counter().into())?;
