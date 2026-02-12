@@ -154,7 +154,7 @@ pub enum ArmError {
 }
 
 impl ArmError {
-    /// Constructs [`ArmError::AccessPort`] from the address and the required alignment.
+    /// Constructs [`ArmError::AccessPort`] from the address and the source error.
     pub fn from_access_port(err: AccessPortError, ap_address: &FullyQualifiedApAddress) -> Self {
         ArmError::AccessPort {
             address: ap_address.clone(),
