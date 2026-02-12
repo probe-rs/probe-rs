@@ -810,21 +810,6 @@ impl<'a> RegisterWindow<'a> {
 
                 interface.write_32(self.read_register(CpuRegister::A9) as u64 - 16, &a0_a3)?;
 
-                // Enable check at INFO level to avoid spamming the logs.
-                if tracing::enabled!(tracing::Level::INFO) {
-                    // In some cases (spilling on each halt),
-                    // this readback comes back as 0 for some reason. This assertion is temporarily
-                    // meant to help me debug this.
-                    let written =
-                        interface.read_word_32(self.read_register(CpuRegister::A9) as u64 - 12)?;
-                    assert!(
-                        written == self.read_register(CpuRegister::A1),
-                        "Failed to spill A1. Expected {:#x}, got {:#x}",
-                        self.read_register(CpuRegister::A1),
-                        written
-                    );
-                }
-
                 let regs = [
                     self.read_register(CpuRegister::A4),
                     self.read_register(CpuRegister::A5),
