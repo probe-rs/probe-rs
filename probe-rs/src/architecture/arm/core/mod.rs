@@ -181,6 +181,9 @@ pub struct CortexARState {
 
     // Number of floating point registers
     fp_reg_count: usize,
+
+    // Cached semihosting command (for A/R-profile semihosting)
+    pub(crate) semihosting_command: Option<SemihostingCommand>,
 }
 
 impl CortexARState {
@@ -191,6 +194,7 @@ impl CortexARState {
             is_64_bit: false,
             register_cache: vec![],
             fp_reg_count: 0,
+            semihosting_command: None,
         }
     }
 
