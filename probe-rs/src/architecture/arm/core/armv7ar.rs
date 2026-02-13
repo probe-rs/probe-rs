@@ -24,7 +24,10 @@ use crate::{
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
     },
-    core::{BreakpointCause, CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
+    core::{
+        BreakpointCause, CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue,
+        VectorCatchCondition,
+    },
     error::Error,
     memory::{MemoryNotAlignedError, valid_32bit_address},
     semihosting::{SemihostingCommand, decode_semihosting_syscall},
@@ -1340,6 +1343,38 @@ impl CoreInterface for Armv7ar<'_> {
         self.sequence
             .debug_core_stop(&mut *self.memory, CoreType::Armv7a)?;
 
+        Ok(())
+    }
+
+    fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let address = Dbgvcr::get_mmio_address_from_base(self.base_address)?;
+        let mut dbgvcr = Dbgvcr(self.memory.read_word_32(address)?);
+
+        match condition {
+            VectorCatchCondition::CoreReset => dbgvcr.set_r(true),
+            VectorCatchCondition::Svc => dbgvcr.set_ss(true),
+            VectorCatchCondition::Hlt => dbgvcr.set_su(true),
+            // HardFault/SecureFault are Cortex-M concepts, not applicable to ARMv7-A/R
+            _ => return Err(Error::NotImplemented("vector catch condition")),
+        }
+
+        self.memory.write_word_32(address, dbgvcr.into())?;
+        Ok(())
+    }
+
+    fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let address = Dbgvcr::get_mmio_address_from_base(self.base_address)?;
+        let mut dbgvcr = Dbgvcr(self.memory.read_word_32(address)?);
+
+        match condition {
+            VectorCatchCondition::CoreReset => dbgvcr.set_r(false),
+            VectorCatchCondition::Svc => dbgvcr.set_ss(false),
+            VectorCatchCondition::Hlt => dbgvcr.set_su(false),
+            // HardFault/SecureFault are Cortex-M concepts, not applicable to ARMv7-A/R
+            _ => return Err(Error::NotImplemented("vector catch condition")),
+        }
+
+        self.memory.write_word_32(address, dbgvcr.into())?;
         Ok(())
     }
 }

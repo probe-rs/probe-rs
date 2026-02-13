@@ -177,6 +177,16 @@ pub struct Cmd {
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub verify: bool,
+
+    /// Disable SVC vector catch (halts on SVC exception).
+    /// Only applies to ARMv7-A/R cores.
+    #[clap(long)]
+    pub no_catch_svc: bool,
+
+    /// Disable HLT vector catch (halts on UNDEF exception for HLT instruction).
+    /// Only applies to ARMv7-A/R cores.
+    #[clap(long)]
+    pub no_catch_hlt: bool,
 }
 
 impl Cmd {
@@ -267,6 +277,8 @@ impl Cmd {
                         },
                         catch_hardfault: !self.no_catch_hardfault,
                         catch_reset: !self.no_catch_reset,
+                        catch_svc: !self.no_catch_svc,
+                        catch_hlt: !self.no_catch_hlt,
                     }],
                 })
                 .ok(),

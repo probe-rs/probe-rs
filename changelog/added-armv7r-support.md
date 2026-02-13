@@ -1,1 +1,2 @@
-Cortex-R5F (AM2612) support added together with a split of armv7a and armv7r
+Cortex-R5F (AM2612) support added to library and CLI with semihosting and vector catch
+
