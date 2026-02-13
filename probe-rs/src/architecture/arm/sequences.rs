@@ -147,9 +147,7 @@ fn armv7ar_core_start(
     core: &mut dyn ArmMemoryInterface,
     debug_base: Option<u64>,
 ) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv7ar_debug_regs::{
-        Dbgdsccr, Dbgdscr, Dbgdsmcr, Dbglar, Dbgvcr,
-    };
+    use crate::architecture::arm::core::armv7ar_debug_regs::{Dbgdsccr, Dbgdscr, Dbgdsmcr, Dbglar};
 
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
@@ -170,14 +168,8 @@ fn armv7ar_core_start(
     let address = Dbgdsmcr::get_mmio_address_from_base(debug_base)?;
     core.write_word_32(address, Dbgdsmcr(0).into())?;
 
-    // Enable vector catches for semihosting support on A/R-profile cores
-    // UNDEF (0x04): HLT-based semihosting (HLT is undefined on ARMv7)
-    // SVC (0x08): Traditional semihosting via SVC instruction
-    let address = Dbgvcr::get_mmio_address_from_base(debug_base)?;
-    let mut dbgvcr = Dbgvcr(0);
-    dbgvcr.set_ss(true);
-    dbgvcr.set_su(true);
-    core.write_word_32(address, dbgvcr.into())?;
+    // Note: SVC/HLT vector catches are configured separately
+    // via enable_vector_catch() with VectorCatchCondition::Svc/Hlt
 
     // Enable halting
     let address = Dbgdscr::get_mmio_address_from_base(debug_base)?;

@@ -6,6 +6,7 @@ use crate::FormatOptions;
 use crate::cmd::run::{MonitoringOptions, NormalRunOptions};
 use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::MonitorMode;
+use crate::rpc::utils::run_loop::VectorCatchConfig;
 use crate::util::cli::{self, rtt_client};
 use crate::util::common_options::ProbeOptions;
 
@@ -48,8 +49,12 @@ impl Cmd {
             self.path.as_deref(),
             &self.monitor_options,
             Some(rtt_client),
-            !self.run_options.no_catch_reset,
-            !self.run_options.no_catch_hardfault,
+            VectorCatchConfig {
+                catch_hardfault: !self.run_options.no_catch_hardfault,
+                catch_reset: !self.run_options.no_catch_reset,
+                catch_svc: !self.run_options.no_catch_svc,
+                catch_hlt: !self.run_options.no_catch_hlt,
+            },
         )
         .await?;
 
