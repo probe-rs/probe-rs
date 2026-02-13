@@ -132,6 +132,73 @@ impl RiscvDebugSequence for ESP32C5 {
         interface.enter_debug_mode()?;
         self.on_connect(interface)?;
 
+        fn set_bit(
+            interface: &mut RiscvCommunicationInterface,
+            addr: u64,
+            bit: usize,
+        ) -> Result<(), Error> {
+            let reg = interface.read_word_32(addr)?;
+            interface.write_word_32(addr, reg | (1u32 << bit))
+        }
+
+        fn clear_bit(
+            interface: &mut RiscvCommunicationInterface,
+            addr: u64,
+            bit: usize,
+        ) -> Result<(), Error> {
+            let reg = interface.read_word_32(addr)?;
+            interface.write_word_32(addr, reg & !(1u32 << bit))
+        }
+
+        // Reset modem
+        const MODEM_SYSCON_MODEM_RST_CONF: u64 = 0x600A9C00 + 0x10;
+        interface.write_word_32(MODEM_SYSCON_MODEM_RST_CONF, 0xFFFF_FFFF)?;
+        interface.write_word_32(MODEM_SYSCON_MODEM_RST_CONF, 0)?;
+        const MODEM_LPCON_RST_CONF: u64 = 0x600AF000 + 0x24;
+        interface.write_word_32(MODEM_LPCON_RST_CONF, 0xFF)?;
+        interface.write_word_32(MODEM_LPCON_RST_CONF, 0)?;
+
+        // Reset peripherals
+        const PCR_BASE: u64 = 0x6009_6000;
+
+        const MSPI_CLK_CONF_OFFSET: u64 = 0x1c;
+        const MSPI_CONF_OFFSET: u64 = 0x18;
+        const UART0_SCLK_CONF_OFFSET: u64 = 0x04;
+
+        const PCR_PERI_REGISTER_OFFSETS: &[u64] = &[
+            0x00,  // UART0_CONF
+            0x0c,  // UART1_CONF
+            0x6c,  // SYSTIMER_CONF
+            0xc0,  // GDMA_CONF
+            0x108, // MODEM_CONF
+            0xa4,  // PWM_CONF
+            0x17c, // SDIO_SLAVE_CONF
+            0xa0,  // ETM_CONF
+            0xf8,  // REGDMA_CONF
+            0xcc,  // AES_CONF
+            0xe4,  // DS_CONF
+            0xdc,  // ECC_CONF
+            0xec,  // ECDSA_CONF
+            0xe8,  // HMAC_CONF
+            0xd4,  // RSA_CONF
+            0xd0,  // SHA_CONF
+        ];
+
+        // Must reset mspi AXI before reset mspi core.
+        set_bit(interface, PCR_BASE + MSPI_CLK_CONF_OFFSET, 11)?;
+        set_bit(interface, PCR_BASE + MSPI_CONF_OFFSET, 1)?;
+        // Must release mspi core reset before mspi AXI.
+        clear_bit(interface, PCR_BASE + MSPI_CONF_OFFSET, 1)?;
+        clear_bit(interface, PCR_BASE + MSPI_CLK_CONF_OFFSET, 11)?;
+
+        for offset in PCR_PERI_REGISTER_OFFSETS {
+            set_bit(interface, PCR_BASE + *offset, 1)?;
+            clear_bit(interface, PCR_BASE + *offset, 1)?;
+        }
+
+        // The ROM code fails to boot if UART0 SCLK is not enabled
+        set_bit(interface, PCR_BASE + UART0_SCLK_CONF_OFFSET, 22)?;
+
         interface.reset_hart_and_halt(timeout)?;
 
         Ok(())

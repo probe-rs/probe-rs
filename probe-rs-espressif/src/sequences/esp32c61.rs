@@ -134,6 +134,12 @@ impl RiscvDebugSequence for ESP32C61 {
         interface.enter_debug_mode()?;
         self.on_connect(interface)?;
 
+        // The ROM code fails to boot if UART0 SCLK is not enabled
+        const PCR_BASE: u64 = 0x6009_6000;
+        const UART0_SCLK_CONF_OFFSET: u64 = 0x04;
+        let reg = interface.read_word_32(PCR_BASE + UART0_SCLK_CONF_OFFSET)?;
+        interface.write_word_32(PCR_BASE + UART0_SCLK_CONF_OFFSET, reg | (1u32 << 22))?;
+
         interface.reset_hart_and_halt(timeout)?;
 
         Ok(())
