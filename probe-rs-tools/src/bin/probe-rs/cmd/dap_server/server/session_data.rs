@@ -143,7 +143,12 @@ impl SessionData {
         let mut core_data_vec = vec![];
 
         for core_configuration in valid_core_configs {
-            if core_configuration.catch_hardfault || core_configuration.catch_reset {
+            let needs_vector_catch = core_configuration.catch_hardfault
+                || core_configuration.catch_reset
+                || core_configuration.catch_svc
+                || core_configuration.catch_hlt;
+
+            if needs_vector_catch {
                 let mut core = target_session.core(core_configuration.core_index)?;
                 let was_halted = core.core_halted()?;
 
@@ -159,6 +164,18 @@ impl SessionData {
                 }
                 if core_configuration.catch_reset {
                     match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+                if core_configuration.catch_svc {
+                    match core.enable_vector_catch(VectorCatchCondition::Svc) {
+                        Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                    }
+                }
+                if core_configuration.catch_hlt {
+                    match core.enable_vector_catch(VectorCatchCondition::Hlt) {
                         Ok(_) | Err(probe_rs::Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                         Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                     }
