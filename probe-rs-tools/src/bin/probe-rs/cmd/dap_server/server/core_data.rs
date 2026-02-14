@@ -239,14 +239,20 @@ impl CoreHandle<'_> {
         let mut debugger_rtt_channels = vec![];
 
         let mut defmt_data = None;
+        let use_auto_formats = rtt_config.channels.is_empty();
 
         for up_channel in client.up_channels() {
             let number = up_channel.up_channel.number();
+            let channel_name = up_channel.channel_name();
 
             let mut channel_config = rtt_config.channel_config(number as u32).clone();
 
-            if up_channel.channel_name() == "defmt" {
-                channel_config.data_format = DataFormat::Defmt;
+            if use_auto_formats {
+                channel_config.data_format = if channel_name == "defmt" {
+                    DataFormat::Defmt
+                } else {
+                    DataFormat::String
+                };
             }
 
             // Where `channel_config` is unspecified, apply default from `default_channel_config`.
@@ -262,7 +268,7 @@ impl CoreHandle<'_> {
                 },
                 DataFormat::BinaryLE => RttDecoder::BinaryLE,
                 DataFormat::Defmt => {
-                    let defmt_data = if let Some(data) = defmt_data.as_ref() {
+                    let defmt_state = if let Some(data) = defmt_data.as_ref() {
                         data
                     } else {
                         // Create the RTT client using the RTT control block address from the ELF file.
@@ -271,21 +277,22 @@ impl CoreHandle<'_> {
                         })?;
                         defmt_data.insert(DefmtState::try_from_bytes(&elf)?)
                     };
-                    let Some(defmt_data) = defmt_data.clone() else {
-                        tracing::warn!("Defmt data not found in ELF file");
-                        continue;
-                    };
 
-                    RttDecoder::Defmt {
-                        processor: DefmtProcessor::new(
-                            defmt_data,
-                            show_timestamps,
-                            show_location,
-                            log_format.as_deref(),
-                        ),
+                    match defmt_state {
+                        Some(defmt_state) => RttDecoder::Defmt {
+                            processor: DefmtProcessor::new(
+                                defmt_state.clone(),
+                                show_timestamps,
+                                show_location,
+                                log_format.as_deref(),
+                            ),
+                        },
+                        None => RttDecoder::BinaryLE,
                     }
                 }
             };
+
+            let data_format = DataFormat::from(&channel_data_format);
 
             debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
                 channel_number: up_channel.number(),
@@ -294,11 +301,7 @@ impl CoreHandle<'_> {
                 channel_data_format,
             });
 
-            debug_adapter.rtt_window(
-                up_channel.number(),
-                up_channel.channel_name(),
-                channel_config.data_format,
-            );
+            debug_adapter.rtt_window(up_channel.number(), channel_name, data_format);
         }
 
         self.core_data.rtt_connection = Some(debug_rtt::RttConnection {
