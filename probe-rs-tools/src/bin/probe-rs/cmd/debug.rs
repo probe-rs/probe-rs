@@ -12,12 +12,14 @@ use tokio::sync::mpsc::Receiver;
 use tokio_util::sync::CancellationToken;
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
-use crate::cmd::dap_server::debug_adapter::dap::dap_types::ErrorResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::InitializeRequestArguments;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::OutputEventBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
     DisconnectArguments, EvaluateArguments,
+};
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
+    ErrorResponseBody, ShowMessageEventBody,
 };
 use crate::cmd::dap_server::debug_adapter::protocol::ProtocolAdapter;
 use crate::cmd::dap_server::server::configuration::ConsoleLog;
@@ -44,7 +46,10 @@ struct CliAdapter {
 
 impl CliAdapter {
     fn write_to_cli(&mut self, message: impl AsRef<str>) {
-        writeln!(self.writer, "{}", message.as_ref().trim_end()).unwrap();
+        let trimmed = message.as_ref().trim_end();
+        if !trimmed.is_empty() {
+            writeln!(self.writer, "{}", trimmed).unwrap();
+        }
     }
 }
 
@@ -66,7 +71,7 @@ impl ProtocolAdapter for CliAdapter {
         let serialized_body = event_body.as_ref().map(serde_json::to_string).transpose()?;
 
         match event_type {
-            "probe-rs-show-message" | "output" => {
+            "output" => {
                 let Some(body) = serialized_body else {
                     return Ok(());
                 };
@@ -74,6 +79,15 @@ impl ProtocolAdapter for CliAdapter {
                 let output = serde_json::from_str::<OutputEventBody>(&body)?;
 
                 self.write_to_cli(output.output);
+            }
+            "probe-rs-show-message" => {
+                let Some(body) = serialized_body else {
+                    return Ok(());
+                };
+
+                let output = serde_json::from_str::<ShowMessageEventBody>(&body)?;
+
+                self.write_to_cli(output.message);
             }
             // Sent for the "quit" command, exits the readline Future and triggers a disconnection.
             "terminated" => self.cancellation.cancel(),

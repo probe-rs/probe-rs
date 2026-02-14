@@ -24,13 +24,7 @@ use anyhow::{Context, Result, anyhow};
 use base64::{Engine as _, engine::general_purpose as base64_engine};
 use dap_types::*;
 use parse_int::parse;
-use probe_rs::{
-    CoreInformation, CoreStatus, Error, HaltReason,
-    architecture::{
-        arm::ArmError, riscv::communication_interface::RiscvError,
-        xtensa::communication_interface::XtensaError,
-    },
-};
+use probe_rs::{CoreInformation, CoreStatus, HaltReason};
 use probe_rs_debug::{
     ColumnType, ObjectRef, SteppingMode, VariableName, VerifiedBreakpoint,
     stack_frame::StackFrameInfo,
@@ -654,14 +648,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
         // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
-        let core_info = match target_core.reset_and_halt() {
+        let core_info = match self.reset_and_halt_core(target_core) {
             Ok(core_info) => core_info,
             Err(error) => {
                 return self.show_error_message(&DebuggerError::Other(anyhow!("{error}")));
             }
         };
-
-        target_core.reset_core_status(self);
 
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
@@ -1752,36 +1744,28 @@ impl<P: ProtocolAdapter + ?Sized> DebugAdapter<P> {
         Ok(cpu_info)
     }
 
-    /// Returns whether all cores are halted.
+    /// Returns whether all cores have continued.
     pub(crate) fn continue_impl(&mut self, target_core: &mut CoreHandle<'_>) -> Result<bool> {
         target_core.core.run()?;
         target_core.reset_core_status(self);
+        Ok(true) // TODO this isn't very useful?
+    }
 
-        // We have to consider the fact that sometimes the `run()` is successful,
-        // but "immediately" afterwards, the MCU hits a breakpoint or exception.
-        // So we have to check the status again to be sure.
+    /// Returns whether all cores have continued.
+    pub(crate) fn reset_and_halt_core(
+        &mut self,
+        target_core: &mut CoreHandle<'_>,
+    ) -> Result<CoreInformation> {
+        let core_info = target_core
+            .core
+            .reset_and_halt(Duration::from_millis(500))?;
 
-        // If there are breakpoints configured, we wait a bit longer
-        let wait_timeout = if target_core.core_data.breakpoints.is_empty() {
-            Duration::from_millis(200)
-        } else {
-            Duration::from_millis(500)
-        };
+        // On some architectures, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
+        target_core.reapply_breakpoints();
 
-        tracing::trace!("Checking if core halts again after continue, timeout = {wait_timeout:?}");
+        target_core.reset_core_status(self);
 
-        match target_core.core.wait_for_core_halted(wait_timeout) {
-            // The core has halted, so we can proceed.
-            Ok(_) => Ok(false),
-            // The core is still running.
-            Err(
-                Error::Arm(ArmError::Timeout)
-                | Error::Riscv(RiscvError::Timeout)
-                | Error::Xtensa(XtensaError::Timeout),
-            ) => Ok(true), // TODO: somehow query the other cores' status
-            // Some other error occurred, so we have to send an error response.
-            Err(wait_error) => Err(wait_error.into()),
-        }
+        Ok(core_info)
     }
 
     pub(crate) fn step_impl(

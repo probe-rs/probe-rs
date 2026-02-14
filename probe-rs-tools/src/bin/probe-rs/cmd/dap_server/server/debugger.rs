@@ -910,8 +910,8 @@ mod test {
                 dap_types::{
                     Capabilities, ContinuedEventBody, DisassembleArguments,
                     DisassembleResponseBody, DisassembledInstruction, DisconnectArguments,
-                    ErrorResponseBody, InitializeRequestArguments, Message, Request, Response,
-                    Source, Thread, ThreadsResponseBody,
+                    ErrorResponseBody, InitializeRequestArguments, Message, OutputEventBody,
+                    Request, Response, Source, Thread, ThreadsResponseBody,
                 },
             },
             protocol::ProtocolAdapter,
@@ -1477,6 +1477,20 @@ mod test {
                 thread_id: 0,
             }),
         );
+        protocol_adapter.expect_event(
+            "output",
+            Some(OutputEventBody {
+                output: String::from("Core is running\n"),
+                category: Some("console".to_owned()),
+                variables_reference: None,
+                source: None,
+                line: None,
+                column: None,
+                data: None,
+                group: Some("probe-rs-debug".to_owned()),
+                location_reference: None,
+            }),
+        );
 
         protocol_adapter
             .add_request("threads")
@@ -1566,6 +1580,20 @@ mod test {
             Some(ContinuedEventBody {
                 all_threads_continued: Some(true),
                 thread_id: 0,
+            }),
+        );
+        protocol_adapter.expect_event(
+            "output",
+            Some(OutputEventBody {
+                output: String::from("Core is running\n"),
+                category: Some("console".to_owned()),
+                variables_reference: None,
+                source: None,
+                line: None,
+                column: None,
+                data: None,
+                group: Some("probe-rs-debug".to_owned()),
+                location_reference: None,
             }),
         );
 
