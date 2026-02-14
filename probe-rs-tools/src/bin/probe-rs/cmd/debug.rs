@@ -270,7 +270,7 @@ impl Cmd {
     ) -> anyhow::Result<()> {
         let (sender, receiver) = mpsc::channel(5);
 
-        let (mut rl, mut writer) = Readline::new(Prompt("> ").to_string()).unwrap();
+        let (mut rl, mut writer) = Readline::new(Prompt("Debug Console> ").to_string()).unwrap();
 
         // TODO: properly introduce a response/event channel, react to terminated event
         let cancellation = CancellationToken::new();

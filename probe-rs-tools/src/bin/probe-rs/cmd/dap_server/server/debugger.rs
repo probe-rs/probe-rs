@@ -211,6 +211,10 @@ impl Debugger {
         let _poll_span = tracing::trace_span!("Polling for core status").entered();
         let delay;
 
+        // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
+        // We do this even if the cores may be halted, as we need to handle RTT data from cores the debugger does not control.
+        let suggest_delay_required = session_data.poll_cores(&self.config, debug_adapter).await?;
+
         if debug_adapter.all_cores_halted {
             // Medium delay to reduce fast looping costs.
             delay = Duration::from_millis(100);
@@ -220,10 +224,6 @@ impl Debugger {
                 "Sleeping (all cores are halted) for {delay:?} to reduce polling overheads."
             );
         } else {
-            // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-            let suggest_delay_required =
-                session_data.poll_cores(&self.config, debug_adapter).await?;
-
             // If there are no requests from the DAP Client, and there was no
             // RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
             if debug_adapter.configuration_is_done() && suggest_delay_required {
