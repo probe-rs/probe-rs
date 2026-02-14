@@ -46,7 +46,10 @@ struct CliAdapter {
 
 impl CliAdapter {
     fn write_to_cli(&mut self, message: impl AsRef<str>) {
-        writeln!(self.writer, "{}", message.as_ref().trim_end()).unwrap();
+        let trimmed = message.as_ref().trim_end();
+        if !trimmed.is_empty() {
+            writeln!(self.writer, "{}", trimmed).unwrap();
+        }
     }
 }
 
