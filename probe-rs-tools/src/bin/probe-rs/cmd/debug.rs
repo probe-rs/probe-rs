@@ -15,6 +15,8 @@ use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::InitializeRequestArguments;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::OutputEventBody;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::ProgressStartEventBody;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::ProgressUpdateEventBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
     DisconnectArguments, EvaluateArguments, RttChannelEventBody, RttDataEventBody,
     RttWindowOpenedArguments,
@@ -170,8 +172,26 @@ impl ProtocolAdapter for CliAdapter {
                 let message = format!("{prefix}{}", output.data);
                 self.write_raw_to_cli(message);
             }
-            // No flashing support (yet)
-            "progressStart" | "progressEnd" | "progressUpdate" => {}
+            // TODO: print a progress bar
+            "progressStart" => {
+                let Some(body) = serialized_body else {
+                    return Ok(());
+                };
+                let event = serde_json::from_str::<ProgressStartEventBody>(&body)?;
+
+                self.write_to_cli(&event.title);
+            }
+            "progressUpdate" => {
+                let Some(body) = serialized_body else {
+                    return Ok(());
+                };
+                let event = serde_json::from_str::<ProgressUpdateEventBody>(&body)?;
+
+                if let Some(message) = event.message {
+                    self.write_to_cli(message);
+                }
+            }
+            "progressEnd" => {}
             // We can safely ignore "exited"
             "exited" => {}
             _ => tracing::debug!("Unhandled event {event_type}: {serialized_body:?}"),
@@ -301,6 +321,7 @@ impl Cmd {
     ) -> anyhow::Result<()> {
         let (sender, receiver) = mpsc::channel(5);
 
+        // TODO: only start the prompt after the "initialized" message has been received
         let (mut rl, mut writer) = Readline::new(Prompt("Debug Console> ").to_string()).unwrap();
 
         // TODO: properly introduce a response/event channel, react to terminated event
@@ -340,7 +361,7 @@ impl Cmd {
                     supports_invalidated_event: None,
                     supports_memory_event: None,
                     supports_memory_references: None,
-                    supports_progress_reporting: None,
+                    supports_progress_reporting: None, // Some(true) requires the debugger to run in a separate thread
                     supports_run_in_terminal_request: None,
                     supports_start_debugging_request: None,
                     supports_variable_paging: None,
