@@ -17,7 +17,7 @@ use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::InitializeRequestArguments;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::OutputEventBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
-    DisconnectArguments, EvaluateArguments,
+    DisconnectArguments, EvaluateArguments, RttChannelEventBody, RttWindowOpenedArguments,
 };
 use crate::cmd::dap_server::debug_adapter::protocol::ProtocolAdapter;
 use crate::cmd::dap_server::server::configuration::ConsoleLog;
@@ -34,6 +34,7 @@ use super::dap_server::debug_adapter::dap::dap_types::Response;
 
 /// A barebones adapter for the CLI "client".
 struct CliAdapter {
+    sender: mpsc::Sender<Request>,
     receiver: Receiver<Request>,
     writer: SharedWriter,
     console_log_level: ConsoleLog,
@@ -81,8 +82,28 @@ impl ProtocolAdapter for CliAdapter {
             "memory" => {}
             "stopped" => {}
             "breakpoint" => {}
-            // No RTT support (yet)
-            "probe-rs-rtt-channel-config" | "probe-rs-rtt-data" => {}
+            "probe-rs-rtt-channel-config" => {
+                let Some(body) = serialized_body else {
+                    return Ok(());
+                };
+
+                let output = serde_json::from_str::<RttChannelEventBody>(&body)?;
+                let request = Request {
+                    command: "rttWindowOpened".to_string(),
+                    arguments: serde_json::to_value(&RttWindowOpenedArguments {
+                        channel_number: output.channel_number,
+                        window_is_open: true,
+                    })
+                    .ok(),
+                    seq: self.get_next_seq(),
+                    type_: "request".to_string(),
+                };
+
+                if let Err(error) = self.sender.try_send(request) {
+                    tracing::debug!("Failed to send rttWindowOpened request: {error}");
+                }
+            }
+            "probe-rs-rtt-data" => {}
             // No flashing support (yet)
             "progressStart" | "progressEnd" | "progressUpdate" => {}
             // We can safely ignore "exited"
@@ -203,6 +224,7 @@ impl Cmd {
         let cancellation = CancellationToken::new();
 
         let debug_adapter = DebugAdapter::new(CliAdapter {
+            sender: sender.clone(),
             receiver,
             writer: writer.clone(),
             console_log_level: ConsoleLog::Console,
