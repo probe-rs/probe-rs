@@ -17,7 +17,8 @@ use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::InitializeRequestArguments;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::OutputEventBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
-    DisconnectArguments, EvaluateArguments, RttChannelEventBody, RttWindowOpenedArguments,
+    DisconnectArguments, EvaluateArguments, RttChannelEventBody, RttDataEventBody,
+    RttWindowOpenedArguments,
 };
 use crate::cmd::dap_server::debug_adapter::protocol::ProtocolAdapter;
 use crate::cmd::dap_server::server::configuration::ConsoleLog;
@@ -41,11 +42,39 @@ struct CliAdapter {
     seq: i64,
     pending: HashMap<i64, Request>,
     cancellation: CancellationToken,
+    rtt_channels: HashMap<u32, RttChannelInfo>,
+}
+
+struct RttChannelInfo {
+    name: String,
+    prefix: String,
 }
 
 impl CliAdapter {
     fn write_to_cli(&mut self, message: impl AsRef<str>) {
         writeln!(self.writer, "{}", message.as_ref().trim_end()).unwrap();
+    }
+
+    fn write_raw_to_cli(&mut self, message: impl AsRef<str>) {
+        write!(self.writer, "{}", message.as_ref()).unwrap();
+    }
+
+    fn update_rtt_prefixes(&mut self) {
+        let channel_count = self.rtt_channels.len();
+        let max_width = self
+            .rtt_channels
+            .values()
+            .map(|info| info.name.len())
+            .max()
+            .unwrap_or(0);
+
+        for info in self.rtt_channels.values_mut() {
+            info.prefix = if channel_count > 1 {
+                format!("[{:width$}] ", info.name, width = max_width)
+            } else {
+                String::new()
+            };
+        }
     }
 }
 
@@ -88,6 +117,16 @@ impl ProtocolAdapter for CliAdapter {
                 };
 
                 let output = serde_json::from_str::<RttChannelEventBody>(&body)?;
+                let entry = self
+                    .rtt_channels
+                    .entry(output.channel_number)
+                    .or_insert_with(|| RttChannelInfo {
+                        name: output.channel_name.clone(),
+                        prefix: String::new(),
+                    });
+                entry.name = output.channel_name;
+                self.update_rtt_prefixes();
+
                 let request = Request {
                     command: "rttWindowOpened".to_string(),
                     arguments: serde_json::to_value(&RttWindowOpenedArguments {
@@ -103,7 +142,20 @@ impl ProtocolAdapter for CliAdapter {
                     tracing::debug!("Failed to send rttWindowOpened request: {error}");
                 }
             }
-            "probe-rs-rtt-data" => {}
+            "probe-rs-rtt-data" => {
+                let Some(body) = serialized_body else {
+                    return Ok(());
+                };
+
+                let output = serde_json::from_str::<RttDataEventBody>(&body)?;
+                let prefix = self
+                    .rtt_channels
+                    .get(&output.channel_number)
+                    .map(|info| info.prefix.as_str())
+                    .unwrap_or("");
+                let message = format!("{prefix}{}", output.data);
+                self.write_raw_to_cli(message);
+            }
             // No flashing support (yet)
             "progressStart" | "progressEnd" | "progressUpdate" => {}
             // We can safely ignore "exited"
@@ -231,6 +283,7 @@ impl Cmd {
             seq: 0,
             pending: HashMap::new(),
             cancellation: cancellation.clone(),
+            rtt_channels: HashMap::new(),
         });
         let mut debugger = Debugger::new(utc_offset, None)?;
 
@@ -288,7 +341,7 @@ impl Cmd {
                         program_binary: self.exe,
                         svd_file: None,
                         rtt_config: RttConfig {
-                            enabled: false,
+                            enabled: true,
                             channels: vec![],
                             default_config: Default::default(),
                         },
