@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
 
-use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
 use rustyline_async::SharedWriter;
 use rustyline_async::{Readline, ReadlineEvent};
@@ -30,6 +29,7 @@ use crate::cmd::dap_server::server::configuration::CoreConfig;
 use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::cmd::dap_server::server::configuration::SessionConfig;
 use crate::cmd::dap_server::server::debugger::Debugger;
+use crate::rpc::client::RpcClient;
 use crate::util::cli::Prompt;
 use crate::util::rtt::RttConfig;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
@@ -313,12 +313,7 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub async fn run(
-        self,
-        registry: &mut Registry,
-        lister: &Lister,
-        utc_offset: UtcOffset,
-    ) -> anyhow::Result<()> {
+    pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
         let (sender, receiver) = mpsc::channel(5);
 
         // TODO: only start the prompt after the "initialized" message has been received
@@ -337,7 +332,6 @@ impl Cmd {
             cancellation: cancellation.clone(),
             rtt_channels: HashMap::new(),
         });
-        let mut debugger = Debugger::new(utc_offset, None)?;
 
         let mut seq = 0;
         let mut next_seq = move || {
@@ -426,11 +420,14 @@ impl Cmd {
             .await
             .unwrap();
 
-        let server = async {
+        let server = async move {
+            let registry = &mut *client.registry().await;
+            let mut debugger = Debugger::new(utc_offset, None)?;
+
+            let lister = Lister::new();
             debugger
-                .debug_session(registry, debug_adapter, lister)
+                .debug_session(registry, debug_adapter, &lister)
                 .await
-                .ok();
         };
 
         let readline = async {
@@ -488,12 +485,13 @@ impl Cmd {
                 .ok(); // Ignore error in case the sender is disconnected
         };
 
-        tokio::join! {
+        let (_, server_result) = tokio::join! {
             readline,
             server,
         };
 
         rl.flush()?;
+        server_result?;
 
         Ok(())
     }
