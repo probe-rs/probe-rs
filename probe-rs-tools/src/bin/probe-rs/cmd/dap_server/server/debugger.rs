@@ -624,7 +624,11 @@ impl Debugger {
                                 pbar_state.size_done as f64 / pbar_state.total_size as f64;
 
                             debug_adapter
-                                .update_progress(Some(progress), Some(describe_op(operation)), id)
+                                .update_progress(
+                                    Some(progress.min(1.0)),
+                                    Some(describe_op(operation)),
+                                    id,
+                                )
                                 .ok();
                         }
                         ProgressEvent::Failed(operation) => {
