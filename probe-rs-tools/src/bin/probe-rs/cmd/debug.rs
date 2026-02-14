@@ -259,6 +259,10 @@ pub struct Cmd {
     /// Disable hardfault vector catch if its supported on the target.
     #[clap(long)]
     pub no_catch_hardfault: bool,
+
+    /// Disable reading RTT data.
+    #[clap(long, help_heading = "LOG CONFIGURATION / RTT")]
+    pub no_rtt: bool,
 }
 
 impl Cmd {
@@ -341,7 +345,7 @@ impl Cmd {
                         program_binary: self.exe,
                         svd_file: None,
                         rtt_config: RttConfig {
-                            enabled: true,
+                            enabled: !self.no_rtt,
                             channels: vec![],
                             default_config: Default::default(),
                         },
