@@ -192,7 +192,7 @@ impl CoreHandle<'_> {
     pub fn attach_to_rtt<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
-        program_binary: &Path,
+        program_binary: Option<&Path>,
         rtt_config: &rtt::RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
@@ -261,12 +261,14 @@ impl CoreHandle<'_> {
                 DataFormat::Defmt => {
                     let defmt_data = if let Some(data) = defmt_data.as_ref() {
                         data
-                    } else {
+                    } else if let Some(program_binary) = program_binary {
                         // Create the RTT client using the RTT control block address from the ELF file.
                         let elf = std::fs::read(program_binary).map_err(|error| {
                             anyhow!("Error attempting to attach to RTT: {error}")
                         })?;
                         defmt_data.insert(DefmtState::try_from_bytes(&elf)?)
+                    } else {
+                        defmt_data.insert(None)
                     };
                     let Some(defmt_data) = defmt_data.clone() else {
                         tracing::warn!("Defmt data not found in ELF file");

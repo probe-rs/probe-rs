@@ -384,10 +384,9 @@ impl SessionData {
                     }
                 } else if debug_adapter.configuration_is_done() {
                     // Make sure we only attempt attaching when we're ready.
-                    #[expect(clippy::unwrap_used)]
                     if let Err(error) = target_core.attach_to_rtt(
                         debug_adapter,
-                        core_config.program_binary.as_ref().unwrap(),
+                        core_config.program_binary.as_deref(),
                         &core_config.rtt_config,
                         timestamp_offset,
                     ) {
