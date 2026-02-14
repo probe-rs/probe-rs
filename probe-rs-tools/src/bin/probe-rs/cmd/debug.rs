@@ -6,6 +6,7 @@ use probe_rs::probe::list::Lister;
 use rustyline_async::SharedWriter;
 use rustyline_async::{Readline, ReadlineEvent};
 use time::UtcOffset;
+use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Receiver;
 use tokio_util::sync::CancellationToken;
@@ -355,7 +356,7 @@ impl Cmd {
                     supports_invalidated_event: None,
                     supports_memory_event: None,
                     supports_memory_references: None,
-                    supports_progress_reporting: None, // Some(true) requires the debugger to run in a separate thread
+                    supports_progress_reporting: Some(true),
                     supports_run_in_terminal_request: None,
                     supports_start_debugging_request: None,
                     supports_variable_paging: None,
@@ -420,15 +421,18 @@ impl Cmd {
             .await
             .unwrap();
 
-        let server = async move {
-            let registry = &mut *client.registry().await;
-            let mut debugger = Debugger::new(utc_offset, None)?;
+        // Run the debugger in a separate thread, otherwise longer processes like flashing can block the terminal.
+        let server = tokio::task::spawn_blocking(move || {
+            Runtime::new().unwrap().block_on(async move {
+                let registry = &mut *client.registry().await;
+                let mut debugger = Debugger::new(utc_offset, None)?;
 
-            let lister = Lister::new();
-            debugger
-                .debug_session(registry, debug_adapter, &lister)
-                .await
-        };
+                let lister = Lister::new();
+                debugger
+                    .debug_session(registry, debug_adapter, &lister)
+                    .await
+            })
+        });
 
         let readline = async {
             loop {
@@ -491,7 +495,7 @@ impl Cmd {
         };
 
         rl.flush()?;
-        server_result?;
+        server_result??;
 
         Ok(())
     }
