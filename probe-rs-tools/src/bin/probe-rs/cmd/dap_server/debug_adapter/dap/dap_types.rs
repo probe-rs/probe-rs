@@ -52,7 +52,7 @@ pub struct RttDataEventBody {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
-#[serde(rename_all(serialize = "lowercase", deserialize = "PascalCase"))]
+#[serde(rename_all = "lowercase")]
 pub enum MessageSeverity {
     Information,
     Warning,
