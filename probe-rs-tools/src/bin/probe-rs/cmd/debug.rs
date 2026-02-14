@@ -262,9 +262,13 @@ pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
 
-    #[clap(long, value_parser)]
-    /// Binary to debug
-    exe: Option<PathBuf>,
+    /// Binary to debug (ELF file). If provided with --launch, the binary will be flashed to the target.
+    #[clap(value_parser)]
+    pub binary: Option<PathBuf>,
+
+    /// Launch instead of just attaching. This will reset the target and allow the binary to be flashed, if provided.
+    #[clap(long)]
+    pub launch: bool,
 
     /// Disable reset vector catch if its supported on the target.
     #[clap(long)]
@@ -277,6 +281,15 @@ pub struct Cmd {
     /// Disable reading RTT data.
     #[clap(long, help_heading = "LOG CONFIGURATION / RTT")]
     pub no_rtt: bool,
+
+    // TODO: support all options in BinaryDownloadOptions
+    /// Before flashing, read back all the flashed data to skip flashing if the device is up to date.
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub preverify: bool,
+
+    /// After flashing, read back all the flashed data to verify it has been written correctly.
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub verify: bool,
 }
 
 impl Cmd {
@@ -340,9 +353,13 @@ impl Cmd {
             })
             .await
             .unwrap();
+
+        // Determine if this is a launch or attach session
+        let session_command = if self.launch { "launch" } else { "attach" };
+
         sender
             .send(Request {
-                command: "attach".to_string(),
+                command: session_command.to_string(),
                 arguments: serde_json::to_value(&SessionConfig {
                     console_log_level: None,
                     cwd: None,
@@ -353,10 +370,15 @@ impl Cmd {
                     speed: self.common.speed,
                     wire_protocol: self.common.protocol,
                     allow_erase_all: false,
-                    flashing_config: FlashingConfig::default(),
+                    flashing_config: FlashingConfig {
+                        flashing_enabled: self.launch && self.binary.is_some(),
+                        verify_before_flashing: self.preverify,
+                        verify_after_flashing: self.verify,
+                        ..FlashingConfig::default()
+                    },
                     core_configs: vec![CoreConfig {
                         core_index: self.shared.core,
-                        program_binary: self.exe,
+                        program_binary: self.binary.clone(),
                         svd_file: None,
                         rtt_config: RttConfig {
                             enabled: !self.no_rtt,
