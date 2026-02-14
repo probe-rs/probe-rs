@@ -1,7 +1,7 @@
-use gimli::UnitOffset;
+use gimli::{Dwarf, UnitOffset};
 use std::ops::Range;
 
-use crate::{MemoryInterface, stack_frame::StackFrameInfo};
+use crate::{GimliReader, MemoryInterface, stack_frame::StackFrameInfo};
 
 use super::{
     ColumnType, DebugError, DebugInfo, SourceLocation, VariableLocation, debug_info, extract_file,
@@ -33,6 +33,32 @@ pub(crate) struct FunctionDie<'data> {
 }
 
 impl<'a> FunctionDie<'a> {
+    pub(crate) fn function_ranges(
+        function_die: &Die,
+        unit_info: &UnitInfo,
+        dwarf: &Dwarf<GimliReader>,
+    ) -> Result<Option<Vec<Range<u64>>>, DebugError> {
+        let (gimli::DW_TAG_subprogram | gimli::DW_TAG_inlined_subroutine) = function_die.tag()
+        else {
+            // We only need DIEs for functions, so we can ignore all other DIEs.
+            return Ok(None);
+        };
+
+        // Validate the function DIE ranges, and confirm this DIE applies to the requested address.
+        let mut gimli_ranges = dwarf.die_ranges(&unit_info.unit, function_die)?;
+        let mut die_ranges = Vec::new();
+        while let Ok(Some(gimli_range)) = gimli_ranges.next() {
+            if gimli_range.begin == 0 {
+                // TODO: The DW_AT_subprograms with low_pc == 0 cause overlapping ranges with other 'valid' function dies, and obscures the correct function die.
+                // We need to understand what those mean, and how to handle them correctly.
+                return Ok(None);
+            }
+            die_ranges.push(gimli_range.begin..gimli_range.end);
+        }
+
+        Ok(Some(die_ranges))
+    }
+
     /// Create a new function DIE reference.
     /// We only return DIE's that are functions, with valid address ranges that represent machine code
     /// relevant to the address/program counter specified.
@@ -52,19 +78,10 @@ impl<'a> FunctionDie<'a> {
             }
         };
 
-        //Validate the function DIE ranges, and confirm this DIE applies to the requested address.
-        let mut gimli_ranges = debug_info
-            .dwarf
-            .die_ranges(&unit_info.unit, &function_die)?;
-        let mut die_ranges = Vec::new();
-        while let Ok(Some(gimli_range)) = gimli_ranges.next() {
-            if gimli_range.begin == 0 {
-                // TODO: The DW_AT_subprograms with low_pc == 0 cause overlapping ranges with other 'valid' function dies, and obscures the correct function die.
-                // We need to understand what those mean, and how to handle them correctly.
-                return Ok(None);
-            }
-            die_ranges.push(gimli_range.begin..gimli_range.end);
-        }
+        let Some(die_ranges) = Self::function_ranges(&function_die, unit_info, &debug_info.dwarf)?
+        else {
+            return Ok(None);
+        };
         if !die_ranges.iter().any(|range| range.contains(&address)) {
             return Ok(None);
         }
