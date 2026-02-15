@@ -26,6 +26,8 @@ pub mod sequences;
 #[derive(docsplay::Display)]
 pub struct NordicSemi;
 
+const JEP_NORDICSEMI: JEP106Code = JEP106Code::new(0x2, 0x44);
+
 impl Vendor for NordicSemi {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
         let sequence = if chip.name.starts_with("nRF5340") {
@@ -51,7 +53,7 @@ impl Vendor for NordicSemi {
         probe: &mut dyn ArmDebugInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
-        if chip_info.manufacturer.get() != Some("Nordic VLSI ASA") {
+        if chip_info.manufacturer != JEP_NORDICSEMI {
             return Ok(None);
         }
 

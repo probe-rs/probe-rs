@@ -15,7 +15,7 @@ use crate::{
 #[derive(docsplay::Display)]
 pub struct Holtek;
 
-const HOLTEK: JEP106Code = JEP106Code { id: 0x76, cc: 0x6 };
+const JEP_HOLTEK: JEP106Code = JEP106Code { id: 0x76, cc: 0x6 };
 
 impl Vendor for Holtek {
     fn try_create_debug_sequence(&self, _chip: &Chip) -> Option<DebugSequence> {
@@ -30,7 +30,7 @@ impl Vendor for Holtek {
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
         // Only attempt detection for Holtek manufacturer
-        if chip_info.manufacturer != HOLTEK {
+        if chip_info.manufacturer != JEP_HOLTEK {
             return Ok(None);
         }
 

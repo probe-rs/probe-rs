@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 
+use jep106::JEP106Code;
 use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
@@ -17,6 +18,8 @@ use crate::{
 /// Renesas
 #[derive(docsplay::Display)]
 pub struct Renesas;
+
+const JEP_RENESAS: JEP106Code = JEP106Code::new(0x4, 0x23);
 
 impl Vendor for Renesas {
     fn try_create_debug_sequence(&self, _chip: &Chip) -> Option<DebugSequence> {
@@ -42,7 +45,7 @@ impl Vendor for Renesas {
         // the PNR registers are at the same location. If there is a conflict, this logic needs to
         // be reworked.
 
-        if chip_info.manufacturer.get() != Some("Renesas Electronics") {
+        if chip_info.manufacturer != JEP_RENESAS {
             return Ok(None);
         }
 
