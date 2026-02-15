@@ -2,6 +2,12 @@ name: RA2A1 Series
 manufacturer:
   id: 0x23
   cc: 0x4
+chip_detection:
+- !RenesasPnr
+  target_id: 0x1b0
+  mcu_pn_base: 0x01003c24
+  variants:
+    - R7FA2A1AB
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:

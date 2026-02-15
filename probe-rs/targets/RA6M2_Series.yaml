@@ -2,6 +2,13 @@ name: RA6M2 Series
 manufacturer:
   id: 0x23
   cc: 0x4
+chip_detection:
+- !RenesasPnr
+  target_id: 0x150 
+  mcu_pn_base: 0x01007024
+  variants:
+    - R7FA6M2AF
+    - R7FA6M2AD
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:

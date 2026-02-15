@@ -1,5 +1,6 @@
 //! Microchip vendor support.
 
+use jep106::JEP106Code;
 use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
@@ -16,6 +17,8 @@ use crate::{
 };
 
 pub mod sequences;
+
+const JEP_ATMEL: JEP106Code = JEP106Code::new(0x0, 0x1f);
 
 /// Microchip
 #[derive(docsplay::Display)]
@@ -46,7 +49,7 @@ impl Vendor for Microchip {
         interface: &mut dyn ArmDebugInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
-        if chip_info.manufacturer.get() != Some("Atmel") || chip_info.part != 0xCD0 {
+        if chip_info.manufacturer != JEP_ATMEL || chip_info.part != 0xCD0 {
             return Ok(None);
         }
 

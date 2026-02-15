@@ -2,6 +2,14 @@ name: RA2A2 Series
 manufacturer:
   id: 0x23
   cc: 0x4
+chip_detection:
+- !RenesasPnr
+  target_id: 0x590
+  reverse_string: true
+  mcu_pn_base: 0x01001c10
+  variants:
+    - R7FA2A2AD
+    - R7FA2A2BD
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:

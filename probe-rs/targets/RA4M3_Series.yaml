@@ -2,6 +2,14 @@ name: RA4M3 Series
 manufacturer:
   id: 0x23
   cc: 0x4
+chip_detection:
+- !RenesasPnr
+  target_id: 0x310
+  mcu_pn_base: 0x010080f0
+  variants:
+    - R7FA4M3AF
+    - R7FA4M3AE
+    - R7FA4M3AD
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:

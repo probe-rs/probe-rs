@@ -2,6 +2,13 @@ name: RA6M3 Series
 manufacturer:
   id: 0x23
   cc: 0x4
+chip_detection:
+- !RenesasPnr
+  target_id: 0x100
+  mcu_pn_base: 0x01007024 
+  variants:
+    - R7FA6M3AH
+    - R7FA6M3AF
 generated_from_pack: true
 pack_file_release: 5.3.0
 variants:
