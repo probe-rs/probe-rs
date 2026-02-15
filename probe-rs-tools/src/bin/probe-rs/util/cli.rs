@@ -590,6 +590,7 @@ pub async fn monitor(
                 .update(|state| {
                     state.up_channels = up_channels.clone();
                     state.down_channels = down_channels.clone();
+                    state.rtt_client = client.as_ref().map(|client| client.handle());
                 })
                 .await
         };
