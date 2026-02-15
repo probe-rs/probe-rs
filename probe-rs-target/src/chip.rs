@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::memory::MemoryRegion;
 use crate::{
-    CoreType,
+    CoreType, MemoryPort,
     serialize::{hex_option, hex_u_int},
 };
 use serde::{Deserialize, Serialize};
@@ -78,6 +78,9 @@ pub struct Chip {
     /// The cores available on the chip.
     #[serde(default)]
     pub cores: Vec<Core>,
+    /// The memory ports available on the chip.
+    #[serde(default)]
+    pub memory_ports: Vec<MemoryPort>,
     /// The memory regions available on the chip.
     pub memory_map: Vec<MemoryRegion>,
     /// Names of all flash algorithms available for this chip.
@@ -134,6 +137,7 @@ impl Chip {
             rtt_scan_ranges: None,
             jtag: None,
             default_binary_format: None,
+            memory_ports: vec![],
         }
     }
 

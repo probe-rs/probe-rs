@@ -1,5 +1,5 @@
 use crate::memory::{Operation, OperationKind};
-use crate::rtt::Error;
+use crate::rtt::{Error, RttAccess};
 use crate::{Core, MemoryInterface};
 use probe_rs_target::RegionMergeIterator;
 use std::cmp::min;
@@ -99,7 +99,11 @@ impl RttChannelBuffer {
     }
 
     /// return (write_buffer_ptr, read_buffer_ptr)
-    pub fn read_buffer_offsets(&self, core: &mut Core, ptr: u64) -> Result<(u64, u64), Error> {
+    pub fn read_buffer_offsets(
+        &self,
+        core: &mut impl RttAccess,
+        ptr: u64,
+    ) -> Result<(u64, u64), Error> {
         Ok(match self {
             RttChannelBuffer::Buffer32(h32) => {
                 let mut block = [0u32; 2];
@@ -116,7 +120,7 @@ impl RttChannelBuffer {
 
     pub fn write_write_buffer_ptr(
         &self,
-        core: &mut Core,
+        core: &mut impl RttAccess,
         ptr: u64,
         buffer_ptr: u64,
     ) -> Result<(), Error> {
@@ -147,24 +151,29 @@ impl RttChannelBuffer {
         }
     }
 
-    pub fn read_flags(&self, core: &mut Core, ptr: u64) -> Result<u64, Error> {
+    pub fn read_flags(&self, memory: &mut impl MemoryInterface, ptr: u64) -> Result<u64, Error> {
         Ok(match self {
             RttChannelBuffer::Buffer32(h32) => {
-                u64::from(core.read_word_32(ptr + h32.flags_offset() as u64)?)
+                u64::from(memory.read_word_32(ptr + h32.flags_offset() as u64)?)
             }
             RttChannelBuffer::Buffer64(h64) => {
-                u64::from(core.read_word_32(ptr + h64.flags_offset() as u64)?)
+                u64::from(memory.read_word_32(ptr + h64.flags_offset() as u64)?)
             }
         })
     }
 
-    pub fn write_flags(&self, core: &mut Core, ptr: u64, flags: u64) -> Result<(), Error> {
+    pub fn write_flags(
+        &self,
+        memory: &mut impl MemoryInterface,
+        ptr: u64,
+        flags: u64,
+    ) -> Result<(), Error> {
         match self {
             RttChannelBuffer::Buffer32(h32) => {
-                core.write_word_32(ptr + h32.flags_offset() as u64, flags.try_into().unwrap())?;
+                memory.write_word_32(ptr + h32.flags_offset() as u64, flags.try_into().unwrap())?;
             }
             RttChannelBuffer::Buffer64(h64) => {
-                core.write_word_32(ptr + h64.flags_offset() as u64, flags.try_into().unwrap())?;
+                memory.write_word_32(ptr + h64.flags_offset() as u64, flags.try_into().unwrap())?;
             }
         };
         Ok(())
@@ -195,7 +204,7 @@ pub(crate) struct Channel {
 
 impl Channel {
     pub(crate) fn from(
-        core: &mut Core,
+        rtt_access: &mut impl RttAccess,
         number: usize,
         metadata_ptr: u64,
         info: RttChannelBuffer,
@@ -217,14 +226,14 @@ impl Channel {
         // It's possible that the channel is not initialized with the magic string written last.
         // We call read_pointers to validate that the channel pointers are in an expected range.
         // This should at least catch most cases where the control block is partially initialized.
-        this.read_pointers(core, "")?;
+        this.read_pointers(rtt_access, "")?;
         // Read channel name just after the pointer was validated to be within an expected range.
         this.name = if let Some(ptr) = this.info.standard_name_pointer() {
-            read_c_string(core, ptr)?
+            read_c_string(rtt_access, ptr)?
         } else {
             None
         };
-        this.mode(core)?;
+        this.mode(rtt_access)?;
 
         Ok(Some(this))
     }
@@ -240,7 +249,7 @@ impl Channel {
     /// Reads the current channel mode from the target and returns its.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
+    pub fn mode(&self, core: &mut impl RttAccess) -> Result<ChannelMode, Error> {
         let flags = self.info.read_flags(core, self.metadata_ptr)?;
 
         ChannelMode::try_from(flags & ChannelMode::MASK)
@@ -259,7 +268,11 @@ impl Channel {
         Ok(())
     }
 
-    fn read_pointers(&self, core: &mut Core, channel_kind: &str) -> Result<(u64, u64), Error> {
+    fn read_pointers(
+        &self,
+        core: &mut impl RttAccess,
+        channel_kind: &str,
+    ) -> Result<(u64, u64), Error> {
         let (write, read) = self.info.read_buffer_offsets(core, self.metadata_ptr)?;
 
         // Validate whether the buffers are sensible
@@ -276,9 +289,7 @@ impl Channel {
             }
 
             let buffer_fully_in_memory_region = core
-                .target()
-                .memory_map
-                .iter()
+                .memory_regions()
                 .filter_map(|mr| mr.as_ram_region())
                 .merge_consecutive()
                 .any(|rr| {
@@ -333,8 +344,8 @@ impl UpChannel {
     /// Reads the current channel mode from the target and returns its.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
-        self.0.mode(core)
+    pub fn mode(&self, rtt_access: &mut impl RttAccess) -> Result<ChannelMode, Error> {
+        self.0.mode(rtt_access)
     }
 
     /// Changes the channel mode on the target to the specified mode.
@@ -346,11 +357,11 @@ impl UpChannel {
 
     fn read_core(
         &mut self,
-        core: &mut Core,
+        rtt_access: &mut impl RttAccess,
         mut buf: &mut [u8],
         consume: bool,
     ) -> Result<usize, Error> {
-        let (write, mut read) = self.0.read_pointers(core, "up ")?;
+        let (write, mut read) = self.0.read_pointers(rtt_access, "up ")?;
 
         let mut total = 0;
 
@@ -394,7 +405,7 @@ impl UpChannel {
             );
         }
 
-        core.execute_memory_operations(&mut operations);
+        rtt_access.execute_memory_operations(&mut operations);
 
         for op in operations.into_iter() {
             if let Some(result) = op.result {
@@ -415,8 +426,12 @@ impl UpChannel {
     ///
     /// This method will not block waiting for data in the target buffer, and may read less bytes
     /// than would fit in `buf`.
-    pub fn read(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        self.read_core(core, buf, true)
+    pub fn read(
+        &mut self,
+        rtt_access: &mut impl RttAccess,
+        buf: &mut [u8],
+    ) -> Result<usize, Error> {
+        self.read_core(rtt_access, buf, true)
     }
 
     /// Peeks at the current data in the channel buffer, copies data into the specified buffer and
@@ -424,8 +439,12 @@ impl UpChannel {
     ///
     /// The difference from [`read`](UpChannel::read) is that this does not discard the data in the
     /// buffer.
-    pub fn peek(&mut self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
-        self.read_core(core, buf, false)
+    pub fn peek(
+        &mut self,
+        rtt_access: &mut impl RttAccess,
+        buf: &mut [u8],
+    ) -> Result<usize, Error> {
+        self.read_core(rtt_access, buf, false)
     }
 
     /// Calculates amount of contiguous data available for reading
@@ -480,8 +499,12 @@ impl DownChannel {
     ///
     /// This method will not block waiting for space to become available in the channel buffer, and
     /// may not write all of `buf`.
-    pub fn write(&mut self, core: &mut Core, mut buf: &[u8]) -> Result<usize, Error> {
-        let (mut write, read) = self.0.read_pointers(core, "down ")?;
+    pub fn write(
+        &mut self,
+        rtt_access: &mut impl RttAccess,
+        mut buf: &[u8],
+    ) -> Result<usize, Error> {
+        let (mut write, read) = self.0.read_pointers(rtt_access, "down ")?;
 
         let mut total = 0;
 
@@ -492,7 +515,7 @@ impl DownChannel {
                 break;
             }
 
-            core.write(self.0.info.buffer_start_pointer() + write, &buf[..count])?;
+            rtt_access.write(self.0.info.buffer_start_pointer() + write, &buf[..count])?;
 
             total += count;
             write += count as u64;
@@ -508,7 +531,7 @@ impl DownChannel {
         // Write write pointer back to target
         self.0
             .info
-            .write_write_buffer_ptr(core, self.0.metadata_ptr, write)?;
+            .write_write_buffer_ptr(rtt_access, self.0.metadata_ptr, write)?;
 
         Ok(total)
     }
@@ -541,7 +564,7 @@ impl RttChannel for DownChannel {
 }
 
 /// Reads a null-terminated string from target memory. Lossy UTF-8 decoding is used.
-fn read_c_string(core: &mut Core, ptr: NonZeroU64) -> Result<Option<String>, Error> {
+fn read_c_string(core: &mut impl RttAccess, ptr: NonZeroU64) -> Result<Option<String>, Error> {
     let ptr = ptr.get();
     let Some(range) = core
         .memory_regions()
