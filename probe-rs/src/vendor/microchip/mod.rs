@@ -1,5 +1,6 @@
 //! Microchip vendor support.
 
+use jep106::JEP106Code;
 use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{

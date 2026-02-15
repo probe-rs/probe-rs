@@ -2,6 +2,7 @@
 
 use std::collections::{HashMap, hash_map::Entry};
 
+use jep106::JEP106Code;
 use probe_rs_target::{
     Chip,
     chip_detection::{NordicConfigIdDetection, NordicFicrDetection},
