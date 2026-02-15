@@ -19,6 +19,7 @@ pub(crate) mod cpu;
 pub(crate) mod embedded_test;
 pub(crate) mod info;
 pub(crate) mod inspect;
+pub(crate) mod rtt;
 
 /// The handler is a function that takes a reference to the target core, and a reference to the response body.
 /// The response body is used to populate the response to the client.
