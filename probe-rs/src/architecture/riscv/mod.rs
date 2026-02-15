@@ -304,6 +304,9 @@ impl CoreInterface for Riscv32<'_> {
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
 
+        // Chip reset clears hardware breakpoint state
+        self.state.hw_breakpoints_enabled = false;
+
         self.on_halted()?;
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 

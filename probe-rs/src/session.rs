@@ -225,7 +225,7 @@ impl Session {
             && let Some(scan_chain) = jtag.scan_chain.clone()
             && let Some(probe) = probe.try_as_jtag_probe()
         {
-            probe.set_scan_chain(&scan_chain)?;
+            probe.set_expected_scan_chain(&scan_chain)?;
         }
 
         probe.attach_to_unspecified()?;
@@ -349,7 +349,7 @@ impl Session {
             && let Some(scan_chain) = jtag.scan_chain.clone()
             && let Some(probe) = probe.try_as_jtag_probe()
         {
-            probe.set_scan_chain(&scan_chain)?;
+            probe.set_expected_scan_chain(&scan_chain)?;
         }
 
         probe.attach_to_unspecified()?;
@@ -706,14 +706,21 @@ impl Session {
     }
 
     /// This function can be used to set up an application which was flashed to RAM.
-    pub fn prepare_running_on_ram(&mut self, vector_table_addr: u64) -> Result<(), crate::Error> {
-        match &self.target.debug_sequence.clone() {
-            crate::config::DebugSequence::Arm(arm) => {
-                arm.prepare_running_on_ram(vector_table_addr, self)
+    pub fn prepare_running_on_ram(
+        &mut self,
+        vector_table_addr: u64,
+        core_id: usize,
+    ) -> Result<(), crate::Error> {
+        match self.target.debug_sequence.clone() {
+            DebugSequence::Arm(arm_debug_sequence) => {
+                arm_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
             }
-            _ => Err(crate::Error::NotImplemented(
-                "ram flash non-ARM architectures",
-            )),
+            DebugSequence::Riscv(riscv_debug_sequence) => {
+                riscv_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
+            }
+            DebugSequence::Xtensa(xtensa_debug_sequence) => {
+                xtensa_debug_sequence.prepare_running_on_ram(self, vector_table_addr, core_id)
+            }
         }
     }
 

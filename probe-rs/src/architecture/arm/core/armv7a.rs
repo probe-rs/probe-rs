@@ -52,14 +52,14 @@ struct BankedAccess<'a> {
 
 impl<'a> BankedAccess<'a> {
     #[expect(dead_code)]
-    fn set_dtrtx(&mut self, value: u32) -> Result<(), ArmError> {
+    fn set_dtrrx(&mut self, value: u32) -> Result<(), ArmError> {
         self.interface
-            .write_raw_ap_register(&self.ap, self.dtrtx, value)
+            .write_raw_ap_register(&self.ap, self.dtrrx, value)
     }
 
-    fn set_dtrtx_repeated(&mut self, values: &[u32]) -> Result<(), ArmError> {
+    fn set_dtrrx_repeated(&mut self, values: &[u32]) -> Result<(), ArmError> {
         self.interface
-            .write_raw_ap_register_repeated(&self.ap, self.dtrtx, values)
+            .write_raw_ap_register_repeated(&self.ap, self.dtrrx, values)
     }
 
     fn dscr(&mut self) -> Result<Dbgdscr, ArmError> {
@@ -78,13 +78,13 @@ impl<'a> BankedAccess<'a> {
             .write_raw_ap_register(&self.ap, self.itr, value)
     }
 
-    fn dtrrx(&mut self) -> Result<u32, ArmError> {
-        self.interface.read_raw_ap_register(&self.ap, self.dtrrx)
+    fn dtrtx(&mut self) -> Result<u32, ArmError> {
+        self.interface.read_raw_ap_register(&self.ap, self.dtrtx)
     }
 
-    fn dtrrx_repeated(&mut self, buf: &mut [u32]) -> Result<(), ArmError> {
+    fn dtrtx_repeated(&mut self, buf: &mut [u32]) -> Result<(), ArmError> {
         self.interface
-            .read_raw_ap_register_repeated(&self.ap, self.dtrrx, buf)?;
+            .read_raw_ap_register_repeated(&self.ap, self.dtrtx, buf)?;
         Ok(())
     }
 
@@ -93,8 +93,8 @@ impl<'a> BankedAccess<'a> {
     /// section C8.2.2.
     ///
     /// In this mode, writing to the ITR register does not immediately
-    /// trigger the instruction. Instead, it waits for a read from DTRRX
-    /// or a write to DTRTX. By placing an instruction with address-increment
+    /// trigger the instruction. Instead, it waits for a read from DTRTX
+    /// or a write to DTRRX. By placing an instruction with address-increment
     /// in the pipeline this way, a load or store can be retriggered
     /// repeatedly to quickly stream memory.
     fn with_dcc_fast_mode<R>(
@@ -415,7 +415,7 @@ impl<'probe> Armv7a<'probe> {
     /// into the banked register window. This will allow us to directly access
     /// these four values.
     fn banked_access(&mut self) -> Result<BankedAccess<'_>, Error> {
-        let address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
+        let address = Dbgdtrrx::get_mmio_address_from_base(self.base_address)?;
         let ap = self.memory.fully_qualified_address();
         let is_64_bit = self.is_64_bit();
         let interface = self.memory.get_arm_debug_interface()?;
@@ -428,10 +428,10 @@ impl<'probe> Armv7a<'probe> {
         Ok(BankedAccess {
             interface,
             ap,
-            dtrtx: BD0::ADDRESS,
+            dtrrx: BD0::ADDRESS,
             itr: BD1::ADDRESS,
             dscr: BD2::ADDRESS,
-            dtrrx: BD3::ADDRESS,
+            dtrtx: BD3::ADDRESS,
         })
     }
 }
@@ -497,7 +497,10 @@ pub(crate) fn wait_for_core_halted(
 }
 
 /// Return whether or not the core is halted.
-fn core_halted(memory: &mut dyn ArmMemoryInterface, base_address: u64) -> Result<bool, ArmError> {
+pub(crate) fn core_halted(
+    memory: &mut dyn ArmMemoryInterface,
+    base_address: u64,
+) -> Result<bool, ArmError> {
     let address = Dbgdscr::get_mmio_address_from_base(base_address)?;
     let dbgdscr = Dbgdscr(memory.read_word_32(address)?);
 
@@ -1308,13 +1311,13 @@ impl MemoryInterface for Armv7a<'_> {
                         banked.set_itr(build_ldc(14, 5, 0, 4))?;
 
                         // Throw away the first value, which is from a previous operation
-                        let _ = banked.dtrrx()?;
+                        let _ = banked.dtrtx()?;
 
                         // Continually write the tx register, which will auto-increment.
                         // Because reads lag by one instruction, we need to break before
                         // we read the final value. If we don't we will end up reading one
                         // extra word past the buffer, which may end up outside valid RAM.
-                        banked.dtrrx_repeated(&mut data[0..count - 1])?;
+                        banked.dtrtx_repeated(&mut data[0..count - 1])?;
                         Ok(())
                     })
                     .is_ok()
@@ -1322,7 +1325,7 @@ impl MemoryInterface for Armv7a<'_> {
                     // Grab the last value that we skipped during the main sequence.
                     // Ignore any errors here since they will generate an abort that
                     // will be caught below.
-                    if let Ok(last) = banked.dtrrx()
+                    if let Ok(last) = banked.dtrtx()
                         && let Some(v) = data.last_mut()
                     {
                         *v = last;
@@ -1501,7 +1504,7 @@ impl MemoryInterface for Armv7a<'_> {
                         banked.set_itr(build_stc(14, 5, 0, 4))?;
 
                         // Continually write the tx register, which will auto-increment
-                        banked.set_dtrtx_repeated(data)?;
+                        banked.set_dtrrx_repeated(data)?;
                         Ok(())
                     })
                     .ok();

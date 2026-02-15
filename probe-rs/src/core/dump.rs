@@ -86,7 +86,7 @@ impl Processor for XtensaProcessor {
                 match idx {
                     // First 8 registers are special registers.
                     0 => (idx, RegisterId::from(XtensaRegister::CurrentPc)),
-                    1 => (idx, RegisterId::from(SpecialRegister::Ps)),
+                    1 => (idx, RegisterId::from(XtensaRegister::CurrentPs)),
                     2 => (idx, RegisterId::from(SpecialRegister::Lbeg)),
                     3 => (idx, RegisterId::from(SpecialRegister::Lend)),
                     4 => (idx, RegisterId::from(SpecialRegister::Lcount)),

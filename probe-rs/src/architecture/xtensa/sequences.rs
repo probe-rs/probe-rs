@@ -1,3 +1,5 @@
+//! Debug sequences to operate special requirements Xtensa targets.
+
 use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use crate::architecture::xtensa::Xtensa;
@@ -42,6 +44,21 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         details: UnknownCommandDetails,
     ) -> Result<Option<SemihostingCommand>, crate::Error> {
         Ok(Some(SemihostingCommand::Unknown(details)))
+    }
+
+    /// This ARM sequence is called if an image was flashed to RAM directly. It should perform the
+    /// necessary preparation to run that image on the core with the ID passed to the function.
+    ///
+    /// The core should already be `reset_and_halt`ed right before this call.
+    fn prepare_running_on_ram(
+        &self,
+        _session: &mut crate::Session,
+        _vector_table_addr: u64,
+        _core_id: usize,
+    ) -> Result<(), crate::Error> {
+        Err(crate::Error::NotImplemented(
+            "RAM running on Xtensa targets",
+        ))
     }
 }
 

@@ -519,6 +519,8 @@ fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    probe_rs_espressif::register_plugin();
+
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.
     // FIXME: we should probably let the user know if we can't determine the offset. However,

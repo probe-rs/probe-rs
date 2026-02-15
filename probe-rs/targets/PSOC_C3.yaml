@@ -48,7 +48,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -109,7 +109,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -170,7 +170,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -231,7 +231,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -292,7 +292,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -353,7 +353,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -414,7 +414,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -475,7 +475,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -536,7 +536,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -597,7 +597,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -658,7 +658,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -719,7 +719,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -780,7 +780,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -841,7 +841,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -902,7 +902,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -963,7 +963,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1024,7 +1024,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1085,7 +1085,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1146,7 +1146,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1207,7 +1207,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1268,7 +1268,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1329,7 +1329,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1390,7 +1390,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1451,7 +1451,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1512,7 +1512,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1573,7 +1573,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1634,7 +1634,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1695,7 +1695,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1756,7 +1756,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1817,7 +1817,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1878,7 +1878,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -1939,7 +1939,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -2000,7 +2000,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1
@@ -2061,7 +2061,7 @@ variants:
   - name: cortex-m33
     type: armv8m
     core_access_options: !Arm
-      ap: !v2 4026540032
+      ap: !v2 0xf0002000
   memory_map:
   - !Nvm
     name: IROM1

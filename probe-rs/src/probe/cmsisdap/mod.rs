@@ -568,11 +568,11 @@ impl CmsisDap {
                         count,
                         batch.len()
                     );
-                    return Err(ArmError::Other(format!(
+                    return Err(DebugProbeError::Other(format!(
                         "Possible error in CMSIS-DAP probe: Only {}/{} transfers were executed, but no error was reported.",
                         count,
                         batch.len()
-                    )));
+                    )).into());
                 }
 
                 tracing::trace!("Last transfer status: ACK");
@@ -806,6 +806,94 @@ impl CmsisDap {
         self.connected = true;
 
         Ok(())
+    }
+
+    fn handle_transfer_block_response(
+        &mut self,
+        address: RegisterAddress,
+        resp: &TransferBlockResponse,
+        executed_transfers: usize,
+        total_transfers: usize,
+    ) -> Result<(), ArmError> {
+        if resp.transfer_response.protocol_error {
+            tracing::warn!(
+                "Protocol error in block read from register {:?}, read {}/{}",
+                address,
+                executed_transfers,
+                total_transfers,
+            );
+
+            // TODO: Indicate which transfer failed
+            return Err(
+                DapError::Protocol(self.protocol.expect("Protocol has been selected")).into(),
+            );
+        }
+
+        match resp.transfer_response.ack {
+            // TODO: Handle this the same way as process_batch
+            Ack::Ok => Ok(()),
+            Ack::Fault => {
+                // TODO: Perform error handling -> clear fault, etc.
+                //
+                // TODO: Properly track what exactly failed
+                tracing::debug!(
+                    "FAULT response in block read from register {:?}, read {}/{}",
+                    address,
+                    executed_transfers,
+                    total_transfers,
+                );
+
+                // To avoid a potential endless recursion,
+                // call a separate function to read the ctrl register,
+                // which doesn't use the batch API.
+                let ctrl = self.read_ctrl_register()?;
+
+                tracing::debug!("Ctrl/Stat register value is: {:?}", ctrl);
+
+                if ctrl.sticky_err() {
+                    // Clear sticky error flags.
+                    self.write_abort({
+                        let mut abort = Abort(0);
+                        abort.set_stkerrclr(ctrl.sticky_err());
+                        abort
+                    })?;
+                }
+
+                Err(DapError::FaultResponse.into())
+            }
+            Ack::NoAck => {
+                // TODO: Perform error handling -> clear fault, etc.
+                //
+                // TODO: Properly track what exactly failed
+                tracing::debug!(
+                    "NACK response in block read from register {:?}, read {}/{}",
+                    address,
+                    executed_transfers,
+                    total_transfers
+                );
+                // TODO: Try a reset?
+                Err(DapError::NoAcknowledge.into())
+            }
+            Ack::Wait => {
+                // TODO: Perform error handling -> clear fault, etc.
+                //
+                // TODO: Properly track what exactly failed
+                tracing::debug!(
+                    "WAIT response in block read from register {:?}, read {}/{}",
+                    address,
+                    executed_transfers,
+                    total_transfers
+                );
+
+                self.write_abort({
+                    let mut abort = Abort(0);
+                    abort.set_dapabort(true);
+                    abort
+                })?;
+
+                Err(DapError::WaitResponse.into())
+            }
+        }
     }
 }
 
@@ -1044,6 +1132,8 @@ impl RawDapAccess for CmsisDap {
 
         let data_chunk_len = max_packet_size_words as usize;
 
+        let total_writes = values.len();
+
         for (i, chunk) in values.chunks(data_chunk_len).enumerate() {
             let mut request = TransferBlockRequest::write_request(address, Vec::from(chunk));
             request.dap_index = self.jtag_state.chain_params.index as u8;
@@ -1053,16 +1143,9 @@ impl RawDapAccess for CmsisDap {
             let resp: TransferBlockResponse = commands::send_command(&mut self.device, &request)
                 .map_err(DebugProbeError::from)?;
 
-            if resp.transfer_response != 1 {
-                return Err(DebugProbeError::from(CmsisDapError::ErrorResponse(
-                    RequestError::BlockTransfer {
-                        dap_index: request.dap_index,
-                        transfer_count: request.transfer_count,
-                        transfer_request: request.transfer_request,
-                    },
-                ))
-                .into());
-            }
+            let executed_writes = i * data_chunk_len + usize::from(resp.transfer_count);
+
+            self.handle_transfer_block_response(address, &resp, executed_writes, total_writes)?;
         }
 
         Ok(())
@@ -1089,6 +1172,8 @@ impl RawDapAccess for CmsisDap {
 
         let data_chunk_len = max_packet_size_words as usize;
 
+        let total_num_reads = values.len();
+
         for (i, chunk) in values.chunks_mut(data_chunk_len).enumerate() {
             let mut request = TransferBlockRequest::read_request(address, chunk.len() as u16);
             request.dap_index = self.jtag_state.chain_params.index as u8;
@@ -1098,16 +1183,9 @@ impl RawDapAccess for CmsisDap {
             let resp: TransferBlockResponse = commands::send_command(&mut self.device, &request)
                 .map_err(DebugProbeError::from)?;
 
-            if resp.transfer_response != 1 {
-                return Err(DebugProbeError::from(CmsisDapError::ErrorResponse(
-                    RequestError::BlockTransfer {
-                        dap_index: request.dap_index,
-                        transfer_count: request.transfer_count,
-                        transfer_request: request.transfer_request,
-                    },
-                ))
-                .into());
-            }
+            let executed_reads = i * data_chunk_len + usize::from(resp.transfer_count);
+
+            self.handle_transfer_block_response(address, &resp, executed_reads, total_num_reads)?;
 
             chunk.clone_from_slice(&resp.transfer_data[..]);
         }

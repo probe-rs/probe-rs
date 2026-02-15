@@ -5,9 +5,9 @@
 //! specification v0.13.2 .
 
 use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+use crate::probe::queue::DeferredResultIndex;
 use crate::{
     Error as ProbeRsError, architecture::riscv::*, config::Target, memory_mapped_bitfield_register,
-    probe::DeferredResultIndex,
 };
 use std::any::Any;
 use std::collections::HashMap;
@@ -886,7 +886,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    pub(crate) fn halted_access<R>(
+    /// Executes an operation while the core is halted.
+    pub fn halted_access<R>(
         &mut self,
         op: impl FnOnce(&mut Self) -> Result<R, RiscvError>,
     ) -> Result<R, RiscvError> {

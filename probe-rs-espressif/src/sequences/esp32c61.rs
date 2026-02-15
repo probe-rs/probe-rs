@@ -2,8 +2,9 @@
 
 use std::{sync::Arc, time::Duration};
 
-use crate::{
-    MemoryInterface,
+use crate::sequences::esp::EspBreakpointHandler;
+use probe_rs::{
+    Error, MemoryInterface,
     architecture::riscv::{
         Dmcontrol, Riscv32,
         communication_interface::{
@@ -13,7 +14,6 @@ use crate::{
         sequences::RiscvDebugSequence,
     },
     semihosting::{SemihostingCommand, UnknownCommandDetails},
-    vendor::espressif::sequences::esp::EspBreakpointHandler,
 };
 
 /// The debug sequence implementation for the ESP32C61.
@@ -26,10 +26,7 @@ impl ESP32C61 {
         Arc::new(Self {})
     }
 
-    fn disable_wdts(
-        &self,
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<(), crate::Error> {
+    fn disable_wdts(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
         tracing::info!("Disabling ESP32-C61 watchdogs...");
 
         // tg0 wdg
@@ -60,7 +57,7 @@ impl ESP32C61 {
     fn configure_memory_access(
         &self,
         interface: &mut RiscvCommunicationInterface<'_>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         let memory_access_config = interface.memory_access_config();
 
         // Access peripheral registers via program buffer
@@ -93,7 +90,7 @@ impl ESP32C61 {
 }
 
 impl RiscvDebugSequence for ESP32C61 {
-    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
         self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
@@ -104,7 +101,7 @@ impl RiscvDebugSequence for ESP32C61 {
         &self,
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         interface.halt(timeout)?;
 
         // System reset, ported from OpenOCD.
@@ -137,6 +134,12 @@ impl RiscvDebugSequence for ESP32C61 {
         interface.enter_debug_mode()?;
         self.on_connect(interface)?;
 
+        // The ROM code fails to boot if UART0 SCLK is not enabled
+        const PCR_BASE: u64 = 0x6009_6000;
+        const UART0_SCLK_CONF_OFFSET: u64 = 0x04;
+        let reg = interface.read_word_32(PCR_BASE + UART0_SCLK_CONF_OFFSET)?;
+        interface.write_word_32(PCR_BASE + UART0_SCLK_CONF_OFFSET, reg | (1u32 << 22))?;
+
         interface.reset_hart_and_halt(timeout)?;
 
         Ok(())
@@ -146,7 +149,7 @@ impl RiscvDebugSequence for ESP32C61 {
         &self,
         interface: &mut Riscv32,
         details: UnknownCommandDetails,
-    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+    ) -> Result<Option<SemihostingCommand>, Error> {
         EspBreakpointHandler::handle_riscv_idf_semihosting(interface, details)
     }
 }

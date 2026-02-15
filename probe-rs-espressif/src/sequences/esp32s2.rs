@@ -5,8 +5,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{
-    MemoryInterface,
+use crate::sequences::esp::EspBreakpointHandler;
+use probe_rs::{
+    Error, MemoryInterface,
     architecture::xtensa::{
         Xtensa,
         communication_interface::{
@@ -16,7 +17,6 @@ use crate::{
         xdm::{self, DebugControlBits, DebugRegisterError},
     },
     semihosting::{SemihostingCommand, UnknownCommandDetails},
-    vendor::espressif::sequences::esp::EspBreakpointHandler,
 };
 
 /// The debug sequence implementation for the ESP32-S2.
@@ -59,7 +59,7 @@ impl ESP32S2 {
         addr: u64,
         mask: u32,
         value: u32,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         let mut reg = core.read_word_32(addr)?;
         reg &= !mask;
         reg |= value;
@@ -67,11 +67,7 @@ impl ESP32S2 {
         Ok(())
     }
 
-    fn set_stall(
-        &self,
-        stall: bool,
-        core: &mut XtensaCommunicationInterface,
-    ) -> Result<(), crate::Error> {
+    fn set_stall(&self, stall: bool, core: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         const STALL_PROCPU_C1_M: u32 = 0x3F << 26;
         const STALL_PROCPU_C1: u32 = 0x21 << 26;
 
@@ -93,21 +89,15 @@ impl ESP32S2 {
         Ok(())
     }
 
-    pub(crate) fn stall(
-        &self,
-        core: &mut XtensaCommunicationInterface,
-    ) -> Result<(), crate::Error> {
+    pub(crate) fn stall(&self, core: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         self.set_stall(true, core)
     }
 
-    pub(crate) fn unstall(
-        &self,
-        core: &mut XtensaCommunicationInterface,
-    ) -> Result<(), crate::Error> {
+    pub(crate) fn unstall(&self, core: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         self.set_stall(false, core)
     }
 
-    fn disable_wdts(&self, core: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+    fn disable_wdts(&self, core: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         tracing::info!("Disabling ESP32-S2 watchdogs...");
 
         // disable super wdt
@@ -137,7 +127,7 @@ impl ESP32S2 {
     fn configure_memory_access(
         &self,
         interface: &mut XtensaCommunicationInterface<'_>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         // Internal Data Bus
         interface.core_properties().memory_ranges.insert(
             0x3FF9_E000..0x4000_0000,
@@ -163,14 +153,14 @@ impl ESP32S2 {
 }
 
 impl XtensaDebugSequence for ESP32S2 {
-    fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
         Ok(())
     }
 
-    fn on_halt(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_halt(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         self.disable_wdts(interface)
     }
 
@@ -178,7 +168,7 @@ impl XtensaDebugSequence for ESP32S2 {
         &self,
         core: &mut XtensaCommunicationInterface,
         timeout: Duration,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         const CLK_CONF_DEF: u32 = 0x1583218;
 
         const SYS_RESET: u32 = 1 << 31;
@@ -255,7 +245,7 @@ impl XtensaDebugSequence for ESP32S2 {
         &self,
         interface: &mut Xtensa,
         details: UnknownCommandDetails,
-    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+    ) -> Result<Option<SemihostingCommand>, Error> {
         EspBreakpointHandler::handle_xtensa_idf_semihosting(interface, details)
     }
 }

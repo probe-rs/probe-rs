@@ -2,8 +2,9 @@
 
 use std::{sync::Arc, time::Duration};
 
-use crate::{
-    MemoryInterface,
+use crate::sequences::esp::EspBreakpointHandler;
+use probe_rs::{
+    Error, MemoryInterface,
     architecture::riscv::{
         Dmcontrol, Dmstatus, Riscv32,
         communication_interface::{
@@ -12,7 +13,6 @@ use crate::{
         sequences::RiscvDebugSequence,
     },
     semihosting::{SemihostingCommand, UnknownCommandDetails},
-    vendor::espressif::sequences::esp::EspBreakpointHandler,
 };
 
 /// The debug sequence implementation for the ESP32C2.
@@ -25,10 +25,7 @@ impl ESP32C2 {
         Arc::new(Self {})
     }
 
-    fn disable_wdts(
-        &self,
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<(), crate::Error> {
+    fn disable_wdts(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
         tracing::info!("Disabling ESP32-C2 watchdogs...");
 
         // disable super wdt
@@ -84,14 +81,14 @@ impl ESP32C2 {
 }
 
 impl RiscvDebugSequence for ESP32C2 {
-    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
         self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
 
         Ok(())
     }
 
-    fn on_halt(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_halt(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), Error> {
         self.disable_wdts(interface)
     }
 
@@ -99,7 +96,7 @@ impl RiscvDebugSequence for ESP32C2 {
         &self,
         interface: &mut RiscvCommunicationInterface,
         timeout: Duration,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), Error> {
         interface.halt(timeout)?;
 
         // Reset all peripherals except for the RTC block.
@@ -136,7 +133,7 @@ impl RiscvDebugSequence for ESP32C2 {
         &self,
         interface: &mut Riscv32,
         details: UnknownCommandDetails,
-    ) -> Result<Option<SemihostingCommand>, crate::Error> {
+    ) -> Result<Option<SemihostingCommand>, Error> {
         EspBreakpointHandler::handle_riscv_idf_semihosting(interface, details)
     }
 }

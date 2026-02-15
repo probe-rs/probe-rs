@@ -22,7 +22,6 @@ use crate::{
 };
 
 pub mod amd;
-pub mod espressif;
 pub mod holtek;
 pub mod infineon;
 pub mod microchip;
@@ -72,35 +71,34 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
     }
 }
 
-static VENDORS: LazyLock<RwLock<Vec<Box<dyn Vendor>>>> = LazyLock::new(|| {
-    let vendors: Vec<Box<dyn Vendor>> = vec![
-        Box::new(amd::Amd),
-        Box::new(microchip::Microchip),
-        Box::new(infineon::Infineon),
-        Box::new(holtek::Holtek),
-        Box::new(silabs::SiliconLabs),
-        Box::new(ti::TexasInstruments),
-        Box::new(espressif::Espressif),
-        Box::new(nordicsemi::NordicSemi),
-        Box::new(nxp::Nxp),
-        Box::new(raspberrypi::RaspberryPi),
-        Box::new(st::St),
-        Box::new(vorago::Vorago),
-        Box::new(sifli::Sifli),
-        Box::new(renesas::Renesas),
+static VENDORS: LazyLock<RwLock<Vec<&'static dyn Vendor>>> = LazyLock::new(|| {
+    let vendors: Vec<&'static dyn Vendor> = vec![
+        &amd::Amd,
+        &microchip::Microchip,
+        &infineon::Infineon,
+        &holtek::Holtek,
+        &silabs::SiliconLabs,
+        &ti::TexasInstruments,
+        &nordicsemi::NordicSemi,
+        &nxp::Nxp,
+        &raspberrypi::RaspberryPi,
+        &st::St,
+        &vorago::Vorago,
+        &sifli::Sifli,
+        &renesas::Renesas,
     ];
 
     RwLock::new(vendors)
 });
 
 /// Registers a new vendor.
-pub fn register_vendor(vendor: Box<dyn Vendor>) {
+pub(crate) fn register_vendor(vendor: &'static dyn Vendor) {
     // Order matters. Prepend to allow users to override the default vendors.
     VENDORS.write().insert(0, vendor);
 }
 
 /// Returns a readable view of all known vendors.
-fn vendors<'a>() -> impl Deref<Target = [Box<dyn Vendor>]> + 'a {
+fn vendors<'a>() -> impl Deref<Target = [&'a dyn Vendor]> {
     RwLockReadGuard::map(VENDORS.read_recursive(), |v| v.as_slice())
 }
 

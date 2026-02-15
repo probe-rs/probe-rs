@@ -16,7 +16,8 @@ rust-version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.31.0" }
+probe-rs.workspace = true
+probe-rs-espressif.workspace = true
 probe-rs-target = { path = "../probe-rs-target", version = "0.31.0", default-features = false }
 cmsis-pack = "0.7.1"
 jep106 = "0.3.0"
@@ -30,7 +31,7 @@ goblin = { version = "0.10.0", default-features = false, features = [
 scroll = "0.13.0"
 serde_yaml = "0.9"
 log = "0.4.21"
-zip = { version = "6.0.0", default-features = false, features = [
+zip = { version = "7.0.0", default-features = false, features = [
     "deflate64",
     "deflate",
     "lzma",
@@ -40,10 +41,7 @@ zip = { version = "6.0.0", default-features = false, features = [
 clap = { version = "4.5", features = ["derive"] }
 colored = "3"
 anyhow.workspace = true
-reqwest = { version = "0.12.4", features = [
-    "json",
-    "rustls-tls",
-], default-features = false }
+reqwest = { version = "0.13.0", features = [ "json" ], default-features = false }
 futures = "0.3.30"
 tokio = { version = "1.37.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.18", features = [
@@ -52,7 +50,6 @@ tracing-subscriber = { version = "0.3.18", features = [
 ] }
 xshell = { version = "0.2", default-features = false }
 parse_int = "0.9"
-zerocopy = { version = "0.8.0", features = ["derive"] }
 
 [dev-dependencies]
 tempfile = "3.0"

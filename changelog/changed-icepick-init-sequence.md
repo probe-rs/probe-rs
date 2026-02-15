@@ -1,0 +1,1 @@
+Changed the ICEPICK initialization sequence to print out a diagnostic scan

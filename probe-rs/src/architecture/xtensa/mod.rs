@@ -27,12 +27,12 @@ use crate::{
 };
 
 pub(crate) mod arch;
-pub(crate) mod xdm;
+pub mod xdm;
 
 pub mod communication_interface;
 pub(crate) mod register_cache;
 pub mod registers;
-pub(crate) mod sequences;
+pub mod sequences;
 
 /// Xtensa core state.
 #[derive(Debug)]
@@ -103,10 +103,6 @@ impl<'probe> Xtensa<'probe> {
         this.on_attach()?;
 
         Ok(this)
-    }
-
-    fn clear_cache(&mut self) {
-        self.interface.clear_register_cache();
     }
 
     fn on_attach(&mut self) -> Result<(), Error> {
@@ -245,7 +241,9 @@ impl<'probe> Xtensa<'probe> {
 
     fn on_halted(&mut self) -> Result<(), Error> {
         self.state.pc_written = false;
-        self.clear_cache();
+
+        // NB: do not clear the register cache here. We clear it before resuming,
+        // and clearing here would interfere with instruction stepping.
 
         let status = self.status()?;
         tracing::debug!("Core halted: {:#?}", status);
@@ -403,6 +401,7 @@ impl CoreInterface for Xtensa<'_> {
         self.state.semihosting_command = None;
         self.sequence
             .reset_system_and_halt(&mut self.interface, timeout)?;
+
         self.on_halted()?;
 
         // TODO: this may return that the core has gone away, which is fine but currently unexpected
@@ -810,21 +809,6 @@ impl<'a> RegisterWindow<'a> {
                 let sp = interface.read_word_32(self.read_register(CpuRegister::A1) as u64 - 12)?;
 
                 interface.write_32(self.read_register(CpuRegister::A9) as u64 - 16, &a0_a3)?;
-
-                // Enable check at INFO level to avoid spamming the logs.
-                if tracing::enabled!(tracing::Level::INFO) {
-                    // In some cases (spilling on each halt),
-                    // this readback comes back as 0 for some reason. This assertion is temporarily
-                    // meant to help me debug this.
-                    let written =
-                        interface.read_word_32(self.read_register(CpuRegister::A9) as u64 - 12)?;
-                    assert!(
-                        written == self.read_register(CpuRegister::A1),
-                        "Failed to spill A1. Expected {:#x}, got {:#x}",
-                        self.read_register(CpuRegister::A1),
-                        written
-                    );
-                }
 
                 let regs = [
                     self.read_register(CpuRegister::A4),
