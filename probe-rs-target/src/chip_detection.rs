@@ -203,6 +203,7 @@ pub struct InfineonPsocSiidDetection {
 #[serde(deny_unknown_fields)]
 pub struct RenesasPnrDetection {
     /// Part number from `TARGETID`
+    #[serde(serialize_with = "hex_u_int")]
     pub target_id: u16,
 
     /// `true` if the part number is stored with the last character at the lowest address.
@@ -211,6 +212,7 @@ pub struct RenesasPnrDetection {
 
     /// Location of the first MCU part number register
     /// <https://en-support.renesas.com/knowledgeBase/21397541>
+    #[serde(serialize_with = "hex_u_int")]
     pub mcu_pn_base: u32,
 
     /// Chip part number

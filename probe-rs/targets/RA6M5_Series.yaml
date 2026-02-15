@@ -4,7 +4,7 @@ manufacturer:
   cc: 0x4
 chip_detection:
 - !RenesasPnr
-  target_id: 0x360 
+  target_id: 0x360
   mcu_pn_base: 0x010080f0
   variants:
     - R7FA6M5AH
