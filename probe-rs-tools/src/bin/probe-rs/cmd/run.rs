@@ -4,6 +4,7 @@ use crate::rpc::client::RpcClient;
 use crate::rpc::functions::monitor::MonitorMode;
 use crate::rpc::functions::rtt_client::ScanRegion;
 use crate::rpc::functions::test::{Test, TestDefinition};
+use crate::rpc::utils::run_loop::VectorCatchConfig;
 
 use crate::FormatOptions;
 use crate::util::cli::{self, rtt_client};
@@ -33,6 +34,14 @@ pub struct NormalRunOptions {
     /// Disable hardfault vector catch if its supported on the target.
     #[clap(long, help_heading = "RUN OPTIONS")]
     pub no_catch_hardfault: bool,
+    /// Disable SVC vector catch (halts on SVC exception).
+    /// Only applies to ARMv7-A/R cores.
+    #[clap(long, help_heading = "RUN OPTIONS")]
+    pub no_catch_svc: bool,
+    /// Disable HLT vector catch (halts on UNDEF exception for HLT instruction).
+    /// Only applies to ARMv7-A/R cores.
+    #[clap(long, help_heading = "RUN OPTIONS")]
+    pub no_catch_hlt: bool,
 }
 
 /// Options only used when in test run mode
@@ -291,8 +300,12 @@ impl Cmd {
                 Some(&self.path),
                 &self.monitor_options,
                 Some(rtt_client),
-                !self.run_options.no_catch_reset,
-                !self.run_options.no_catch_hardfault,
+                VectorCatchConfig {
+                    catch_hardfault: !self.run_options.no_catch_hardfault,
+                    catch_reset: !self.run_options.no_catch_reset,
+                    catch_svc: !self.run_options.no_catch_svc,
+                    catch_hlt: !self.run_options.no_catch_hlt,
+                },
             )
             .await
         }

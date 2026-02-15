@@ -24,6 +24,7 @@ use tokio_util::sync::CancellationToken;
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
 use crate::rpc::Key;
 use crate::rpc::functions::monitor::{ChannelInfo, MonitorExitReason};
+use crate::rpc::utils::run_loop::VectorCatchConfig;
 use crate::rpc::utils::semihosting::SemihostingOptions;
 use crate::{
     FormatOptions,
@@ -560,16 +561,17 @@ pub async fn monitor(
     path: Option<&Path>,
     monitor_options: &MonitoringOptions,
     mut rtt_client: Option<CliRttClient>,
-    catch_reset: bool,
-    catch_hardfault: bool,
+    vector_catch: VectorCatchConfig,
 ) -> anyhow::Result<()> {
     let semihosting_options = parse_semihosting_options(&monitor_options.semihosting_file)?;
     let mut target_output_files =
         connect_target_output_files(&monitor_options.target_output_file).await?;
 
     let options = MonitorOptions {
-        catch_reset,
-        catch_hardfault,
+        catch_reset: vector_catch.catch_reset,
+        catch_hardfault: vector_catch.catch_hardfault,
+        catch_svc: vector_catch.catch_svc,
+        catch_hlt: vector_catch.catch_hlt,
         rtt_client: rtt_client.as_ref().map(|client| client.handle()),
         semihosting_options,
     };
