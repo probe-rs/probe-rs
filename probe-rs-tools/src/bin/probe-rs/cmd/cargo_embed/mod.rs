@@ -424,6 +424,15 @@ async fn run_rttui_app(
 ) -> anyhow::Result<()> {
     let core_id = client.core_id();
 
+    let memory_port_index = {
+        let session_handle = session.lock();
+        if !session_handle.target().memory_ports.is_empty() {
+            Some(0)
+        } else {
+            None
+        }
+    };
+
     if should_resume_core(&config) {
         let mut session_handle = session.lock();
         let mut core = session_handle.core(core_id)?;
@@ -436,11 +445,19 @@ async fn run_rttui_app(
     let start = Instant::now();
     let rtt = loop {
         let mut session_handle = session.lock();
-        let mut core = session_handle.core(core_id)?;
+        let attached = if let Some(idx) = memory_port_index {
+            let mut mem = session_handle.memory_access_port(idx)?;
+            client.try_attach(&mut mem)
+        } else {
+            let mut core = session_handle.core(core_id)?;
+            client.try_attach(&mut core)
+        };
 
-        if let Ok(true) = client.try_attach(&mut core) {
+        if let Ok(true) = attached {
             break client;
         }
+
+        drop(session_handle);
 
         if start.elapsed() > config.rtt.timeout {
             return Err(anyhow!("Failed to attach to RTT: Timeout"));
@@ -487,19 +504,27 @@ async fn run_rttui_app(
 
         {
             let mut session_handle = session.lock();
-            let mut core = session_handle.core(core_id)?;
-
-            if app.handle_event(&mut core) {
-                logging::println("Shutting down.");
-                break;
+            if let Some(idx) = memory_port_index {
+                let mut mem = session_handle.memory_access_port(idx)?;
+                if app.handle_event(&mut mem) {
+                    logging::println("Shutting down.");
+                    break;
+                }
+                app.poll_rtt(&mut mem).await?;
+            } else {
+                let mut core = session_handle.core(core_id)?;
+                if app.handle_event(&mut core) {
+                    logging::println("Shutting down.");
+                    break;
+                }
+                app.poll_rtt(&mut core).await?;
             }
-
-            app.poll_rtt(&mut core).await?;
         }
 
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
 
+    // Cleanup uses Core (core is about to stop anyway)
     let mut session_handle = session.lock();
     let mut core = session_handle.core(core_id)?;
     app.clean_up(&mut core)?;

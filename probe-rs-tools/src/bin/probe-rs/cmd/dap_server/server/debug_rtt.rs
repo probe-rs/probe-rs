@@ -7,7 +7,7 @@ use crate::{
     util::rtt::RttDecoder,
 };
 use anyhow::anyhow;
-use probe_rs::{Core, rtt};
+use probe_rs::rtt::{self, RttAccess};
 
 /// Manage the active RTT target for a specific SessionData, as well as provide methods to reliably move RTT from target, through the debug_adapter, to the client.
 pub struct RttConnection {
@@ -23,7 +23,7 @@ impl RttConnection {
     pub async fn process_rtt_data<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
-        target_core: &mut Core<'_>,
+        target_core: &mut impl RttAccess,
     ) -> bool {
         let mut at_least_one_channel_had_data = false;
         for debugger_rtt_channel in self.debugger_rtt_channels.iter_mut() {
@@ -35,7 +35,7 @@ impl RttConnection {
     }
 
     /// Clean up the RTT connection, restoring the state changes that we made.
-    pub fn clean_up(&mut self, target_core: &mut Core<'_>) -> Result<(), DebuggerError> {
+    pub fn clean_up(&mut self, target_core: &mut impl RttAccess) -> Result<(), DebuggerError> {
         self.client
             .clean_up(target_core)
             .map_err(|err| DebuggerError::Other(anyhow!(err)))?;
@@ -56,7 +56,7 @@ impl DebuggerRttChannel {
     /// Errors will be reported back to the `debug_adapter`, and the return `bool` value indicates whether there was available data that was processed.
     pub(crate) async fn poll_rtt_data<P: ProtocolAdapter>(
         &mut self,
-        core: &mut Core<'_>,
+        core: &mut impl RttAccess,
         debug_adapter: &mut DebugAdapter<P>,
         client: &mut RttClient,
     ) -> bool {

@@ -1,7 +1,6 @@
 use clap::ValueEnum;
 use postcard_schema::Schema;
-use probe_rs::rtt::{self, DownChannel, Error, Rtt, UpChannel};
-use probe_rs::{Core, MemoryInterface};
+use probe_rs::rtt::{self, DownChannel, Error, Rtt, RttAccess, UpChannel};
 use serde::{Deserialize, Serialize};
 
 pub(crate) mod client;
@@ -149,11 +148,11 @@ impl RttActiveUpChannel {
         }
     }
 
-    pub fn change_mode(&mut self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
+    pub fn change_mode(&mut self, rtt: &mut impl RttAccess, mode: ChannelMode) -> Result<(), Error> {
         if self.original_mode.is_none() {
-            self.original_mode = Some(self.up_channel.mode(core)?);
+            self.original_mode = Some(self.up_channel.mode(rtt)?);
         }
-        self.up_channel.set_mode(core, mode.into())
+        self.up_channel.set_mode(rtt, mode.into())
     }
 
     pub fn channel_name(&self) -> String {
@@ -174,8 +173,8 @@ impl RttActiveUpChannel {
     }
 
     /// Reads available channel data into the internal buffer.
-    pub fn poll(&mut self, core: &mut Core) -> Result<(), Error> {
-        self.bytes_buffered = self.up_channel.read(core, self.rtt_buffer.as_mut())?;
+    pub fn poll(&mut self, rtt: &mut impl RttAccess) -> Result<(), Error> {
+        self.bytes_buffered = self.up_channel.read(rtt, self.rtt_buffer.as_mut())?;
         Ok(())
     }
 
@@ -185,9 +184,9 @@ impl RttActiveUpChannel {
     }
 
     /// Clean up temporary changes made to the channel.
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub fn clean_up(&mut self, rtt: &mut impl RttAccess) -> Result<(), Error> {
         if let Some(mode) = self.original_mode.take() {
-            self.up_channel.set_mode(core, mode)?;
+            self.up_channel.set_mode(rtt, mode)?;
         }
         Ok(())
     }
@@ -220,8 +219,8 @@ impl RttActiveDownChannel {
         self.down_channel.number() as u32
     }
 
-    pub fn write(&mut self, core: &mut Core<'_>, data: impl AsRef<[u8]>) -> Result<(), Error> {
-        self.down_channel.write(core, data.as_ref()).map(|_| ())
+    pub fn write(&mut self, rtt: &mut impl RttAccess, data: impl AsRef<[u8]>) -> Result<(), Error> {
+        self.down_channel.write(rtt, data.as_ref()).map(|_| ())
     }
 }
 
@@ -260,10 +259,10 @@ impl RttConnection {
 
     /// Polls the RTT target on all channels and returns available data.
     /// An error on any channel will return an error instead of incomplete data.
-    pub fn poll_channel(&mut self, core: &mut Core, channel_idx: u32) -> Result<(), Error> {
+    pub fn poll_channel(&mut self, rtt: &mut impl RttAccess, channel_idx: u32) -> Result<(), Error> {
         let channel_idx = channel_idx as usize;
         if let Some(channel) = self.active_up_channels.get_mut(channel_idx) {
-            channel.poll(core)
+            channel.poll(rtt)
         } else {
             Err(Error::MissingChannel(channel_idx))
         }
@@ -281,30 +280,30 @@ impl RttConnection {
     /// Send data to a down channel.
     pub fn write_down_channel(
         &mut self,
-        core: &mut Core,
+        rtt: &mut impl RttAccess,
         channel_idx: u32,
         data: impl AsRef<[u8]>,
     ) -> Result<(), Error> {
         let channel_idx = channel_idx as usize;
         if let Some(channel) = self.active_down_channels.get_mut(channel_idx) {
-            channel.write(core, data)
+            channel.write(rtt, data)
         } else {
             Err(Error::MissingChannel(channel_idx))
         }
     }
 
     /// Clean up temporary changes made to the channels.
-    pub fn clean_up(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub fn clean_up(&mut self, rtt: &mut impl RttAccess) -> Result<(), Error> {
         for channel in self.active_up_channels.iter_mut() {
-            channel.clean_up(core)?;
+            channel.clean_up(rtt)?;
         }
         Ok(())
     }
 
     /// Overwrites the control block with zeros. This is useful after resets.
-    pub fn clear_control_block(&mut self, core: &mut Core) -> Result<(), Error> {
+    pub fn clear_control_block(&mut self, rtt: &mut impl RttAccess) -> Result<(), Error> {
         let zeros = vec![0; Rtt::control_block_size()];
-        core.write(self.control_block_addr, &zeros)?;
+        rtt.write(self.control_block_addr, &zeros)?;
         self.active_down_channels.clear();
         self.active_up_channels.clear();
         Ok(())

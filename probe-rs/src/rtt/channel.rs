@@ -1,6 +1,6 @@
 use crate::memory::{Operation, OperationKind};
 use crate::rtt::{Error, RttAccess};
-use crate::{Core, MemoryInterface};
+use crate::MemoryInterface;
 use probe_rs_target::RegionMergeIterator;
 use std::cmp::min;
 use std::ffi::CStr;
@@ -258,12 +258,12 @@ impl Channel {
     /// Changes the channel mode on the target to the specified mode.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
+    pub fn set_mode(&self, rtt_access: &mut impl RttAccess, mode: ChannelMode) -> Result<(), Error> {
         tracing::debug!("Setting RTT channel {} mode to {:?}", self.number, mode);
-        let flags = self.info.read_flags(core, self.metadata_ptr)?;
+        let flags = self.info.read_flags(rtt_access, self.metadata_ptr)?;
 
         let new_flags = ChannelMode::set(mode, flags);
-        self.info.write_flags(core, self.metadata_ptr, new_flags)?;
+        self.info.write_flags(rtt_access, self.metadata_ptr, new_flags)?;
 
         Ok(())
     }
@@ -351,8 +351,8 @@ impl UpChannel {
     /// Changes the channel mode on the target to the specified mode.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
-        self.0.set_mode(core, mode)
+    pub fn set_mode(&self, rtt_access: &mut impl RttAccess, mode: ChannelMode) -> Result<(), Error> {
+        self.0.set_mode(rtt_access, mode)
     }
 
     fn read_core(

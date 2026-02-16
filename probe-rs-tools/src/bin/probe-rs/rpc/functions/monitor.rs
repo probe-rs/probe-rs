@@ -17,7 +17,7 @@ use crate::{
 use anyhow::Context;
 use postcard_rpc::{header::VarHeader, server::Sender};
 use postcard_schema::Schema;
-use probe_rs::{BreakpointCause, Core, HaltReason, Session, semihosting::SemihostingCommand};
+use probe_rs::{BreakpointCause, Core, HaltReason, Session, rtt::RttAccess, semihosting::SemihostingCommand};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{self, error::SendError};
 use tokio_util::sync::CancellationToken;
@@ -196,9 +196,19 @@ fn monitor_impl(
         .map(|rtt_client| ctx.object_mut_blocking(rtt_client).core_id())
         .unwrap_or(0);
 
+    let memory_port_index = {
+        let session = shared_session.session_blocking();
+        if !session.target().memory_ports.is_empty() {
+            Some(0)
+        } else {
+            None
+        }
+    };
+
     let mut run_loop = RunLoop {
         core_id,
         cancellation_token: ctx.cancellation_token(),
+        memory_port_index,
     };
 
     {
@@ -254,9 +264,9 @@ where
         Ok(())
     }
 
-    fn poll(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> anyhow::Result<Duration> {
+    fn poll<R: RttAccess>(&mut self, objs: &ObjectStorage, rtt: &mut R) -> anyhow::Result<Duration> {
         let mut rtt_client = objs.object_mut_blocking(self.rtt_client);
-        if !rtt_client.is_attached() && matches!(rtt_client.try_attach(core), Ok(true)) {
+        if !rtt_client.is_attached() && matches!(rtt_client.try_attach(rtt), Ok(true)) {
             tracing::debug!("Attached to RTT");
             let up_channels = rtt_client
                 .up_channels()
@@ -283,7 +293,7 @@ where
 
         let mut next_poll = Duration::from_millis(100);
         for channel in 0..rtt_client.up_channels().len() {
-            let bytes = rtt_client.poll_channel(core, channel as u32)?;
+            let bytes = rtt_client.poll_channel(rtt, channel as u32)?;
             if !bytes.is_empty() {
                 // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
                 // Once we receive new data, we poll continuously while we have anything to read.

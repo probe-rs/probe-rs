@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use probe_rs::{Core, rtt::Error};
+use probe_rs::rtt::{Error, RttAccess};
 
 use crate::{
     cmd::cargo_embed::rttui::tcp::TcpPublisher,
@@ -71,10 +71,10 @@ impl UpChannel {
 
     pub async fn poll_rtt(
         &mut self,
-        core: &mut Core<'_>,
+        rtt: &mut impl RttAccess,
         client: &mut RttClient,
     ) -> Result<(), Error> {
-        let bytes = client.poll_channel(core, self.channel_number)?;
+        let bytes = client.poll_channel(rtt, self.channel_number)?;
 
         self.data_format
             .process(bytes, &mut (&mut self.tcp_stream, &mut self.data))

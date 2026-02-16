@@ -5,6 +5,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
+use probe_rs::rtt::RttAccess;
 use probe_rs::{Core, Error, HaltReason, VectorCatchCondition};
 
 use crate::rpc::{ObjectStorage, SessionState};
@@ -12,6 +13,8 @@ use crate::rpc::{ObjectStorage, SessionState};
 pub struct RunLoop {
     pub core_id: usize,
     pub cancellation_token: CancellationToken,
+    /// If set, RTT polling uses a dedicated MEM-AP instead of the core.
+    pub memory_port_index: Option<usize>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -47,6 +50,12 @@ impl RunLoop {
     where
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
+        if let Some(idx) = self.memory_port_index {
+            tracing::debug!("RTT polling will use MemoryAccessPort index {idx} (non-halting)");
+        } else {
+            tracing::debug!("RTT polling will use Core (halted access / DCC)");
+        }
+
         // Prepare run loop
         {
             let mut session = shared_session.session_blocking();
@@ -134,37 +143,47 @@ impl RunLoop {
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
         let mut session = shared_session.session_blocking();
-        let mut core = session.core(self.core_id)?;
-
         let mut next_poll = Duration::from_millis(100);
-        let object_storage = shared_session.object_storage();
 
-        // check for halt first, poll rtt after.
-        // this is important so we do one last poll after halt, so we flush all messages
-        // the core printed before halting, such as a panic message.
-        let return_reason = match core.status()? {
-            probe_rs::CoreStatus::Halted(reason) => match predicate(reason, &mut core) {
-                Ok(Some(r)) => Some(Ok(ReturnReason::Predicate(r))),
-                Err(e) => Some(Err(e)),
-                Ok(None) => {
-                    // Re-poll immediately if the core was halted, to speed up reading strings
-                    // from semihosting. The core is not expected to be halted for other reasons.
-                    next_poll = Duration::ZERO;
-                    core.run()?;
+        // Phase 1: Core operations (status check, semihosting) - always uses Core
+        let return_reason = {
+            let mut core = session.core(self.core_id)?;
+
+            // check for halt first, poll rtt after.
+            // this is important so we do one last poll after halt, so we flush all messages
+            // the core printed before halting, such as a panic message.
+            match core.status()? {
+                probe_rs::CoreStatus::Halted(reason) => match predicate(reason, &mut core) {
+                    Ok(Some(r)) => Some(Ok(ReturnReason::Predicate(r))),
+                    Err(e) => Some(Err(e)),
+                    Ok(None) => {
+                        // Re-poll immediately if the core was halted, to speed up reading strings
+                        // from semihosting. The core is not expected to be halted for other reasons.
+                        next_poll = Duration::ZERO;
+                        core.run()?;
+                        None
+                    }
+                },
+                probe_rs::CoreStatus::Running
+                | probe_rs::CoreStatus::Sleeping
+                | probe_rs::CoreStatus::Unknown => {
+                    // Carry on
                     None
                 }
-            },
-            probe_rs::CoreStatus::Running
-            | probe_rs::CoreStatus::Sleeping
-            | probe_rs::CoreStatus::Unknown => {
-                // Carry on
-                None
-            }
 
-            probe_rs::CoreStatus::LockedUp => Some(Ok(ReturnReason::LockedUp)),
+                probe_rs::CoreStatus::LockedUp => Some(Ok(ReturnReason::LockedUp)),
+            }
         };
 
-        let poller_result = poller.poll(&object_storage, &mut core);
+        // Phase 2: RTT polling - uses MemoryAccessPort if available, otherwise Core
+        let object_storage = shared_session.object_storage();
+        let poller_result = if let Some(idx) = self.memory_port_index {
+            let mut mem = session.memory_access_port(idx)?;
+            poller.poll(&object_storage, &mut mem)
+        } else {
+            let mut core = session.core(self.core_id)?;
+            poller.poll(&object_storage, &mut core)
+        };
 
         if let Some(reason) = return_reason {
             return reason.map(ControlFlow::Break);
@@ -183,7 +202,7 @@ impl RunLoop {
 
 pub trait RunLoopPoller {
     fn start(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> Result<()>;
-    fn poll(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> Result<Duration>;
+    fn poll<R: RttAccess>(&mut self, objs: &ObjectStorage, rtt: &mut R) -> Result<Duration>;
     fn exit(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> Result<()>;
 }
 
@@ -194,7 +213,7 @@ impl RunLoopPoller for NoopPoller {
         Ok(())
     }
 
-    fn poll(&mut self, _: &ObjectStorage, _core: &mut Core<'_>) -> Result<Duration> {
+    fn poll<R: RttAccess>(&mut self, _: &ObjectStorage, _rtt: &mut R) -> Result<Duration> {
         Ok(Duration::from_secs(u64::MAX))
     }
 
@@ -215,11 +234,11 @@ where
         }
     }
 
-    fn poll(&mut self, objs: &ObjectStorage, core: &mut Core<'_>) -> Result<Duration> {
+    fn poll<R: RttAccess>(&mut self, objs: &ObjectStorage, rtt: &mut R) -> Result<Duration> {
         if let Some(poller) = self {
-            poller.poll(objs, core)
+            poller.poll(objs, rtt)
         } else {
-            NoopPoller.poll(objs, core)
+            NoopPoller.poll(objs, rtt)
         }
     }
 

@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, anyhow};
-use probe_rs::Core;
+use probe_rs::rtt::RttAccess;
 use ratatui::{
     Terminal,
     backend::CrosstermBackend,
@@ -250,7 +250,7 @@ impl App {
     }
 
     /// Returns `true` if the application should exit.
-    pub fn handle_event(&mut self, core: &mut Core) -> bool {
+    pub fn handle_event(&mut self, rtt: &mut impl RttAccess) -> bool {
         let event = match self.events.next() {
             // Ignore key release events emitted by Crossterm on Windows
             Ok(event) if event.kind != KeyEventKind::Press => return false,
@@ -273,7 +273,7 @@ impl App {
             KeyCode::F(n) => self.select_tab(n as usize - 1),
             KeyCode::Tab => self.next_tab(),
             KeyCode::BackTab => self.previous_tab(),
-            KeyCode::Enter => self.push_rtt(core),
+            KeyCode::Enter => self.push_rtt(rtt),
             KeyCode::Char(c) => {
                 if has_control && let Some(digit) = c.to_digit(10).and_then(|d| d.checked_sub(1)) {
                     self.select_tab(digit as usize);
@@ -302,24 +302,24 @@ impl App {
         clippy::await_holding_refcell_ref,
         reason = "Main loop alternates between GUI and channel polling accesses"
     )]
-    pub async fn poll_rtt(&mut self, core: &mut Core<'_>) -> Result<()> {
+    pub async fn poll_rtt(&mut self, rtt: &mut impl RttAccess) -> Result<()> {
         for channel in self.up_channels.iter_mut() {
             channel
                 .borrow_mut()
-                .poll_rtt(core, &mut self.client)
+                .poll_rtt(rtt, &mut self.client)
                 .await?;
         }
 
         Ok(())
     }
 
-    pub fn push_rtt(&mut self, core: &mut Core) {
-        if let Err(error) = self.tabs[self.current_tab].send_input(core, &mut self.client) {
+    pub fn push_rtt(&mut self, rtt: &mut impl RttAccess) {
+        if let Err(error) = self.tabs[self.current_tab].send_input(rtt, &mut self.client) {
             tracing::warn!("Failed to send input to RTT channel: {error:?}");
         }
     }
 
-    pub(crate) fn clean_up(&mut self, core: &mut Core) -> Result<()> {
+    pub(crate) fn clean_up(&mut self, rtt: &mut impl RttAccess) -> Result<()> {
         clean_up_terminal();
         let _ = self.terminal.show_cursor();
 
@@ -327,7 +327,7 @@ impl App {
             self.save_tab_logs(i, tab);
         }
 
-        self.client.clean_up(core)?;
+        self.client.clean_up(rtt)?;
 
         Ok(())
     }

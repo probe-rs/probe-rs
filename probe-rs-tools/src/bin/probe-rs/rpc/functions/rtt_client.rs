@@ -95,6 +95,13 @@ pub async fn write_rtt_down(
     let mut session = ctx.session(request.sessid).await;
     let mut rtt_client = ctx.object_mut(request.rtt_client).await;
 
+    if !session.target().memory_ports.is_empty()
+        && let Ok(mut mem) = session.memory_access_port(0)
+    {
+        rtt_client.write_down_channel(&mut mem, request.channel, &request.data)?;
+        return Ok(());
+    }
+
     let core_id = rtt_client.core_id();
     let mut core = session.core(core_id)?;
     rtt_client.write_down_channel(&mut core, request.channel, &request.data)?;

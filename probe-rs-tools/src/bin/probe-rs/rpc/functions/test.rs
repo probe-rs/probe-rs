@@ -144,9 +144,19 @@ fn list_tests_impl(
         .map(|rtt_client| ctx.object_mut_blocking(rtt_client).core_id())
         .unwrap_or(0);
 
+    let memory_port_index = {
+        let session = shared_session.session_blocking();
+        if !session.target().memory_ports.is_empty() {
+            Some(0)
+        } else {
+            None
+        }
+    };
+
     let mut run_loop = RunLoop {
         core_id,
         cancellation_token: ctx.cancellation_token(),
+        memory_port_index,
     };
 
     {
@@ -231,6 +241,15 @@ fn run_test_impl(
         .map(|rtt_client| ctx.object_mut_blocking(rtt_client).core_id())
         .unwrap_or(0);
 
+    let memory_port_index = {
+        let session = shared_session.session_blocking();
+        if !session.target().memory_ports.is_empty() {
+            Some(0)
+        } else {
+            None
+        }
+    };
+
     {
         let mut session = shared_session.session_blocking();
         let mut core = session.core(core_id)?;
@@ -246,6 +265,7 @@ fn run_test_impl(
     let mut run_loop = RunLoop {
         core_id,
         cancellation_token: ctx.cancellation_token(),
+        memory_port_index,
     };
 
     let poller = request.rtt_client.map(|client| RttPoller {
