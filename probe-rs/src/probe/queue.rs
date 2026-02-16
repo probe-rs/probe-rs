@@ -39,7 +39,11 @@ impl BatchExecutionError {
         results: DeferredResultSet<CommandResult>,
     ) -> Self {
         BatchExecutionError {
-            error: BatchError::Specific(error),
+            // Just in case the caller passed a boxed DebugProbeError, which they weren't supposed to, convert it back.
+            error: match error.downcast::<DebugProbeError>() {
+                Ok(error) => BatchError::Probe(*error),
+                Err(error) => BatchError::Specific(error),
+            },
             results,
         }
     }
