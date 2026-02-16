@@ -1381,7 +1381,7 @@ pub fn unwind_program_counter_register(
     };
 
     tracing::trace!(
-        "UNWIND - PC: Caller: {}\tCallee: {}\tRule: {}",
+        "UNWIND - PC: Caller: {}\tCallee: {:#010x}\tRule: {}",
         caller_pc.unwrap_or_default(),
         current_pc,
         rule_str,
