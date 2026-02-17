@@ -750,7 +750,7 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
 
             // If an error happens during prep, return no results as chip will be in an inconsistent state
             let op = result.map_err(|e| {
-                BatchExecutionError::new_specific(e.into(), DeferredResultSet::new())
+                BatchExecutionError::new_from_debug_probe(e, DeferredResultSet::new())
             })?;
 
             bits.push((idx, command, op));
@@ -760,7 +760,7 @@ impl<Probe: AutoImplementJtagAccess> JtagAccess for Probe {
         // If an error happens during the final flush, also retry whole operation
         let bitstream = self
             .read_captured_bits()
-            .map_err(|e| BatchExecutionError::new_specific(e.into(), DeferredResultSet::new()))?;
+            .map_err(|e| BatchExecutionError::new_from_debug_probe(e, DeferredResultSet::new()))?;
 
         tracing::debug!("Got responses! Took {:?}! Processing...", t1.elapsed());
         let mut responses = DeferredResultSet::with_capacity(bits.len());
