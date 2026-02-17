@@ -321,17 +321,24 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 // This is a special case where we have a single variable in the cache, and it is the root of a scope.
                                 // These variables don't have cached children by default, so we need to resolve them before we proceed.
                                 // We check for len() == 1, so unwrap() on first_mut() is safe.
-                                target_core.core_data.debug_info.cache_deferred_variables(
-                                    search_cache,
-                                    &mut target_core.core,
-                                    &mut root_variable,
-                                    StackFrameInfo {
-                                        registers: &stack_frame.registers,
-                                        frame_base: stack_frame.frame_base,
-                                        canonical_frame_address: stack_frame
-                                            .canonical_frame_address,
-                                    },
-                                )?;
+                                target_core
+                                    .core_data
+                                    .debug_info
+                                    .as_ref()
+                                    .expect(
+                                        "This code should not be reached without debug information",
+                                    )
+                                    .cache_deferred_variables(
+                                        search_cache,
+                                        &mut target_core.core,
+                                        &mut root_variable,
+                                        StackFrameInfo {
+                                            registers: &stack_frame.registers,
+                                            frame_base: stack_frame.frame_base,
+                                            canonical_frame_address: stack_frame
+                                                .canonical_frame_address,
+                                        },
+                                    )?;
                             }
 
                             if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
@@ -378,12 +385,19 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     frame_base: top_frame.frame_base,
                                     canonical_frame_address: top_frame.canonical_frame_address,
                                 };
-                                target_core.core_data.debug_info.cache_deferred_variables(
-                                    static_cache,
-                                    &mut target_core.core,
-                                    &mut root_variable,
-                                    frame_info,
-                                )?;
+                                target_core
+                                    .core_data
+                                    .debug_info
+                                    .as_ref()
+                                    .expect(
+                                        "This code should not be reached without debug information",
+                                    )
+                                    .cache_deferred_variables(
+                                        static_cache,
+                                        &mut target_core.core,
+                                        &mut root_variable,
+                                        frame_info,
+                                    )?;
                             } else {
                                 tracing::error!(
                                     "Could not cache deferred static variables. No register data available."
@@ -411,12 +425,19 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     frame_base: top_frame.frame_base,
                                     canonical_frame_address: top_frame.canonical_frame_address,
                                 };
-                                target_core.core_data.debug_info.cache_deferred_variables(
-                                    static_cache,
-                                    &mut target_core.core,
-                                    static_variable,
-                                    frame_info,
-                                )?;
+                                target_core
+                                    .core_data
+                                    .debug_info
+                                    .as_ref()
+                                    .expect(
+                                        "This code should not be reached without debug information",
+                                    )
+                                    .cache_deferred_variables(
+                                        static_cache,
+                                        &mut target_core.core,
+                                        static_variable,
+                                        frame_info,
+                                    )?;
                             } else {
                                 tracing::error!(
                                     "Could not cache deferred static variable: {}. No register data available.",
@@ -1235,6 +1256,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<()> {
+        let Some(ref debug_info) = target_core.core_data.debug_info else {
+            return self.send_response::<()>(
+                request,
+                Err(&DebuggerError::Other(anyhow!(
+                    "Cannot resolve variables without debug information"
+                ))),
+            );
+        };
+
         let arguments: VariablesArguments = get_arguments(self, request)?;
 
         let variable_ref: ObjectRef = arguments.variables_reference.into();
@@ -1368,7 +1398,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 && !variable_cache.has_children(parent_variable)
             {
                 if let Some(frame_info) = frame_info {
-                    target_core.core_data.debug_info.cache_deferred_variables(
+                    debug_info.cache_deferred_variables(
                         variable_cache,
                         &mut target_core.core,
                         parent_variable,
@@ -1774,24 +1804,26 @@ impl<P: ProtocolAdapter + ?Sized> DebugAdapter<P> {
         target_core: &mut CoreHandle<'_>,
     ) -> Result<u64> {
         target_core.reset_core_status(self);
-        let (new_status, program_counter) =
-            match stepping_mode.step(&mut target_core.core, &target_core.core_data.debug_info) {
-                Ok((new_status, program_counter)) => (new_status, program_counter),
-                Err(probe_rs_debug::DebugError::WarnAndContinue { message }) => {
-                    let pc_at_error = target_core
-                        .core
-                        .read_core_reg(target_core.core.program_counter())?;
-                    self.dyn_show_message(
-                        MessageSeverity::Information,
-                        format!("Step error @{pc_at_error:#010X}: {message}"),
-                    );
-                    (target_core.core.status()?, pc_at_error)
-                }
-                Err(other_error) => {
-                    target_core.core.halt(Duration::from_millis(100)).ok();
-                    return Err(other_error).context("Unexpected error during stepping");
-                }
-            };
+        let (new_status, program_counter) = match stepping_mode.step(
+            &mut target_core.core,
+            target_core.core_data.debug_info.as_ref(),
+        ) {
+            Ok((new_status, program_counter)) => (new_status, program_counter),
+            Err(probe_rs_debug::DebugError::WarnAndContinue { message }) => {
+                let pc_at_error = target_core
+                    .core
+                    .read_core_reg(target_core.core.program_counter())?;
+                self.dyn_show_message(
+                    MessageSeverity::Information,
+                    format!("Step error @{pc_at_error:#010X}: {message}"),
+                );
+                (target_core.core.status()?, pc_at_error)
+            }
+            Err(other_error) => {
+                target_core.core.halt(Duration::from_millis(100)).ok();
+                return Err(other_error).context("Unexpected error during stepping");
+            }
+        };
 
         // We override the halt reason because our implementation of stepping uses breakpoints and results in a "BreakPoint" halt reason, which is not appropriate here.
         target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Step);
