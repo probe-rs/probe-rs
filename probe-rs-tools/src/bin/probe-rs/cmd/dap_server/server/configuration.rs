@@ -252,6 +252,14 @@ pub struct CoreConfig {
     /// Enable hardfault vector catch if its supported on the target.
     #[serde(default = "default_true")]
     pub(crate) catch_hardfault: bool,
+
+    /// Enable SVC vector catch (ARMv7-A/R only).
+    #[serde(default = "default_true")]
+    pub(crate) catch_svc: bool,
+
+    /// Enable HLT vector catch (ARMv7-A/R only).
+    #[serde(default = "default_true")]
+    pub(crate) catch_hlt: bool,
 }
 
 fn default_console_log() -> Option<ConsoleLog> {

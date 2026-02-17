@@ -923,6 +923,11 @@ impl CoreInterface for Armv6m<'_> {
                 demcr.set_vc_harderr(true);
                 demcr.set_vc_corereset(true);
             }
+            VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
+                return Err(Error::Arm(ArmError::ArchitectureRequired(&[
+                    "ARMv7-A", "ARMv7-R",
+                ])));
+            }
         };
 
         self.memory
@@ -941,6 +946,11 @@ impl CoreInterface for Armv6m<'_> {
             VectorCatchCondition::All => {
                 demcr.set_vc_harderr(false);
                 demcr.set_vc_corereset(false);
+            }
+            VectorCatchCondition::Svc | VectorCatchCondition::Hlt => {
+                return Err(Error::Arm(ArmError::ArchitectureRequired(&[
+                    "ARMv7-A", "ARMv7-R",
+                ])));
             }
         };
 

@@ -1,10 +1,10 @@
-//! Register types and the core interface for armv7-a
+//! Register types and the core interface for armv7-a and armv7-r
 
 use super::{
-    CortexAState,
+    CortexARState,
     instructions::aarch32::{
-        build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_msr, build_stc, build_vmov,
-        build_vmrs,
+        build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_mrs_spsr, build_msr,
+        build_stc, build_vmov, build_vmrs,
     },
     registers::{
         aarch32::{
@@ -16,17 +16,21 @@ use super::{
 };
 use crate::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType, Endian,
-    InstructionSet, MemoryInterface,
+    HaltReason, InstructionSet, MemoryInterface,
     architecture::arm::{
         ArmError, DapAccess, FullyQualifiedApAddress,
         ap::{ApRegister, BD0, BD1, BD2, BD3, TAR, TAR2},
-        core::armv7a_debug_regs::*,
+        core::armv7ar_debug_regs::*,
         memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
     },
-    core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
+    core::{
+        BreakpointCause, CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue,
+        VectorCatchCondition,
+    },
     error::Error,
     memory::{MemoryNotAlignedError, valid_32bit_address},
+    semihosting::{SemihostingCommand, decode_semihosting_syscall},
 };
 use std::{
     mem::size_of,
@@ -118,7 +122,7 @@ impl<'a> BankedAccess<'a> {
 
 /// Errors for the ARMv7-A state machine
 #[derive(thiserror::Error, Debug)]
-pub enum Armv7aError {
+pub enum Armv7arError {
     /// Invalid register number
     #[error("Register number {0} is not valid for ARMv7-A")]
     InvalidRegisterNumber(u16),
@@ -132,11 +136,11 @@ pub enum Armv7aError {
     DataAbort,
 }
 
-/// Interface for interacting with an ARMv7-A core
-pub struct Armv7a<'probe> {
+/// Interface for interacting with an ARMv7-A/R core
+pub struct Armv7ar<'probe> {
     memory: Box<dyn ArmMemoryInterface + 'probe>,
 
-    state: &'probe mut CortexAState,
+    state: &'probe mut CortexARState,
 
     base_address: u64,
 
@@ -147,14 +151,17 @@ pub struct Armv7a<'probe> {
     itr_enabled: bool,
 
     endianness: Option<Endian>,
+
+    core_type: CoreType,
 }
 
-impl<'probe> Armv7a<'probe> {
+impl<'probe> Armv7ar<'probe> {
     pub(crate) fn new(
         mut memory: Box<dyn ArmMemoryInterface + 'probe>,
-        state: &'probe mut CortexAState,
+        state: &'probe mut CortexARState,
         base_address: u64,
         sequence: Arc<dyn ArmDebugSequence>,
+        core_type: CoreType,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -184,6 +191,7 @@ impl<'probe> Armv7a<'probe> {
             num_breakpoints: None,
             itr_enabled: false,
             endianness: None,
+            core_type,
         };
 
         if !core.state.initialized() {
@@ -436,7 +444,7 @@ impl<'probe> Armv7a<'probe> {
     }
 }
 
-// These helper functions allow access to the ARMv7A core from Sequences.
+// These helper functions allow access to the ARMv7-A/R core from Sequences.
 // They are also used by the `CoreInterface` to avoid code duplication.
 
 /// Request the core to halt. Does not wait for the core to halt.
@@ -582,8 +590,8 @@ fn check_and_clear_data_abort(
         dbgdrcr.set_cse(true);
 
         memory.write_word_32(address, dbgdrcr.into())?;
-        return Err(ArmError::Armv7a(
-            crate::architecture::arm::armv7a::Armv7aError::DataAbort,
+        return Err(ArmError::Armv7ar(
+            crate::architecture::arm::armv7ar::Armv7arError::DataAbort,
         ));
     }
     Ok(())
@@ -707,7 +715,104 @@ pub(crate) fn read_word_32(
     get_instruction_result(memory, base_address)
 }
 
-impl CoreInterface for Armv7a<'_> {
+/// Check if the current vector catch halt is a semihosting call.
+///
+/// Supports two semihosting mechanisms on A/R-profile cores:
+/// - SVC-based: `SVC #0x123456` (ARM) or `SVC #0xAB` (Thumb) - vectors to 0x08
+/// - HLT-based: `HLT #0xF000` (ARM) or `HLT #0x3C` (Thumb) - undefined on ARMv7, vectors to 0x04
+///
+/// HLT-based semihosting is preferred as it doesn't interfere with baremetal/OS/RTOS SVC usage.
+/// Spec: <https://github.com/ARM-software/abi-aa/blob/2025Q1/semihosting/semihosting.rst#the-semihosting-interface>
+pub(crate) fn check_for_semihosting(
+    cached_command: Option<SemihostingCommand>,
+    core: &mut dyn CoreInterface,
+    lr: u32,
+) -> Result<Option<SemihostingCommand>, Error> {
+    // Return cached command if already decoded (avoid re-decoding on repeated status() calls)
+    if let Some(command) = cached_command {
+        return Ok(Some(command));
+    }
+
+    // Vector table layout (32-byte aligned):
+    //   0x00=Reset, 0x04=Undef, 0x08=SVC, ...
+    //
+    // We check for semihosting on:
+    // - SVC vector (0x08): Traditional semihosting via SVC instruction
+    // - UNDEF vector (0x04): HLT-based semihosting (HLT is undefined on ARMv7)
+    let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
+
+    const UNDEF_VECTOR_OFFSET: u32 = 0x04;
+    const SVC_VECTOR_OFFSET: u32 = 0x08;
+    const VECTOR_TABLE_MASK: u32 = 32 - 1;
+
+    let vector_offset = pc & VECTOR_TABLE_MASK;
+
+    // Early return if we're not at a semihosting vector, to not reading potentially invalid memory
+    // at LR-4
+    if vector_offset != UNDEF_VECTOR_OFFSET && vector_offset != SVC_VECTOR_OFFSET {
+        tracing::debug!(
+            "Vector catch at PC={:#x} (offset {:#x}), not SVC/UNDEF vector, not semihosting",
+            pc,
+            vector_offset
+        );
+        return Ok(None);
+    }
+
+    // Semihosting instruction encodings:
+    // SVC-based:
+    // - ARM state:   `SVC #0x123456` encoded as 0xEF123456
+    // - Thumb state: `SVC #0xAB`     encoded as 0xDFAB
+    // HLT-based:
+    // - ARM state:   `HLT #0xF000`   encoded as 0xE10F0070
+    // - Thumb state: `HLT #64`       encoded as 0xBABC
+    const ARM_SEMIHOSTING_SVC: [u8; 4] = 0xEF123456_u32.to_le_bytes();
+    const THUMB_SEMIHOSTING_SVC: [u8; 2] = 0xDFAB_u16.to_le_bytes();
+    const ARM_SEMIHOSTING_HLT: [u8; 4] = 0xE10F0070_u32.to_le_bytes();
+    const THUMB_SEMIHOSTING_HLT: [u8; 2] = 0xBABC_u16.to_le_bytes();
+
+    // Read word at LR-4 to check instructions
+    let instruction_address = lr.wrapping_sub(4);
+    let mut instruction = [0u8; 4];
+    core.read_8(instruction_address as u64, &mut instruction)?;
+
+    let (is_semihosting, mechanism) = match vector_offset {
+        SVC_VECTOR_OFFSET => {
+            let is_arm = instruction == ARM_SEMIHOSTING_SVC;
+            let is_thumb = instruction[2..] == THUMB_SEMIHOSTING_SVC;
+            (is_arm || is_thumb, "SVC")
+        }
+        UNDEF_VECTOR_OFFSET => {
+            let is_arm = instruction == ARM_SEMIHOSTING_HLT;
+            let is_thumb = instruction[2..] == THUMB_SEMIHOSTING_HLT;
+            (is_arm || is_thumb, "HLT")
+        }
+        _ => unreachable!(), // Already handled above in early return
+    };
+
+    if !is_semihosting {
+        return Ok(None);
+    }
+
+    tracing::debug!(
+        "{} instruction check: LR={:#x}, bytes at {:#x} = {:#010x}, match={}",
+        mechanism,
+        lr,
+        instruction_address,
+        u32::from_le_bytes(instruction),
+        is_semihosting
+    );
+
+    let command = decode_semihosting_syscall(core)?;
+    tracing::debug!(
+        "Semihosting {} detected at PC={:#x}: {:?}",
+        mechanism,
+        pc,
+        command
+    );
+    Ok(Some(command))
+}
+
+impl CoreInterface for Armv7ar<'_> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         wait_for_core_halted(&mut *self.memory, self.base_address, timeout).map_err(|e| e.into())
     }
@@ -722,11 +827,24 @@ impl CoreInterface for Armv7a<'_> {
         let dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
 
         if dbgdscr.halted() {
-            let reason = dbgdscr.halt_reason();
+            let mut reason = dbgdscr.halt_reason();
 
+            // Set the status so semihosting decoding can read registers
             self.set_core_status(CoreStatus::Halted(reason));
 
             self.read_fp_reg_count()?;
+
+            // Check for semihosting on SVC & HLT (UNDEF) vector catch
+            if let HaltReason::Exception = reason {
+                let lr: u32 = self.read_core_reg(RegisterId(14))?.try_into()?;
+
+                self.state.semihosting_command =
+                    check_for_semihosting(self.state.semihosting_command.take(), self, lr)?;
+                if let Some(command) = self.state.semihosting_command {
+                    reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(command));
+                    self.set_core_status(CoreStatus::Halted(reason));
+                }
+            }
 
             return Ok(CoreStatus::Halted(reason));
         }
@@ -764,6 +882,37 @@ impl CoreInterface for Armv7a<'_> {
         if matches!(self.state.current_state, CoreStatus::Running) {
             return Ok(());
         }
+
+        if self.state.semihosting_command.is_some() {
+            // We're in SVC mode after vector catch. Need to:
+            // 1. Restore CPSR from SPSR_svc (to return to original mode)
+            // 2. Set PC to LR_svc (return address)
+
+            // Read LR (r14) - since we're in SVC mode, this is LR_svc
+            let lr: u32 = self.read_core_reg(RegisterId(14))?.try_into()?;
+
+            // Save r0 in case it was modified by semihosting result
+            self.prepare_for_clobber(0)?;
+
+            // Read SPSR into r0: mrs r0, spsr
+            let mrs_spsr = build_mrs_spsr(0);
+            self.execute_instruction(mrs_spsr)?;
+
+            // Write r0 to CPSR: msr cpsr_fsxc, r0
+            let msr_cpsr = build_msr(0);
+            self.execute_instruction(msr_cpsr)?;
+
+            // Set PC to LR (return address)
+            self.write_core_reg(self.program_counter().into(), lr.into())?;
+
+            tracing::debug!(
+                "Semihosting resume: restoring CPSR from SPSR, setting PC to LR={:#x}",
+                lr
+            );
+        }
+
+        // Clear cached semihosting command
+        self.state.semihosting_command = None;
 
         // set writeback values
         self.writeback_registers()?;
@@ -831,11 +980,12 @@ impl CoreInterface for Armv7a<'_> {
         )?;
         self.wait_for_core_halted(timeout)?;
 
-        // Update core status
-        let _ = self.status()?;
-
-        // Reset our cached values
         self.reset_register_cache();
+
+        // Clear any cached semihosting command from before reset
+        self.state.semihosting_command = None;
+
+        let _ = self.status()?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(self.program_counter().into())?;
@@ -1008,7 +1158,7 @@ impl CoreInterface for Armv7a<'_> {
                 Ok(value.into())
             }
             _ => Err(Error::Arm(
-                Armv7aError::InvalidRegisterNumber(reg_num).into(),
+                Armv7arError::InvalidRegisterNumber(reg_num).into(),
             )),
         };
 
@@ -1026,7 +1176,7 @@ impl CoreInterface for Armv7a<'_> {
 
         if (reg_num as usize) >= self.state.register_cache.len() {
             return Err(Error::Arm(
-                Armv7aError::InvalidRegisterNumber(reg_num).into(),
+                Armv7arError::InvalidRegisterNumber(reg_num).into(),
             ));
         }
         self.state.register_cache[reg_num as usize] = Some((value, true));
@@ -1116,7 +1266,7 @@ impl CoreInterface for Armv7a<'_> {
     }
 
     fn core_type(&self) -> CoreType {
-        CoreType::Armv7a
+        self.core_type
     }
 
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
@@ -1195,9 +1345,41 @@ impl CoreInterface for Armv7a<'_> {
 
         Ok(())
     }
+
+    fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let address = Dbgvcr::get_mmio_address_from_base(self.base_address)?;
+        let mut dbgvcr = Dbgvcr(self.memory.read_word_32(address)?);
+
+        match condition {
+            VectorCatchCondition::CoreReset => dbgvcr.set_r(true),
+            VectorCatchCondition::Svc => dbgvcr.set_ss(true),
+            VectorCatchCondition::Hlt => dbgvcr.set_su(true),
+            // HardFault/SecureFault are Cortex-M concepts, not applicable to ARMv7-A/R
+            _ => return Err(Error::NotImplemented("vector catch condition")),
+        }
+
+        self.memory.write_word_32(address, dbgvcr.into())?;
+        Ok(())
+    }
+
+    fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let address = Dbgvcr::get_mmio_address_from_base(self.base_address)?;
+        let mut dbgvcr = Dbgvcr(self.memory.read_word_32(address)?);
+
+        match condition {
+            VectorCatchCondition::CoreReset => dbgvcr.set_r(false),
+            VectorCatchCondition::Svc => dbgvcr.set_ss(false),
+            VectorCatchCondition::Hlt => dbgvcr.set_su(false),
+            // HardFault/SecureFault are Cortex-M concepts, not applicable to ARMv7-A/R
+            _ => return Err(Error::NotImplemented("vector catch condition")),
+        }
+
+        self.memory.write_word_32(address, dbgvcr.into())?;
+        Ok(())
+    }
 }
 
-impl MemoryInterface for Armv7a<'_> {
+impl MemoryInterface for Armv7ar<'_> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -1964,11 +2146,12 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let _ = Armv7a::new(
+        let _ = Armv7ar::new(
             mock_mem,
-            &mut CortexAState::new(),
+            &mut CortexARState::new(),
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
     }
@@ -1976,7 +2159,7 @@ mod test {
     #[test]
     fn armv7a_core_halted() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -1999,23 +2182,24 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // First read false, second read true
-        assert!(!armv7a.core_halted().unwrap());
-        assert!(armv7a.core_halted().unwrap());
+        assert!(!armv7ar.core_halted().unwrap());
+        assert!(armv7ar.core_halted().unwrap());
     }
 
     #[test]
     fn armv7a_wait_for_core_halted() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2038,16 +2222,17 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // Should halt on second read
-        armv7a
+        armv7ar
             .wait_for_core_halted(Duration::from_millis(100))
             .unwrap();
     }
@@ -2055,7 +2240,7 @@ mod test {
     #[test]
     fn armv7a_status_running() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2072,22 +2257,23 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // Should halt on second read
-        assert_eq!(CoreStatus::Running, armv7a.status().unwrap());
+        assert_eq!(CoreStatus::Running, armv7ar.status().unwrap());
     }
 
     #[test]
     fn armv7a_status_halted() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2104,18 +2290,19 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // Should halt on second read
         assert_eq!(
             CoreStatus::Halted(crate::HaltReason::Request),
-            armv7a.status().unwrap()
+            armv7ar.status().unwrap()
         );
     }
 
@@ -2124,7 +2311,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2137,24 +2324,25 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // First read will hit expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(2)).unwrap()
+            armv7ar.read_core_reg(RegisterId(2)).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(2)).unwrap()
+            armv7ar.read_core_reg(RegisterId(2)).unwrap()
         );
     }
 
@@ -2163,7 +2351,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2176,24 +2364,25 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // First read will hit expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(15)).unwrap()
+            armv7ar.read_core_reg(RegisterId(15)).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(RegisterId(15)).unwrap()
+            armv7ar.read_core_reg(RegisterId(15)).unwrap()
         );
     }
 
@@ -2202,7 +2391,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2215,24 +2404,25 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // First read will hit expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(XPSR.id()).unwrap()
+            armv7ar.read_core_reg(XPSR.id()).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             RegisterValue::from(REG_VALUE),
-            armv7a.read_core_reg(XPSR.id()).unwrap()
+            armv7ar.read_core_reg(XPSR.id()).unwrap()
         );
     }
 
@@ -2241,7 +2431,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, false);
@@ -2268,25 +2458,26 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
         // Verify PC
         assert_eq!(
             REG_VALUE as u64,
-            armv7a.halt(Duration::from_millis(100)).unwrap().pc
+            armv7ar.halt(Duration::from_millis(100)).unwrap().pc
         );
     }
 
     #[test]
     fn armv7a_run() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2326,22 +2517,23 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        armv7a.run().unwrap();
+        armv7ar.run().unwrap();
     }
 
     #[test]
     fn armv7a_available_breakpoint_units() {
         const BP_COUNT: u32 = 4;
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2354,15 +2546,16 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        assert_eq!(BP_COUNT, armv7a.available_breakpoint_units().unwrap());
+        assert_eq!(BP_COUNT, armv7ar.available_breakpoint_units().unwrap());
     }
 
     #[test]
@@ -2371,7 +2564,7 @@ mod test {
         const BP1: u64 = 0x2345;
         const BP2: u64 = 0x8000_0000;
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2421,15 +2614,16 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        let results = armv7a.hw_breakpoints().unwrap();
+        let results = armv7ar.hw_breakpoints().unwrap();
         assert_eq!(Some(BP1), results[0]);
         assert_eq!(Some(BP2), results[1]);
         assert_eq!(None, results[2]);
@@ -2440,7 +2634,7 @@ mod test {
     fn armv7a_set_hw_breakpoint() {
         const BP_VALUE: u64 = 0x2345;
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2469,21 +2663,22 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        armv7a.set_hw_breakpoint(0, BP_VALUE).unwrap();
+        armv7ar.set_hw_breakpoint(0, BP_VALUE).unwrap();
     }
 
     #[test]
     fn armv7a_clear_hw_breakpoint() {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2503,15 +2698,16 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        armv7a.clear_hw_breakpoint(0).unwrap();
+        armv7ar.clear_hw_breakpoint(0).unwrap();
     }
 
     #[test]
@@ -2520,7 +2716,7 @@ mod test {
         const MEMORY_ADDRESS: u64 = 0x12345678;
 
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2533,20 +2729,21 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
 
-        assert_eq!(MEMORY_VALUE, armv7a.read_word_32(MEMORY_ADDRESS).unwrap());
+        assert_eq!(MEMORY_VALUE, armv7ar.read_word_32(MEMORY_ADDRESS).unwrap());
     }
 
     fn test_read_word(value: u32, address: u64, memory_word_address: u64, endian: Endian) -> u8 {
         let mut probe = MockProbe::new();
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2563,14 +2760,15 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut armv7a = Armv7a::new(
+        let mut armv7ar = Armv7ar::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            CoreType::Armv7a,
         )
         .unwrap();
-        armv7a.read_word_8(address).unwrap()
+        armv7ar.read_word_8(address).unwrap()
     }
 
     #[test]
