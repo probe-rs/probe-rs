@@ -101,7 +101,7 @@ impl DebugInfo {
                 // The frame section address size is only used for CIE versions before 4.
                 frame_section.set_address_size(unit.encoding().address_size);
 
-                unit_infos.push(UnitInfo::new(unit));
+                unit_infos.push(UnitInfo::new(unit, &dwarf_cow));
             };
         }
 
