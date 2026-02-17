@@ -17,7 +17,8 @@ use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::InitializeRequestArguments;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::OutputEventBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
-    DisconnectArguments, EvaluateArguments,
+    DisconnectArguments, EvaluateArguments, RttChannelEventBody, RttDataEventBody,
+    RttWindowOpenedArguments,
 };
 use crate::cmd::dap_server::debug_adapter::protocol::ProtocolAdapter;
 use crate::cmd::dap_server::server::configuration::ConsoleLog;
@@ -34,17 +35,46 @@ use super::dap_server::debug_adapter::dap::dap_types::Response;
 
 /// A barebones adapter for the CLI "client".
 struct CliAdapter {
+    sender: mpsc::Sender<Request>,
     receiver: Receiver<Request>,
     writer: SharedWriter,
     console_log_level: ConsoleLog,
     seq: i64,
     pending: HashMap<i64, Request>,
     cancellation: CancellationToken,
+    rtt_channels: HashMap<u32, RttChannelInfo>,
+}
+
+struct RttChannelInfo {
+    name: String,
+    prefix: String,
 }
 
 impl CliAdapter {
     fn write_to_cli(&mut self, message: impl AsRef<str>) {
         writeln!(self.writer, "{}", message.as_ref().trim_end()).unwrap();
+    }
+
+    fn write_raw_to_cli(&mut self, message: impl AsRef<str>) {
+        write!(self.writer, "{}", message.as_ref()).unwrap();
+    }
+
+    fn update_rtt_prefixes(&mut self) {
+        let channel_count = self.rtt_channels.len();
+        let max_width = self
+            .rtt_channels
+            .values()
+            .map(|info| info.name.len())
+            .max()
+            .unwrap_or(0);
+
+        for info in self.rtt_channels.values_mut() {
+            info.prefix = if channel_count > 1 {
+                format!("[{:width$}] ", info.name, width = max_width)
+            } else {
+                String::new()
+            };
+        }
     }
 }
 
@@ -81,8 +111,51 @@ impl ProtocolAdapter for CliAdapter {
             "memory" => {}
             "stopped" => {}
             "breakpoint" => {}
-            // No RTT support (yet)
-            "probe-rs-rtt-channel-config" | "probe-rs-rtt-data" => {}
+            "probe-rs-rtt-channel-config" => {
+                let Some(body) = serialized_body else {
+                    return Ok(());
+                };
+
+                let output = serde_json::from_str::<RttChannelEventBody>(&body)?;
+                let entry = self
+                    .rtt_channels
+                    .entry(output.channel_number)
+                    .or_insert_with(|| RttChannelInfo {
+                        name: output.channel_name.clone(),
+                        prefix: String::new(),
+                    });
+                entry.name = output.channel_name;
+                self.update_rtt_prefixes();
+
+                let request = Request {
+                    command: "rttWindowOpened".to_string(),
+                    arguments: serde_json::to_value(&RttWindowOpenedArguments {
+                        channel_number: output.channel_number,
+                        window_is_open: true,
+                    })
+                    .ok(),
+                    seq: self.get_next_seq(),
+                    type_: "request".to_string(),
+                };
+
+                if let Err(error) = self.sender.try_send(request) {
+                    tracing::debug!("Failed to send rttWindowOpened request: {error}");
+                }
+            }
+            "probe-rs-rtt-data" => {
+                let Some(body) = serialized_body else {
+                    return Ok(());
+                };
+
+                let output = serde_json::from_str::<RttDataEventBody>(&body)?;
+                let prefix = self
+                    .rtt_channels
+                    .get(&output.channel_number)
+                    .map(|info| info.prefix.as_str())
+                    .unwrap_or("");
+                let message = format!("{prefix}{}", output.data);
+                self.write_raw_to_cli(message);
+            }
             // No flashing support (yet)
             "progressStart" | "progressEnd" | "progressUpdate" => {}
             // We can safely ignore "exited"
@@ -186,6 +259,10 @@ pub struct Cmd {
     /// Disable hardfault vector catch if its supported on the target.
     #[clap(long)]
     pub no_catch_hardfault: bool,
+
+    /// Disable reading RTT data.
+    #[clap(long, help_heading = "LOG CONFIGURATION / RTT")]
+    pub no_rtt: bool,
 }
 
 impl Cmd {
@@ -197,18 +274,20 @@ impl Cmd {
     ) -> anyhow::Result<()> {
         let (sender, receiver) = mpsc::channel(5);
 
-        let (mut rl, mut writer) = Readline::new(Prompt("> ").to_string()).unwrap();
+        let (mut rl, mut writer) = Readline::new(Prompt("Debug Console> ").to_string()).unwrap();
 
         // TODO: properly introduce a response/event channel, react to terminated event
         let cancellation = CancellationToken::new();
 
         let debug_adapter = DebugAdapter::new(CliAdapter {
+            sender: sender.clone(),
             receiver,
             writer: writer.clone(),
             console_log_level: ConsoleLog::Console,
             seq: 0,
             pending: HashMap::new(),
             cancellation: cancellation.clone(),
+            rtt_channels: HashMap::new(),
         });
         let mut debugger = Debugger::new(utc_offset, None)?;
 
@@ -266,7 +345,7 @@ impl Cmd {
                         program_binary: self.exe,
                         svd_file: None,
                         rtt_config: RttConfig {
-                            enabled: false,
+                            enabled: !self.no_rtt,
                             channels: vec![],
                             default_config: Default::default(),
                         },
