@@ -9,6 +9,7 @@ use crate::{
             debug_adapter::{
                 dap::{
                     adapter::DebugAdapter,
+                    core_status::DapStatus,
                     dap_types::Source,
                     repl_commands::{REPL_COMMANDS, embedded_test::EMBEDDED_TEST},
                 },
@@ -383,10 +384,9 @@ impl SessionData {
                     }
                 } else if debug_adapter.configuration_is_done() {
                     // Make sure we only attempt attaching when we're ready.
-                    #[expect(clippy::unwrap_used)]
                     if let Err(error) = target_core.attach_to_rtt(
                         debug_adapter,
-                        core_config.program_binary.as_ref().unwrap(),
+                        core_config.program_binary.as_deref(),
                         &core_config.rtt_config,
                         timestamp_offset,
                     ) {
@@ -397,25 +397,37 @@ impl SessionData {
                 }
             }
 
-            // Handle potential semihosting commands. If the command is handled,
-            // the core will be resumed, so we need to update the status.
-            // If the command is not handled, the core will remain halted and we
-            // need to notify the UI.
-            if current_core_status != previous_core_status
-                && let CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+            if current_core_status != previous_core_status {
+                if let CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
                     command,
                 ))) = current_core_status
-            {
-                current_core_status = target_core.handle_semihosting(debug_adapter, command)?;
+                {
+                    // Handle semihosting commands. If the command is handled,
+                    // the core will be resumed, so we need to update the status.
+                    // If the command is not handled, the core will remain halted and we
+                    // need to notify the UI.
+                    current_core_status = target_core.handle_semihosting(debug_adapter, command)?;
 
-                if current_core_status.is_halted() {
-                    // poll_core did not notify about the halt, so we need to do it manually.
-                    target_core.notify_halted(debug_adapter, current_core_status)?;
+                    if current_core_status.is_halted() {
+                        // poll_core did not notify about the halt, so we need to do it manually.
+                        target_core.notify_halted(debug_adapter, current_core_status)?;
+                    } else {
+                        // If the semihosting command was handled, we do not need to suggest a delay.
+                        suggest_delay_required = false;
+                    }
+                    target_core.core_data.last_known_status = current_core_status;
                 } else {
-                    // If the semihosting command was handled, we do not need to suggest a delay.
-                    suggest_delay_required = false;
+                    // The core's status has changed, print it.
+                    let pc = if current_core_status.is_halted() {
+                        target_core
+                            .core
+                            .read_core_reg(target_core.core.program_counter())
+                            .ok()
+                    } else {
+                        None
+                    };
+                    debug_adapter.log_to_console(current_core_status.short_long_status(pc).1);
                 }
-                target_core.core_data.last_known_status = current_core_status;
             }
 
             // If the core is running, we set the flag to indicate that at least one core is not halted.

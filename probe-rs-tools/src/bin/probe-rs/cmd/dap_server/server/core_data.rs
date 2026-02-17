@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::num::NonZeroU32;
-use std::time::Duration;
 use std::{ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
@@ -27,9 +26,7 @@ use crate::{
 };
 use anyhow::{Result, anyhow};
 use probe_rs::semihosting::SemihostingCommand;
-use probe_rs::{
-    Architecture, BreakpointCause, BreakpointError, CoreInformation, Error, MemoryInterface as _,
-};
+use probe_rs::{Architecture, BreakpointCause, BreakpointError, Error, MemoryInterface as _};
 use probe_rs::{Core, CoreStatus, HaltReason, rtt::ScanRegion};
 use probe_rs_debug::VerifiedBreakpoint;
 use probe_rs_debug::{
@@ -195,7 +192,7 @@ impl CoreHandle<'_> {
     pub fn attach_to_rtt<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
-        program_binary: &Path,
+        program_binary: Option<&Path>,
         rtt_config: &rtt::RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
@@ -270,12 +267,14 @@ impl CoreHandle<'_> {
                 DataFormat::Defmt => {
                     let defmt_state = if let Some(data) = defmt_data.as_ref() {
                         data
-                    } else {
+                    } else if let Some(program_binary) = program_binary {
                         // Create the RTT client using the RTT control block address from the ELF file.
                         let elf = std::fs::read(program_binary).map_err(|error| {
                             anyhow!("Error attempting to attach to RTT: {error}")
                         })?;
                         defmt_data.insert(DefmtState::try_from_bytes(&elf)?)
+                    } else {
+                        defmt_data.insert(None)
                     };
 
                     match defmt_state {
@@ -741,15 +740,6 @@ impl CoreHandle<'_> {
                 }
             }
         }
-    }
-
-    pub(crate) fn reset_and_halt(&mut self) -> Result<CoreInformation, Error> {
-        let core_info = self.core.reset_and_halt(Duration::from_millis(500))?;
-
-        // On some architectures, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
-        self.reapply_breakpoints();
-
-        Ok(core_info)
     }
 }
 

@@ -51,17 +51,7 @@ fn r#continue(
     adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
 ) -> EvalResult {
     adapter.continue_impl(target_core)?;
-    let status = target_core.core.status()?;
-    let pc = if status != CoreStatus::Running {
-        let pc = target_core
-            .core
-            .read_core_reg::<u64>(target_core.core.program_counter().id)?;
-        Some(pc)
-    } else {
-        None
-    };
-
-    Ok(EvalResponse::Message(status.short_long_status(pc).1))
+    Ok(EvalResponse::Message(String::new()))
 }
 
 fn reset(
@@ -70,14 +60,8 @@ fn reset(
     _: &EvaluateArguments,
     adapter: &mut DebugAdapter<dyn ProtocolAdapter + '_>,
 ) -> EvalResult {
-    let core_info = target_core.reset_and_halt()?;
-    target_core.reset_core_status(adapter);
-
-    Ok(EvalResponse::Message(
-        CoreStatus::Halted(HaltReason::Request)
-            .short_long_status(Some(core_info.pc))
-            .1,
-    ))
+    adapter.reset_and_halt_core(target_core)?;
+    Ok(EvalResponse::Message(String::new()))
 }
 
 fn step(
