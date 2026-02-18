@@ -2,13 +2,13 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
 
+use anyhow::Context;
 use probe_rs::probe::list::Lister;
 use rustyline_async::SharedWriter;
 use rustyline_async::{Readline, ReadlineEvent};
 use time::UtcOffset;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio_util::sync::CancellationToken;
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateResponseBody;
@@ -181,9 +181,6 @@ impl Cmd {
         let (req_sender, req_receiver) = mpsc::channel(10);
         let (msg_sender, mut msg_receiver) = mpsc::channel(10);
 
-        // TODO: react to terminated event
-        let cancellation = CancellationToken::new();
-
         let debug_adapter = DebugAdapter::new(CliAdapter {
             req_receiver,
             msg_sender: msg_sender.clone(),
@@ -194,11 +191,11 @@ impl Cmd {
 
         let mut debug_client = Client {
             writer: None,
-            cancellation: cancellation.clone(),
             rtt_channels: HashMap::new(),
             req_sender,
             seq: 0,
             is_initialized: false,
+            is_terminated: false,
         };
 
         debug_client
@@ -292,7 +289,7 @@ impl Cmd {
             })
         });
 
-        while !debug_client.is_initialized {
+        while !debug_client.is_initialized && debug_client.running() {
             tokio::select! {
                 response = msg_receiver.recv() => {
                     // Handle responses/events
@@ -300,17 +297,18 @@ impl Cmd {
                         // recv returns `None` if the channel has been closed
                         break;
                     };
-                    debug_client.process_event(&event, body).unwrap();
+                    debug_client.process_event(&event, body)?;
                 }
             }
         }
 
-        let (mut rl, mut writer) = Readline::new(Prompt("Debug Console> ").to_string()).unwrap();
+        let (mut rl, writer) = Readline::new(Prompt("Debug Console> ").to_string()).unwrap();
 
-        debug_client.writer = Some(writer.clone());
+        debug_client.writer = Some(writer);
 
         let readline = async {
-            loop {
+            let mut result = Ok(());
+            while debug_client.running() {
                 tokio::select! {
                     response = msg_receiver.recv() => {
                         // Handle responses/events
@@ -318,7 +316,10 @@ impl Cmd {
                             // recv returns `None` if the channel has been closed
                             break;
                         };
-                        debug_client.process_event(&event, body).unwrap();
+                        if let Err(error) = debug_client.process_event(&event, body) {
+                            result = Err(error);
+                            break;
+                        }
                     },
                     read_line = rl.readline() => {
                         match read_line {
@@ -346,15 +347,13 @@ impl Cmd {
                             // For end of file and ctrl-c, we just quit
                             Ok(ReadlineEvent::Eof | ReadlineEvent::Interrupted) => break,
                             Err(actual_error) => {
-                                // Show error message and quit
-                                writeln!(&mut writer, "Error handling input: {actual_error:?}").unwrap();
+                                result = Err(actual_error).context("Error handling input");
                                 break;
                             }
                         }
                     },
                     _ = debug_client.req_sender.closed() => break,
-                    _ = cancellation.cancelled() => break,
-                };
+                }
             }
 
             debug_client
@@ -370,9 +369,10 @@ impl Cmd {
                     type_: "request".to_string(),
                 })
                 .await;
+            result
         };
 
-        let (_, server_result) = tokio::join! {
+        let (readline_result, server_result) = tokio::join! {
             readline,
             server,
         };
@@ -380,17 +380,20 @@ impl Cmd {
         rl.flush()?;
         server_result??;
 
-        Ok(())
+        readline_result
     }
 }
 
 struct Client {
     writer: Option<SharedWriter>,
-    cancellation: CancellationToken,
     rtt_channels: HashMap<u32, RttChannelInfo>,
     req_sender: Sender<Request>,
-    seq: i64,
+
     is_initialized: bool,
+    is_terminated: bool,
+
+    /// Request sequence counter.
+    seq: i64,
 }
 
 impl Client {
@@ -447,7 +450,9 @@ impl Client {
             "response" => {
                 let response = serde_json::from_value::<Response>(event_body.unwrap())?;
                 match response.command.as_str() {
-                    _ if !response.success => self.write_to_cli(error_response_to_string(response)),
+                    _ if !response.success => {
+                        anyhow::bail!("{}", error_response_to_string(response));
+                    }
 
                     "evaluate" => {
                         let Some(body) = response.body else {
@@ -483,7 +488,7 @@ impl Client {
                 self.write_to_cli(output.message);
             }
             // Sent for the "quit" command, exits the readline Future and triggers a disconnection.
-            "terminated" => self.cancellation.cancel(),
+            "terminated" => self.is_terminated = true,
             // Not interesting
             "memory" => {}
             "stopped" => {}
@@ -559,5 +564,9 @@ impl Client {
         }
 
         Ok(())
+    }
+
+    fn running(&self) -> bool {
+        !self.is_terminated
     }
 }
