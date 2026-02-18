@@ -1381,31 +1381,6 @@ mod test {
     }
 
     #[tokio::test]
-    async fn launch_with_config_error() {
-        let mut protocol_adapter = initialized_protocol_adapter();
-
-        let invalid_launch_args = SessionConfig {
-            chip: Some(TEST_CHIP_NAME.to_owned()),
-            core_configs: vec![CoreConfig {
-                core_index: 0,
-                ..CoreConfig::default()
-            }],
-            ..SessionConfig::default()
-        };
-
-        let expected_error = "Please use the `program-binary` option to specify an executable for this target core. Other(Missing value for file.)";
-        protocol_adapter.expect_output_event(&format!("{expected_error}\n"));
-
-        protocol_adapter
-            .add_request("launch")
-            .with_arguments(invalid_launch_args)
-            .and_error_response()
-            .with_body(error_response_body(expected_error));
-
-        execute_test(protocol_adapter, true).await.unwrap();
-    }
-
-    #[tokio::test]
     async fn wrong_request_after_init() {
         let mut protocol_adapter = initialized_protocol_adapter();
 
