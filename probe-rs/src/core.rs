@@ -7,6 +7,7 @@ use crate::{
     config::DebugSequence,
     error::{BreakpointError, Error},
     memory::CoreMemoryInterface,
+    rtt::RttAccess,
 };
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
@@ -201,6 +202,16 @@ impl CoreMemoryInterface for Core<'_> {
     }
 }
 
+impl RttAccess for Core<'_> {
+    fn is_64_bit(&self) -> bool {
+        self.is_64_bit()
+    }
+
+    fn memory_regions(&self) -> impl Iterator<Item = &MemoryRegion> {
+        self.memory_regions()
+    }
+}
+
 impl<'probe> Core<'probe> {
     /// Borrow the boxed CoreInterface mutable.
     pub fn inner_mut(&mut self) -> &mut Box<dyn CoreInterface + 'probe> {
@@ -228,6 +239,11 @@ impl<'probe> Core<'probe> {
             .memory_map
             .iter()
             .filter(|r| r.cores().iter().any(|m| m == self.name))
+    }
+
+    /// Returns the name of the core.
+    pub fn name(&self) -> &str {
+        self.name
     }
 
     /// Returns the target descriptor of the current `Session`.
