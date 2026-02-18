@@ -485,22 +485,20 @@ impl CoreHandle<'_> {
 
         let mut all_discrete_memory_ranges = Vec::new();
 
-        if let Some(static_variables) = &mut self.core_data.static_variables {
-            if let Some(debug_info) = self.core_data.debug_info.as_ref() {
-                static_variables.recurse_deferred_variables(
-                    debug_info,
-                    &mut self.core,
-                    recursion_limit,
-                    StackFrameInfo {
-                        registers: &self.core_data.stack_frames[0].registers,
-                        frame_base: self.core_data.stack_frames[0].frame_base,
-                        canonical_frame_address: self.core_data.stack_frames[0]
-                            .canonical_frame_address,
-                    },
-                );
-                all_discrete_memory_ranges
-                    .append(&mut static_variables.get_discrete_memory_ranges());
-            }
+        if let Some(static_variables) = &mut self.core_data.static_variables
+            && let Some(debug_info) = self.core_data.debug_info.as_ref()
+        {
+            static_variables.recurse_deferred_variables(
+                debug_info,
+                &mut self.core,
+                recursion_limit,
+                StackFrameInfo {
+                    registers: &self.core_data.stack_frames[0].registers,
+                    frame_base: self.core_data.stack_frames[0].frame_base,
+                    canonical_frame_address: self.core_data.stack_frames[0].canonical_frame_address,
+                },
+            );
+            all_discrete_memory_ranges.append(&mut static_variables.get_discrete_memory_ranges());
         }
 
         // Expand and validate the static and local variables for each stack frame.
