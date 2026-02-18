@@ -321,6 +321,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 // This is a special case where we have a single variable in the cache, and it is the root of a scope.
                                 // These variables don't have cached children by default, so we need to resolve them before we proceed.
                                 // We check for len() == 1, so unwrap() on first_mut() is safe.
+                                #[allow(
+                                    clippy::expect_used,
+                                    reason = "Expect should be unreachable"
+                                )]
                                 target_core
                                     .core_data
                                     .debug_info
@@ -385,6 +389,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     frame_base: top_frame.frame_base,
                                     canonical_frame_address: top_frame.canonical_frame_address,
                                 };
+                                #[allow(
+                                    clippy::expect_used,
+                                    reason = "Expect should be unreachable"
+                                )]
                                 target_core
                                     .core_data
                                     .debug_info
@@ -425,6 +433,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     frame_base: top_frame.frame_base,
                                     canonical_frame_address: top_frame.canonical_frame_address,
                                 };
+                                #[allow(
+                                    clippy::expect_used,
+                                    reason = "Expect should be unreachable"
+                                )]
                                 target_core
                                     .core_data
                                     .debug_info

@@ -434,34 +434,33 @@ impl SessionData {
             // By setting it here, we ensure that RTT will be checked at least once after the core has halted.
             if !current_core_status.is_halted() {
                 debug_adapter.all_cores_halted = false;
-            } else if !cores_halted_previously {
-                if let Some(debug_info) = target_core.core_data.debug_info.as_ref() {
-                    // If currently halted, and was previously running
-                    // update the stack frames
-                    let _stackframe_span = tracing::debug_span!("Update Stack Frames").entered();
-                    tracing::debug!(
-                        "Updating the stack frame data for core #{}",
-                        target_core.id()
-                    );
+            } else if !cores_halted_previously
+                && let Some(debug_info) = target_core.core_data.debug_info.as_ref()
+            {
+                // If currently halted, and was previously running
+                // update the stack frames
+                let _stackframe_span = tracing::debug_span!("Update Stack Frames").entered();
+                tracing::debug!(
+                    "Updating the stack frame data for core #{}",
+                    target_core.id()
+                );
 
-                    let initial_registers = DebugRegisters::from_core(&mut target_core.core);
-                    let exception_interface =
-                        exception_handler_for_core(target_core.core.core_type());
-                    let instruction_set = target_core.core.instruction_set().ok();
+                let initial_registers = DebugRegisters::from_core(&mut target_core.core);
+                let exception_interface = exception_handler_for_core(target_core.core.core_type());
+                let instruction_set = target_core.core.instruction_set().ok();
 
-                    if target_core.core_data.static_variables.is_none() {
-                        target_core.core_data.static_variables =
-                            Some(debug_info.create_static_scope_cache());
-                    }
-
-                    target_core.core_data.stack_frames = debug_info.unwind(
-                        &mut target_core.core,
-                        initial_registers,
-                        exception_interface.as_ref(),
-                        instruction_set,
-                        500, // TODO: we should be able to unwind incrementally as the user requests more frames on the UI
-                    )?;
+                if target_core.core_data.static_variables.is_none() {
+                    target_core.core_data.static_variables =
+                        Some(debug_info.create_static_scope_cache());
                 }
+
+                target_core.core_data.stack_frames = debug_info.unwind(
+                    &mut target_core.core,
+                    initial_registers,
+                    exception_interface.as_ref(),
+                    instruction_set,
+                    500, // TODO: we should be able to unwind incrementally as the user requests more frames on the UI
+                )?;
             }
         }
         Ok(suggest_delay_required)
