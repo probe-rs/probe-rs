@@ -181,10 +181,7 @@ impl Cmd {
         let (req_sender, req_receiver) = mpsc::channel(10);
         let (msg_sender, mut msg_receiver) = mpsc::channel(10);
 
-        // TODO: only start the prompt after the "initialized" message has been received
-        let (mut rl, mut writer) = Readline::new(Prompt("Debug Console> ").to_string()).unwrap();
-
-        // TODO: properly introduce a response/event channel, react to terminated event
+        // TODO: react to terminated event
         let cancellation = CancellationToken::new();
 
         let debug_adapter = DebugAdapter::new(CliAdapter {
@@ -196,11 +193,12 @@ impl Cmd {
         });
 
         let mut debug_client = Client {
-            writer: writer.clone(),
+            writer: None,
             cancellation: cancellation.clone(),
             rtt_channels: HashMap::new(),
             req_sender,
             seq: 0,
+            is_initialized: false,
         };
 
         debug_client
@@ -294,6 +292,23 @@ impl Cmd {
             })
         });
 
+        while !debug_client.is_initialized {
+            tokio::select! {
+                response = msg_receiver.recv() => {
+                    // Handle responses/events
+                    let Some((event, body)) = response else {
+                        // recv returns `None` if the channel has been closed
+                        break;
+                    };
+                    debug_client.process_event(&event, body).unwrap();
+                }
+            }
+        }
+
+        let (mut rl, mut writer) = Readline::new(Prompt("Debug Console> ").to_string()).unwrap();
+
+        debug_client.writer = Some(writer.clone());
+
         let readline = async {
             loop {
                 tokio::select! {
@@ -370,11 +385,12 @@ impl Cmd {
 }
 
 struct Client {
-    writer: SharedWriter,
+    writer: Option<SharedWriter>,
     cancellation: CancellationToken,
     rtt_channels: HashMap<u32, RttChannelInfo>,
     req_sender: Sender<Request>,
     seq: i64,
+    is_initialized: bool,
 }
 
 impl Client {
@@ -392,12 +408,16 @@ impl Client {
     fn write_to_cli(&mut self, message: impl AsRef<str>) {
         let trimmed = message.as_ref().trim_end();
         if !trimmed.is_empty() {
-            writeln!(self.writer, "{}", trimmed).unwrap();
+            self.write_raw_to_cli(trimmed);
         }
     }
 
     fn write_raw_to_cli(&mut self, message: impl AsRef<str>) {
-        write!(self.writer, "{}", message.as_ref()).unwrap();
+        if let Some(writer) = self.writer.as_mut() {
+            write!(writer, "{}", message.as_ref()).unwrap();
+        } else {
+            println!("{}", message.as_ref());
+        }
     }
 
     fn update_rtt_prefixes(&mut self) {
@@ -438,6 +458,7 @@ impl Client {
                         self.write_to_cli(body.result);
                     }
                     "initialize" => {}
+                    "configurationDone" => self.is_initialized = true,
                     "attach" => {}
                     _ => tracing::debug!("{response:?}"),
                 }
