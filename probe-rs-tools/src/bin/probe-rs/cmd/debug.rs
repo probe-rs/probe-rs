@@ -11,11 +11,13 @@ use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
 use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
-use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::InitializeRequestArguments;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::OutputEventBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::ProgressStartEventBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::ProgressUpdateEventBody;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
+    CreatePromptEventBody, EvaluateResponseBody,
+};
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
     DisconnectArguments, EvaluateArguments, RttChannelEventBody, RttDataEventBody,
     RttWindowOpenedArguments,
@@ -196,6 +198,11 @@ impl Cmd {
             seq: 0,
             is_initialized: false,
             is_terminated: false,
+
+            prompts: vec![PromptKind::Eval {
+                prompt: "Debug Console".to_string(),
+            }],
+            current_prompt: 0,
         };
 
         debug_client
@@ -302,13 +309,22 @@ impl Cmd {
             }
         }
 
-        let (mut rl, writer) = Readline::new(Prompt("Debug Console> ").to_string()).unwrap();
-
+        // Prompt 0 is the default debug CLI prompt.
+        let mut current_prompt = debug_client.current_prompt;
+        let (mut rl, writer) =
+            Readline::new(Prompt(format!("{}> ", debug_client.current_prompt())).to_string())
+                .unwrap();
         debug_client.writer = Some(writer);
 
         let readline = async {
             let mut result = Ok(());
             while debug_client.running() {
+                // Update prompt if needed (a message created a new one, or closed the current one)
+                if debug_client.current_prompt != current_prompt {
+                    current_prompt = debug_client.current_prompt;
+                    debug_client.update_prompt(&mut rl);
+                }
+
                 tokio::select! {
                     response = msg_receiver.recv() => {
                         // Handle responses/events
@@ -325,27 +341,14 @@ impl Cmd {
                         match read_line {
                             Ok(ReadlineEvent::Line(line)) => {
                                 rl.add_history_entry(line.clone());
-
-                                debug_client
-                                    .send(|seq| Request {
-                                        command: "evaluate".to_string(),
-                                        arguments: serde_json::to_value(&EvaluateArguments {
-                                            context: Some("repl".to_string()),
-                                            expression: line,
-                                            format: None,
-                                            frame_id: None,
-                                            column: None,
-                                            line: None,
-                                            source: None,
-                                        })
-                                        .ok(),
-                                        seq,
-                                        type_: "request".to_string(),
-                                    })
-                                    .await;
+                                debug_client.handle_prompt(line).await;
                             }
-                            // For end of file and ctrl-c, we just quit
-                            Ok(ReadlineEvent::Eof | ReadlineEvent::Interrupted) => break,
+                            Ok(ReadlineEvent::Eof) => {
+                                // ctrl-d cycles through prompts
+                                debug_client.current_prompt = (current_prompt + 1) % debug_client.prompts.len();
+                            },
+                            // For ctrl-c, we just quit
+                            Ok(ReadlineEvent::Interrupted) => break,
                             Err(actual_error) => {
                                 result = Err(actual_error).context("Error handling input");
                                 break;
@@ -392,11 +395,53 @@ struct Client {
     is_initialized: bool,
     is_terminated: bool,
 
+    prompts: Vec<PromptKind>,
+    current_prompt: usize,
+
     /// Request sequence counter.
     seq: i64,
 }
 
 impl Client {
+    async fn handle_prompt(&mut self, line: String) {
+        // Send a REPL RTT write command if the current prompt is an RTT channel.
+        let expression = match &self.prompts[self.current_prompt] {
+            PromptKind::Eval { .. } => line,
+            PromptKind::Rtt { channel, .. } => {
+                format!("rtt write {channel} {line}")
+            }
+        };
+
+        self.send(|seq| Request {
+            command: "evaluate".to_string(),
+            arguments: serde_json::to_value(&EvaluateArguments {
+                context: Some("repl".to_string()),
+                expression,
+                format: None,
+                frame_id: None,
+                column: None,
+                line: None,
+                source: None,
+            })
+            .ok(),
+            seq,
+            type_: "request".to_string(),
+        })
+        .await;
+    }
+
+    fn current_prompt(&self) -> &str {
+        match &self.prompts[self.current_prompt] {
+            PromptKind::Eval { prompt } => prompt,
+            PromptKind::Rtt { channel_name, .. } => channel_name,
+        }
+    }
+
+    fn update_prompt(&mut self, rl: &mut Readline) {
+        let prompt = format!("{}> ", self.current_prompt());
+        rl.update_prompt(&Prompt(prompt).to_string()).unwrap();
+    }
+
     fn next_seq(&mut self) -> i64 {
         let r = self.seq;
         self.seq += 1;
@@ -526,6 +571,24 @@ impl Client {
                     tracing::debug!("Failed to send rttWindowOpened request: {error}");
                 }
             }
+            "probe-rs-create-prompt" => {
+                let Some(body) = event_body else {
+                    return Ok(());
+                };
+
+                let prompt = serde_json::from_value::<CreatePromptEventBody>(body)?;
+                match prompt.prompt_kind.as_str() {
+                    "rtt" => {
+                        self.prompts.push(PromptKind::Rtt {
+                            channel: prompt.prompt_handle,
+                            channel_name: format!("{}", prompt.prompt_name),
+                        });
+                        self.current_prompt = self.prompts.len() - 1;
+                    }
+                    _ => {}
+                }
+            }
+            // TODO: add close prompt message
             "probe-rs-rtt-data" => {
                 let Some(body) = event_body else {
                     return Ok(());
@@ -571,4 +634,12 @@ impl Client {
     fn running(&self) -> bool {
         !self.is_terminated
     }
+}
+
+enum PromptKind {
+    /// The default debug CLI prompt.
+    Eval { prompt: String },
+
+    /// Represents an RTT down channel.
+    Rtt { channel_name: String, channel: u32 },
 }
