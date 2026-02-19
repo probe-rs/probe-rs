@@ -1660,6 +1660,20 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .is_ok()
     }
 
+    /// Send a custom `probe-rs-rtt-channel-config` event to the MS DAP Client, to create a window for a specific RTT channel.
+    pub fn open_prompt(&mut self, kind: &str, name: &str, handle: u32) -> bool {
+        let Ok(event_body) = serde_json::to_value(CreatePromptEventBody {
+            prompt_kind: kind.to_string(),
+            prompt_name: name.to_string(),
+            prompt_handle: handle,
+        }) else {
+            return false;
+        };
+
+        self.send_event("probe-rs-create-prompt", Some(event_body))
+            .is_ok()
+    }
+
     /// Send a custom `probe-rs-rtt-data` event to the MS DAP Client, to
     pub fn rtt_output(&mut self, channel_number: u32, rtt_data: String) -> bool {
         let Ok(event_body) = serde_json::to_value(RttDataEventBody {

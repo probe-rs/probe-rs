@@ -45,6 +45,14 @@ pub struct RttChannelEventBody {
 
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CreatePromptEventBody {
+    pub prompt_kind: String,
+    pub prompt_name: String,
+    pub prompt_handle: u32,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RttDataEventBody {
     pub channel_number: u32,
     /// RTT output
