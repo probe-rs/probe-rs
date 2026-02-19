@@ -48,7 +48,7 @@ pub struct CoreData {
     ///    These 'implicit' updates of `last_known_status` will not(and should not) result in a notification to the client.
     pub last_known_status: CoreStatus,
     pub target_name: String,
-    pub debug_info: DebugInfo,
+    pub debug_info: Option<DebugInfo>,
     pub static_variables: Option<VariableCache>,
     pub core_peripherals: Option<SvdCache>,
     pub stack_frames: Vec<probe_rs_debug::stack_frame::StackFrame>,
@@ -303,6 +303,10 @@ impl CoreHandle<'_> {
             debug_adapter.rtt_window(up_channel.number(), channel_name, data_format);
         }
 
+        for down_channel in client.down_channels() {
+            debug_adapter.open_prompt("rtt", &down_channel.channel_name(), down_channel.number());
+        }
+
         self.core_data.rtt_connection = Some(debug_rtt::RttConnection {
             client,
             debugger_rtt_channels,
@@ -403,11 +407,16 @@ impl CoreHandle<'_> {
         requested_breakpoint_column: Option<u64>,
         requested_source: &Source,
     ) -> Result<VerifiedBreakpoint, DebuggerError> {
+        let Some(ref debug_info) = self.core_data.debug_info else {
+            return Err(DebuggerError::Other(anyhow!(
+                "Cannot set source breakpoint without debug information."
+            )));
+        };
+
         let VerifiedBreakpoint {
                  address,
                  source_location,
-             } = self.core_data
-            .debug_info
+             } = debug_info
             .get_breakpoint_location(
                 source_path,
                 requested_breakpoint_line,
@@ -432,6 +441,9 @@ impl CoreHandle<'_> {
     /// for a specified source location, of any [`super::session_data::BreakpointType::SourceBreakpoint`].
     /// This is because the address of the breakpoint may have changed based on changes in the source file that created the new binary.
     pub(crate) fn recompute_breakpoints(&mut self) -> Result<(), DebuggerError> {
+        if self.core_data.debug_info.is_none() {
+            return Ok(());
+        }
         let target_breakpoints = self.core_data.breakpoints.clone();
         for breakpoint in target_breakpoints
             .iter()
@@ -477,9 +489,11 @@ impl CoreHandle<'_> {
 
         let mut all_discrete_memory_ranges = Vec::new();
 
-        if let Some(static_variables) = &mut self.core_data.static_variables {
+        if let Some(static_variables) = &mut self.core_data.static_variables
+            && let Some(debug_info) = self.core_data.debug_info.as_ref()
+        {
             static_variables.recurse_deferred_variables(
-                &self.core_data.debug_info,
+                debug_info,
                 &mut self.core,
                 recursion_limit,
                 StackFrameInfo {
@@ -498,18 +512,21 @@ impl CoreHandle<'_> {
                 variable_caches.push(local_variables);
             }
             for variable_cache in variable_caches {
-                // Cache the deferred top level children of the of the cache.
-                variable_cache.recurse_deferred_variables(
-                    &self.core_data.debug_info,
-                    &mut self.core,
-                    10,
-                    StackFrameInfo {
-                        registers: &frame.registers,
-                        frame_base: frame.frame_base,
-                        canonical_frame_address: frame.canonical_frame_address,
-                    },
-                );
-                all_discrete_memory_ranges.append(&mut variable_cache.get_discrete_memory_ranges());
+                if let Some(debug_info) = self.core_data.debug_info.as_ref() {
+                    // Cache the deferred top level children of the of the cache.
+                    variable_cache.recurse_deferred_variables(
+                        debug_info,
+                        &mut self.core,
+                        10,
+                        StackFrameInfo {
+                            registers: &frame.registers,
+                            frame_base: frame.frame_base,
+                            canonical_frame_address: frame.canonical_frame_address,
+                        },
+                    );
+                    all_discrete_memory_ranges
+                        .append(&mut variable_cache.get_discrete_memory_ranges());
+                }
             }
             // Also capture memory addresses for essential registers.
             for register in frame.registers.0.iter() {

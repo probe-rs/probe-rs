@@ -95,6 +95,12 @@ pub(crate) fn disassemble_target_memory(
     memory_reference: u64,
     instruction_count: i64,
 ) -> Result<Vec<DisassembledInstruction>, DebuggerError> {
+    let Some(ref debug_info) = target_core.core_data.debug_info else {
+        return Err(DebuggerError::Other(anyhow!(
+            "Cannot disassemble target memory without debug information."
+        )));
+    };
+
     let instruction_set = target_core.core.instruction_set()?;
     match instruction_set {
         InstructionSet::Thumb2
@@ -145,10 +151,7 @@ pub(crate) fn disassemble_target_memory(
         // length instructions are not necessarily word-aligned, i.e.
         // in the case of ARM Thumbv2, instructions are embedded into
         // a 16-bit halfword stream.
-        if let Some(source_location) = target_core
-            .core_data
-            .debug_info
-            .get_source_location(start_from_address)
+        if let Some(source_location) = debug_info.get_source_location(start_from_address)
             && let Some(source_address) = source_location.address
         {
             start_from_address = source_address;
@@ -159,12 +162,14 @@ pub(crate) fn disassemble_target_memory(
     start_from_address &= !(min_instruction_size - 1);
     read_until_address &= !(min_instruction_size - 1);
 
-    let cs_le = get_capstone_le(target_core)?;
+    let instruction_set = target_core.core.instruction_set()?;
+    let core_type = target_core.core.core_type();
+    let cs_le = get_capstone_le(instruction_set, core_type)?;
     let mut code_buffer_le: Vec<u8> = vec![];
     let mut disassembled_instructions: Vec<DisassembledInstruction> = vec![];
     let mut maybe_previous_source_location = None;
     let mut maybe_reference_instruction_index = None;
-    let convert_endianness = target_core.core_data.debug_info.endianness() == RunTimeEndian::Big;
+    let convert_endianness = debug_info.endianness() == RunTimeEndian::Big;
 
     let mut instruction_pointer = start_from_address;
     'instruction_loop: while instruction_pointer < read_until_address {
@@ -292,10 +297,8 @@ pub(crate) fn disassemble_target_memory(
                 let mut location = None;
                 let mut line = None;
                 let mut column = None;
-                if let Some(current_source_location) = target_core
-                    .core_data
-                    .debug_info
-                    .get_source_location(instruction.address())
+                if let Some(current_source_location) =
+                    debug_info.get_source_location(instruction.address())
                 {
                     if maybe_previous_source_location.is_none()
                         || maybe_previous_source_location.is_some_and(|previous_source_location| {
@@ -381,14 +384,17 @@ pub(crate) fn disassemble_target_memory(
     Ok(disassembled_instructions)
 }
 
-fn get_capstone_le(target_core: &mut CoreHandle<'_>) -> Result<Capstone, DebuggerError> {
-    let mut cs = match target_core.core.instruction_set()? {
+fn get_capstone_le(
+    instruction_set: InstructionSet,
+    core_type: CoreType,
+) -> Result<Capstone, DebuggerError> {
+    let mut cs = match instruction_set {
         InstructionSet::Thumb2 => {
             let mut capstone_builder = Capstone::new()
                 .arm()
                 .mode(armArchMode::Thumb)
                 .endian(Endian::Little);
-            if matches!(target_core.core.core_type(), CoreType::Armv8m) {
+            if matches!(core_type, CoreType::Armv8m) {
                 capstone_builder = capstone_builder
                     .extra_mode(std::iter::once(capstone::arch::arm::ArchExtraMode::V8));
             }
@@ -596,7 +602,8 @@ pub(crate) fn set_instruction_breakpoint(
                 match target_core
                     .core_data
                     .debug_info
-                    .get_source_location(memory_reference)
+                    .as_ref()
+                    .and_then(|di| di.get_source_location(memory_reference))
                 {
                     Some(source_location) => {
                         breakpoint_response.id = Some(memory_reference as i64);

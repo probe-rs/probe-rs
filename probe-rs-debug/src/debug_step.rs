@@ -39,7 +39,7 @@ impl SteppingMode {
     pub fn step(
         &self,
         core: &mut impl CoreInterface,
-        debug_info: &DebugInfo,
+        debug_info: Option<&DebugInfo>,
     ) -> Result<(CoreStatus, u64), DebugError> {
         let mut core_status = core.status()?;
         let mut program_counter = match core_status {
@@ -67,11 +67,21 @@ impl SteppingMode {
                     return Ok((core_status, program_counter));
                 }
                 SteppingMode::BreakPoint => {
+                    let Some(debug_info) = debug_info else {
+                        return Err(DebugError::Other(
+                            "Cannot compute halt location without debug information".to_string(),
+                        ));
+                    };
                     self.get_halt_location(core, debug_info, program_counter, None)
                 }
                 SteppingMode::IntoStatement
                 | SteppingMode::OverStatement
                 | SteppingMode::OutOfStatement => {
+                    let Some(debug_info) = debug_info else {
+                        return Err(DebugError::Other(
+                            "Cannot use statement stepping without debug information".to_string(),
+                        ));
+                    };
                     // The more complex cases, where specific handling is required.
                     self.get_halt_location(core, debug_info, program_counter, Some(return_address))
                 }
@@ -112,26 +122,35 @@ impl SteppingMode {
 
         (core_status, program_counter) = match target_address {
             Some(target_address) => {
-                tracing::debug!(
-                    "Preparing to step ({:20?}): \n\tfrom: {:?} @ {:#010X} \n\t  to: {:?} @ {:#010X}",
-                    self,
-                    debug_info
-                        .get_source_location(program_counter)
-                        .map(|source_location| (
-                            source_location.path,
-                            source_location.line,
-                            source_location.column
-                        )),
-                    origin_program_counter,
-                    debug_info
-                        .get_source_location(target_address)
-                        .map(|source_location| (
-                            source_location.path,
-                            source_location.line,
-                            source_location.column
-                        )),
-                    target_address,
-                );
+                if let Some(debug_info) = debug_info {
+                    tracing::debug!(
+                        "Preparing to step ({:20?}): \n\tfrom: {:?} @ {:#010X} \n\t  to: {:?} @ {:#010X}",
+                        self,
+                        debug_info
+                            .get_source_location(program_counter)
+                            .map(|source_location| (
+                                source_location.path,
+                                source_location.line,
+                                source_location.column
+                            )),
+                        origin_program_counter,
+                        debug_info
+                            .get_source_location(target_address)
+                            .map(|source_location| (
+                                source_location.path,
+                                source_location.line,
+                                source_location.column
+                            )),
+                        target_address,
+                    );
+                } else {
+                    tracing::debug!(
+                        "Preparing to step ({:20?}): \n\tfrom: {:#010X} \n\t  to: {:#010X}",
+                        self,
+                        origin_program_counter,
+                        target_address,
+                    );
+                }
 
                 run_to_address(program_counter, target_address, core)?
             }
