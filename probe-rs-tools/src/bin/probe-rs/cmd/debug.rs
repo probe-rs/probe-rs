@@ -411,7 +411,9 @@ impl Client {
     fn write_to_cli(&mut self, message: impl AsRef<str>) {
         let trimmed = message.as_ref().trim_end();
         if !trimmed.is_empty() {
+            // Shared writer only flushes whole lines
             self.write_raw_to_cli(trimmed);
+            self.write_raw_to_cli("\n");
         }
     }
 
@@ -419,7 +421,7 @@ impl Client {
         if let Some(writer) = self.writer.as_mut() {
             write!(writer, "{}", message.as_ref()).unwrap();
         } else {
-            println!("{}", message.as_ref());
+            print!("{}", message.as_ref());
         }
     }
 
