@@ -26,7 +26,7 @@ use crate::{
     probe::DebugProbeError,
 };
 pub use communication_interface::{
-    ArmChipInfo, ArmCommunicationInterface, ArmDebugInterface, DapError, DapProbe,
+    ArmChipInfo, ArmCommunicationInterface, ArmDebugInterface, DapError, DapProbe, SwdSequence,
 };
 pub use swo::{SwoAccess, SwoConfig, SwoMode, SwoReader};
 pub use traits::*;
