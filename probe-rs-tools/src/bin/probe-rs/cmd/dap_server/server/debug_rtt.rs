@@ -1,4 +1,4 @@
-use crate::util::rtt::{RttDataHandler, client::RttClient};
+use crate::util::rtt::client::RttClient;
 use crate::{
     cmd::dap_server::{
         DebuggerError,
@@ -7,7 +7,7 @@ use crate::{
     util::rtt::RttDecoder,
 };
 use anyhow::anyhow;
-use probe_rs::{Core, rtt};
+use probe_rs::Core;
 
 /// Manage the active RTT target for a specific SessionData, as well as provide methods to reliably move RTT from target, through the debug_adapter, to the client.
 pub struct RttConnection {
@@ -20,16 +20,15 @@ pub struct RttConnection {
 impl RttConnection {
     /// Polls all the available channels for data and transmits data to the client.
     /// If at least one channel had data, then return a `true` status.
-    pub async fn process_rtt_data<P: ProtocolAdapter>(
+    pub fn process_rtt_data<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
         target_core: &mut Core<'_>,
     ) -> bool {
         let mut at_least_one_channel_had_data = false;
         for debugger_rtt_channel in self.debugger_rtt_channels.iter_mut() {
-            at_least_one_channel_had_data |= debugger_rtt_channel
-                .poll_rtt_data(target_core, debug_adapter, &mut self.client)
-                .await
+            at_least_one_channel_had_data |=
+                debugger_rtt_channel.poll_rtt_data(target_core, debug_adapter, &mut self.client)
         }
         at_least_one_channel_had_data
     }
@@ -54,7 +53,7 @@ impl DebuggerRttChannel {
     /// Poll and retrieve data from the target, and send it to the client, depending on the state of `hasClientWindow`.
     /// Doing this selectively ensures that we don't pull data from target buffers until we have an output window, and also helps us drain buffers after the target has entered a `is_halted` state.
     /// Errors will be reported back to the `debug_adapter`, and the return `bool` value indicates whether there was available data that was processed.
-    pub(crate) async fn poll_rtt_data<P: ProtocolAdapter>(
+    pub(crate) fn poll_rtt_data<P: ProtocolAdapter>(
         &mut self,
         core: &mut Core<'_>,
         debug_adapter: &mut DebugAdapter<P>,
@@ -64,10 +63,8 @@ impl DebuggerRttChannel {
             return false;
         }
 
-        let mut out = StringCollector { data: None };
-
-        match client.poll_channel(core, self.channel_number) {
-            Ok(bytes) => self.channel_data_format.process(bytes, &mut out).await.ok(),
+        let bytes = match client.poll_channel(core, self.channel_number) {
+            Ok(bytes) => bytes,
             Err(e) => {
                 debug_adapter
                     .show_error_message(&DebuggerError::Other(anyhow!(e)))
@@ -76,20 +73,9 @@ impl DebuggerRttChannel {
             }
         };
 
-        match out.data {
-            Some(data) => debug_adapter.rtt_output(self.channel_number, data),
-            None => false,
+        match self.channel_data_format.process(bytes).ok().flatten() {
+            Some(data) => debug_adapter.rtt_output(self.channel_number, data.to_string()),
+            _ => false,
         }
-    }
-}
-
-struct StringCollector {
-    data: Option<String>,
-}
-
-impl RttDataHandler for StringCollector {
-    async fn on_string_data(&mut self, data: String) -> Result<(), rtt::Error> {
-        self.data = Some(data);
-        Ok(())
     }
 }

@@ -338,7 +338,7 @@ impl SessionData {
     ///
     /// Return a boolean indicating whether we should consider a short delay before the next poll.
     #[tracing::instrument(level = "trace", skip_all)]
-    pub(crate) async fn poll_cores<P: ProtocolAdapter>(
+    pub(crate) fn poll_cores<P: ProtocolAdapter>(
         &mut self,
         session_config: &SessionConfig,
         debug_adapter: &mut DebugAdapter<P>,
@@ -376,10 +376,7 @@ impl SessionData {
             if core_config.rtt_config.enabled {
                 if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
                     // We should poll the target for rtt data, and if any RTT data was processed, we clear the flag.
-                    if core_rtt
-                        .process_rtt_data(debug_adapter, &mut target_core.core)
-                        .await
-                    {
+                    if core_rtt.process_rtt_data(debug_adapter, &mut target_core.core) {
                         suggest_delay_required = false;
                     }
                 } else if debug_adapter.configuration_is_done() {
