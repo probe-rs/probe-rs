@@ -9,7 +9,7 @@ use anyhow::Context;
 use libtest_mimic::{Failed, Trial};
 use postcard_rpc::host_client::HostClient;
 use postcard_schema::Schema;
-use probe_rs::rtt::{self, find_rtt_control_block_in_raw_file};
+use probe_rs::rtt::find_rtt_control_block_in_raw_file;
 use ratatui::crossterm::style::Stylize;
 use rustyline_async::{Readline, ReadlineError, ReadlineEvent, SharedWriter};
 use serde::de::DeserializeOwned;
@@ -45,10 +45,7 @@ use crate::{
         common_options::{BinaryDownloadOptions, ProbeOptions},
         flash::CliProgressBars,
         logging,
-        rtt::{
-            DefmtProcessor, DefmtState, RttChannelConfig, RttDataHandler, RttDecoder,
-            client::RttClient,
-        },
+        rtt::{DefmtProcessor, DefmtState, RttChannelConfig, RttDecoder, client::RttClient},
     },
 };
 
@@ -1185,29 +1182,15 @@ impl Channel {
         shared_writer: &impl AsyncFn(&str),
         copy_to: Option<&mut tokio::fs::File>,
     ) {
-        let mut printer = Printer {
-            prefix: &self.printer_prefix,
-            copy_to,
-            shared_writer,
-        };
-        let _ = self.decoder.process(bytes, &mut printer).await;
-    }
-}
-
-struct Printer<'a, P: AsyncFn(&str)> {
-    prefix: &'a str,
-    copy_to: Option<&'a mut tokio::fs::File>,
-    shared_writer: &'a P,
-}
-impl<P: AsyncFn(&str)> RttDataHandler for Printer<'_, P> {
-    async fn on_string_data(&mut self, data: String) -> Result<(), rtt::Error> {
-        let message = format!("{}{}", self.prefix, data);
-        (self.shared_writer)(&message).await;
-        if let Some(copy_to) = &mut self.copy_to {
-            // Silently discarding output file errors
-            _ = copy_to.write_all(data.as_bytes()).await;
+        if let Some(data) = self.decoder.process(bytes).ok().flatten() {
+            let data = data.to_string();
+            let message = format!("{}{}", self.printer_prefix, data);
+            shared_writer(&message).await;
+            if let Some(copy_to) = copy_to {
+                // Silently discarding output file errors
+                _ = copy_to.write_all(data.as_bytes()).await;
+            }
         }
-        Ok(())
     }
 }
 
