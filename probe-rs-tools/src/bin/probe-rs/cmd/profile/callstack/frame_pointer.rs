@@ -155,17 +155,17 @@ impl AdjustedFrameRecord {
     }
 }
 
-const ARM32_FRAME_RECORD_OFFSET: i64 = 0;
-const ARM64_FRAME_RECORD_OFFSET: i64 = 0;
-const RISCV32_FRAME_RECORD_OFFSET: i64 = -8;
-const XTENSA_FRAME_RECORD_OFFSET: i64 = -16;
-
 fn read_frame_record_for_core(
     memory: &mut dyn MemoryInterface,
     instruction_set: InstructionSet,
     frame_pointer: u64,
     last_pc: u64,
 ) -> Result<AdjustedFrameRecord, FramePointerStackWalkError> {
+    const ARM32_FRAME_RECORD_OFFSET: i64 = 0;
+    const ARM64_FRAME_RECORD_OFFSET: i64 = 0;
+    const RISCV32_FRAME_RECORD_OFFSET: i64 = -8;
+    const XTENSA_FRAME_RECORD_OFFSET: i64 = -16;
+
     match instruction_set {
         InstructionSet::A32 | InstructionSet::Thumb2 => {
             read_arm_riscv_32_frame_record(memory, frame_pointer, ARM32_FRAME_RECORD_OFFSET).map(
