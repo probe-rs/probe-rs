@@ -37,7 +37,7 @@ struct FrameRecord64 {
 
 /// Attempt to read ARM A32 or RISCV32 frame record
 fn read_arm_riscv_32_frame_record(
-    memory: &mut dyn MemoryInterface,
+    memory: &mut impl MemoryInterface,
     frame_pointer: u64,
     frame_record_offset: i64,
 ) -> Result<FrameRecord32, FramePointerStackWalkError> {
@@ -59,7 +59,7 @@ fn read_arm_riscv_32_frame_record(
 
 /// Attempt to read ARM A64 or RISCV64 frame record
 fn read_arm_riscv_64_frame_record(
-    memory: &mut dyn MemoryInterface,
+    memory: &mut impl MemoryInterface,
     frame_pointer: u64,
     frame_record_offset: i64,
 ) -> Result<FrameRecord64, FramePointerStackWalkError> {
@@ -81,7 +81,7 @@ fn read_arm_riscv_64_frame_record(
 
 /// Attempt to read Xtensa frame record
 fn read_xtensa_frame_record(
-    memory: &mut dyn MemoryInterface,
+    memory: &mut impl MemoryInterface,
     frame_pointer: u64,
     frame_record_offset: i64,
 ) -> Result<FrameRecord32, FramePointerStackWalkError> {
@@ -156,7 +156,7 @@ impl AdjustedFrameRecord {
 }
 
 fn read_frame_record_for_core(
-    memory: &mut dyn MemoryInterface,
+    memory: &mut impl MemoryInterface,
     instruction_set: InstructionSet,
     frame_pointer: u64,
     last_pc: u64,
@@ -193,7 +193,7 @@ fn read_frame_record_for_core(
 /// Part of frame pointer stack walk that is generic for memory interface, used for
 /// frame_pointer_stack_walk implementationa and testing.
 fn frame_pointer_stack_walk_memory_interface(
-    memory: &mut dyn MemoryInterface,
+    memory: &mut impl MemoryInterface,
     instruction_set: InstructionSet,
     entry_point_address_range: &std::ops::Range<u64>,
     program_counter: u64,
