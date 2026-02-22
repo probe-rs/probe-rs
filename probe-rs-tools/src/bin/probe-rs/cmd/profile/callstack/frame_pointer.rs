@@ -208,6 +208,7 @@ fn frame_pointer_stack_walk_memory_interface(
     // Unwind, stopping if:
     //
     // - Return address is in the entry point address range
+    // - Frame pointer has not increased
     // - Frame pointer is 0:
     //   - For arm32/aarch64 section 6.2.1.4 of the AAPCS32 / 6.4.6 of the AAPCS64 states:
     //   "The end of the frame record chain is indicated by the address zero in the address for the
