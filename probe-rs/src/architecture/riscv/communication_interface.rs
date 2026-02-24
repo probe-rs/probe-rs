@@ -1053,24 +1053,31 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u32,
     ) -> Result<V, RiscvError> {
-        let mut sbcs = Sbcs(0);
+        loop {
+            let mut sbcs = Sbcs(0);
 
-        sbcs.set_sbaccess(V::WIDTH as u32);
-        sbcs.set_sbreadonaddr(true);
+            // Reset the systembus busy error flag.
+            sbcs.set_sbbusyerror(true);
 
-        self.schedule_write_dm_register(sbcs)?;
-        self.schedule_write_dm_register(Sbaddress0(address))?;
+            sbcs.set_sbaccess(V::WIDTH as u32);
 
-        let mut results = vec![];
-        self.schedule_read_large_dtm_register::<V, Sbdata>(&mut results)?;
+            sbcs.set_sbreadonaddr(true);
 
-        // Check that the read was successful
-        let sbcs = self.read_dm_register::<Sbcs>()?;
+            self.schedule_write_dm_register(sbcs)?;
+            self.schedule_write_dm_register(Sbaddress0(address))?;
 
-        if sbcs.sberror() != 0 {
-            Err(RiscvError::SystemBusAccess)
-        } else {
-            V::read_scheduled_result(self, &mut results)
+            let mut results = vec![];
+            self.schedule_read_large_dtm_register::<V, Sbdata>(&mut results)?;
+
+            // Check that the read was successful
+            let sbcs = self.read_dm_register::<Sbcs>()?;
+            if sbcs.sberror() != 0 {
+                break Err(RiscvError::SystemBusAccess);
+            }
+            if !sbcs.sbbusyerror() {
+                break V::read_scheduled_result(self, &mut results);
+            }
+            tracing::debug!("System bus was busy while reading, repeating operation");
         }
     }
 
@@ -1085,43 +1092,49 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if data.is_empty() {
             return Ok(());
         }
+        loop {
+            let mut sbcs = Sbcs(0);
 
-        let mut sbcs = Sbcs(0);
+            // Reset the systembus busy error flag.
+            sbcs.set_sbbusyerror(true);
 
-        sbcs.set_sbaccess(V::WIDTH as u32);
+            sbcs.set_sbaccess(V::WIDTH as u32);
 
-        sbcs.set_sbreadonaddr(true);
+            sbcs.set_sbreadonaddr(true);
 
-        sbcs.set_sbreadondata(true);
-        sbcs.set_sbautoincrement(true);
+            sbcs.set_sbreadondata(true);
+            sbcs.set_sbautoincrement(true);
 
-        self.schedule_write_dm_register(sbcs)?;
+            self.schedule_write_dm_register(sbcs)?;
 
-        self.schedule_write_dm_register(Sbaddress0(address))?;
+            self.schedule_write_dm_register(Sbaddress0(address))?;
 
-        let data_len = data.len();
+            let data_len = data.len();
 
-        let mut read_results = Vec::with_capacity(data_len);
-        for _ in data[..data_len - 1].iter() {
+            let mut read_results = Vec::with_capacity(data_len);
+            for _ in data[..data_len - 1].iter() {
+                self.schedule_read_large_dtm_register::<V, Sbdata>(&mut read_results)?;
+            }
+
+            self.schedule_write_dm_register(Sbcs(0))?;
+
+            // Read last value
             self.schedule_read_large_dtm_register::<V, Sbdata>(&mut read_results)?;
-        }
 
-        self.schedule_write_dm_register(Sbcs(0))?;
+            let sbcs = self.read_dm_register::<Sbcs>()?;
 
-        // Read last value
-        self.schedule_read_large_dtm_register::<V, Sbdata>(&mut read_results)?;
+            for out in data.iter_mut() {
+                *out = V::read_scheduled_result(self, &mut read_results)?;
+            }
 
-        let sbcs = self.read_dm_register::<Sbcs>()?;
-
-        for out in data.iter_mut() {
-            *out = V::read_scheduled_result(self, &mut read_results)?;
-        }
-
-        // Check that the read was successful
-        if sbcs.sberror() != 0 {
-            Err(RiscvError::SystemBusAccess)
-        } else {
-            Ok(())
+            // Check that the read was successful
+            if sbcs.sberror() != 0 {
+                break Err(RiscvError::SystemBusAccess);
+            }
+            if !sbcs.sbbusyerror() {
+                break Ok(());
+            }
+            tracing::debug!("System bus was busy while reading, repeating operation");
         }
     }
 
@@ -1295,27 +1308,31 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if data.is_empty() {
             return Ok(());
         }
-        let mut sbcs = Sbcs(0);
 
-        // Set correct access width
-        sbcs.set_sbaccess(V::WIDTH as u32);
-        sbcs.set_sbautoincrement(true);
+        loop {
+            let mut sbcs = Sbcs(0);
+            // Reset busy error flag;
+            sbcs.set_sbbusyerror(true);
+            // Set correct access width
+            sbcs.set_sbaccess(V::WIDTH as u32);
+            sbcs.set_sbautoincrement(true);
 
-        self.schedule_write_dm_register(sbcs)?;
+            self.schedule_write_dm_register(sbcs)?;
 
-        self.schedule_write_dm_register(Sbaddress0(address))?;
+            self.schedule_write_dm_register(Sbaddress0(address))?;
+            for value in data {
+                self.schedule_write_large_dtm_register::<V, Sbdata>(*value)?;
+            }
 
-        for value in data {
-            self.schedule_write_large_dtm_register::<V, Sbdata>(*value)?;
-        }
-
-        // Check that the write was successful
-        let sbcs = self.read_dm_register::<Sbcs>()?;
-
-        if sbcs.sberror() != 0 {
-            Err(RiscvError::SystemBusAccess)
-        } else {
-            Ok(())
+            // Check that the write was successful
+            let sbcs = self.read_dm_register::<Sbcs>()?;
+            if sbcs.sberror() != 0 {
+                break Err(RiscvError::SystemBusAccess);
+            }
+            if !sbcs.sbbusyerror() {
+                break Ok(());
+            }
+            tracing::debug!("System bus was busy while writing, repeating write");
         }
     }
 
