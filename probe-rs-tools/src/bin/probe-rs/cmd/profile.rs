@@ -14,6 +14,9 @@ pub(crate) struct ProfileCmd {
     /// Flash the ELF before profiling
     #[clap(long)]
     flash: bool,
+    /// Reset before profiling
+    #[clap(long)]
+    reset: bool,
     /// Duration of profile in seconds.
     #[clap(long)]
     duration: u64, // Option<u64> If we could catch ctrl-c we can make this optional
@@ -50,6 +53,13 @@ impl ProfileCmd {
                 &probe_options,
                 loader,
             )?;
+        }
+
+        if self.reset {
+            for (core_idx, _) in session.list_cores() {
+                let mut core = session.core(core_idx)?;
+                core.reset()?;
+            }
         }
 
         info!("Profiling...");

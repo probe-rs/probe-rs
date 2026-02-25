@@ -83,7 +83,6 @@ pub(super) fn flat_profile(
     match method {
         FlatProfileMethod::Naive => {
             let mut core = session.core(core)?;
-            core.reset()?;
             let pc_reg = core.program_counter();
 
             loop {
