@@ -1,6 +1,8 @@
 use fxprof_processed_profile as fxprofpp;
 use object::Object;
 
+use crate::util::logging;
+
 use super::samply_object;
 use super::{CoreSamples, FunctionAddress};
 
@@ -118,7 +120,7 @@ pub(crate) fn save_fx_profile(
     profile_name: &str,
 ) -> std::io::Result<()> {
     let output_path = output_dir.join(profile_name).with_extension("json.gz");
-    let output_file = std::fs::File::create(output_path)?;
+    let output_file = std::fs::File::create(&output_path)?;
 
     const GZIP_COMPRESSION_LEVEL: u32 = 2;
 
@@ -127,6 +129,13 @@ pub(crate) fn save_fx_profile(
     let gz = builder.write(writer, flate2::Compression::new(GZIP_COMPRESSION_LEVEL));
     let gz = std::io::BufWriter::new(gz);
     serde_json::to_writer(gz, &profile)?;
+    logging::println(format!(
+        "Wrote profile to {}",
+        output_path
+            .file_name()
+            .expect("This is a file path")
+            .display()
+    ));
     Ok(())
 }
 
