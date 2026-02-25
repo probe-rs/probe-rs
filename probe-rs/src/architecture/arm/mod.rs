@@ -72,6 +72,9 @@ pub enum ArmError {
     /// An error occurred while using a debug port.
     DebugPort(#[from] DebugPortError),
 
+    /// The core is not currently enabled.
+    CoreDisabled,
+
     /// The core has to be halted for the operation, but was not.
     CoreNotHalted,
 
