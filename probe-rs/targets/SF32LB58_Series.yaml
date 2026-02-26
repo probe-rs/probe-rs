@@ -1,6 +1,6 @@
 name: SF32LB58 Series
 variants:
-- name: SF32LB58
+- name: SF32LB586
   cores:
   - name: hcpu
     type: armv8m
@@ -9,8 +9,16 @@ variants:
   - name: acpu
     type: armv8m
     core_access_options: !Arm
-      ap: !v1 1
+      ap: !v1 0
   memory_map:
+  - !Nvm
+    name: Bootloader
+    range:
+      start: 0x1C000000
+      end: 0x20000000
+    cores:
+    - hcpu
+    - acpu
   - !Nvm
     name: Flash3
     range:
@@ -22,8 +30,8 @@ variants:
   - !Nvm
     name: Flash4
     range:
-      start: 0x68000000
-      end: 0xA0000000
+      start: 0x18000000
+      end: 0x1C000000
     cores:
     - hcpu
     - acpu
