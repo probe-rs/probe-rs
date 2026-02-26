@@ -97,10 +97,10 @@ pub trait CoreInterface: MemoryInterface {
     /// Returns the program counter register.
     fn program_counter(&self) -> &'static CoreRegister;
 
-    /// Returns the stack pointer register.
+    /// Returns the frame pointer register.
     fn frame_pointer(&self) -> &'static CoreRegister;
 
-    /// Returns the frame pointer register.
+    /// Returns the stack pointer register.
     fn stack_pointer(&self) -> &'static CoreRegister;
 
     /// Returns the return address register, a.k.a. link register.
@@ -378,12 +378,12 @@ impl<'probe> Core<'probe> {
         self.inner.program_counter()
     }
 
-    /// Returns the stack pointer register.
+    /// Returns the frame pointer register.
     pub fn frame_pointer(&self) -> &'static CoreRegister {
         self.inner.frame_pointer()
     }
 
-    /// Returns the frame pointer register.
+    /// Returns the stack pointer register.
     pub fn stack_pointer(&self) -> &'static CoreRegister {
         self.inner.stack_pointer()
     }

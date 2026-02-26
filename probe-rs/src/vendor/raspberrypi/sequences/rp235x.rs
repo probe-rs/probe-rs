@@ -111,7 +111,7 @@ impl ArmDebugSequence for Rp235x {
         // Only perform a system reset from core 0
         let core_id = core.read_word_32(SIO_CPUID_OFFSET)?;
         if core_id != 0 {
-            tracing::error!("Skipping reset of core {core_id}");
+            tracing::warn!("Skipping reset of core {core_id}");
             return Ok(());
         }
 
