@@ -1126,6 +1126,16 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
+    /// Called before attaching to a core.
+    fn on_attach(
+        &self,
+        _interface: &mut dyn ArmDebugInterface,
+        _ap: &FullyQualifiedApAddress,
+        _core_type: CoreType,
+    ) -> Result<(), ArmError> {
+        Ok(())
+    }
+
     /// Return the Debug Erase Sequence implementation if it exists
     fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
         None
