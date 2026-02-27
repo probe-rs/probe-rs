@@ -1,3 +1,5 @@
+use probe_rs_target::{MemoryPort, MemoryPortOptions};
+
 use crate::{
     Core, CoreType, Error,
     architecture::{
@@ -18,6 +20,7 @@ use crate::{
     },
     config::{CoreExt, DebugSequence, RegistryError, Target, TargetSelector, registry::Registry},
     core::{Architecture, CombinedCoreState},
+    memory_port::MemoryAccessPort,
     probe::{
         AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
         fake_probe::FakeProbe, list::Lister,
@@ -49,6 +52,7 @@ pub struct Session {
     target: Target,
     interfaces: ArchitectureInterface,
     cores: Vec<CombinedCoreState>,
+    memory_ports: Vec<MemoryPort>,
     configured_trace_sink: Option<TraceSink>,
 }
 
@@ -123,27 +127,34 @@ impl ArchitectureInterface {
         match self {
             ArchitectureInterface::Arm(interface) => combined_state.attach_arm(target, interface),
             ArchitectureInterface::Jtag(probe, ifaces) => {
-                let idx = combined_state.jtag_tap_index();
-                if let Some(probe) = probe.try_as_jtag_probe() {
-                    probe.select_target(idx)?;
-                }
-                match &mut ifaces[idx] {
-                    JtagInterface::Riscv(state) => {
-                        let factory = probe.try_get_riscv_interface_builder()?;
-                        let iface = factory.attach_auto(target, state)?;
-                        combined_state.attach_riscv(target, iface)
-                    }
-                    JtagInterface::Xtensa(state) => {
-                        let iface = probe.try_get_xtensa_interface(state)?;
-                        combined_state.attach_xtensa(target, iface)
-                    }
-                    JtagInterface::Unknown => {
-                        unreachable!(
-                            "Tried to attach to unknown interface {idx}. This should never happen."
-                        )
-                    }
-                }
+                attach_jtag(combined_state, probe, ifaces, target)
             }
+        }
+    }
+}
+
+fn attach_jtag<'probe>(
+    combined_state: &'probe mut CombinedCoreState,
+    probe: &'probe mut Probe,
+    ifaces: &'probe mut [JtagInterface],
+    target: &'probe Target,
+) -> Result<Core<'probe>, Error> {
+    let idx = combined_state.jtag_tap_index();
+    if let Some(probe) = probe.try_as_jtag_probe() {
+        probe.select_target(idx)?;
+    }
+    match &mut ifaces[idx] {
+        JtagInterface::Riscv(state) => {
+            let factory = probe.try_get_riscv_interface_builder()?;
+            let iface = factory.attach_auto(target, state)?;
+            combined_state.attach_riscv(target, iface)
+        }
+        JtagInterface::Xtensa(state) => {
+            let iface = probe.try_get_xtensa_interface(state)?;
+            combined_state.attach_xtensa(target, iface)
+        }
+        JtagInterface::Unknown => {
+            unreachable!("Tried to attach to unknown interface {idx}. This should never happen.")
         }
     }
 }
@@ -261,6 +272,8 @@ impl Session {
             Err(e) => return Err(Error::Arm(e)),
         }
 
+        let memory_ports = target.memory_ports.clone();
+
         if attach_method == AttachMethod::UnderReset {
             {
                 for core in &cores {
@@ -296,6 +309,7 @@ impl Session {
                 interfaces: ArchitectureInterface::Arm(interface),
                 cores,
                 configured_trace_sink: None,
+                memory_ports,
             };
 
             {
@@ -331,6 +345,7 @@ impl Session {
                 interfaces: ArchitectureInterface::Arm(interface),
                 cores,
                 configured_trace_sink: None,
+                memory_ports,
             })
         }
     }
@@ -425,6 +440,7 @@ impl Session {
             interfaces,
             cores,
             configured_trace_sink: None,
+            memory_ports: vec![],
         };
 
         // Connect to the cores
@@ -536,6 +552,45 @@ impl Session {
             .get(core)
             .map(|c| c.jtag_tap_index())
             .ok_or(Error::CoreNotFound(core))
+    }
+
+    /// Attaches to a memory access port with the given index number.
+    pub fn memory_access_port(&mut self, index: usize) -> Result<MemoryAccessPort<'_>, Error> {
+        let is_64_bit = self.core(0)?.is_64_bit();
+        match &mut self.interfaces {
+            ArchitectureInterface::Arm(arm_debug_interface) => {
+                let memory_port = self
+                    .memory_ports
+                    .get_mut(index)
+                    .ok_or(Error::MemoryAccessPortNotFound(index))?
+                    .clone();
+                match &memory_port.memory_port_options {
+                    MemoryPortOptions::Arm(_arm_memory_port_options) => {
+                        let memory_port = &self.target.memory_ports[index];
+                        let memory_ap = memory_port
+                            .memory_ap()
+                            .ok_or(Error::MemoryAccessPortNotFound(index))?;
+                        let memory_interface = arm_debug_interface.memory_interface(&memory_ap)?;
+                        Ok(MemoryAccessPort::new_for_arm_memory_interface(
+                            index,
+                            &memory_port.name,
+                            self.target.clone(),
+                            memory_interface,
+                            is_64_bit,
+                        ))
+                    }
+                }
+            }
+            ArchitectureInterface::Jtag(probe, jtag_interfaces) => {
+                let combined_state = self.cores.get_mut(0).ok_or(Error::CoreNotFound(0))?;
+                Ok(MemoryAccessPort::new_for_core(attach_jtag(
+                    combined_state,
+                    probe,
+                    jtag_interfaces,
+                    &self.target,
+                )?))
+            }
+        }
     }
 
     /// Attaches to the core with the given number.
@@ -947,7 +1002,7 @@ fn get_target_from_selector(
 ) -> Result<(Probe, Target), Error> {
     let target = match target {
         TargetSelector::Unspecified(name) => registry.get_target_by_name(name)?,
-        TargetSelector::Specified(target) => target,
+        TargetSelector::Specified(target) => *target,
         TargetSelector::Auto => {
             // At this point we do not know what the target is, so we cannot use the chip specific reset sequence.
             // Thus, we try just using a normal reset for target detection if we want to do so under reset.
