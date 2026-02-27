@@ -473,7 +473,9 @@ impl ArmCommunicationInterface {
                 s1.set_addr((address >> 32) as u32);
             }
             _ => unreachable!(
-                "Did not expect to be called with {ap:x?}. This is a bug, please report it."
+                "Did not expect to be called with {:x?} and {:x?}. This is a bug, please report it.",
+                ap.ap(),
+                dp_state.current_select
             ),
         }
 
