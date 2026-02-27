@@ -118,10 +118,7 @@ impl Cli {
             Subcommand::Info(cmd) => cmd.run(client).await,
             Subcommand::Gdb(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Reset(cmd) => cmd.run(client).await,
-            Subcommand::Debug(cmd) => {
-                cmd.run(&mut *client.registry().await, &lister, utc_offset)
-                    .await
-            }
+            Subcommand::Debug(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Download(cmd) => cmd.run(client).await,
             Subcommand::Run(cmd) => cmd.run(client, utc_offset).await,
             Subcommand::Attach(cmd) => cmd.run(client, utc_offset).await,

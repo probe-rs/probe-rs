@@ -82,7 +82,7 @@ impl SessionConfig {
                 self.cwd.as_ref(),
                 target_core_config.program_binary.as_ref(),
             ) {
-                Ok(program_binary) => {
+                Ok(Some(program_binary)) => {
                     if !program_binary.is_file() {
                         return Err(DebuggerError::Other(anyhow!(
                             "Invalid program binary file specified '{}'",
@@ -91,16 +91,17 @@ impl SessionConfig {
                     }
                     Some(program_binary)
                 }
+                Ok(None) => None,
                 Err(error) => {
-                    return Err(DebuggerError::Other(anyhow!(
-                        "Please use the `program-binary` option to specify an executable for this target core. {error:?}"
-                    )));
+                    return Err(DebuggerError::Other(
+                        anyhow!("Could not load program binary.").context(error),
+                    ));
                 }
             };
             // Update the `svd_file` and validate that the file exists, or else warn the user and continue.
             target_core_config.svd_file =
                 match get_absolute_path(self.cwd.as_ref(), target_core_config.svd_file.as_ref()) {
-                    Ok(svd_file) => {
+                    Ok(Some(svd_file)) => {
                         if !svd_file.is_file() {
                             tracing::warn!("SVD file {} not found.", svd_file.display());
                             None
@@ -108,17 +109,18 @@ impl SessionConfig {
                             Some(svd_file)
                         }
                     }
+                    Ok(None) => None,
                     Err(error) => {
-                        // SVD file is not mandatory.
-                        tracing::debug!("SVD file not specified: {:?}", error);
-                        None
+                        return Err(DebuggerError::Other(
+                            anyhow!("Could not load SVD file.").context(error),
+                        ));
                     }
                 };
         }
 
         self.chip_description_path =
             match get_absolute_path(self.cwd.as_ref(), self.chip_description_path.as_ref()) {
-                Ok(description) => {
+                Ok(Some(description)) => {
                     if !description.is_file() {
                         return Err(DebuggerError::Other(anyhow!(
                             "Invalid chip description file specified '{}'",
@@ -127,10 +129,11 @@ impl SessionConfig {
                     }
                     Some(description)
                 }
+                Ok(None) => None,
                 Err(error) => {
-                    // Chip description file is not mandatory.
-                    tracing::debug!("Chip description file not specified: {:?}", error);
-                    None
+                    return Err(DebuggerError::Other(
+                        anyhow!("Could not load chip description file.").context(error),
+                    ));
                 }
             };
 
@@ -175,7 +178,7 @@ impl SessionConfig {
 fn get_absolute_path(
     configured_cwd: Option<&PathBuf>,
     os_file_to_validate: Option<&PathBuf>,
-) -> Result<PathBuf, DebuggerError> {
+) -> Result<Option<PathBuf>, DebuggerError> {
     match os_file_to_validate {
         Some(temp_path) => {
             let mut new_path = PathBuf::new();
@@ -189,9 +192,9 @@ fn get_absolute_path(
                 }
             }
             new_path.push(temp_path);
-            Ok(new_path)
+            Ok(Some(new_path))
         }
-        None => Err(DebuggerError::Other(anyhow!("Missing value for file."))),
+        None => Ok(None),
     }
 }
 
