@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
 
-use probe_rs::config::Registry;
 use probe_rs::probe::list::Lister;
 use rustyline_async::SharedWriter;
 use rustyline_async::{Readline, ReadlineEvent};
 use time::UtcOffset;
+use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Receiver;
 use tokio_util::sync::CancellationToken;
@@ -15,6 +15,8 @@ use crate::cmd::dap_server::debug_adapter::dap::adapter::DebugAdapter;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::EvaluateResponseBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::InitializeRequestArguments;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::OutputEventBody;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::ProgressStartEventBody;
+use crate::cmd::dap_server::debug_adapter::dap::dap_types::ProgressUpdateEventBody;
 use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
     DisconnectArguments, EvaluateArguments, RttChannelEventBody, RttDataEventBody,
     RttWindowOpenedArguments,
@@ -28,6 +30,7 @@ use crate::cmd::dap_server::server::configuration::CoreConfig;
 use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::cmd::dap_server::server::configuration::SessionConfig;
 use crate::cmd::dap_server::server::debugger::Debugger;
+use crate::rpc::client::RpcClient;
 use crate::util::cli::Prompt;
 use crate::util::rtt::RttConfig;
 use crate::{CoreOptions, util::common_options::ProbeOptions};
@@ -170,8 +173,26 @@ impl ProtocolAdapter for CliAdapter {
                 let message = format!("{prefix}{}", output.data);
                 self.write_raw_to_cli(message);
             }
-            // No flashing support (yet)
-            "progressStart" | "progressEnd" | "progressUpdate" => {}
+            // TODO: print a progress bar
+            "progressStart" => {
+                let Some(body) = serialized_body else {
+                    return Ok(());
+                };
+                let event = serde_json::from_str::<ProgressStartEventBody>(&body)?;
+
+                self.write_to_cli(&event.title);
+            }
+            "progressUpdate" => {
+                let Some(body) = serialized_body else {
+                    return Ok(());
+                };
+                let event = serde_json::from_str::<ProgressUpdateEventBody>(&body)?;
+
+                if let Some(message) = event.message {
+                    self.write_to_cli(message);
+                }
+            }
+            "progressEnd" => {}
             // We can safely ignore "exited"
             "exited" => {}
             _ => tracing::debug!("Unhandled event {event_type}: {serialized_body:?}"),
@@ -262,9 +283,13 @@ pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
 
-    #[clap(long, value_parser)]
-    /// Binary to debug
-    exe: Option<PathBuf>,
+    /// Binary to debug (ELF file). If provided with --launch, the binary will be flashed to the target.
+    #[clap(value_parser)]
+    pub binary: Option<PathBuf>,
+
+    /// Launch instead of just attaching. This will reset the target and allow the binary to be flashed, if provided.
+    #[clap(long)]
+    pub launch: bool,
 
     /// Disable reset vector catch if its supported on the target.
     #[clap(long)]
@@ -277,17 +302,22 @@ pub struct Cmd {
     /// Disable reading RTT data.
     #[clap(long, help_heading = "LOG CONFIGURATION / RTT")]
     pub no_rtt: bool,
+
+    // TODO: support all options in BinaryDownloadOptions
+    /// Before flashing, read back all the flashed data to skip flashing if the device is up to date.
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub preverify: bool,
+
+    /// After flashing, read back all the flashed data to verify it has been written correctly.
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub verify: bool,
 }
 
 impl Cmd {
-    pub async fn run(
-        self,
-        registry: &mut Registry,
-        lister: &Lister,
-        utc_offset: UtcOffset,
-    ) -> anyhow::Result<()> {
+    pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
         let (sender, receiver) = mpsc::channel(5);
 
+        // TODO: only start the prompt after the "initialized" message has been received
         let (mut rl, mut writer) = Readline::new(Prompt("Debug Console> ").to_string()).unwrap();
 
         // TODO: properly introduce a response/event channel, react to terminated event
@@ -303,7 +333,6 @@ impl Cmd {
             cancellation: cancellation.clone(),
             rtt_channels: HashMap::new(),
         });
-        let mut debugger = Debugger::new(utc_offset, None)?;
 
         let mut seq = 0;
         let mut next_seq = move || {
@@ -327,7 +356,7 @@ impl Cmd {
                     supports_invalidated_event: None,
                     supports_memory_event: None,
                     supports_memory_references: None,
-                    supports_progress_reporting: None,
+                    supports_progress_reporting: Some(true),
                     supports_run_in_terminal_request: None,
                     supports_start_debugging_request: None,
                     supports_variable_paging: None,
@@ -340,9 +369,13 @@ impl Cmd {
             })
             .await
             .unwrap();
+
+        // Determine if this is a launch or attach session
+        let session_command = if self.launch { "launch" } else { "attach" };
+
         sender
             .send(Request {
-                command: "attach".to_string(),
+                command: session_command.to_string(),
                 arguments: serde_json::to_value(&SessionConfig {
                     console_log_level: None,
                     cwd: None,
@@ -353,10 +386,15 @@ impl Cmd {
                     speed: self.common.speed,
                     wire_protocol: self.common.protocol,
                     allow_erase_all: false,
-                    flashing_config: FlashingConfig::default(),
+                    flashing_config: FlashingConfig {
+                        flashing_enabled: self.launch && self.binary.is_some(),
+                        verify_before_flashing: self.preverify,
+                        verify_after_flashing: self.verify,
+                        ..FlashingConfig::default()
+                    },
                     core_configs: vec![CoreConfig {
                         core_index: self.shared.core,
-                        program_binary: self.exe,
+                        program_binary: self.binary.clone(),
                         svd_file: None,
                         rtt_config: RttConfig {
                             enabled: !self.no_rtt,
@@ -383,12 +421,18 @@ impl Cmd {
             .await
             .unwrap();
 
-        let server = async {
-            debugger
-                .debug_session(registry, debug_adapter, lister)
-                .await
-                .ok();
-        };
+        // Run the debugger in a separate thread, otherwise longer processes like flashing can block the terminal.
+        let server = tokio::task::spawn_blocking(move || {
+            Runtime::new().unwrap().block_on(async move {
+                let registry = &mut *client.registry().await;
+                let mut debugger = Debugger::new(utc_offset, None)?;
+
+                let lister = Lister::new();
+                debugger
+                    .debug_session(registry, debug_adapter, &lister)
+                    .await
+            })
+        });
 
         let readline = async {
             loop {
@@ -445,12 +489,13 @@ impl Cmd {
                 .ok(); // Ignore error in case the sender is disconnected
         };
 
-        tokio::join! {
+        let (_, server_result) = tokio::join! {
             readline,
             server,
         };
 
         rl.flush()?;
+        server_result??;
 
         Ok(())
     }
