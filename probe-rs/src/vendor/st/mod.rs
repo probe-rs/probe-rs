@@ -11,6 +11,7 @@ use crate::{
             stm32_armv7::Stm32Armv7,
             stm32_armv8::Stm32Armv8,
             stm32h7::{Stm32h7, Stm32h7Line},
+            stm32mp2::{Stm32mp2, Stm32mp2Line},
             stm32n6::Stm32n6,
         },
     },
@@ -54,6 +55,10 @@ impl Vendor for St {
             DebugSequence::Arm(Stm32Armv8::create())
         } else if chip.name.starts_with("STM32N6") {
             DebugSequence::Arm(Stm32n6::create())
+        } else if chip.name.starts_with("STM32MP25") {
+            DebugSequence::Arm(Stm32mp2::create(Stm32mp2Line::MP25))
+        } else if chip.name.starts_with("STM32MP23") {
+            DebugSequence::Arm(Stm32mp2::create(Stm32mp2Line::MP23))
         } else {
             return None;
         };
