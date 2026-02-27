@@ -6,7 +6,7 @@ use linkme::distributed_slice;
 use probe_rs::{
     Architecture, Core, CoreInterface, MemoryInterface, Session,
     config::MemoryRegion,
-    flashing::{DownloadOptions, FlashProgress, FormatKind, download_file_with_options},
+    flashing::{DownloadOptions, FlashProgress, download_file_with_options, image_format},
 };
 
 pub mod stepping;
@@ -297,9 +297,10 @@ pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> R
 
     let start_time = Instant::now();
 
-    let format = FormatKind::from_optional(session.target().default_format.as_deref()).unwrap();
+    let format = image_format(session.target().default_format.as_deref().unwrap_or("elf")).unwrap();
+    let loader = format.create_loader(None);
 
-    let result = download_file_with_options(session, test_binary, format, options);
+    let result = download_file_with_options(session, test_binary, loader, options);
 
     println!();
 

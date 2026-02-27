@@ -6,7 +6,7 @@ use anyhow::{Context, Result, anyhow};
 use colored::Colorize;
 use parking_lot::FairMutex;
 use probe_rs::config::Registry;
-use probe_rs::flashing::{BootInfo, FormatKind};
+use probe_rs::flashing::BootInfo;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::{ScanRegion, find_rtt_control_block_in_raw_file};
 use probe_rs::{Session, probe::DebugProbeSelector};
@@ -30,7 +30,7 @@ use crate::util::logging::setup_logging;
 use crate::util::rtt::client::RttClient;
 use crate::util::rtt::{RttChannelConfig, RttConfig};
 use crate::util::{cargo::build_artifact, common_options::CargoOptions, logging};
-use crate::{Config, FormatOptions, parse_and_resolve_cli_args};
+use crate::{Config, FormatKind, FormatOptions, parse_and_resolve_cli_args};
 
 #[derive(Debug, clap::Parser)]
 #[clap(
@@ -271,7 +271,7 @@ async fn main_try(args: Vec<OsString>, config: Config, offset: UtcOffset) -> Res
     };
 
     let format_options = FormatOptions::default();
-    let format = format_options.to_format_kind(session.target());
+    let format = format_options.binary_format.resolve(session.target());
     let elf = if matches!(format, FormatKind::Elf | FormatKind::Idf) {
         Some(fs::read(&path)?)
     } else {

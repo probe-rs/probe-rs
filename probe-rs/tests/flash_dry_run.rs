@@ -1,4 +1,4 @@
-#![cfg(all(feature = "builtin-targets", feature = "flashing"))]
+#![cfg(feature = "builtin-targets")]
 use probe_rs::{Permissions, flashing::DownloadOptions, integration::FakeProbe, probe::Probe};
 
 /// A chip where the flash algorithm's range is greater than the NVM range.

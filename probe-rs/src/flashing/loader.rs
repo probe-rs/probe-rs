@@ -1,30 +1,36 @@
-use espflash::flasher::{FlashData, FlashSettings, FlashSize};
-use espflash::image_format::idf::{IdfBootloaderFormat, check_idf_bootloader};
-use ihex::Record;
 use itertools::Itertools as _;
+use parking_lot::RwLock;
 use probe_rs_target::{
     InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
     TargetDescriptionSource,
 };
-use std::io::{Read, Seek, SeekFrom};
+use serde_yaml::Value;
+use std::io::{Read, Seek};
 use std::ops::Range;
-use std::str::FromStr;
+use std::sync::LazyLock;
 use std::time::Duration;
 
 use super::builder::FlashBuilder;
-use super::{
-    BinOptions, DownloadOptions, ElfOptions, FileDownloadError, FlashError, Flasher, IdfOptions,
-    extract_from_elf,
-};
+use super::{DownloadOptions, FileDownloadError, FlashError, Flasher};
 use crate::Target;
 use crate::flashing::progress::ProgressOperation;
-use crate::flashing::{FlashLayout, FlashProgress, Format};
+use crate::flashing::{FlashLayout, FlashProgress};
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 
+/// A trait representing a firmware image format.
+///
+/// This trait can create a new [ImageLoader], which can be used to load firmware images for flashing.
+pub trait ImageFormat: Sync {
+    /// The list of format names supported by this loader factory.
+    fn formats(&self) -> &[&str];
+
+    /// Create a new image loader.
+    fn create_loader(&self, options: Option<Value>) -> Box<dyn ImageLoader>;
+}
+
 /// Helper trait for object safety.
 pub trait ImageReader: Read + Seek {}
-impl<T> ImageReader for T where T: Read + Seek {}
 
 /// Load and parse a firmware in a particular format, and add it to the flash loader.
 ///
@@ -39,287 +45,417 @@ pub trait ImageLoader {
     ) -> Result<(), FileDownloadError>;
 }
 
-impl ImageLoader for Format {
-    fn load(
-        &self,
-        flash_loader: &mut FlashLoader,
-        session: &mut Session,
-        file: &mut dyn ImageReader,
-    ) -> Result<(), FileDownloadError> {
-        match self {
-            Format::Bin(options) => BinLoader(options.clone()).load(flash_loader, session, file),
-            Format::Elf(options) => ElfLoader(options.clone()).load(flash_loader, session, file),
-            Format::Hex => HexLoader.load(flash_loader, session, file),
-            Format::Idf(options) => IdfLoader(options.clone()).load(flash_loader, session, file),
-            Format::Uf2 => Uf2Loader.load(flash_loader, session, file),
-        }
+/// Helper function to turn format-specific errors into a [`FileDownloadError`].
+pub fn into_format_error<E>(format: &str, error: E) -> FileDownloadError
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    FileDownloadError::ImageFormatSpecific {
+        format: format.to_string(),
+        source: Box::new(error),
     }
 }
 
-/// Reads the data from the binary file and adds it to the loader without splitting it into flash instructions yet.
-struct BinLoader(BinOptions);
+impl<T> ImageReader for T where T: Read + Seek {}
 
-impl ImageLoader for BinLoader {
-    fn load(
-        &self,
-        flash_loader: &mut FlashLoader,
-        _session: &mut Session,
-        file: &mut dyn ImageReader,
-    ) -> Result<(), FileDownloadError> {
-        // Skip the specified bytes.
-        file.seek(SeekFrom::Start(u64::from(self.0.skip)))?;
+/// A list of all known image formats.
+static LOADERS: LazyLock<RwLock<Vec<&'static dyn ImageFormat>>> = LazyLock::new(|| {
+    #[allow(unused_mut)]
+    let mut image_formats: Vec<&'static dyn ImageFormat> = vec![];
 
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-
-        flash_loader.add_data(
-            // If no base address is specified use the start of the boot memory.
-            // TODO: Implement this as soon as we know targets.
-            self.0.base_address.unwrap_or_default(),
-            &buf,
-        )?;
-
-        Ok(())
+    #[cfg(feature = "builtin-formats")]
+    {
+        image_formats.extend_from_slice(&[
+            &ElfLoaderFactory,
+            &BinLoaderFactory,
+            &HexLoaderFactory,
+            &Uf2LoaderFactory,
+        ]);
     }
+
+    RwLock::new(image_formats)
+});
+
+/// Returns an [image format][ImageFormat] by name.
+///
+/// # Arguments
+///
+/// * `format` - The name of the image format. An image format is recognised
+///   by the names it returns from the [formats][ImageFormat::formats] method.
+pub fn image_format(format: &str) -> Option<&'static dyn ImageFormat> {
+    LOADERS
+        .read()
+        .iter()
+        .find(|factory| factory.formats().contains(&format))
+        .copied()
 }
 
-/// Prepares the data sections that have to be loaded into flash from an ELF file.
-/// This will validate the ELF file and transform all its data into sections but no flash loader commands yet.
-struct ElfLoader(ElfOptions);
-
-impl ImageLoader for ElfLoader {
-    fn load(
-        &self,
-        flash_loader: &mut FlashLoader,
-        session: &mut Session,
-        file: &mut dyn ImageReader,
-    ) -> Result<(), FileDownloadError> {
-        const VECTOR_TABLE_SECTION_NAME: &str = ".vector_table";
-        let mut elf_buffer = Vec::new();
-        file.read_to_end(&mut elf_buffer)?;
-
-        check_chip_compatibility_from_elf_metadata(session, &elf_buffer)?;
-        let extracted_data = extract_from_elf(&elf_buffer, &self.0)?;
-
-        if extracted_data.is_empty() {
-            tracing::warn!("No loadable segments were found in the ELF file.");
-            return Err(FileDownloadError::NoLoadableSegments);
-        }
-
-        tracing::info!("Found {} loadable sections:", extracted_data.len());
-
-        for section in &extracted_data {
-            let sources = &section.section_names;
-            for name in &section.section_names {
-                if name == VECTOR_TABLE_SECTION_NAME {
-                    flash_loader.set_vector_table_addr(section.address as _);
-                }
-            }
-
-            tracing::info!(
-                "    {:?} at {:#010X} ({} byte{})",
-                sources,
-                section.address,
-                section.data.len(),
-                if section.data.len() == 1 { "" } else { "s" }
-            );
-        }
-
-        for data in extracted_data {
-            flash_loader.add_data(data.address.into(), data.data)?;
-        }
-
-        Ok(())
-    }
+/// Registers an [image format][ImageFormat].
+///
+/// # Arguments
+///
+/// * `factory` - The image format factory.
+pub(crate) fn register_image_format(factory: &'static dyn ImageFormat) {
+    LOADERS.write().push(factory);
 }
 
-/// Reads the HEX data segments and adds them as loadable data blocks to the loader.
-/// This does not create any flash loader instructions yet.
-struct HexLoader;
+#[cfg(feature = "builtin-formats")]
+mod builtin {
+    use ihex::Record;
+    use probe_rs_target::MemoryRange;
+    use serde_yaml::Value;
+    use std::io::SeekFrom;
 
-impl ImageLoader for HexLoader {
-    fn load(
-        &self,
-        flash_loader: &mut FlashLoader,
-        _session: &mut Session,
-        file: &mut dyn ImageReader,
-    ) -> Result<(), FileDownloadError> {
-        let mut base_address = 0;
+    use object::{
+        Endianness, Object, ObjectSection, elf::FileHeader32, elf::FileHeader64, elf::PT_LOAD,
+        read::elf::ElfFile, read::elf::FileHeader, read::elf::ProgramHeader,
+    };
 
-        let mut data = String::new();
-        file.read_to_string(&mut data)?;
+    use crate::flashing::loader::{FlashLoader, ImageFormat, ImageLoader, ImageReader};
+    use crate::flashing::{BinOptions, ElfOptions, FileDownloadError};
+    use crate::session::Session;
 
-        for record in ihex::Reader::new(&data) {
-            match record? {
-                Record::Data { offset, value } => {
-                    let offset = base_address + offset as u64;
-                    flash_loader.add_data(offset, &value)?;
-                }
-                Record::ExtendedSegmentAddress(address) => {
-                    base_address = (address as u64) * 16;
-                }
-                Record::ExtendedLinearAddress(address) => {
-                    base_address = (address as u64) << 16;
-                }
+    pub(super) struct ElfLoaderFactory;
+    pub(super) struct BinLoaderFactory;
+    pub(super) struct HexLoaderFactory;
+    pub(super) struct Uf2LoaderFactory;
 
-                Record::EndOfFile
-                | Record::StartSegmentAddress { .. }
-                | Record::StartLinearAddress(_) => {}
-            }
+    impl ImageFormat for ElfLoaderFactory {
+        fn formats(&self) -> &[&str] {
+            &["elf"]
         }
-        Ok(())
+
+        fn create_loader(&self, options: Option<Value>) -> Box<dyn ImageLoader> {
+            let options = options
+                .and_then(|value| serde_yaml::from_value(value).ok())
+                .unwrap_or_default();
+            Box::new(ElfLoader(options))
+        }
     }
-}
+    impl ImageFormat for BinLoaderFactory {
+        fn formats(&self) -> &[&str] {
+            &["bin", "binary"]
+        }
 
-/// Prepares the data sections that have to be loaded into flash from an UF2 file.
-/// This will validate the UF2 file and transform all its data into sections but no flash loader commands yet.
-struct Uf2Loader;
+        fn create_loader(&self, options: Option<Value>) -> Box<dyn ImageLoader> {
+            let options = options
+                .and_then(|value| serde_yaml::from_value(value).ok())
+                .unwrap_or_default();
+            Box::new(BinLoader(options))
+        }
+    }
+    impl ImageFormat for HexLoaderFactory {
+        fn formats(&self) -> &[&str] {
+            &["hex", "ihex", "intelhex"]
+        }
 
-impl ImageLoader for Uf2Loader {
-    fn load(
-        &self,
-        flash_loader: &mut FlashLoader,
-        _session: &mut Session,
-        file: &mut dyn ImageReader,
-    ) -> Result<(), FileDownloadError> {
-        let mut uf2_buffer = Vec::new();
-        file.read_to_end(&mut uf2_buffer)?;
+        fn create_loader(&self, _options: Option<Value>) -> Box<dyn ImageLoader> {
+            Box::new(HexLoader)
+        }
+    }
+    impl ImageFormat for Uf2LoaderFactory {
+        fn formats(&self) -> &[&str] {
+            &["uf2"]
+        }
 
-        let (converted, family_to_target) = uf2_decode::convert_from_uf2(&uf2_buffer).unwrap();
-        let target_addresses = family_to_target.values();
-        let num_sections = family_to_target.len();
+        fn create_loader(&self, _options: Option<Value>) -> Box<dyn ImageLoader> {
+            Box::new(Uf2Loader)
+        }
+    }
 
-        if let Some(target_address) = target_addresses.min() {
-            tracing::info!("Found {} loadable sections:", num_sections);
-            if num_sections > 1 {
-                tracing::warn!("More than 1 section found in UF2 file.  Using first section.");
-            }
-            flash_loader.add_data(*target_address, &converted)?;
+    impl ImageLoader for Box<dyn ImageLoader> {
+        fn load(
+            &self,
+            flash_loader: &mut FlashLoader,
+            session: &mut Session,
+            file: &mut dyn ImageReader,
+        ) -> Result<(), FileDownloadError> {
+            self.as_ref().load(flash_loader, session, file)
+        }
+    }
+
+    /// Reads the data from the binary file and adds it to the loader without splitting it into flash instructions yet.
+    pub struct BinLoader(pub BinOptions);
+
+    impl ImageLoader for BinLoader {
+        fn load(
+            &self,
+            flash_loader: &mut FlashLoader,
+            _session: &mut Session,
+            file: &mut dyn ImageReader,
+        ) -> Result<(), FileDownloadError> {
+            // Skip the specified bytes.
+            file.seek(SeekFrom::Start(u64::from(self.0.skip)))?;
+
+            let mut buf = Vec::new();
+            file.read_to_end(&mut buf)?;
+
+            flash_loader.add_data(
+                // If no base address is specified use the start of the boot memory.
+                // TODO: Implement this as soon as we know targets.
+                self.0.base_address.unwrap_or_default(),
+                &buf,
+            )?;
 
             Ok(())
-        } else {
-            tracing::warn!("No loadable segments were found in the UF2 file.");
-            Err(FileDownloadError::NoLoadableSegments)
+        }
+    }
+
+    /// Prepares the data sections that have to be loaded into flash from an ELF file.
+    /// This will validate the ELF file and transform all its data into sections but no flash loader commands yet.
+    pub struct ElfLoader(pub ElfOptions);
+
+    impl ImageLoader for ElfLoader {
+        fn load(
+            &self,
+            flash_loader: &mut FlashLoader,
+            _session: &mut Session,
+            file: &mut dyn ImageReader,
+        ) -> Result<(), FileDownloadError> {
+            const VECTOR_TABLE_SECTION_NAME: &str = ".vector_table";
+            let mut elf_buffer = Vec::new();
+            file.read_to_end(&mut elf_buffer)?;
+
+            let extracted_data = extract_from_elf(&elf_buffer, &self.0)?;
+
+            if extracted_data.is_empty() {
+                tracing::warn!("No loadable segments were found in the ELF file.");
+                return Err(FileDownloadError::NoLoadableSegments);
+            }
+
+            tracing::info!("Found {} loadable sections:", extracted_data.len());
+
+            for section in &extracted_data {
+                let sources = &section.section_names;
+                for name in &section.section_names {
+                    if name == VECTOR_TABLE_SECTION_NAME {
+                        flash_loader.set_vector_table_addr(section.address as _);
+                    }
+                }
+
+                tracing::info!(
+                    "    {:?} at {:#010X} ({} byte{})",
+                    sources,
+                    section.address,
+                    section.data.len(),
+                    if section.data.len() == 1 { "" } else { "s" }
+                );
+            }
+
+            for data in extracted_data {
+                flash_loader.add_data(data.address.into(), data.data)?;
+            }
+
+            Ok(())
+        }
+    }
+
+    pub(super) fn extract_from_elf<'a>(
+        elf_data: &'a [u8],
+        options: &ElfOptions,
+    ) -> Result<Vec<ExtractedFlashData<'a>>, FileDownloadError> {
+        let file_kind = object::FileKind::parse(elf_data)?;
+
+        match file_kind {
+            object::FileKind::Elf32 => {
+                let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
+                let binary =
+                    object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
+                extract_from_elf_inner(elf_header, binary, elf_data, options)
+            }
+            object::FileKind::Elf64 => {
+                let elf_header = FileHeader64::<Endianness>::parse(elf_data)?;
+                let binary =
+                    object::read::elf::ElfFile::<FileHeader64<Endianness>>::parse(elf_data)?;
+                extract_from_elf_inner(elf_header, binary, elf_data, options)
+            }
+            _ => Err(FileDownloadError::Object("Unsupported file type")),
+        }
+    }
+
+    fn extract_from_elf_inner<'data, T: FileHeader>(
+        elf_header: &T,
+        binary: ElfFile<'_, T>,
+        elf_data: &'data [u8],
+        options: &ElfOptions,
+    ) -> Result<Vec<ExtractedFlashData<'data>>, FileDownloadError> {
+        let endian = elf_header.endian()?;
+
+        let mut extracted_data = Vec::new();
+        for segment in elf_header.program_headers(elf_header.endian()?, elf_data)? {
+            // Get the physical address of the segment. The data will be programmed to that location.
+            let p_paddr: u64 = segment.p_paddr(endian).into();
+
+            let p_vaddr: u64 = segment.p_vaddr(endian).into();
+
+            let flags = segment.p_flags(endian);
+
+            let segment_data = segment.data(endian, elf_data).map_err(|_| {
+                FileDownloadError::Object("Failed to access data for an ELF segment.")
+            })?;
+
+            let mut elf_section = Vec::new();
+
+            if !segment_data.is_empty() && segment.p_type(endian) == PT_LOAD {
+                tracing::info!(
+                    "Found loadable segment, physical address: {:#010x}, virtual address: {:#010x}, flags: {:#x}",
+                    p_paddr,
+                    p_vaddr,
+                    flags
+                );
+
+                let (segment_offset, segment_filesize) = segment.file_range(endian);
+
+                let sector = segment_offset..segment_offset + segment_filesize;
+
+                for section in binary.sections() {
+                    let (section_offset, section_filesize) = match section.file_range() {
+                        Some(range) => range,
+                        None => continue,
+                    };
+
+                    if sector.contains_range(&(section_offset..section_offset + section_filesize)) {
+                        let name = section.name()?;
+                        if options.skip_sections.iter().any(|skip| skip == name) {
+                            tracing::info!("Skipping section: {:?}", name);
+                            continue;
+                        }
+                        tracing::info!("Matching section: {:?}", name);
+
+                        #[cfg(feature = "hexdump")]
+                        for line in hexdump::hexdump_iter(section.data()?) {
+                            tracing::trace!("{}", line);
+                        }
+
+                        for (offset, relocation) in section.relocations() {
+                            tracing::info!(
+                                "Relocation: offset={}, relocation={:?}",
+                                offset,
+                                relocation
+                            );
+                        }
+
+                        elf_section.push(name.to_owned());
+                    }
+                }
+
+                if elf_section.is_empty() {
+                    tracing::info!("Not adding segment, no matching sections found.");
+                } else {
+                    let section_data =
+                        &elf_data[segment_offset as usize..][..segment_filesize as usize];
+
+                    extracted_data.push(ExtractedFlashData {
+                        section_names: elf_section,
+                        address: p_paddr as u32,
+                        data: section_data,
+                    });
+                }
+            }
+        }
+
+        Ok(extracted_data)
+    }
+
+    /// Flash data which was extracted from an ELF file.
+    pub(super) struct ExtractedFlashData<'data> {
+        pub(super) section_names: Vec<String>,
+        pub(super) address: u32,
+        pub(super) data: &'data [u8],
+    }
+
+    impl std::fmt::Debug for ExtractedFlashData<'_> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut helper = f.debug_struct("ExtractedFlashData");
+
+            helper
+                .field("name", &self.section_names)
+                .field("address", &self.address);
+
+            if self.data.len() > 10 {
+                helper
+                    .field("data", &format!("[..] ({} bytes)", self.data.len()))
+                    .finish()
+            } else {
+                helper.field("data", &self.data).finish()
+            }
+        }
+    }
+
+    /// Reads the HEX data segments and adds them as loadable data blocks to the loader.
+    /// This does not create any flash loader instructions yet.
+    pub struct HexLoader;
+
+    impl ImageLoader for HexLoader {
+        fn load(
+            &self,
+            flash_loader: &mut FlashLoader,
+            _session: &mut Session,
+            file: &mut dyn ImageReader,
+        ) -> Result<(), FileDownloadError> {
+            let mut base_address = 0;
+
+            let mut data = String::new();
+            file.read_to_string(&mut data)?;
+
+            for record in ihex::Reader::new(&data) {
+                match record? {
+                    Record::Data { offset, value } => {
+                        let offset = base_address + offset as u64;
+                        flash_loader.add_data(offset, &value)?;
+                    }
+                    Record::ExtendedSegmentAddress(address) => {
+                        base_address = (address as u64) * 16;
+                    }
+                    Record::ExtendedLinearAddress(address) => {
+                        base_address = (address as u64) << 16;
+                    }
+
+                    Record::EndOfFile
+                    | Record::StartSegmentAddress { .. }
+                    | Record::StartLinearAddress(_) => {}
+                }
+            }
+            Ok(())
+        }
+    }
+
+    /// Prepares the data sections that have to be loaded into flash from an UF2 file.
+    /// This will validate the UF2 file and transform all its data into sections but no flash loader commands yet.
+    pub struct Uf2Loader;
+
+    impl ImageLoader for Uf2Loader {
+        fn load(
+            &self,
+            flash_loader: &mut FlashLoader,
+            _session: &mut Session,
+            file: &mut dyn ImageReader,
+        ) -> Result<(), FileDownloadError> {
+            let mut uf2_buffer = Vec::new();
+            file.read_to_end(&mut uf2_buffer)?;
+
+            let (converted, family_to_target) = uf2_decode::convert_from_uf2(&uf2_buffer).unwrap();
+            let target_addresses = family_to_target.values();
+            let num_sections = family_to_target.len();
+
+            if let Some(target_address) = target_addresses.min() {
+                tracing::info!("Found {} loadable sections:", num_sections);
+                if num_sections > 1 {
+                    tracing::warn!("More than 1 section found in UF2 file.  Using first section.");
+                }
+                flash_loader.add_data(*target_address, &converted)?;
+
+                Ok(())
+            } else {
+                tracing::warn!("No loadable segments were found in the UF2 file.");
+                Err(FileDownloadError::NoLoadableSegments)
+            }
         }
     }
 }
 
-/// Loads an ELF file as an esp-idf application into the loader by converting the main application
-/// to the esp-idf bootloader format, appending it to the loader along with the bootloader and
-/// partition table.
-///
-/// This does not create any flash loader instructions yet.
-struct IdfLoader(IdfOptions);
-
-impl ImageLoader for IdfLoader {
-    fn load(
-        &self,
-        flash_loader: &mut FlashLoader,
-        session: &mut Session,
-        file: &mut dyn ImageReader,
-    ) -> Result<(), FileDownloadError> {
-        let target = session.target();
-        let target_name = target
-            .name
-            .split_once('-')
-            .map(|(name, _)| name)
-            .unwrap_or(target.name.as_str());
-        let chip = espflash::target::Chip::from_str(target_name)
-            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.to_string()))?;
-
-        let mut algo = Flasher::new(target, 0, &target.flash_algorithms[0])
-            .map_err(FileDownloadError::Flash)?;
-
-        session
-            .core(0)
-            .unwrap()
-            .reset_and_halt(Duration::from_millis(500))
-            .map_err(FlashError::ResetAndHalt)
-            .map_err(FileDownloadError::FlashSizeDetection)?;
-
-        let flash_size_result = algo
-            .run_verify(session, &mut FlashProgress::empty(), |flasher, _| {
-                flasher.read_flash_size()
-            })
-            .map_err(FileDownloadError::FlashSizeDetection)?;
-
-        let flash_size = match flash_size_result {
-            0x40000 => Some(FlashSize::_256Kb),
-            0x80000 => Some(FlashSize::_512Kb),
-            0x100000 => Some(FlashSize::_1Mb),
-            0x200000 => Some(FlashSize::_2Mb),
-            0x400000 => Some(FlashSize::_4Mb),
-            0x800000 => Some(FlashSize::_8Mb),
-            0x1000000 => Some(FlashSize::_16Mb),
-            0x2000000 => Some(FlashSize::_32Mb),
-            0x4000000 => Some(FlashSize::_64Mb),
-            0x8000000 => Some(FlashSize::_128Mb),
-            0x10000000 => Some(FlashSize::_256Mb),
-            _ => None,
-        };
-
-        tracing::info!("Detected flash size: {:?}", flash_size);
-
-        let flash_data = FlashData::new(
-            {
-                let mut settings = FlashSettings::default();
-
-                settings.size = flash_size;
-                settings.freq = self.0.flash_frequency;
-                settings.mode = self.0.flash_mode;
-
-                settings
-            },
-            0,
-            None,
-            chip,
-            // TODO: auto-detect the crystal frequency.
-            chip.default_xtal_frequency(),
-        );
-
-        let mut elf_buffer = Vec::new();
-        file.read_to_end(&mut elf_buffer)?;
-
-        check_idf_bootloader(&elf_buffer).map_err(|e| {
-            FileDownloadError::Idf(espflash::Error::AppDescriptorNotPresent(e.to_string()))
-        })?;
-        check_chip_compatibility_from_elf_metadata(session, &elf_buffer)?;
-
-        let image = IdfBootloaderFormat::new(
-            &elf_buffer,
-            &flash_data,
-            self.0.partition_table.as_deref(),
-            self.0.bootloader.as_deref(),
-            None,
-            self.0.target_app_partition.as_deref(),
-        )?;
-
-        for data in image.flash_segments() {
-            flash_loader.add_data(data.addr.into(), &data.data)?;
-        }
-
-        Ok(())
-    }
-}
-
-fn check_chip_compatibility_from_elf_metadata(
-    session: &Session,
-    elf_data: &[u8],
-) -> Result<(), FileDownloadError> {
-    let esp_metadata = espflash::image_format::Metadata::from_bytes(Some(elf_data));
-
-    if let Some(chip_name) = esp_metadata.chip_name() {
-        let target = session.target();
-        if chip_name != target.name {
-            return Err(FileDownloadError::IncompatibleImageChip {
-                target: target.name.clone(),
-                image_chips: vec![chip_name.to_string()],
-            });
-        }
-    }
-
-    Ok(())
-}
+#[cfg(feature = "builtin-formats")]
+pub use builtin::*;
 
 /// Current boot information
 #[derive(Clone, Debug, Default)]
@@ -383,7 +519,8 @@ impl FlashLoader {
         self.vector_table_addr
     }
 
-    fn set_vector_table_addr(&mut self, vector_table_addr: u64) {
+    /// Set the vector table address.
+    pub fn set_vector_table_addr(&mut self, vector_table_addr: u64) {
         self.vector_table_addr = Some(vector_table_addr);
     }
 
@@ -452,7 +589,7 @@ impl FlashLoader {
         &mut self,
         session: &mut Session,
         file: &mut T,
-        format: Format,
+        format: impl ImageLoader,
         image_instruction_set: Option<InstructionSet>,
     ) -> Result<(), FileDownloadError> {
         if let Some(instr_set) = image_instruction_set {

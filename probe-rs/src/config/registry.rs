@@ -2,9 +2,11 @@
 
 use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
+use parking_lot::RwLock;
 use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 /// Error type for all errors which occur when working
 /// with the internal registry of targets.
@@ -120,6 +122,14 @@ pub struct Registry {
     families: Vec<ChipFamily>,
 }
 
+/// A list of all targets
+static BUILTIN_TARGETS: LazyLock<RwLock<Vec<ChipFamily>>> =
+    LazyLock::new(|| RwLock::new(builtin_targets()));
+
+pub fn add_builtin_target(family: ChipFamily) {
+    BUILTIN_TARGETS.write().push(family);
+}
+
 #[cfg(feature = "builtin-targets")]
 fn builtin_targets() -> Vec<ChipFamily> {
     const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
@@ -142,7 +152,10 @@ impl Registry {
 
     /// Add a target from the built-in targets.
     pub fn from_builtin_families() -> Self {
-        let mut families = builtin_targets();
+        // TODO: we could handle the registry as an overlay on top of the builtin targets, which would
+        // avoid cloning the data while keeping it extendable. Basically, at each access, look through
+        // the overlay, then look through the builtin targets.
+        let mut families = BUILTIN_TARGETS.read().to_vec();
 
         add_generic_targets(&mut families);
 
@@ -396,9 +409,12 @@ fn validate_family(family: &ChipFamily) -> Result<(), String> {
 
     // We can't have this in the `validate` method as we need information that is not available in
     // probe-rs-target.
-    #[cfg(feature = "flashing")]
+    #[cfg(feature = "builtin-formats")]
     for target in family.variants() {
-        crate::flashing::FormatKind::from_optional(target.default_binary_format.as_deref())?;
+        if let Some(format) = target.default_binary_format.as_deref() {
+            crate::flashing::image_format(format)
+                .ok_or_else(|| format!("Unknown image format {format}"))?;
+        }
     }
 
     Ok(())
@@ -487,7 +503,7 @@ mod tests {
             })
             .for_each(|target| {
                 // Walk through the flash algorithms and cores and try to create each one.
-                #[cfg(feature = "flashing")]
+                #[cfg(feature = "builtin-formats")]
                 for raw_flash_algo in target.flash_algorithms.iter() {
                     for core in raw_flash_algo.cores.iter() {
                         crate::flashing::FlashAlgorithm::assemble_from_raw_with_core(
@@ -505,7 +521,7 @@ mod tests {
                 }
 
                 // Avoid warning when `flashing` feature is not enabled
-                #[cfg(not(feature = "flashing"))]
+                #[cfg(not(feature = "builtin-formats"))]
                 let _ = target;
             });
     }
