@@ -37,6 +37,7 @@ pub fn run_flash_download(
     options.disable_double_buffering = download_options.disable_double_buffering;
     options.verify = download_options.verify;
     options.preverify = download_options.preverify;
+    options.skip_reset = download_options.skip_reset;
 
     let pb = if download_options.disable_progressbars {
         None
