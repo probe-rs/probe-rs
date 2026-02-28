@@ -1,8 +1,9 @@
 //! Memory-mapped DTM (Debug Transport Module) for RISC-V.
 //!
-//! When the RISC-V debug module is exposed behind a CoreSight mem-AP (e.g. RP2350 over SWD),
-//! there is no JTAG DTM. DMI register accesses are performed as 32-bit memory reads/writes
-//! at byte address `dmi_address * 4` (DM at base 0 in the AP's address space).
+//! When the RISC-V debug module is behind a CoreSight memory access port (for example RP2350),
+//! the chip exposes the DMI (Debug Module Interface) registers as offsets into the memory AP's 
+//! address space.
+//! Each DMI register occupies 4 bytes, so address = register * 4
 
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::memory::ArmMemoryInterface;
@@ -20,8 +21,7 @@ enum DmiOp {
     Write(u64, u32),
 }
 
-/// DTM that uses a memory interface (mem-AP) to access the RISC-V debug module.
-/// DMI address `a` is accessed at byte address `a * 4` (DM at base 0 in the AP's space).
+/// DTM that performs DMI accesses via a CoreSight memory access port.
 pub struct MemApDtm<'state> {
     memory: Box<dyn ArmMemoryInterface + 'state>,
     pending: Vec<(DeferredResultIndex, DmiOp)>,
@@ -44,8 +44,7 @@ fn arm_error_to_riscv(e: ArmError) -> RiscvError {
 }
 
 impl<'state> MemApDtm<'state> {
-    /// Create a DTM that performs DMI accesses via the given memory interface.
-    /// DMI address `a` is accessed at byte address `a * 4` (DM at base 0 in the AP's space).
+    /// Creates a DTM that performs DMI accesses via the given memory interface.
     pub fn new(memory: Box<dyn ArmMemoryInterface + 'state>) -> Self {
         Self {
             memory,
@@ -54,19 +53,20 @@ impl<'state> MemApDtm<'state> {
         }
     }
 
-    fn dmi_byte_address(&self, dmi_address: u64) -> u64 {
-        dmi_address * 4
+    /// Calculate offset of DMI register.
+    fn dmi_register_to_ap_address(&self, dmi_register: u64) -> u64 {
+        dmi_register * 4
     }
 }
 
 impl DtmAccess for MemApDtm<'_> {
     fn init(&mut self) -> Result<(), RiscvError> {
-        // No DTMCS to read; memory-mapped path is synchronous.
+        // No DTM control register; memory-mapped path is synchronous.
         Ok(())
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        // Reset is handled by the session / ARM interface when using mem-AP path.
+        // Reset is handled by the session (ARM DAP) on the mem-AP path.
         Ok(())
     }
 
@@ -82,7 +82,7 @@ impl DtmAccess for MemApDtm<'_> {
         &mut self,
         index: DeferredResultIndex,
     ) -> Result<CommandResult, RiscvError> {
-        // Flush pending DMI operations so the requested result is available (same as JTAG DTM).
+        // If the result is not ready yet, run pending DMI ops then take it.
         match self.results.take(index.clone()) {
             Ok(result) => Ok(result),
             Err(_) => {
@@ -98,7 +98,7 @@ impl DtmAccess for MemApDtm<'_> {
         for (index, op) in std::mem::take(&mut self.pending) {
             match op {
                 DmiOp::Read(addr) => {
-                    let byte_addr = self.dmi_byte_address(addr);
+                    let byte_addr = self.dmi_register_to_ap_address(addr);
                     let value = self
                         .memory
                         .read_word_32(byte_addr)
@@ -106,7 +106,7 @@ impl DtmAccess for MemApDtm<'_> {
                     self.results.push(&index, CommandResult::U32(value));
                 }
                 DmiOp::Write(addr, value) => {
-                    let byte_addr = self.dmi_byte_address(addr);
+                    let byte_addr = self.dmi_register_to_ap_address(addr);
                     self.memory
                         .write_word_32(byte_addr, value)
                         .map_err(arm_error_to_riscv)?;
@@ -124,7 +124,6 @@ impl DtmAccess for MemApDtm<'_> {
         let index = DeferredResultIndex::new();
         self.pending
             .push((index.clone(), DmiOp::Write(address, value)));
-        // Memory-mapped write does not return a value.
         Ok(None)
     }
 
@@ -135,7 +134,8 @@ impl DtmAccess for MemApDtm<'_> {
     }
 
     fn read_with_timeout(&mut self, address: u64, _timeout: Duration) -> Result<u32, RiscvError> {
-        let byte_addr = self.dmi_byte_address(address);
+        // Memory-mapped path is synchronous; timeout is unused.
+        let byte_addr = self.dmi_register_to_ap_address(address);
         self.memory
             .read_word_32(byte_addr)
             .map_err(arm_error_to_riscv)
@@ -147,7 +147,8 @@ impl DtmAccess for MemApDtm<'_> {
         value: u32,
         _timeout: Duration,
     ) -> Result<Option<u32>, RiscvError> {
-        let byte_addr = self.dmi_byte_address(address);
+        // Memory-mapped path is synchronous; timeout is unused.
+        let byte_addr = self.dmi_register_to_ap_address(address);
         self.memory
             .write_word_32(byte_addr, value)
             .map_err(arm_error_to_riscv)?;
@@ -155,6 +156,7 @@ impl DtmAccess for MemApDtm<'_> {
     }
 
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
+        // No JTAG = no ID code.
         Ok(None)
     }
 }
