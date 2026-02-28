@@ -1,6 +1,7 @@
 //! Debug Transport Module (DTM) access abstraction
 
 pub mod jtag_dtm;
+pub(crate) mod mem_ap_dtm;
 
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::probe::queue::DeferredResultIndex;
