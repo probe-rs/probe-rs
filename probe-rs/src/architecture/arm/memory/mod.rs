@@ -12,7 +12,7 @@ pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType, R
 
 /// Trait for accessing memory behind a memory access port,
 /// as defined in the ARM Debug Interface Specification.
-pub trait ArmMemoryInterface: MemoryInterface<ArmError> {
+pub trait ArmMemoryInterface: MemoryInterface<ArmError> + Send {
     /// The underlying MemoryAp address.
     fn fully_qualified_address(&self) -> FullyQualifiedApAddress;
 
