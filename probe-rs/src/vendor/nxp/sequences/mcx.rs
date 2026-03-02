@@ -94,7 +94,8 @@ impl MCX {
     const VARIANT_A1: [&str; 6] = [
         "MCXA156", "MCXA155", "MCXA154", "MCXA146", "MCXA145", "MCXA144",
     ];
-    // const VARIANT_A2: [&str; 3] = ["MCXA16", "MCXA17", "MCXA27"];
+    const VARIANT_A2: [&str; 6] = ["MCXA16", "MCXA17", "MCXA18", "MCXA25", "MCXA26", "MCXA27"];
+    const VARIANT_A5: [&str; 6] = ["MCXA28", "MCXA45", "MCXA53", "MCXA55", "MCXA56", "MCXA57"];
     const VARIANT_N: [&str; 1] = ["MCXN"];
     const VARIANT_N0: [&str; 1] = ["MCXN947"];
 
@@ -423,7 +424,11 @@ impl ArmDebugSequence for MCX {
         interface.flush()?;
 
         // Set watch points based on variant
-        if self.is_variant(Self::VARIANT_A0) || self.is_variant(Self::VARIANT_A1) {
+        if self.is_variant(Self::VARIANT_A0)
+            || self.is_variant(Self::VARIANT_A1)
+            || self.is_variant(Self::VARIANT_A2)
+            || self.is_variant(Self::VARIANT_A5)
+        {
             interface.write_word_32(0xE000_1020, 0x4009_1036)?;
             interface.write_word_32(0xE000_1028, 0xF000_0412)?;
             interface.write_word_32(0xE000_1030, 0x4009_1040)?;
