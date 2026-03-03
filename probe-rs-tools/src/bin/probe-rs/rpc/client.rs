@@ -83,6 +83,13 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
     };
     use tokio_util::bytes::Bytes;
 
+    #[cfg(unix)]
+    if let Some(path) = host.strip_prefix("socket://") {
+        tracing::debug!("Socket path detected, will connect via Unix socket.");
+
+        return connect_unix(path).await;
+    }
+
     let uri = Uri::from_str(&format!("{host}/worker")).context("Failed to parse server URI")?;
 
     // We could check the host address for localhost and then set the `is_localhost` option, but
@@ -142,6 +149,24 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
             })
         })),
     ))
+}
+
+#[cfg(all(feature = "remote", unix))]
+pub async fn connect_unix(path: &str) -> anyhow::Result<RpcClient> {
+    use crate::rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
+    use anyhow::Context;
+    use tokio::net::UnixStream;
+
+    let stream = UnixStream::connect(path)
+        .await
+        .context("Failed to connect to Unix socket")?;
+
+    let (reader, writer) = stream.into_split();
+
+    let tx = UnixStreamTx::new(writer);
+    let rx = UnixStreamRx::new(reader);
+
+    Ok(RpcClient::new_from_wire(tx, rx))
 }
 
 #[cfg(feature = "remote")]
