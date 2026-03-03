@@ -38,6 +38,7 @@ pub(crate) struct ServerConfig {
 }
 
 impl ServerConfig {
+    #[cfg(unix)]
     pub fn socket_path(&self) -> Option<&str> {
         self.address
             .as_ref()
@@ -45,13 +46,9 @@ impl ServerConfig {
     }
 
     pub fn validate(&self) -> anyhow::Result<()> {
+        #[cfg(unix)]
         if self.socket_path().is_some() && self.port.is_some() {
             tracing::warn!("Port has no meaning for a Unix socket, it will be ignored.");
-        }
-
-        #[cfg(not(unix))]
-        if self.socket_path().is_some() {
-            anyhow::bail!("Unix sockets not supported on this platform");
         }
 
         Ok(())
