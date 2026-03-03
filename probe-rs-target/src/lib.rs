@@ -16,6 +16,7 @@ mod chip_family;
 mod flash_algorithm;
 mod flash_properties;
 mod memory;
+mod memory_port;
 pub(crate) mod serialize;
 
 pub use chip::{
@@ -31,3 +32,4 @@ pub use memory::{
     GenericRegion, MemoryAccess, MemoryRange, MemoryRegion, NvmRegion, PageInfo, RamRegion,
     RegionMergeIterator, SectorDescription, SectorInfo,
 };
+pub use memory_port::{ArmMemoryPortOptions, MemoryPort, MemoryPortOptions};
