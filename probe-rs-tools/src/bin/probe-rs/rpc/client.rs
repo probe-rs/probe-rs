@@ -83,14 +83,11 @@ pub async fn connect(host: &str, token: Option<String>) -> anyhow::Result<RpcCli
     };
     use tokio_util::bytes::Bytes;
 
+    #[cfg(unix)]
     if let Some(path) = host.strip_prefix("socket://") {
         tracing::debug!("Socket path detected, will connect via Unix socket.");
 
-        #[cfg(unix)]
         return connect_unix(path).await;
-
-        #[cfg(not(unix))]
-        anyhow::bail!("Unix sockets not supported on this platform");
     }
 
     let uri = Uri::from_str(&format!("{host}/worker")).context("Failed to parse server URI")?;
