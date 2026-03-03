@@ -184,19 +184,11 @@ impl Cmd {
         tracing::info!("listening on {}", socket_path.display());
 
         loop {
-            match listener.accept().await {
-                Ok((stream, _)) => {
-                    // Spawn a new task for each connection
-                    tokio::spawn(handle_unix_rpc(stream));
-                }
-                Err(e) => {
-                    tracing::error!("Accept error: {}", e);
-                    break;
-                }
-            }
-        }
+            let (stream, _) = listener.accept().await?;
 
-        Ok(())
+            // Spawn a new task for each connection
+            tokio::spawn(handle_unix_rpc(stream));
+        }
     }
 }
 
