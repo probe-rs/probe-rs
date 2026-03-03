@@ -116,12 +116,9 @@ impl Cmd {
             tracing::warn!("No users configured.");
         }
 
+        #[cfg(unix)]
         if let Some(socket_path) = config.socket_path() {
-            #[cfg(unix)]
             return self.run_unix(&PathBuf::from(socket_path), config).await;
-
-            #[cfg(not(unix))]
-            unreachable!("Config validation should have rejected Unix path on non-Unix platform.");
         }
 
         self.run_tcp(config).await
