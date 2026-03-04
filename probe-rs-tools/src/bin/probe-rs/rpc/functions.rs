@@ -18,10 +18,6 @@ use crate::{
                 VerifyRequest, VerifyResponse, build, erase, flash, verify,
             },
             info::{InfoEvent, TargetInfoRequest, target_info},
-            lock::{
-                LockDeviceRequest, SupportedLockLevelsRequest, SupportedLockLevelsResponse,
-                lock_device, supported_lock_levels,
-            },
             memory::{ReadMemoryRequest, WriteMemoryRequest, read_memory, write_memory},
             monitor::{MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent, monitor},
             probe::{
@@ -67,7 +63,6 @@ pub mod chip;
 pub mod file;
 pub mod flash;
 pub mod info;
-pub mod lock;
 pub mod memory;
 pub mod monitor;
 pub mod probe;
@@ -502,9 +497,6 @@ endpoints! {
     | WriteMemory16Endpoint     | WriteMemory16Request    | NoResponse              | "memory/write16"   |
     | WriteMemory32Endpoint     | WriteMemory32Request    | NoResponse              | "memory/write32"   |
     | WriteMemory64Endpoint     | WriteMemory64Request    | NoResponse              | "memory/write64"   |
-
-    | LockDeviceEndpoint        | LockDeviceRequest       | NoResponse              | "lock"             |
-    | SupportedLockLevelsEndpoint | SupportedLockLevelsRequest | SupportedLockLevelsResponse | "lock/levels" |
 }
 
 topics! {
@@ -575,9 +567,6 @@ postcard_rpc::define_dispatch! {
         | WriteMemory16Endpoint     | async     | write_memory      |
         | WriteMemory32Endpoint     | async     | write_memory      |
         | WriteMemory64Endpoint     | async     | write_memory      |
-
-        | LockDeviceEndpoint        | async     | lock_device       |
-        | SupportedLockLevelsEndpoint | async   | supported_lock_levels |
     };
     topics_in: {
         list: TOPICS_IN_LIST;

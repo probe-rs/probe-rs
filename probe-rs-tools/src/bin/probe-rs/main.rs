@@ -136,7 +136,7 @@ impl Cli {
             Subcommand::Write(cmd) => cmd.run(client).await,
             Subcommand::Complete(cmd) => cmd.run(&lister),
             Subcommand::Mi(cmd) => cmd.run(),
-            Subcommand::Lock(cmd) => cmd.run(client).await,
+            Subcommand::Lock(cmd) => cmd.run(&mut *client.registry().await, &lister),
             Subcommand::Unlock(cmd) => cmd.run(client).await,
         }
     }
@@ -217,7 +217,6 @@ impl Subcommand {
                 | Self::Run(_)
                 | Self::Erase(_)
                 | Self::Verify(_)
-                | Self::Lock(_)
                 | Self::Unlock(_)
         )
     }

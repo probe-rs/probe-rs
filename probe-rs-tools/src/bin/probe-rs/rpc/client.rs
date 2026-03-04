@@ -33,14 +33,13 @@ use crate::{
         functions::{
             AttachEndpoint, BuildEndpoint, ChipInfoEndpoint, CreateRttClientEndpoint,
             CreateTempFileEndpoint, EraseEndpoint, FlashEndpoint, ListChipFamiliesEndpoint,
-            ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, LockDeviceEndpoint,
-            MonitorEndpoint, ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint,
-            ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreAndHaltEndpoint,
-            ResetCoreEndpoint, ResumeAllCoresEndpoint, RpcResult, RttDownEndpoint, RunTestEndpoint,
-            SelectProbeEndpoint, SupportedLockLevelsEndpoint, TakeStackTraceEndpoint,
-            TargetInfoDataTopic, TargetInfoEndpoint, TempFileDataEndpoint, TokioSpawner,
-            VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint,
-            WriteMemory64Endpoint,
+            ListProbesEndpoint, ListTestsEndpoint, LoadChipFamilyEndpoint, MonitorEndpoint,
+            ProgressEventTopic, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
+            ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
+            ResumeAllCoresEndpoint, RpcResult, RttDownEndpoint, RunTestEndpoint,
+            SelectProbeEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
+            TempFileDataEndpoint, TokioSpawner, VerifyEndpoint, WriteMemory8Endpoint,
+            WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
             chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest},
             file::{AppendFileRequest, TempFile},
             flash::{
@@ -48,7 +47,6 @@ use crate::{
                 FlashRequest, ProgressEvent, VerifyRequest, VerifyResult,
             },
             info::{InfoEvent, TargetInfoRequest},
-            lock::{LockDeviceRequest, SupportedLockLevelsData, SupportedLockLevelsRequest},
             memory::{ReadMemoryRequest, WriteMemoryRequest},
             monitor::{MonitorExitReason, MonitorMode, MonitorOptions, MonitorRequest},
             probe::{
@@ -664,23 +662,6 @@ impl SessionInterface {
                 },
                 on_msg,
             )
-            .await
-    }
-
-    pub async fn lock_device(&self, level: Option<String>) -> anyhow::Result<()> {
-        self.client
-            .send_resp::<LockDeviceEndpoint, _>(&LockDeviceRequest {
-                sessid: self.sessid,
-                level,
-            })
-            .await
-    }
-
-    pub async fn supported_lock_levels(&self) -> anyhow::Result<SupportedLockLevelsData> {
-        self.client
-            .send_resp::<SupportedLockLevelsEndpoint, _>(&SupportedLockLevelsRequest {
-                sessid: self.sessid,
-            })
             .await
     }
 }
