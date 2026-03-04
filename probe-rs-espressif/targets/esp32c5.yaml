@@ -25,6 +25,7 @@ variants:
     - main
     access:
       boot: true
+      execute: false
   - !Generic
     name: ROM
     range:

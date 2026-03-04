@@ -26,6 +26,7 @@ variants:
     - main
     access:
       boot: true
+      execute: false
   - !Nvm
     name: External flash on data bus (Read Only)
     range:
@@ -34,6 +35,8 @@ variants:
     cores:
     - main
     is_alias: true
+    access:
+      execute: false
   - !Ram
     name: SRAM Data bus
     range:

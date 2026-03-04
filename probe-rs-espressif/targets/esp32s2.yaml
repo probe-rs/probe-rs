@@ -20,11 +20,16 @@ variants:
       end: 0x4000000
     cores:
     - main
+    access:
+      boot: true
+      execute: false
   - !Nvm
     name: External data bus 1
     range:
       start: 0x3f000000
       end: 0x3f400000
+    access:
+      execute: false
     cores:
     - main
     is_alias: true
@@ -33,6 +38,8 @@ variants:
     range:
       start: 0x3f500000
       end: 0x3ff80000
+    access:
+      execute: false
     cores:
     - main
     is_alias: true
