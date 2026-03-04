@@ -51,8 +51,7 @@ impl Cmd {
 
         session.lock_device(self.level.as_deref())?;
         println!(
-            "Debug port locked successfully. A power cycle may be required for the lock to
-take effect."
+            "Debug port locked successfully. A power cycle may be required for the lock to take effect."
         );
         Ok(())
     }
