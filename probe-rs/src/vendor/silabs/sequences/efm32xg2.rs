@@ -15,9 +15,13 @@ use crate::{
         ap::{ApRegister, CSW},
         core::armv8m::{Aircr, Demcr, Dhcsr},
         memory::ArmMemoryInterface,
-        sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence,
-            DebugLockSequence, LockLevel, cortex_m_wait_for_reset},
-    }, core::MemoryMappedRegister, session::MissingPermissions
+        sequences::{
+            ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence, DebugLockSequence,
+            LockLevel, cortex_m_wait_for_reset,
+        },
+    },
+    core::MemoryMappedRegister,
+    session::MissingPermissions,
 };
 
 // DCI register addresses (accessed via MEM-AP at AP index 1)
@@ -310,7 +314,6 @@ impl ArmDebugSequence for EFM32xG2 {
         // Give the SE time to complete its internal reset and clear the lock configuration.
         thread::sleep(Duration::from_secs(2));
 
-
         Self::nrst_pin_reset(interface)?;
 
         Err(ArmError::ReAttachRequired)
@@ -487,11 +490,7 @@ impl DebugLockSequence for DCIDebugLockSequence {
         }]
     }
 
-    fn lock(
-        &self,
-        interface: &mut dyn ArmDebugInterface,
-        _level: &str,
-    ) -> Result<(), ArmError> {
+    fn lock(&self, interface: &mut dyn ArmDebugInterface, _level: &str) -> Result<(), ArmError> {
         let dci_ap = FullyQualifiedApAddress::v1_with_default_dp(1);
         EFM32xG2::dci_apply_lock(interface, &dci_ap)
     }

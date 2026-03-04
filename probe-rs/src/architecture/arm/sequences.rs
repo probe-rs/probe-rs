@@ -1185,11 +1185,7 @@ pub trait DebugLockSequence: Send + Sync {
     /// permissions before calling this method.
     ///
     /// A power cycle is typically required after locking for it to take effect.
-    fn lock(
-        &self,
-        _interface: &mut dyn ArmDebugInterface,
-        _level: &str,
-    ) -> Result<(), ArmError> {
+    fn lock(&self, _interface: &mut dyn ArmDebugInterface, _level: &str) -> Result<(), ArmError> {
         Err(ArmError::NotImplemented("lock"))
     }
 }

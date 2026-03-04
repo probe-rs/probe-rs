@@ -829,11 +829,9 @@ impl Session {
                 .iter()
                 .find(|l| l.name == name)
                 .ok_or_else(|| Error::Arm(ArmError::UnknownLockLevel(name.to_string())))?,
-            None => levels
-                .first()
-                .ok_or(Error::Arm(ArmError::NotImplemented(
-                    "Device reports no supported lock levels",
-                )))?,
+            None => levels.first().ok_or(Error::Arm(ArmError::NotImplemented(
+                "Device reports no supported lock levels",
+            )))?,
         };
 
         if resolved.is_permanent {

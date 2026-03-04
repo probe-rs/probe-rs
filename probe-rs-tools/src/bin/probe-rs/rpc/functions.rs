@@ -19,8 +19,8 @@ use crate::{
             },
             info::{InfoEvent, TargetInfoRequest, target_info},
             lock::{
-                LockDeviceRequest, SupportedLockLevelsRequest,
-                SupportedLockLevelsResponse, lock_device, supported_lock_levels,
+                LockDeviceRequest, SupportedLockLevelsRequest, SupportedLockLevelsResponse,
+                lock_device, supported_lock_levels,
             },
             memory::{ReadMemoryRequest, WriteMemoryRequest, read_memory, write_memory},
             monitor::{MonitorRequest, MonitorResponse, RttEvent, SemihostingEvent, monitor},

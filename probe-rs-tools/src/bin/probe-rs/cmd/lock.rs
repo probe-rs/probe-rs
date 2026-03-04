@@ -35,7 +35,11 @@ impl Cmd {
                 println!(
                     "{}{}",
                     level.name,
-                    if level.is_permanent { " (permanent)" } else { "" }
+                    if level.is_permanent {
+                        " (permanent)"
+                    } else {
+                        ""
+                    }
                 );
                 println!("  {}", level.description);
             }
