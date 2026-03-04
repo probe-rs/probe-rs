@@ -28,11 +28,14 @@ variants:
     - cpu1
     access:
       boot: true
+      execute: false
   - !Nvm
     name: External data bus
     range:
       start: 0x3c000000
       end: 0x3e000000
+    access:
+      execute: false
     cores:
     - cpu0
     - cpu1

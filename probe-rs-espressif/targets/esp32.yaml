@@ -28,11 +28,14 @@ variants:
     - app
     access:
       boot: true
+      execute: false
   - !Nvm
     name: External data bus
     range:
       start: 0x3f400000
       end: 0x3fc00000
+    access:
+      execute: false
     cores:
     - main
     - app
