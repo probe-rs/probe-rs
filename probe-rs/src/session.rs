@@ -7,7 +7,7 @@ use crate::{
             component::{TraceSink, get_arm_components},
             dp::DpAddress,
             memory::CoresightComponent,
-            sequences::{ArmDebugSequence, DefaultArmSequence},
+            sequences::{ArmDebugSequence, DefaultArmSequence, LockLevel},
         },
         riscv::communication_interface::{
             RiscvCommunicationInterface, RiscvDebugInterfaceState, RiscvError,
@@ -50,6 +50,7 @@ pub struct Session {
     interfaces: ArchitectureInterface,
     cores: Vec<CombinedCoreState>,
     configured_trace_sink: Option<TraceSink>,
+    permissions: Permissions,
 }
 
 /// The `SessionConfig` struct is used to configure a new `Session` during auto-attach.
@@ -296,6 +297,7 @@ impl Session {
                 interfaces: ArchitectureInterface::Arm(interface),
                 cores,
                 configured_trace_sink: None,
+                permissions,
             };
 
             {
@@ -331,6 +333,7 @@ impl Session {
                 interfaces: ArchitectureInterface::Arm(interface),
                 cores,
                 configured_trace_sink: None,
+                permissions,
             })
         }
     }
@@ -339,7 +342,7 @@ impl Session {
         mut probe: Probe,
         target: Target,
         _attach_method: AttachMethod,
-        _permissions: Permissions,
+        permissions: Permissions,
         cores: Vec<CombinedCoreState>,
     ) -> Result<Self, Error> {
         // While we still don't support mixed architectures
@@ -425,6 +428,7 @@ impl Session {
             interfaces,
             cores,
             configured_trace_sink: None,
+            permissions,
         };
 
         // Connect to the cores
@@ -775,6 +779,75 @@ impl Session {
         Ok(())
     }
 
+    /// Check if the connected device has a debug lock sequence defined
+    pub fn has_sequence_lock(&self) -> bool {
+        match &self.target.debug_sequence {
+            DebugSequence::Arm(seq) => seq.debug_lock_sequence().is_some(),
+            _ => false,
+        }
+    }
+
+    /// Return the lock levels supported by the connected device.
+    pub fn supported_lock_levels(&self) -> Result<Vec<LockLevel>, Error> {
+        let DebugSequence::Arm(ref debug_sequence) = self.target.debug_sequence else {
+            return Err(Error::NotImplemented(
+                "Debug Lock Sequence is not implemented for non-ARM targets.",
+            ));
+        };
+
+        let lock_sequence = debug_sequence
+            .debug_lock_sequence()
+            .ok_or(Error::Arm(ArmError::NotImplemented("Debug Lock Sequence")))?;
+
+        Ok(lock_sequence.supported_lock_levels())
+    }
+
+    /// Lock the debug port using the Device's Debug Lock Sequence if any.
+    ///
+    /// If `level` is `None`, the first (default) level is used.
+    /// The level name is validated against supported levels and
+    /// permissions are checked for permanent locks.
+    pub fn lock_device(&mut self, level: Option<&str>) -> Result<(), Error> {
+        let ArchitectureInterface::Arm(ref mut interface) = self.interfaces else {
+            return Err(Error::NotImplemented(
+                "Debug Lock Sequence is not implemented for non-ARM targets.",
+            ));
+        };
+
+        let DebugSequence::Arm(ref debug_sequence) = self.target.debug_sequence else {
+            unreachable!("This should never happen. Please file a bug if it does.");
+        };
+
+        let lock_sequence = debug_sequence
+            .debug_lock_sequence()
+            .ok_or(Error::Arm(ArmError::NotImplemented("Debug Lock Sequence")))?;
+
+        let levels = lock_sequence.supported_lock_levels();
+
+        let resolved = match level {
+            Some(name) => levels
+                .iter()
+                .find(|l| l.name == name)
+                .ok_or_else(|| Error::Arm(ArmError::UnknownLockLevel(name.to_string())))?,
+            None => levels
+                .first()
+                .ok_or(Error::Arm(ArmError::NotImplemented(
+                    "Device reports no supported lock levels",
+                )))?,
+        };
+
+        if resolved.is_permanent {
+            self.permissions
+                .permanent_debug_lock()
+                .map_err(|MissingPermissions(desc)| Error::MissingPermissions(desc))?;
+        }
+
+        tracing::info!("Trying Debug Lock Sequence (level: {})", resolved.name);
+        lock_sequence.lock(interface.deref_mut(), &resolved.name)?;
+        tracing::info!("Device Locked Successfully");
+        Ok(())
+    }
+
     /// Reads all the available ARM CoresightComponents of the currently attached target.
     ///
     /// This will recursively parse the Romtable of the attached target
@@ -992,6 +1065,8 @@ fn get_target_from_selector(
 pub struct Permissions {
     /// When set to true, all memory of the chip may be erased or reset to factory default
     erase_all: bool,
+    /// When set to true, the debug port of the chip may be locked permanently
+    permanent_debug_lock: bool,
 }
 
 impl Permissions {
@@ -1018,6 +1093,27 @@ impl Permissions {
             Ok(())
         } else {
             Err(MissingPermissions("erase_all".into()))
+        }
+    }
+
+    /// Allow the session to lock the debug port of the chip.
+    ///
+    /// # Warning
+    /// Locking the debug port may prevent future debugging and reprogramming of the device.
+    /// Depending on the device and lock level, this may be irreversible.
+    #[must_use]
+    pub fn allow_permanent_debug_lock(self) -> Self {
+        Self {
+            permanent_debug_lock: true,
+            ..self
+        }
+    }
+
+    pub(crate) fn permanent_debug_lock(&self) -> Result<(), MissingPermissions> {
+        if self.permanent_debug_lock {
+            Ok(())
+        } else {
+            Err(MissingPermissions("permanent_debug_lock".into()))
         }
     }
 }
