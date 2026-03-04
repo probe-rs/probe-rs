@@ -304,7 +304,7 @@ impl ArmDebugSequence for EFM32xG2 {
         }
 
         // Perform DCI device erase (requires erase_all permission).
-        tracing::warn!("EFM32xG2: Device is locked. Performing DCI device erase to unlock.");
+        tracing::debug!("EFM32xG2: Device is locked. Performing DCI device erase to unlock.");
         permissions
             .erase_all()
             .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;

@@ -51,6 +51,7 @@ pub struct Session {
     cores: Vec<CombinedCoreState>,
     configured_trace_sink: Option<TraceSink>,
     permissions: Permissions,
+    device_locked: bool,
 }
 
 /// The `SessionConfig` struct is used to configure a new `Session` during auto-attach.
@@ -298,6 +299,7 @@ impl Session {
                 cores,
                 configured_trace_sink: None,
                 permissions,
+                device_locked: false,
             };
 
             {
@@ -334,6 +336,7 @@ impl Session {
                 cores,
                 configured_trace_sink: None,
                 permissions,
+                device_locked: false,
             })
         }
     }
@@ -429,6 +432,7 @@ impl Session {
             cores,
             configured_trace_sink: None,
             permissions,
+            device_locked: false,
         };
 
         // Connect to the cores
@@ -842,6 +846,7 @@ impl Session {
 
         tracing::info!("Trying Debug Lock Sequence (level: {})", resolved.name);
         lock_sequence.lock(interface.deref_mut(), &resolved.name)?;
+        self.device_locked = true;
         tracing::info!("Device Locked Successfully");
         Ok(())
     }
@@ -987,6 +992,11 @@ const _: fn() = || {
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
+        if self.device_locked {
+            tracing::debug!("Skipping shutdown cleanup: device debug port is locked");
+            return;
+        }
+
         if let Err(err) = self.clear_all_hw_breakpoints() {
             tracing::warn!(
                 "Could not clear all hardware breakpoints: {:?}",
