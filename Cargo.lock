@@ -2860,7 +2860,6 @@ dependencies = [
  "docsplay",
  "dunce",
  "env_logger",
- "espflash",
  "fastrand",
  "flate2",
  "futures-lite",
@@ -2916,9 +2915,14 @@ dependencies = [
 name = "probe-rs-espressif"
 version = "0.31.0"
 dependencies = [
+ "bincode",
  "docsplay",
+ "espflash",
  "probe-rs",
  "probe-rs-target",
+ "serde",
+ "serde_yaml",
+ "thiserror 2.0.18",
  "tracing",
 ]
 
@@ -2935,10 +2939,12 @@ name = "probe-rs-target"
 version = "0.31.0"
 dependencies = [
  "base64",
+ "bincode",
  "indexmap",
  "jep106",
  "serde",
  "serde_with",
+ "serde_yaml",
 ]
 
 [[package]]

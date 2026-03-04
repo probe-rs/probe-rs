@@ -334,7 +334,7 @@ pub fn run_blank_check(
             })
             .collect::<Vec<_>>();
 
-        flasher.run_blank_check(session, progress, |active, _| {
+        flasher.run_verify(session, progress, |active, _| {
             for info in sectors {
                 tracing::debug!(
                     "    sector: {:#010x}-{:#010x} ({} bytes)",
