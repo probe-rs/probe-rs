@@ -251,6 +251,8 @@ impl DtmAccess for JtagDtm<'_> {
     fn execute(&mut self) -> Result<(), RiscvError> {
         let mut cmds = std::mem::take(&mut self.state.queued_commands);
 
+        let mut started = Instant::now();
+        let mut previous_queue_len = cmds.len();
         while !cmds.is_empty() {
             match cmds.execute(|queue| self.probe.write_register_batch(queue)) {
                 Ok(r) => {
@@ -284,6 +286,16 @@ impl DtmAccess for JtagDtm<'_> {
                         }
                     }
                 }
+            }
+
+            // If progress was made, reset the timeout.
+            if cmds.len() != previous_queue_len {
+                started = Instant::now();
+                previous_queue_len = cmds.len();
+            }
+
+            if started.elapsed() > Duration::from_millis(500) {
+                return Err(RiscvError::Timeout);
             }
         }
 
@@ -538,6 +550,8 @@ impl DtmAccess for TunneledJtagDtm<'_> {
     fn execute(&mut self) -> Result<(), RiscvError> {
         let mut cmds = std::mem::take(&mut self.state.queued_commands);
 
+        let mut started = Instant::now();
+        let mut previous_queue_len = cmds.len();
         while !cmds.is_empty() {
             match cmds.execute(|queue| self.probe.write_register_batch(queue)) {
                 Ok(r) => {
@@ -571,6 +585,16 @@ impl DtmAccess for TunneledJtagDtm<'_> {
                         }
                     }
                 }
+            }
+
+            // If progress was made, reset the timeout.
+            if cmds.len() != previous_queue_len {
+                started = Instant::now();
+                previous_queue_len = cmds.len();
+            }
+
+            if started.elapsed() > Duration::from_millis(500) {
+                return Err(RiscvError::Timeout);
             }
         }
 

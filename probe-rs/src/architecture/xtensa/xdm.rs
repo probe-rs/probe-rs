@@ -321,6 +321,8 @@ impl<'probe> Xdm<'probe> {
         // We take now to avoid a possibly recursive call to clear before it's time.
         let _idxs = std::mem::take(&mut self.state.status_idxs);
 
+        let mut started = Instant::now();
+        let mut previous_queue_len = queue.len();
         while !queue.is_empty() {
             match queue.execute(|queue| self.probe.write_register_batch(queue)) {
                 Ok(result) => {
@@ -378,6 +380,16 @@ impl<'probe> Xdm<'probe> {
 
                     self.state.jtag_results.merge_from(e.results);
                 }
+            }
+
+            // If progress was made, reset the timeout.
+            if queue.len() != previous_queue_len {
+                started = Instant::now();
+                previous_queue_len = queue.len();
+            }
+
+            if started.elapsed() > Duration::from_millis(500) {
+                return Err(XtensaError::Timeout);
             }
         }
 
