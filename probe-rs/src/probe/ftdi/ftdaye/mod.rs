@@ -172,7 +172,7 @@ impl FtdiContext {
         let mut total = 0;
         while !data.is_empty() {
             // Move data out of the read queue
-            if !self.read_queue.is_empty() {
+            while !self.read_queue.is_empty() && !data.is_empty() {
                 let read = self.read_queue.read(data).unwrap();
                 tracing::debug!("Copied {} bytes from queue", read);
 
