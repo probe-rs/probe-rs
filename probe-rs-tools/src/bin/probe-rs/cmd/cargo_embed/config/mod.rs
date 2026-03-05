@@ -48,14 +48,26 @@ pub struct Probe {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Flashing {
+    /// Whether or not the target should be flashed.
     pub enabled: bool,
+    /// Whether or not bytes erased but not rewritten with data from the ELF
+    /// should be restored with their contents before erasing.
     pub restore_unwritten_bytes: bool,
+    /// The path where an SVG of the assembled flash layout should be written to.
     pub flash_layout_output_path: Option<String>,
+    /// Triggers a full chip erase instead of a page by page erase.
     pub do_chip_erase: bool,
+    /// Whether to disable double buffering.
     pub disable_double_buffering: bool,
+    /// Whether to verify flash contents before downloading.
     pub preverify: bool,
+    /// Whether to verify flash contents after downloading.
     pub verify: bool,
+    /// Whether to read RTT output from the flash loader.
     pub read_flasher_rtt: bool,
+    /// Skip the resetting of the chip. This can be useful if there is other tooling in place which
+    /// performs this task before flashing. It currently only works for RAM flashing.
+    pub skip_reset: bool,
 }
 
 /// The reset config struct holding all the possible reset options.
