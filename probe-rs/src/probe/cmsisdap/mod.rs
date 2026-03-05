@@ -418,8 +418,12 @@ impl CmsisDap {
     }
 
     fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), CmsisDapError> {
-        // Ensure all pending commands are processed.
-        //self.process_batch()?;
+        // CRITICAL: Ensure all pending Transfer commands are processed AND USB buffers are drained
+        // before sending SwjSequence. Without this, batched Transfer commands (0x5) and SwjSequence
+        // commands (0x12) can get their responses mixed up, causing "Command ID mismatch" errors
+        // where we expect a SwjSequence response but receive a stale Transfer response.
+        let _ = self.process_batch(); // Process any queued transfer commands
+        self.device.drain(); // Drain any stale USB responses
 
         commands::send_command(&mut self.device, &request).and_then(|v| match v {
             SequenceResponse(Status::DapOk) => Ok(()),
