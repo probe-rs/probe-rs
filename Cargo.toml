@@ -38,6 +38,7 @@ docsplay = "0.1.1"
 thiserror = "2.0.11"
 anyhow = "1.0.82"
 async-io = "2"
+nusb = "0.2.1"
 
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"

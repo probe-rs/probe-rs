@@ -1,11 +1,17 @@
+//! USB bulk transfer utilities.
+
 use nusb::{
     Interface,
     transfer::{Buffer, Bulk, In, Out},
 };
 use std::{io, time::Duration};
 
+/// USB bulk transfer utility functions.
 pub trait InterfaceExt {
+    /// Reads data from the given bulk endpoint into the provided buffer.
     fn read_bulk(&self, endpoint: u8, buf: &mut [u8], timeout: Duration) -> io::Result<usize>;
+
+    /// Writes data to the given bulk endpoint from the provided buffer.
     fn write_bulk(&self, endpoint: u8, buf: &[u8], timeout: Duration) -> io::Result<usize>;
 }
 

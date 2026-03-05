@@ -26,7 +26,7 @@ pub mod registers;
 pub use registers::PC;
 pub(crate) mod assembly;
 pub mod communication_interface;
-pub(crate) mod dtm;
+pub mod dtm;
 pub mod sequences;
 
 pub use dtm::jtag_dtm::JtagDtmBuilder;

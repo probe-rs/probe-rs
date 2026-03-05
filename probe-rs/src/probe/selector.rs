@@ -49,23 +49,26 @@ pub struct DebugProbeSelector {
 }
 
 impl DebugProbeSelector {
-    pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
-        if self.interface.is_some() {
-            info.interfaces().any(|iface| {
-                self.match_probe_selector(
-                    info.vendor_id(),
-                    info.product_id(),
-                    Some(iface.interface_number()),
-                    info.serial_number(),
-                )
-            })
-        } else {
-            self.match_probe_selector(
+    /// Returns whether the given USB device info matches this selector.
+    pub fn matches(&self, info: &DeviceInfo) -> bool {
+        fn matches_with_interface(
+            selector: &DebugProbeSelector,
+            info: &DeviceInfo,
+            interface: Option<u8>,
+        ) -> bool {
+            selector.match_probe_selector(
                 info.vendor_id(),
                 info.product_id(),
-                None,
+                interface,
                 info.serial_number(),
             )
+        }
+
+        if self.interface.is_some() {
+            info.interfaces()
+                .any(|iface| matches_with_interface(self, info, Some(iface.interface_number())))
+        } else {
+            matches_with_interface(self, info, None)
         }
     }
 
