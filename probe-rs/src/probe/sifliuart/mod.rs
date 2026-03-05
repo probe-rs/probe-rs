@@ -451,8 +451,8 @@ impl ProbeFactory for SifliUartFactory {
             ));
         };
 
-        if selector.serial_number.is_some() {
-            return self.open_port(selector.serial_number.as_ref().unwrap());
+        if let Some(serial_number) = &selector.serial_number {
+            return self.open_port(serial_number);
         }
 
         for port in ports {
