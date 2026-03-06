@@ -566,7 +566,8 @@ impl Session {
             .map_err(|e| {
                 if matches!(
                     e,
-                    Error::Xtensa(XtensaError::CoreDisabled)
+                    Error::Arm(ArmError::CoreDisabled)
+                        | Error::Xtensa(XtensaError::CoreDisabled)
                         | Error::Riscv(RiscvError::HartUnavailable),
                 ) {
                     // If the core is disabled, we can't attach to it.

@@ -597,15 +597,22 @@ impl CmsisDap {
                 // To avoid a potential endless recursion,
                 // call a separate function to read the ctrl register,
                 // which doesn't use the batch API.
-                let ctrl = self.read_ctrl_register()?;
+                let clear_err = match self.read_ctrl_register() {
+                    Ok(ctrl) => {
+                        tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+                        ctrl.sticky_err()
+                    }
+                    // Reading the control register should never return an error, but if it does,
+                    // try clearing the sticky error flag.
+                    Err(ArmError::Dap(_)) => true,
+                    Err(e) => return Err(e),
+                };
 
-                tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
-
-                if ctrl.sticky_err() {
+                if clear_err {
                     // Clear sticky error flags.
                     self.write_abort({
                         let mut abort = Abort(0);
-                        abort.set_stkerrclr(ctrl.sticky_err());
+                        abort.set_stkerrclr(true);
                         abort
                     })?;
                 }
@@ -846,15 +853,22 @@ impl CmsisDap {
                 // To avoid a potential endless recursion,
                 // call a separate function to read the ctrl register,
                 // which doesn't use the batch API.
-                let ctrl = self.read_ctrl_register()?;
+                let clear_err = match self.read_ctrl_register() {
+                    Ok(ctrl) => {
+                        tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+                        ctrl.sticky_err()
+                    }
+                    // Reading the control register should never return an error, but if it does,
+                    // try clearing the sticky error flag.
+                    Err(ArmError::Dap(_)) => true,
+                    Err(e) => return Err(e),
+                };
 
-                tracing::debug!("Ctrl/Stat register value is: {:?}", ctrl);
-
-                if ctrl.sticky_err() {
+                if clear_err {
                     // Clear sticky error flags.
                     self.write_abort({
                         let mut abort = Abort(0);
-                        abort.set_stkerrclr(ctrl.sticky_err());
+                        abort.set_stkerrclr(true);
                         abort
                     })?;
                 }
