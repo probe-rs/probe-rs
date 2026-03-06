@@ -1,0 +1,132 @@
+name: CIU32F0 Series
+generated_from_pack: true
+pack_file_release: 1.0.0
+variants:
+- name: CIU32F003F5Px
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x6000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000c00
+    cores:
+    - main
+  flash_algorithms:
+  - ciu32f003x5
+- name: CIU32F003F5Ux
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x6000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000c00
+    cores:
+    - main
+  flash_algorithms:
+  - ciu32f003x5
+- name: CIU32F003J5Sx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x6000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000c00
+    cores:
+    - main
+  flash_algorithms:
+  - ciu32f003x5
+- name: CIU32F003W5Sx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x6000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000c00
+    cores:
+    - main
+  flash_algorithms:
+  - ciu32f003x5
+flash_algorithms:
+- name: ciu32f003x5
+  description: CIU32F003 24KB Flash
+  default: true
+  instructions: QLpwR8C6cEdwRxC1ASDAQwDwJPkA8EL4EL0QtQRGAPAd+QAoA9AhRgDwevgQvQEgEL0AADC1DksAIktEFAEdWY1CDNjkGGRojEII2REByRjKaAJgiWhBYAAhgWAwvVIcAyrr2wAhyUMBYAAgML0AABAAAAAIRnBHAWgFKQHRASEBYAVIAWnJA/zUQWkBItIHEUNBYQAgcEcAIAJAcLUBaAElBSkA0QVgCkwDISBGAPDL+AQgBWAgacAD/NQgacAB/NUBIAAGIGFgaQYhiENgYQAgcL0AIAJA+LWMBwPRACsB0JwHAdABIPi9BGgFLBLQCkwBJWZpAic+Q2ZhAGgGKAPQIEYA8Ij4BUZgaQYhiENgYShG+L0A8GH4+L0AIAJAcLUCaAElBSoA0QVg//ei/wpMBkYCISBGAPCG+DVgIGnAA/zUIGnAAfzVASAABiBhYGkGIYhDYGEAIHC9ACACQAFoBSkB0QEhAWAHSAFpyQP81AZJAWEGSQZKgWCCYEFpACn82wAgcEcAIAJAEIAADYUaeuWRg258cLUURgDwXvgAKAXQACUBLATQAiwC0APgASBwvf/31P8oRnC9cLUWRgxGBUYA8Er4ACgF0CNGMkYpRv/3gf9wvQEgcL34tR9GFUYORgAkBuAoaDBg//cM/yQdLR02HbxC9tMAIPi9ELUBKAHQAigF0QEgwEMA8Cb4//cy/wAgEL1wtQAkASUJSC0GC+AWaA5gBmn2A/zUBmn2AfzVBWEJHRIdJB2cQvHTACBwvQAgAkBCaQYjmkNCYUJpSQAKQ0JhcEcAABC1gRwK0AEhyQeIQgbSAUYESEhE//fg/gAoAdABSEhEEL0AAAQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAABgAAAAYAAAAQAAAAAA/x8AAv8fAAIAAAYAAAAAAAAgAAwAIAAMAAAFAAAA
+  load_address: 0x20000008
+  pc_init: 0x199
+  pc_uninit: 0x1ff
+  pc_program_page: 0x1bd
+  pc_erase_sector: 0x1b
+  pc_erase_all: 0xb
+  data_section_offset: 0x284
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x6000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x200
+      address: 0x0
