@@ -29,7 +29,9 @@ pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInter
         CoreType::Armv8m => Box::new(armv8m::ArmV8MExceptionHandler),
         CoreType::Xtensa => Box::new(xtensa::XtensaExceptionHandler),
         CoreType::Riscv => Box::new(riscv::RiscvExceptionHandler),
-        CoreType::Armv7a | CoreType::Armv8a => Box::new(UnimplementedExceptionHandler),
+        CoreType::Armv7a | CoreType::Armv7r | CoreType::Armv8a => {
+            Box::new(UnimplementedExceptionHandler)
+        }
     }
 }
 

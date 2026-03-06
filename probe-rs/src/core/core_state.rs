@@ -3,7 +3,7 @@ use crate::{
     architecture::{
         arm::{
             ApV2Address, ArmDebugInterface, FullyQualifiedApAddress,
-            core::{CortexAState, CortexMState},
+            core::{CortexARState, CortexMState},
             dp::DpAddress,
         },
         riscv::{RiscvCoreState, communication_interface::RiscvCommunicationInterface},
@@ -64,11 +64,24 @@ impl CombinedCoreState {
                 self.id,
                 name,
                 target,
-                crate::architecture::arm::armv7a::Armv7a::new(
+                crate::architecture::arm::armv7ar::Armv7ar::new(
                     memory,
                     s,
                     options.debug_base.expect("base_address not specified"),
                     debug_sequence,
+                    CoreType::Armv7a,
+                )?,
+            ),
+            SpecificCoreState::Armv7r(s) => Core::new(
+                self.id,
+                name,
+                target,
+                crate::architecture::arm::armv7ar::Armv7ar::new(
+                    memory,
+                    s,
+                    options.debug_base.expect("base_address not specified"),
+                    debug_sequence,
+                    CoreType::Armv7r,
                 )?,
             ),
             SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
@@ -269,13 +282,15 @@ pub enum SpecificCoreState {
     /// The state of an ARMv6-M core.
     Armv6m(CortexMState),
     /// The state of an ARMv7-A core.
-    Armv7a(CortexAState),
+    Armv7a(CortexARState),
+    /// The state of an ARMv7-R core.
+    Armv7r(CortexARState),
     /// The state of an ARMv7-M core.
     Armv7m(CortexMState),
     /// The state of an ARMv7-EM core.
     Armv7em(CortexMState),
     /// The state of an ARMv8-A core.
-    Armv8a(CortexAState),
+    Armv8a(CortexARState),
     /// The state of an ARMv8-M core.
     Armv8m(CortexMState),
     /// The state of an RISC-V core.
@@ -288,10 +303,11 @@ impl SpecificCoreState {
     pub(crate) fn from_core_type(typ: CoreType) -> Self {
         match typ {
             CoreType::Armv6m => SpecificCoreState::Armv6m(CortexMState::new()),
-            CoreType::Armv7a => SpecificCoreState::Armv7a(CortexAState::new()),
+            CoreType::Armv7a => SpecificCoreState::Armv7a(CortexARState::new()),
+            CoreType::Armv7r => SpecificCoreState::Armv7r(CortexARState::new()),
             CoreType::Armv7m => SpecificCoreState::Armv7m(CortexMState::new()),
             CoreType::Armv7em => SpecificCoreState::Armv7m(CortexMState::new()),
-            CoreType::Armv8a => SpecificCoreState::Armv8a(CortexAState::new()),
+            CoreType::Armv8a => SpecificCoreState::Armv8a(CortexARState::new()),
             CoreType::Armv8m => SpecificCoreState::Armv8m(CortexMState::new()),
             CoreType::Riscv => SpecificCoreState::Riscv(RiscvCoreState::new()),
             CoreType::Xtensa => SpecificCoreState::Xtensa(XtensaCoreState::new()),
@@ -302,6 +318,7 @@ impl SpecificCoreState {
         match self {
             SpecificCoreState::Armv6m(_) => CoreType::Armv6m,
             SpecificCoreState::Armv7a(_) => CoreType::Armv7a,
+            SpecificCoreState::Armv7r(_) => CoreType::Armv7r,
             SpecificCoreState::Armv7m(_) => CoreType::Armv7m,
             SpecificCoreState::Armv7em(_) => CoreType::Armv7em,
             SpecificCoreState::Armv8a(_) => CoreType::Armv8a,

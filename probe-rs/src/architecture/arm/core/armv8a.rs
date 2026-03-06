@@ -1,7 +1,7 @@
 //! Register types and the core interface for armv8-a
 
 use super::{
-    CortexAState,
+    CortexARState,
     instructions::{
         aarch64,
         thumb2::{build_ldr, build_mcr, build_mrc, build_str, build_vmov, build_vmrs},
@@ -53,7 +53,7 @@ fn prep_instr_for_itr_32(instruction: u32) -> u32 {
 pub struct Armv8a<'probe> {
     memory: Box<dyn ArmMemoryInterface + 'probe>,
 
-    state: &'probe mut CortexAState,
+    state: &'probe mut CortexARState,
 
     base_address: u64,
 
@@ -67,7 +67,7 @@ pub struct Armv8a<'probe> {
 impl<'probe> Armv8a<'probe> {
     pub(crate) fn new(
         mut memory: Box<dyn ArmMemoryInterface + 'probe>,
-        state: &'probe mut CortexAState,
+        state: &'probe mut CortexARState,
         base_address: u64,
         cti_address: u64,
         sequence: Arc<dyn ArmDebugSequence>,
@@ -2208,7 +2208,7 @@ mod test {
 
         let mock_mem = Box::new(probe) as _;
 
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         let core = Armv8a::new(
             mock_mem,
@@ -2225,7 +2225,7 @@ mod test {
     #[test]
     fn armv8a_core_halted() {
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2262,7 +2262,7 @@ mod test {
     #[test]
     fn armv8a_wait_for_core_halted() {
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2300,7 +2300,7 @@ mod test {
     #[test]
     fn armv8a_status_running() {
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2329,7 +2329,7 @@ mod test {
     #[test]
     fn armv8a_status_halted() {
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2363,7 +2363,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2400,7 +2400,7 @@ mod test {
         const REG_VALUE: u64 = 0xFFFF_EEEE_0000_ABCD;
 
         let mut probe = MockProbe::new(true);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2437,7 +2437,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2475,7 +2475,7 @@ mod test {
         const REG_VALUE: u64 = 0xFFFF_EEEE_0000_ABCD;
 
         let mut probe = MockProbe::new(true);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2513,7 +2513,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2551,7 +2551,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new(true);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2589,7 +2589,7 @@ mod test {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, false);
@@ -2629,7 +2629,7 @@ mod test {
     #[test]
     fn armv8a_run() {
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2660,7 +2660,7 @@ mod test {
     fn armv8a_available_breakpoint_units() {
         const BP_COUNT: u32 = 4;
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2688,7 +2688,7 @@ mod test {
         const BP1: u64 = 0x2345;
         const BP2: u64 = 0x8000_0000;
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2771,7 +2771,7 @@ mod test {
     fn armv8a_set_hw_breakpoint() {
         const BP_VALUE: u64 = 0x2345;
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2816,7 +2816,7 @@ mod test {
     #[test]
     fn armv8a_clear_hw_breakpoint() {
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2855,7 +2855,7 @@ mod test {
         const MEMORY_ADDRESS: u64 = 0x12345678;
 
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2886,7 +2886,7 @@ mod test {
         const MEMORY_ADDRESS: u64 = 0x12345678;
 
         let mut probe = MockProbe::new(true);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2918,7 +2918,7 @@ mod test {
         const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
 
         let mut probe = MockProbe::new(false);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2949,7 +2949,7 @@ mod test {
         const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
 
         let mut probe = MockProbe::new(true);
-        let mut state = CortexAState::new();
+        let mut state = CortexARState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
