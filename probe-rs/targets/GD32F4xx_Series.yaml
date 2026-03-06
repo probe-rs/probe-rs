@@ -1,0 +1,2609 @@
+name: GD32F4xx Series
+generated_from_pack: true
+pack_file_release: 3.0.3
+variants:
+- name: GD32F403RC
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403RE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403RG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403RI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403RK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403VC
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403VE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403VI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403VK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403ZC
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x2000c000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403ZE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403ZI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F403ZK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f403
+- name: GD32F405RE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F405RG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F405RK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F405VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F405VK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F405ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F405ZK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F407IE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F407IG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F407IK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F407RE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F407RG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F407RK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F407VE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F407VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F407VK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F407ZE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F407ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F407ZK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F425RE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F425RG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F425RK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F425VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F425VK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F425ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F425ZK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F427IE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F427IG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F427IK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F427RE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F427RG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F427RK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F427VE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F427VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F427VK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F427ZE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F427ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F427ZK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F450IG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F450II
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20070000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_2mb
+- name: GD32F450IK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F450VE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F450VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F450VI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20070000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_2mb
+- name: GD32F450VK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F450ZE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F450ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F450ZI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20070000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_2mb
+- name: GD32F450ZK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F470IG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F470II
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20070000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_2mb
+- name: GD32F470IK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F470VE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F470VG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20070000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F470VI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x200b0000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_2mb
+- name: GD32F470VK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+- name: GD32F470ZE
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F470ZG
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8100000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20070000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_1mb
+- name: GD32F470ZI
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x200b0000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_2mb
+- name: GD32F470ZK
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8300000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: IRAM2
+    range:
+      start: 0x10000000
+      end: 0x10010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20030000
+    cores:
+    - main
+  flash_algorithms:
+  - gd32f4xx_3mb
+flash_algorithms:
+- name: gd32f403
+  description: 'GD32F403 FMC '
+  default: true
+  instructions: ZElv8xIASUQIYGNIACEBYGJJQWBiSkJgQWRCZMBpQAcI1GBIRfJVUQFgBiFBYED2/3GBYAAgcEdXSAFpQfCAAQFhAW1B8IABAWUAIHBHUkgBaUHwBAEBYQFpQfBAAQFhSvaqIU9KAOARYMNo2wf70QNpI/AEAwNhA21D8AQDA2UDbUPwQAMDZQDgEWDDbNsH+9EBbSHwBAEBZQAgcEc9SRC1SUQ8SwxoPkkE9QAkSvaqIqBCEtIcaUTwAgQcYVhhGGlA8EAAGGEA4Apg2GjAB/vRGGkg8AIAGGER4BxtRPACBBxlWGUYbUDwQAAYZQDgCmDYbMAH+9EYbSDwAgAYZQAgEL0jSxC1S0TJHBxoIksE9QAkIfADAaBCGdM14BxpRPABBBxhFGgEYNxo5Af80RxpJPABBBxh3GgU8BQPBNDYaEDwFADYYBrgAB0SHQkfACnk0RvgHG1E8AEEHGUUaARg3GzkB/zRHG0k8AEEHGXcbBTwFA8F0NhsQPAUANhkASAQvQAdEh0JHwAp49EAIBC9AAAEAAAAACACQCMBZ0Wrie/NADAAQAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x39
+  pc_program_page: 0x105
+  pc_erase_sector: 0x9f
+  pc_erase_all: 0x4f
+  data_section_offset: 0x1a8
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8300000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x800
+      address: 0x0
+- name: gd32f4xx_1mb
+  description: GD32F4xx_1MB FMC
+  default: true
+  instructions: g7ABRgKQApjA8wcwAZABmCAoAJEG0//nAZgEIQHrUBABkA7gAZgQKAbT/+cBmAMhAesQEAGQA+ABmIAIAZD/5//nnfgKAMAGACgE1f/nAZgQMAGQ/+ed+AoAgAYAKAfV/+cCmIAMAyFh858AAZD/5wGYA7BwRwC/gLWGsBNGjEaGRgWQBJEDkkP2BEDE8gIAQPIjEcTyZ1EBYEj2qxHM9u9RAWBD9gBAxPICAAAhAWBD9gxAxPICAAFoQfDQAQFgQ/YUQMTyAgAAaIAGACgCk834BMDN+ADgFdT/50PyAADE8gAARfJVUQFgQ/IEAMTyAAAGIQFgQ/IIAMTyAABA9v9xAWD/5wAgBrCAvYKwAUYBkEP2EEDE8gIAAmhC8ABCAmAAIACRArBwRwC/Q/YQQMTyAgABaEHwBAEBYAFoQfQAQQFgAWhB9IAxAWD/50P2DEDE8gIAAGjAAwAoCNX/50PyAADE8gAASvaqIQFg7udD9hBAxPICAAFoIfAEAQFgAWgh9ABBAWAAIHBHgLWEsAFGApACmACR//cy/wGQQ/YMQMTyAgABaEHw0AEBYEP2EEDE8gIAAiEBYAGZyQDJstD4AOBB6g4BAWABaEH0gDEBYP/nQ/YMQMTyAgAAaMADACgI1f/nQ/IAAMTyAABK9qohAWDu50P2EEDE8gIAAWgh8AIBAWBD9gxAxPICAABoEPDQDwvQ/+dD9gxAxPICAAFoQfDQAQFgASADkALgACADkP/nA5gEsIC9AL+AtYewE0aMRoZGBZAEkQOSBJgDMCDwAwAEkEP2DEDE8gIAAWhB8NABAWBD9hBAxPICAAAhAWACk834BMDN+ADg/+cEmAAoPtD/50P2EEDE8gIAAWhA8gEiEUMBYAOYAGgFmQhg/+dD9gxAxPICAABowAMAKAHV/+f150P2EEDE8gIAAWgh8AEBAWBD9gxAxPICAABoEPDQDwvQ/+dD9gxAxPICAAFoQfDQAQFgASAGkAzgBZgEMAWQA5gEMAOQBJgEOASQvecAIAaQ/+cGmAewgL0AAAAAAAA=
+  pc_init: 0x79
+  pc_uninit: 0x10d
+  pc_program_page: 0x23d
+  pc_erase_sector: 0x18d
+  pc_erase_all: 0x12d
+  data_section_offset: 0x310
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8100000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 6000
+    sectors:
+    - size: 0x4000
+      address: 0x0
+    - size: 0x10000
+      address: 0x10000
+    - size: 0x20000
+      address: 0x20000
+- name: gd32f4xx_3mb
+  description: GD32F4xx_3MB FMC
+  default: true
+  instructions: g7ABRgKQApjA8wcwAZABmCAoAJEG0//nAZgEIQHrUBABkA7gAZgQKAbT/+cBmAMhAesQEAGQA+ABmIAIAZD/5//nnfgKAMAGACgE1f/nAZgQMAGQ/+ed+AoAgAYAKAfV/+cCmIAMAyFh858AAZD/5wGYA7BwRwC/gLWGsBNGjEaGRgWQBJEDkkP2BEDE8gIAQPIjEcTyZ1EBYEj2qxHM9u9RAWBD9gBAxPICAAAhAWBD9gxAxPICAAFoQfDQAQFgQ/YUQMTyAgAAaIAGACgCk834BMDN+ADgFdT/50PyAADE8gAARfJVUQFgQ/IEAMTyAAAGIQFgQ/IIAMTyAABA9v9xAWD/5wAgBrCAvYKwAUYBkEP2EEDE8gIAAmhC8ABCAmAAIACRArBwRwC/Q/YQQMTyAgABaEHwBAEBYAFoQfQAQQFgAWhB9IAxAWD/50P2DEDE8gIAAGjAAwAoCNX/50PyAADE8gAASvaqIQFg7udD9hBAxPICAAFoIfAEAQFgAWgh9ABBAWAAIHBHgLWEsAFGApACmACR//cy/wGQQ/YMQMTyAgABaEHw0AEBYEP2EEDE8gIAAiEBYAGZyQDJstD4AOBB6g4BAWABaEH0gDEBYP/nQ/YMQMTyAgAAaMADACgI1f/nQ/IAAMTyAABK9qohAWDu50P2EEDE8gIAAWgh8AIBAWBD9gxAxPICAABoEPDQDwvQ/+dD9gxAxPICAAFoQfDQAQFgASADkALgACADkP/nA5gEsIC9AL+AtYewE0aMRoZGBZAEkQOSBJgDMCDwAwAEkEP2DEDE8gIAAWhB8NABAWBD9hBAxPICAAAhAWACk834BMDN+ADg/+cEmAAoPtD/50P2EEDE8gIAAWhA8gEiEUMBYAOYAGgFmQhg/+dD9gxAxPICAABowAMAKAHV/+f150P2EEDE8gIAAWgh8AEBAWBD9gxAxPICAABoEPDQDwvQ/+dD9gxAxPICAAFoQfDQAQFgASAGkAzgBZgEMAWQA5gEMAOQBJgEOASQvecAIAaQ/+cGmAewgL0AAAAAAAA=
+  pc_init: 0x79
+  pc_uninit: 0x10d
+  pc_program_page: 0x23d
+  pc_erase_sector: 0x18d
+  pc_erase_all: 0x12d
+  data_section_offset: 0x310
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8300000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 6000
+    sectors:
+    - size: 0x4000
+      address: 0x0
+    - size: 0x10000
+      address: 0x10000
+    - size: 0x20000
+      address: 0x20000
+    - size: 0x4000
+      address: 0x100000
+    - size: 0x10000
+      address: 0x110000
+    - size: 0x20000
+      address: 0x120000
+    - size: 0x40000
+      address: 0x200000
+- name: gd32f4xx_2mb
+  description: GD32F4xx_2MB FMC
+  default: true
+  instructions: g7ABRgKQApjA8wcwAZABmCAoAJEG0//nAZgEIQHrUBABkA7gAZgQKAbT/+cBmAMhAesQEAGQA+ABmIAIAZD/5//nnfgKAMAGACgE1f/nAZgQMAGQ/+ed+AoAgAYAKAfV/+cCmIAMAyFh858AAZD/5wGYA7BwRwC/gLWGsBNGjEaGRgWQBJEDkkP2BEDE8gIAQPIjEcTyZ1EBYEj2qxHM9u9RAWBD9gBAxPICAAAhAWBD9gxAxPICAAFoQfDQAQFgQ/YUQMTyAgAAaIAGACgCk834BMDN+ADgFdT/50PyAADE8gAARfJVUQFgQ/IEAMTyAAAGIQFgQ/IIAMTyAABA9v9xAWD/5wAgBrCAvYKwAUYBkEP2EEDE8gIAAmhC8ABCAmAAIACRArBwRwC/Q/YQQMTyAgABaEHwBAEBYAFoQfQAQQFgAWhB9IAxAWD/50P2DEDE8gIAAGjAAwAoCNX/50PyAADE8gAASvaqIQFg7udD9hBAxPICAAFoIfAEAQFgAWgh9ABBAWAAIHBHgLWEsAFGApACmACR//cy/wGQQ/YMQMTyAgABaEHw0AEBYEP2EEDE8gIAAiEBYAGZyQDJstD4AOBB6g4BAWABaEH0gDEBYP/nQ/YMQMTyAgAAaMADACgI1f/nQ/IAAMTyAABK9qohAWDu50P2EEDE8gIAAWgh8AIBAWBD9gxAxPICAABoEPDQDwvQ/+dD9gxAxPICAAFoQfDQAQFgASADkALgACADkP/nA5gEsIC9AL+AtYewE0aMRoZGBZAEkQOSBJgDMCDwAwAEkEP2DEDE8gIAAWhB8NABAWBD9hBAxPICAAAhAWACk834BMDN+ADg/+cEmAAoPtD/50P2EEDE8gIAAWhA8gEiEUMBYAOYAGgFmQhg/+dD9gxAxPICAABowAMAKAHV/+f150P2EEDE8gIAAWgh8AEBAWBD9gxAxPICAABoEPDQDwvQ/+dD9gxAxPICAAFoQfDQAQFgASAGkAzgBZgEMAWQA5gEMAOQBJgEOASQvecAIAaQ/+cGmAewgL0AAAAAAAA=
+  pc_init: 0x79
+  pc_uninit: 0x10d
+  pc_program_page: 0x23d
+  pc_erase_sector: 0x18d
+  pc_erase_all: 0x12d
+  data_section_offset: 0x310
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8200000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 6000
+    sectors:
+    - size: 0x4000
+      address: 0x0
+    - size: 0x10000
+      address: 0x10000
+    - size: 0x20000
+      address: 0x20000
+    - size: 0x4000
+      address: 0x100000
+    - size: 0x10000
+      address: 0x110000
+    - size: 0x20000
+      address: 0x120000
