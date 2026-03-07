@@ -1,0 +1,55 @@
+name: Trident IoT
+manufacturer:
+  id: 0x41
+  cc: 0x0
+variants:
+- name: T32CZ20
+  part: 0x5840
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x10000000
+      end:   0x10100000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0x30000000
+      end:   0x30030000
+    cores:
+    - main
+  flash_algorithms:
+  - rt584z_nonsecure_1m
+flash_algorithms:
+- name: rt584z_nonsecure_1m
+  description: RT584Z Non Secure 1M Flash
+  default: true
+  instructions: g7ACkAGRAJJP8KBAAWhA8oRQsOsRTwjR/+dJ8hgBxfIAAUDy7xAIYP/nACADsHBHgbAAkAAgAbBwRwC/hLBP8KBAAWhA8oRQsOsRT0/R/+dJ8jgAxfIAAABoA5Cd+A4AoPEMAQEgiEACOAKQACAAkAGQ/+cBmAKZiEI30v/nSfJEAcXyAAFE8lQgxfJBIAhgSfIAAcXyAAEhIAhgAJhJ8gQBxfIAAQhgSfIIAcXyAAEBIAhg/+dJ8ggAxfIAAABowAUAKAHV/+f15wCYAPWAUACQSCHE8gABCGgDImLzDyAIYP/nAZgBMAGQw+f/5wAgBLBwR4SwApBP8KBAAWhA8oRQsOsRT0XR/+dJ8jgAxfIAAABoAZCd+AYQASCIQACQApgg8H9AAJmIQgTT/+dP8P8wA5Ax4EnyRAHF8gABRPJUIMXyQSAIYEnyAAHF8gABISAIYAKYSfIEAcXyAAEIYEnyCAHF8gABASAIYP/nSfIIAMXyAAAAaMAFACgB1f/n9edIIcTyAAEIaAMiYvMPIAhg/+cAIAOQ/+cDmASwcEeGsASQA5ECkk/woEABaEDyhFCw6xFPS9H/50nyOADF8gAAAGgBkJ34BhABIIhAAJAEmCDwf0AAmYhCBNP/50/w/zAFkDfgSfJEAcXyAAFE8lQgxfJBIAhgSfIAAcXyAAEYIAhgBJhJ8gQBxfIAAQhgAphJ8hQBxfIAAQhgSfIIAcXyAAEBIAhg/+dJ8ggAxfIAAABowAUAKAHV/+f150ghxPIAAQhoAyJi8w8gCGD/5wAgBZD/5wWYBrBwRwAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x31
+  pc_program_page: 0x1a1
+  pc_erase_sector: 0xf5
+  pc_erase_all: 0x3d
+  data_section_offset: 0x25c
+  rtt_poll_interval: 0
+  flash_properties:
+    address_range:
+      start: 0x10000000
+      end:   0x10100000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main
+
