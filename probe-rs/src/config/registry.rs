@@ -93,6 +93,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 name: "riscv".to_owned(),
                 part: None,
                 svd: None,
+                memory_ports: vec![],
                 documentation: HashMap::new(),
                 package_variants: vec![],
                 cores: vec![Core {
@@ -134,6 +135,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                         mem_ap: None,
                     }),
                 }],
+                memory_ports: vec![],
                 memory_map: vec![],
                 flash_algorithms: vec![],
                 rtt_scan_ranges: None,
