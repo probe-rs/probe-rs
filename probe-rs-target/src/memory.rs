@@ -13,6 +13,9 @@ pub struct NvmRegion {
     pub range: Range<u64>,
     /// List of cores that can access this region
     pub cores: Vec<String>,
+    #[serde(default)]
+    /// List of memories that can access this region
+    pub memory_ports: Vec<String>,
     /// True if the memory region is an alias of a different memory region.
     #[serde(default)]
     pub is_alias: bool,
@@ -23,8 +26,9 @@ pub struct NvmRegion {
 
 impl NvmRegion {
     /// Returns whether the region is accessible by the given core.
-    pub fn accessible_by(&self, core_name: &str) -> bool {
-        self.cores.iter().any(|c| c == core_name)
+    pub fn accessible_by(&self, core_or_mem_port_name: &str) -> bool {
+        self.cores.iter().any(|c| c == core_or_mem_port_name)
+            || self.memory_ports.iter().any(|c| c == core_or_mem_port_name)
     }
 
     /// Returns the access permissions for the region.
@@ -105,6 +109,9 @@ pub struct RamRegion {
     pub range: Range<u64>,
     /// List of cores that can access this region
     pub cores: Vec<String>,
+    #[serde(default)]
+    /// List of memories that can access this region
+    pub memory_ports: Vec<String>,
     /// True if the memory region is an alias of a different memory region.
     #[serde(default)]
     pub is_alias: bool,
@@ -115,8 +122,12 @@ pub struct RamRegion {
 
 impl RamRegion {
     /// Returns whether the region is accessible by the given core.
-    pub fn accessible_by(&self, core_name: &str) -> bool {
-        self.cores.iter().any(|c| c == core_name)
+    pub fn accessible_by(&self, core_or_mem_ports_name: &str) -> bool {
+        self.cores.iter().any(|c| c == core_or_mem_ports_name)
+            || self
+                .memory_ports
+                .iter()
+                .any(|c| c == core_or_mem_ports_name)
     }
 
     /// Returns the access permissions for the region.
@@ -245,6 +256,9 @@ pub struct GenericRegion {
     pub range: Range<u64>,
     /// List of cores that can access this region
     pub cores: Vec<String>,
+    #[serde(default)]
+    /// List of memories that can access this region
+    pub memory_ports: Vec<String>,
     /// Access permissions for the region.
     #[serde(default)]
     pub access: Option<MemoryAccess>,
@@ -252,8 +266,12 @@ pub struct GenericRegion {
 
 impl GenericRegion {
     /// Returns whether the region is accessible by the given core.
-    pub fn accessible_by(&self, core_name: &str) -> bool {
-        self.cores.iter().any(|c| c == core_name)
+    pub fn accessible_by(&self, core_or_mem_ports_name: &str) -> bool {
+        self.cores.iter().any(|c| c == core_or_mem_ports_name)
+            || self
+                .memory_ports
+                .iter()
+                .any(|c| c == core_or_mem_ports_name)
     }
 
     /// Returns the access permissions for the region.
@@ -606,6 +624,7 @@ mod test {
             cores: vec!["core0".to_string()],
             access: None,
             is_alias: false,
+            memory_ports: vec![],
         }];
 
         let merged_regions: Vec<RamRegion> = regions.iter().merge_consecutive().collect();
@@ -618,6 +637,7 @@ mod test {
                 cores: vec!["core0".to_string()],
                 access: None,
                 is_alias: false,
+                memory_ports: vec![],
             },]
         );
     }
@@ -629,6 +649,7 @@ mod test {
                 name: None,
                 range: 0..4,
                 cores: vec!["core0".to_string()],
+                memory_ports: vec![],
                 access: None,
                 is_alias: false,
             },
@@ -636,6 +657,7 @@ mod test {
                 name: None,
                 range: 4..8,
                 cores: vec!["core1".to_string()],
+                memory_ports: vec![],
                 access: None,
                 is_alias: false,
             },
@@ -643,6 +665,7 @@ mod test {
                 name: None,
                 range: 8..12,
                 cores: vec!["core1".to_string()],
+                memory_ports: vec![],
                 access: None,
                 is_alias: false,
             },
@@ -650,6 +673,7 @@ mod test {
                 name: None,
                 range: 16..20,
                 cores: vec!["core1".to_string()],
+                memory_ports: vec![],
                 access: None,
                 is_alias: false,
             },
@@ -664,6 +688,7 @@ mod test {
                     name: None,
                     range: 0..4,
                     cores: vec!["core0".to_string()],
+                    memory_ports: vec![],
                     access: None,
                     is_alias: false,
                 },
@@ -671,6 +696,7 @@ mod test {
                     name: None,
                     range: 4..12,
                     cores: vec!["core1".to_string()],
+                    memory_ports: vec![],
                     access: None,
                     is_alias: false,
                 },
@@ -678,6 +704,7 @@ mod test {
                     name: None,
                     range: 16..20,
                     cores: vec!["core1".to_string()],
+                    memory_ports: vec![],
                     access: None,
                     is_alias: false,
                 },
