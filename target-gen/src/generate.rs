@@ -171,6 +171,7 @@ where
             svd: None,
             documentation: HashMap::new(),
             package_variants: vec![],
+            memory_ports: vec![],
             cores,
             memory_map,
             flash_algorithms: flash_algorithm_names,
@@ -588,6 +589,7 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
                         name: Some(region.name),
                         range: region.memory_start..region.memory_end,
                         cores,
+                        memory_ports: vec![],
                         is_alias: false,
                     }));
                 }
@@ -604,6 +606,7 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
                         name: Some(region.name),
                         range: region.memory_start..region.memory_end,
                         cores,
+                        memory_ports: vec![],
                         is_alias: false,
                     }));
                 }
@@ -620,6 +623,7 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
                         name: Some(region.name),
                         range: region.memory_start..region.memory_end,
                         cores,
+                        memory_ports: vec![]
                     }));
                 }
             },
