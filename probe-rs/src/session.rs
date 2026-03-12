@@ -349,7 +349,14 @@ impl Session {
             && let Some(scan_chain) = jtag.scan_chain.clone()
             && let Some(probe) = probe.try_as_jtag_probe()
         {
-            probe.set_expected_scan_chain(&scan_chain)?;
+            if jtag.force_scan_chain {
+                // Bypass JTAG auto-detection entirely; use the scan chain from the target YAML.
+                // This is required for targets whose TAP does not respond to the standard IDCODE
+                // DR scan (e.g., some RISC-V cores during early power-up).
+                probe.set_scan_chain(&scan_chain)?;
+            } else {
+                probe.set_expected_scan_chain(&scan_chain)?;
+            }
         }
 
         probe.attach_to_unspecified()?;
