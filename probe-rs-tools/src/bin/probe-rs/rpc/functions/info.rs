@@ -25,6 +25,7 @@ use probe_rs::{
     },
     probe::{Probe, WireProtocol as ProbeRsWireProtocol},
 };
+use probe_rs_target::ScanChainElement;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -44,6 +45,12 @@ pub struct TargetInfoRequest {
     pub dry_run: bool,
     pub target_sel: Option<u32>,
     pub protocol: WireProtocol,
+    /// IR lengths for each TAP in the scan chain, in scan-chain order.
+    ///
+    /// When non-empty, the JTAG auto-detection scan is bypassed and these values are used
+    /// directly. For example, `[5]` specifies a single-TAP chain with IR length 5.
+    #[serde(default)]
+    pub scan_chain: Vec<u8>,
 }
 
 impl From<&TargetInfoRequest> for ProbeOptions {
@@ -78,6 +85,7 @@ pub async fn target_info(
     if let Err(e) = try_show_info(
         ctx,
         probe,
+        request.scan_chain.clone(),
         request.protocol,
         probe_options.connect_under_reset(),
         request.target_sel,
@@ -289,11 +297,25 @@ impl ComponentTreeNode {
 async fn try_show_info(
     ctx: &mut RpcContext,
     mut probe: Probe,
+    scan_chain: Vec<u8>,
     protocol: WireProtocol,
     connect_under_reset: bool,
     target_sel: Option<u32>,
 ) -> anyhow::Result<()> {
     probe.select_protocol(ProbeRsWireProtocol::from(protocol))?;
+
+    if !scan_chain.is_empty() {
+        if let Some(jtag) = probe.try_as_jtag_probe() {
+            let chain = scan_chain
+                .iter()
+                .map(|&ir_len| ScanChainElement {
+                    name: None,
+                    ir_len: Some(ir_len),
+                })
+                .collect::<Vec<_>>();
+            jtag.set_scan_chain(&chain)?;
+        }
+    }
 
     if connect_under_reset {
         probe.attach_to_unspecified_under_reset()?;
