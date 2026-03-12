@@ -16,8 +16,8 @@ use crate::{
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
 use registers::{
-    FP, FP64, PC64, RA, RA64, RISCV64_CORE_REGISTERS, RISCV64_WITH_FP_CORE_REGISTERS,
-    RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS, SP, SP64,
+    FP, FP64, PC64, RA, RA64, RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS,
+    RISCV64_CORE_REGISTERS, RISCV64_WITH_FP_CORE_REGISTERS, SP, SP64,
 };
 use std::{
     sync::Arc,
@@ -749,7 +749,7 @@ impl<'state> Riscv64<'state> {
             None
         } else {
             let mut actual_instructions = [0u32; 3];
-            self.read_32((pc - 4), &mut actual_instructions)?;
+            self.read_32(pc - 4, &mut actual_instructions)?;
 
             tracing::debug!(
                 "Semihosting check pc={pc:#x} instructions={0:#08x} {1:#08x} {2:#08x}",
@@ -992,7 +992,7 @@ impl CoreInterface for Riscv64<'_> {
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, crate::Error> {
         self.read_csr(address.0)
-            .map(|v| RegisterValue::U64(v))
+            .map(RegisterValue::U64)
             .map_err(|e| e.into())
     }
 

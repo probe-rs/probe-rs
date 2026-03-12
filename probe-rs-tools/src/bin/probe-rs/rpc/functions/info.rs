@@ -304,17 +304,17 @@ async fn try_show_info(
 ) -> anyhow::Result<()> {
     probe.select_protocol(ProbeRsWireProtocol::from(protocol))?;
 
-    if !scan_chain.is_empty() {
-        if let Some(jtag) = probe.try_as_jtag_probe() {
-            let chain = scan_chain
-                .iter()
-                .map(|&ir_len| ScanChainElement {
-                    name: None,
-                    ir_len: Some(ir_len),
-                })
-                .collect::<Vec<_>>();
-            jtag.set_scan_chain(&chain)?;
-        }
+    if !scan_chain.is_empty()
+        && let Some(jtag) = probe.try_as_jtag_probe()
+    {
+        let chain = scan_chain
+            .iter()
+            .map(|&ir_len| ScanChainElement {
+                name: None,
+                ir_len: Some(ir_len),
+            })
+            .collect::<Vec<_>>();
+        jtag.set_scan_chain(&chain)?;
     }
 
     if connect_under_reset {

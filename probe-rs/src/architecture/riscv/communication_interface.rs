@@ -1065,35 +1065,12 @@ impl<'state> RiscvCommunicationInterface<'state> {
         Ok(())
     }
 
-    /// Save s1 register as 64-bit value (for RV64 contexts).
-    ///
-    /// Returns the full 64-bit value; does NOT push to the `ScratchState` stack
-    /// (which is `Vec<u32>` and would truncate). The caller is responsible for
-    /// passing the returned value to `restore_s1_64`.
-    pub(super) fn save_s1_64(&mut self) -> Result<Option<u64>, RiscvError> {
-        let s1 = self.abstract_cmd_register_read_64(&registers::S1)?;
-        Ok(Some(s1))
-    }
-
-    /// Restore s1 register from a 64-bit saved value (for RV64 contexts).
-    pub(super) fn restore_s1_64(&mut self, saved: Option<u64>) -> Result<(), RiscvError> {
-        if let Some(s1) = saved {
-            self.abstract_cmd_register_write_64(&registers::S1, s1)?;
-        }
-        Ok(())
-    }
-
     /// Mark this interface as operating in RV64 mode.
     ///
     /// In RV64 mode, memory access methods accept 64-bit addresses without
     /// the `valid_32bit_address` restriction.
     pub(super) fn set_xlen_64(&mut self, is_64: bool) {
         self.state.xlen_64 = is_64;
-    }
-
-    /// Returns true if the interface is in RV64 mode.
-    pub(super) fn is_xlen_64(&self) -> bool {
-        self.state.xlen_64
     }
 
     /// Schedules a DM register read, flushes the queue and returns the result.
@@ -1912,7 +1889,11 @@ impl<'state> RiscvCommunicationInterface<'state> {
     /// Write a 64-bit CSR value via the program buffer (RV64 fallback path).
     pub fn write_csr_progbuf_64(&mut self, address: u16, value: u64) -> Result<(), RiscvError> {
         self.halted_access(|core| {
-            tracing::debug!("Writing 64-bit CSR {:#04x}={:#x} via program buffer", address, value);
+            tracing::debug!(
+                "Writing 64-bit CSR {:#04x}={:#x} via program buffer",
+                address,
+                value
+            );
 
             if address > RISCV_MAX_CSR_ADDR {
                 return Err(RiscvError::UnsupportedCsrAddress(address));

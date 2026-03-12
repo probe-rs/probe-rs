@@ -13,6 +13,7 @@ pub fn lw(offset: u16, base: u8, width: u8, destination: u8) -> u32 {
 /// Assemble a `ld` instruction (load 64-bit doubleword, RV64 only).
 ///
 /// `ld destination, offset(base)` — funct3 = 0b011
+#[allow(dead_code)]
 pub fn ld(offset: u16, base: u8, destination: u8) -> u32 {
     let opcode = 0b000_0011;
     let funct3 = 0b011;
@@ -37,6 +38,7 @@ pub const fn sw(offset: u32, base: u32, width: u32, source: u32) -> u32 {
 /// Assemble a `sd` instruction (store 64-bit doubleword, RV64 only).
 ///
 /// `sd source, offset(base)` — funct3 = 0b011
+#[allow(dead_code)]
 pub fn sd(offset: u32, base: u32, source: u32) -> u32 {
     let opcode = 0b010_0011;
     let funct3 = 0b011;
