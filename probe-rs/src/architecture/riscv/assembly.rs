@@ -3,14 +3,24 @@
 /// RISC-V breakpoint instruction
 pub const EBREAK: u32 = 0b000000000001_00000_000_00000_1110011;
 
-/// Assemble a `lw` instruction.
+/// Assemble a `lw` instruction (load 32-bit word).
 pub fn lw(offset: u16, base: u8, width: u8, destination: u8) -> u32 {
     let opcode = 0b000_0011;
 
     i_type_instruction(opcode, base, width, destination, offset)
 }
 
-/// Assemble a `sw` instruction.
+/// Assemble a `ld` instruction (load 64-bit doubleword, RV64 only).
+///
+/// `ld destination, offset(base)` — funct3 = 0b011
+#[allow(dead_code)]
+pub fn ld(offset: u16, base: u8, destination: u8) -> u32 {
+    let opcode = 0b000_0011;
+    let funct3 = 0b011;
+    i_type_instruction(opcode, base, funct3, destination, offset)
+}
+
+/// Assemble a `sw` instruction (store 32-bit word).
 pub const fn sw(offset: u32, base: u32, width: u32, source: u32) -> u32 {
     let opcode = 0b010_0011;
 
@@ -21,6 +31,25 @@ pub const fn sw(offset: u32, base: u32, width: u32, source: u32) -> u32 {
         | (source << 20)
         | (base << 15)
         | (width << 12)
+        | (offset_lower << 7)
+        | opcode
+}
+
+/// Assemble a `sd` instruction (store 64-bit doubleword, RV64 only).
+///
+/// `sd source, offset(base)` — funct3 = 0b011
+#[allow(dead_code)]
+pub fn sd(offset: u32, base: u32, source: u32) -> u32 {
+    let opcode = 0b010_0011;
+    let funct3 = 0b011;
+
+    let offset_lower = offset & 0b11111;
+    let offset_upper = offset >> 5;
+
+    (offset_upper << 25)
+        | (source << 20)
+        | (base << 15)
+        | (funct3 << 12)
         | (offset_lower << 7)
         | opcode
 }
@@ -88,7 +117,7 @@ fn i_type_instruction(opcode: u8, rs1: u8, funct3: u8, rd: u8, imm: u16) -> u32 
 
 #[cfg(test)]
 mod test {
-    use super::{csrr, csrw, lw, sw};
+    use super::{csrr, csrw, ld, lw, sd, sw};
 
     #[test]
     fn assemble_csrr() {
@@ -134,6 +163,32 @@ mod test {
         let expected = 0x00822183;
 
         let assembled = lw(8, 4, 2, 3);
+
+        assert_eq!(assembled, expected);
+    }
+
+    #[test]
+    fn assemble_ld() {
+        // Assembly output of assembly 'ld      x3, 8(x4)'
+        // opcode=0b0000011, funct3=0b011, rd=3, rs1=4, imm=8
+        // imm[11:0]=0x008, rs1=4, funct3=3, rd=3, opcode=0x03
+        // = 0x00823183
+        let expected = 0x00823183u32;
+
+        let assembled = ld(8, 4, 3);
+
+        assert_eq!(assembled, expected);
+    }
+
+    #[test]
+    fn assemble_sd() {
+        // Assembly output of assembly 'sd      x1, 4(x2)'
+        // opcode=0b0100011, funct3=0b011, rs1=2, rs2=1, imm=4
+        // imm[11:5]=0, rs2=1, rs1=2, funct3=3, imm[4:0]=4, opcode=0x23
+        // = 0x00113223
+        let expected = 0x00113223u32;
+
+        let assembled = sd(4, 2, 1);
 
         assert_eq!(assembled, expected);
     }
