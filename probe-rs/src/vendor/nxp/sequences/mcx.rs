@@ -262,6 +262,11 @@ impl MCX {
         let ap = interface.fully_qualified_address();
         let dp = ap.dp();
 
+        // Try to enable debug mailbox if AP is still not enabled
+        if !self.is_ap_enabled(interface.get_arm_debug_interface()?, &ap)? {
+            self.enable_debug_mailbox(interface.get_arm_debug_interface()?, dp)?;
+        }
+
         let start = Instant::now();
         let timeout = if self.is_variant(Self::VARIANT_N0) {
             Duration::from_millis(500)
@@ -273,11 +278,6 @@ impl MCX {
             && start.elapsed() < timeout
         {
             thread::sleep(Duration::from_millis(10));
-        }
-
-        // Try to enable debug mailbox if AP is still not enabled
-        if !self.is_ap_enabled(interface.get_arm_debug_interface()?, &ap)? {
-            self.enable_debug_mailbox(interface.get_arm_debug_interface()?, dp)?;
         }
 
         // Halt the core in case it didn't stop at a breakpoint
