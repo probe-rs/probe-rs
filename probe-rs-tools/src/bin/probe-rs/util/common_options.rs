@@ -112,7 +112,9 @@ pub struct ProbeOptions {
     /// Use this flag to select a specific probe in the list.
     ///
     /// Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one
-    /// probe with the same VID:PID.",
+    /// probe with the same VID:PID. For multi-channel FTDI probes (e.g. FT2232H),
+    /// use '--probe VID:PID-INTERFACE' to select the channel (0=A, 1=B, 2=C, 3=D).
+    /// Example: '--probe 0403:6010-1' selects Channel B.
     #[arg(long, env = "PROBE_RS_PROBE", help_heading = "PROBE CONFIGURATION")]
     pub probe: Option<DebugProbeSelector>,
     /// The protocol speed in kHz.
