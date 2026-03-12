@@ -423,6 +423,19 @@ fn get_capstone_le(
                 capstone::arch::riscv::ArchExtraMode::RiscVC,
             ))
             .build(),
+        InstructionSet::RV64 => Capstone::new()
+            .riscv()
+            .mode(riscvArchMode::RiscV64)
+            .endian(Endian::Little)
+            .build(),
+        InstructionSet::RV64C => Capstone::new()
+            .riscv()
+            .mode(riscvArchMode::RiscV64)
+            .endian(Endian::Little)
+            .extra_mode(std::iter::once(
+                capstone::arch::riscv::ArchExtraMode::RiscVC,
+            ))
+            .build(),
         InstructionSet::Xtensa => return Err(DebuggerError::Unimplemented),
     }
     .map_err(|err| anyhow!("Error creating capstone: {err:?}"))?;
