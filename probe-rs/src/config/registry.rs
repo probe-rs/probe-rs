@@ -112,6 +112,35 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
         },
+        ChipFamily {
+            name: "Generic RISC-V 64-bit".to_owned(),
+            manufacturer: None,
+            pack_file_release: None,
+            generated_from_pack: false,
+            chip_detection: vec![],
+            variants: vec![Chip {
+                name: "riscv64".to_owned(),
+                part: None,
+                svd: None,
+                documentation: HashMap::new(),
+                package_variants: vec![],
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::Riscv64,
+                    core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
+                        hart_id: None,
+                        jtag_tap: None,
+                    }),
+                }],
+                memory_map: vec![],
+                flash_algorithms: vec![],
+                rtt_scan_ranges: None,
+                jtag: None,
+                default_binary_format: None,
+            }],
+            flash_algorithms: vec![],
+            source: TargetDescriptionSource::Generic,
+        },
     ]);
 }
 
