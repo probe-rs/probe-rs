@@ -44,7 +44,6 @@ pub enum BitMode {
 }
 
 #[repr(C)]
-#[expect(unused)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Interface {
     A = 1,
