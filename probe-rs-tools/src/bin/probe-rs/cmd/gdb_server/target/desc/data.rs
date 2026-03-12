@@ -69,6 +69,7 @@ impl TargetDescription {
             },
             CoreType::Armv8m => "armv8-m.main",
             CoreType::Riscv => "riscv:rv32",
+            CoreType::Riscv64 => "riscv:rv64",
             CoreType::Xtensa => "xtensa",
         };
 
@@ -244,7 +245,7 @@ pub fn build_target_description(
             InstructionSet::A64 => build_aarch64_registers(&mut desc, regs),
             _ => panic!("Inconsistent ISA for Armv8-a: {isa:#?}"),
         },
-        CoreType::Riscv => build_riscv_registers(&mut desc, regs),
+        CoreType::Riscv | CoreType::Riscv64 => build_riscv_registers(&mut desc, regs),
         CoreType::Xtensa => build_xtensa_registers(&mut desc, regs),
     };
 
