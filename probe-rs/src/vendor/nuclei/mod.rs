@@ -1,4 +1,4 @@
-//! Nuclei vendor support (RV64 RISC-V cores, e.g. UX600-based EvalSoC).
+//! Nuclei vendor support for RISC-V cores.
 
 use probe_rs_target::Chip;
 
@@ -16,10 +16,11 @@ pub struct Nuclei;
 
 impl Vendor for Nuclei {
     fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
-        // All Nuclei RISC-V chips share the same default RISC-V debug sequence for now.
-        // Chip-specific sequences can be added here in the future.
-        let _ = chip;
-        None
+        if chip.name.starts_with("Nuclei") {
+            Some(DebugSequence::Riscv(sequences::NucleiSequence::create()))
+        } else {
+            None
+        }
     }
 
     fn try_detect_riscv_chip(
