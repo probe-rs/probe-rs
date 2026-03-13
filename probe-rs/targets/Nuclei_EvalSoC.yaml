@@ -6,9 +6,9 @@ variants:
     type: riscv64
     core_access_options: !Riscv
   jtag:
-    # The UX600 RISC-V TAP uses a 5-bit IR register (RISC-V Debug Spec 0.13 default).
-    # force_scan_chain bypasses the JTAG auto-detection DR scan, which the UX600
-    # does not reliably respond to during early power-up or with the HummingBird Debugger.
+    # The RISC-V TAP uses a 5-bit IR register (RISC-V Debug Spec 0.13 default).
+    # force_scan_chain bypasses the JTAG auto-detection DR scan, which some
+    # Nuclei chips do not reliably respond to during early power-up.
     scan_chain:
     - ir_len: 5
     force_scan_chain: true
