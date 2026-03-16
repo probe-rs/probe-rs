@@ -604,9 +604,10 @@ async fn main() -> Result<()> {
 
     if is_local {
         // TODO: do something with remote crashes
-        compile_report(result, report_path, elf, log_path.as_deref())?;
+        compile_report(result, report_path, elf, log_path.as_deref())
+    } else {
+        result
     }
-    Ok(())
 }
 
 /// Runs the callback using either a local or remote RPC client.
